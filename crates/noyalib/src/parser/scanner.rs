@@ -2137,16 +2137,56 @@ impl<'a> Scanner<'a> {
                 len += 1;
             }
 
-            if is_single_line && len > 0 {
-                let s = Cow::Borrowed(self.slice_str(self.pos, self.pos + len));
-                self.advance_by(len);
-                self.emit(TokenKind::Scalar(ScalarStyle::Plain, s));
-                self.last_token_opens_block = false;
-                return Ok(());
+            // The fast path can also fire when the scalar terminates
+            // before the next newline (e.g. on a `:`, trailing
+            // whitespace, or comment), even though `is_single_line`
+            // was flipped to `false` because *some* newline exists
+            // farther down the input. The line-folding slow path is
+            // only required when the scalar runs right up to the
+            // newline and might continue on the next line — i.e.
+            // `len == search_end` *and* `search_end` landed on a
+            // line break. Whenever `len < search_end` we know the
+            // scalar is fully bounded on the current line, so the
+            // input slice can be emitted directly as
+            // `Cow::Borrowed`. This unblocks zero-copy
+            // `Deserialize<'de> for &'de str` for the typical
+            // `key: value\n` shape.
+            let scalar_terminates_on_line = len < search_end;
+            if (is_single_line || scalar_terminates_on_line) && len > 0 {
+                // Strip trailing inline whitespace before a flow
+                // indicator (`}`, `]`, `,`). The inner-scan loop
+                // folds those blanks into `len` (line ~2134 above)
+                // because they may precede more content on the
+                // current line. When they do not, the slow path
+                // would emit just the content; mirror that here so
+                // the borrowed slice matches the owned-buffer
+                // result byte-for-byte. The scanner position still
+                // advances past the whitespace so downstream tokens
+                // line up.
+                let mut content_len = len;
+                while content_len > 0 && matches!(remaining[content_len - 1], b' ' | b'\t') {
+                    content_len -= 1;
+                }
+                if content_len > 0 {
+                    let s = Cow::Borrowed(self.slice_str(self.pos, self.pos + content_len));
+                    self.advance_by(len);
+                    self.emit(TokenKind::Scalar(ScalarStyle::Plain, s));
+                    self.last_token_opens_block = false;
+                    return Ok(());
+                }
             }
         }
 
         // ── Slow path: multiline plain scalar with line folding ──────
+        let scalar_start = self.pos;
+        let mut content_end = self.pos;
+        // Track whether the scalar is built from a single contiguous
+        // run of input bytes (no folded line breaks). If so we can
+        // emit `Cow::Borrowed(slice)` instead of allocating an owned
+        // `String`. Flipped to `false` the first time the
+        // line-folding branch synthesises a space / newline that
+        // does not exist verbatim in the input.
+        let mut single_chunk = true;
         let mut string = String::new();
         let mut leading_blanks = false;
         let mut whitespace = String::new();
@@ -2223,6 +2263,11 @@ impl<'a> Scanner<'a> {
             // Append characters.
             if length > 0 {
                 if leading_blanks {
+                    // Crossing a line break and synthesising folded
+                    // whitespace means the emitted string no longer
+                    // matches the input slice byte-for-byte. Switch
+                    // to the owned-buffer path.
+                    single_chunk = false;
                     // Handle line joins.
                     if let Some(stripped) = whitespace.strip_prefix('\n') {
                         if stripped.is_empty() {
@@ -2236,12 +2281,16 @@ impl<'a> Scanner<'a> {
                     }
                     whitespace.clear();
                 } else if !whitespace.is_empty() {
+                    // Inline whitespace — already part of the input
+                    // slice between the previous content_end and
+                    // self.pos, so `single_chunk` stays true.
                     string.push_str(&whitespace);
                     whitespace.clear();
                 }
 
                 string.push_str(self.slice_str(self.pos, self.pos + length));
                 self.advance_by(length);
+                content_end = self.pos;
             }
 
             // Skip whitespace/newlines between plain scalar content.
@@ -2300,7 +2349,15 @@ impl<'a> Scanner<'a> {
             self.simple_key_allowed = true;
         }
 
-        self.emit(TokenKind::Scalar(ScalarStyle::Plain, Cow::Owned(string)));
+        // Borrow when the entire scalar is a single contiguous run of
+        // input bytes (no line-folding synthesis). Else fall back to
+        // the owned buffer that was accumulated above.
+        let value = if single_chunk {
+            Cow::Borrowed(self.slice_str(scalar_start, content_end))
+        } else {
+            Cow::Owned(string)
+        };
+        self.emit(TokenKind::Scalar(ScalarStyle::Plain, value));
         self.last_token_opens_block = false;
         Ok(())
     }

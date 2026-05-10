@@ -626,12 +626,22 @@ impl<'de> de::Deserializer<'de> for &mut StreamingDeserializer<'de> {
             }
         }
         match self.next_event()? {
-            Event::Scalar { value, style, .. } => match self.resolve_scalar(&value, style) {
-                Scalar::Null => visitor.visit_none(),
-                Scalar::Bool(b) => visitor.visit_bool(b),
-                Scalar::Int(n) => visitor.visit_i64(n),
-                Scalar::Float(f) => visitor.visit_f64(f),
-                Scalar::Str(s) => visitor.visit_str(&s),
+            Event::Scalar { value, style, .. } => match value {
+                Cow::Borrowed(s) => match self.resolve_scalar(s, style) {
+                    Scalar::Null => visitor.visit_none(),
+                    Scalar::Bool(b) => visitor.visit_bool(b),
+                    Scalar::Int(n) => visitor.visit_i64(n),
+                    Scalar::Float(f) => visitor.visit_f64(f),
+                    Scalar::Str(Cow::Borrowed(b)) => visitor.visit_borrowed_str(b),
+                    Scalar::Str(Cow::Owned(o)) => visitor.visit_string(o),
+                },
+                Cow::Owned(s) => match self.resolve_scalar(&s, style) {
+                    Scalar::Null => visitor.visit_none(),
+                    Scalar::Bool(b) => visitor.visit_bool(b),
+                    Scalar::Int(n) => visitor.visit_i64(n),
+                    Scalar::Float(f) => visitor.visit_f64(f),
+                    Scalar::Str(_) => visitor.visit_string(s),
+                },
             },
             Event::SequenceStart { .. } => {
                 self.depth += 1;
@@ -764,24 +774,39 @@ impl<'de> de::Deserializer<'de> for &mut StreamingDeserializer<'de> {
         match self.peek_event()? {
             Event::Scalar { .. } => {
                 if let Event::Scalar { value, style, .. } = self.next_event()? {
-                    // Raw-str mode (used for map keys) accepts any scalar
-                    // as a string so keys like `42` or `true` come through
-                    // as textual. Otherwise, non-string plain scalars
-                    // (integers, bools, floats, null) should error so
-                    // typed fields don't silently coerce values.
+                    // When the scalar borrows directly from the input
+                    // (`Cow::Borrowed`), preserve the `'de` lifetime by
+                    // calling `visit_borrowed_str`. This unlocks
+                    // zero-copy `Deserialize<'de> for &'de str` without
+                    // routing through the `Value` AST.
                     if self.raw_str_mode {
-                        return visitor.visit_str(&value);
+                        return match value {
+                            Cow::Borrowed(s) => visitor.visit_borrowed_str(s),
+                            Cow::Owned(s) => visitor.visit_string(s),
+                        };
                     }
-                    // Non-plain (quoted / block) scalars are always strings.
                     if style != ScalarStyle::Plain {
-                        return visitor.visit_str(&value);
+                        return match value {
+                            Cow::Borrowed(s) => visitor.visit_borrowed_str(s),
+                            Cow::Owned(s) => visitor.visit_string(s),
+                        };
                     }
-                    match self.resolve_scalar(&value, style) {
-                        Scalar::Str(s) => visitor.visit_str(&s),
-                        _ => Err(Error::TypeMismatch {
-                            expected: "string",
-                            found: "non-string scalar".into(),
-                        }),
+                    match value {
+                        Cow::Borrowed(s) => match self.resolve_scalar(s, style) {
+                            Scalar::Str(Cow::Borrowed(b)) => visitor.visit_borrowed_str(b),
+                            Scalar::Str(Cow::Owned(o)) => visitor.visit_string(o),
+                            _ => Err(Error::TypeMismatch {
+                                expected: "string",
+                                found: "non-string scalar".into(),
+                            }),
+                        },
+                        Cow::Owned(s) => match self.resolve_scalar(&s, style) {
+                            Scalar::Str(_) => visitor.visit_string(s),
+                            _ => Err(Error::TypeMismatch {
+                                expected: "string",
+                                found: "non-string scalar".into(),
+                            }),
+                        },
                     }
                 } else {
                     Err(Error::TypeMismatch {
@@ -1002,7 +1027,10 @@ impl<'de> de::Deserializer<'de> for &mut StreamingDeserializer<'de> {
     {
         self.skip_to_content()?;
         if let Event::Scalar { value, .. } = self.next_event()? {
-            return visitor.visit_str(&value);
+            return match value {
+                Cow::Borrowed(s) => visitor.visit_borrowed_str(s),
+                Cow::Owned(s) => visitor.visit_string(s),
+            };
         }
         Err(Error::TypeMismatch {
             expected: "identifier",

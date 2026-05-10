@@ -28,6 +28,72 @@ use indexmap::IndexMap;
 use rustc_hash::{FxBuildHasher, FxHashMap};
 use serde::Serialize;
 
+/// Why a YAML scalar could not be borrowed directly from the input
+/// buffer and had to be materialised into an owned `String`.
+///
+/// Surfaced for users introspecting [`BorrowedValue`] / streaming
+/// deserialisation paths: when a `Cow<'a, str>` resolves to
+/// [`Cow::Owned`] instead of [`Cow::Borrowed`], one of these reasons
+/// applies. Useful in benchmarks and allocation-budget audits.
+///
+/// # Examples
+///
+/// ```
+/// use noyalib::borrowed::TransformReason;
+/// assert_eq!(TransformReason::EscapeSequence.as_str(),
+///            "scalar contained escape sequences that required decoding");
+/// ```
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[non_exhaustive]
+pub enum TransformReason {
+    /// The scalar contained `\n`, `\t`, `\xNN`, `\uNNNN`, `\UNNNNNNNN`,
+    /// or other escape sequences that required decoding into a fresh
+    /// allocation.
+    EscapeSequence,
+    /// The scalar spans multiple physical lines and required line
+    /// folding (block scalar `>` or `|`, or a multi-line flow scalar).
+    LineFold,
+    /// Tag resolution materialised a fresh representation (`!!binary`
+    /// base64 decode, custom-tag dispatch via [`crate::TagRegistry`]).
+    TagResolution,
+    /// The scalar was double-quoted and contained at least one escape,
+    /// so the parser produced an owned post-escape buffer.
+    QuotedScalar,
+    /// The scalar arrived via alias replay (`*anchor`) and the replayed
+    /// buffer is owned by the alias-expansion machinery, not the input
+    /// slice.
+    AliasExpansion,
+}
+
+impl TransformReason {
+    /// A human-readable explanation suitable for inclusion in error
+    /// messages.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use noyalib::borrowed::TransformReason;
+    /// assert_eq!(TransformReason::LineFold.as_str(),
+    ///            "scalar spans multiple lines and required line folding");
+    /// ```
+    #[must_use]
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::EscapeSequence => "scalar contained escape sequences that required decoding",
+            Self::LineFold => "scalar spans multiple lines and required line folding",
+            Self::TagResolution => "tag resolution materialised a fresh representation",
+            Self::QuotedScalar => "double-quoted scalar with escapes produced an owned buffer",
+            Self::AliasExpansion => "scalar arrived via alias replay (`*anchor`)",
+        }
+    }
+}
+
+impl core::fmt::Display for TransformReason {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
 /// A zero-copy YAML value that borrows strings from the input.
 ///
 /// # Examples

@@ -11,6 +11,71 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [v0.0.2] — 2026-05-10
 
+### Added — `from_str_borrowing` + `TransformReason` (issue #8)
+
+New public entry points `from_str_borrowing` and
+`from_str_borrowing_with_config` for `T: Deserialize<'a>` targets
+that borrow from the input slice (`&'a str`, `Cow<'a, str>`,
+structs containing those). The streaming deserialiser now routes
+plain-scalar string events through `visit_borrowed_str` whenever
+the parser produced a `Cow::Borrowed` event, unlocking truly
+zero-copy `&'de str` deserialisation. Quoted scalars without
+escapes also borrow; scalars that required decoding (escapes,
+multi-line folding, alias replay, tag resolution) fall back to
+owned buffers.
+
+Adjacent parser hardening: the plain-scalar slow path now emits
+`Cow::Borrowed(input_slice)` whenever the scalar is a single
+contiguous run of input bytes (no folded line breaks), matching
+the slow-path's owned-buffer result byte-for-byte. This means the
+common `key: value\n` shape now borrows zero-copy on the streaming
+path, not just terminal scalars at end-of-input.
+
+`TransformReason` enum (`noyalib::borrowed::TransformReason`)
+catalogues the five reasons a scalar can fail to borrow:
+`EscapeSequence`, `LineFold`, `TagResolution`, `QuotedScalar`,
+`AliasExpansion`. `Display` and `as_str` provide stable messages
+suitable for inclusion in higher-level error reports. The enum is
+`#[non_exhaustive]` so adding finer-grained variants in the future
+is non-breaking.
+
+### Added — `read` / `read_with_config` lazy multi-document reader (issue #7)
+
+`noyalib::read<R: Read, T: DeserializeOwned>(reader)` returns a
+`DocumentReadIterator<T>` that yields one `Result<T>` per YAML
+document. Per-document deserialisation errors surface as `Err`
+items so callers can recover and continue across document
+boundaries; YAML *syntax* errors return synchronously from
+`read` / `read_with_config` before iteration starts. The
+implementation drains the reader into a `String` first
+(`O(input_len)` peak memory); a future v0.0.3+ pass will tighten
+this to `O(1-document)` once the parser learns to accept
+incremental byte chunks.
+
+### Confirmed shipped in v0.0.1 (closes issues #9, #27, #28, #30)
+
+- **#9 — Event-based streaming deserialisation.**
+  `StreamingDeserializer` is the fast path inside `from_str` /
+  `from_str_with_config`; falls back to the AST loader only when
+  the caller's config disables streaming-eligible features.
+  Measured **30% faster** than the AST path (14.0 vs 19.4 µs;
+  see [`doc/BENCHMARKS.md`](doc/BENCHMARKS.md#architecture-validation)).
+- **#27 — Path query API.** `Value::query` /
+  `BorrowedValue::query` ship dot notation, array indexing,
+  wildcards (`*`), and recursive descent (`..`). Filter
+  expressions (`[?field==value]`) remain optional and tracked
+  separately.
+- **#28 — Zero-copy `Value<'a>` AST.** Implemented via the
+  parallel `BorrowedValue<'a>` type with `Cow<'a, str>` keys and
+  values, shipped in v0.0.1 to avoid a breaking change to
+  `Value`. Measured **18% faster** than the owned `Value` path.
+- **#30 — Shared-memory DAGs via Rc/Arc anchor registry.**
+  `AnchorRegistry<T>` (`Rc`) and `ArcAnchorRegistry<T>` (`Arc`)
+  expose `register` / `resolve` returning shared pointers to the
+  same heap allocation (verified by `Rc::ptr_eq` / `Arc::ptr_eq`
+  in the type's doctests). Cyclic graphs use
+  `RcRecursive`/`ArcRecursive` with their `Weak` partners.
+
 ### Changed — relax `indexmap` upper bound
 
 Bumped `indexmap` requirement from `>=2, <2.11` to `>=2, <3`. The

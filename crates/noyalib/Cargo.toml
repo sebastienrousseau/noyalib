@@ -246,6 +246,14 @@ name = "robotics_polymorphism"
 path = "examples/robotics_polymorphism.rs"
 required-features = ["robotics"]
 
+[[example]]
+name = "zero_copy_borrow"
+path = "examples/zero_copy_borrow.rs"
+
+[[example]]
+name = "read_iterator"
+path = "examples/read_iterator.rs"
+
 [dependencies]
 serde = { version = "1.0", default-features = false, features = ["derive", "alloc"] }
 indexmap = { version = ">=2, <3", features = ["serde"] }

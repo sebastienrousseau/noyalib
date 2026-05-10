@@ -22,7 +22,7 @@
 // Copyright (c) 2026 Noyalib. All rights reserved.
 
 use crate::de::ParserConfig;
-use crate::error::Result;
+use crate::error::{Error, Result};
 use crate::parser;
 use crate::prelude::*;
 #[cfg(feature = "std")]
@@ -30,6 +30,7 @@ use crate::span_context::{self, SpanTree};
 use crate::value::Value;
 #[cfg(not(feature = "std"))]
 use alloc::vec::IntoIter;
+use core::marker::PhantomData;
 #[cfg(feature = "std")]
 use std::vec::IntoIter;
 
@@ -140,7 +141,7 @@ pub fn load_all(input: &str) -> Result<DocumentIterator> {
 /// ```
 pub fn load_all_with_config(input: &str, config: &ParserConfig) -> Result<DocumentIterator> {
     if input.len() > config.max_document_length {
-        return Err(crate::error::Error::Parse(format!(
+        return Err(Error::Parse(format!(
             "document exceeds maximum length of {} bytes",
             config.max_document_length
         )));
@@ -262,4 +263,175 @@ where
         }
         Ok(results)
     }
+}
+
+/// Lazy iterator that yields `Result<T>` per YAML document parsed
+/// from a reader.
+///
+/// Created by [`read`] / [`read_with_config`]. Deserialisation
+/// errors on individual documents are surfaced as `Err` values; the
+/// iterator continues so callers can recover and process subsequent
+/// documents. Syntax errors during the initial parse are returned
+/// from [`read`] / [`read_with_config`] before iteration starts.
+///
+/// # Memory
+///
+/// Today the reader is fully drained into a `String` before the
+/// underlying parser runs, so memory is `O(input_len)`. True
+/// `O(1)`-document streaming requires a parser-level rewrite that
+/// can accept incremental byte chunks; that work is tracked
+/// separately.
+#[cfg(feature = "std")]
+#[derive(Debug)]
+pub struct DocumentReadIterator<T> {
+    docs: IntoIter<Value>,
+    _phantom: PhantomData<fn() -> T>,
+}
+
+#[cfg(feature = "std")]
+impl<T> DocumentReadIterator<T> {
+    /// Total number of documents pending iteration.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::io::Cursor;
+    /// let yaml = "a: 1\n---\nb: 2\n";
+    /// let iter: noyalib::DocumentReadIterator<noyalib::Value> =
+    ///     noyalib::read(Cursor::new(yaml)).unwrap();
+    /// assert_eq!(iter.len(), 2);
+    /// ```
+    #[must_use]
+    pub fn len(&self) -> usize {
+        self.docs.len()
+    }
+
+    /// Whether the iterator has no further documents.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::io::Cursor;
+    /// let iter: noyalib::DocumentReadIterator<noyalib::Value> =
+    ///     noyalib::read(Cursor::new("")).unwrap();
+    /// assert!(iter.is_empty());
+    /// ```
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.docs.len() == 0
+    }
+}
+
+#[cfg(feature = "std")]
+impl<T> Iterator for DocumentReadIterator<T>
+where
+    T: for<'de> serde::Deserialize<'de> + 'static,
+{
+    type Item = Result<T>;
+    fn next(&mut self) -> Option<Self::Item> {
+        let value = self.docs.next()?;
+        Some(crate::from_value(&value))
+    }
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.docs.size_hint()
+    }
+}
+
+#[cfg(feature = "std")]
+impl<T> ExactSizeIterator for DocumentReadIterator<T> where
+    T: for<'de> serde::Deserialize<'de> + 'static
+{
+}
+
+/// Stream-decode every YAML document from a reader into typed
+/// values, yielding one `Result<T>` per document.
+///
+/// The reader is drained eagerly (see [`DocumentReadIterator`] for
+/// the memory caveat); document-by-document deserialisation is then
+/// produced lazily on demand. Per-document deserialisation errors
+/// surface as `Err` values inside the iterator so callers can
+/// recover and continue. A syntax error in the underlying YAML is
+/// returned synchronously from this function before any iteration
+/// happens.
+///
+/// # Errors
+///
+/// Returns an error if the reader fails, the YAML cannot be parsed,
+/// or any document exceeds the default security limits. Per-document
+/// deserialisation errors are *not* surfaced here; they appear
+/// inside the iterator.
+///
+/// # Examples
+///
+/// ```
+/// use std::io::Cursor;
+/// use serde::Deserialize;
+///
+/// #[derive(Debug, Deserialize, PartialEq)]
+/// struct Doc { id: u32 }
+///
+/// let yaml = "id: 1\n---\nid: 2\n---\nid: 3\n";
+/// let docs: Vec<Doc> = noyalib::read::<_, Doc>(Cursor::new(yaml))
+///     .unwrap()
+///     .filter_map(Result::ok)
+///     .collect();
+/// assert_eq!(docs, vec![Doc { id: 1 }, Doc { id: 2 }, Doc { id: 3 }]);
+/// ```
+#[cfg(feature = "std")]
+pub fn read<R, T>(reader: R) -> Result<DocumentReadIterator<T>>
+where
+    R: std::io::Read,
+    T: for<'de> serde::Deserialize<'de> + 'static,
+{
+    read_with_config(reader, &ParserConfig::default())
+}
+
+/// [`read`] with a custom [`ParserConfig`] for tightened security
+/// limits.
+///
+/// # Errors
+///
+/// Same as [`read`].
+///
+/// # Examples
+///
+/// ```
+/// use std::io::Cursor;
+/// use noyalib::{read_with_config, ParserConfig, Value};
+///
+/// let cfg = ParserConfig::strict();
+/// let yaml = "a: 1\n---\nb: 2\n";
+/// let count = read_with_config::<_, Value>(Cursor::new(yaml), &cfg)
+///     .unwrap()
+///     .count();
+/// assert_eq!(count, 2);
+/// ```
+#[cfg(feature = "std")]
+pub fn read_with_config<R, T>(
+    mut reader: R,
+    config: &ParserConfig,
+) -> Result<DocumentReadIterator<T>>
+where
+    R: std::io::Read,
+    T: for<'de> serde::Deserialize<'de> + 'static,
+{
+    let mut buf = String::new();
+    let _read_bytes = reader
+        .read_to_string(&mut buf)
+        .map_err(|e| Error::Parse(format!("reader I/O failed: {e}")))?;
+    if buf.len() > config.max_document_length.saturating_mul(64) {
+        // Soft cap on the *aggregated* multi-document buffer to
+        // bound memory regardless of per-document caps.
+        return Err(Error::Parse(format!(
+            "reader payload exceeds 64× max_document_length ({} bytes)",
+            config.max_document_length
+        )));
+    }
+    let parse_config = parser::ParseConfig::from(config);
+    let pairs = parser::parse(&buf, &parse_config)?;
+    let docs: Vec<Value> = pairs.into_iter().map(|(value, _)| value).collect();
+    Ok(DocumentReadIterator {
+        docs: docs.into_iter(),
+        _phantom: PhantomData,
+    })
 }

@@ -859,6 +859,87 @@ where
     from_str_with_config(s, &ParserConfig::default())
 }
 
+/// Deserialise a YAML document into a target type that may borrow
+/// from the input slice (e.g. `&'a str`, `Cow<'a, str>`, structs
+/// containing those).
+///
+/// Where [`from_str`] requires `T: DeserializeOwned + 'static` and
+/// therefore can never satisfy `Deserialize<'de> for &'de str`, this
+/// function pins the deserialiser's lifetime to the input buffer's
+/// lifetime. Plain (unquoted) and unescaped quoted scalars are
+/// surfaced via `visit_borrowed_str`, allowing zero-copy borrows.
+/// Scalars that required transformation (escape decoding, line
+/// folding, alias replay, tag resolution) fall back to owned
+/// allocations — see [`crate::borrowed::TransformReason`] for the
+/// catalogue of transform causes.
+///
+/// # Errors
+///
+/// Returns an error if `s` is not valid YAML, exceeds the default
+/// security limits, or cannot be deserialised into `T`. When `T`
+/// targets `&'a str` and the YAML scalar required transformation,
+/// serde's `&str` visitor surfaces an `invalid type: string,
+/// expected a borrowed string` error — switch the target to
+/// `Cow<'a, str>` or `String` to accept either form.
+///
+/// # Examples
+///
+/// ```
+/// use noyalib::from_str_borrowing;
+/// use serde::Deserialize;
+///
+/// #[derive(Deserialize)]
+/// struct Person<'a> {
+///     name: &'a str,
+///     role: &'a str,
+/// }
+///
+/// let yaml = "name: noyalib\nrole: parser\n";
+/// let p: Person<'_> = from_str_borrowing(yaml).unwrap();
+/// assert_eq!(p.name, "noyalib");
+/// assert_eq!(p.role, "parser");
+/// ```
+pub fn from_str_borrowing<'a, T>(s: &'a str) -> Result<T>
+where
+    T: Deserialize<'a>,
+{
+    from_str_borrowing_with_config(s, &ParserConfig::default())
+}
+
+/// [`from_str_borrowing`] with a custom [`ParserConfig`] — typically
+/// to tighten security limits for untrusted input.
+///
+/// # Errors
+///
+/// Returns an error if `s` is not valid YAML under the supplied
+/// config or cannot be deserialised into `T`.
+///
+/// # Examples
+///
+/// ```
+/// use noyalib::{from_str_borrowing_with_config, ParserConfig};
+/// let cfg = ParserConfig::strict();
+/// let s: &str = from_str_borrowing_with_config("hello\n", &cfg).unwrap();
+/// assert_eq!(s, "hello");
+/// ```
+pub fn from_str_borrowing_with_config<'a, T>(s: &'a str, config: &ParserConfig) -> Result<T>
+where
+    T: Deserialize<'a>,
+{
+    let parse_config = parser::ParseConfig::from(config);
+    if s.len() > parse_config.max_document_length {
+        return Err(Error::Parse(format!(
+            "document exceeds maximum length of {} bytes",
+            parse_config.max_document_length
+        )));
+    }
+    let mut de = crate::streaming::StreamingDeserializer::with_config(s, parse_config);
+    if let Some(registry) = config.tag_registry.as_ref() {
+        de = de.with_tag_registry(Arc::clone(registry));
+    }
+    T::deserialize(&mut de)
+}
+
 /// Compile-time-ish check: is the deserialise target `T` exactly
 /// [`Value`]? Used by [`from_str_with_config`] / [`from_value`]
 /// to enable the tag-preserving fast-path on
