@@ -29,6 +29,11 @@ url = "https://raw.githubusercontent.com/zcash/rust-ecosystem/main/supply-chain/
 version = "0.12.15"
 criteria = "safe-to-deploy"
 
+[[exemptions.ariadne]]
+version = "0.5.1"
+criteria = "safe-to-deploy"
+suggest = false
+
 [[exemptions.granit-parser]]
 version = "0.0.2"
 criteria = "safe-to-deploy"

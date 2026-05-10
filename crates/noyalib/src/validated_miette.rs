@@ -20,12 +20,20 @@
 //! visible at the call site and avoid leaking miette into every
 //! `Spanned<T>` user.
 
-use crate::error::Location;
+#[allow(unused_imports)]
 use crate::prelude::*;
+#[allow(unused_imports)]
 use crate::spanned::Spanned;
 
 /// Range covering the entire `Spanned<T>` payload, clamped to the
 /// supplied `source` length so a stale snippet never panics.
+///
+/// Only defined when `garde` or `validator` is on — those are the
+/// features that bring callers (`garde_errors_to_miette` /
+/// `validator_errors_to_miette`). Otherwise the body would be
+/// dead code on a `miette`-only build (e.g. enabled transitively
+/// by `noyalib-lsp`'s `validate-schema`).
+#[cfg(any(feature = "garde", feature = "validator"))]
 fn spanned_byte_range<T>(spanned: &Spanned<T>, source: &str) -> core::ops::Range<usize> {
     let len = source.len();
     let start = spanned.start.index().min(len);
@@ -44,9 +52,11 @@ fn spanned_byte_range<T>(spanned: &Spanned<T>, source: &str) -> core::ops::Range
 /// source-context, labelled span, and helpful one-line summary
 /// when fed through `miette::ReportHandler`. Display + Error
 /// impls are hand-rolled to keep `thiserror` out of the
-/// dependency closure (matches the policy in `error.rs`).
-#[cfg(feature = "miette")]
-#[cfg_attr(docsrs, doc(cfg(feature = "miette")))]
+/// dependency closure (matches the policy in `error.rs`). Only
+/// compiled when at least one validator framework is enabled —
+/// otherwise the type would be dead code on a `miette`-only
+/// build.
+#[cfg(any(feature = "garde", feature = "validator"))]
 #[derive(Debug)]
 struct ValidationDiagnostic {
     summary: String,
@@ -54,7 +64,7 @@ struct ValidationDiagnostic {
     span: miette::SourceSpan,
 }
 
-#[cfg(feature = "miette")]
+#[cfg(any(feature = "garde", feature = "validator"))]
 impl ValidationDiagnostic {
     fn new<T>(spanned: &Spanned<T>, source: String, summary: String, name: String) -> Self {
         let range = spanned_byte_range(spanned, &source);
@@ -67,17 +77,17 @@ impl ValidationDiagnostic {
     }
 }
 
-#[cfg(feature = "miette")]
+#[cfg(any(feature = "garde", feature = "validator"))]
 impl core::fmt::Display for ValidationDiagnostic {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.write_str(&self.summary)
     }
 }
 
-#[cfg(feature = "miette")]
+#[cfg(any(feature = "garde", feature = "validator"))]
 impl std::error::Error for ValidationDiagnostic {}
 
-#[cfg(feature = "miette")]
+#[cfg(any(feature = "garde", feature = "validator"))]
 impl miette::Diagnostic for ValidationDiagnostic {
     fn code<'a>(&'a self) -> Option<Box<dyn core::fmt::Display + 'a>> {
         Some(Box::new("noyalib::validated"))
@@ -256,5 +266,3 @@ pub fn clamped_span(start: usize, end: usize, source_len: usize) -> miette::Sour
     (s, e - s).into()
 }
 
-#[allow(dead_code)]
-fn _location_proof(_l: Location) {}
