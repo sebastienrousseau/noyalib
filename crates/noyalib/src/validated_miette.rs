@@ -265,4 +265,3 @@ pub fn clamped_span(start: usize, end: usize, source_len: usize) -> miette::Sour
     };
     (s, e - s).into()
 }
-
