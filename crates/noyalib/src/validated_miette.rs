@@ -1,19 +1,19 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 // Copyright (c) 2026 Noyalib. All rights reserved.
 
-//! [`Spanned<T>`] + `garde` / `validator` → [`miette::Report`]
+//! [`Spanned<T>`] + `garde` / `validator` → `miette::Report`
 //! bridge.
 //!
-//! Walks a validation error tree produced by [`garde::Report`] or
-//! [`validator::ValidationErrors`] and emits a single
-//! [`miette::Report`] whose source label points at the
+//! Walks a validation error tree produced by `garde::Report` or
+//! `validator::ValidationErrors` and emits a single
+//! `miette::Report` whose source label points at the
 //! corresponding [`Spanned<T>`] range — enabling beautiful,
 //! line-and-column-precise output for declarative validation
 //! failures.
 //!
 //! Behind feature combinations:
-//! * [`garde_errors_to_miette`] requires `miette` + `garde`
-//! * [`validator_errors_to_miette`] requires `miette` + `validator`
+//! * `garde_errors_to_miette` requires `miette` + `garde`
+//! * `validator_errors_to_miette` requires `miette` + `validator`
 //!
 //! These functions are deliberately free-standing rather than
 //! impls on [`crate::Spanned`] to keep the dependency surface

@@ -3,8 +3,7 @@
 
 //! Zero-copy YAML values that borrow strings from the input.
 //!
-//! [`BorrowedValue`](crate::borrowed::BorrowedValue) is the zero-copy
-//! counterpart of [`Value`](crate::Value).
+//! [`BorrowedValue`] is the zero-copy counterpart of [`Value`](crate::Value).
 //! String scalars and mapping keys use `Cow<'a, str>`, borrowing directly from
 //! the input buffer when no escape processing was needed. This eliminates heap
 //! allocations for the majority of YAML content.
