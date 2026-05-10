@@ -7,7 +7,30 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
-(Targeting `[v0.0.3]` — scope TBD.)
+(Nothing yet — `[v0.0.3]` is the cut.)
+
+## [v0.0.3] — 2026-05-11
+
+### Changed — widen `rustc-hash` cap to `>=2, <3`
+
+Single-line manifest widening (`rustc-hash = ">=2, <2.1"` →
+`rustc-hash = ">=2, <3"`). The old cap was defensive, not
+load-bearing — noyalib's usage is the stable `FxHashMap` /
+`FxHashSet` / `FxBuildHasher` public surface unchanged across
+the 2.x line.
+
+The motivating downstream is `html-generator`, whose dependency
+chain pulls `scraper 0.26 → selectors 0.36 → rustc-hash
+^2.1.1`. Under the previous range the two co-resolution paths
+were incompatible.
+
+`Cargo.lock` stays pinned to `rustc-hash 2.0.0` because 2.1+
+declares `rust-version = "1.77"`, above noyalib's 1.75 MSRV
+floor. Downstream consumers on Rust ≥ 1.77 are free to
+`cargo update -p rustc-hash` to take 2.1+; consumers on 1.75
+inherit our lockfile pin via `cargo build --locked`. Same
+MSRV-preservation pattern v0.0.2 used for `indexmap 2.10 /
+hashbrown 0.15`.
 
 ## [v0.0.2] — 2026-05-10
 
