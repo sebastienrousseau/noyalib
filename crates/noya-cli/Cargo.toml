@@ -1,6 +1,6 @@
 [package]
 name = "noya-cli"
-version = "0.0.1"
+version = "0.0.2"
 edition = "2021"
 # clap 4.5 transitively pulls clap_builder 4.6 (edition 2024),
 # which requires rustc 1.85+. Library users still build the
