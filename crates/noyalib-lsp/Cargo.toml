@@ -1,6 +1,6 @@
 [package]
 name = "noyalib-lsp"
-version = "0.0.2"
+version = "0.0.3"
 edition = "2021"
 # Transitive deps via the LSP transport stack (litemap 0.7.5,
 # uuid 1.23) require rustc 1.85+. The noyalib core lib still
@@ -25,7 +25,7 @@ name = "noyalib-lsp"
 path = "src/main.rs"
 
 [dependencies]
-noyalib = { path = "../noyalib", version = "0.0.2", features = ["std", "validate-schema"] }
+noyalib = { path = "../noyalib", version = "0.0.3", features = ["std", "validate-schema"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 
