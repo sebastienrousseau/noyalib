@@ -11,6 +11,45 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [v0.0.2] — 2026-05-10
 
+### Added — `${KEY}` / `${KEY:-default}` substitution during parse (issue #11)
+
+`ParserConfig::properties(map)` plus `strict_properties(bool)`
+toggle. Each YAML scalar is walked after parse and any
+`${name}` placeholder is substituted from the supplied
+`Arc<HashMap<String,String>>`. Supports `${KEY:-default}`
+inline fallbacks, `$$` → `$` and `${{` → `${` escapes, and
+`}}` → `}`. Strict mode (default for `ParserConfig::strict()`)
+errors on unknown keys; lossy mode (default) substitutes the
+empty string. Syntax errors in the placeholder (invalid
+character, unterminated, malformed `:-default` separator) always
+abort regardless of mode. Streaming fast-path is automatically
+disabled when properties are active so the post-parse walk runs
+uniformly across every typed target.
+
+### Added — `ariadne` adapter for `Error` (issue #23)
+
+New `ariadne` Cargo feature exposing
+`noyalib::ariadne_adapter::error_to_ariadne_report(err, filename, source)`
+that converts a `noyalib::Error` into an `ariadne::Report` with
+the offending byte range labelled. Pairs with the existing
+`miette::Diagnostic` impl on `Error` for users who prefer
+ariadne's rendering. Multibyte-safe: `Location::index()` is
+clamped to the source bounds before being expanded to a labelled
+range.
+
+### Added — garde / validator → miette bridge with `Spanned<T>` (issue #32)
+
+`noyalib::validated_miette` exposes
+`garde_errors_to_miette(spanned, errors, source, name)` and
+`validator_errors_to_miette(...)` that walk a validation error
+tree (compact `path: message; …` summary) and emit a single
+`miette::Report` whose source label points at the
+`Spanned<T>`'s byte range. Behind the `miette` Cargo feature
+plus either `garde` or `validator` (or both). Hand-rolled
+`Display` + `Error` + `miette::Diagnostic` impls keep
+`thiserror` out of the dep closure (matches the policy in
+`error.rs`).
+
 ### Added — `from_str_borrowing` + `TransformReason` (issue #8)
 
 New public entry points `from_str_borrowing` and

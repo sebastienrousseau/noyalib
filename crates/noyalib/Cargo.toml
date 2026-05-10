@@ -254,6 +254,20 @@ path = "examples/zero_copy_borrow.rs"
 name = "read_iterator"
 path = "examples/read_iterator.rs"
 
+[[example]]
+name = "properties_interpolation"
+path = "examples/properties_interpolation.rs"
+
+[[example]]
+name = "ariadne_diagnostic"
+path = "examples/ariadne_diagnostic.rs"
+required-features = ["ariadne"]
+
+[[example]]
+name = "validated_miette"
+path = "examples/validated_miette.rs"
+required-features = ["miette", "garde"]
+
 [dependencies]
 serde = { version = "1.0", default-features = false, features = ["derive", "alloc"] }
 indexmap = { version = ">=2, <3", features = ["serde"] }
@@ -263,6 +277,7 @@ ryu = { version = "1", optional = true }
 memchr = "2.7"
 smallvec = { version = "1.13", default-features = false }
 miette = { version = "7", optional = true }
+ariadne = { version = "0.5", optional = true, default-features = false }
 garde = { version = "0.22", optional = true, default-features = false, features = ["derive"] }
 validator = { version = "0.19", optional = true, features = ["derive"] }
 # NOTE: `serde_yaml` 0.9 is intentionally NOT a noyalib dependency.
@@ -410,6 +425,7 @@ minimal = ["std"]
 # no_std and serde's de::Error does not require `std::error::Error`.
 std = ["serde/std"]
 miette = ["dep:miette"]
+ariadne = ["dep:ariadne"]
 robotics = []
 garde = ["dep:garde"]
 validator = ["dep:validator"]

@@ -3264,16 +3264,13 @@ impl Value {
     where
         S: AsRef<str>,
     {
-        self.interpolate_inner(&|name| {
-            properties
-                .get(name)
-                .map(|s| s.as_ref().to_owned())
-                .ok_or_else(|| {
-                    crate::Error::Custom(format!(
-                        "interpolate_properties: unknown placeholder `${{{name}}}`"
-                    ))
-                })
-        })
+        self.interpolate_inner(
+            &|name| match properties.get(name) {
+                Some(v) => ResolveOutcome::Found(v.as_ref().to_owned()),
+                None => ResolveOutcome::Missing,
+            },
+            MissingAction::Error(false),
+        )
     }
 
     /// Like [`Value::interpolate_properties`] but redacts the
@@ -3315,16 +3312,13 @@ impl Value {
     where
         S: AsRef<str>,
     {
-        self.interpolate_inner(&|name| {
-            properties
-                .get(name)
-                .map(|s| s.as_ref().to_owned())
-                .ok_or_else(|| {
-                    crate::Error::Custom(
-                        "interpolate_properties: unknown placeholder `${<redacted>}`".into(),
-                    )
-                })
-        })
+        self.interpolate_inner(
+            &|name| match properties.get(name) {
+                Some(v) => ResolveOutcome::Found(v.as_ref().to_owned()),
+                None => ResolveOutcome::Missing,
+            },
+            MissingAction::Error(true),
+        )
     }
 
     /// Like [`Value::interpolate_properties`] but never errors —
@@ -3354,42 +3348,49 @@ impl Value {
     ) where
         S: AsRef<str>,
     {
-        // Resolver returns Ok("") for missing entries — never
-        // errors, so the outer call is total.
-        let _ = self.interpolate_inner(&|name| {
-            Ok(properties
-                .get(name)
-                .map(|s| s.as_ref().to_owned())
-                .unwrap_or_default())
-        });
+        // Missing entries fall back to the empty string (and
+        // honour any `${name:-default}` syntax along the way).
+        // The walk never errors so the outer call is total.
+        let _ = self.interpolate_inner(
+            &|name| match properties.get(name) {
+                Some(v) => ResolveOutcome::Found(v.as_ref().to_owned()),
+                None => ResolveOutcome::Missing,
+            },
+            MissingAction::Empty,
+        );
     }
 
-    /// Internal interpolation driver — `resolve` returns the
-    /// substitution for a placeholder name or an error to abort
-    /// the walk.
+    /// Internal interpolation driver — `resolve` returns a
+    /// [`ResolveOutcome`] tri-state so the walker can distinguish
+    /// found / missing / errored. `missing_action` decides what
+    /// happens when a placeholder is missing *and* has no
+    /// `:-default` fallback.
     #[cfg(feature = "std")]
-    fn interpolate_inner(
+    pub(crate) fn interpolate_inner(
         &mut self,
-        resolve: &dyn Fn(&str) -> crate::Result<String>,
+        resolve: &dyn Fn(&str) -> ResolveOutcome,
+        missing_action: MissingAction,
     ) -> crate::Result<()> {
         match self {
             Value::String(s) => {
-                if let Some(updated) = expand_placeholders(s, resolve)? {
+                if let Some(updated) = expand_placeholders(s, resolve, missing_action)? {
                     *s = updated;
                 }
             }
             Value::Sequence(seq) => {
                 for v in seq {
-                    v.interpolate_inner(resolve)?;
+                    v.interpolate_inner(resolve, missing_action)?;
                 }
             }
             Value::Mapping(map) => {
                 for v in map.values_mut() {
-                    v.interpolate_inner(resolve)?;
+                    v.interpolate_inner(resolve, missing_action)?;
                 }
             }
             Value::Tagged(tagged) => {
-                tagged.value_mut().interpolate_inner(resolve)?;
+                tagged
+                    .value_mut()
+                    .interpolate_inner(resolve, missing_action)?;
             }
             // Null / Bool / Number have no string content; nothing to do.
             Value::Null | Value::Bool(_) | Value::Number(_) => {}
@@ -3923,12 +3924,42 @@ impl ValueIndex for &Value {
 /// `${db.host}` for users who want to namespace their property
 /// maps. Anything that does not match is a parse error.
 #[cfg(feature = "std")]
+/// Outcome of resolving a placeholder name.
+///
+/// Three-way return so [`expand_placeholders`] can distinguish a
+/// genuinely missing key (which may then defer to a `:-default`
+/// fallback) from a key whose own resolution errored.
+pub(crate) enum ResolveOutcome {
+    /// Name resolved cleanly.
+    Found(String),
+    /// Name not in the resolver's lookup table.
+    Missing,
+    /// Resolution failed for a non-missing reason. Reserved for
+    /// future resolver impls that may surface I/O or permissions
+    /// errors (e.g. environment-variable-backed resolvers); not
+    /// produced by the in-memory `properties` map path today.
+    #[allow(dead_code)]
+    Error(crate::Error),
+}
+
+/// What to do when a placeholder has no map entry and no
+/// `:-default` fallback.
+#[derive(Debug, Clone, Copy)]
+pub(crate) enum MissingAction {
+    /// Substitute the empty string. Lossy/non-strict mode.
+    Empty,
+    /// Surface an error. Boolean is `true` to redact the
+    /// placeholder name from the error message.
+    Error(bool),
+}
+
 fn expand_placeholders(
     s: &str,
-    resolve: &dyn Fn(&str) -> crate::Result<String>,
+    resolve: &dyn Fn(&str) -> ResolveOutcome,
+    missing_action: MissingAction,
 ) -> crate::Result<Option<String>> {
     let bytes = s.as_bytes();
-    // Fast path: no `$` at all → no allocation, no walk.
+    // Fast path: no `$` and no `}` → no allocation, no walk.
     if !bytes.contains(&b'$') && !bytes.contains(&b'}') {
         return Ok(None);
     }
@@ -3937,6 +3968,13 @@ fn expand_placeholders(
     let mut touched = false;
     while i < bytes.len() {
         let b = bytes[i];
+        if b == b'$' && i + 1 < bytes.len() && bytes[i + 1] == b'$' {
+            // Escape: `$$` → literal `$`.
+            out.push('$');
+            i += 2;
+            touched = true;
+            continue;
+        }
         if b == b'$' && i + 1 < bytes.len() && bytes[i + 1] == b'{' {
             // Escape: `${{` → literal `${`.
             if i + 2 < bytes.len() && bytes[i + 2] == b'{' {
@@ -3945,10 +3983,11 @@ fn expand_placeholders(
                 touched = true;
                 continue;
             }
-            // Find the closing `}`.
+            // Scan the placeholder name. Stop at the first `}` (close)
+            // or `:` (default-value sentinel for `${name:-default}`).
             let name_start = i + 2;
             let mut j = name_start;
-            while j < bytes.len() && bytes[j] != b'}' {
+            while j < bytes.len() && bytes[j] != b'}' && bytes[j] != b':' {
                 let c = bytes[j];
                 let ok = c.is_ascii_alphanumeric() || c == b'_' || c == b'.';
                 if !ok {
@@ -3970,9 +4009,47 @@ fn expand_placeholders(
                 ));
             }
             let name = &s[name_start..j];
-            let value = resolve(name)?;
+            // Optional `:-default` fallback: `${name:-default}`.
+            let mut default: Option<&str> = None;
+            let mut close = j;
+            if bytes[j] == b':' {
+                if j + 1 >= bytes.len() || bytes[j + 1] != b'-' {
+                    return Err(crate::Error::Custom(
+                        "interpolate_properties: expected `:-default` after `${name:`".into(),
+                    ));
+                }
+                let default_start = j + 2;
+                let mut k = default_start;
+                while k < bytes.len() && bytes[k] != b'}' {
+                    k += 1;
+                }
+                if k >= bytes.len() {
+                    return Err(crate::Error::Custom(
+                        "interpolate_properties: unterminated `${name:-default}`".into(),
+                    ));
+                }
+                default = Some(&s[default_start..k]);
+                close = k;
+            }
+            let value = match resolve(name) {
+                ResolveOutcome::Found(v) => v,
+                ResolveOutcome::Missing => match default {
+                    Some(d) => d.to_owned(),
+                    None => match missing_action {
+                        MissingAction::Empty => String::new(),
+                        MissingAction::Error(redact) => {
+                            return Err(crate::Error::Custom(if redact {
+                                "interpolate_properties: unknown placeholder `${<redacted>}`".into()
+                            } else {
+                                format!("interpolate_properties: unknown placeholder `${{{name}}}`")
+                            }));
+                        }
+                    },
+                },
+                ResolveOutcome::Error(e) => return Err(e),
+            };
             out.push_str(&value);
-            i = j + 1;
+            i = close + 1;
             touched = true;
             continue;
         }

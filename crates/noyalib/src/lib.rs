@@ -399,9 +399,23 @@ pub(crate) mod prelude {
 }
 
 mod anchors;
+/// Zero-copy YAML values that borrow from the input.
+/// [`ariadne`] adapter — render `crate::Error` as an
+/// `ariadne::Report` with the offending byte range labelled.
+/// Behind the `ariadne` Cargo feature.
+#[cfg(feature = "ariadne")]
+#[cfg_attr(docsrs, doc(cfg(feature = "ariadne")))]
+pub mod ariadne_adapter;
 /// Internal RFC 4648 base64 codec for `!!binary` scalars.
 mod base64;
-/// Zero-copy YAML values that borrow from the input.
+
+/// `Spanned<T>` + garde / validator → `miette::Report` bridge.
+/// Behind the `miette` Cargo feature; the actual conversion
+/// functions are gated on `miette + garde` or `miette + validator`.
+#[cfg(feature = "miette")]
+#[cfg_attr(docsrs, doc(cfg(feature = "miette")))]
+pub mod validated_miette;
+
 pub mod borrowed;
 mod comments;
 /// Drop-in compatibility shims for upstream YAML crates. Each shim

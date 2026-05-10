@@ -202,6 +202,38 @@ pub struct ParserConfig {
     /// is bypassed automatically so the policy contract holds for
     /// every code path.
     pub policies: Vec<Arc<dyn crate::policy::Policy>>,
+    /// `${KEY}` / `${KEY:-default}` substitution table consulted
+    /// after parsing every document.
+    ///
+    /// Each scalar in the resulting [`Value`] tree is walked and
+    /// any `${name}` placeholder is replaced with the property of
+    /// that name. Supported syntax:
+    ///
+    /// - `${name}` — substitute, error or pass through depending
+    ///   on [`Self::strict_properties`]
+    /// - `${name:-default}` — substitute, falling back to
+    ///   `default` when `name` is missing (always silent, never
+    ///   surfaces in errors)
+    /// - `${{` — literal `${` (escape for the open delimiter)
+    /// - `$$` — literal `$`
+    /// - `}}` — literal `}`
+    ///
+    /// `None` (default) disables the substitution pass entirely;
+    /// the parser is unchanged. Setting a non-empty map forces the
+    /// AST fallback so the post-parse walk runs uniformly across
+    /// every typed target.
+    #[cfg(feature = "std")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
+    pub properties: Option<Arc<std::collections::HashMap<String, String>>>,
+    /// When `true`, an unknown `${name}` placeholder (no entry in
+    /// [`Self::properties`] and no `:-default` fallback) aborts
+    /// the parse with [`Error::Custom`].
+    /// When `false` (default), unknown placeholders are replaced
+    /// with the empty string — the lossy semantics matching
+    /// [`Value::interpolate_properties_lossy`](crate::Value::interpolate_properties_lossy).
+    #[cfg(feature = "std")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
+    pub strict_properties: bool,
 }
 
 impl Default for ParserConfig {
@@ -230,6 +262,10 @@ impl Default for ParserConfig {
             legacy_sexagesimal: false,
             require_indent: RequireIndent::Unchecked,
             policies: Vec::new(),
+            #[cfg(feature = "std")]
+            properties: None,
+            #[cfg(feature = "std")]
+            strict_properties: false,
         }
     }
 }
@@ -285,7 +321,74 @@ impl ParserConfig {
             legacy_sexagesimal: false,
             require_indent: RequireIndent::Even,
             policies: Vec::new(),
+            #[cfg(feature = "std")]
+            properties: None,
+            #[cfg(feature = "std")]
+            strict_properties: true,
         }
+    }
+
+    /// Install a `${KEY}` substitution table consulted after
+    /// parsing.
+    ///
+    /// Each scalar in the resulting [`Value`] tree is walked and
+    /// any `${name}` placeholder is replaced with the property of
+    /// that name. Pairs with [`Self::strict_properties`] to choose
+    /// between erroring or silently empty-substituting on unknown
+    /// keys, and with `${name:-default}` syntax for inline
+    /// defaults.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use noyalib::{from_str_with_config, ParserConfig, Value};
+    /// use std::collections::HashMap;
+    /// use std::sync::Arc;
+    ///
+    /// let mut props = HashMap::new();
+    /// props.insert("HOST".to_string(), "localhost".to_string());
+    /// let cfg = ParserConfig::new().properties(Arc::new(props));
+    /// let v: Value = from_str_with_config("url: http://${HOST}/", &cfg).unwrap();
+    /// assert_eq!(v["url"].as_str(), Some("http://localhost/"));
+    /// ```
+    #[cfg(feature = "std")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
+    #[must_use]
+    pub fn properties(
+        mut self,
+        properties: Arc<std::collections::HashMap<String, String>>,
+    ) -> Self {
+        self.properties = Some(properties);
+        self
+    }
+
+    /// Toggle strict-mode placeholder resolution.
+    ///
+    /// When `true`, an unknown `${name}` (no map entry, no
+    /// `:-default` fallback) aborts the parse. When `false`
+    /// (default), unknown placeholders are replaced with the empty
+    /// string — useful for environment-style configs where missing
+    /// variables should silently degrade.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use noyalib::{from_str_with_config, ParserConfig, Value};
+    /// use std::collections::HashMap;
+    /// use std::sync::Arc;
+    ///
+    /// let cfg = ParserConfig::new()
+    ///     .properties(Arc::new(HashMap::new()))
+    ///     .strict_properties(true);
+    /// let res: Result<Value, _> = from_str_with_config("x: ${MISSING}", &cfg);
+    /// assert!(res.is_err());
+    /// ```
+    #[cfg(feature = "std")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
+    #[must_use]
+    pub fn strict_properties(mut self, strict: bool) -> Self {
+        self.strict_properties = strict;
+        self
     }
 
     /// Select the YAML specification version the resolver should
@@ -1184,10 +1287,12 @@ where
     // - `!!binary` is propagated as a typed tag.
     // When the caller asked for a non-default behaviour on either
     // axis, route through the AST loader so the relevant toggle
-    // takes effect.
+    // takes effect. Active `properties` interpolation also disables
+    // the streaming path so the post-parse substitution walk runs.
     let stream_eligible = config.merge_key_policy == MergeKeyPolicy::Auto
         && !config.ignore_binary_tag_for_string
-        && config.policies.is_empty();
+        && config.policies.is_empty()
+        && properties_inactive(config);
     if stream_eligible {
         if let Some(res) = crate::streaming::from_str_streaming(s, config) {
             return res;
@@ -1208,7 +1313,8 @@ where
     // provably correct because `is_value_target::<T>()` already
     // verified `TypeId::of::<T>() == TypeId::of::<Value>()`.
     if is_value_target::<T>() {
-        let value = parser::parse_one_value(s, &parse_config)?;
+        let mut value = parser::parse_one_value(s, &parse_config)?;
+        apply_properties(&mut value, config)?;
         for p in &config.policies {
             p.check_value(&value)?;
         }
@@ -1225,7 +1331,8 @@ where
 
     #[cfg(feature = "std")]
     {
-        let (value, span_tree) = parser::parse_one(s, &parse_config)?;
+        let (mut value, span_tree) = parser::parse_one(s, &parse_config)?;
+        apply_properties(&mut value, config)?;
         for p in &config.policies {
             p.check_value(&value)?;
         }
@@ -1249,6 +1356,53 @@ where
         let de = Deserializer::with_options(&value, None, config.ignore_binary_tag_for_string);
         T::deserialize(de)
     }
+}
+
+/// Returns `true` when no `${KEY}` substitution table is active —
+/// keeps the streaming fast-path eligible. Always `true` under
+/// `no_std` (the field doesn't exist).
+#[cfg(feature = "std")]
+#[inline]
+fn properties_inactive(config: &ParserConfig) -> bool {
+    config.properties.is_none()
+}
+
+#[cfg(not(feature = "std"))]
+#[inline]
+fn properties_inactive(_config: &ParserConfig) -> bool {
+    true
+}
+
+/// Walk the `Value` tree and substitute every `${name}` placeholder
+/// against `config.properties`. No-op when no map is installed; in
+/// `no_std` builds the function is also a no-op (the field doesn't
+/// exist). Honours `strict_properties` for the missing-key
+/// behaviour, but always propagates *syntax* errors from the
+/// substitution walk (invalid characters, unterminated `${...}`,
+/// malformed `:-default`) regardless of mode.
+#[cfg(feature = "std")]
+fn apply_properties(value: &mut Value, config: &ParserConfig) -> Result<()> {
+    if let Some(props) = config.properties.as_ref() {
+        let action = if config.strict_properties {
+            crate::value::MissingAction::Error(false)
+        } else {
+            crate::value::MissingAction::Empty
+        };
+        value.interpolate_inner(
+            &|name| match props.get(name) {
+                Some(v) => crate::value::ResolveOutcome::Found(v.clone()),
+                None => crate::value::ResolveOutcome::Missing,
+            },
+            action,
+        )?;
+    }
+    Ok(())
+}
+
+#[cfg(not(feature = "std"))]
+#[inline]
+fn apply_properties(_value: &mut Value, _config: &ParserConfig) -> Result<()> {
+    Ok(())
 }
 
 /// Deserialize YAML from a byte slice.
