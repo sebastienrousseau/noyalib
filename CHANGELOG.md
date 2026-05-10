@@ -7,7 +7,22 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
-(Nothing yet — `[v0.0.1]` is the cut.)
+(Nothing yet — `[v0.0.2]` is the cut.)
+
+## [v0.0.2] — 2026-05-10
+
+### Changed — relax `indexmap` upper bound
+
+Bumped `indexmap` requirement from `>=2, <2.11` to `>=2, <3`. The
+old cap was defensive (we hadn't tested against 2.11+ at release
+time), not load-bearing — noyalib only uses `IndexMap`,
+`map::Iter`, `map::Entry`, and other stable public surface that
+hasn't changed across the 2.x line. indexmap 2.10 and 2.11 share
+MSRV 1.63, well below noyalib's own 1.75 floor.
+
+The motivating downstream is `html-generator`, which pulls
+`toml = "1.1"` (which depends on `indexmap ^2.11.4`); the previous
+`<2.11` cap made the two co-resolution paths incompatible.
 
 ## [v0.0.1] — 2026-05-10
 

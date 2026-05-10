@@ -1,6 +1,6 @@
 [package]
 name = "noyalib"
-version = "0.0.1"
+version = "0.0.2"
 edition = "2021"
 rust-version = "1.75.0"
 license = "MIT OR Apache-2.0"
@@ -248,7 +248,7 @@ required-features = ["robotics"]
 
 [dependencies]
 serde = { version = "1.0", default-features = false, features = ["derive", "alloc"] }
-indexmap = { version = ">=2, <2.11", features = ["serde"] }
+indexmap = { version = ">=2, <3", features = ["serde"] }
 rustc-hash = ">=2, <2.1"
 itoa = { version = "1", optional = true }
 ryu = { version = "1", optional = true }
