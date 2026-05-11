@@ -164,6 +164,163 @@ fn typed_target_sees_substituted_value() {
     assert_eq!(root.server.port, 5432);
 }
 
+#[cfg(feature = "include_fs")]
+mod safe_file {
+    use super::*;
+    use noyalib::include::{SafeFileResolver, SymlinkPolicy};
+
+    fn temp_dir(name: &str) -> std::path::PathBuf {
+        let d = std::env::temp_dir().join(format!("noyalib-include-{name}"));
+        let _ = std::fs::remove_dir_all(&d);
+        std::fs::create_dir_all(&d).unwrap();
+        d
+    }
+
+    #[test]
+    fn file_resolver_loads_basic_path() {
+        let dir = temp_dir("basic");
+        std::fs::write(dir.join("a.yaml"), "hello: world\n").unwrap();
+        let cfg = ParserConfig::new().include_resolver(SafeFileResolver::new(&dir).into_resolver());
+        let v: Value = from_str_with_config("inc: !include a.yaml\n", &cfg).unwrap();
+        assert_eq!(v["inc"]["hello"].as_str(), Some("world"));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn path_traversal_outside_root_errors() {
+        // Stage a file *inside* root that legitimately resolves;
+        // then attempt `..` to escape.
+        let dir = temp_dir("traversal");
+        std::fs::write(dir.join("ok.yaml"), "k: v\n").unwrap();
+        let cfg = ParserConfig::new().include_resolver(SafeFileResolver::new(&dir).into_resolver());
+        let res: Result<Value> = from_str_with_config("x: !include ../../etc/hosts\n", &cfg);
+        assert!(res.is_err(), "must reject path-traversal");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn missing_file_errors() {
+        let dir = temp_dir("missing");
+        let cfg = ParserConfig::new().include_resolver(SafeFileResolver::new(&dir).into_resolver());
+        let res: Result<Value> = from_str_with_config("x: !include nope.yaml\n", &cfg);
+        assert!(res.is_err(), "missing file must error");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn reject_symlink_policy_blocks_symlinks() {
+        let dir = temp_dir("symlink");
+        std::fs::write(dir.join("real.yaml"), "v: 1\n").unwrap();
+        // Best-effort symlink creation — on platforms without
+        // privileges to symlink (Windows without dev-mode), skip.
+        #[cfg(unix)]
+        std::os::unix::fs::symlink(dir.join("real.yaml"), dir.join("link.yaml")).unwrap();
+        #[cfg(not(unix))]
+        return; // Windows/no-symlink path: nothing to assert.
+
+        #[cfg(unix)]
+        {
+            let resolver = SafeFileResolver::new(&dir)
+                .symlink_policy(SymlinkPolicy::Reject)
+                .into_resolver();
+            let cfg = ParserConfig::new().include_resolver(resolver);
+            let res: Result<Value> = from_str_with_config("x: !include link.yaml\n", &cfg);
+            assert!(
+                res.is_err(),
+                "SymlinkPolicy::Reject must block symlinked includes"
+            );
+            let _ = std::fs::remove_dir_all(&dir);
+        }
+    }
+
+    #[test]
+    fn symlink_policy_default_is_follow_within_root() {
+        assert_eq!(SymlinkPolicy::default(), SymlinkPolicy::FollowWithinRoot);
+    }
+
+    #[test]
+    fn debug_impl_renders() {
+        let r = SafeFileResolver::new("/srv/configs");
+        let s = format!("{r:?}");
+        assert!(s.contains("SafeFileResolver"));
+    }
+
+    #[test]
+    fn split_fragment_round_trip() {
+        use noyalib::include::split_fragment;
+        assert_eq!(split_fragment("a.yaml#anchor"), ("a.yaml", Some("anchor")));
+        assert_eq!(split_fragment("a.yaml"), ("a.yaml", None));
+        assert_eq!(split_fragment(""), ("", None));
+        assert_eq!(split_fragment("#anchor"), ("", Some("anchor")));
+    }
+}
+
+#[test]
+fn fragment_on_non_mapping_document_errors() {
+    let mut files = HashMap::new();
+    let _ = files.insert("scalar.yaml", "42\n");
+    let cfg = ParserConfig::new().include_resolver(mem_resolver(files));
+    let res: Result<Value> = from_str_with_config("v: !include scalar.yaml#k\n", &cfg);
+    let err = res.unwrap_err();
+    assert!(err.to_string().contains("mapping"), "{err}");
+}
+
+#[test]
+fn include_inside_sequence_is_resolved() {
+    let mut files = HashMap::new();
+    let _ = files.insert("item.yaml", "name: alpha\n");
+    let cfg = ParserConfig::new().include_resolver(mem_resolver(files));
+    let yaml = "items:\n  - !include item.yaml\n  - !include item.yaml\n";
+    let v: Value = from_str_with_config(yaml, &cfg).unwrap();
+    let seq = v["items"].as_sequence().unwrap();
+    assert_eq!(seq.len(), 2);
+    assert_eq!(seq[0]["name"].as_str(), Some("alpha"));
+}
+
+#[test]
+fn non_include_tagged_values_pass_through() {
+    let resolver = IncludeResolver::new(|_req: IncludeRequest<'_>| -> Result<InputSource> {
+        unreachable!("non-!include tag must not invoke the resolver")
+    });
+    let cfg = ParserConfig::new().include_resolver(resolver);
+    let yaml = "v: !custom 42\n";
+    let v: Value = from_str_with_config(yaml, &cfg).unwrap();
+    let tag = v["v"].as_tagged().unwrap();
+    assert_eq!(tag.tag().as_str(), "!custom");
+}
+
+#[test]
+fn input_source_constructor_and_clone() {
+    let src = InputSource::new("test.yaml", "k: v\n");
+    assert_eq!(src.name, "test.yaml");
+    assert_eq!(src.bytes, "k: v\n");
+    let cloned = src.clone();
+    assert_eq!(cloned.name, src.name);
+}
+
+#[test]
+fn include_request_debug_renders_via_resolver_invocation() {
+    use std::sync::Mutex;
+    let captured: Arc<Mutex<Option<String>>> = Arc::new(Mutex::new(None));
+    let captured_clone = Arc::clone(&captured);
+    let resolver = IncludeResolver::new(move |req: IncludeRequest<'_>| -> Result<InputSource> {
+        *captured_clone.lock().unwrap() = Some(format!("{req:?}"));
+        Ok(InputSource::new(req.spec, "ok: 1\n"))
+    });
+    let cfg = ParserConfig::new().include_resolver(resolver);
+    let _: Value = from_str_with_config("x: !include some_spec.yaml\n", &cfg).unwrap();
+    let dbg = captured.lock().unwrap().clone().unwrap();
+    assert!(dbg.contains("IncludeRequest"));
+    assert!(dbg.contains("some_spec.yaml"));
+}
+
+#[test]
+fn resolver_debug_renders() {
+    let r = IncludeResolver::new(|_| Ok(InputSource::new("n", "v: 1\n")));
+    let s = format!("{r:?}");
+    assert!(s.contains("IncludeResolver"));
+}
+
 #[test]
 fn resolver_observes_increasing_depth() {
     // Track the depth value the resolver sees on each call. The
