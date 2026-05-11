@@ -9,7 +9,7 @@
 //! path queries (`get_path`, `query`), and conversion to owned `Value`
 //! via `into_owned`.
 
-use noyalib::borrowed::{from_str_borrowed, BorrowedValue};
+use noyalib::borrowed::{BorrowedValue, from_str_borrowed};
 
 // ── Construction & accessors ────────────────────────────────────────────
 

@@ -51,7 +51,7 @@ fn empty_input_returns_empty_string() {
 
 #[test]
 fn format_with_config_custom_indent_size() {
-    use noyalib::cst::{format_with_config, FormatConfig};
+    use noyalib::cst::{FormatConfig, format_with_config};
     let cfg = FormatConfig { indent_size: 4 };
     let formatted = format_with_config("key:\n  value: 1\n", &cfg).unwrap();
     // 4-space indent applied.
@@ -232,7 +232,7 @@ trailing: tail # done
 
 #[test]
 fn config_indent_zero_does_not_panic() {
-    use noyalib::cst::{format_with_config, FormatConfig};
+    use noyalib::cst::{FormatConfig, format_with_config};
     let cfg = FormatConfig { indent_size: 0 };
     // 0-indent is degenerate but the formatter must not panic.
     let _ = format_with_config("a:\n  b: 1\n", &cfg);
@@ -240,7 +240,7 @@ fn config_indent_zero_does_not_panic() {
 
 #[test]
 fn config_large_indent_does_not_panic() {
-    use noyalib::cst::{format_with_config, FormatConfig};
+    use noyalib::cst::{FormatConfig, format_with_config};
     let cfg = FormatConfig { indent_size: 16 };
     let formatted = format_with_config("a:\n  b: 1\n", &cfg).unwrap();
     assert!(formatted.contains('b'));

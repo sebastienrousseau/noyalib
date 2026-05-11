@@ -7,7 +7,7 @@
 
 use std::collections::BTreeMap;
 
-use noyalib::{from_str, from_value, Number, Value};
+use noyalib::{Number, Value, from_str, from_value};
 use serde::Deserialize;
 
 /// Helper function to test deserialization

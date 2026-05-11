@@ -10,7 +10,7 @@
 //!   * Merge-key injection edge cases.
 //!   * Duplicate-key policy `First` / `Last` / `Error` in the streaming path.
 
-use noyalib::{from_str, from_str_with_config, DuplicateKeyPolicy, ParserConfig, Value};
+use noyalib::{DuplicateKeyPolicy, ParserConfig, Value, from_str, from_str_with_config};
 use serde::Deserialize;
 use std::collections::BTreeMap;
 

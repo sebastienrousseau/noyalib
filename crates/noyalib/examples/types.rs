@@ -8,7 +8,7 @@
 #[path = "support.rs"]
 mod support;
 
-use noyalib::{from_str, to_string, Tag, TaggedValue, Value};
+use noyalib::{Tag, TaggedValue, Value, from_str, to_string};
 
 fn main() {
     support::header("noyalib -- types");

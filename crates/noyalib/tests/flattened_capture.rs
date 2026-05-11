@@ -6,7 +6,7 @@
 
 #![allow(missing_docs)]
 
-use noyalib::{from_str, to_string, Flattened, Value};
+use noyalib::{Flattened, Value, from_str, to_string};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize, Serialize, PartialEq, Clone)]

@@ -12,7 +12,7 @@
 #[path = "support.rs"]
 mod support;
 
-use noyalib::{to_string, to_string_tracking_shared, ArcAnchor, RcAnchor};
+use noyalib::{ArcAnchor, RcAnchor, to_string, to_string_tracking_shared};
 use serde::Serialize;
 
 fn main() {

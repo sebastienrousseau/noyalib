@@ -5,7 +5,7 @@
 
 use std::sync::Arc;
 
-use noyalib::{from_str, to_string, ArcAnchor, ArcWeakAnchor, RcAnchor, RcWeakAnchor};
+use noyalib::{ArcAnchor, ArcWeakAnchor, RcAnchor, RcWeakAnchor, from_str, to_string};
 
 #[test]
 fn test_rc_anchor_serialize() {

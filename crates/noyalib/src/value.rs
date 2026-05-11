@@ -9,8 +9,8 @@ use core::hash::{Hash, Hasher};
 use core::ops::{Index, IndexMut};
 use core::str::FromStr;
 
-use indexmap::map::{IntoIter, Iter, IterMut, Keys, Values, ValuesMut};
 use indexmap::IndexMap;
+use indexmap::map::{IntoIter, Iter, IterMut, Keys, Values, ValuesMut};
 use rustc_hash::FxBuildHasher;
 use serde::{Deserialize, Serialize};
 
@@ -3471,7 +3471,7 @@ impl Value {
 }
 
 // Use shared path parsing from the path module.
-use crate::path::{parse_query_path, QuerySegment};
+use crate::path::{QuerySegment, parse_query_path};
 
 /// Backwards-compatible alias.
 fn parse_path(path: &str) -> Vec<QuerySegment> {
@@ -3923,12 +3923,12 @@ impl ValueIndex for &Value {
 /// digits, underscore, dot. The dot allows hierarchical names like
 /// `${db.host}` for users who want to namespace their property
 /// maps. Anything that does not match is a parse error.
-#[cfg(feature = "std")]
 /// Outcome of resolving a placeholder name.
 ///
 /// Three-way return so [`expand_placeholders`] can distinguish a
 /// genuinely missing key (which may then defer to a `:-default`
 /// fallback) from a key whose own resolution errored.
+#[cfg(feature = "std")]
 pub(crate) enum ResolveOutcome {
     /// Name resolved cleanly.
     Found(String),
@@ -3944,6 +3944,7 @@ pub(crate) enum ResolveOutcome {
 
 /// What to do when a placeholder has no map entry and no
 /// `:-default` fallback.
+#[cfg(feature = "std")]
 #[derive(Debug, Clone, Copy)]
 pub(crate) enum MissingAction {
     /// Substitute the empty string. Lossy/non-strict mode.
@@ -3953,6 +3954,7 @@ pub(crate) enum MissingAction {
     Error(bool),
 }
 
+#[cfg(feature = "std")]
 fn expand_placeholders(
     s: &str,
     resolve: &dyn Fn(&str) -> ResolveOutcome,
@@ -4069,11 +4071,7 @@ fn expand_placeholders(
         out.push(c);
         i += c.len_utf8();
     }
-    if touched {
-        Ok(Some(out))
-    } else {
-        Ok(None)
-    }
+    if touched { Ok(Some(out)) } else { Ok(None) }
 }
 
 /// Returns the type name of a value for error messages.

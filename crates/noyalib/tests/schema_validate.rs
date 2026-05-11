@@ -12,7 +12,7 @@
 #![cfg(feature = "validate-schema")]
 #![allow(missing_docs)]
 
-use noyalib::{from_str, schema_for, validate_against_schema, validate_against_schema_str, Value};
+use noyalib::{Value, from_str, schema_for, validate_against_schema, validate_against_schema_str};
 
 fn parse(s: &str) -> Value {
     from_str(s).unwrap()

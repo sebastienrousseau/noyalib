@@ -6,8 +6,9 @@
 //! merges, or the `document` module's `load_all*` family).
 
 use noyalib::{
+    DuplicateKeyPolicy, ParserConfig, Spanned, Value,
     document::{load_all, load_all_as, load_all_with_config, try_load_all},
-    from_str, from_str_with_config, DuplicateKeyPolicy, ParserConfig, Spanned, Value,
+    from_str, from_str_with_config,
 };
 use serde::Deserialize;
 

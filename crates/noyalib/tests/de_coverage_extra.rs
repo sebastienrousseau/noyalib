@@ -23,11 +23,12 @@
 use std::io::Cursor;
 
 use noyalib::{
-    from_reader_strict, from_reader_with_config, from_slice_strict, from_str, from_str_strict,
-    from_str_with_config, from_value, Deserializer, ParserConfig, Tag, TaggedValue, Value,
+    Deserializer, ParserConfig, Tag, TaggedValue, Value, from_reader_strict,
+    from_reader_with_config, from_slice_strict, from_str, from_str_strict, from_str_with_config,
+    from_value,
 };
-use serde::de::Deserializer as _;
 use serde::Deserialize;
+use serde::de::Deserializer as _;
 
 // ============================================================================
 // from_str_strict / from_slice_strict / from_reader_strict — happy + error

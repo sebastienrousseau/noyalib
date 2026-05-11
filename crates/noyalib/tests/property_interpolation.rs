@@ -6,7 +6,7 @@
 
 #![allow(missing_docs)]
 
-use noyalib::{from_str, Mapping, Tag, TaggedValue, Value};
+use noyalib::{Mapping, Tag, TaggedValue, Value, from_str};
 use std::collections::HashMap;
 
 fn props(pairs: &[(&str, &str)]) -> HashMap<String, String> {

@@ -11,7 +11,7 @@
 #[path = "support.rs"]
 mod support;
 
-use noyalib::{from_str, Value};
+use noyalib::{Value, from_str};
 
 /// Extract a scalar value at a dotted path, formatted for display.
 fn val(v: &Value, path: &str) -> String {

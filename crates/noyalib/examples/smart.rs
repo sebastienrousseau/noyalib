@@ -10,7 +10,7 @@ mod support;
 
 use std::sync::Arc;
 
-use noyalib::{from_str, to_string, ArcAnchor, RcAnchor, Value};
+use noyalib::{ArcAnchor, RcAnchor, Value, from_str, to_string};
 
 fn main() {
     support::header("noyalib -- smart");

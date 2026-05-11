@@ -14,8 +14,8 @@
 #![allow(missing_docs, unused_results)]
 
 use clap::Parser;
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use noya_cli::{noyafmt_command, noyavalidate_command, NoyafmtCli, NoyavalidateCli};
+use criterion::{Criterion, black_box, criterion_group, criterion_main};
+use noya_cli::{NoyafmtCli, NoyavalidateCli, noyafmt_command, noyavalidate_command};
 
 fn parse_noyafmt_args(c: &mut Criterion) {
     c.bench_function("noyafmt: parse `--check ci/*.yaml`", |b| {

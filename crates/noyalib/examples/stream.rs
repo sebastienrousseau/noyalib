@@ -8,7 +8,7 @@
 #[path = "support.rs"]
 mod support;
 
-use noyalib::{load_all, load_all_as, try_load_all, Value};
+use noyalib::{Value, load_all, load_all_as, try_load_all};
 use serde::Deserialize;
 
 /// Format a Value as a compact one-liner (no debug dump).

@@ -20,7 +20,7 @@
 
 use crate::error::{Error, Result};
 use crate::parser::{Event, ParseConfig, Parser, ScalarStyle};
-use crate::path::{parse_query_path, QuerySegment};
+use crate::path::{QuerySegment, parse_query_path};
 use crate::prelude::*;
 use core::hash::{Hash, Hasher};
 use indexmap::IndexMap;
@@ -87,8 +87,8 @@ impl TransformReason {
     }
 }
 
-impl core::fmt::Display for TransformReason {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+impl fmt::Display for TransformReason {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(self.as_str())
     }
 }

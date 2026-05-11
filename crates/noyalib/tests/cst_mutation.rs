@@ -11,8 +11,8 @@
 
 #![allow(missing_docs)]
 
-use noyalib::cst::parse_document;
 use noyalib::Value;
+use noyalib::cst::parse_document;
 
 #[test]
 fn set_replaces_only_the_target_value() {

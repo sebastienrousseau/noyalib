@@ -15,39 +15,8 @@
 use std::io::Cursor;
 use std::sync::Arc;
 
-use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
+use criterion::{BenchmarkId, Criterion, Throughput, black_box, criterion_group, criterion_main};
 use noyalib::{
-    // Value types
-    check_for_tag,
-    // Deserialization
-    from_reader,
-    from_reader_with_config,
-    from_slice,
-    from_str,
-    from_str_with_config,
-    from_value,
-    // Schema
-    is_yaml_failsafe_compatible,
-    is_yaml_json_compatible,
-    // Loader
-    load_all,
-    load_all_as,
-    load_all_with_config,
-    nobang,
-    // Serialization
-    to_string,
-    to_string_multi,
-    to_string_multi_with_config,
-    to_string_with_config,
-    to_value,
-    to_writer,
-    to_writer_multi,
-    to_writer_multi_with_config,
-    to_writer_with_config,
-    try_load_all,
-    validate_yaml_core_schema,
-    validate_yaml_failsafe_schema,
-    validate_yaml_json_schema,
     // Anchors
     ArcAnchor,
     ArcWeakAnchor,
@@ -80,6 +49,37 @@ use noyalib::{
     Tag,
     TaggedValue,
     Value,
+    // Value types
+    check_for_tag,
+    // Deserialization
+    from_reader,
+    from_reader_with_config,
+    from_slice,
+    from_str,
+    from_str_with_config,
+    from_value,
+    // Schema
+    is_yaml_failsafe_compatible,
+    is_yaml_json_compatible,
+    // Loader
+    load_all,
+    load_all_as,
+    load_all_with_config,
+    nobang,
+    // Serialization
+    to_string,
+    to_string_multi,
+    to_string_multi_with_config,
+    to_string_with_config,
+    to_value,
+    to_writer,
+    to_writer_multi,
+    to_writer_multi_with_config,
+    to_writer_with_config,
+    try_load_all,
+    validate_yaml_core_schema,
+    validate_yaml_failsafe_schema,
+    validate_yaml_json_schema,
 };
 use serde::{Deserialize, Serialize};
 

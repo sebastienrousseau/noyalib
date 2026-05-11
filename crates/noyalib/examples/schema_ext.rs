@@ -12,7 +12,7 @@
 #[path = "support.rs"]
 mod support;
 
-use noyalib::{from_str, Value};
+use noyalib::{Value, from_str};
 
 /// Infer the type name of a Value.
 fn type_name(v: &Value) -> &'static str {
@@ -70,11 +70,7 @@ fn describe(value: &Value, prefix: &str, lines: &mut Vec<String>) {
 }
 
 fn truncate(s: &str, max: usize) -> &str {
-    if s.len() <= max {
-        s
-    } else {
-        &s[..max]
-    }
+    if s.len() <= max { s } else { &s[..max] }
 }
 
 fn main() {

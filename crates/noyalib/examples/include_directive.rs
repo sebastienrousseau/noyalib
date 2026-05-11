@@ -17,7 +17,7 @@
 mod support;
 
 use noyalib::include::{IncludeRequest, IncludeResolver, InputSource, SafeFileResolver};
-use noyalib::{from_str_with_config, ParserConfig, Result, Value};
+use noyalib::{ParserConfig, Result, Value, from_str_with_config};
 use std::collections::HashMap;
 
 fn mem_resolver(files: HashMap<&'static str, &'static str>) -> IncludeResolver {

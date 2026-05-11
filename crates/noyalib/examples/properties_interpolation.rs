@@ -15,7 +15,7 @@
 #[path = "support.rs"]
 mod support;
 
-use noyalib::{from_str_with_config, ParserConfig, Value};
+use noyalib::{ParserConfig, Value, from_str_with_config};
 use std::collections::HashMap;
 use std::sync::Arc;
 

@@ -9,7 +9,7 @@
 
 use ariadne::Source;
 use noyalib::ariadne_adapter::error_to_ariadne_report;
-use noyalib::{from_str, Value};
+use noyalib::{Value, from_str};
 
 fn render(source: &str) -> Vec<u8> {
     let err = from_str::<Value>(source).unwrap_err();

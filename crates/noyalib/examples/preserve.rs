@@ -13,7 +13,7 @@
 mod support;
 
 use noyalib::fmt::{Commented, FlowMap, FlowSeq, LitString, SpaceAfter};
-use noyalib::{from_str, to_string, Value};
+use noyalib::{Value, from_str, to_string};
 use serde::Serialize;
 
 fn main() {

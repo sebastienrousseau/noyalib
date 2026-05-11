@@ -12,7 +12,7 @@ mod support;
 
 use std::time::{Duration, Instant};
 
-use noyalib::{from_str, to_string, Value};
+use noyalib::{Value, from_str, to_string};
 
 /// Benchmark a closure, return per-op duration.
 fn bench<F: FnMut()>(iterations: usize, mut f: F) -> Duration {
@@ -43,7 +43,9 @@ fn main() {
 
     // Warn if running in debug mode
     if cfg!(debug_assertions) {
-        println!("  \x1b[33m!\x1b[0m \x1b[90mRunning in DEBUG mode. Use --release for accurate numbers.\x1b[0m\n");
+        println!(
+            "  \x1b[33m!\x1b[0m \x1b[90mRunning in DEBUG mode. Use --release for accurate numbers.\x1b[0m\n"
+        );
     }
 
     // ── Test data ────────────────────────────────────────────────────

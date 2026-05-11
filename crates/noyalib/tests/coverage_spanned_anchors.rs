@@ -8,8 +8,8 @@ use std::rc::Rc;
 use std::sync::Arc;
 
 use noyalib::{
-    from_str, from_value, to_string, ArcAnchor, ArcWeakAnchor, Location, RcAnchor, RcWeakAnchor,
-    Spanned, Value,
+    ArcAnchor, ArcWeakAnchor, Location, RcAnchor, RcWeakAnchor, Spanned, Value, from_str,
+    from_value, to_string,
 };
 
 // ============================================================================

@@ -17,8 +17,8 @@
 #[path = "support.rs"]
 mod support;
 
-use figment::providers::{Env, Format, Serialized};
 use figment::Figment;
+use figment::providers::{Env, Format, Serialized};
 use noyalib::figment::Yaml;
 use serde::{Deserialize, Serialize};
 
@@ -81,21 +81,41 @@ fn main() {
 
     // ── Layer 3: defaults + YAML + env overrides ─────────────────────
     support::task_with_output("Layer 3 — env vars override the YAML layer", || {
-        // Mutating the process environment is safe here because the
-        // example is single-threaded and these vars are scoped to
-        // this run only.
-        std::env::set_var("NOYAEX_PORT", "7000");
-        std::env::set_var("NOYAEX_WORKERS", "8");
+        // Demonstrate env-overlay semantics without mutating the
+        // process environment — edition 2024 marks
+        // `std::env::set_var` / `remove_var` as unsafe (they're
+        // not thread-safe), and the crate sits under
+        // `#![forbid(unsafe_code)]`. Use figment's `Env::raw` with
+        // a synthetic map instead so the example stays
+        // illustrative and safe.
+        let env = Env::raw()
+            .only(&["NOYAEX_PORT", "NOYAEX_WORKERS"])
+            .map(|k| match k.as_str() {
+                "NOYAEX_PORT" => "PORT".into(),
+                "NOYAEX_WORKERS" => "WORKERS".into(),
+                other => other.into(),
+            });
 
+        // Inject the values via a one-off serialised layer that
+        // shadows env. The Env::raw provider above is included so
+        // the example still demonstrates Env wiring in real
+        // pipelines; the synthetic overlay below stands in for the
+        // OS env that those pipelines would carry.
+        #[derive(Serialize)]
+        struct EnvOverlay {
+            port: u16,
+            workers: u16,
+        }
         let cfg: AppConfig = Figment::new()
             .merge(Serialized::defaults(AppConfig::default()))
             .merge(Yaml::string(SITE_YAML))
-            .merge(Env::prefixed("NOYAEX_"))
+            .merge(env)
+            .merge(Serialized::defaults(EnvOverlay {
+                port: 7000,
+                workers: 8,
+            }))
             .extract()
             .expect("env overlay must extract");
-
-        std::env::remove_var("NOYAEX_PORT");
-        std::env::remove_var("NOYAEX_WORKERS");
 
         vec![
             format!("name       = {}  (from YAML)", cfg.name),

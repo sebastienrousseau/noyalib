@@ -7,7 +7,7 @@
 //! (AST) and streaming paths, including "did you mean …?" typo suggestions
 //! derived from the closest known anchor name.
 
-use noyalib::{from_str, Error, Value};
+use noyalib::{Error, Value, from_str};
 use serde::Deserialize;
 
 // ── Loader path (AST deserialisation to `Value`) ─────────────────────────

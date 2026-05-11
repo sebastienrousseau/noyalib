@@ -14,7 +14,7 @@ mod support;
 
 use std::collections::HashMap;
 
-use noyalib::{from_str, to_string, Value};
+use noyalib::{Value, from_str, to_string};
 
 /// Expand `${KEY}` patterns in all string values using the given env map.
 fn expand_env(value: &mut Value, env: &HashMap<&str, &str>) {

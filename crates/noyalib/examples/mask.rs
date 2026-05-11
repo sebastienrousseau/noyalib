@@ -11,7 +11,7 @@
 #[path = "support.rs"]
 mod support;
 
-use noyalib::{from_str, to_string, Value};
+use noyalib::{Value, from_str, to_string};
 use serde::{Deserialize, Serialize};
 use std::fmt;
 

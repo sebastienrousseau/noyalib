@@ -8,11 +8,11 @@
 use std::collections::BTreeMap;
 
 use noyalib::{
-    from_reader, from_reader_with_config, from_slice, from_str, from_str_with_config, from_value,
-    load_all, load_all_as, load_all_with_config, to_string, to_string_multi,
-    to_string_multi_with_config, to_string_with_config, to_value, to_writer, to_writer_with_config,
-    try_load_all, DuplicateKeyPolicy, Error, FlowStyle, Location, Mapping, MappingAny, Number,
-    ParserConfig, Path, ScalarStyle, SerializerConfig, Spanned, Tag, TaggedValue, Value,
+    DuplicateKeyPolicy, Error, FlowStyle, Location, Mapping, MappingAny, Number, ParserConfig,
+    Path, ScalarStyle, SerializerConfig, Spanned, Tag, TaggedValue, Value, from_reader,
+    from_reader_with_config, from_slice, from_str, from_str_with_config, from_value, load_all,
+    load_all_as, load_all_with_config, to_string, to_string_multi, to_string_multi_with_config,
+    to_string_with_config, to_value, to_writer, to_writer_with_config, try_load_all,
 };
 use serde::{Deserialize, Serialize};
 

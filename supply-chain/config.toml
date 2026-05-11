@@ -38,9 +38,24 @@ suggest = false
 version = "0.0.2"
 criteria = "safe-to-deploy"
 
+[[exemptions.hashbrown]]
+version = "0.17.1"
+criteria = "safe-to-deploy"
+suggest = false
+
+[[exemptions.indexmap]]
+version = "2.14.0"
+criteria = "safe-to-deploy"
+suggest = false
+
 [[exemptions.rust-yaml]]
 version = "0.0.5"
 criteria = "safe-to-run"
+
+[[exemptions.rustc-hash]]
+version = "2.1.2"
+criteria = "safe-to-deploy"
+suggest = false
 
 [[exemptions.serde-saphyr]]
 version = "0.0.26"

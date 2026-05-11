@@ -20,7 +20,7 @@
 
 use std::collections::BTreeMap;
 
-use noyalib::{from_str, from_str_with_config, from_value, Mapping, ParserConfig, Value};
+use noyalib::{Mapping, ParserConfig, Value, from_str, from_str_with_config, from_value};
 use serde::Deserialize;
 
 #[derive(Debug, Deserialize, PartialEq)]

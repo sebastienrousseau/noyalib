@@ -11,11 +11,11 @@
 //! pins every code path inside `noyalib-wasm` that does not
 //! require a wasm-bindgen runtime.
 
+use noyalib_wasm::WasmDocument;
 use noyalib_wasm::core::{
     document_comments_at, document_get_source, document_get_value, document_span_at, merge_yaml,
     parse_yaml_to_value, validate_yaml_json, value_to_yaml, yaml_get_path, yaml_round_trip,
 };
-use noyalib_wasm::WasmDocument;
 
 // ── WasmDocument lifecycle (JsValue-free surface) ──────────────────────
 

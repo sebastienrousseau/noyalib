@@ -11,7 +11,7 @@
     unused_qualifications
 )]
 
-use noyalib::{from_str, to_string, Error, Value};
+use noyalib::{Error, Value, from_str, to_string};
 use serde::{Deserialize, Serialize};
 
 // ── error.rs: Error::location for UnknownAnchorAt ────────────────────

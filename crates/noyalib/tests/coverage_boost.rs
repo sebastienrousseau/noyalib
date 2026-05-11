@@ -12,8 +12,8 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use noyalib::{
-    from_slice, from_str, from_str_with_config, from_value, to_string, DuplicateKeyPolicy, Error,
-    Location, Mapping, MappingAny, Number, ParserConfig, Spanned, Value,
+    DuplicateKeyPolicy, Error, Location, Mapping, MappingAny, Number, ParserConfig, Spanned, Value,
+    from_slice, from_str, from_str_with_config, from_value, to_string,
 };
 use serde::{Deserialize, Serialize};
 

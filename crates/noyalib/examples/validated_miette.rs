@@ -10,8 +10,8 @@
 mod support;
 
 use garde::Validate;
-use noyalib::validated_miette::garde_errors_to_miette;
 use noyalib::Spanned;
+use noyalib::validated_miette::garde_errors_to_miette;
 use serde::Deserialize;
 
 #[derive(Debug, Deserialize, Validate)]

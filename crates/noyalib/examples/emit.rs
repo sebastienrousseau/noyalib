@@ -8,7 +8,7 @@
 #[path = "support.rs"]
 mod support;
 
-use noyalib::{from_str, to_string_with_config, ScalarStyle, SerializerConfig, Value};
+use noyalib::{ScalarStyle, SerializerConfig, Value, from_str, to_string_with_config};
 
 fn main() {
     support::header("noyalib -- emit");

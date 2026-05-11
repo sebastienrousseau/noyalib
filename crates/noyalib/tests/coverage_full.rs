@@ -16,9 +16,9 @@
 )]
 
 use noyalib::{
-    from_str, from_str_with_config, from_value, to_string, to_string_with_config,
     DuplicateKeyPolicy, FlowStyle, Mapping, MappingAny, ParserConfig, ScalarStyle,
-    SerializerConfig, Spanned, Tag, TaggedValue, Value,
+    SerializerConfig, Spanned, Tag, TaggedValue, Value, from_str, from_str_with_config, from_value,
+    to_string, to_string_with_config,
 };
 use serde::{Deserialize, Serialize};
 

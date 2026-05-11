@@ -5,7 +5,7 @@
 
 use std::collections::BTreeMap;
 
-use noyalib::{from_str, load_all, load_all_as, try_load_all, Value};
+use noyalib::{Value, from_str, load_all, load_all_as, try_load_all};
 use serde::Deserialize;
 
 // ============================================================================

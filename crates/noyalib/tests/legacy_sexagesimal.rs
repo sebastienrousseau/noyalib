@@ -7,7 +7,7 @@
 
 #![allow(missing_docs)]
 
-use noyalib::{from_str, from_str_with_config, ParserConfig, Value};
+use noyalib::{ParserConfig, Value, from_str, from_str_with_config};
 
 // ── Off-by-default contract ─────────────────────────────────────────
 

@@ -4,9 +4,8 @@
 // Copyright (c) 2026 Noyalib. All rights reserved.
 
 use noyalib::{
-    from_slice_with_config, from_str, from_str_with_config, to_fmt_writer,
-    to_fmt_writer_with_config, to_string, to_string_with_config, ParserConfig, SerializerConfig,
-    Value,
+    ParserConfig, SerializerConfig, Value, from_slice_with_config, from_str, from_str_with_config,
+    to_fmt_writer, to_fmt_writer_with_config, to_string, to_string_with_config,
 };
 
 // ── 1.1: from_slice_with_config ─────────────────────────────────────────

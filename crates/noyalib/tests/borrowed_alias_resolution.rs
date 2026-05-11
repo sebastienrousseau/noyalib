@@ -14,8 +14,8 @@
 
 #![allow(missing_docs)]
 
-use noyalib::borrowed::{from_str_borrowed, from_str_borrowed_with_config, BorrowedValue};
 use noyalib::ParserConfig;
+use noyalib::borrowed::{BorrowedValue, from_str_borrowed, from_str_borrowed_with_config};
 
 // ── Simple anchor + alias (scalar) ─────────────────────────────────
 

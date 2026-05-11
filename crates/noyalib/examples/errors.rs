@@ -8,7 +8,7 @@
 #[path = "support.rs"]
 mod support;
 
-use noyalib::{from_str, Error, Location, Value};
+use noyalib::{Error, Location, Value, from_str};
 use serde::Deserialize;
 
 fn main() {

@@ -1,7 +1,7 @@
 [package]
 name = "noyalib-lsp"
 version = "0.0.5"
-edition = "2021"
+edition = "2024"
 # Transitive deps via the LSP transport stack (litemap 0.7.5,
 # uuid 1.23) require rustc 1.85+. The noyalib core lib still
 # compiles on 1.75; only the LSP server adopts the higher floor.

@@ -13,7 +13,7 @@
 //! Future work tracked separately: when a JSON Schema is attached,
 //! resolve the schema description for the field at the cursor.
 
-use serde_json::{json, Value as JsonValue};
+use serde_json::{Value as JsonValue, json};
 
 /// Hover result for the cursor at zero-based `line` / `column` in
 /// `text`. Returns `null` when there is nothing to surface — the

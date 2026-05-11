@@ -7,7 +7,7 @@
 
 #![allow(unused_imports)]
 
-use noyalib::{from_str, to_string, Error, Location, Value};
+use noyalib::{Error, Location, Value, from_str, to_string};
 use serde::Deserialize;
 
 // ── diagnostic.rs (miette bridge) ────────────────────────────────────────
@@ -16,8 +16,8 @@ use serde::Deserialize;
 mod diagnostic {
     use super::*;
     use miette::Diagnostic;
-    use noyalib::diagnostic::{spanned_error, spanned_error_with_context};
     use noyalib::Spanned;
+    use noyalib::diagnostic::{spanned_error, spanned_error_with_context};
 
     #[derive(Deserialize)]
     struct TwoFields {
@@ -214,7 +214,7 @@ fn location_from_index_tracks_newlines() {
 
 mod borrowed_extra {
     use super::*;
-    use noyalib::borrowed::{from_str_borrowed, BorrowedValue};
+    use noyalib::borrowed::{BorrowedValue, from_str_borrowed};
 
     #[test]
     fn float_borrowed_to_str_is_none() {

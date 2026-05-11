@@ -17,7 +17,7 @@
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
-use noyalib::{from_str, from_str_with_config, ParserConfig, TagRegistry};
+use noyalib::{ParserConfig, TagRegistry, from_str, from_str_with_config};
 use serde::Deserialize;
 use serde_bytes::ByteBuf;
 

@@ -8,7 +8,7 @@
 
 #![allow(missing_docs)]
 
-use noyalib::{from_str, from_str_with_config, ParserConfig};
+use noyalib::{ParserConfig, from_str, from_str_with_config};
 use serde::Deserialize;
 
 #[derive(Debug, Deserialize, PartialEq)]
@@ -91,6 +91,6 @@ fn opt_in_ignore_on_other_tags_does_not_apply() {
     // toggle is inert here.
     let res: Result<Doc, _> = from_str_with_config(yaml, &cfg);
     let _ = res; // The exact behaviour for unrelated tags is
-                 // governed elsewhere; this test simply asserts the
-                 // toggle doesn't accidentally widen its scope.
+    // governed elsewhere; this test simply asserts the
+    // toggle doesn't accidentally widen its scope.
 }

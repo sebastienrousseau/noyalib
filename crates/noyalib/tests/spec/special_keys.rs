@@ -5,7 +5,7 @@
 
 use std::collections::HashMap;
 
-use noyalib::{from_str, Value};
+use noyalib::{Value, from_str};
 
 #[test]
 fn quoted_key_with_spaces() {

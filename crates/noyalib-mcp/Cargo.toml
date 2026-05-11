@@ -1,8 +1,8 @@
 [package]
 name = "noyalib-mcp"
 version = "0.0.5"
-edition = "2021"
-rust-version = "1.75.0"
+edition = "2024"
+rust-version = "1.85.0"
 license = "MIT OR Apache-2.0"
 description = "Model Context Protocol server exposing noyalib's lossless YAML editing to AI agents"
 repository = "https://github.com/sebastienrousseau/noyalib"

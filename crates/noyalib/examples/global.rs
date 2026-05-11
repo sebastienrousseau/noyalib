@@ -8,7 +8,7 @@
 #[path = "support.rs"]
 mod support;
 
-use noyalib::{to_string, to_string_with_config, SerializerConfig, Value};
+use noyalib::{SerializerConfig, Value, to_string, to_string_with_config};
 use serde::Serialize;
 
 #[derive(Debug, Serialize)]

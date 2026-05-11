@@ -12,7 +12,7 @@
     unused_qualifications
 )]
 
-use noyalib::{from_str, from_str_with_config, ParserConfig, RcAnchor, Spanned, Value};
+use noyalib::{ParserConfig, RcAnchor, Spanned, Value, from_str, from_str_with_config};
 use serde::{Deserialize, Serialize};
 
 // ── streaming: anchor whose body contains an alias (maybe_record Alias arm) ─

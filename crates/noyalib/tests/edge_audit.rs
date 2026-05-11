@@ -5,7 +5,7 @@
 //! that ride on top of the recent tag-preserving deserialise
 //! work but weren't covered by the headline phases.
 
-use noyalib::{from_str, from_value, to_string_value, Spanned, Tag, TaggedValue, Value};
+use noyalib::{Spanned, Tag, TaggedValue, Value, from_str, from_value, to_string_value};
 use serde::Deserialize;
 
 // 1) Round-trip a Tagged scalar via to_string.
@@ -220,7 +220,7 @@ fn borrowed_value_tagged_scalar() {
 #[cfg(feature = "compat-serde-yaml")]
 #[test]
 fn compat_shim_preserves_old_behaviour() {
-    use noyalib::compat::serde_yaml::{from_str as compat_from_str, Value as CompatValue};
+    use noyalib::compat::serde_yaml::{Value as CompatValue, from_str as compat_from_str};
     let yaml = "!Custom 'hello'\n";
     let v: CompatValue = compat_from_str(yaml).unwrap();
     eprintln!("compat shim sees: {:?}", v);

@@ -6,8 +6,8 @@
 //! scalar (`|` / `|-`) at the right indent — not as a
 //! double-quoted one-liner with `\\n` escapes.
 
-use noyalib::cst::parse_document;
 use noyalib::Value;
+use noyalib::cst::parse_document;
 
 fn round_trip_value(src: &str, path: &str, value: &str) -> String {
     let mut doc = parse_document(src).unwrap();

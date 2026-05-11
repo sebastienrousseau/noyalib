@@ -7,7 +7,7 @@
 //! The LSP wire shape is documented at
 //! <https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#publishDiagnosticsParams>.
 
-use serde_json::{json, Value as JsonValue};
+use serde_json::{Value as JsonValue, json};
 
 /// LSP severity levels per the spec.
 const SEVERITY_ERROR: i32 = 1;

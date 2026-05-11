@@ -7,7 +7,7 @@
 
 use std::collections::BTreeMap;
 
-use noyalib::{to_string, Mapping, Number, SerializerConfig, Value};
+use noyalib::{Mapping, Number, SerializerConfig, Value, to_string};
 use serde::Serialize;
 
 // ============================================================================

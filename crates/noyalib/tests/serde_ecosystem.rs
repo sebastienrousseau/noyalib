@@ -13,7 +13,7 @@
 
 #![allow(missing_docs)]
 
-use noyalib::{from_str, Deserializer, Value};
+use noyalib::{Deserializer, Value, from_str};
 use serde::Deserialize;
 
 // ── serde_path_to_error ─────────────────────────────────────────────

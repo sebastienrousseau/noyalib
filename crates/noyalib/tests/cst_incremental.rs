@@ -16,7 +16,7 @@
 //!      do not have to reason about cross-document name resolution
 //!      after a localised splice.
 
-use noyalib::cst::{parse_document, Document, RepairScope};
+use noyalib::cst::{Document, RepairScope, parse_document};
 
 /// Compare the post-edit document against a fresh full re-parse of
 /// the same source. Equivalent on both surfaces means the local

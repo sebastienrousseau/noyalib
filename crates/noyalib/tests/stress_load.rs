@@ -22,7 +22,7 @@
 
 #![allow(missing_docs)]
 
-use noyalib::{from_str, to_string, ParserConfig, Value};
+use noyalib::{ParserConfig, Value, from_str, to_string};
 
 /// 1 MB single block-scalar document parses and round-trips
 /// cleanly without OOM on a 64-bit host.

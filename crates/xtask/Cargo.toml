@@ -1,8 +1,8 @@
 [package]
 name = "xtask"
 version = "0.0.1"
-edition = "2021"
-rust-version = "1.75.0"
+edition = "2024"
+rust-version = "1.85.0"
 license = "MIT OR Apache-2.0"
 description = "Internal release-pipeline tooling for the noyalib workspace"
 authors = ["Sebastien Rousseau <sebastian.rousseau@gmail.com>"]

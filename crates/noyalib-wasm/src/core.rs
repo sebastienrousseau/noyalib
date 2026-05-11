@@ -14,8 +14,8 @@
 //! `Result<T, noyalib::Error>` so tests can pattern-match on the
 //! error variant without dragging in `wasm-bindgen` types.
 
-use noyalib::cst::Document;
 use noyalib::Value;
+use noyalib::cst::Document;
 
 /// Parse a YAML string into a [`Value`] tree.
 ///

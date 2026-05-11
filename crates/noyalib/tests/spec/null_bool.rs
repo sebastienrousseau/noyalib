@@ -6,7 +6,7 @@
 //   - Only "null" and "~" are null (not "Null" or "NULL")
 //   - Only "true"/"false" are booleans (not "True"/"False"/"TRUE"/"FALSE")
 
-use noyalib::{from_str, Value};
+use noyalib::{Value, from_str};
 
 // --- Null representations ---
 

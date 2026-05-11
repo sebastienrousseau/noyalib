@@ -24,8 +24,8 @@
 
 #![allow(missing_docs, unused_results)]
 
-use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
-use noyalib::{from_str, StreamingDeserializer, Value};
+use criterion::{BenchmarkId, Criterion, Throughput, black_box, criterion_group, criterion_main};
+use noyalib::{StreamingDeserializer, Value, from_str};
 use serde::Deserialize;
 use std::time::Duration;
 

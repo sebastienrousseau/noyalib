@@ -5,7 +5,7 @@
 
 use std::collections::HashMap;
 
-use noyalib::{from_str, Value};
+use noyalib::{Value, from_str};
 
 #[test]
 fn invalid_indentation() {
@@ -66,7 +66,7 @@ fn stray_scalar_after_mapping() {
 
 #[test]
 fn max_depth_exceeded() {
-    use noyalib::{from_str_with_config, ParserConfig};
+    use noyalib::{ParserConfig, from_str_with_config};
 
     // Create YAML that nests 10 levels deep, but set limit to 5
     let yaml = "a:\n  b:\n    c:\n      d:\n        e:\n          f: 1\n";
@@ -77,7 +77,7 @@ fn max_depth_exceeded() {
 
 #[test]
 fn max_document_length_exceeded() {
-    use noyalib::{from_str_with_config, ParserConfig};
+    use noyalib::{ParserConfig, from_str_with_config};
 
     let config = ParserConfig::new().max_document_length(10);
     let yaml = "this is more than 10 bytes";

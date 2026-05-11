@@ -13,8 +13,8 @@
 
 use noyalib::policy::{Policy, PolicyEvent};
 use noyalib::{
-    document::load_all_with_config, from_str, from_str_with_config, BudgetBreach,
-    DuplicateKeyPolicy, Error, MergeKeyPolicy, ParserConfig, Spanned, Value,
+    BudgetBreach, DuplicateKeyPolicy, Error, MergeKeyPolicy, ParserConfig, Spanned, Value,
+    document::load_all_with_config, from_str, from_str_with_config,
 };
 use serde::Deserialize;
 
@@ -515,8 +515,7 @@ fn parser_loader_max_documents_breach() {
 // ── Alias-anchor ratio breach on AST loader. ─────────────────────
 #[test]
 fn parser_loader_alias_anchor_ratio_breach() {
-    let yaml =
-        "anchor: &a 1\nuses:\n  - *a\n  - *a\n  - *a\n  - *a\n  - *a\n  - *a\n  - *a\n  - *a\n  - *a\n  - *a\n";
+    let yaml = "anchor: &a 1\nuses:\n  - *a\n  - *a\n  - *a\n  - *a\n  - *a\n  - *a\n  - *a\n  - *a\n  - *a\n  - *a\n";
     let cfg = ParserConfig::new()
         .alias_anchor_ratio(Some(2.0))
         .max_alias_expansions(1_000);

@@ -15,16 +15,16 @@
 use std::collections::BTreeMap;
 use std::io;
 
-use noyalib::cst::{format, format_with_config, parse_document, parse_stream, FormatConfig};
+use noyalib::cst::{FormatConfig, format, format_with_config, parse_document, parse_stream};
 use noyalib::fmt::{Commented, FlowMap, FlowSeq, FoldString, LitString, SpaceAfter};
 use noyalib::{
+    FlowStyle, Mapping, RcAnchor, ScalarStyle, SerializerConfig, Tag, TaggedValue, Value,
     to_fmt_writer, to_fmt_writer_with_config, to_string, to_string_multi,
     to_string_multi_with_config, to_string_tracking_shared, to_string_tracking_shared_with_config,
     to_string_value, to_string_value_with_config, to_string_with_config, to_value, to_writer,
     to_writer_multi, to_writer_multi_with_config, to_writer_tracking_shared,
     to_writer_tracking_shared_with_config, to_writer_value, to_writer_value_with_config,
-    to_writer_with_config, FlowStyle, Mapping, RcAnchor, ScalarStyle, SerializerConfig, Tag,
-    TaggedValue, Value,
+    to_writer_with_config,
 };
 use serde::Serialize;
 

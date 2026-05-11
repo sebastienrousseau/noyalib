@@ -27,7 +27,7 @@
 use std::sync::Arc;
 
 use noyalib::{
-    from_str, BudgetBreach, CroppedRegion, Error, Location, RenderOptions, Result, Value,
+    BudgetBreach, CroppedRegion, Error, Location, RenderOptions, Result, Value, from_str,
 };
 
 // ============================================================================

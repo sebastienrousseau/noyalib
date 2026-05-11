@@ -9,7 +9,7 @@
 #![allow(missing_docs)]
 
 use noyalib::{
-    from_str_with_config, load_all_with_config, BudgetBreach, Error, ParserConfig, Value,
+    BudgetBreach, Error, ParserConfig, Value, from_str_with_config, load_all_with_config,
 };
 
 fn load_all_values(yaml: &str, cfg: &ParserConfig) -> Result<Vec<Value>, Error> {

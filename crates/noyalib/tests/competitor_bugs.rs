@@ -6,7 +6,7 @@
 //! Each test reproduces a specific issue from yaml-rust2's tracker and
 //! verifies that noyalib handles it correctly.
 
-use noyalib::{from_str, from_str_with_config, DuplicateKeyPolicy, ParserConfig, Value};
+use noyalib::{DuplicateKeyPolicy, ParserConfig, Value, from_str, from_str_with_config};
 
 // ── yaml-rust2#70: UTF-8 in flow mappings ────────────────────────────
 // Multi-byte UTF-8 characters in flow sequences/mappings caused column

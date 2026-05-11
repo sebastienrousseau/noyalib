@@ -7,8 +7,8 @@
 
 #![allow(missing_docs, unused_results, clippy::unwrap_used)]
 
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use noyalib::{from_str, Spanned};
+use criterion::{Criterion, black_box, criterion_group, criterion_main};
+use noyalib::{Spanned, from_str};
 use serde::Deserialize;
 
 #[derive(Deserialize)]

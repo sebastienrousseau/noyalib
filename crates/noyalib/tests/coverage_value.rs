@@ -7,7 +7,7 @@
 use std::str::FromStr;
 
 use noyalib::{
-    check_for_tag, from_str, nobang, Mapping, MappingAny, MaybeTag, Number, Tag, TaggedValue, Value,
+    Mapping, MappingAny, MaybeTag, Number, Tag, TaggedValue, Value, check_for_tag, from_str, nobang,
 };
 
 // ============================================================================

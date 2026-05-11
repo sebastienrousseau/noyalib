@@ -10,7 +10,7 @@
 #![cfg(feature = "garde")]
 
 use garde::Validate;
-use noyalib::{from_str, Validated};
+use noyalib::{Validated, from_str};
 use serde::{Deserialize, Serialize};
 
 // ── Basic: passing validation returns Validated(T) ──────────────────────

@@ -8,7 +8,7 @@
 #[path = "support.rs"]
 mod support;
 
-use noyalib::{from_str, to_string, Value};
+use noyalib::{Value, from_str, to_string};
 
 fn main() {
     support::header("noyalib -- dynamic");

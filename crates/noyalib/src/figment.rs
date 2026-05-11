@@ -50,8 +50,8 @@
 //!     .unwrap();
 //! ```
 
-use figment::providers::Format;
 use figment::Error as FigmentError;
+use figment::providers::Format;
 
 /// Figment [`Format`] for noyalib YAML.
 ///

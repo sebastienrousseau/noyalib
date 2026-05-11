@@ -20,7 +20,7 @@
 
 #![allow(missing_docs, unused_results)]
 
-use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
+use criterion::{BenchmarkId, Criterion, Throughput, black_box, criterion_group, criterion_main};
 use noyalib::simd::{parse_decimal_i64, parse_decimal_u64};
 
 fn bench_parse_u64(c: &mut Criterion) {

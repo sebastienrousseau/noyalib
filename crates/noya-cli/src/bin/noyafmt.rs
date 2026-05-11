@@ -13,7 +13,7 @@
 
 use clap::Parser;
 use noya_cli::NoyafmtCli;
-use noyalib::cst::{format_with_config, FormatConfig};
+use noyalib::cst::{FormatConfig, format_with_config};
 use std::fs;
 use std::io::{self, Read, Write};
 use std::process::ExitCode;

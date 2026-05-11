@@ -16,7 +16,7 @@
 
 #![allow(missing_docs)]
 
-use noyalib::{from_slice, from_str, Value};
+use noyalib::{Value, from_slice, from_str};
 use proptest::prelude::*;
 
 // Default to 256 random cases per property; CI may override

@@ -6,8 +6,8 @@
 use std::io::Cursor;
 
 use noyalib::{
-    from_reader_with_config, from_str, from_str_with_config, from_value, DuplicateKeyPolicy,
-    ParserConfig, Value,
+    DuplicateKeyPolicy, ParserConfig, Value, from_reader_with_config, from_str,
+    from_str_with_config, from_value,
 };
 
 // ============================================================================

@@ -126,7 +126,7 @@
 #![cfg_attr(noyalib_coverage, feature(coverage_attribute))]
 
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value as JsonValue};
+use serde_json::{Value as JsonValue, json};
 
 pub mod tools;
 
@@ -308,10 +308,12 @@ mod tests {
         let out = handle_message("not json {");
         let v = parse_reply(out);
         assert_eq!(v["error"]["code"].as_i64().unwrap(), -32700);
-        assert!(v["error"]["message"]
-            .as_str()
-            .unwrap()
-            .contains("parse error"));
+        assert!(
+            v["error"]["message"]
+                .as_str()
+                .unwrap()
+                .contains("parse error")
+        );
         // Per JSON-RPC: parse errors carry `id: null`.
         assert!(v["id"].is_null());
     }
@@ -345,10 +347,12 @@ mod tests {
         let out = handle_message(&req.to_string());
         let v = parse_reply(out);
         assert_eq!(v["error"]["code"].as_i64().unwrap(), -32601);
-        assert!(v["error"]["message"]
-            .as_str()
-            .unwrap()
-            .contains("frobnicate"));
+        assert!(
+            v["error"]["message"]
+                .as_str()
+                .unwrap()
+                .contains("frobnicate")
+        );
         assert_eq!(v["id"].as_i64().unwrap(), 7);
     }
 

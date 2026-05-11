@@ -10,7 +10,7 @@
 #![allow(missing_docs)]
 
 use noyalib::cst::{coerce_to_schema, parse_document};
-use noyalib::{from_str, Value};
+use noyalib::{Value, from_str};
 
 fn run_coerce(yaml: &str, schema_yaml: &str) -> Result<(usize, String), noyalib::Error> {
     let schema: Value = from_str(schema_yaml)?;

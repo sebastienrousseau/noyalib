@@ -8,7 +8,7 @@
 #[path = "support.rs"]
 mod support;
 
-use noyalib::{from_str, from_value, to_value, Mapping, MappingAny, Value};
+use noyalib::{Mapping, MappingAny, Value, from_str, from_value, to_value};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]

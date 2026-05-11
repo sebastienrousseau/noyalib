@@ -25,7 +25,7 @@
 #[path = "support.rs"]
 mod support;
 
-use noyalib::{coerce_to_schema, from_str, schema_for, validate_against_schema, JsonSchema, Value};
+use noyalib::{JsonSchema, Value, coerce_to_schema, from_str, schema_for, validate_against_schema};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, JsonSchema)]

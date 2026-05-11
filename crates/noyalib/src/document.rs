@@ -30,6 +30,7 @@ use crate::span_context::{self, SpanTree};
 use crate::value::Value;
 #[cfg(not(feature = "std"))]
 use alloc::vec::IntoIter;
+#[cfg(feature = "std")]
 use core::marker::PhantomData;
 #[cfg(feature = "std")]
 use std::vec::IntoIter;

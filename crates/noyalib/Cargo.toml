@@ -1,8 +1,8 @@
 [package]
 name = "noyalib"
 version = "0.0.5"
-edition = "2021"
-rust-version = "1.75.0"
+edition = "2024"
+rust-version = "1.85.0"
 license = "MIT OR Apache-2.0"
 description = "A pure Rust YAML library with zero unsafe code and full serde integration"
 repository = "https://github.com/sebastienrousseau/noyalib"

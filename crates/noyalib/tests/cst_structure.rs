@@ -9,7 +9,7 @@
 //! expected, with the leaf order required for downstream
 //! neighbour-aware tooling.
 
-use noyalib::cst::{parse_document, GreenChild, GreenNode, SyntaxKind};
+use noyalib::cst::{GreenChild, GreenNode, SyntaxKind, parse_document};
 
 fn kinds(node: &GreenNode) -> Vec<SyntaxKind> {
     node.children()

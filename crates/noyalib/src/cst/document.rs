@@ -6,12 +6,12 @@
 use core::fmt::Write as _;
 
 use crate::cst::builder::{
-    document_boundaries, parse_full, parse_subtree, rebuild_with_splice, SubtreeContext,
+    SubtreeContext, document_boundaries, parse_full, parse_subtree, rebuild_with_splice,
 };
 use crate::cst::green::{GreenChild, GreenNode};
 use crate::cst::syntax::SyntaxKind;
 use crate::error::{Error, Result};
-use crate::path::{parse_query_path, QuerySegment};
+use crate::path::{QuerySegment, parse_query_path};
 use crate::prelude::*;
 use crate::span_context::SpanTree;
 use crate::value::{Number, Value};
@@ -1827,11 +1827,7 @@ fn end_of_line(source: &str, pos: usize) -> usize {
     while i < bytes.len() && bytes[i] != b'\n' {
         i += 1;
     }
-    if i < bytes.len() {
-        i + 1
-    } else {
-        i
-    }
+    if i < bytes.len() { i + 1 } else { i }
 }
 
 fn locate_preceding_dash(source: &str, value_start: usize) -> Option<usize> {

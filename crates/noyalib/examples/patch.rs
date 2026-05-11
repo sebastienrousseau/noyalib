@@ -11,7 +11,7 @@
 #[path = "support.rs"]
 mod support;
 
-use noyalib::{from_str, to_string, Mapping, Value};
+use noyalib::{Mapping, Value, from_str, to_string};
 
 /// Apply a patch at a dotted path. Creates intermediate mappings as needed.
 fn patch_at(value: &mut Value, path: &str, new_value: Value) -> bool {

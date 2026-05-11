@@ -8,8 +8,8 @@
 //! variant, document-length enforcement, special float resolution, and
 //! alias rejection on the borrowed path.
 
-use noyalib::borrowed::{from_str_borrowed, BorrowedValue};
 use noyalib::ParserConfig;
+use noyalib::borrowed::{BorrowedValue, from_str_borrowed};
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 

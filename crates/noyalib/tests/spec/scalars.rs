@@ -3,7 +3,7 @@
 
 // YAML spec: Scalar types and quoting
 
-use noyalib::{from_str, Value};
+use noyalib::{Value, from_str};
 
 #[test]
 fn plain_scalar_string() {

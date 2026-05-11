@@ -177,8 +177,8 @@ pub(crate) fn value_to_json(v: &Value) -> core::result::Result<serde_json::Value
 /// noyalib::validate_against_schema(&data, &schema).unwrap();
 /// ```
 pub fn coerce_to_schema(value: &mut Value, schema: &Value) -> Result<usize> {
-    use jsonschema::error::{TypeKind, ValidationErrorKind};
     use jsonschema::JsonType;
+    use jsonschema::error::{TypeKind, ValidationErrorKind};
 
     let schema_json = value_to_json(schema)
         .map_err(|e| Error::Custom(format!("coerce_to_schema: schema -> JSON: {e}")))?;

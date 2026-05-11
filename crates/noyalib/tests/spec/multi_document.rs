@@ -3,7 +3,7 @@
 
 // YAML spec: Multi-document streams
 
-use noyalib::{from_str, load_all, Value};
+use noyalib::{Value, from_str, load_all};
 
 #[test]
 fn document_start_marker() {

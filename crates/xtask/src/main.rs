@@ -107,7 +107,7 @@ fn workspace_root() -> std::io::Result<PathBuf> {
 /// Write bash / fish / zsh / powershell completions to
 /// `<root>/complete/`.
 fn write_completions(root: &Path) -> std::io::Result<()> {
-    use clap_complete::{generate_to, Shell};
+    use clap_complete::{Shell, generate_to};
     let out = root.join("complete");
     fs::create_dir_all(&out)?;
     for (name, mut cmd) in [

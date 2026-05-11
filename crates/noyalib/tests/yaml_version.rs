@@ -10,7 +10,7 @@
 
 #![allow(missing_docs)]
 
-use noyalib::{from_str, from_str_with_config, ParserConfig, Value, YamlVersion};
+use noyalib::{ParserConfig, Value, YamlVersion, from_str, from_str_with_config};
 
 // ── Default version is 1.2 ──────────────────────────────────────────
 

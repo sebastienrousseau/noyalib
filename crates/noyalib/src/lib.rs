@@ -515,20 +515,20 @@ pub use anchors::{
 // `core::cell` / `std::sync` — the latter only available with std).
 #[cfg(feature = "std")]
 pub use anchors::{ArcRecursion, ArcRecursive, RcRecursion, RcRecursive};
-pub use comments::{load_comments, Comment, CommentKind};
+pub use comments::{Comment, CommentKind, load_comments};
 pub use de::RequireIndent;
+pub use de::{
+    Deserializer, DuplicateKeyPolicy, MergeKeyPolicy, ParserConfig, YamlVersion, from_slice,
+    from_slice_with_config, from_str, from_str_borrowing, from_str_borrowing_with_config,
+    from_str_with_config, from_value,
+};
 #[cfg(feature = "std")]
 pub use de::{from_reader, from_reader_with_config};
 #[cfg(all(feature = "std", feature = "strict-deserialise"))]
 pub use de::{from_reader_strict, from_slice_strict, from_str_strict};
-pub use de::{
-    from_slice, from_slice_with_config, from_str, from_str_borrowing,
-    from_str_borrowing_with_config, from_str_with_config, from_value, Deserializer,
-    DuplicateKeyPolicy, MergeKeyPolicy, ParserConfig, YamlVersion,
-};
-pub use document::{load_all, load_all_as, load_all_with_config, try_load_all};
 #[cfg(feature = "std")]
-pub use document::{read, read_with_config, DocumentReadIterator};
+pub use document::{DocumentReadIterator, read, read_with_config};
+pub use document::{load_all, load_all_as, load_all_with_config, try_load_all};
 pub use error::{BudgetBreach, CroppedRegion, Error, Location, RenderOptions, Result};
 pub use flattened::Flattened;
 pub use fmt::{Commented, FlowMap, FlowSeq, FoldStr, FoldString, LitStr, LitString, SpaceAfter};
@@ -539,14 +539,14 @@ pub use schema::{
 };
 #[cfg(feature = "schema")]
 #[cfg_attr(docsrs, doc(cfg(feature = "schema")))]
-pub use schema_codegen::{schema_for, schema_for_yaml, JsonSchema};
+pub use schema_codegen::{JsonSchema, schema_for, schema_for_yaml};
 #[cfg(feature = "validate-schema")]
 #[cfg_attr(docsrs, doc(cfg(feature = "validate-schema")))]
 pub use schema_validate::{coerce_to_schema, validate_against_schema, validate_against_schema_str};
 pub use ser::{
-    to_fmt_writer, to_fmt_writer_with_config, to_string, to_string_multi,
-    to_string_multi_with_config, to_string_value, to_string_value_with_config,
-    to_string_with_config, to_value, FlowStyle, ScalarStyle, Serializer, SerializerConfig,
+    FlowStyle, ScalarStyle, Serializer, SerializerConfig, to_fmt_writer, to_fmt_writer_with_config,
+    to_string, to_string_multi, to_string_multi_with_config, to_string_value,
+    to_string_value_with_config, to_string_with_config, to_value,
 };
 #[cfg(feature = "std")]
 pub use ser::{
@@ -568,6 +568,6 @@ pub use validated::Validated;
 #[cfg_attr(docsrs, doc(cfg(feature = "validator")))]
 pub use validated::ValidatedValidator;
 pub use value::{
-    check_for_tag, nobang, Mapping, MappingAny, MaybeTag, Number, ParseNumberError, Sequence, Tag,
-    TaggedValue, Value, ValueIndex,
+    Mapping, MappingAny, MaybeTag, Number, ParseNumberError, Sequence, Tag, TaggedValue, Value,
+    ValueIndex, check_for_tag, nobang,
 };

@@ -11,11 +11,11 @@
 use crate::prelude::*;
 
 use rustc_hash::{FxHashMap, FxHashSet};
-use serde::de::{self, DeserializeSeed, IntoDeserializer, MapAccess, SeqAccess, Visitor};
 use serde::Deserialize;
+use serde::de::{self, DeserializeSeed, IntoDeserializer, MapAccess, SeqAccess, Visitor};
 use smallvec::SmallVec;
 
-use crate::error::{closest_name, Error, Result};
+use crate::error::{Error, Result, closest_name};
 use crate::parser::{Event, ParseConfig, Parser, ScalarStyle};
 use core::fmt;
 
@@ -299,9 +299,9 @@ impl<'a> StreamingDeserializer<'a> {
             _ => None,
         };
         let anchor_name = match ev {
-            Event::Scalar { ref mut anchor, .. }
-            | Event::SequenceStart { ref mut anchor, .. }
-            | Event::MappingStart { ref mut anchor, .. } => anchor.take(),
+            Event::Scalar { anchor, .. }
+            | Event::SequenceStart { anchor, .. }
+            | Event::MappingStart { anchor, .. } => anchor.take(),
             _ => None,
         };
         if let Some(name) = anchor_name {
@@ -535,13 +535,12 @@ impl<'a> StreamingDeserializer<'a> {
     /// `next_value_seed` reroutes back through `deserialize_any`.
     fn take_tag_from_current(&mut self) -> Option<(String, String)> {
         let _ = self.peek_event().ok()?;
-        let t = match self.current.as_mut() {
+        match self.current.as_mut() {
             Some(Event::Scalar { tag, .. })
             | Some(Event::SequenceStart { tag, .. })
             | Some(Event::MappingStart { tag, .. }) => tag.take(),
             _ => None,
-        };
-        t
+        }
     }
 
     /// Is `(handle, suffix)` registered in the tag registry as
@@ -835,10 +834,7 @@ impl<'de> de::Deserializer<'de> for &mut StreamingDeserializer<'de> {
         V: Visitor<'de>,
     {
         self.skip_to_content()?;
-        if let Event::Scalar {
-            ref value, style, ..
-        } = self.peek_event()?
-        {
+        if let Event::Scalar { value, style, .. } = self.peek_event()? {
             if *style == ScalarStyle::Plain {
                 match &**value {
                     "" | "~" | "null" | "Null" | "NULL" => {

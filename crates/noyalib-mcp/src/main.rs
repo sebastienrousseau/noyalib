@@ -42,7 +42,7 @@
 #![cfg_attr(noyalib_coverage, allow(unstable_features))]
 #![cfg_attr(noyalib_coverage, feature(coverage_attribute))]
 
-use noyalib_mcp::{handle_message, HandleOutcome};
+use noyalib_mcp::{HandleOutcome, handle_message};
 use std::io::{self, BufRead, Write};
 use std::process::ExitCode;
 

@@ -19,7 +19,7 @@
 #![cfg(feature = "strict-deserialise")]
 #![allow(missing_docs)]
 
-use noyalib::{from_reader_strict, from_slice_strict, from_str, from_str_strict, Error};
+use noyalib::{Error, from_reader_strict, from_slice_strict, from_str, from_str_strict};
 use serde::Deserialize;
 
 #[derive(Debug, Deserialize)]

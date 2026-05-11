@@ -9,7 +9,7 @@
 
 #![allow(missing_docs)]
 
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::io::{BufRead, BufReader, Write};
 use std::process::{Command, Stdio};
 

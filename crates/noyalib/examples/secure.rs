@@ -8,7 +8,7 @@
 #[path = "support.rs"]
 mod support;
 
-use noyalib::{from_str_with_config, DuplicateKeyPolicy, ParserConfig, Value};
+use noyalib::{DuplicateKeyPolicy, ParserConfig, Value, from_str_with_config};
 
 fn main() {
     support::header("noyalib -- secure");

@@ -14,7 +14,7 @@
 use noyalib::policy::{
     DenyAnchors, DenyTags, MaxScalarLength, Policy, PolicyEvent, PolicyEventKind,
 };
-use noyalib::{from_str_with_config, ParserConfig, Value};
+use noyalib::{ParserConfig, Value, from_str_with_config};
 
 // ── DenyAnchors ─────────────────────────────────────────────────────
 

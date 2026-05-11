@@ -135,7 +135,7 @@
 
 pub mod core;
 
-use noyalib::cst::{parse_document, Document};
+use noyalib::cst::{Document, parse_document};
 use serde::Serialize;
 use wasm_bindgen::prelude::*;
 

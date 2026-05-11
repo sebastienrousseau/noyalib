@@ -54,12 +54,12 @@ jobs:
           save-if: ${{ github.ref == 'refs/heads/main' }}
       - name: Run tests
         run: cargo test --all-features
-      # NOTE: the MSRV-1.75 build matrix is now in its own job
-      # (`msrv-1-75-core`) — the optional features pull in
+      # NOTE: the MSRV-1.85 build matrix is now in its own job
+      # (`msrv-1-85-core`) — the optional features pull in
       # ergonomics deps that themselves require newer rustc
       # (miette → backtrace ≥ 1.82, garde → 1.84, ICU chain →
       # 1.86), so `cargo test --all-features` cannot run on
-      # 1.75. The MSRV gate covers the *core* feature set
+      # 1.85. The MSRV gate covers the *core* feature set
       # (no_std + default), which is what crate consumers
       # actually rely on.
 
@@ -263,18 +263,18 @@ jobs:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
       - uses: fsfe/reuse-action@bb774aa972c2a89ff34781233d275075cbddf542 # v6
 
-  msrv-1-75-core:
-    name: MSRV (1.75.0) core build
-    # The crate's documented MSRV is 1.75 for the **core** feature
+  msrv-1-85-core:
+    name: MSRV (1.85.0) core build
+    # The crate's documented MSRV is 1.85 for the **core** feature
     # set: default features (`std`) plus the always-on parser /
     # serializer / Value / CST. Optional features pull in
-    # ergonomics deps that have themselves bumped past 1.75
+    # ergonomics deps that have themselves bumped past 1.85
     # (`miette` → backtrace ≥ 1.82, `garde` → 1.84, `figment` /
     # `validate-schema` → various ICU 1.86 dragnet). The matrix
     # below documents that contract by build:
     #
-    # - `--no-default-features`: pure no_std + alloc, MSRV 1.75.
-    # - default features: std + core surface, MSRV 1.75.
+    # - `--no-default-features`: pure no_std + alloc, MSRV 1.85.
+    # - default features: std + core surface, MSRV 1.85.
     # - feature combinations beyond default require newer
     #   toolchains; the stable test matrix covers those.
     runs-on: ubuntu-latest
@@ -282,7 +282,7 @@ jobs:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
       - uses: dtolnay/rust-toolchain@3c5f7ea28cd621ae0bf5283f0e981fb97b8a7af9 # master
         with:
-          toolchain: "1.75.0"
+          toolchain: "1.85.0"
           components: clippy
       - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
       - name: cargo check (no_std)
@@ -379,12 +379,12 @@ jobs:
         run: cargo build --workspace --all-features --offline --locked
 
   # ── Per-crate MSRV (Phase 7.5) ──────────────────────────────────────
-  # The workspace gates on the lowest declared rust-version (1.75.0
+  # The workspace gates on the lowest declared rust-version (1.85.0
   # for the core lib). Satellite crates can declare higher floors.
   # This job runs `cargo +<msrv> check` against every crate
   # independently, so a satellite crate adopting a 1.85-only
   # feature can never silently break a downstream user pinned to
-  # 1.75.
+  # 1.85.
   msrv-per-crate:
     name: Per-crate MSRV
     runs-on: ubuntu-latest

@@ -8,7 +8,7 @@
 
 use std::sync::Arc;
 
-use noyalib::{from_str_with_config, ParserConfig, TagRegistry};
+use noyalib::{ParserConfig, TagRegistry, from_str_with_config};
 use serde::Deserialize;
 
 fn cfg(tags: &[&str]) -> ParserConfig {

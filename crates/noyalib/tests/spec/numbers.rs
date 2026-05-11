@@ -3,7 +3,7 @@
 
 // YAML spec: Number representations
 
-use noyalib::{from_str, Value};
+use noyalib::{Value, from_str};
 
 // --- Integers ---
 

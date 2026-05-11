@@ -10,7 +10,7 @@
 //! and sibling entries preserved byte-for-byte.
 
 use noyalib::cst::parse_document;
-use serde_json::{json, Value as JsonValue};
+use serde_json::{Value as JsonValue, json};
 use std::fs;
 
 /// Descriptors returned to MCP clients via `tools/list`.
@@ -238,10 +238,12 @@ mod tests {
             }
         }))
         .unwrap();
-        assert!(v["content"][0]["text"]
-            .as_str()
-            .unwrap()
-            .contains("set version"));
+        assert!(
+            v["content"][0]["text"]
+                .as_str()
+                .unwrap()
+                .contains("set version")
+        );
         let updated = fs::read_to_string(&p).unwrap();
         assert_eq!(updated, "version: 2\n");
         let _ = fs::remove_file(&p);

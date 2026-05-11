@@ -62,7 +62,7 @@ fn main() {
 /// Write bash / fish / zsh / powershell completion files under
 /// `<OUT_DIR>/{name}.{shell-ext}` using `clap_complete`.
 fn gen_completions(out_dir: &Path, name: &str, cmd: &mut clap::Command) {
-    use clap_complete::{generate_to, Shell};
+    use clap_complete::{Shell, generate_to};
     for shell in [Shell::Bash, Shell::Fish, Shell::Zsh, Shell::PowerShell] {
         let _ = generate_to(shell, cmd, name, out_dir)
             .expect("clap_complete::generate_to must succeed in build.rs");

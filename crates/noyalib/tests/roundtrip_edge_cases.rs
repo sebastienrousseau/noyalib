@@ -10,7 +10,7 @@
 
 #![allow(missing_docs)]
 
-use noyalib::{from_str, to_string, Sequence, Value};
+use noyalib::{Sequence, Value, from_str, to_string};
 
 // ── Empty containers at every depth ────────────────────────────────
 
@@ -76,7 +76,7 @@ fn sequence_with_only_empty_mappings() {
     if let Value::Sequence(ref s) = v {
         assert_eq!(s.len(), 3);
         for item in s {
-            assert!(matches!(item, Value::Mapping(ref m) if m.is_empty()));
+            assert!(matches!(item, Value::Mapping(m) if m.is_empty()));
         }
     } else {
         panic!();

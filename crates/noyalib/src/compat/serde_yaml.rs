@@ -175,8 +175,8 @@
 //! that flow through unchanged for the typed-deserialise path.
 
 use crate::prelude::*;
-use serde::de::DeserializeOwned;
 use serde::Serialize;
+use serde::de::DeserializeOwned;
 
 // ── Types — re-exported under the serde_yaml names ───────────────────
 

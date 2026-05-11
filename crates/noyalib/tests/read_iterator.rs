@@ -18,7 +18,7 @@
 #![allow(missing_docs)]
 #![allow(clippy::unwrap_used)]
 
-use noyalib::{read, read_with_config, DocumentReadIterator, ParserConfig, Value};
+use noyalib::{DocumentReadIterator, ParserConfig, Value, read, read_with_config};
 use serde::Deserialize;
 use std::io::Cursor;
 

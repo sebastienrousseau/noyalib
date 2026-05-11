@@ -5,7 +5,7 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 // Copyright (c) 2026 Noyalib. All rights reserved.
 
-use noyalib::{from_str, to_string, Value};
+use noyalib::{Value, from_str, to_string};
 use serde::{Deserialize, Serialize};
 
 // ============================================================================
@@ -321,7 +321,7 @@ name: second
     assert_eq!(result.get("value").unwrap().as_i64(), Some(1));
 
     // With DuplicateKeyPolicy::Error, duplicate keys are rejected.
-    use noyalib::{from_str_with_config, DuplicateKeyPolicy, ParserConfig};
+    use noyalib::{DuplicateKeyPolicy, ParserConfig, from_str_with_config};
     let config = ParserConfig::new().duplicate_key_policy(DuplicateKeyPolicy::Error);
     let result: Result<Value, _> = from_str_with_config(yaml, &config);
     assert!(result.is_err());
@@ -847,7 +847,7 @@ fn test_path_empty_string() {
 
 #[test]
 fn test_serializer_config_document_markers() {
-    use noyalib::{to_string_with_config, SerializerConfig};
+    use noyalib::{SerializerConfig, to_string_with_config};
 
     let config = SerializerConfig::new()
         .document_start(true)
@@ -861,7 +861,7 @@ fn test_serializer_config_document_markers() {
 
 #[test]
 fn test_serializer_config_indent() {
-    use noyalib::{to_string_with_config, Mapping, SerializerConfig};
+    use noyalib::{Mapping, SerializerConfig, to_string_with_config};
 
     let config = SerializerConfig::new().indent(4);
 

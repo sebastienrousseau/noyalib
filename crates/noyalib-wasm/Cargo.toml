@@ -1,7 +1,7 @@
 [package]
 name = "noyalib-wasm"
 version = "0.0.5"
-edition = "2021"
+edition = "2024"
 rust-version = "1.85.0"
 license = "MIT OR Apache-2.0"
 description = "WebAssembly (wasm-bindgen) bindings for the noyalib YAML library — browser-ready parse / serialise / lossless edit"

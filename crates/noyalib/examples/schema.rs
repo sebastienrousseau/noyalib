@@ -8,7 +8,7 @@
 #[path = "support.rs"]
 mod support;
 
-use noyalib::{from_str, validate_yaml_core_schema, validate_yaml_json_schema, Value};
+use noyalib::{Value, from_str, validate_yaml_core_schema, validate_yaml_json_schema};
 
 fn main() {
     support::header("noyalib -- schema");

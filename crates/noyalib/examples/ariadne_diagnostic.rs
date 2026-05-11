@@ -14,7 +14,7 @@ mod support;
 
 use ariadne::Source;
 use noyalib::ariadne_adapter::error_to_ariadne_report;
-use noyalib::{from_str, Value};
+use noyalib::{Value, from_str};
 
 fn main() {
     support::header("noyalib -- ariadne_diagnostic");

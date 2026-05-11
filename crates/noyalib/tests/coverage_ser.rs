@@ -7,9 +7,9 @@
 use std::collections::BTreeMap;
 
 use noyalib::{
-    to_string, to_string_multi_with_config, to_string_with_config, to_value,
-    to_writer_multi_with_config, to_writer_with_config, FlowStyle, Mapping, ScalarStyle,
-    SerializerConfig, Value,
+    FlowStyle, Mapping, ScalarStyle, SerializerConfig, Value, to_string,
+    to_string_multi_with_config, to_string_with_config, to_value, to_writer_multi_with_config,
+    to_writer_with_config,
 };
 
 // ============================================================================

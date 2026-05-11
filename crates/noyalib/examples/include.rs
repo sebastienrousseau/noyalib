@@ -22,7 +22,7 @@
 #[path = "support.rs"]
 mod support;
 
-use noyalib::{from_str, Value};
+use noyalib::{Value, from_str};
 use std::collections::HashSet;
 use std::fs;
 use std::path::{Path, PathBuf};

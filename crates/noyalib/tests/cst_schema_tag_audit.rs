@@ -4,7 +4,7 @@
 //! CST + schema audit with tagged content.
 
 #[cfg(feature = "validate-schema")]
-use noyalib::{from_str, validate_against_schema, Value};
+use noyalib::{Value, from_str, validate_against_schema};
 
 #[test]
 fn cst_round_trip_byte_faithful_with_tag() {
@@ -69,7 +69,7 @@ fn cst_coerce_to_schema_through_tagged_value() {
 #[cfg(feature = "schema")]
 #[test]
 fn schema_for_yaml_emits_tagged_value_correctly() {
-    use noyalib::{schema_for_yaml, JsonSchema};
+    use noyalib::{JsonSchema, schema_for_yaml};
     use serde::{Deserialize, Serialize};
     #[derive(Serialize, Deserialize, JsonSchema)]
     #[allow(dead_code)]

@@ -82,8 +82,8 @@ pub use annotated::CommentBundle;
 #[cfg(feature = "validate-schema")]
 #[cfg_attr(docsrs, doc(cfg(feature = "validate-schema")))]
 pub use coerce::coerce_to_schema;
-pub use document::{parse_document, parse_stream, Document, RepairScope};
+pub use document::{Document, RepairScope, parse_document, parse_stream};
 pub use entry::Entry;
-pub use format::{format, format_with_config, FormatConfig};
+pub use format::{FormatConfig, format, format_with_config};
 pub use green::{GreenChild, GreenNode};
 pub use syntax::SyntaxKind;

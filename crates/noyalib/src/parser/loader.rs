@@ -523,7 +523,7 @@ impl<'a> Loader<'a> {
                             "mapping key must be a scalar or representable as string",
                             input,
                             0,
-                        ))
+                        ));
                     }
                 };
                 let key_span = if let SpanTree::Leaf(s, e) = span {

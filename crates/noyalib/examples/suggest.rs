@@ -11,7 +11,7 @@
 #[path = "support.rs"]
 mod support;
 
-use noyalib::{from_str, Value};
+use noyalib::{Value, from_str};
 
 /// Levenshtein edit distance between two strings.
 fn levenshtein(a: &str, b: &str) -> usize {

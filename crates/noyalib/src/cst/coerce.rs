@@ -66,8 +66,8 @@ use crate::value::{Number, Value};
 ///   request a coercion to a non-scalar type — guarded against
 ///   here, but the error is surfaced if it slips through).
 pub fn coerce_to_schema(doc: &mut Document, schema: &Value) -> Result<usize> {
-    use jsonschema::error::{TypeKind, ValidationErrorKind};
     use jsonschema::JsonType;
+    use jsonschema::error::{TypeKind, ValidationErrorKind};
 
     // Compile the schema once. Re-uses the same JSON-bridge helper
     // path as `crate::coerce_to_schema` so the two functions share

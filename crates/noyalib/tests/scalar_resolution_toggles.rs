@@ -7,7 +7,7 @@
 
 #![allow(missing_docs)]
 
-use noyalib::{from_str, from_str_with_config, Number, ParserConfig, Value};
+use noyalib::{Number, ParserConfig, Value, from_str, from_str_with_config};
 
 // ── no_schema ──────────────────────────────────────────────────────
 

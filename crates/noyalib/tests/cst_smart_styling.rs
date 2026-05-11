@@ -8,8 +8,8 @@
 //! surrounding `BlockMapping`, the new value should adopt the
 //! neighbours' style.
 
-use noyalib::cst::parse_document;
 use noyalib::Value;
+use noyalib::cst::parse_document;
 
 #[test]
 fn single_quoted_neighbours_drive_single_quoted_emit() {

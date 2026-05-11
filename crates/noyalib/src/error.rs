@@ -809,8 +809,7 @@ impl Error {
             None => return format!("{self}"),
         };
         let caret_col = col.saturating_sub(1);
-        let caret: String = core::iter::repeat(' ')
-            .take(caret_col)
+        let caret: String = core::iter::repeat_n(' ', caret_col)
             .chain(core::iter::once('^'))
             .collect();
         format!("error: {self}\n  --> line {line_no}:{col}\n  {line}\n  {caret}")

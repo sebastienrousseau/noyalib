@@ -10,7 +10,7 @@ mod support;
 
 use std::collections::BTreeMap;
 
-use noyalib::{from_str, Value};
+use noyalib::{Value, from_str};
 use serde::Deserialize;
 
 fn main() {

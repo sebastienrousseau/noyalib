@@ -2145,7 +2145,7 @@ fn events_anchor_without_value() {
     // This exercises the path where anchor is present but no scalar token follows
     let result: Result<Value> = from_str(yaml);
     let _ = result; // May fail or succeed - we just want to exercise the code
-                    // path
+    // path
 }
 
 #[test]

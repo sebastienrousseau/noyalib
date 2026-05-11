@@ -6,7 +6,7 @@
 
 #![allow(missing_docs)]
 
-use noyalib::{from_str_with_config, MergeKeyPolicy, ParserConfig, Value};
+use noyalib::{MergeKeyPolicy, ParserConfig, Value, from_str_with_config};
 
 const DOC_WITH_MERGE: &str = "\
 defaults: &cfg

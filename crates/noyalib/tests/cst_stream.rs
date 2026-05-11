@@ -3,7 +3,7 @@
 
 //! Multi-document splitting for `parse_stream`.
 
-use noyalib::cst::{parse_stream, Document};
+use noyalib::cst::{Document, parse_stream};
 
 fn join_sources(docs: &[Document]) -> String {
     docs.iter().map(Document::source).collect()

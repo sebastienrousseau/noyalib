@@ -20,7 +20,7 @@
 #[path = "support.rs"]
 mod support;
 
-use noyalib::{from_str, Deserializer, Value};
+use noyalib::{Deserializer, Value, from_str};
 use serde::Deserialize;
 
 #[derive(Debug, Deserialize)]

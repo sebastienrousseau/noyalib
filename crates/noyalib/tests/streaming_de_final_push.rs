@@ -20,8 +20,8 @@ use std::collections::{BTreeMap, HashMap};
 use std::sync::Arc;
 
 use noyalib::{
-    from_str, from_str_with_config, from_value, ParserConfig, Spanned, Tag, TagRegistry,
-    TaggedValue, Value,
+    ParserConfig, Spanned, Tag, TagRegistry, TaggedValue, Value, from_str, from_str_with_config,
+    from_value,
 };
 use serde::Deserialize;
 
@@ -355,8 +355,8 @@ fn final_de_struct_variant_with_span_ctx() {
 #[cfg(feature = "figment")]
 #[test]
 fn final_de_figment_provider_with_spanned_field_uses_ast_fallback() {
-    use figment::providers::Format as _;
     use figment::Figment;
+    use figment::providers::Format as _;
 
     #[derive(Debug, Deserialize)]
     #[allow(dead_code)]
@@ -962,10 +962,11 @@ target:
 ";
     let v: Value = from_str(yaml).expect("nested-seq body");
     let t = v.get_path("target").unwrap();
-    assert!(t
-        .get_path("k_outer")
-        .map(|x| x.is_sequence())
-        .unwrap_or(false));
+    assert!(
+        t.get_path("k_outer")
+            .map(|x| x.is_sequence())
+            .unwrap_or(false)
+    );
 }
 
 // ── L1787, L1811-L1820 — extract_local_keys Alias arm + filter override

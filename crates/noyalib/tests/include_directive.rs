@@ -9,7 +9,7 @@
 #![allow(clippy::unwrap_used)]
 
 use noyalib::include::{IncludeRequest, IncludeResolver, InputSource};
-use noyalib::{from_str_with_config, ParserConfig, Result, Value};
+use noyalib::{ParserConfig, Result, Value, from_str_with_config};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 

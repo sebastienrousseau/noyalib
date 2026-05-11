@@ -10,7 +10,7 @@
 //! response self-contained — the client doesn't need any
 //! cross-document reasoning to apply the result.
 
-use serde_json::{json, Value as JsonValue};
+use serde_json::{Value as JsonValue, json};
 
 /// Build the LSP `TextEdit[]` array that, applied to `text`, yields
 /// the formatted document.

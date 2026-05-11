@@ -17,8 +17,8 @@ use crate::parser::{self};
 use crate::prelude::*;
 use crate::span_context;
 use crate::value::{Number, Value};
-use serde::de::{self, DeserializeSeed, IntoDeserializer, MapAccess, SeqAccess, Visitor};
 use serde::Deserialize;
+use serde::de::{self, DeserializeSeed, IntoDeserializer, MapAccess, SeqAccess, Visitor};
 #[cfg(feature = "std")]
 use std::io;
 

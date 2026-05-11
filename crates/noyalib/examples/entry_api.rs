@@ -18,8 +18,8 @@
 #[path = "support.rs"]
 mod support;
 
-use noyalib::cst::parse_document;
 use noyalib::Value;
+use noyalib::cst::parse_document;
 
 const MANIFEST: &str = "\
 # Production deployment for the api service.

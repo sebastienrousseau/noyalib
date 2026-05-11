@@ -18,7 +18,7 @@
 
 #![allow(missing_docs)]
 
-use noyalib::{from_str, Spanned, Value};
+use noyalib::{Spanned, Value, from_str};
 use serde::{Deserialize, Serialize};
 
 // ── Supported: flatten Value ─────────────────────────────────────────

@@ -14,8 +14,8 @@
 use std::collections::HashMap;
 
 use noyalib::{
-    from_str, from_str_with_config, from_value, to_string, DuplicateKeyPolicy, Mapping, MappingAny,
-    ParserConfig, Spanned, Tag, TaggedValue, Value,
+    DuplicateKeyPolicy, Mapping, MappingAny, ParserConfig, Spanned, Tag, TaggedValue, Value,
+    from_str, from_str_with_config, from_value, to_string,
 };
 use serde::{Deserialize, Serialize};
 

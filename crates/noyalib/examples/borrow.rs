@@ -14,7 +14,7 @@
 #[path = "support.rs"]
 mod support;
 
-use noyalib::{from_str, Value};
+use noyalib::{Value, from_str};
 use std::borrow::Cow;
 
 fn main() {

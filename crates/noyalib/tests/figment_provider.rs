@@ -10,8 +10,8 @@
 #![cfg(feature = "figment")]
 #![allow(missing_docs)]
 
-use figment::providers::Format;
 use figment::Figment;
+use figment::providers::Format;
 use noyalib::figment::Yaml;
 use serde::Deserialize;
 

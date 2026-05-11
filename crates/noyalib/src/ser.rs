@@ -1285,11 +1285,7 @@ fn write_flow_mapping(
 
 fn write_literal_block(output: &mut String, s: &str, indent: usize, config: &SerializerConfig) {
     let chomping = if s.ends_with('\n') {
-        if s.ends_with("\n\n") {
-            "+"
-        } else {
-            ""
-        }
+        if s.ends_with("\n\n") { "+" } else { "" }
     } else {
         "-"
     };
@@ -1306,11 +1302,7 @@ fn write_literal_block(output: &mut String, s: &str, indent: usize, config: &Ser
 
 fn write_folded_block(output: &mut String, s: &str, indent: usize, config: &SerializerConfig) {
     let chomping = if s.ends_with('\n') {
-        if s.ends_with("\n\n") {
-            "+"
-        } else {
-            ""
-        }
+        if s.ends_with("\n\n") { "+" } else { "" }
     } else {
         "-"
     };

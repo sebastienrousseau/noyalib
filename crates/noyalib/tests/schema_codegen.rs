@@ -12,7 +12,7 @@
 #![cfg(feature = "schema")]
 #![allow(missing_docs)]
 
-use noyalib::{from_str, schema_for, schema_for_yaml, JsonSchema, Value};
+use noyalib::{JsonSchema, Value, from_str, schema_for, schema_for_yaml};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, JsonSchema)]

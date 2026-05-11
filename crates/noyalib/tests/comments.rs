@@ -5,7 +5,7 @@
 
 #![allow(clippy::unwrap_used)]
 
-use noyalib::{load_comments, CommentKind};
+use noyalib::{CommentKind, load_comments};
 
 #[test]
 fn captures_full_line_comments() {

@@ -10,8 +10,8 @@ use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 
 use noyalib::{
-    check_for_tag, from_str, nobang, to_string, Mapping, MaybeTag, Number, Sequence, Tag,
-    TaggedValue, Value,
+    Mapping, MaybeTag, Number, Sequence, Tag, TaggedValue, Value, check_for_tag, from_str, nobang,
+    to_string,
 };
 
 // ============================================================================

@@ -8,7 +8,7 @@
 
 #![allow(missing_docs)]
 
-use noyalib::{from_str, Value};
+use noyalib::{Value, from_str};
 
 fn force_parse_error(source: &str) -> noyalib::Error {
     from_str::<Value>(source).unwrap_err()

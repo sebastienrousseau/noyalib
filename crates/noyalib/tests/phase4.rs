@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 // Copyright (c) 2026 Noyalib. All rights reserved.
 
-use noyalib::{from_str, to_string, to_string_with_config, SerializerConfig, Value};
+use noyalib::{SerializerConfig, Value, from_str, to_string, to_string_with_config};
 use serde::{Deserialize, Serialize};
 
 // ============================================================================

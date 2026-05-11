@@ -6,7 +6,7 @@
 
 #![allow(missing_docs)]
 
-use noyalib::{from_str, CroppedRegion, RenderOptions, Value};
+use noyalib::{CroppedRegion, RenderOptions, Value, from_str};
 
 #[test]
 fn render_default_includes_error_keyword() {
