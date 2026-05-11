@@ -7,6 +7,10 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+(Nothing yet — `[v0.0.4]` is the cut.)
+
+## [v0.0.4] — 2026-05-11
+
 ### Added — `!include` directive support (issue #10)
 
 `ParserConfig::include_resolver` + `max_include_depth`. Two
