@@ -7,7 +7,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
-(Nothing yet — `[v0.0.4]` is the cut.)
+(Targeting `[v0.0.5]` — milestone: Polish & Stabilization.
+Scope: API audit (#19), builder macros (#17), i18n hooks (#18),
+Edition 2024 + MSRV 1.85 (#15).)
 
 ## [v0.0.4] — 2026-05-11
 
