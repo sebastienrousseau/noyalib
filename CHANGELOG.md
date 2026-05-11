@@ -7,7 +7,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
-(Nothing yet — `[v0.0.3]` is the cut.)
+(Targeting `[v0.0.4]` — scope: `!include` directive + ecosystem
+integrations.)
 
 ## [v0.0.3] — 2026-05-11
 

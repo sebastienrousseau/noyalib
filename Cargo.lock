@@ -1157,7 +1157,7 @@ checksum = "2bf50223579dc7cdcfb3bfcacf7069ff68243f8c363f62ffa99cf000a6b9c451"
 
 [[package]]
 name = "noya-cli"
-version = "0.0.3"
+version = "0.0.4"
 dependencies = [
  "clap",
  "clap_complete",
@@ -1169,7 +1169,7 @@ dependencies = [
 
 [[package]]
 name = "noyalib"
-version = "0.0.3"
+version = "0.0.4"
 dependencies = [
  "ariadne",
  "criterion",
@@ -1202,7 +1202,7 @@ dependencies = [
 
 [[package]]
 name = "noyalib-lsp"
-version = "0.0.3"
+version = "0.0.4"
 dependencies = [
  "criterion",
  "noyalib",
@@ -1212,7 +1212,7 @@ dependencies = [
 
 [[package]]
 name = "noyalib-mcp"
-version = "0.0.3"
+version = "0.0.4"
 dependencies = [
  "criterion",
  "noyalib",
@@ -1222,7 +1222,7 @@ dependencies = [
 
 [[package]]
 name = "noyalib-wasm"
-version = "0.0.3"
+version = "0.0.4"
 dependencies = [
  "console_error_panic_hook",
  "noyalib",
