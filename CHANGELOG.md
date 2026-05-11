@@ -7,9 +7,94 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
-(Targeting `[v0.0.5]` — milestone: Polish & Stabilization.
-Scope: API audit (#19), builder macros (#17), i18n hooks (#18),
-Edition 2024 + MSRV 1.85 (#15).)
+(Nothing yet — `[v0.0.5]` is the cut.)
+
+## [v0.0.5] — 2026-05-11
+
+### Changed — Edition 2024 + MSRV bump to 1.85 (issue #15)
+
+All six workspace crates (`noyalib`, `noya-cli`, `noyalib-mcp`,
+`noyalib-lsp`, `noyalib-wasm`, `xtask`) move to:
+
+* `edition = "2024"`
+* `rust-version = "1.85.0"`
+
+CI's MSRV-gate job retargeted to 1.85.0 in the same commit.
+Edition-2024 idiom fixes applied to surface lints (match
+ergonomics on `&mut _` patterns, `repeat_n` replacing
+`repeat().take()`, redundant `ref`/`mut` bindings inside
+`matches!`). The `unsafe`-tightened `std::env::set_var` /
+`remove_var` are no longer called from `examples/figment.rs` —
+the env-overlay scenario was refactored to `figment::Env::raw`
+plus a synthetic `Serialized` layer.
+
+Lockfile pins for the MSRV-1.75 workarounds are dropped:
+* `indexmap 2.10` → `2.14` (latest in `>=2, <3`)
+* `rustc-hash 2.0` → `2.1.2` (latest in `>=2, <3`)
+* `hashbrown` (transitive) → 0.17
+
+### Added — Declarative `parser_config!` / `serializer_config!` macros (issue #17)
+
+```rust
+use noyalib::parser_config;
+let cfg = parser_config! {
+    max_depth: 64,
+    strict_booleans: true,
+    duplicate_key_policy: DuplicateKeyPolicy::Error,
+};
+```
+
+Pure expansion to the existing chained-setter builders — zero
+runtime overhead. Supports empty form (`parser_config! {}`
+returns `ParserConfig::new()`) and trailing comma after the
+last entry. The `serializer_config!` counterpart targets
+[`SerializerConfig`].
+
+### Added — Pluggable error-message formatters (issue #18)
+
+New `noyalib::i18n` module:
+
+* `MessageFormatter` trait — `Send + Sync` strategy for
+  rendering `Error` as a user-visible message.
+* `DefaultFormatter` — preserves the developer-facing message
+  verbatim (`Display`-equivalent).
+* `UserFormatter` — collapses noyalib's diagnostic vocabulary
+  into short plain-language sentences appropriate for
+  non-developer audiences. Includes line numbers when the source
+  location is available; strips internal terms (`!!binary`,
+  "merge key") and field names that might leak in a GUI alert.
+* `Error::render_with_formatter(&dyn MessageFormatter)` —
+  dispatch entry point. Custom localisation tables / rich
+  formatters plug in by impl-ing `MessageFormatter`.
+
+### Documentation — pre-release API stabilisation audit (issue #19)
+
+Pre-1.0 stabilisation checkpoint. The audit confirmed:
+* All public configuration types (`ParserConfig`,
+  `SerializerConfig`, `Error`, `MergeKeyPolicy`,
+  `DuplicateKeyPolicy`, `FlowStyle`, `ScalarStyle`,
+  `YamlVersion`, `RequireIndent`, `TransformReason`,
+  `SymlinkPolicy`) carry `#[non_exhaustive]` so adding a field
+  / variant in a future patch release is non-breaking.
+* All public functions ship with doc-comments + working
+  examples. Strict-doc gate (`-D rustdoc::broken_intra_doc_links
+  -D rustdoc::private_intra_doc_links -D
+  rustdoc::redundant_explicit_links`) enforces this on every
+  PR.
+* The Error enum's variant set is comprehensive and actionable —
+  `Parse`, `ParseWithLocation`, `Deserialize`,
+  `DeserializeWithLocation`, `Io`, `Custom`,
+  `RecursionLimitExceeded`, `DuplicateKey`,
+  `RepetitionLimitExceeded`, `Budget`, `UnknownAnchor`,
+  `UnknownAnchorAt`, `MissingField`, `TypeMismatch`, and family
+  cover every internal failure path.
+* No unintended public surface — every `pub` item is either
+  re-exported from the crate root or lives in a documented
+  `pub mod`. `pub(crate)` everywhere else.
+
+Stable 1.0.0 is deferred to post-production hardening (target:
+2028+). v0.0.5 is the stabilisation *checkpoint*, not the SemVer
+release.
 
 ## [v0.0.4] — 2026-05-11
 

@@ -417,6 +417,19 @@ mod base64;
 #[cfg_attr(docsrs, doc(cfg(feature = "include")))]
 pub mod include;
 
+/// Declarative `parser_config!` / `serializer_config!` builder
+/// macros. Pure expansion to the existing chained-setter
+/// builders — zero runtime overhead.
+mod macros;
+
+/// Pluggable error-message formatters: [`i18n::MessageFormatter`]
+/// trait plus [`i18n::DefaultFormatter`] (developer-facing,
+/// verbatim) and [`i18n::UserFormatter`] (user-facing,
+/// simplified language). Use
+/// [`crate::Error::render_with_formatter`] to plug in
+/// localisation tables or custom rendering.
+pub mod i18n;
+
 /// `Spanned<T>` + garde / validator → `miette::Report` bridge.
 /// Behind the `miette` Cargo feature; the actual conversion
 /// functions are gated on `miette + garde` or `miette + validator`.
