@@ -7,15 +7,15 @@
 //! preserves the noyalib-internal vocabulary (`!!binary`, "merge
 //! key", "recursion depth limit") that's useful for debugging but
 //! noisy for end-users of a config-loading binary. The
-//! [`MessageFormatter`] trait lets callers plug in their own
+//! `MessageFormatter` trait lets callers plug in their own
 //! formatting strategy: localisation tables, simplification,
 //! richer formatting, or anything else.
 //!
 //! Two implementations ship in-tree:
 //!
-//! * [`DefaultFormatter`] — preserves the standard developer-facing
+//! * `DefaultFormatter` — preserves the standard developer-facing
 //!   message verbatim. Equivalent to `format!("{err}")`.
-//! * [`UserFormatter`] — collapses noyalib's diagnostic vocabulary
+//! * `UserFormatter` — collapses noyalib's diagnostic vocabulary
 //!   into short user-friendly sentences ("The configuration file
 //!   has a syntax error on line 5.") suitable for surfacing in
 //!   GUIs and `--help`-style command output.
