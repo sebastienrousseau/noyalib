@@ -268,6 +268,11 @@ name = "validated_miette"
 path = "examples/validated_miette.rs"
 required-features = ["miette", "garde"]
 
+[[example]]
+name = "include_directive"
+path = "examples/include_directive.rs"
+required-features = ["include_fs"]
+
 [dependencies]
 serde = { version = "1.0", default-features = false, features = ["derive", "alloc"] }
 indexmap = { version = ">=2, <3", features = ["serde"] }
@@ -427,6 +432,16 @@ std = ["serde/std"]
 miette = ["dep:miette"]
 ariadne = ["dep:ariadne"]
 robotics = []
+# `!include` directive — post-parse walk that consults a
+# user-supplied `crate::include::IncludeResolver` for every
+# `Value::Tagged(!include, _)` node and substitutes the
+# resolved content in-place. Pairs with `max_include_depth`
+# for cycle bounding. Off by default so callers who never see
+# `!include` scalars pay zero compile cost.
+include = []
+# Filesystem-backed `crate::include::SafeFileResolver` (root
+# sandbox, symlink policy). Implies `include` + `std`.
+include_fs = ["include", "std"]
 garde = ["dep:garde"]
 validator = ["dep:validator"]
 wasm-opt = []

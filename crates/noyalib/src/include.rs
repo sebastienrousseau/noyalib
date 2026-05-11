@@ -7,14 +7,14 @@
 //! Two layers:
 //!
 //! - **`include` feature** (this module's free-standing types) —
-//!   defines [`IncludeResolver`], [`IncludeRequest`], and
-//!   [`InputSource`]. The resolver is a `Send + Sync` closure
+//!   defines `IncludeResolver`, `IncludeRequest`, and
+//!   `InputSource`. The resolver is a `Send + Sync` closure
 //!   stored on [`crate::ParserConfig`]; users wire it up via
 //!   [`crate::ParserConfig::include_resolver`].
 //!
-//! - **`include_fs` feature** ([`SafeFileResolver`]) — a
+//! - **`include_fs` feature** (`SafeFileResolver`) — a
 //!   filesystem-backed implementation with root-dir sandboxing,
-//!   symlink-policy enforcement ([`SymlinkPolicy`]), and
+//!   symlink-policy enforcement (`SymlinkPolicy`), and
 //!   max-depth cycle protection.
 //!
 //! Fragment anchors (`!include file.yaml#name`) resolve the named
@@ -27,7 +27,9 @@
 //! [`crate::ParserConfig::max_include_depth`] (default 24)
 //! bounds the recursion.
 
-use crate::error::{Error, Result};
+#[cfg(feature = "include_fs")]
+use crate::error::Error;
+use crate::error::Result;
 use crate::prelude::*;
 
 /// Describes one `!include` request the loader hands to the
@@ -90,13 +92,56 @@ impl InputSource {
     }
 }
 
-/// Type alias for the resolver closure stored on
-/// [`crate::ParserConfig`].
+/// Resolver closure stored on [`crate::ParserConfig`].
 ///
-/// `Arc` (not `Box`) so configs stay cheap to clone. The
-/// closure is `Send + Sync` so the resolver can be invoked
-/// from any thread of a parallel parse.
-pub type IncludeResolver = Arc<dyn Fn(IncludeRequest<'_>) -> Result<InputSource> + Send + Sync>;
+/// Wraps an `Arc<dyn Fn>` so the type is `Clone + Debug` (the
+/// underlying `dyn Fn` is not). Construct with
+/// [`IncludeResolver::new`].
+///
+/// `Arc` (not `Box`) keeps configs cheap to clone. The closure
+/// is `Send + Sync` so the resolver can be invoked from any
+/// thread of a parallel parse.
+#[derive(Clone)]
+pub struct IncludeResolver(Arc<dyn Fn(IncludeRequest<'_>) -> Result<InputSource> + Send + Sync>);
+
+impl IncludeResolver {
+    /// Wrap a closure as an [`IncludeResolver`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use noyalib::include::{IncludeRequest, IncludeResolver, InputSource};
+    /// use noyalib::Result;
+    /// let r = IncludeResolver::new(|req: IncludeRequest<'_>| -> Result<InputSource> {
+    ///     Ok(InputSource::new(req.spec, "v: 1\n"))
+    /// });
+    /// let _ = r;
+    /// ```
+    #[must_use]
+    pub fn new<F>(f: F) -> Self
+    where
+        F: Fn(IncludeRequest<'_>) -> Result<InputSource> + Send + Sync + 'static,
+    {
+        Self(Arc::new(f))
+    }
+
+    /// Invoke the wrapped closure.
+    ///
+    /// # Errors
+    ///
+    /// Surfaces whatever the underlying resolver returned.
+    pub fn resolve(&self, req: IncludeRequest<'_>) -> Result<InputSource> {
+        (self.0)(req)
+    }
+}
+
+impl core::fmt::Debug for IncludeResolver {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("IncludeResolver")
+            .field("ptr", &Arc::as_ptr(&self.0))
+            .finish()
+    }
+}
 
 /// How [`SafeFileResolver`] handles symbolic links it
 /// encounters while resolving a path.
@@ -107,22 +152,17 @@ pub type IncludeResolver = Arc<dyn Fn(IncludeRequest<'_>) -> Result<InputSource>
 /// use noyalib::include::SymlinkPolicy;
 /// assert_eq!(SymlinkPolicy::default(), SymlinkPolicy::FollowWithinRoot);
 /// ```
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 #[non_exhaustive]
 pub enum SymlinkPolicy {
     /// Follow symlinks that resolve to a path still inside the
     /// resolver's root directory. Reject anything pointing
     /// outside. Default.
+    #[default]
     FollowWithinRoot,
     /// Reject all symbolic links regardless of target. Strictest
     /// posture; appropriate for untrusted document graphs.
     Reject,
-}
-
-impl Default for SymlinkPolicy {
-    fn default() -> Self {
-        Self::FollowWithinRoot
-    }
 }
 
 /// Filesystem-backed [`IncludeResolver`] with root-dir
@@ -199,7 +239,7 @@ impl SafeFileResolver {
     #[must_use]
     pub fn into_resolver(self) -> IncludeResolver {
         let this = self.clone();
-        Arc::new(move |req: IncludeRequest<'_>| this.resolve(req))
+        IncludeResolver::new(move |req: IncludeRequest<'_>| this.resolve(req))
     }
 
     fn resolve(&self, req: IncludeRequest<'_>) -> Result<InputSource> {

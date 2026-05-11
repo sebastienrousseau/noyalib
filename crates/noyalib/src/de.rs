@@ -234,6 +234,26 @@ pub struct ParserConfig {
     #[cfg(feature = "std")]
     #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
     pub strict_properties: bool,
+    /// `!include` directive resolver. When set, the post-parse
+    /// walk substitutes every `Value::Tagged(!include, spec)`
+    /// node with the result of `resolver(IncludeRequest)`. See
+    /// [`crate::include::IncludeResolver`] for the closure
+    /// signature and [`crate::include::SafeFileResolver`] for
+    /// the bundled filesystem implementation.
+    ///
+    /// `None` (default) disables include expansion; tagged
+    /// `!include` nodes flow through unchanged.
+    #[cfg(feature = "include")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "include")))]
+    pub include_resolver: Option<crate::include::IncludeResolver>,
+    /// Maximum `!include` recursion depth. Default 24. Each
+    /// nested `!include` increments the depth counter; once the
+    /// limit is reached, the parser aborts with
+    /// `Error::RecursionLimitExceeded`. Pairs with a per-walk
+    /// visited-set to catch cycles independent of depth.
+    #[cfg(feature = "include")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "include")))]
+    pub max_include_depth: usize,
 }
 
 impl Default for ParserConfig {
@@ -266,6 +286,10 @@ impl Default for ParserConfig {
             properties: None,
             #[cfg(feature = "std")]
             strict_properties: false,
+            #[cfg(feature = "include")]
+            include_resolver: None,
+            #[cfg(feature = "include")]
+            max_include_depth: 24,
         }
     }
 }
@@ -325,6 +349,13 @@ impl ParserConfig {
             properties: None,
             #[cfg(feature = "std")]
             strict_properties: true,
+            #[cfg(feature = "include")]
+            include_resolver: None,
+            // Strict mode tightens the include recursion ceiling
+            // proportionally to its other depth caps (max_depth
+            // 128 → 64, max_alias_expansions 1024 → 100).
+            #[cfg(feature = "include")]
+            max_include_depth: 8,
         }
     }
 
@@ -388,6 +419,57 @@ impl ParserConfig {
     #[must_use]
     pub fn strict_properties(mut self, strict: bool) -> Self {
         self.strict_properties = strict;
+        self
+    }
+
+    /// Install an `!include` directive resolver.
+    ///
+    /// Each `Value::Tagged(!include, scalar_spec)` node in the
+    /// parsed tree is replaced with the resolver's output. The
+    /// resolver is consulted with an `IncludeRequest` carrying
+    /// the verbatim spec text, a stable source-id, and the
+    /// current recursion depth.
+    ///
+    /// Pair with [`Self::max_include_depth`] to bound the
+    /// recursion ceiling. Cycle detection (A includes B includes
+    /// A) runs independently using a per-walk visited set.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use noyalib::include::{IncludeRequest, IncludeResolver, InputSource};
+    /// use noyalib::{ParserConfig, Result};
+    ///
+    /// let resolver = IncludeResolver::new(|req: IncludeRequest<'_>| -> Result<InputSource> {
+    ///     // For an in-memory test, fabricate a YAML payload
+    ///     // keyed on the spec.
+    ///     Ok(InputSource::new(req.spec, format!("name: {}\n", req.spec)))
+    /// });
+    /// let cfg = ParserConfig::new().include_resolver(resolver);
+    /// # let _ = cfg;
+    /// ```
+    #[cfg(feature = "include")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "include")))]
+    #[must_use]
+    pub fn include_resolver(mut self, resolver: crate::include::IncludeResolver) -> Self {
+        self.include_resolver = Some(resolver);
+        self
+    }
+
+    /// Maximum `!include` recursion depth.
+    ///
+    /// Default 24 (8 in [`Self::strict()`]). Each nested
+    /// `!include` increments the depth; once the limit is
+    /// reached, the parser aborts with
+    /// `Error::RecursionLimitExceeded`. The cap is independent
+    /// of [`Self::max_depth`] (which bounds *YAML structural*
+    /// nesting) and of the per-walk cycle-detection set (which
+    /// catches A→B→A regardless of depth).
+    #[cfg(feature = "include")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "include")))]
+    #[must_use]
+    pub fn max_include_depth(mut self, depth: usize) -> Self {
+        self.max_include_depth = depth;
         self
     }
 
@@ -1292,7 +1374,8 @@ where
     let stream_eligible = config.merge_key_policy == MergeKeyPolicy::Auto
         && !config.ignore_binary_tag_for_string
         && config.policies.is_empty()
-        && properties_inactive(config);
+        && properties_inactive(config)
+        && includes_inactive(config);
     if stream_eligible {
         if let Some(res) = crate::streaming::from_str_streaming(s, config) {
             return res;
@@ -1314,6 +1397,7 @@ where
     // verified `TypeId::of::<T>() == TypeId::of::<Value>()`.
     if is_value_target::<T>() {
         let mut value = parser::parse_one_value(s, &parse_config)?;
+        apply_includes(&mut value, config)?;
         apply_properties(&mut value, config)?;
         for p in &config.policies {
             p.check_value(&value)?;
@@ -1332,6 +1416,7 @@ where
     #[cfg(feature = "std")]
     {
         let (mut value, span_tree) = parser::parse_one(s, &parse_config)?;
+        apply_includes(&mut value, config)?;
         apply_properties(&mut value, config)?;
         for p in &config.policies {
             p.check_value(&value)?;
@@ -1402,6 +1487,175 @@ fn apply_properties(value: &mut Value, config: &ParserConfig) -> Result<()> {
 #[cfg(not(feature = "std"))]
 #[inline]
 fn apply_properties(_value: &mut Value, _config: &ParserConfig) -> Result<()> {
+    Ok(())
+}
+
+/// Returns `true` when no `!include` resolver is installed —
+/// keeps the streaming fast-path eligible.
+#[cfg(feature = "include")]
+#[inline]
+fn includes_inactive(config: &ParserConfig) -> bool {
+    config.include_resolver.is_none()
+}
+
+#[cfg(not(feature = "include"))]
+#[inline]
+fn includes_inactive(_config: &ParserConfig) -> bool {
+    true
+}
+
+/// Walk the `Value` tree, find every `Value::Tagged(!include, _)`
+/// node, and replace it with the resolver's output. Cyclic
+/// includes are detected via a per-walk visited set; depth is
+/// bounded by `config.max_include_depth`. No-op when no resolver
+/// is installed.
+#[cfg(feature = "include")]
+fn apply_includes(value: &mut Value, config: &ParserConfig) -> Result<()> {
+    if let Some(resolver) = config.include_resolver.as_ref() {
+        let parse_config = parser::ParseConfig::from(config);
+        let mut visited: std::collections::HashSet<String> = std::collections::HashSet::new();
+        let mut next_id: usize = 1;
+        resolve_includes_recursive(
+            value,
+            resolver,
+            &parse_config,
+            config.max_include_depth,
+            0,
+            0,
+            &mut visited,
+            &mut next_id,
+        )?;
+    }
+    Ok(())
+}
+
+#[cfg(not(feature = "include"))]
+#[inline]
+fn apply_includes(_value: &mut Value, _config: &ParserConfig) -> Result<()> {
+    Ok(())
+}
+
+#[cfg(feature = "include")]
+#[allow(clippy::too_many_arguments)]
+fn resolve_includes_recursive(
+    value: &mut Value,
+    resolver: &crate::include::IncludeResolver,
+    parse_config: &parser::ParseConfig,
+    max_depth: usize,
+    depth: usize,
+    from_id: usize,
+    visited: &mut std::collections::HashSet<String>,
+    next_id: &mut usize,
+) -> Result<()> {
+    if depth > max_depth {
+        return Err(Error::RecursionLimitExceeded { depth });
+    }
+    match value {
+        Value::Tagged(boxed) => {
+            if boxed.tag().as_str() == "!include" {
+                let spec = match boxed.value().as_str() {
+                    Some(s) => s.to_string(),
+                    None => {
+                        return Err(Error::Custom(
+                            "!include directive expects a scalar string spec".into(),
+                        ));
+                    }
+                };
+                if !visited.insert(spec.clone()) {
+                    return Err(Error::Custom(format!(
+                        "!include cycle detected: `{spec}` already in resolution chain"
+                    )));
+                }
+                let (path, fragment) = crate::include::split_fragment(&spec);
+                let req = crate::include::IncludeRequest {
+                    spec: &spec,
+                    from_id,
+                    depth,
+                };
+                let source = resolver.resolve(req)?;
+                let id = *next_id;
+                *next_id += 1;
+                let mut included = parser::parse_one_value(&source.bytes, parse_config)?;
+                // Recurse into the included document's own
+                // `!include` nodes — depth + 1.
+                resolve_includes_recursive(
+                    &mut included,
+                    resolver,
+                    parse_config,
+                    max_depth,
+                    depth + 1,
+                    id,
+                    visited,
+                    next_id,
+                )?;
+                // Fragment selection: if `spec` was `foo.yaml#anchor`,
+                // narrow to the named anchor inside the included
+                // document. Fragments resolve against mapping keys
+                // (the conventional YAML "anchor-as-key" pattern);
+                // see `examples/include_directive.rs`.
+                if let Some(frag) = fragment {
+                    if let Some(map) = included.as_mapping() {
+                        match map.get(frag) {
+                            Some(v) => *value = v.clone(),
+                            None => {
+                                return Err(Error::Custom(format!(
+                                    "!include fragment `#{frag}` not found in `{path}`"
+                                )));
+                            }
+                        }
+                    } else {
+                        return Err(Error::Custom(format!(
+                            "!include fragment `#{frag}` requires a mapping-shaped \
+                             included document; `{path}` is not a mapping"
+                        )));
+                    }
+                } else {
+                    *value = included;
+                }
+                let _ = visited.remove(&spec);
+            } else {
+                resolve_includes_recursive(
+                    boxed.value_mut(),
+                    resolver,
+                    parse_config,
+                    max_depth,
+                    depth,
+                    from_id,
+                    visited,
+                    next_id,
+                )?;
+            }
+        }
+        Value::Sequence(seq) => {
+            for v in seq {
+                resolve_includes_recursive(
+                    v,
+                    resolver,
+                    parse_config,
+                    max_depth,
+                    depth,
+                    from_id,
+                    visited,
+                    next_id,
+                )?;
+            }
+        }
+        Value::Mapping(map) => {
+            for v in map.values_mut() {
+                resolve_includes_recursive(
+                    v,
+                    resolver,
+                    parse_config,
+                    max_depth,
+                    depth,
+                    from_id,
+                    visited,
+                    next_id,
+                )?;
+            }
+        }
+        Value::Null | Value::Bool(_) | Value::Number(_) | Value::String(_) => {}
+    }
     Ok(())
 }
 

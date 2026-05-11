@@ -406,8 +406,16 @@ mod anchors;
 #[cfg(feature = "ariadne")]
 #[cfg_attr(docsrs, doc(cfg(feature = "ariadne")))]
 pub mod ariadne_adapter;
+
 /// Internal RFC 4648 base64 codec for `!!binary` scalars.
 mod base64;
+/// `!include` directive — resolver types
+/// (`IncludeResolver`, `IncludeRequest`, `InputSource`,
+/// `SymlinkPolicy`, `SafeFileResolver`). Wired into
+/// `ParserConfig::include_resolver`.
+#[cfg(feature = "include")]
+#[cfg_attr(docsrs, doc(cfg(feature = "include")))]
+pub mod include;
 
 /// `Spanned<T>` + garde / validator → `miette::Report` bridge.
 /// Behind the `miette` Cargo feature; the actual conversion

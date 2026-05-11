@@ -7,8 +7,38 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
-(Targeting `[v0.0.4]` — scope: `!include` directive + ecosystem
-integrations.)
+### Added — `!include` directive support (issue #10)
+
+`ParserConfig::include_resolver` + `max_include_depth`. Two
+feature gates: `include` (resolver types only, works in
+no_std-style builds) and `include_fs` (adds the bundled
+`SafeFileResolver` with root-dir sandboxing and configurable
+symlink policy).
+
+After parse, every `Value::Tagged(!include, scalar_spec)` node
+is replaced with the resolver's output. Highlights:
+
+- **In-memory resolvers** — wrap any `Fn(IncludeRequest) ->
+  Result<InputSource>` via `IncludeResolver::new`. Useful for
+  virtual filesystems, test harnesses, network-backed fetchers.
+- **`SafeFileResolver`** — filesystem-backed resolver rooted at
+  a directory. Path traversal (`../../etc/passwd`) is caught by
+  canonicalisation + root-prefix check; symlinks are governed by
+  `SymlinkPolicy::FollowWithinRoot` (default) or
+  `SymlinkPolicy::Reject`.
+- **Fragment anchors** — `!include file.yaml#key` narrows to the
+  named top-level mapping key inside the included document.
+- **Cycle detection** — per-walk visited set rejects A→B→A
+  regardless of depth.
+- **Depth ceiling** — `max_include_depth` defaults to 24 (8 in
+  `ParserConfig::strict()`). Trips
+  `Error::RecursionLimitExceeded` on overflow.
+- **Streaming fast-path** is automatically disabled when an
+  include resolver is installed so the post-parse walk runs
+  uniformly across every typed target.
+
+11 new integration tests + a 4-scenario runnable example
+(`cargo run --example include_directive --features include_fs`).
 
 ## [v0.0.3] — 2026-05-11
 
