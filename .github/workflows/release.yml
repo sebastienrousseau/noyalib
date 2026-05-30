@@ -148,7 +148,7 @@ jobs:
       # Verifiers run `cosign verify-blob` with the issuer / identity
       # constraints documented in SECURITY.md.
       - name: Install cosign
-        uses: sigstore/cosign-installer@f713795cb21599bc4e5c4b58cbad1da852d7eeb9 # v3
+        uses: sigstore/cosign-installer@398d4b0eeef1380460a10c8013a76f728fb906ac # v3
       - name: Sign release artefacts (keyless)
         env:
           COSIGN_YES: "true"
