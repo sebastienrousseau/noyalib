@@ -369,8 +369,8 @@ serde_bytes = "0.11"
 criterion = "0.5"
 proptest = "1.11"
 serde_yaml_ng = "0.10"
-yaml-rust2 = "0.9"
-rust-yaml = "0.0.5"
+yaml-rust2 = "0.11"
+rust-yaml = "1.0.1"
 # Bench-only competitor surface. None of these ship transitively
 # in any release artefact — they are dev-deps used exclusively by
 # `crates/noyalib/benches/comparison.rs` for head-to-head Rust
