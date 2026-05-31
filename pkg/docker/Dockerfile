@@ -26,7 +26,7 @@
 # when the edition bumped to 2024). Digest pinned for OpenSSF
 # Scorecard Pinned-Dependencies; Dependabot's `docker` ecosystem
 # bumps it on its weekly cadence.
-FROM rust:1.85-bookworm@sha256:e51d0265072d2d9d5d320f6a44dde6b9ef13653b035098febd68cce8fa7c0bc4 AS build
+FROM rust:1.96-bookworm@sha256:13c186980fa33cc12759b429662a1322939dbe697484b7c33b47dd2698d28460 AS build
 
 WORKDIR /src
 COPY . .

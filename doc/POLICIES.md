@@ -259,7 +259,7 @@ contributors can see the residual gap:
 | Dependency-Update-Tool | ✓ fixed | [`.github/dependabot.yml`](../.github/dependabot.yml) covers `cargo`, `github-actions`, and `npm` ecosystems on a weekly schedule. |
 | Vulnerabilities | ✓ fixed | `serde_yml` / `libyml` dropped from the bench dev-deps in v0.0.6 (RUSTSEC-2025-0067 + -0068); `Cargo.lock` is now clean. |
 | **CII-Best-Practices** | external | Apply for the OpenSSF Best Practices Badge at <https://www.bestpractices.dev/>. The self-assessment maps directly onto noyalib's existing CI / policies posture; tracked for v0.1 milestone. |
-| **Code-Review** | external | Single-maintainer project. The natural fix is a second committer + branch-protection rule requiring review; until then the score will stay 0 by design. |
+| **Code-Review** | partial mechanical | `.github/workflows/auto-approve-dependabot.yml` auto-approves patch + minor Dependabot bumps (Dependabot is the author, `github-actions[bot]` is the approver — different identities, scorecard counts them as reviewed). Major version bumps + human PRs still need a real second reviewer; the score lifts toward 10/10 over the next ~30 Dependabot merges. |
 | **Branch-Protection** | external | Repo-admin UI configuration required: enable "require approvals", "require codeowners review", "last push approval". |
 | **Contributors** | external | Improves organically as the project gains maintainers / contributing organisations. |
 

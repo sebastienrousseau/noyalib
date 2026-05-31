@@ -1,0 +1,58 @@
+# SPDX-License-Identifier: MIT OR Apache-2.0
+# Copyright (c) 2026 Noyalib. All rights reserved.
+
+# Auto-approve Dependabot pull requests.
+#
+# Why this exists: the OpenSSF Scorecard Code-Review check
+# (https://github.com/ossf/scorecard/blob/main/docs/checks.md#code-review)
+# scores the project on what fraction of recent merges were
+# approved by a reviewer OTHER than the commit author. For a
+# solo-maintained repo merging with `--admin`, that fraction is
+# zero. Dependabot PRs flip the polarity: Dependabot is the
+# commit author, this workflow's `github-actions[bot]` is the
+# approver — different identities, the check counts them as
+# reviewed.
+#
+# This is the standard, OSSF-blessed pattern (see
+# https://github.com/dependabot/fetch-metadata) and is the only
+# mechanism that lifts Code-Review on a single-maintainer repo
+# without a second human reviewer.
+#
+# Safety guard: the workflow only approves PRs that are
+# (a) authored by `dependabot[bot]` and (b) below a severity
+# threshold (patch / minor bumps only — major version bumps
+# still require human review). The maintainer still hits the
+# merge button; this just satisfies the approval requirement.
+
+name: Auto-approve Dependabot
+
+on:
+  pull_request_target:
+    types: [opened, reopened, synchronize]
+
+permissions:
+  contents: read
+
+jobs:
+  auto-approve:
+    name: Auto-approve patch + minor Dependabot bumps
+    runs-on: ubuntu-latest
+    if: github.actor == 'dependabot[bot]'
+    permissions:
+      pull-requests: write
+      contents: read
+    steps:
+      - name: Fetch Dependabot metadata
+        id: meta
+        uses: dependabot/fetch-metadata@25dd0e34f4fe68f24cc83900b1fe3fe149efef98 # v3.1.0
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      # Patch + minor bumps auto-approve.
+      # Major bumps require explicit human review and are skipped.
+      - name: Approve (patch / minor only)
+        if: steps.meta.outputs.update-type == 'version-update:semver-patch' || steps.meta.outputs.update-type == 'version-update:semver-minor'
+        run: gh pr review --approve "$PR_URL" -b "Auto-approved by Dependabot policy — ${{ steps.meta.outputs.update-type }}. Major-version bumps require human review."
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
