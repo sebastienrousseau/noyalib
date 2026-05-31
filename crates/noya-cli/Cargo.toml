@@ -44,8 +44,8 @@ miette  = { version = "7", optional = true, features = ["fancy"] }
 
 [build-dependencies]
 clap          = { version = "4.5", features = ["derive"] }
-clap_complete = "4.5"
-clap_mangen   = "0.2"
+clap_complete = "4.6"
+clap_mangen   = "0.3"
 
 [dev-dependencies]
 criterion = "0.5"

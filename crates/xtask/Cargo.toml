@@ -18,5 +18,5 @@ path = "src/main.rs"
 # for path-only intra-workspace deps.
 noya-cli      = { path = "../noya-cli", version = "0.0.6", default-features = false, features = ["noyafmt"] }
 clap          = { version = "4.5", features = ["derive"] }
-clap_complete = "4.5"
-clap_mangen   = "0.2"
+clap_complete = "4.6"
+clap_mangen   = "0.3"
