@@ -261,7 +261,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
-      - uses: fsfe/reuse-action@bb774aa972c2a89ff34781233d275075cbddf542 # v6
+      - uses: fsfe/reuse-action@676e2d560c9a403aa252096d99fcab3e1132b0f5 # v6
 
   msrv-1-85-core:
     name: MSRV (1.85.0) core build
