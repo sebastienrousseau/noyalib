@@ -41,9 +41,6 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 // Copyright (c) 2026 Noyalib. All rights reserved.
 
-use serde::de::DeserializeOwned;
-use serde::{Deserializer, Serialize, Serializer};
-
 /// Serialize an optional value as a singleton map.
 ///
 /// For `Some(value)`, this serializes the value using singleton map format.
@@ -72,15 +69,17 @@ use serde::{Deserializer, Serialize, Serializer};
 /// ```
 pub fn serialize<T, S>(value: &Option<T>, serializer: S) -> Result<S::Ok, S::Error>
 where
-    T: Serialize,
-    S: Serializer,
+    T: serde_core::Serialize,
+    S: serde_core::Serializer,
 {
+    use serde_core::Serialize;
+
     match value {
         Some(inner) => {
-            use serde::ser::SerializeMap;
+            use serde_core::ser::SerializeMap;
 
             // Serialize to Value to inspect structure
-            let yaml_value = crate::to_value(inner).map_err(serde::ser::Error::custom)?;
+            let yaml_value = crate::to_value(inner).map_err(serde_core::ser::Error::custom)?;
 
             match yaml_value {
                 crate::Value::Mapping(map) => {
@@ -131,16 +130,16 @@ where
 /// ```
 pub fn deserialize<'de, T, D>(deserializer: D) -> Result<Option<T>, D::Error>
 where
-    T: DeserializeOwned + 'static,
-    D: Deserializer<'de>,
+    T: serde_core::de::DeserializeOwned + 'static,
+    D: serde_core::Deserializer<'de>,
 {
-    use serde::Deserialize;
+    use serde_core::Deserialize;
     // Deserialize as Option<Value> first
     let opt_value: Option<crate::Value> = Option::deserialize(deserializer)?;
 
     match opt_value {
         Some(value) => {
-            let inner: T = crate::from_value(&value).map_err(serde::de::Error::custom)?;
+            let inner: T = crate::from_value(&value).map_err(serde_core::de::Error::custom)?;
             Ok(Some(inner))
         }
         None => Ok(None),

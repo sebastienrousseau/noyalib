@@ -9,8 +9,6 @@
 use crate::prelude::*;
 use core::ops::Deref;
 
-use serde::{Deserialize, Serialize};
-
 use crate::error::Location;
 
 /// Sentinel struct name used by the deserializer to detect `Spanned<T>`.
@@ -192,20 +190,20 @@ impl<T> From<T> for Spanned<T> {
     }
 }
 
-impl<T: Serialize> Serialize for Spanned<T> {
+impl<T: serde_core::Serialize> serde_core::Serialize for Spanned<T> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
-        S: serde::Serializer,
+        S: serde_core::Serializer,
     {
         // Transparent: just serialize the inner value
         self.value.serialize(serializer)
     }
 }
 
-impl<'de, T: Deserialize<'de>> Deserialize<'de> for Spanned<T> {
+impl<'de, T: serde_core::Deserialize<'de>> serde_core::Deserialize<'de> for Spanned<T> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
-        D: serde::Deserializer<'de>,
+        D: serde_core::Deserializer<'de>,
     {
         deserializer.deserialize_struct(
             SPANNED_TYPE_NAME,
@@ -217,7 +215,7 @@ impl<'de, T: Deserialize<'de>> Deserialize<'de> for Spanned<T> {
 
 struct SpannedVisitor<T>(core::marker::PhantomData<T>);
 
-impl<'de, T: Deserialize<'de>> serde::de::Visitor<'de> for SpannedVisitor<T> {
+impl<'de, T: serde_core::Deserialize<'de>> serde_core::de::Visitor<'de> for SpannedVisitor<T> {
     type Value = Spanned<T>;
 
     fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -226,7 +224,7 @@ impl<'de, T: Deserialize<'de>> serde::de::Visitor<'de> for SpannedVisitor<T> {
 
     fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
     where
-        A: serde::de::MapAccess<'de>,
+        A: serde_core::de::MapAccess<'de>,
     {
         let mut start_line: Option<usize> = None;
         let mut start_column: Option<usize> = None;
@@ -257,16 +255,16 @@ impl<'de, T: Deserialize<'de>> serde::de::Visitor<'de> for SpannedVisitor<T> {
                 SPANNED_FIELD_VALUE => value = Some(map.next_value()?),
                 _ => {
                     // Unknown field — skip
-                    let _ = map.next_value::<serde::de::IgnoredAny>()?;
+                    let _ = map.next_value::<serde_core::de::IgnoredAny>()?;
                 }
             }
         }
 
         let value = value.ok_or_else(|| {
             if saw_any_key {
-                serde::de::Error::missing_field(SPANNED_FIELD_VALUE)
+                serde_core::de::Error::missing_field(SPANNED_FIELD_VALUE)
             } else {
-                serde::de::Error::custom(
+                serde_core::de::Error::custom(
                     "Spanned<T> can not be deserialized via `#[serde(flatten)]` — \
                      serde's FlatStructAccess filters residue entries by the field \
                      name list, and Spanned uses internal magic field names that \

@@ -96,8 +96,6 @@
 // Copyright (c) 2026 Noyalib. All rights reserved.
 
 use crate::prelude::*;
-use serde::de::DeserializeOwned;
-use serde::{Deserializer, Serialize, Serializer};
 
 /// Serialize a value as a singleton map with custom key transformation.
 ///
@@ -130,14 +128,15 @@ use serde::{Deserializer, Serialize, Serializer};
 /// ```
 pub fn serialize_with<T, S, F>(value: &T, serializer: S, transform: F) -> Result<S::Ok, S::Error>
 where
-    T: Serialize,
-    S: Serializer,
+    T: serde_core::Serialize,
+    S: serde_core::Serializer,
     F: Fn(&str) -> String,
 {
-    use serde::ser::SerializeMap;
+    use serde_core::Serialize;
+    use serde_core::ser::SerializeMap;
 
     // Serialize to Value to inspect structure
-    let yaml_value = crate::to_value(value).map_err(serde::ser::Error::custom)?;
+    let yaml_value = crate::to_value(value).map_err(serde_core::ser::Error::custom)?;
 
     match yaml_value {
         crate::Value::Mapping(map) => {
@@ -193,11 +192,11 @@ where
 /// ```
 pub fn deserialize_with<'de, T, D, F>(deserializer: D, transform: F) -> Result<T, D::Error>
 where
-    T: DeserializeOwned + 'static,
-    D: Deserializer<'de>,
+    T: serde_core::de::DeserializeOwned + 'static,
+    D: serde_core::Deserializer<'de>,
     F: Fn(&str) -> String,
 {
-    use serde::Deserialize;
+    use serde_core::Deserialize;
 
     // Deserialize as Value first
     let value = crate::Value::deserialize(deserializer)?;
@@ -205,7 +204,7 @@ where
     // Transform the keys in the value
     let transformed = transform_value_keys(value, &transform);
 
-    crate::from_value(&transformed).map_err(serde::de::Error::custom)
+    crate::from_value(&transformed).map_err(serde_core::de::Error::custom)
 }
 
 /// Transform all string keys in a Value according to the provided function.

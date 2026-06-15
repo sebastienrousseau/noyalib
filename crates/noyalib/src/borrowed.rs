@@ -25,7 +25,6 @@ use crate::prelude::*;
 use core::hash::{Hash, Hasher};
 use indexmap::IndexMap;
 use rustc_hash::{FxBuildHasher, FxHashMap};
-use serde::Serialize;
 
 /// Why a YAML scalar could not be borrowed directly from the input
 /// buffer and had to be materialised into an owned `String`.
@@ -376,10 +375,10 @@ impl Hash for BorrowedValue<'_> {
     }
 }
 
-impl Serialize for BorrowedValue<'_> {
+impl serde_core::Serialize for BorrowedValue<'_> {
     fn serialize<S>(&self, serializer: S) -> core::result::Result<S::Ok, S::Error>
     where
-        S: serde::Serializer,
+        S: serde_core::Serializer,
     {
         match self {
             Self::Null => serializer.serialize_none(),
@@ -391,7 +390,7 @@ impl Serialize for BorrowedValue<'_> {
             Self::String(s) => serializer.serialize_str(s),
             Self::Sequence(seq) => seq.serialize(serializer),
             Self::Mapping(map) => {
-                use serde::ser::SerializeMap;
+                use serde_core::ser::SerializeMap;
                 let mut m = serializer.serialize_map(Some(map.len()))?;
                 for (k, v) in map {
                     m.serialize_entry(k.as_ref(), v)?;

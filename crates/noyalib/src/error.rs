@@ -1306,13 +1306,13 @@ fn colorize_render(plain: &str) -> String {
     out
 }
 
-impl serde::ser::Error for Error {
+impl serde_core::ser::Error for Error {
     fn custom<T: fmt::Display>(msg: T) -> Self {
         Error::Custom(msg.to_string())
     }
 }
 
-impl serde::de::Error for Error {
+impl serde_core::de::Error for Error {
     fn custom<T: fmt::Display>(msg: T) -> Self {
         Error::Custom(msg.to_string())
     }

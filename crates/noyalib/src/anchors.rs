@@ -19,7 +19,6 @@ use std::rc::{Rc, Weak as RcWeak};
 use std::sync::Weak as ArcWeak;
 
 use rustc_hash::FxHashMap;
-use serde::{Deserialize, Serialize};
 
 /// Thread-local identity tracking for automatic anchor/alias emission.
 ///
@@ -183,10 +182,10 @@ impl<T> RcAnchor<T> {
     }
 }
 
-impl<T: Serialize> Serialize for RcAnchor<T> {
+impl<T: serde_core::Serialize> serde_core::Serialize for RcAnchor<T> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
-        S: serde::Serializer,
+        S: serde_core::Serializer,
     {
         #[cfg(feature = "std")]
         {
@@ -211,10 +210,10 @@ impl<T: Serialize> Serialize for RcAnchor<T> {
     }
 }
 
-impl<'de, T: Deserialize<'de>> Deserialize<'de> for RcAnchor<T> {
+impl<'de, T: serde_core::Deserialize<'de>> serde_core::Deserialize<'de> for RcAnchor<T> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
-        D: serde::Deserializer<'de>,
+        D: serde_core::Deserializer<'de>,
     {
         T::deserialize(deserializer).map(|v| RcAnchor(Rc::new(v)))
     }
@@ -276,10 +275,10 @@ impl<T> ArcAnchor<T> {
     }
 }
 
-impl<T: Serialize> Serialize for ArcAnchor<T> {
+impl<T: serde_core::Serialize> serde_core::Serialize for ArcAnchor<T> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
-        S: serde::Serializer,
+        S: serde_core::Serializer,
     {
         #[cfg(feature = "std")]
         {
@@ -304,10 +303,10 @@ impl<T: Serialize> Serialize for ArcAnchor<T> {
     }
 }
 
-impl<'de, T: Deserialize<'de>> Deserialize<'de> for ArcAnchor<T> {
+impl<'de, T: serde_core::Deserialize<'de>> serde_core::Deserialize<'de> for ArcAnchor<T> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
-        D: serde::Deserializer<'de>,
+        D: serde_core::Deserializer<'de>,
     {
         T::deserialize(deserializer).map(|v| ArcAnchor(Arc::new(v)))
     }
@@ -385,10 +384,10 @@ impl<T> From<RcWeak<T>> for RcWeakAnchor<T> {
     }
 }
 
-impl<T: Serialize> Serialize for RcWeakAnchor<T> {
+impl<T: serde_core::Serialize> serde_core::Serialize for RcWeakAnchor<T> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
-        S: serde::Serializer,
+        S: serde_core::Serializer,
     {
         match self.0.upgrade() {
             Some(v) => {
@@ -411,14 +410,14 @@ impl<T: Serialize> Serialize for RcWeakAnchor<T> {
     }
 }
 
-impl<'de, T> Deserialize<'de> for RcWeakAnchor<T> {
+impl<'de, T> serde_core::Deserialize<'de> for RcWeakAnchor<T> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
-        D: serde::Deserializer<'de>,
+        D: serde_core::Deserializer<'de>,
     {
         // Always deserialize as a dangling weak — there's no registry to look up.
         // We consume the value to avoid errors.
-        let _ = serde::de::IgnoredAny::deserialize(deserializer)?;
+        let _ = serde_core::de::IgnoredAny::deserialize(deserializer)?;
         Ok(RcWeakAnchor(RcWeak::new()))
     }
 }
@@ -495,10 +494,10 @@ impl<T> From<ArcWeak<T>> for ArcWeakAnchor<T> {
     }
 }
 
-impl<T: Serialize> Serialize for ArcWeakAnchor<T> {
+impl<T: serde_core::Serialize> serde_core::Serialize for ArcWeakAnchor<T> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
-        S: serde::Serializer,
+        S: serde_core::Serializer,
     {
         match self.0.upgrade() {
             Some(v) => {
@@ -518,12 +517,12 @@ impl<T: Serialize> Serialize for ArcWeakAnchor<T> {
     }
 }
 
-impl<'de, T> Deserialize<'de> for ArcWeakAnchor<T> {
+impl<'de, T> serde_core::Deserialize<'de> for ArcWeakAnchor<T> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
-        D: serde::Deserializer<'de>,
+        D: serde_core::Deserializer<'de>,
     {
-        let _ = serde::de::IgnoredAny::deserialize(deserializer)?;
+        let _ = serde_core::de::IgnoredAny::deserialize(deserializer)?;
         Ok(ArcWeakAnchor(ArcWeak::new()))
     }
 }
@@ -914,10 +913,10 @@ impl<T> RcRecursive<T> {
 }
 
 #[cfg(feature = "std")]
-impl<T: Serialize> Serialize for RcRecursive<T> {
+impl<T: serde_core::Serialize> serde_core::Serialize for RcRecursive<T> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
-        S: serde::Serializer,
+        S: serde_core::Serializer,
     {
         match &*self.borrow() {
             Some(v) => v.serialize(serializer),
@@ -927,10 +926,10 @@ impl<T: Serialize> Serialize for RcRecursive<T> {
 }
 
 #[cfg(feature = "std")]
-impl<'de, T: Deserialize<'de>> Deserialize<'de> for RcRecursive<T> {
+impl<'de, T: serde_core::Deserialize<'de>> serde_core::Deserialize<'de> for RcRecursive<T> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
-        D: serde::Deserializer<'de>,
+        D: serde_core::Deserializer<'de>,
     {
         T::deserialize(deserializer).map(RcRecursive::new)
     }
@@ -1070,10 +1069,10 @@ impl<T> ArcRecursive<T> {
 }
 
 #[cfg(feature = "std")]
-impl<T: Serialize> Serialize for ArcRecursive<T> {
+impl<T: serde_core::Serialize> serde_core::Serialize for ArcRecursive<T> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
-        S: serde::Serializer,
+        S: serde_core::Serializer,
     {
         match &*self.lock() {
             Some(v) => v.serialize(serializer),
@@ -1083,10 +1082,10 @@ impl<T: Serialize> Serialize for ArcRecursive<T> {
 }
 
 #[cfg(feature = "std")]
-impl<'de, T: Deserialize<'de>> Deserialize<'de> for ArcRecursive<T> {
+impl<'de, T: serde_core::Deserialize<'de>> serde_core::Deserialize<'de> for ArcRecursive<T> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
-        D: serde::Deserializer<'de>,
+        D: serde_core::Deserializer<'de>,
     {
         T::deserialize(deserializer).map(ArcRecursive::new)
     }

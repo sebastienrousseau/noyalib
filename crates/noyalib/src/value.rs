@@ -12,7 +12,6 @@ use core::str::FromStr;
 use indexmap::IndexMap;
 use indexmap::map::{IntoIter, Iter, IterMut, Keys, Values, ValuesMut};
 use rustc_hash::FxBuildHasher;
-use serde::{Deserialize, Serialize};
 
 /// Fast IndexMap using FxBuildHasher.
 type FxIndexMap<K, V> = IndexMap<K, V, FxBuildHasher>;
@@ -798,12 +797,12 @@ impl fmt::Display for Mapping {
     }
 }
 
-impl Serialize for Mapping {
+impl serde_core::Serialize for Mapping {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
-        S: serde::Serializer,
+        S: serde_core::Serializer,
     {
-        use serde::ser::SerializeMap;
+        use serde_core::ser::SerializeMap;
         let mut map = serializer.serialize_map(Some(self.len()))?;
         for (k, v) in self {
             map.serialize_entry(k, v)?;
@@ -812,16 +811,14 @@ impl Serialize for Mapping {
     }
 }
 
-impl<'de> Deserialize<'de> for Mapping {
+impl<'de> serde_core::Deserialize<'de> for Mapping {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
-        D: serde::Deserializer<'de>,
+        D: serde_core::Deserializer<'de>,
     {
-        use serde::de::{MapAccess, Visitor};
-
         struct MappingVisitor;
 
-        impl<'de> Visitor<'de> for MappingVisitor {
+        impl<'de> serde_core::de::Visitor<'de> for MappingVisitor {
             type Value = Mapping;
 
             fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -830,7 +827,7 @@ impl<'de> Deserialize<'de> for Mapping {
 
             fn visit_map<A>(self, mut map: A) -> Result<Mapping, A::Error>
             where
-                A: MapAccess<'de>,
+                A: serde_core::de::MapAccess<'de>,
             {
                 let mut mapping = Mapping::with_capacity(map.size_hint().unwrap_or(0));
                 while let Some((key, value)) = map.next_entry::<String, Value>()? {
@@ -1280,12 +1277,12 @@ impl fmt::Display for MappingAny {
     }
 }
 
-impl Serialize for MappingAny {
+impl serde_core::Serialize for MappingAny {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
-        S: serde::Serializer,
+        S: serde_core::Serializer,
     {
-        use serde::ser::SerializeMap;
+        use serde_core::ser::SerializeMap;
         let mut map = serializer.serialize_map(Some(self.len()))?;
         for (k, v) in self {
             map.serialize_entry(k, v)?;
@@ -1294,16 +1291,14 @@ impl Serialize for MappingAny {
     }
 }
 
-impl<'de> Deserialize<'de> for MappingAny {
+impl<'de> serde_core::Deserialize<'de> for MappingAny {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
-        D: serde::Deserializer<'de>,
+        D: serde_core::Deserializer<'de>,
     {
-        use serde::de::{MapAccess, Visitor};
-
         struct MappingAnyVisitor;
 
-        impl<'de> Visitor<'de> for MappingAnyVisitor {
+        impl<'de> serde_core::de::Visitor<'de> for MappingAnyVisitor {
             type Value = MappingAny;
 
             fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -1312,7 +1307,7 @@ impl<'de> Deserialize<'de> for MappingAny {
 
             fn visit_map<A>(self, mut map: A) -> Result<MappingAny, A::Error>
             where
-                A: MapAccess<'de>,
+                A: serde_core::de::MapAccess<'de>,
             {
                 let mut mapping = MappingAny::with_capacity(map.size_hint().unwrap_or(0));
                 while let Some((key, value)) = map.next_entry::<Value, Value>()? {
@@ -2121,28 +2116,26 @@ impl fmt::Display for TaggedValue {
     }
 }
 
-impl Serialize for TaggedValue {
+impl serde_core::Serialize for TaggedValue {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
-        S: serde::Serializer,
+        S: serde_core::Serializer,
     {
-        use serde::ser::SerializeMap;
+        use serde_core::ser::SerializeMap;
         let mut map = serializer.serialize_map(Some(1))?;
         map.serialize_entry(self.tag.as_str(), self.value())?;
         map.end()
     }
 }
 
-impl<'de> Deserialize<'de> for TaggedValue {
+impl<'de> serde_core::Deserialize<'de> for TaggedValue {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
-        D: serde::Deserializer<'de>,
+        D: serde_core::Deserializer<'de>,
     {
-        use serde::de::{MapAccess, Visitor};
-
         struct TaggedValueVisitor;
 
-        impl<'de> Visitor<'de> for TaggedValueVisitor {
+        impl<'de> serde_core::de::Visitor<'de> for TaggedValueVisitor {
             type Value = TaggedValue;
 
             fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -2151,11 +2144,11 @@ impl<'de> Deserialize<'de> for TaggedValue {
 
             fn visit_map<A>(self, mut map: A) -> Result<TaggedValue, A::Error>
             where
-                A: MapAccess<'de>,
+                A: serde_core::de::MapAccess<'de>,
             {
                 let (tag, value): (String, Value) = map
                     .next_entry()?
-                    .ok_or_else(|| serde::de::Error::custom("expected a single-entry map"))?;
+                    .ok_or_else(|| serde_core::de::Error::custom("expected a single-entry map"))?;
                 Ok(TaggedValue::new(Tag::new(tag), value))
             }
         }
@@ -2164,12 +2157,12 @@ impl<'de> Deserialize<'de> for TaggedValue {
     }
 }
 
-impl<'de> serde::Deserializer<'de> for &'de TaggedValue {
+impl<'de> serde_core::Deserializer<'de> for &'de TaggedValue {
     type Error = crate::Error;
 
     fn deserialize_any<V>(self, visitor: V) -> crate::Result<V::Value>
     where
-        V: serde::de::Visitor<'de>,
+        V: serde_core::de::Visitor<'de>,
     {
         visitor.visit_map(TaggedValueMapAccess {
             tag: Some(self.tag.as_str()),
@@ -2184,12 +2177,12 @@ impl<'de> serde::Deserializer<'de> for &'de TaggedValue {
         visitor: V,
     ) -> crate::Result<V::Value>
     where
-        V: serde::de::Visitor<'de>,
+        V: serde_core::de::Visitor<'de>,
     {
         visitor.visit_enum(TaggedValueEnumAccess { tagged: self })
     }
 
-    serde::forward_to_deserialize_any! {
+    serde_core::forward_to_deserialize_any! {
         bool i8 i16 i32 i64 u8 u16 u32 u64 f32 f64 char str string bytes
         byte_buf option unit unit_struct newtype_struct seq tuple
         tuple_struct map struct identifier ignored_any
@@ -2201,16 +2194,16 @@ struct TaggedValueMapAccess<'de> {
     value: Option<&'de Value>,
 }
 
-impl<'de> serde::de::MapAccess<'de> for TaggedValueMapAccess<'de> {
+impl<'de> serde_core::de::MapAccess<'de> for TaggedValueMapAccess<'de> {
     type Error = crate::Error;
 
     fn next_key_seed<K>(&mut self, seed: K) -> crate::Result<Option<K::Value>>
     where
-        K: serde::de::DeserializeSeed<'de>,
+        K: serde_core::de::DeserializeSeed<'de>,
     {
         match self.tag.take() {
             Some(tag) => seed
-                .deserialize(serde::de::value::BorrowedStrDeserializer::new(tag))
+                .deserialize(serde_core::de::value::BorrowedStrDeserializer::new(tag))
                 .map(Some),
             None => Ok(None),
         }
@@ -2218,11 +2211,11 @@ impl<'de> serde::de::MapAccess<'de> for TaggedValueMapAccess<'de> {
 
     fn next_value_seed<V>(&mut self, seed: V) -> crate::Result<V::Value>
     where
-        V: serde::de::DeserializeSeed<'de>,
+        V: serde_core::de::DeserializeSeed<'de>,
     {
         match self.value.take() {
             Some(value) => seed.deserialize(value),
-            None => Err(serde::de::Error::custom("value is missing")),
+            None => Err(serde_core::de::Error::custom("value is missing")),
         }
     }
 }
@@ -2258,18 +2251,18 @@ impl<'de> TagPreservingMapAccess<'de> {
     }
 }
 
-impl<'de> serde::de::MapAccess<'de> for TagPreservingMapAccess<'de> {
+impl<'de> serde_core::de::MapAccess<'de> for TagPreservingMapAccess<'de> {
     type Error = crate::Error;
 
     fn next_key_seed<K>(&mut self, seed: K) -> crate::Result<Option<K::Value>>
     where
-        K: serde::de::DeserializeSeed<'de>,
+        K: serde_core::de::DeserializeSeed<'de>,
     {
         match self.state {
             TagPreservingState::EmitTagKey { tag, value } => {
                 self.state = TagPreservingState::EmitTagValue { tag, value };
                 seed.deserialize(
-                    serde::de::value::BorrowedStrDeserializer::<crate::Error>::new(
+                    serde_core::de::value::BorrowedStrDeserializer::<crate::Error>::new(
                         TAGGED_VALUE_FIELD_TAG,
                     ),
                 )
@@ -2278,7 +2271,7 @@ impl<'de> serde::de::MapAccess<'de> for TagPreservingMapAccess<'de> {
             TagPreservingState::EmitValueKey { value } => {
                 self.state = TagPreservingState::EmitValueValue { value };
                 seed.deserialize(
-                    serde::de::value::BorrowedStrDeserializer::<crate::Error>::new(
+                    serde_core::de::value::BorrowedStrDeserializer::<crate::Error>::new(
                         TAGGED_VALUE_FIELD_VALUE,
                     ),
                 )
@@ -2289,7 +2282,7 @@ impl<'de> serde::de::MapAccess<'de> for TagPreservingMapAccess<'de> {
             // is a serde misuse — surface as a custom error rather
             // than panicking.
             TagPreservingState::EmitTagValue { .. } | TagPreservingState::EmitValueValue { .. } => {
-                Err(serde::de::Error::custom(
+                Err(serde_core::de::Error::custom(
                     "TagPreservingMapAccess: next_key called before next_value",
                 ))
             }
@@ -2298,13 +2291,13 @@ impl<'de> serde::de::MapAccess<'de> for TagPreservingMapAccess<'de> {
 
     fn next_value_seed<V>(&mut self, seed: V) -> crate::Result<V::Value>
     where
-        V: serde::de::DeserializeSeed<'de>,
+        V: serde_core::de::DeserializeSeed<'de>,
     {
         match self.state {
             TagPreservingState::EmitTagValue { tag, value } => {
                 self.state = TagPreservingState::EmitValueKey { value };
                 seed.deserialize(
-                    serde::de::value::BorrowedStrDeserializer::<crate::Error>::new(tag),
+                    serde_core::de::value::BorrowedStrDeserializer::<crate::Error>::new(tag),
                 )
             }
             TagPreservingState::EmitValueValue { value } => {
@@ -2322,7 +2315,7 @@ impl<'de> serde::de::MapAccess<'de> for TagPreservingMapAccess<'de> {
                     value, None, false,
                 ))
             }
-            _ => Err(serde::de::Error::custom(
+            _ => Err(serde_core::de::Error::custom(
                 "TagPreservingMapAccess: next_value called out of order",
             )),
         }
@@ -2333,19 +2326,17 @@ struct TaggedValueEnumAccess<'de> {
     tagged: &'de TaggedValue,
 }
 
-impl<'de> serde::de::EnumAccess<'de> for TaggedValueEnumAccess<'de> {
+impl<'de> serde_core::de::EnumAccess<'de> for TaggedValueEnumAccess<'de> {
     type Error = crate::Error;
     type Variant = TaggedValueVariantAccess<'de>;
 
     fn variant_seed<V>(self, seed: V) -> crate::Result<(V::Value, Self::Variant)>
     where
-        V: serde::de::DeserializeSeed<'de>,
+        V: serde_core::de::DeserializeSeed<'de>,
     {
-        let variant = seed.deserialize(
-            serde::de::value::BorrowedStrDeserializer::<crate::Error>::new(
-                self.tagged.tag.nobang(),
-            ),
-        )?;
+        let variant = seed.deserialize(serde_core::de::value::BorrowedStrDeserializer::<
+            crate::Error,
+        >::new(self.tagged.tag.nobang()))?;
         Ok((
             variant,
             TaggedValueVariantAccess {
@@ -2359,7 +2350,7 @@ struct TaggedValueVariantAccess<'de> {
     value: &'de Value,
 }
 
-impl<'de> serde::de::VariantAccess<'de> for TaggedValueVariantAccess<'de> {
+impl<'de> serde_core::de::VariantAccess<'de> for TaggedValueVariantAccess<'de> {
     type Error = crate::Error;
 
     fn unit_variant(self) -> crate::Result<()> {
@@ -2368,16 +2359,16 @@ impl<'de> serde::de::VariantAccess<'de> for TaggedValueVariantAccess<'de> {
 
     fn newtype_variant_seed<T>(self, seed: T) -> crate::Result<T::Value>
     where
-        T: serde::de::DeserializeSeed<'de>,
+        T: serde_core::de::DeserializeSeed<'de>,
     {
         seed.deserialize(self.value)
     }
 
     fn tuple_variant<V>(self, _len: usize, visitor: V) -> crate::Result<V::Value>
     where
-        V: serde::de::Visitor<'de>,
+        V: serde_core::de::Visitor<'de>,
     {
-        serde::Deserializer::deserialize_seq(self.value, visitor)
+        serde_core::Deserializer::deserialize_seq(self.value, visitor)
     }
 
     fn struct_variant<V>(
@@ -2386,9 +2377,9 @@ impl<'de> serde::de::VariantAccess<'de> for TaggedValueVariantAccess<'de> {
         visitor: V,
     ) -> crate::Result<V::Value>
     where
-        V: serde::de::Visitor<'de>,
+        V: serde_core::de::Visitor<'de>,
     {
-        serde::Deserializer::deserialize_map(self.value, visitor)
+        serde_core::Deserializer::deserialize_map(self.value, visitor)
     }
 }
 
@@ -4087,16 +4078,14 @@ fn value_type_name(value: &Value) -> &'static str {
     }
 }
 
-impl<'de> Deserialize<'de> for Value {
+impl<'de> serde_core::Deserialize<'de> for Value {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
-        D: serde::Deserializer<'de>,
+        D: serde_core::Deserializer<'de>,
     {
-        use serde::de::{MapAccess, SeqAccess, Visitor};
-
         struct ValueVisitor;
 
-        impl<'de> Visitor<'de> for ValueVisitor {
+        impl<'de> serde_core::de::Visitor<'de> for ValueVisitor {
             type Value = Value;
 
             fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -4137,7 +4126,7 @@ impl<'de> Deserialize<'de> for Value {
 
             fn visit_seq<A>(self, mut seq: A) -> Result<Value, A::Error>
             where
-                A: SeqAccess<'de>,
+                A: serde_core::de::SeqAccess<'de>,
             {
                 // Pre-size from the SeqAccess size_hint when
                 // available — saves up to ~11 reallocations on a
@@ -4156,7 +4145,7 @@ impl<'de> Deserialize<'de> for Value {
 
             fn visit_map<A>(self, mut map: A) -> Result<Value, A::Error>
             where
-                A: MapAccess<'de>,
+                A: serde_core::de::MapAccess<'de>,
             {
                 // Tag-preserving fast path: noyalib's own
                 // [`crate::de::Deserializer::deserialize_any`]
@@ -4178,12 +4167,12 @@ impl<'de> Deserialize<'de> for Value {
                     if k == TAGGED_VALUE_FIELD_TAG {
                         let tag_str: String = map.next_value()?;
                         let second_key: String = map.next_key()?.ok_or_else(|| {
-                            <A::Error as serde::de::Error>::custom(
+                            <A::Error as serde_core::de::Error>::custom(
                                 "tag-preserving map missing $__noyalib_value entry",
                             )
                         })?;
                         if second_key != TAGGED_VALUE_FIELD_VALUE {
-                            return Err(<A::Error as serde::de::Error>::custom(format!(
+                            return Err(<A::Error as serde_core::de::Error>::custom(format!(
                                 "tag-preserving map: expected `{}`, got `{}`",
                                 TAGGED_VALUE_FIELD_VALUE, second_key
                             )));
@@ -4219,10 +4208,10 @@ impl<'de> Deserialize<'de> for Value {
     }
 }
 
-impl Serialize for Value {
+impl serde_core::Serialize for Value {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
-        S: serde::Serializer,
+        S: serde_core::Serializer,
     {
         match self {
             Value::Null => serializer.serialize_none(),
@@ -4232,7 +4221,7 @@ impl Serialize for Value {
             Value::String(s) => serializer.serialize_str(s),
             Value::Sequence(s) => s.serialize(serializer),
             Value::Mapping(m) => {
-                use serde::ser::SerializeMap;
+                use serde_core::ser::SerializeMap;
                 let mut map = serializer.serialize_map(Some(m.len()))?;
                 for (k, v) in m {
                     map.serialize_entry(k, v)?;
@@ -4241,7 +4230,7 @@ impl Serialize for Value {
             }
             Value::Tagged(tagged) => {
                 // Serialize as a single-entry map with tag as key
-                use serde::ser::SerializeMap;
+                use serde_core::ser::SerializeMap;
                 let mut map = serializer.serialize_map(Some(1))?;
                 map.serialize_entry(tagged.tag().as_str(), tagged.value())?;
                 map.end()
@@ -4254,7 +4243,7 @@ impl Serialize for Value {
 // Deserializer implementation for &Value
 // ============================================================================
 
-impl<'de> serde::de::IntoDeserializer<'de, crate::Error> for &'de Value {
+impl<'de> serde_core::de::IntoDeserializer<'de, crate::Error> for &'de Value {
     type Deserializer = Self;
 
     fn into_deserializer(self) -> Self::Deserializer {
@@ -4266,12 +4255,12 @@ struct ValueSeqAccess<'de> {
     iter: core::slice::Iter<'de, Value>,
 }
 
-impl<'de> serde::de::SeqAccess<'de> for ValueSeqAccess<'de> {
+impl<'de> serde_core::de::SeqAccess<'de> for ValueSeqAccess<'de> {
     type Error = crate::Error;
 
     fn next_element_seed<T>(&mut self, seed: T) -> crate::Result<Option<T::Value>>
     where
-        T: serde::de::DeserializeSeed<'de>,
+        T: serde_core::de::DeserializeSeed<'de>,
     {
         match self.iter.next() {
             Some(value) => seed.deserialize(value).map(Some),
@@ -4285,17 +4274,17 @@ struct ValueMapAccess<'de> {
     value: Option<&'de Value>,
 }
 
-impl<'de> serde::de::MapAccess<'de> for ValueMapAccess<'de> {
+impl<'de> serde_core::de::MapAccess<'de> for ValueMapAccess<'de> {
     type Error = crate::Error;
 
     fn next_key_seed<K>(&mut self, seed: K) -> crate::Result<Option<K::Value>>
     where
-        K: serde::de::DeserializeSeed<'de>,
+        K: serde_core::de::DeserializeSeed<'de>,
     {
         match self.iter.next() {
             Some((key, value)) => {
                 self.value = Some(value);
-                seed.deserialize(serde::de::value::BorrowedStrDeserializer::new(key))
+                seed.deserialize(serde_core::de::value::BorrowedStrDeserializer::new(key))
                     .map(Some)
             }
             None => Ok(None),
@@ -4304,21 +4293,21 @@ impl<'de> serde::de::MapAccess<'de> for ValueMapAccess<'de> {
 
     fn next_value_seed<V>(&mut self, seed: V) -> crate::Result<V::Value>
     where
-        V: serde::de::DeserializeSeed<'de>,
+        V: serde_core::de::DeserializeSeed<'de>,
     {
         match self.value.take() {
             Some(value) => seed.deserialize(value),
-            None => Err(serde::de::Error::custom("value is missing")),
+            None => Err(serde_core::de::Error::custom("value is missing")),
         }
     }
 }
 
-impl<'de> serde::Deserializer<'de> for &'de Value {
+impl<'de> serde_core::Deserializer<'de> for &'de Value {
     type Error = crate::Error;
 
     fn deserialize_any<V>(self, visitor: V) -> crate::Result<V::Value>
     where
-        V: serde::de::Visitor<'de>,
+        V: serde_core::de::Visitor<'de>,
     {
         match self {
             Value::Null => visitor.visit_unit(),
@@ -4333,7 +4322,7 @@ impl<'de> serde::Deserializer<'de> for &'de Value {
             }),
             Value::Tagged(tagged) => {
                 let tagged_ref: &'de TaggedValue = tagged;
-                serde::Deserializer::deserialize_any(tagged_ref, visitor)
+                serde_core::Deserializer::deserialize_any(tagged_ref, visitor)
             }
         }
     }
@@ -4345,39 +4334,39 @@ impl<'de> serde::Deserializer<'de> for &'de Value {
         visitor: V,
     ) -> crate::Result<V::Value>
     where
-        V: serde::de::Visitor<'de>,
+        V: serde_core::de::Visitor<'de>,
     {
         match self {
             Value::Tagged(tagged) => {
                 let tagged_ref: &'de TaggedValue = tagged;
-                serde::Deserializer::deserialize_enum(tagged_ref, name, variants, visitor)
+                serde_core::Deserializer::deserialize_enum(tagged_ref, name, variants, visitor)
             }
             Value::String(s) => visitor
-                .visit_enum(serde::de::value::BorrowedStrDeserializer::<crate::Error>::new(s)),
-            _ => serde::Deserializer::deserialize_any(self, visitor),
+                .visit_enum(serde_core::de::value::BorrowedStrDeserializer::<crate::Error>::new(s)),
+            _ => serde_core::Deserializer::deserialize_any(self, visitor),
         }
     }
 
     fn deserialize_seq<V>(self, visitor: V) -> crate::Result<V::Value>
     where
-        V: serde::de::Visitor<'de>,
+        V: serde_core::de::Visitor<'de>,
     {
         match self {
             Value::Sequence(seq) => visitor.visit_seq(ValueSeqAccess { iter: seq.iter() }),
-            _ => serde::Deserializer::deserialize_any(self, visitor),
+            _ => serde_core::Deserializer::deserialize_any(self, visitor),
         }
     }
 
     fn deserialize_map<V>(self, visitor: V) -> crate::Result<V::Value>
     where
-        V: serde::de::Visitor<'de>,
+        V: serde_core::de::Visitor<'de>,
     {
         match self {
             Value::Mapping(map) => visitor.visit_map(ValueMapAccess {
                 iter: map.iter(),
                 value: None,
             }),
-            _ => serde::Deserializer::deserialize_any(self, visitor),
+            _ => serde_core::Deserializer::deserialize_any(self, visitor),
         }
     }
 
@@ -4388,15 +4377,15 @@ impl<'de> serde::Deserializer<'de> for &'de Value {
         visitor: V,
     ) -> crate::Result<V::Value>
     where
-        V: serde::de::Visitor<'de>,
+        V: serde_core::de::Visitor<'de>,
     {
         if name == crate::spanned::SPANNED_TYPE_NAME {
             return visitor.visit_map(crate::de::SpannedMapAccess::new(self, None));
         }
-        serde::Deserializer::deserialize_map(self, visitor)
+        serde_core::Deserializer::deserialize_map(self, visitor)
     }
 
-    serde::forward_to_deserialize_any! {
+    serde_core::forward_to_deserialize_any! {
         bool i8 i16 i32 i64 u8 u16 u32 u64 f32 f64 char str string bytes
         byte_buf option unit unit_struct newtype_struct tuple
         tuple_struct identifier ignored_any

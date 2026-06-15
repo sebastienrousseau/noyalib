@@ -49,7 +49,6 @@
 
 use bytes::BytesMut;
 use core::marker::PhantomData;
-use serde::de::DeserializeOwned;
 use tokio::io::{AsyncRead, AsyncReadExt};
 use tokio_util::codec::Decoder;
 
@@ -74,7 +73,7 @@ where
     // `from_str_with_config` — async I/O cannot generally hand
     // out a borrowed `&[u8]` that outlives the await point, so
     // dropping the bound here would only paper over the issue.
-    T: DeserializeOwned + 'static,
+    T: serde_core::de::DeserializeOwned + 'static,
 {
     from_async_reader_with_config(reader, &ParserConfig::default()).await
 }
@@ -100,7 +99,7 @@ where
     // `from_str_with_config` — async I/O cannot generally hand
     // out a borrowed `&[u8]` that outlives the await point, so
     // dropping the bound here would only paper over the issue.
-    T: DeserializeOwned + 'static,
+    T: serde_core::de::DeserializeOwned + 'static,
 {
     let buf = drain_bounded(reader, config.max_document_length).await?;
     let buf = strip_bom_owned(buf);
@@ -125,7 +124,7 @@ where
     // `from_str_with_config` — async I/O cannot generally hand
     // out a borrowed `&[u8]` that outlives the await point, so
     // dropping the bound here would only paper over the issue.
-    T: DeserializeOwned + 'static,
+    T: serde_core::de::DeserializeOwned + 'static,
 {
     from_async_reader_multi_with_config(reader, &ParserConfig::default()).await
 }
@@ -156,7 +155,7 @@ where
     // `from_str_with_config` — async I/O cannot generally hand
     // out a borrowed `&[u8]` that outlives the await point, so
     // dropping the bound here would only paper over the issue.
-    T: DeserializeOwned + 'static,
+    T: serde_core::de::DeserializeOwned + 'static,
 {
     let buf = drain_bounded(reader, config.max_document_length).await?;
     let buf = strip_bom_owned(buf);
@@ -274,7 +273,7 @@ where
     // `from_str_with_config` — async I/O cannot generally hand
     // out a borrowed `&[u8]` that outlives the await point, so
     // dropping the bound here would only paper over the issue.
-    T: DeserializeOwned + 'static,
+    T: serde_core::de::DeserializeOwned + 'static,
 {
     type Item = T;
     type Error = Error;

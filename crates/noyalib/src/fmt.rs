@@ -23,8 +23,6 @@
 use crate::prelude::*;
 use core::ops::Deref;
 
-use serde::{Deserialize, Serialize};
-
 // Magic names used as newtype struct sentinels.
 // The serializer intercepts these to apply formatting hints.
 pub(crate) const MAGIC_FLOW_SEQ: &str = "__noya_flow_seq";
@@ -84,19 +82,19 @@ impl<T> FlowSeq<T> {
     }
 }
 
-impl<T: Serialize> Serialize for FlowSeq<T> {
+impl<T: serde_core::Serialize> serde_core::Serialize for FlowSeq<T> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
-        S: serde::Serializer,
+        S: serde_core::Serializer,
     {
         serializer.serialize_newtype_struct(MAGIC_FLOW_SEQ, &self.0)
     }
 }
 
-impl<'de, T: Deserialize<'de>> Deserialize<'de> for FlowSeq<T> {
+impl<'de, T: serde_core::Deserialize<'de>> serde_core::Deserialize<'de> for FlowSeq<T> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
-        D: serde::Deserializer<'de>,
+        D: serde_core::Deserializer<'de>,
     {
         T::deserialize(deserializer).map(FlowSeq)
     }
@@ -156,19 +154,19 @@ impl<T> FlowMap<T> {
     }
 }
 
-impl<T: Serialize> Serialize for FlowMap<T> {
+impl<T: serde_core::Serialize> serde_core::Serialize for FlowMap<T> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
-        S: serde::Serializer,
+        S: serde_core::Serializer,
     {
         serializer.serialize_newtype_struct(MAGIC_FLOW_MAP, &self.0)
     }
 }
 
-impl<'de, T: Deserialize<'de>> Deserialize<'de> for FlowMap<T> {
+impl<'de, T: serde_core::Deserialize<'de>> serde_core::Deserialize<'de> for FlowMap<T> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
-        D: serde::Deserializer<'de>,
+        D: serde_core::Deserializer<'de>,
     {
         T::deserialize(deserializer).map(FlowMap)
     }
@@ -233,10 +231,10 @@ impl<'a> LitStr<'a> {
     }
 }
 
-impl Serialize for LitStr<'_> {
+impl serde_core::Serialize for LitStr<'_> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
-        S: serde::Serializer,
+        S: serde_core::Serializer,
     {
         serializer.serialize_newtype_struct(MAGIC_LIT_STR, self.0)
     }
@@ -294,19 +292,19 @@ impl LitString {
     }
 }
 
-impl Serialize for LitString {
+impl serde_core::Serialize for LitString {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
-        S: serde::Serializer,
+        S: serde_core::Serializer,
     {
         serializer.serialize_newtype_struct(MAGIC_LIT_STR, &self.0)
     }
 }
 
-impl<'de> Deserialize<'de> for LitString {
+impl<'de> serde_core::Deserialize<'de> for LitString {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
-        D: serde::Deserializer<'de>,
+        D: serde_core::Deserializer<'de>,
     {
         String::deserialize(deserializer).map(LitString)
     }
@@ -369,10 +367,10 @@ impl<'a> FoldStr<'a> {
     }
 }
 
-impl Serialize for FoldStr<'_> {
+impl serde_core::Serialize for FoldStr<'_> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
-        S: serde::Serializer,
+        S: serde_core::Serializer,
     {
         serializer.serialize_newtype_struct(MAGIC_FOLD_STR, self.0)
     }
@@ -429,19 +427,19 @@ impl FoldString {
     }
 }
 
-impl Serialize for FoldString {
+impl serde_core::Serialize for FoldString {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
-        S: serde::Serializer,
+        S: serde_core::Serializer,
     {
         serializer.serialize_newtype_struct(MAGIC_FOLD_STR, &self.0)
     }
 }
 
-impl<'de> Deserialize<'de> for FoldString {
+impl<'de> serde_core::Deserialize<'de> for FoldString {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
-        D: serde::Deserializer<'de>,
+        D: serde_core::Deserializer<'de>,
     {
         String::deserialize(deserializer).map(FoldString)
     }
@@ -520,19 +518,19 @@ impl<T> Deref for Commented<T> {
     }
 }
 
-impl<T: Serialize> Serialize for Commented<T> {
+impl<T: serde_core::Serialize> serde_core::Serialize for Commented<T> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
-        S: serde::Serializer,
+        S: serde_core::Serializer,
     {
-        use serde::ser::SerializeTuple;
+        use serde_core::ser::SerializeTuple;
         // Serialize as a tuple (value, comment) wrapped in the magic newtype
         struct Inner<'a, T>(&'a T, &'a str);
 
-        impl<T: Serialize> Serialize for Inner<'_, T> {
+        impl<T: serde_core::Serialize> serde_core::Serialize for Inner<'_, T> {
             fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
             where
-                S: serde::Serializer,
+                S: serde_core::Serializer,
             {
                 let mut tup = serializer.serialize_tuple(2)?;
                 tup.serialize_element(self.0)?;
@@ -545,10 +543,10 @@ impl<T: Serialize> Serialize for Commented<T> {
     }
 }
 
-impl<'de, T: Deserialize<'de>> Deserialize<'de> for Commented<T> {
+impl<'de, T: serde_core::Deserialize<'de>> serde_core::Deserialize<'de> for Commented<T> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
-        D: serde::Deserializer<'de>,
+        D: serde_core::Deserializer<'de>,
     {
         // Note: comments are serialization-only metadata and cannot survive a
         // roundtrip through YAML. Deserializing always produces an empty comment.
@@ -604,19 +602,19 @@ impl<T> SpaceAfter<T> {
     }
 }
 
-impl<T: Serialize> Serialize for SpaceAfter<T> {
+impl<T: serde_core::Serialize> serde_core::Serialize for SpaceAfter<T> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
-        S: serde::Serializer,
+        S: serde_core::Serializer,
     {
         serializer.serialize_newtype_struct(MAGIC_SPACE_AFTER, &self.0)
     }
 }
 
-impl<'de, T: Deserialize<'de>> Deserialize<'de> for SpaceAfter<T> {
+impl<'de, T: serde_core::Deserialize<'de>> serde_core::Deserialize<'de> for SpaceAfter<T> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
-        D: serde::Deserializer<'de>,
+        D: serde_core::Deserializer<'de>,
     {
         T::deserialize(deserializer).map(SpaceAfter)
     }
