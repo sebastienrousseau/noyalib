@@ -9,9 +9,8 @@
 //!
 //! ```rust
 //! use noyalib::fmt::{FlowSeq, LitString};
-//! use serde::{Deserialize, Serialize};
 //!
-//! #[derive(Serialize, Deserialize)]
+//! #[derive(serde::Serialize, serde::Deserialize)]
 //! struct Config {
 //!     tags: FlowSeq<Vec<String>>,
 //!     script: LitString,
@@ -43,8 +42,7 @@ pub(crate) const MAGIC_ANCHOR_REF: &str = "__noya_anchor_ref";
 ///
 /// ```
 /// use noyalib::{to_string, FlowSeq};
-/// use serde::Serialize;
-/// #[derive(Serialize)]
+/// #[derive(serde::Serialize)]
 /// struct Doc { v: FlowSeq<Vec<i32>> }
 /// let yaml = to_string(&Doc { v: FlowSeq(vec![1, 2]) }).unwrap();
 /// assert!(yaml.contains("["));
@@ -110,9 +108,8 @@ impl<'de, T: Deserialize<'de>> Deserialize<'de> for FlowSeq<T> {
 ///
 /// ```
 /// use noyalib::{to_string, FlowMap};
-/// use serde::Serialize;
 /// use std::collections::BTreeMap;
-/// #[derive(Serialize)]
+/// #[derive(serde::Serialize)]
 /// struct Doc { m: FlowMap<BTreeMap<String, i32>> }
 /// let mut m = BTreeMap::new();
 /// let _ = m.insert("a".into(), 1);
@@ -462,8 +459,7 @@ impl<'de> Deserialize<'de> for FoldString {
 ///
 /// ```
 /// use noyalib::{to_string, Commented};
-/// use serde::Serialize;
-/// #[derive(Serialize)]
+/// #[derive(serde::Serialize)]
 /// struct Doc { v: Commented<i32> }
 /// let yaml = to_string(&Doc { v: Commented::new(42, "meaning") }).unwrap();
 /// assert!(yaml.contains("# meaning"));

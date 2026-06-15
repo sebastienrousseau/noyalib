@@ -47,9 +47,8 @@ pub(crate) const SPANNED_FIELDS: &[&str] = &[
 ///
 /// ```rust
 /// use noyalib::Spanned;
-/// use serde::{Deserialize, Serialize};
 ///
-/// #[derive(Serialize, Deserialize, Debug)]
+/// #[derive(serde::Serialize, serde::Deserialize, Debug)]
 /// struct Config {
 ///     port: Spanned<u16>,
 /// }
@@ -71,7 +70,7 @@ pub(crate) const SPANNED_FIELDS: &[&str] = &[
 ///
 /// ```rust,ignore
 /// // Works.
-/// #[derive(Deserialize)]
+/// #[derive(serde::Deserialize)]
 /// struct Config {
 ///     name: String,
 ///     #[serde(flatten)]
@@ -79,7 +78,7 @@ pub(crate) const SPANNED_FIELDS: &[&str] = &[
 /// }
 ///
 /// // Errors with a clear message at deserialize time.
-/// #[derive(Deserialize)]
+/// #[derive(serde::Deserialize)]
 /// struct AlsoConfig {
 ///     name: String,
 ///     #[serde(flatten)]

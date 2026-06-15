@@ -19,10 +19,9 @@
 //!
 //! ```
 //! use noyalib::{from_str_with_config, ParserConfig, TagRegistry};
-//! use serde::Deserialize;
 //! use std::sync::Arc;
 //!
-//! #[derive(Debug, Deserialize, PartialEq)]
+//! #[derive(Debug, serde::Deserialize, PartialEq)]
 //! struct Celsius(f64);
 //!
 //! let registry = Arc::new(TagRegistry::new().with("!Celsius"));

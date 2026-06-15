@@ -1071,9 +1071,8 @@ where
 ///
 /// ```
 /// use noyalib::from_str_borrowing;
-/// use serde::Deserialize;
 ///
-/// #[derive(Deserialize)]
+/// #[derive(serde::Deserialize)]
 /// struct Person<'a> {
 ///     name: &'a str,
 ///     role: &'a str,
@@ -1206,9 +1205,7 @@ where
 /// # Examples
 ///
 /// ```
-/// use serde::Deserialize;
-///
-/// #[derive(Debug, Deserialize)]
+/// #[derive(Debug, serde::Deserialize)]
 /// struct Config {
 ///     port: u16,
 /// }
@@ -1270,9 +1267,7 @@ where
 /// # Examples
 ///
 /// ```
-/// use serde::Deserialize;
-///
-/// #[derive(Debug, Deserialize)]
+/// #[derive(Debug, serde::Deserialize)]
 /// struct Config {
 ///     port: u16,
 /// }
@@ -1306,9 +1301,7 @@ where
 /// # Examples
 ///
 /// ```
-/// use serde::Deserialize;
-///
-/// #[derive(Debug, Deserialize)]
+/// #[derive(Debug, serde::Deserialize)]
 /// struct Config {
 ///     port: u16,
 /// }

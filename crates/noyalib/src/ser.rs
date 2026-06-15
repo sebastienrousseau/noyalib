@@ -259,9 +259,7 @@ impl SerializerConfig {
 /// # Examples
 ///
 /// ```rust
-/// use serde::Serialize;
-///
-/// #[derive(Serialize)]
+/// #[derive(serde::Serialize)]
 /// struct Config {
 ///     name: String,
 ///     port: u16,
@@ -298,9 +296,8 @@ where
 ///
 /// ```rust
 /// use noyalib::SerializerConfig;
-/// use serde::Serialize;
 ///
-/// #[derive(Serialize)]
+/// #[derive(serde::Serialize)]
 /// struct Config {
 ///     name: String,
 ///     port: u16,

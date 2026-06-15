@@ -357,10 +357,9 @@ fn find_doc_boundary(bytes: &[u8]) -> Option<usize> {
 mod tests {
     use super::*;
     use bytes::BytesMut;
-    use serde::Deserialize;
     use tokio::io::BufReader;
 
-    #[derive(Debug, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Deserialize, PartialEq)]
     struct Pkg {
         name: String,
         version: String,

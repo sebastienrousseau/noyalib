@@ -18,7 +18,7 @@
 
 use core::fmt;
 
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 
 /// A float that rejects values outside f64's precise representation range.
 ///
@@ -39,7 +39,7 @@ use serde::{Deserialize, Serialize};
 /// let result: Result<StrictFloat, _> = noyalib::from_str(".inf");
 /// assert!(result.is_err());
 /// ```
-#[derive(Debug, Clone, Copy, PartialEq, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, serde::Serialize)]
 #[serde(transparent)]
 pub struct StrictFloat(f64);
 
@@ -119,7 +119,7 @@ impl StrictFloat {
 /// let r: Radians = noyalib::from_str("180.0").unwrap();
 /// assert!((r.0 - std::f64::consts::PI).abs() < 1e-10);
 /// ```
-#[derive(Debug, Clone, Copy, PartialEq, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, serde::Serialize)]
 #[serde(transparent)]
 pub struct Radians(pub f64);
 
@@ -146,7 +146,7 @@ impl<'de> Deserialize<'de> for Radians {
 /// let d: Degrees = noyalib::from_str("90.0").unwrap();
 /// assert!((d.0 - 90.0).abs() < 1e-10);
 /// ```
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, serde::Serialize, serde::Deserialize)]
 #[serde(transparent)]
 pub struct Degrees(pub f64);
 
