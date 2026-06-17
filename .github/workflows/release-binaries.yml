@@ -333,8 +333,11 @@ jobs:
             mkdir -p "$d"
             cp "${SRC}/noyafmt.exe" "${SRC}/noyavalidate.exe" "$d/"
           done
+          # crates/noya-cli already symlinks the root LICENSE files, so a
+          # plain cp there is a no-op that errors with "same file" under
+          # set -e — make it non-fatal.
           for d in crates/noya-cli target/wix; do
-            cp LICENSE-MIT LICENSE-APACHE "$d/"
+            cp -f LICENSE-MIT LICENSE-APACHE "$d/" 2>/dev/null || true
           done
           cargo wix --target ${{ matrix.target }} \
               --package noya-cli \
