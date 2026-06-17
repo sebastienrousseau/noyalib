@@ -534,10 +534,19 @@ jobs:
           targets:    ${{ env.TARGET }}
           components: llvm-tools-preview
 
+      # Configure RUSTFLAGS exactly as build-release does — via
+      # $GITHUB_ENV in a bash run block so $HOME expands to the real
+      # path. A step-level `env:` value leaves $HOME literal, which
+      # remaps nothing and yields a different (non-matching) binary.
+      - name: Configure reproducible build env
+        shell: bash
+        run: |
+          {
+            echo "RUSTFLAGS=--remap-path-prefix=$HOME=~ --remap-path-prefix=${{ github.workspace }}=/build"
+            echo "NOYA_GEN_ASSETS=1"
+          } >> "$GITHUB_ENV"
+
       - name: Rebuild on a clean runner
-        env:
-          RUSTFLAGS: '--remap-path-prefix=$HOME=~ --remap-path-prefix=${{ github.workspace }}=/build'
-          NOYA_GEN_ASSETS: '1'
         shell: bash
         run: |
           cargo build --release --locked --target ${{ env.TARGET }} \
