@@ -349,12 +349,22 @@ jobs:
         run: |
           set -euo pipefail
           cd "${{ github.workspace }}"
+          # macOS ships `shasum` but not `sha256sum`; the Windows Git
+          # bash ships `sha256sum`/`sha512sum` (coreutils) but not
+          # `shasum`. Pick whichever exists.
+          checksum() {
+            if command -v shasum >/dev/null 2>&1; then
+              shasum -a "$1" "$2"
+            else
+              "sha${1}sum" "$2"
+            fi
+          }
           for f in ${ARCHIVE_BASE}.tar.gz ${ARCHIVE_BASE}.zip \
                    ${ARCHIVE_BASE}.deb ${ARCHIVE_BASE}.rpm \
                    ${ARCHIVE_BASE}.msi ${ARCHIVE_BASE}-debuginfo.tar.gz; do
             [[ -f "$f" ]] || continue
-            shasum -a 256 "$f" > "${f}.sha256"
-            shasum -a 512 "$f" > "${f}.sha512"
+            checksum 256 "$f" > "${f}.sha256"
+            checksum 512 "$f" > "${f}.sha512"
           done
 
       - name: Attest build provenance (SLSA L3)
