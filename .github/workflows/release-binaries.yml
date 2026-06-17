@@ -530,8 +530,9 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@3c5f7ea28cd621ae0bf5283f0e981fb97b8a7af9 # master
         with:
-          toolchain: stable
-          targets:   ${{ env.TARGET }}
+          toolchain:  stable
+          targets:    ${{ env.TARGET }}
+          components: llvm-tools-preview
 
       - name: Rebuild on a clean runner
         env:
@@ -542,6 +543,23 @@ jobs:
           cargo build --release --locked --target ${{ env.TARGET }} \
               --manifest-path crates/noya-cli/Cargo.toml \
               --bin noyafmt --bin noyavalidate
+
+      - name: Strip to match the release archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          # build-release strips the gnu binaries (debug-symbol split)
+          # before archiving, so the reproducibility comparison must
+          # strip identically or it compares stripped vs unstripped.
+          SYSROOT=$(rustc --print sysroot)
+          HOST_TUPLE=$(rustc --print host-tuple)
+          OBJCOPY="$SYSROOT/lib/rustlib/$HOST_TUPLE/bin/llvm-objcopy"
+          for bin in noyafmt noyavalidate; do
+            BIN="target/${TARGET}/release/${bin}"
+            "$OBJCOPY" --only-keep-debug "${BIN}" "${BIN}.debug"
+            "$OBJCOPY" --strip-debug --strip-unneeded "${BIN}"
+            "$OBJCOPY" --add-gnu-debuglink="${BIN}.debug" "${BIN}"
+          done
 
       - name: Compute local SHA256
         id: local
