@@ -408,11 +408,21 @@ jobs:
         run: |
           set -euo pipefail
           cd "${{ github.workspace }}"
-          gh release upload "${{ inputs.tag }}" \
-            ${ARCHIVE_BASE}.tar.gz* ${ARCHIVE_BASE}.zip* \
-            ${ARCHIVE_BASE}.deb*    ${ARCHIVE_BASE}.rpm* \
-            ${ARCHIVE_BASE}.msi*    ${ARCHIVE_BASE}-debuginfo.tar.gz* \
-            --clobber 2>/dev/null || true
+          # nullglob: most targets have no .deb/.rpm/.msi, so without it
+          # the unmatched patterns reach `gh` as literal filenames and
+          # fail the whole upload. The old `2>/dev/null || true` then hid
+          # that, so only the single-glob universal upload ever landed.
+          shopt -s nullglob
+          files=( ${ARCHIVE_BASE}.tar.gz* ${ARCHIVE_BASE}.zip* \
+                  ${ARCHIVE_BASE}.deb* ${ARCHIVE_BASE}.rpm* \
+                  ${ARCHIVE_BASE}.msi* ${ARCHIVE_BASE}-debuginfo.tar.gz* )
+          for attempt in 1 2 3; do
+            if gh release upload "${{ inputs.tag }}" "${files[@]}" --clobber; then
+              break
+            fi
+            [ "$attempt" = 3 ] && { echo "::error::release upload failed after 3 attempts"; exit 1; }
+            echo "upload attempt ${attempt} failed; retrying" && sleep $((attempt * 15))
+          done
 
       - name: Upload artefact (always; dry-run consumes it)
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
