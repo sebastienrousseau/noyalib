@@ -317,28 +317,25 @@ jobs:
         run: |
           set -euo pipefail
           cargo install cargo-wix --locked --version 0.3.9
-          # Render WiX source with the resolved version number, then
-          # invoke cargo-wix using the rendered file.
+          # Render the WiX source: substitute the version and strip the
+          # <Icon>/ARPPRODUCTICON lines. The referenced
+          # pkg/windows/wix/noyalib.ico is not in-tree (the .msi has
+          # never built), so drop the cosmetic ARP icon rather than fail
+          # `light` with LGHT0103. cargo-wix runs `light` from the repo
+          # root, so all other Source paths resolve from there.
           mkdir -p target/wix
-          sed "s/__VERSION__/${VERSION}/g" pkg/windows/wix/noyalib.wxs \
-              > target/wix/noyalib.wxs
-          # The .wxs harvests `target\release\*.exe` and bare `LICENSE-*`
-          # relative to cargo-wix's working dir (which is not the repo
-          # root), and a targeted --no-build build leaves binaries under
-          # target/<target>/release/. Stage both at every plausible
-          # cwd-relative location so `light` resolves them regardless;
-          # `--nocapture` surfaces the real WiX path on any LGHT0103.
-          SRC="target/${{ matrix.target }}/release"
-          for d in target/release crates/noya-cli/target/release target/wix/target/release; do
-            mkdir -p "$d"
-            cp "${SRC}/noyafmt.exe" "${SRC}/noyavalidate.exe" "$d/"
-          done
-          # crates/noya-cli already symlinks the root LICENSE files, so a
-          # plain cp there is a no-op that errors with "same file" under
-          # set -e — make it non-fatal.
-          for d in crates/noya-cli target/wix; do
-            cp -f LICENSE-MIT LICENSE-APACHE "$d/" 2>/dev/null || true
-          done
+          sed -e "s/__VERSION__/${VERSION}/g" \
+              -e '/<Icon /d' \
+              -e '/ARPPRODUCTICON/d' \
+              pkg/windows/wix/noyalib.wxs > target/wix/noyalib.wxs
+          # The .wxs harvests target\release\*.exe, but a targeted
+          # --no-build build leaves the binaries under
+          # target/<target>/release/. Stage them at the root-relative
+          # path the harvest expects (LICENSE-* already live at root).
+          mkdir -p target/release
+          cp "target/${{ matrix.target }}/release/noyafmt.exe" \
+             "target/${{ matrix.target }}/release/noyavalidate.exe" \
+             target/release/
           cargo wix --target ${{ matrix.target }} \
               --package noya-cli \
               --no-build \
