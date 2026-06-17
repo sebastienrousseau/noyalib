@@ -277,10 +277,35 @@ jobs:
         run: |
           set -euo pipefail
           cargo install cargo-generate-rpm --locked --version 0.16.0
-          # cargo-generate-rpm's `--package` is the package *directory*
-          # (it opens `<value>/Cargo.toml`), not a workspace member
-          # name. Point it at crates/noya-cli or it looks for
-          # `noya-cli/Cargo.toml` at the repo root and fails.
+          # Stage the (already stripped) binaries where the rpm asset
+          # spec references them. A targeted build leaves them under
+          # target/<target>/release/.
+          mkdir -p target/release
+          cp "target/${{ matrix.target }}/release/noyafmt" \
+             "target/${{ matrix.target }}/release/noyavalidate" \
+             target/release/
+          # cargo-generate-rpm requires a [package.metadata.generate-rpm]
+          # table. The released v0.0.8 tag predates it, so inject one at
+          # build time if the checked-out manifest lacks it (idempotent
+          # once the source carries its own). Use echo-group rather than
+          # a heredoc — a quoted heredoc terminator cannot be reached
+          # inside an indented YAML block scalar.
+          if ! grep -q 'package.metadata.generate-rpm' crates/noya-cli/Cargo.toml; then
+            {
+              echo ""
+              echo "[package.metadata.generate-rpm]"
+              echo "assets = ["
+              echo '  { source = "target/release/noyafmt", dest = "/usr/bin/noyafmt", mode = "0755" },'
+              echo '  { source = "target/release/noyavalidate", dest = "/usr/bin/noyavalidate", mode = "0755" },'
+              echo '  { source = "doc/noyafmt.1", dest = "/usr/share/man/man1/noyafmt.1", mode = "0644", doc = true },'
+              echo '  { source = "doc/noyavalidate.1", dest = "/usr/share/man/man1/noyavalidate.1", mode = "0644", doc = true },'
+              echo '  { source = "LICENSE-MIT", dest = "/usr/share/licenses/noya-cli/LICENSE-MIT", mode = "0644", doc = true },'
+              echo '  { source = "LICENSE-APACHE", dest = "/usr/share/licenses/noya-cli/LICENSE-APACHE", mode = "0644", doc = true },'
+              echo "]"
+            } >> crates/noya-cli/Cargo.toml
+          fi
+          # `--package` is the package *directory* (cargo-generate-rpm
+          # opens `<value>/Cargo.toml`), not a workspace member name.
           cargo generate-rpm --target ${{ matrix.target }} \
               --package crates/noya-cli \
               --output "${{ github.workspace }}/${ARCHIVE_BASE}.rpm"
@@ -297,17 +322,24 @@ jobs:
           mkdir -p target/wix
           sed "s/__VERSION__/${VERSION}/g" pkg/windows/wix/noyalib.wxs \
               > target/wix/noyalib.wxs
-          # The .wxs references `target\release\*.exe`, but a targeted
-          # `--no-build` build leaves the binaries under
-          # `target\<target>\release\`. Stage them where WiX `light`
-          # expects them so the harvest resolves (avoids exit 103).
-          mkdir -p target/release
-          cp "target/${{ matrix.target }}/release/noyafmt.exe" \
-             "target/${{ matrix.target }}/release/noyavalidate.exe" \
-             target/release/
+          # The .wxs harvests `target\release\*.exe` and bare `LICENSE-*`
+          # relative to cargo-wix's working dir (which is not the repo
+          # root), and a targeted --no-build build leaves binaries under
+          # target/<target>/release/. Stage both at every plausible
+          # cwd-relative location so `light` resolves them regardless;
+          # `--nocapture` surfaces the real WiX path on any LGHT0103.
+          SRC="target/${{ matrix.target }}/release"
+          for d in target/release crates/noya-cli/target/release target/wix/target/release; do
+            mkdir -p "$d"
+            cp "${SRC}/noyafmt.exe" "${SRC}/noyavalidate.exe" "$d/"
+          done
+          for d in crates/noya-cli target/wix; do
+            cp LICENSE-MIT LICENSE-APACHE "$d/"
+          done
           cargo wix --target ${{ matrix.target }} \
               --package noya-cli \
               --no-build \
+              --nocapture \
               --include target/wix/noyalib.wxs \
               --output "${{ github.workspace }}/${ARCHIVE_BASE}.msi"
 
