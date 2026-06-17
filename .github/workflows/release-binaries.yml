@@ -277,8 +277,12 @@ jobs:
         run: |
           set -euo pipefail
           cargo install cargo-generate-rpm --locked --version 0.16.0
+          # cargo-generate-rpm's `--package` is the package *directory*
+          # (it opens `<value>/Cargo.toml`), not a workspace member
+          # name. Point it at crates/noya-cli or it looks for
+          # `noya-cli/Cargo.toml` at the repo root and fails.
           cargo generate-rpm --target ${{ matrix.target }} \
-              --package noya-cli \
+              --package crates/noya-cli \
               --output "${{ github.workspace }}/${ARCHIVE_BASE}.rpm"
 
       # ── .msi (Windows MSVC legs only) ──────────────────────────
@@ -293,6 +297,14 @@ jobs:
           mkdir -p target/wix
           sed "s/__VERSION__/${VERSION}/g" pkg/windows/wix/noyalib.wxs \
               > target/wix/noyalib.wxs
+          # The .wxs references `target\release\*.exe`, but a targeted
+          # `--no-build` build leaves the binaries under
+          # `target\<target>\release\`. Stage them where WiX `light`
+          # expects them so the harvest resolves (avoids exit 103).
+          mkdir -p target/release
+          cp "target/${{ matrix.target }}/release/noyafmt.exe" \
+             "target/${{ matrix.target }}/release/noyavalidate.exe" \
+             target/release/
           cargo wix --target ${{ matrix.target }} \
               --package noya-cli \
               --no-build \
@@ -338,10 +350,11 @@ jobs:
                    ${ARCHIVE_BASE}.deb ${ARCHIVE_BASE}.rpm \
                    ${ARCHIVE_BASE}.msi ${ARCHIVE_BASE}-debuginfo.tar.gz; do
             [[ -f "$f" ]] || continue
-            cosign sign-blob \
-              --output-signature "${f}.sig" \
-              --output-certificate "${f}.pem" \
-              "$f"
+            # cosign v4 deprecated --output-signature/--output-certificate
+            # (silently ignored, only the bundle is written). Write a
+            # self-contained sigstore bundle; verify with
+            # `cosign verify-blob --bundle <f>.bundle <f>`.
+            cosign sign-blob --bundle "${f}.bundle" "$f"
           done
 
       # ── Upload paths ───────────────────────────────────────────
@@ -436,9 +449,9 @@ jobs:
           COSIGN_YES: 'true'
         run: |
           cd "${{ github.workspace }}"
-          cosign sign-blob \
-            --output-signature "${ARCHIVE_BASE}.tar.gz.sig" \
-            --output-certificate "${ARCHIVE_BASE}.tar.gz.pem" \
+          # cosign v4: write a self-contained bundle (the legacy
+          # --output-signature/--output-certificate flags are ignored).
+          cosign sign-blob --bundle "${ARCHIVE_BASE}.tar.gz.bundle" \
             "${ARCHIVE_BASE}.tar.gz"
 
       - name: Upload to GitHub Release
