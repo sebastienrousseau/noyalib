@@ -80,8 +80,9 @@ Adds %ProgramFiles%\noyalib to the system PATH so `noyafmt` and
             </Feature>
         </Feature>
 
-        <Icon Id='ProductIcon' SourceFile='pkg\windows\wix\noyalib.ico' />
-        <Property Id='ARPPRODUCTICON' Value='ProductIcon' />
+        <!-- No ARP icon: pkg/windows/wix/noyalib.ico is not in-tree.
+             Add the .ico and restore <Icon>/ARPPRODUCTICON to give the
+             installer a custom Add/Remove Programs icon. -->
         <Property Id='ARPHELPLINK' Value='https://github.com/sebastienrousseau/noyalib' />
         <Property Id='ARPURLINFOABOUT' Value='https://github.com/sebastienrousseau/noyalib' />
     </Product>

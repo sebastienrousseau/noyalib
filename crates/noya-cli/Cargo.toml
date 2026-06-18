@@ -61,3 +61,17 @@ harness = false
 default = ["noyavalidate"]
 noyafmt = ["noyalib/std"]
 noyavalidate = ["noyafmt", "noyalib/noyavalidate", "dep:miette"]
+
+# Package layout for `cargo generate-rpm` (release-binaries.yml).
+# Binary sources use `target/release/...`; the workflow stages the
+# stripped binaries there before packaging, and `--target` rewrites
+# the path for cross builds.
+[package.metadata.generate-rpm]
+assets = [
+    { source = "target/release/noyafmt", dest = "/usr/bin/noyafmt", mode = "0755" },
+    { source = "target/release/noyavalidate", dest = "/usr/bin/noyavalidate", mode = "0755" },
+    { source = "doc/noyafmt.1", dest = "/usr/share/man/man1/noyafmt.1", mode = "0644", doc = true },
+    { source = "doc/noyavalidate.1", dest = "/usr/share/man/man1/noyavalidate.1", mode = "0644", doc = true },
+    { source = "LICENSE-MIT", dest = "/usr/share/licenses/noya-cli/LICENSE-MIT", mode = "0644", doc = true },
+    { source = "LICENSE-APACHE", dest = "/usr/share/licenses/noya-cli/LICENSE-APACHE", mode = "0644", doc = true },
+]
