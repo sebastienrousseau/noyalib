@@ -725,3 +725,90 @@ After every phase, the following must be true:
 
 Total ~20 PRs over ~4 weeks for the engineering work; distro
 outreach then runs at distro maintainer pace.
+
+## Road to 1.0 — the long 0.x runway
+
+`1.0.0` is a contract, not a milestone date: it promises SemVer-strict
+stability and a commercial-grade support commitment. It is **earned by
+field maturity, not scheduled.** The entire `0.x` line — all the way
+through `0.9.999` — is the maturation period: ship, gather real-world
+usage, break the API freely under `0.x` rules, and harden it against
+actual workloads rather than against our own test suite. This is a
+deliberately long road. There is no target date, only gates.
+
+### Versioning posture during 0.x
+
+Cargo's SemVer rules let a `0.0.x` patch break, and a `0.x.0` minor
+break. We use that latitude on purpose — a wrong early API is far
+cheaper to fix now than to carry past `1.0`.
+
+| Band | Theme | API contract |
+|---|---|---|
+| `0.0.x` | Foundation & hardening (Phases 0–7 above) | Exploratory; may break per patch, noted in `CHANGELOG.md`. |
+| `0.1 → 0.8` | Capability maturation & API convergence | Each minor is a coherent capability milestone plus accumulated field feedback. Breaking changes allowed, increasingly rare, always with migration notes. |
+| `0.9.x` | API-freeze candidates | Feature-complete for the `1.0` scope; bugfixes and polish only. A public, written **1.0 API review** opens here. |
+| `0.9.999` | Pre-1.0 soak / extended RC | The frozen `1.0` API, shipped as a long-lived, widely-deployed release. It runs in the wild until every gate below is demonstrably met. `1.0.0` is then a near-mechanical re-tag of a proven `0.9.999`. |
+
+`0.9.999` is intentional: it announces "this *is* 1.0, pending proof"
+and lets real deployments soak the final API for a long time, without
+prematurely spending the `1.0` stability promise.
+
+### 1.0 gates (signal-gated, never date-gated)
+
+`1.0.0` ships only when **all** of the following are demonstrably true.
+Each is a measurable signal, not a vibe.
+
+**API & correctness**
+- ≥ 4 consecutive minors with **zero** breaking changes to the public API.
+- `cargo semver-checks` clean across that window; no `#[doc(hidden)]` or
+  `__`-prefixed escape hatches inside the `1.0` surface.
+- A written, reviewed **1.0 API guarantee** enumerating the stable
+  surface and the explicitly-unstable corners.
+- Fuzz targets accumulate ≥ N CPU-months with no new reproducers;
+  coverage gate held at its ceiling.
+
+**Adoption & field testing**
+- Real downstream users beyond CI/mirrors: a meaningful count of distinct
+  crates.io reverse-dependencies and/or named production deployments.
+- Issues from real workloads triaged to **zero open criticals** — a
+  steady state, not a launch spike.
+- Confirmed in the wild across the target matrix (OSes, architectures,
+  `no_std`), not just in our runners.
+
+**Community & governance**
+- **≥ 2 maintainers** with merge rights (bus-factor retired).
+- `CODE_OF_CONDUCT.md` + a short `GOVERNANCE.md` (how decisions and
+  releases are made); active Discussions.
+- The security-disclosure and release processes each exercised
+  end-to-end by more than one person.
+
+**Ecosystem & distribution**
+- Every distribution channel green **and consumed**: crates.io, docs.rs,
+  Docker/GHCR, and the packaging channels (AUR / Scoop / Homebrew / npm /
+  VS Code — see #99) actually publishing and used by real installs.
+- A stable, documented MSRV policy; the serde_yaml migration guide
+  validated by external migrators.
+
+**Operational & supply chain**
+- Reproducible builds reproduced independently by a third party.
+- OpenSSF Scorecard ≥ 8.0 and the OpenSSF Best Practices badge at
+  *passing* (targeting *silver*); zero open advisories.
+- Signed releases verified by consumers (the `pkg/VERIFY.md` cookbook
+  exercised externally).
+
+**Commercial readiness**
+- A written support / stability / LTS policy and a security-response SLA.
+- Published performance baselines with regression gating in CI.
+
+### Explicit non-gates
+
+`1.0` is **not** triggered by a calendar date, a feature count, a star
+count, or "it's been long enough." A breaking change during `0.x` is a
+tool we use deliberately, not a failure to apologise for.
+
+### After 1.0
+
+- Strict SemVer: a breaking change implies `2.0` and a deprecation cycle.
+- A `1.x` LTS branch carrying backported security fixes.
+- The stable core becomes the foundation a commercial offering can layer
+  on — never a reason to destabilise the open library.
