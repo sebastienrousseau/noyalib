@@ -581,22 +581,28 @@ impl<'a> Loader<'a> {
                     if map.len() >= self.config.max_mapping_keys {
                         return Err(Error::Serialize("mapping key limit exceeded".to_owned()));
                     }
+                    // Steal the owned key out of the frame instead of
+                    // cloning it on every insert — the frame is replaced
+                    // (without `key`) immediately below, so the emptied
+                    // slot is discarded. Each branch is the last use of
+                    // `key`, so the move is sound.
+                    let key = core::mem::take(key);
                     match self.config.duplicate_key_policy {
                         DuplicateKeyPolicy::First => {
-                            if !map.contains_key(key) {
-                                let _ = map.insert(key.clone(), value);
+                            if !map.contains_key(&key) {
+                                let _ = map.insert(key, value);
                                 span_entries.push((*key_span, span));
                             }
                         }
                         DuplicateKeyPolicy::Last => {
-                            let _ = map.insert(key.clone(), value);
+                            let _ = map.insert(key, value);
                             span_entries.push((*key_span, span));
                         }
                         DuplicateKeyPolicy::Error => {
-                            if map.contains_key(key) {
-                                return Err(Error::DuplicateKey(key.clone()));
+                            if map.contains_key(&key) {
+                                return Err(Error::DuplicateKey(key));
                             }
-                            let _ = map.insert(key.clone(), value);
+                            let _ = map.insert(key, value);
                             span_entries.push((*key_span, span));
                         }
                     }
@@ -916,7 +922,11 @@ impl<'a> NoSpanLoader<'a> {
                 if is_merge && !merge_treat_as_ordinary {
                     merge_values.push(value);
                 } else {
-                    let _ = map.insert(key.clone(), value);
+                    // Steal the owned key out of the frame instead of
+                    // cloning it — the frame is overwritten (without
+                    // `key`) immediately below, so the emptied slot is
+                    // discarded.
+                    let _ = map.insert(core::mem::take(key), value);
                 }
                 let old_map = core::mem::take(map);
                 let old_anchor = anchor.take();
@@ -976,7 +986,7 @@ fn value_to_key_string(value: Value) -> Option<String> {
                 }
                 let _ = write!(s, "{}", value_to_key_string(v).unwrap_or_default());
             }
-            s.push("]".chars().next().unwrap());
+            s.push(']');
             Some(s)
         }
         Value::Mapping(m) => {
@@ -989,7 +999,7 @@ fn value_to_key_string(value: Value) -> Option<String> {
                 s.push_str(": ");
                 let _ = write!(s, "{}", value_to_key_string(v).unwrap_or_default());
             }
-            s.push("}".chars().next().unwrap());
+            s.push('}');
             Some(s)
         }
     }
