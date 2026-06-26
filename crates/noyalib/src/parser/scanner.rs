@@ -777,7 +777,12 @@ impl<'a> Scanner<'a> {
                 // `"value"# bad`) and is not a valid comment indicator.
                 if self.pos > 0 {
                     let prev = self.input[self.pos - 1];
-                    if !Self::is_blank_or_break(prev) {
+                    // A leading BOM is a zero-width stream prefix, so a `#`
+                    // immediately after it is at the start of the input (a valid
+                    // comment start), not an inline `#` adjacent to content.
+                    let after_leading_bom =
+                        self.pos == 3 && self.input.starts_with(&[0xEF, 0xBB, 0xBF]);
+                    if !after_leading_bom && !Self::is_blank_or_break(prev) {
                         return Err(self.error(
                             "comment indicator '#' must be preceded by a space, tab, or line break",
                         ));
@@ -1139,6 +1144,14 @@ impl<'a> Scanner<'a> {
         {
             let bom_start = self.pos;
             self.advance_by(3);
+            // A leading BOM is a zero-width stream marker: the content that
+            // follows it begins at column 0. `advance_by` counts the three BOM
+            // bytes as columns, so without this reset the first node is tracked
+            // at column 3, poisoning the document's indentation baseline — a
+            // later sibling at column 0 is then misread as a dedent below the
+            // document, producing a spurious "stray content after document"
+            // error for any BOM-prefixed input with more than one node.
+            self.col = 0;
             if self.recording {
                 self.trivia.push(Trivia {
                     start: bom_start,
@@ -1741,10 +1754,20 @@ impl<'a> Scanner<'a> {
                 // Roll indent for block mapping.
                 if self.flow_level == 0 {
                     self.reject_block_inline_with_doc_start("':'")?;
-                    let line_start = self.input[..sk.index]
+                    let mut line_start = self.input[..sk.index]
                         .iter()
                         .rposition(|&b| b == b'\n')
                         .map_or(0, |nl| nl + 1);
+                    // A leading BOM occupies the first three bytes of the
+                    // stream but contributes no visual column. Exclude it so a
+                    // first-line key is measured from column 0 (consistent with
+                    // `self.col`, which is reset after the BOM in
+                    // `fetch_stream_start`). Without this the key's indent is
+                    // over-counted by 3, so a following sibling at column 0 is
+                    // misread as a dedent and the mapping is split in two.
+                    if line_start == 0 && self.input.starts_with(&[0xEF, 0xBB, 0xBF]) {
+                        line_start = 3;
+                    }
                     let leading = &self.input[line_start..sk.index];
                     // YAML 1.2.2 §6.1: block-mapping key indentation
                     // must be spaces only. A tab in the leading
@@ -2087,6 +2110,69 @@ mod tests {
                 i < tokens.len() && tokens[i].contains(exp),
                 "Token {i}: expected to contain {exp:?}, got {:?}\nAll tokens: {tokens:#?}",
                 tokens.get(i)
+            );
+        }
+    }
+
+    /// Collect token-kind debug strings for `input`, panicking on the first
+    /// scanner error (so a regression surfaces as a precise failure).
+    fn scan_kinds(input: &str) -> Vec<String> {
+        let mut scanner = Scanner::new(input);
+        let mut tokens = Vec::new();
+        loop {
+            match scanner.next_token() {
+                Ok(t) => {
+                    let is_end = matches!(t.kind, TokenKind::StreamEnd);
+                    tokens.push(format!("{:?}", t.kind));
+                    if is_end {
+                        break;
+                    }
+                }
+                Err(e) => panic!("Scanner error after tokens {tokens:#?}: {e}"),
+            }
+        }
+        tokens
+    }
+
+    /// A leading UTF-8 BOM must be transparent to indentation: a BOM-prefixed
+    /// multi-key mapping has to scan to the same token stream as the same
+    /// document without the BOM. Regression test for the column-tracking bug
+    /// where `advance_by(3)` over the BOM left the first key at column 3, so the
+    /// second key (column 0) was misread as content after the document's end.
+    #[test]
+    fn test_scanner_leading_bom_multi_key_mapping() {
+        let plain = scan_kinds("a: 1\nb: 2\n");
+        let bommed = scan_kinds("\u{FEFF}a: 1\nb: 2\n");
+        assert_eq!(
+            bommed, plain,
+            "BOM-prefixed mapping should scan identically to the BOM-less one",
+        );
+        // Sanity: both keys and the closing BlockEnd are present (i.e. the
+        // mapping did not terminate early after the first key).
+        assert!(
+            bommed.iter().any(|t| t.contains("Scalar(Plain, \"b\")")),
+            "second key `b` missing — document ended prematurely: {bommed:#?}",
+        );
+        assert!(
+            bommed.iter().any(|t| t == "BlockEnd"),
+            "BlockEnd missing — mapping not closed: {bommed:#?}",
+        );
+    }
+
+    /// A leading BOM must be transparent for every top-level construct, not
+    /// just single-line mappings: a BOM-prefixed sequence, a nested mapping,
+    /// and a leading comment must each scan identically to their BOM-less form.
+    #[test]
+    fn test_scanner_leading_bom_is_transparent() {
+        for (bommed, plain) in [
+            ("\u{FEFF}- 1\n- 2\n", "- 1\n- 2\n"),
+            ("\u{FEFF}a:\n  b: 1\n", "a:\n  b: 1\n"),
+            ("\u{FEFF}# header\nname: x\n", "# header\nname: x\n"),
+        ] {
+            assert_eq!(
+                scan_kinds(bommed),
+                scan_kinds(plain),
+                "BOM-prefixed input {bommed:?} should scan identically to {plain:?}",
             );
         }
     }
