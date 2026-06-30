@@ -400,6 +400,43 @@ jobs:
     # The README and CHANGELOG promise that `default-features = false`
     # builds without `std`. This job enforces that promise on every
     # push so the claim never silently regresses.
+    #
+    # CACHE-POISONING GUARD: this job uses an isolated CARGO_TARGET_DIR
+    # so the no_std fingerprint can never be served from a previous
+    # `cargo check` that ran with `std` on (those would share the
+    # default `target/` under Swatinem/rust-cache and silently return
+    # a stale-but-passing result, masking real no_std regressions —
+    # exactly what hid the missing `crate::prelude::Vec` / `vec` import
+    # in doc_boundary.rs and the unused `crate::span_context` import in
+    # de.rs through v0.0.9 and v0.0.10).
+    runs-on: ubuntu-latest
+    env:
+      CARGO_TARGET_DIR: ${{ github.workspace }}/target-no-std
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: dtolnay/rust-toolchain@67ef31d5b988238dd797d409d6f9574278e20537 # master
+        with:
+          toolchain: stable
+      - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
+        with:
+          # Scope the cache to this job's isolated target dir, and
+          # split the cache namespace so it can't share state with the
+          # `std`-on jobs. Belt-and-braces: even if Swatinem changes
+          # default behaviour, the explicit CARGO_TARGET_DIR above is
+          # the real guarantee.
+          workspaces: ". -> target-no-std"
+          key: no-std
+      - name: cargo check --no-default-features
+        run: cargo check --no-default-features --lib --locked
+
+  docs-strict:
+    name: rustdoc (strict)
+    # Mirror the same RUSTDOCFLAGS the docs.yml deployment job uses,
+    # but on every PR — broken intra-doc links and bad codeblock
+    # fence attributes should fail a PR, not break the Pages
+    # deployment after merge. (For three days through v0.0.9 +
+    # v0.0.10 the docs.yml job was silently failing on main while
+    # PRs sailed through; this gate closes that hole.)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -407,8 +444,16 @@ jobs:
         with:
           toolchain: stable
       - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
-      - name: cargo check --no-default-features
-        run: cargo check --no-default-features --lib
+      - name: cargo doc --no-deps --all-features (strict)
+        env:
+          RUSTDOCFLAGS: >-
+            -D warnings
+            -D rustdoc::broken_intra_doc_links
+            -D rustdoc::private_intra_doc_links
+            -D rustdoc::invalid_codeblock_attributes
+            -D rustdoc::invalid_html_tags
+            -D rustdoc::bare_urls
+        run: cargo doc --workspace --no-deps --all-features --locked
 
   verify-signatures:
     name: Verify commit signatures
