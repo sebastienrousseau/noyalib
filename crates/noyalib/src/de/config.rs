@@ -176,7 +176,7 @@ pub struct ParserConfig {
     /// Pluggable "Safe YAML" policies, run during parsing.
     ///
     /// Each [`Policy`](crate::policy::Policy) inspects parser
-    /// events and the post-parse [`Value`] tree; any policy
+    /// events and the post-parse [`Value`](crate::Value) tree; any policy
     /// returning `Err(...)` aborts the parse with that diagnostic.
     /// Empty by default.
     ///
@@ -188,7 +188,7 @@ pub struct ParserConfig {
     /// `${KEY}` / `${KEY:-default}` substitution table consulted
     /// after parsing every document.
     ///
-    /// Each scalar in the resulting [`Value`] tree is walked and
+    /// Each scalar in the resulting [`Value`](crate::Value) tree is walked and
     /// any `${name}` placeholder is replaced with the property of
     /// that name. Supported syntax:
     ///
@@ -210,7 +210,7 @@ pub struct ParserConfig {
     pub properties: Option<Arc<std::collections::HashMap<String, String>>>,
     /// When `true`, an unknown `${name}` placeholder (no entry in
     /// [`Self::properties`] and no `:-default` fallback) aborts
-    /// the parse with [`Error::Custom`].
+    /// the parse with [`Error::Custom`](crate::Error::Custom).
     /// When `false` (default), unknown placeholders are replaced
     /// with the empty string — the lossy semantics matching
     /// [`Value::interpolate_properties_lossy`](crate::Value::interpolate_properties_lossy).
@@ -345,7 +345,7 @@ impl ParserConfig {
     /// Install a `${KEY}` substitution table consulted after
     /// parsing.
     ///
-    /// Each scalar in the resulting [`Value`] tree is walked and
+    /// Each scalar in the resulting [`Value`](crate::Value) tree is walked and
     /// any `${name}` placeholder is replaced with the property of
     /// that name. Pairs with [`Self::strict_properties`] to choose
     /// between erroring or silently empty-substituting on unknown
