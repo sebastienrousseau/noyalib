@@ -48,6 +48,10 @@ allow = [
     # fluent-uri) is MIT-0 — OSI-approved permissive, no attribution
     # requirement.
     "MIT-0",
+    # `foldhash` (transitive via hashbrown → referencing 0.46 and
+    # hashlink → yaml-rust2 dev-deps) ships under Zlib — OSI- and
+    # FSF-approved permissive license, no attribution requirement.
+    "Zlib",
 ]
 confidence-threshold = 0.8
 
