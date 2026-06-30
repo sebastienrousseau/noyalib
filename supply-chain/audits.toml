@@ -345,7 +345,7 @@ end = "2027-05-09"
 
 [[trusted.half]]
 criteria = "safe-to-run"
-user-id = 3416 # Kathryn Long (starkat99)
+user-id = 3416 # Kathryn Long (VoidStarKat)
 start = "2019-10-04"
 end = "2027-05-09"
 
@@ -369,7 +369,7 @@ end = "2027-05-09"
 
 [[trusted.hermit-abi]]
 criteria = "safe-to-run"
-user-id = 91569 # Martin Kröning (mkroening)
+user-id = 91569
 start = "2022-09-06"
 end = "2027-05-09"
 
@@ -471,7 +471,7 @@ end = "2027-05-09"
 
 [[trusted.libyml]]
 criteria = "safe-to-run"
-user-id = 186843 # Sebastien Rousseau (sebastienrousseau)
+user-id = 186843
 start = "2024-04-28"
 end = "2027-05-09"
 
@@ -813,7 +813,7 @@ end = "2027-05-09"
 
 [[trusted.serde_yml]]
 criteria = "safe-to-run"
-user-id = 186843 # Sebastien Rousseau (sebastienrousseau)
+user-id = 186843
 start = "2024-03-29"
 end = "2027-05-09"
 
@@ -897,7 +897,7 @@ end = "2027-05-09"
 
 [[trusted.uuid]]
 criteria = "safe-to-deploy"
-user-id = 3204 # Ashley Mannix (KodrAus)
+user-id = 3204
 start = "2019-10-18"
 end = "2027-05-09"
 
@@ -1059,7 +1059,7 @@ end = "2027-05-09"
 
 [[trusted.yaml-rust2]]
 criteria = "safe-to-run"
-user-id = 250563 # Ethiraric
+user-id = 250563
 start = "2024-02-08"
 end = "2027-05-09"
 
