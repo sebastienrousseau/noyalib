@@ -97,9 +97,9 @@ pub fn coerce_to_schema(doc: &mut Document, schema: &Value) -> Result<usize> {
         for err in validator.iter_errors(&instance_json) {
             if let ValidationErrorKind::Type {
                 kind: TypeKind::Single(target),
-            } = &err.kind
+            } = err.kind()
             {
-                targets.push((err.instance_path.to_string(), *target));
+                targets.push((err.instance_path().to_string(), *target));
             }
         }
 

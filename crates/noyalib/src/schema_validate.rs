@@ -90,7 +90,7 @@ pub fn validate_against_schema(value: &Value, schema: &Value) -> Result<()> {
 
     let mut messages: Vec<String> = Vec::new();
     for err in validator.iter_errors(&instance_json) {
-        messages.push(format!("{} (at `{}`)", err, err.instance_path));
+        messages.push(format!("{} (at `{}`)", err, err.instance_path()));
     }
     let summary = if messages.len() == 1 {
         format!("schema violation: {}", messages[0])
@@ -205,9 +205,9 @@ pub fn coerce_to_schema(value: &mut Value, schema: &Value) -> Result<usize> {
         for err in validator.iter_errors(&instance_json) {
             if let ValidationErrorKind::Type {
                 kind: TypeKind::Single(target),
-            } = &err.kind
+            } = err.kind()
             {
-                targets.push((err.instance_path.to_string(), *target));
+                targets.push((err.instance_path().to_string(), *target));
             }
         }
 
