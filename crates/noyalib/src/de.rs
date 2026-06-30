@@ -15,6 +15,7 @@
 use crate::error::{Error, Result};
 use crate::parser::{self};
 use crate::prelude::*;
+#[cfg(feature = "std")]
 use crate::span_context;
 use crate::value::Value;
 use serde::Deserialize;
