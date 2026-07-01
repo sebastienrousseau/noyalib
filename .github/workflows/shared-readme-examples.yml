@@ -1,0 +1,56 @@
+# SPDX-FileCopyrightText: 2026 Noyalib
+# SPDX-License-Identifier: MIT OR Apache-2.0
+
+name: shared / README examples (root)
+
+# Reusable "compile every ```rust block in the workspace-root
+# README" gate. Runs `scripts/check-readme-examples.sh` which
+# extracts every ` ```rust ` code block (excluding `,ignore`)
+# from the caller's root `README.md`, wraps each with `fn main()`
+# if not already present (matches rustdoc's implicit-main
+# behaviour), and compiles them against a scratch project.
+#
+# Cannot use `#[doc = include_str!("../README.md")]` because the
+# workspace-root README lives outside published crates' package
+# layouts — `cargo publish --dry-run` verification would fail. The
+# script-based path preserves the "every README example is
+# tested" invariant without breaking publish.
+#
+# CACHE-POISONING GUARD: isolated CARGO_TARGET_DIR. The scratch
+# project this workflow spins up must never be served a cached
+# artefact set from a different feature configuration.
+#
+# Consumers pin by SHA:
+#
+#   jobs:
+#     readme-examples:
+#       uses: sebastienrousseau/noyalib/.github/workflows/shared-readme-examples.yml@<sha>
+#
+# The caller MUST ship `scripts/check-readme-examples.sh` in its
+# own repo (or arrange to fetch a copy). Satellite repos will
+# typically vendor a matching copy of the script; the invariant
+# it enforces is the same in every case.
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: README examples (root)
+    runs-on: ubuntu-latest
+    env:
+      CARGO_TARGET_DIR: ${{ github.workspace }}/target-readme-examples
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: dtolnay/rust-toolchain@fa04a1451ff1842e2626ccb99004d0195b455a88 # master
+        with:
+          toolchain: stable
+      - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
+        with:
+          workspaces: ". -> target-readme-examples"
+          key: readme-examples
+      - name: Compile every rust block in README.md
+        run: bash scripts/check-readme-examples.sh

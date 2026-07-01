@@ -1,0 +1,56 @@
+# SPDX-FileCopyrightText: 2026 Noyalib
+# SPDX-License-Identifier: MIT OR Apache-2.0
+
+name: shared / rustdoc (strict)
+
+# Reusable strict-rustdoc PR gate. Runs `cargo doc --workspace
+# --no-deps --all-features --locked` with the same strict
+# RUSTDOCFLAGS the deployment workflow (docs.yml) uses on main —
+# so broken intra-doc links, invalid codeblock attributes,
+# malformed HTML, and bare URLs fail the PR rather than the
+# post-merge Pages deployment.
+#
+# CACHE-POISONING GUARD: isolated CARGO_TARGET_DIR. rustdoc
+# fingerprints depend on RUSTDOCFLAGS env; if a Swatinem cache
+# from a different job (without the strict flags) restored into
+# target/, cargo could serve a stale hit and mask new broken doc
+# links. See noyalib's v0.0.11 CI-integrity release notes for the
+# concrete incident this prevents.
+#
+# Consumers pin by SHA:
+#
+#   jobs:
+#     docs-strict:
+#       uses: sebastienrousseau/noyalib/.github/workflows/shared-rustdoc-strict.yml@<sha>
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: rustdoc (strict)
+    runs-on: ubuntu-latest
+    env:
+      CARGO_TARGET_DIR: ${{ github.workspace }}/target-docs-strict
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: dtolnay/rust-toolchain@fa04a1451ff1842e2626ccb99004d0195b455a88 # master
+        with:
+          toolchain: stable
+      - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
+        with:
+          workspaces: ". -> target-docs-strict"
+          key: docs-strict
+      - name: cargo doc --no-deps --all-features (strict)
+        env:
+          RUSTDOCFLAGS: >-
+            -D warnings
+            -D rustdoc::broken_intra_doc_links
+            -D rustdoc::private_intra_doc_links
+            -D rustdoc::invalid_codeblock_attributes
+            -D rustdoc::invalid_html_tags
+            -D rustdoc::bare_urls
+        run: cargo doc --workspace --no-deps --all-features --locked
