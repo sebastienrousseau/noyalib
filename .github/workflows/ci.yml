@@ -84,7 +84,16 @@ jobs:
     #     contention without letting a real hang sit forever; the
     #     scheduled `miri-full` (90 min) still covers the deeper
     #     sweep plus big-endian.
+    # CACHE-POISONING GUARD: Miri builds use `-Zmiri-*` flags plus
+    # the Miri sysroot — completely distinct fingerprint from every
+    # stable / nightly cargo build. Isolated CARGO_TARGET_DIR so
+    # a stale non-Miri artefact set cannot mask a Miri regression;
+    # `~/.cache/miri` and `target-miri/miri` still cache the
+    # (expensive) sysroot build across PRs via the actions/cache
+    # entry below (keyed on toolchain + Cargo.lock).
     timeout-minutes: 60
+    env:
+      CARGO_TARGET_DIR: ${{ github.workspace }}/target-miri
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - name: Install Rust nightly with Miri
@@ -101,13 +110,15 @@ jobs:
         with:
           path: |
             ~/.cache/miri
-            target/miri
+            target-miri/miri
           key: miri-${{ runner.os }}-${{ hashFiles('rust-toolchain.toml', 'Cargo.lock') }}
           restore-keys: |
             miri-${{ runner.os }}-
       - name: Cache cargo
         uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
         with:
+          workspaces: ". -> target-miri"
+          key: miri-focused
           save-if: false
       - name: Run focused Miri suite
         run: ./scripts/miri.sh
@@ -119,11 +130,15 @@ jobs:
     # endianness assumption that would slip past the focused
     # per-PR job. Bandwidth-intensive (~30+ minutes) so gated
     # behind the schedule / manual trigger.
+    #
+    # CACHE-POISONING GUARD: same isolated CARGO_TARGET_DIR
+    # pattern as the focused Miri job.
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 90
     env:
       RUSTUP_TOOLCHAIN: nightly
+      CARGO_TARGET_DIR: ${{ github.workspace }}/target-miri-full
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - name: Install Rust nightly with Miri
@@ -134,6 +149,8 @@ jobs:
       - name: Cache cargo
         uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
         with:
+          workspaces: ". -> target-miri-full"
+          key: miri-full
           save-if: false
       - name: Setup Miri
         run: cargo +nightly miri setup
@@ -160,14 +177,25 @@ jobs:
     # The full multi-hour campaign runs on the weekly soak job in
     # `security.yml`. 10s is enough to surface trivial regressions
     # the instant they land without slowing PR feedback.
+    #
+    # CACHE-POISONING GUARD: cargo-fuzz uses a sanitiser-enabled
+    # nightly build with `-Cinstrument-coverage=off -Cpasses=sancov-module`
+    # under the hood — a distinct fingerprint from every other
+    # job. Isolated CARGO_TARGET_DIR so a stale non-fuzz artefact
+    # set cannot short-circuit the sanitiser build.
     if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
+    env:
+      CARGO_TARGET_DIR: ${{ github.workspace }}/target-fuzz
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - uses: dtolnay/rust-toolchain@67ef31d5b988238dd797d409d6f9574278e20537 # master
         with:
           toolchain: nightly
       - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
+        with:
+          workspaces: ". -> target-fuzz"
+          key: fuzz-diff
       - run: cargo install --locked cargo-fuzz
       - run: cargo +nightly fuzz run fuzz_diff -- -max_total_time=10
         working-directory: .
@@ -277,6 +305,12 @@ jobs:
     # - default features: std + core surface, MSRV 1.85.
     # - feature combinations beyond default require newer
     #   toolchains; the stable test matrix covers those.
+    #
+    # CACHE-POISONING GUARD: three separate CARGO_TARGET_DIRs so
+    # the no_std, default-features, and clippy checks each have
+    # their own fingerprint namespace. Sharing target/ across
+    # feature configurations is exactly how a stale-but-passing
+    # cache can mask a real regression (see no-std job below).
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -285,11 +319,23 @@ jobs:
           toolchain: "1.85.0"
           components: clippy
       - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
+        with:
+          workspaces: |
+            . -> target-msrv-nostd
+            . -> target-msrv-default
+            . -> target-msrv-clippy
+          key: msrv-1.85
       - name: cargo check (no_std)
-        run: cargo check --no-default-features --locked
+        env:
+          CARGO_TARGET_DIR: ${{ github.workspace }}/target-msrv-nostd
+        run: cargo check --no-default-features --lib --locked
       - name: cargo check (default features)
+        env:
+          CARGO_TARGET_DIR: ${{ github.workspace }}/target-msrv-default
         run: cargo check --locked
       - name: cargo clippy on MSRV core
+        env:
+          CARGO_TARGET_DIR: ${{ github.workspace }}/target-msrv-clippy
         run: cargo clippy --lib --locked -- -D warnings
 
   coverage-gate:
@@ -302,7 +348,17 @@ jobs:
     # SQLite, serde, hyper). Fails the build if region coverage
     # drops below the threshold so coverage regressions can never
     # land silently.
+    #
+    # CACHE-POISONING GUARD: coverage instrumentation adds
+    # `-C instrument-coverage` and NOYALIB_COVERAGE=1 gates the
+    # `#[cfg(noyalib_coverage)]` code paths — completely distinct
+    # fingerprint from every other cargo job. Isolated
+    # CARGO_TARGET_DIR + scoped cache key so a stale
+    # non-instrumented artefact set can never mask an
+    # instrumentation regression.
     runs-on: ubuntu-latest
+    env:
+      CARGO_TARGET_DIR: ${{ github.workspace }}/target-coverage
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - uses: dtolnay/rust-toolchain@67ef31d5b988238dd797d409d6f9574278e20537 # master
@@ -310,6 +366,9 @@ jobs:
           toolchain: nightly
           components: llvm-tools-preview
       - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
+        with:
+          workspaces: ". -> target-coverage"
+          key: coverage-nightly
       - name: Install cargo-llvm-cov
         uses: taiki-e/install-action@9e1e5806d4a4822de933115878265be9aaa786d9 # v2.82.2
         with:
@@ -437,13 +496,24 @@ jobs:
     # deployment after merge. (For three days through v0.0.9 +
     # v0.0.10 the docs.yml job was silently failing on main while
     # PRs sailed through; this gate closes that hole.)
+    #
+    # CACHE-POISONING GUARD: isolated CARGO_TARGET_DIR. rustdoc
+    # fingerprints depend on RUSTDOCFLAGS env; if a Swatinem cache
+    # from a different job (without the strict flags) restored
+    # into target/, cargo could serve a stale hit and mask new
+    # broken doc links.
     runs-on: ubuntu-latest
+    env:
+      CARGO_TARGET_DIR: ${{ github.workspace }}/target-docs-strict
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - uses: dtolnay/rust-toolchain@67ef31d5b988238dd797d409d6f9574278e20537 # master
         with:
           toolchain: stable
       - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
+        with:
+          workspaces: ". -> target-docs-strict"
+          key: docs-strict
       - name: cargo doc --no-deps --all-features (strict)
         env:
           RUSTDOCFLAGS: >-

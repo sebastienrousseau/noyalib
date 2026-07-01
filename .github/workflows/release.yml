@@ -39,9 +39,19 @@ jobs:
           toolchain: stable
           components: rustfmt, clippy
 
+      # CACHE-POISONING GUARD: release-time quality gate uses an
+      # isolated CARGO_TARGET_DIR so a stale artefact set from a
+      # PR-time build (with different lints, warnings, or feature
+      # config) can never mask a release regression. Release must
+      # verify from a clean-fingerprint state.
       - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
+        with:
+          workspaces: ". -> target-release-validate"
+          key: release-validate
 
       - name: Quality checks
+        env:
+          CARGO_TARGET_DIR: ${{ github.workspace }}/target-release-validate
         run: |
           cargo fmt --all -- --check
           cargo clippy --all-targets --all-features -- -D warnings
@@ -185,6 +195,10 @@ jobs:
   # ── Cross-platform verification ─────────────────────────────────────
   cross-verify:
     name: Verify (${{ matrix.os }})
+    # CACHE-POISONING GUARD: per-OS + per-release-tag CARGO_TARGET_DIR
+    # so this cross-platform verification always runs from a
+    # release-tag-scoped fingerprint, never sharing state with the
+    # validate job or with any other cross-verify OS.
     needs: validate
     runs-on: ${{ matrix.os }}
     permissions:
@@ -193,12 +207,17 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
+    env:
+      CARGO_TARGET_DIR: ${{ github.workspace }}/target-release-verify-${{ matrix.os }}
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - uses: dtolnay/rust-toolchain@67ef31d5b988238dd797d409d6f9574278e20537
         with:
           toolchain: stable
       - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
+        with:
+          workspaces: ". -> target-release-verify-${{ matrix.os }}"
+          key: release-verify-${{ matrix.os }}
       - run: cargo test --all-features
 
   # ── GitHub Release ──────────────────────────────────────────────────

@@ -55,6 +55,11 @@ jobs:
   # for triage.
   soak-fuzz:
     name: Soak fuzz (${{ matrix.target }})
+    # CACHE-POISONING GUARD: per-matrix-target CARGO_TARGET_DIR so
+    # each fuzz target (`fuzz_parse`, `fuzz_roundtrip`, `fuzz_diff`,
+    # `fuzz_strict`) has its own sanitiser-instrumented artefact
+    # set. Sharing target/ across fuzz configurations is exactly
+    # how a stale cache could hide a fuzz regression.
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     permissions:
@@ -63,12 +68,17 @@ jobs:
       fail-fast: false
       matrix:
         target: [fuzz_parse, fuzz_roundtrip, fuzz_diff, fuzz_strict]
+    env:
+      CARGO_TARGET_DIR: ${{ github.workspace }}/target-soak-fuzz-${{ matrix.target }}
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - uses: dtolnay/rust-toolchain@67ef31d5b988238dd797d409d6f9574278e20537 # master
         with:
           toolchain: nightly
       - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
+        with:
+          workspaces: ". -> target-soak-fuzz-${{ matrix.target }}"
+          key: soak-fuzz-${{ matrix.target }}
       - name: Install cargo-fuzz
         run: cargo install --locked cargo-fuzz
       - name: Run ${{ matrix.target }} for 1 hour
@@ -94,11 +104,15 @@ jobs:
   # runs the entire suite.
   soak-miri:
     name: Soak Miri (full suite)
+    # CACHE-POISONING GUARD: isolated CARGO_TARGET_DIR — Miri's
+    # interpreter fingerprint is distinct from every other job.
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     permissions:
       contents: read
     timeout-minutes: 1440  # 24h ceiling
+    env:
+      CARGO_TARGET_DIR: ${{ github.workspace }}/target-soak-miri
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - uses: dtolnay/rust-toolchain@67ef31d5b988238dd797d409d6f9574278e20537 # master
@@ -106,6 +120,9 @@ jobs:
           toolchain: nightly
           components: miri
       - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
+        with:
+          workspaces: ". -> target-soak-miri"
+          key: soak-miri
       - name: Setup Miri
         run: cargo +nightly miri setup
       - name: Run full suite under Miri

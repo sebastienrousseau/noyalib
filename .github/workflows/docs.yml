@@ -17,7 +17,14 @@ concurrency:
 jobs:
   build:
     name: Build Documentation
+    # CACHE-POISONING GUARD: strict RUSTDOCFLAGS below make this
+    # build's fingerprint distinct from any warnings-tolerant docs
+    # cache. Isolated CARGO_TARGET_DIR ensures a permissive
+    # rustdoc artefact set can't be restored and short-circuit
+    # the strict gate.
     runs-on: ubuntu-latest
+    env:
+      CARGO_TARGET_DIR: ${{ github.workspace }}/target-docs-pages
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
@@ -28,6 +35,9 @@ jobs:
 
       - name: Cache cargo
         uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
+        with:
+          workspaces: ". -> target-docs-pages"
+          key: docs-pages
 
       - name: Build documentation (strict)
         # Strengthened RUSTDOCFLAGS catch broken intra-doc links,
@@ -46,7 +56,7 @@ jobs:
             -D rustdoc::bare_urls
         run: |
           cargo doc --no-deps --all-features
-          echo '<meta http-equiv="refresh" content="0; url=noyalib/index.html">' > target/doc/index.html
+          echo '<meta http-equiv="refresh" content="0; url=noyalib/index.html">' > target-docs-pages/doc/index.html
 
       - name: Setup Pages
         uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
@@ -54,7 +64,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:
-          path: target/doc
+          path: target-docs-pages/doc
 
   deploy:
     name: Deploy to GitHub Pages
