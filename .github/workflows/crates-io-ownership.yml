@@ -1,0 +1,52 @@
+# SPDX-FileCopyrightText: 2026 Noyalib
+# SPDX-License-Identifier: MIT OR Apache-2.0
+
+name: crates.io ownership drift
+
+# Daily + on every workspace-split PR: assert that the crates.io
+# owner of each satellite name is still `sebastienrousseau`. If a
+# name is force-transferred, silently yanked, or delisted-and-re-
+# registered by a third party mid-split, this workflow fails and
+# the maintainer is alerted before any further split PR merges.
+#
+# Guards issue #125 acceptance criterion #5 — "a follow-up
+# regression test MUST land … that fails CI if any of the four
+# crates.io namespaces changes owner between planning and the
+# split PR — so a mid-split squat cannot silently succeed."
+#
+# The script itself lives at scripts/check-crates-io-ownership.sh
+# and can be invoked locally with no dependencies beyond curl + jq.
+
+on:
+  # Daily at 04:00 UTC — well before the OpenSSF Scorecard run at
+  # Monday 04:00, so a drift caught here has time to be triaged
+  # before Scorecard picks it up too.
+  schedule:
+    - cron: '0 4 * * *'
+  # Every PR carrying the workspace-split label re-runs the check
+  # so a mid-split PR cannot merge on stale ownership data.
+  pull_request:
+    types: [opened, synchronize, labeled, reopened]
+  # Manual re-trigger from the Actions UI.
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: crates-io-ownership-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ownership:
+    name: crates.io ownership drift
+    # Only run on PR events when the workspace-split label is set.
+    # (schedule + workflow_dispatch always run.)
+    if: >-
+      github.event_name != 'pull_request' ||
+      contains(github.event.pull_request.labels.*.name, 'workspace-split')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - name: Check ownership of every satellite name on crates.io
+        run: bash scripts/check-crates-io-ownership.sh
