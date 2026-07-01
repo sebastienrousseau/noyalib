@@ -25,7 +25,7 @@
 
 #![allow(dead_code)]
 
-use crate::prelude::{vec, Vec};
+use crate::prelude::{Vec, vec};
 
 /// UTF-8 BOM byte sequence (`U+FEFF`).
 pub(crate) const BOM: [u8; 3] = [0xEF, 0xBB, 0xBF];
