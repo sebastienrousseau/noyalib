@@ -164,11 +164,10 @@ jobs:
           MIRI_TARGET: mips64-unknown-linux-gnuabi64
 
   cargo-deny:
-    name: cargo-deny
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-      - uses: EmbarkStudios/cargo-deny-action@bb137d7af7e4fb67e5f82a49c4fce4fad40782fe # v2.0.20
+    # Consumes the shared cargo-deny workflow from this same repo
+    # so noyalib dogfoods the shared pattern before any satellite
+    # takes it via `uses: sebastienrousseau/noyalib/.github/workflows/shared-cargo-deny.yml@<sha>`.
+    uses: ./.github/workflows/shared-cargo-deny.yml
 
   fuzz-diff:
     name: Differential fuzz (10s smoke)
@@ -241,55 +240,22 @@ jobs:
           package: noyalib
 
   cargo-vet:
-    name: cargo-vet
-    # Verify every dependency in the build graph has either a local
-    # audit or coverage from one of the imported trusted audit sets
-    # (Mozilla, Google, Bytecode Alliance, Embark, ISRG). Bootstrap
-    # exemptions live in `supply-chain/config.toml`; the goal is to
-    # drive that list down to zero over time. Adding a new dep that
-    # is not yet covered will fail this job.
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-      - uses: dtolnay/rust-toolchain@fa04a1451ff1842e2626ccb99004d0195b455a88 # master
-        with:
-          toolchain: stable
-      - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
-      - name: Install cargo-vet
-        run: cargo install --locked cargo-vet
-      - name: cargo vet check
-        run: cargo vet --locked
+    # Dogfooded from shared-cargo-vet.yml — see the shared file
+    # for full context. Satellites will consume it via
+    # `uses: sebastienrousseau/noyalib/.github/workflows/shared-cargo-vet.yml@<sha>`.
+    uses: ./.github/workflows/shared-cargo-vet.yml
 
   cargo-machete:
-    name: cargo-machete (unused-dep gate)
-    # Catches dependencies declared in `Cargo.toml` that are no
-    # longer referenced anywhere in the crate. Keeps the dep
-    # tree honest as the workspace grows: a removed feature or
-    # refactor that orphans a `[dependencies]` entry surfaces
-    # here rather than slowly bloating the lockfile.
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-      - uses: dtolnay/rust-toolchain@fa04a1451ff1842e2626ccb99004d0195b455a88 # master
-        with:
-          toolchain: stable
-      - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
-      - name: Install cargo-machete
-        run: cargo install --locked cargo-machete
-      - name: cargo machete
-        run: cargo machete
+    # Dogfooded from shared-cargo-machete.yml — see the shared
+    # file for full context. Satellites will consume it via
+    # `uses: sebastienrousseau/noyalib/.github/workflows/shared-cargo-machete.yml@<sha>`.
+    uses: ./.github/workflows/shared-cargo-machete.yml
 
   reuse-lint:
-    name: REUSE.software compliance
-    # Every source file in this crate carries an SPDX license header.
-    # `reuse lint` enforces that they remain in place, that LICENSE
-    # files exist for every license the project declares, and that no
-    # untagged file slips into the tree. Cheap belt-and-suspenders
-    # against accidental licensing rot.
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-      - uses: fsfe/reuse-action@bb774aa972c2a89ff34781233d275075cbddf542 # v6
+    # Dogfooded from shared-reuse.yml — see the shared file for
+    # full context. Satellites will consume it via
+    # `uses: sebastienrousseau/noyalib/.github/workflows/shared-reuse.yml@<sha>`.
+    uses: ./.github/workflows/shared-reuse.yml
 
   msrv-1-85-core:
     name: MSRV (1.85.0) core build

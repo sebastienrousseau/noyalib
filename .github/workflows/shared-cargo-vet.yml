@@ -1,0 +1,40 @@
+# SPDX-FileCopyrightText: 2026 Noyalib
+# SPDX-License-Identifier: MIT OR Apache-2.0
+
+name: shared / cargo-vet
+
+# Reusable supply-chain gate. Runs `cargo vet --locked` against the
+# caller's `supply-chain/{audits,config,imports}.toml` and
+# `Cargo.lock`. Every dep in the build graph MUST have either a
+# local audit or coverage from an imported trusted audit set
+# (Mozilla, Google, Bytecode Alliance, Embark, Fermyon, ISRG,
+# Zcash). Bootstrap exemptions live in
+# `supply-chain/config.toml`; adding a new dep that is not yet
+# covered fails this job.
+#
+# Consumers pin by SHA:
+#
+#   jobs:
+#     cargo-vet:
+#       uses: sebastienrousseau/noyalib/.github/workflows/shared-cargo-vet.yml@<sha>
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: cargo-vet
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: dtolnay/rust-toolchain@fa04a1451ff1842e2626ccb99004d0195b455a88 # master
+        with:
+          toolchain: stable
+      - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
+      - name: Install cargo-vet
+        run: cargo install --locked cargo-vet
+      - name: cargo vet check
+        run: cargo vet --locked

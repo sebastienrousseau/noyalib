@@ -1,0 +1,38 @@
+# SPDX-FileCopyrightText: 2026 Noyalib
+# SPDX-License-Identifier: MIT OR Apache-2.0
+
+name: shared / cargo-machete
+
+# Reusable unused-dependency gate. Runs `cargo machete` against the
+# caller's Cargo.toml — catches declared dependencies that are no
+# longer referenced anywhere in the crate. Keeps the dep tree
+# honest as a workspace grows: a removed feature or a refactor
+# that orphans a `[dependencies]` entry surfaces here rather than
+# slowly bloating the lockfile.
+#
+# Consumers pin by SHA:
+#
+#   jobs:
+#     cargo-machete:
+#       uses: sebastienrousseau/noyalib/.github/workflows/shared-cargo-machete.yml@<sha>
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: cargo-machete (unused-dep gate)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: dtolnay/rust-toolchain@fa04a1451ff1842e2626ccb99004d0195b455a88 # master
+        with:
+          toolchain: stable
+      - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
+      - name: Install cargo-machete
+        run: cargo install --locked cargo-machete
+      - name: cargo machete
+        run: cargo machete

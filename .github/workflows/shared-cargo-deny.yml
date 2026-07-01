@@ -1,0 +1,32 @@
+# SPDX-FileCopyrightText: 2026 Noyalib
+# SPDX-License-Identifier: MIT OR Apache-2.0
+
+name: shared / cargo-deny
+
+# Reusable supply-chain gate. Runs `cargo deny check` (advisories +
+# bans + licenses + sources) against the caller's `deny.toml` and
+# `Cargo.lock`.
+#
+# Consumers pin by SHA:
+#
+#   jobs:
+#     cargo-deny:
+#       uses: sebastienrousseau/noyalib/.github/workflows/shared-cargo-deny.yml@<sha>
+#
+# Every satellite (noyalib-wasm, noyalib-mcp, noyalib-lsp, noya-cli)
+# consumes this so a supply-chain policy tightening in noyalib
+# propagates via a single Dependabot SHA bump per satellite.
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: cargo-deny
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: EmbarkStudios/cargo-deny-action@bb137d7af7e4fb67e5f82a49c4fce4fad40782fe # v2.0.20

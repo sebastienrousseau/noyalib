@@ -1,0 +1,31 @@
+# SPDX-FileCopyrightText: 2026 Noyalib
+# SPDX-License-Identifier: MIT OR Apache-2.0
+
+name: shared / REUSE compliance
+
+# Reusable REUSE.software compliance gate. Runs `fsfe/reuse-action`
+# against the caller's source tree — enforces that every file
+# carries an SPDX license header (either inline or via
+# `REUSE.toml` aggregate annotations), LICENSE files exist for
+# every license the project declares, and no untagged file slips
+# into the tree.
+#
+# Consumers pin by SHA:
+#
+#   jobs:
+#     reuse:
+#       uses: sebastienrousseau/noyalib/.github/workflows/shared-reuse.yml@<sha>
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: REUSE.software compliance
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: fsfe/reuse-action@bb774aa972c2a89ff34781233d275075cbddf542 # v6
