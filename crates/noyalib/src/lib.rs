@@ -367,6 +367,15 @@
 #[doc = include_str!("../README.md")]
 mod readme_doctests {}
 
+// The workspace-root README (GitHub landing page) is doctested by
+// `scripts/check-readme-examples.sh` — every ```rust block there
+// is extracted and compiled against `noyalib` from a scratch
+// project. Cannot `include_str!("../../../README.md")` here
+// because the workspace-root README lives outside the crate's
+// package layout, so `cargo publish --dry-run` would fail
+// verification. The script-based path preserves the invariant
+// (broken root-README examples fail CI) without breaking publish.
+
 #[cfg(not(feature = "std"))]
 extern crate alloc;
 

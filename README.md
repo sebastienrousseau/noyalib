@@ -918,7 +918,8 @@ is a contract violation.
 <details>
 <summary><b>Deserialization</b></summary>
 
-```rust
+```rust,ignore
+// API surface synopsis — substitute your own `Config`, `yaml`, `bytes`, etc.
 use noyalib::{from_str, from_slice, from_reader, from_value, ParserConfig};
 
 // From string, byte slice, reader, or Value
@@ -939,7 +940,8 @@ let config: Config = noyalib::from_reader_with_config(reader, &parser)?;
 <details>
 <summary><b>Serialization</b></summary>
 
-```rust
+```rust,ignore
+// API surface synopsis — substitute your own `config` value + `file` writer.
 use noyalib::{to_string, to_writer, to_fmt_writer, to_value, SerializerConfig};
 
 // To string, io::Write, or fmt::Write
@@ -1064,7 +1066,8 @@ value.apply_merge()?;
 <details>
 <summary><b>Multi-document streams</b></summary>
 
-```rust
+```rust,ignore
+// API surface synopsis — substitute your own `Config` type + `config1`/`config2` values.
 use noyalib::{load_all, to_string_multi};
 
 let docs = load_all("---\na: 1\n---\nb: 2\n")?;
@@ -1124,7 +1127,8 @@ struct Task {
 <details>
 <summary><b>Parser configuration</b></summary>
 
-```rust
+```rust,ignore
+// API surface synopsis — substitute your own `input` string.
 use noyalib::{from_str_with_config, ParserConfig, DuplicateKeyPolicy};
 
 let config = ParserConfig::new()
@@ -1146,7 +1150,8 @@ For maximum strictness, use `ParserConfig::strict()`.
 <details>
 <summary><b>Serializer configuration</b></summary>
 
-```rust
+```rust,ignore
+// API surface synopsis — substitute your own `value` to serialise.
 use noyalib::{to_string_with_config, SerializerConfig, FlowStyle, ScalarStyle};
 
 let config = SerializerConfig::new()

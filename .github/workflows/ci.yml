@@ -488,6 +488,38 @@ jobs:
       - name: cargo check --no-default-features
         run: cargo check --no-default-features --lib --locked
 
+  readme-examples:
+    name: README examples (root)
+    # Every `` ```rust `` code block in the workspace-root
+    # README.md is extracted and compiled against `noyalib` from a
+    # scratch project. Broken landing-page examples fail the PR.
+    #
+    # Cannot use `#[doc = include_str!("../../../README.md")]` in
+    # noyalib's lib.rs because the workspace-root README lives
+    # outside the crate's package layout, so `cargo publish
+    # --dry-run` would fail verification. The script-based path
+    # (`scripts/check-readme-examples.sh`) preserves the "every
+    # README example is tested" invariant without breaking
+    # publish.
+    #
+    # CACHE-POISONING GUARD: isolated CARGO_TARGET_DIR. The
+    # scratch project this job spins up must never be served a
+    # cached artefact set from a different feature configuration.
+    runs-on: ubuntu-latest
+    env:
+      CARGO_TARGET_DIR: ${{ github.workspace }}/target-readme-examples
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: dtolnay/rust-toolchain@fa04a1451ff1842e2626ccb99004d0195b455a88 # master
+        with:
+          toolchain: stable
+      - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
+        with:
+          workspaces: ". -> target-readme-examples"
+          key: readme-examples
+      - name: Compile every ```rust block in README.md
+        run: bash scripts/check-readme-examples.sh
+
   docs-strict:
     name: rustdoc (strict)
     # Mirror the same RUSTDOCFLAGS the docs.yml deployment job uses,
