@@ -20,6 +20,7 @@ path = [
     "about.toml",
     "about.hbs",
     "deny.toml",
+    "osv-scanner.toml",
     "rust-toolchain.toml",
     "REUSE.toml",
     "supply-chain/audits.toml",
