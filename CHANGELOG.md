@@ -7,7 +7,146 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
-(Nothing yet - `[v0.0.8]` is the cut.)
+(Nothing yet - `[v0.0.11]` is the cut.)
+
+## [v0.0.11] - 2026-07-01
+
+The **CI-integrity** cut. Fixes a silently-broken `no_std` build that
+had been masked on `main` since v0.0.9 by cache poisoning in the CI
+gates, closes three broken intra-doc links that were failing the
+Pages-deployment workflow every push, hardens every specialised cargo
+job across `ci.yml`, `security.yml`, `docs.yml`, and `release.yml`
+with an isolated `CARGO_TARGET_DIR` so a stale artefact set can no
+longer serve as a passing fingerprint for a different feature-set,
+adds a strict-rustdoc PR gate so broken doc links fail a PR rather
+than the post-merge Pages deployment, and closes OSSF Scorecard Code
+Scanning alert #36 (`RUSTSEC-2026-0173`, `proc-macro-error2`
+unmaintained — build-time-only via the opt-in `validator` feature,
+never ships in a release artefact) with a source-controlled
+`osv-scanner.toml` ignore.
+
+No public API change. No MSRV change (still 1.85). One behavior
+change under `--no-default-features`: `crates/noyalib/src/doc_boundary.rs`
+now correctly imports `Vec` and `vec![]` from the `crate::prelude`
+under `no_std` (previously used them without importing, which the
+poisoned `no_std` CI gate never noticed).
+
+### Fixed
+
+- **`no_std` build actually compiles.** `doc_boundary.rs` used `Vec`
+  and `vec![]` without importing them from `crate::prelude`. Under
+  `std` the prelude auto-imports both; under `no_std` they're only
+  reachable via `alloc::vec::Vec` / `alloc::vec` or the project's
+  `crate::prelude` re-export. Adds `use crate::prelude::{Vec, vec};`.
+  Also gates `use crate::span_context;` in `de.rs` behind
+  `#[cfg(feature = "std")]` to match its call sites, so
+  `--no-default-features` no longer trips `-D unused-imports`.
+- **Three broken intra-doc links** in `de/config.rs` (`[Value]` at
+  lines 179, 191, 348 and `[Error::Custom]` at line 213) now resolve.
+  These had been failing the `Documentation` workflow's strict
+  `-D warnings` build on every push to `main` since 2026-06-30.
+  Qualified all four to `[Value](crate::Value)` /
+  `[Error::Custom](crate::Error::Custom)`.
+
+### Changed
+
+- **CI cache-poisoning guard applied across every specialised cargo
+  job.** `no_std`, `MSRV (1.85.0) core build`, `Miri (focused)`,
+  `Miri (full + big-endian, scheduled)`, `Coverage gate`,
+  `Differential fuzz (10s smoke)`, `rustdoc (strict)`, `soak-fuzz`,
+  `soak-miri`, `docs.yml`, `release.yml/validate`, and
+  `release.yml/cross-verify` all now use an isolated
+  `CARGO_TARGET_DIR` plus a scoped Swatinem cache namespace. Sharing
+  target/ across feature configurations was how the `no_std` job
+  passed a stale-but-clean check for two full releases while the
+  code was actually broken — this pattern rules that out.
+- **New `docs-strict` PR-gated job** added to `ci.yml`. Mirrors the
+  strict `RUSTDOCFLAGS` (`-D warnings` + `broken_intra_doc_links` +
+  `private_intra_doc_links` + `invalid_codeblock_attributes` +
+  `invalid_html_tags` + `bare_urls`) that `docs.yml` uses on `main`,
+  but on every PR. Broken doc links now fail a PR instead of the
+  Pages deployment after merge.
+
+### Security
+
+- **Code Scanning alert #36 closed.** `RUSTSEC-2026-0173`
+  (`proc-macro-error2` unmaintained) documented as accepted risk in
+  the new `osv-scanner.toml` (mirroring the pre-existing `deny.toml`
+  `[advisories.ignore]` entry) so OSSF Scorecard's Vulnerabilities
+  check no longer re-flags it. Rationale is build-time-only exposure
+  via the opt-in `validator` feature; never ships in a release
+  artefact. Revisit when `validator` cuts a release that drops
+  `proc-macro-error2`.
+
+## [v0.0.10] - 2026-06-30
+
+The **BOM scanner** cut. A leading UTF-8 BOM (`U+FEFF`) no longer
+breaks `parse_document` on multi-node inputs. Contributed by
+[@zoosky](https://github.com/zoosky) (PR #118, rebased as #123).
+
+No public API change. No MSRV change.
+
+### Fixed
+
+- **Leading UTF-8 BOM is transparent to indentation and comments.**
+  The scanner used to consume the BOM with `advance_by(3)` while
+  counting those three bytes toward the column of the following
+  content, so a BOM-prefixed multi-node document (`<BOM>a: 1\nb: 2\n`)
+  errored with "stray content after document — subsequent documents
+  must start with '---'". The same miscount also broke BOM-prefixed
+  sequences, nested mappings, and a `<BOM>#`-style first-line comment.
+  Three surgical fixes in `parser/scanner.rs` make the BOM transparent
+  at every column-aware site: `fetch_stream_start` resets `self.col = 0`
+  after `advance_by(3)`, the simple-key indent path skips a leading
+  BOM when computing `line_start`, and the block-context comment check
+  treats `#` immediately after a leading BOM as a start-of-input
+  comment. Each fix is gated on `pos == 3` / `line_start == 0` so an
+  interior `0xEF 0xBB 0xBF` byte sequence in legitimate UTF-8 is
+  never mistaken for one. Two scanner regression tests included.
+
+## [v0.0.9] - 2026-06-30
+
+The **supply-chain refresh** cut. Batches eight open Dependabot PRs,
+clears two RustSec advisories, migrates `jsonschema` 0.33 → 0.46 with
+the ValidationError API change, and refreshes the cargo-vet
+exemptions + `imports.lock` snapshot so the supply-chain gates run
+green from a clean state.
+
+No public API change. No MSRV change.
+
+### Fixed
+
+- **Two RustSec advisories cleared.** `anyhow` 1.0.102 → 1.0.103
+  (`RUSTSEC-2026-0190` — `Error::downcast_mut` unsoundness),
+  `memmap2` 0.9.10 → 0.9.11 (`RUSTSEC-2026-0186` — unchecked pointer
+  offset).
+- **`jsonschema` 0.33 → 0.46.7 API migration.**
+  `ValidationError::kind` and `ValidationError::instance_path` are
+  now methods, not public fields. Updated `schema_validate.rs` and
+  `cst/coerce.rs` to the new call syntax. All 16 schema tests pass
+  under the new API.
+
+### Changed
+
+- **Batched Dependabot bumps.** GitHub Actions: `actions/checkout`
+  6.0.3 → 7.0.0, `actions/cache` 5.0.5 → 6.1.0,
+  `actions/attest-build-provenance` 4.1.0 → 4.1.1,
+  `github/codeql-action/{init,analyze,upload-sarif}` SHA bump,
+  `ossf/scorecard-action` SHA bump, `dtolnay/rust-toolchain` master
+  SHA bump, `taiki-e/install-action` 2.81.8 → 2.82.2. Cargo:
+  `bytes` 1.11.1 → 1.12.0, `serde-saphyr` 0.0.27 → 0.0.28.
+- **Supply-chain hygiene.** `deny.toml` gains a scoped `Zlib`
+  license allowance for `foldhash` (transitive via
+  `hashbrown 0.16 → referencing 0.46`), matching the existing
+  MIT-0 / BSD-2-Clause posture. `supply-chain/config.toml` shrinks
+  from 18 to 14 exemptions after `cargo vet regenerate exemptions`
+  (upstream audits now cover what was previously locally
+  exempted). `supply-chain/imports.lock` refreshed via
+  `cargo vet regenerate imports` so `--locked` accepts the current
+  dep graph.
+- **Workspace crates bumped to 0.0.9** (`noyalib`, `noya-cli`,
+  `noyalib-mcp`, `noyalib-lsp`, `noyalib-wasm`) with intra-workspace
+  `version =` pins synced. `xtask` stays at 0.0.1.
 
 ## [v0.0.8] - 2026-06-17
 
