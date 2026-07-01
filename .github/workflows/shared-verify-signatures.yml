@@ -1,0 +1,60 @@
+# SPDX-FileCopyrightText: 2026 Noyalib
+# SPDX-License-Identifier: MIT OR Apache-2.0
+
+name: shared / Verify commit signatures
+
+# Reusable signed-commit gate. Iterates every commit on the caller
+# PR and asserts each carries a verified GPG/SSH signature via the
+# GitHub REST API. Fails if any commit in the PR is unverified.
+#
+# Complements the `required_signatures: true` rule in the
+# main-branch-protection ruleset — that rule blocks the direct
+# push of an unsigned commit, and this gate blocks the merge of a
+# PR whose commits are individually unsigned (belt + braces, so a
+# ruleset gap or a mid-PR unsigned commit does not slip in).
+#
+# Consumers pin by SHA:
+#
+#   jobs:
+#     verify-signatures:
+#       uses: sebastienrousseau/noyalib/.github/workflows/shared-verify-signatures.yml@<sha>
+
+on:
+  workflow_call:
+
+# The default `contents: read` scope is enough to hit the
+# `git/commits` and `pulls/N/commits` REST endpoints for the
+# repo the workflow is running in.
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  check:
+    name: Verify commit signatures
+    runs-on: ubuntu-latest
+    # Only meaningful on pull_request events (the gate iterates
+    # PR commits). Scheduled / push events skip cleanly.
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
+      - name: Verify PR commits are signed (via GitHub API)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          UNSIGNED=""
+          for COMMIT in $(gh api repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/commits --jq '.[].sha'); do
+            VERIFIED=$(gh api repos/${{ github.repository }}/git/commits/$COMMIT --jq '.verification.verified')
+            if [ "$VERIFIED" != "true" ]; then
+              MSG=$(gh api repos/${{ github.repository }}/git/commits/$COMMIT --jq '.message' | head -1)
+              echo "::error::Unverified commit: $COMMIT ($MSG)"
+              UNSIGNED="$UNSIGNED $COMMIT"
+            fi
+          done
+          if [ -n "$UNSIGNED" ]; then
+            echo "::error::Unverified commits detected. All PR commits must be signed."
+            exit 1
+          fi
+          echo "All commits are verified."

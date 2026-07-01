@@ -421,131 +421,28 @@ jobs:
         run: ./scripts/msrv-per-crate.sh
 
   no-std:
-    name: no_std (alloc-only) build
-    # The README and CHANGELOG promise that `default-features = false`
-    # builds without `std`. This job enforces that promise on every
-    # push so the claim never silently regresses.
-    #
-    # CACHE-POISONING GUARD: this job uses an isolated CARGO_TARGET_DIR
-    # so the no_std fingerprint can never be served from a previous
-    # `cargo check` that ran with `std` on (those would share the
-    # default `target/` under Swatinem/rust-cache and silently return
-    # a stale-but-passing result, masking real no_std regressions —
-    # exactly what hid the missing `crate::prelude::Vec` / `vec` import
-    # in doc_boundary.rs and the unused `crate::span_context` import in
-    # de.rs through v0.0.9 and v0.0.10).
-    runs-on: ubuntu-latest
-    env:
-      CARGO_TARGET_DIR: ${{ github.workspace }}/target-no-std
-    steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-      - uses: dtolnay/rust-toolchain@fa04a1451ff1842e2626ccb99004d0195b455a88 # master
-        with:
-          toolchain: stable
-      - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
-        with:
-          # Scope the cache to this job's isolated target dir, and
-          # split the cache namespace so it can't share state with the
-          # `std`-on jobs. Belt-and-braces: even if Swatinem changes
-          # default behaviour, the explicit CARGO_TARGET_DIR above is
-          # the real guarantee.
-          workspaces: ". -> target-no-std"
-          key: no-std
-      - name: cargo check --no-default-features
-        run: cargo check --no-default-features --lib --locked
+    # Dogfooded from shared-no-std.yml — the CARGO_TARGET_DIR
+    # isolation + Swatinem cache-namespace split (preventing the
+    # v0.0.9/v0.0.10 cache-poisoning class of bug) live in the
+    # shared workflow. Satellites will consume it via
+    # `uses: sebastienrousseau/noyalib/.github/workflows/shared-no-std.yml@<sha>`.
+    uses: ./.github/workflows/shared-no-std.yml
 
   readme-examples:
-    name: README examples (root)
-    # Every `` ```rust `` code block in the workspace-root
-    # README.md is extracted and compiled against `noyalib` from a
-    # scratch project. Broken landing-page examples fail the PR.
-    #
-    # Cannot use `#[doc = include_str!("../../../README.md")]` in
-    # noyalib's lib.rs because the workspace-root README lives
-    # outside the crate's package layout, so `cargo publish
-    # --dry-run` would fail verification. The script-based path
-    # (`scripts/check-readme-examples.sh`) preserves the "every
-    # README example is tested" invariant without breaking
-    # publish.
-    #
-    # CACHE-POISONING GUARD: isolated CARGO_TARGET_DIR. The
-    # scratch project this job spins up must never be served a
-    # cached artefact set from a different feature configuration.
-    runs-on: ubuntu-latest
-    env:
-      CARGO_TARGET_DIR: ${{ github.workspace }}/target-readme-examples
-    steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-      - uses: dtolnay/rust-toolchain@fa04a1451ff1842e2626ccb99004d0195b455a88 # master
-        with:
-          toolchain: stable
-      - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
-        with:
-          workspaces: ". -> target-readme-examples"
-          key: readme-examples
-      - name: Compile every ```rust block in README.md
-        run: bash scripts/check-readme-examples.sh
+    # Dogfooded from shared-readme-examples.yml. The check itself
+    # (scripts/check-readme-examples.sh) is invoked by the shared
+    # workflow and must exist in the caller's checkout at the same
+    # path.
+    uses: ./.github/workflows/shared-readme-examples.yml
 
   docs-strict:
-    name: rustdoc (strict)
-    # Mirror the same RUSTDOCFLAGS the docs.yml deployment job uses,
-    # but on every PR — broken intra-doc links and bad codeblock
-    # fence attributes should fail a PR, not break the Pages
-    # deployment after merge. (For three days through v0.0.9 +
-    # v0.0.10 the docs.yml job was silently failing on main while
-    # PRs sailed through; this gate closes that hole.)
-    #
-    # CACHE-POISONING GUARD: isolated CARGO_TARGET_DIR. rustdoc
-    # fingerprints depend on RUSTDOCFLAGS env; if a Swatinem cache
-    # from a different job (without the strict flags) restored
-    # into target/, cargo could serve a stale hit and mask new
-    # broken doc links.
-    runs-on: ubuntu-latest
-    env:
-      CARGO_TARGET_DIR: ${{ github.workspace }}/target-docs-strict
-    steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-      - uses: dtolnay/rust-toolchain@fa04a1451ff1842e2626ccb99004d0195b455a88 # master
-        with:
-          toolchain: stable
-      - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
-        with:
-          workspaces: ". -> target-docs-strict"
-          key: docs-strict
-      - name: cargo doc --no-deps --all-features (strict)
-        env:
-          RUSTDOCFLAGS: >-
-            -D warnings
-            -D rustdoc::broken_intra_doc_links
-            -D rustdoc::private_intra_doc_links
-            -D rustdoc::invalid_codeblock_attributes
-            -D rustdoc::invalid_html_tags
-            -D rustdoc::bare_urls
-        run: cargo doc --workspace --no-deps --all-features --locked
+    # Dogfooded from shared-rustdoc-strict.yml. The strict
+    # RUSTDOCFLAGS + isolated CARGO_TARGET_DIR live in the shared
+    # workflow.
+    uses: ./.github/workflows/shared-rustdoc-strict.yml
 
   verify-signatures:
-    name: Verify commit signatures
-    runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
-    steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-        with:
-          fetch-depth: 0
-      - name: Verify PR commits are signed (via GitHub API)
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          UNSIGNED=""
-          for COMMIT in $(gh api repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/commits --jq '.[].sha'); do
-            VERIFIED=$(gh api repos/${{ github.repository }}/git/commits/$COMMIT --jq '.verification.verified')
-            if [ "$VERIFIED" != "true" ]; then
-              MSG=$(gh api repos/${{ github.repository }}/git/commits/$COMMIT --jq '.message' | head -1)
-              echo "::error::Unverified commit: $COMMIT ($MSG)"
-              UNSIGNED="$UNSIGNED $COMMIT"
-            fi
-          done
-          if [ -n "$UNSIGNED" ]; then
-            echo "::error::Unverified commits detected. All PR commits must be signed."
-            exit 1
-          fi
-          echo "All commits are verified."
+    # Dogfooded from shared-verify-signatures.yml. The gate itself
+    # only runs on pull_request events (controlled inside the
+    # shared workflow's `if:`).
+    uses: ./.github/workflows/shared-verify-signatures.yml
