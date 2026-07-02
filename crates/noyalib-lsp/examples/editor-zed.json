@@ -1,5 +1,5 @@
 {
-  "_comment": "SPDX-License-Identifier: Apache-2.0 OR MIT — Zed LSP config for noyalib-lsp (the LSP server, distinct from the noyalib-mcp context-server config)",
+  "_comment": "Licensed Apache-2.0 OR MIT (see REUSE.toml aggregate) — Zed LSP config for noyalib-lsp (the LSP server, distinct from the noyalib-mcp context-server config)",
   "_install_path": {
     "macOS": "~/.config/zed/settings.json",
     "Linux": "~/.config/zed/settings.json",

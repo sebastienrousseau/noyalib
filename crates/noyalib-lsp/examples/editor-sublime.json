@@ -1,5 +1,5 @@
 {
-  "_comment": "SPDX-License-Identifier: Apache-2.0 OR MIT — Sublime Text LSP config for noyalib-lsp",
+  "_comment": "Licensed Apache-2.0 OR MIT (see REUSE.toml aggregate) — Sublime Text LSP config for noyalib-lsp",
   "_install_steps": [
     "1. Install the LSP package via Package Control: Cmd/Ctrl+Shift+P → 'Package Control: Install Package' → 'LSP'.",
     "2. Open Preferences → Package Settings → LSP → Settings.",

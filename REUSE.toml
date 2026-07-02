@@ -27,6 +27,7 @@ path = [
     "supply-chain/config.toml",
     "supply-chain/imports.lock",
     "server.json",
+    "glama.json",
 ]
 precedence = "aggregate"
 SPDX-FileCopyrightText = "2026 Noyalib"
@@ -61,14 +62,14 @@ path = [
     "crates/noyalib-lsp/examples/README.md",
     "crates/noyalib-mcp/README.md",
     "crates/noyalib-mcp/examples/README.md",
-    "crates/noyalib-wasm/README.md",
-    "crates/noyalib-wasm/examples/README.md",
-    "crates/noyalib-wasm/examples/browser/index.html",
     "crates/noyalib/doc/**",
     "crates/noya-cli/doc/**",
     "crates/noyalib-lsp/doc/**",
     "crates/noyalib-mcp/doc/**",
-    "crates/noyalib-wasm/doc/**",
+    # noyalib-wasm was split to its own repo in v0.0.12 (ADR-0005);
+    # its README, examples, and doc/ tree now live at
+    # https://github.com/sebastienrousseau/noyalib-wasm and are
+    # licensed there via the satellite's own REUSE.toml.
 ]
 precedence = "aggregate"
 SPDX-FileCopyrightText = "2026 Noyalib"
@@ -152,8 +153,6 @@ path = [
     ".cargo/config.toml",
     "crates/noya-cli/Cargo.toml",
     "crates/noyalib/Cargo.toml",
-    "crates/noyalib-wasm/Cargo.toml",
-    "crates/noyalib-wasm/index.html",
     "crates/noyalib-mcp/Cargo.toml",
     "crates/noyalib-lsp/Cargo.toml",
     "crates/xtask/Cargo.toml",

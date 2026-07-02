@@ -1,5 +1,5 @@
 {
-  "_comment": "SPDX-License-Identifier: Apache-2.0 OR MIT — Zed MCP / context server config snippet for noyalib-mcp",
+  "_comment": "Licensed Apache-2.0 OR MIT (see REUSE.toml aggregate) — Zed MCP / context server config snippet for noyalib-mcp",
   "_install_path": {
     "macOS": "~/.config/zed/settings.json",
     "Linux": "~/.config/zed/settings.json",
