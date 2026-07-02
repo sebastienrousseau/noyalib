@@ -16,10 +16,13 @@ official Model Context Protocol Registry (via OCI packaging), adds
 MCP-spec conformance CI, ships a Glama directory manifest, and
 cross-links the sibling banking MCP servers.
 
-Per-crate versioning: this is a **`noyalib-mcp`-only** bump
-(`0.0.11` → `0.0.12`). The core library (`noyalib`), LSP
-(`noyalib-lsp`), WASM (`noyalib-wasm`), and CLI (`noya-cli`) crates
-stay at `0.0.11` — no functional changes to them.
+Workspace-lockstep versioning: all 5 publishable crates bump from
+`0.0.11` → `0.0.12` (`noyalib`, `noyalib-mcp`, `noyalib-lsp`,
+`noyalib-wasm`, `noya-cli`). `xtask` stays at `0.0.1` per workspace
+convention. The functional surface of the non-MCP crates is
+unchanged from `0.0.11` — the bump keeps every publishable crate in
+lockstep, which is what the release workflow expects when the tag
+is pushed.
 
 Also bundles the pre-existing **workspace-split CI shared-workflows
 work** (phases 1–4, PRs #135–#139) that was already sitting on the
@@ -90,11 +93,13 @@ Reviewed via separate PRs #135–#139:
   library (not banking), so no GitHub-metadata changes for it in
   this cut.
 
-### No noyalib / noyalib-lsp / noyalib-wasm / noya-cli API changes
+### No functional / API changes to non-MCP crates
 
-- Only `noyalib-mcp` bumps to `0.0.12`. Existing consumers of the
-  core `noyalib`, `noyalib-lsp`, `noyalib-wasm`, and `noya-cli`
-  crates continue to work unchanged at `0.0.11`.
+- Only `noyalib-mcp` has a substantive change (the MCP registry
+  work above). The other four publishable crates (`noyalib`,
+  `noyalib-lsp`, `noyalib-wasm`, `noya-cli`) bump to `0.0.12` as
+  part of the workspace-lockstep cut but ship no code changes —
+  existing consumers can upgrade without any migration.
 
 ## [v0.0.11] - 2026-07-01
 

@@ -16,7 +16,7 @@ path = "src/main.rs"
 # Package is `noya-cli`; the [lib] inside it is `noya_cli` (snake-case).
 # `version` pin is required by `cargo-deny`'s wildcard ban rule, even
 # for path-only intra-workspace deps.
-noya-cli      = { path = "../noya-cli", version = "0.0.11", default-features = false, features = ["noyafmt"] }
+noya-cli      = { path = "../noya-cli", version = "0.0.12", default-features = false, features = ["noyafmt"] }
 clap          = { version = "4.5", features = ["derive"] }
 clap_complete = "4.6"
 clap_mangen   = "0.3"

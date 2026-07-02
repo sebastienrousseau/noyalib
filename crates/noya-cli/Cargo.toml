@@ -1,6 +1,6 @@
 [package]
 name = "noya-cli"
-version = "0.0.11"
+version = "0.0.12"
 edition = "2024"
 # clap 4.5 transitively pulls clap_builder 4.6 (edition 2024),
 # which requires rustc 1.85+. Library users still build the
@@ -38,7 +38,7 @@ path = "src/bin/noyavalidate.rs"
 required-features = ["noyavalidate"]
 
 [dependencies]
-noyalib = { path = "../noyalib", version = "0.0.11", default-features = false }
+noyalib = { path = "../noyalib", version = "0.0.12", default-features = false }
 clap    = { version = "4.5", features = ["derive", "wrap_help"] }
 miette  = { version = "7", optional = true, features = ["fancy"] }
 
