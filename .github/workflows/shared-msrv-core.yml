@@ -1,0 +1,70 @@
+# SPDX-FileCopyrightText: 2026 Noyalib
+# SPDX-License-Identifier: MIT OR Apache-2.0
+
+name: shared / MSRV core build
+
+# Reusable MSRV-core-build gate. Runs three checks against the
+# caller-specified MSRV toolchain, each in its own isolated
+# CARGO_TARGET_DIR so a stale-but-passing cache from one config
+# cannot mask a regression in another:
+#
+#   1. `cargo check --no-default-features --lib --locked`
+#      — the no_std + alloc surface consumers on the MSRV rely on.
+#   2. `cargo check --locked`  — the default-features (std) surface.
+#   3. `cargo clippy --lib --locked -- -D warnings`
+#      — clippy on the core lib.
+#
+# The MSRV toolchain is passed as an input (default 1.85.0) so
+# each satellite can declare its own floor.
+#
+# Consumers pin by SHA:
+#
+#   jobs:
+#     msrv-core:
+#       uses: sebastienrousseau/noyalib/.github/workflows/shared-msrv-core.yml@<sha>
+#       with:
+#         toolchain: "1.85.0"
+
+on:
+  workflow_call:
+    inputs:
+      toolchain:
+        description: >-
+          MSRV toolchain to check against (e.g. "1.85.0"). Should
+          match the caller's `rust-version` in Cargo.toml.
+        required: false
+        type: string
+        default: "1.85.0"
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: MSRV (${{ inputs.toolchain }}) core build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: dtolnay/rust-toolchain@fa04a1451ff1842e2626ccb99004d0195b455a88 # master
+        with:
+          toolchain: ${{ inputs.toolchain }}
+          components: clippy
+      - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
+        with:
+          workspaces: |
+            . -> target-msrv-nostd
+            . -> target-msrv-default
+            . -> target-msrv-clippy
+          key: msrv-${{ inputs.toolchain }}
+      - name: cargo check (no_std)
+        env:
+          CARGO_TARGET_DIR: ${{ github.workspace }}/target-msrv-nostd
+        run: cargo check --no-default-features --lib --locked
+      - name: cargo check (default features)
+        env:
+          CARGO_TARGET_DIR: ${{ github.workspace }}/target-msrv-default
+        run: cargo check --locked
+      - name: cargo clippy on MSRV core
+        env:
+          CARGO_TARGET_DIR: ${{ github.workspace }}/target-msrv-clippy
+        run: cargo clippy --lib --locked -- -D warnings

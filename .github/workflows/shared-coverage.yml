@@ -1,0 +1,93 @@
+# SPDX-FileCopyrightText: 2026 Noyalib
+# SPDX-License-Identifier: MIT OR Apache-2.0
+
+name: shared / Coverage gate
+
+# Reusable coverage-gate. Runs cargo-llvm-cov on nightly with the
+# caller's `NOYALIB_COVERAGE=1` (or equivalent) env so panic-path
+# invariants annotated with `#[cfg_attr(<flag>, coverage(off))]`
+# are excluded from the denominator. Fails the build if coverage
+# drops below the caller-specified thresholds.
+#
+# CACHE-POISONING GUARD: coverage instrumentation adds
+# `-C instrument-coverage` and NOYALIB_COVERAGE=1 gates
+# `#[cfg(noyalib_coverage)]` code paths — completely distinct
+# fingerprint from every other cargo job. Isolated
+# CARGO_TARGET_DIR + scoped cache key so a stale non-instrumented
+# artefact set can never mask an instrumentation regression.
+#
+# Inputs let a satellite override thresholds + ignore paths so the
+# gate stays honest to that satellite's coverage baseline (e.g. a
+# WASM satellite may need to exclude the JS-interop boundary,
+# which doesn't run under llvm-cov).
+#
+# Consumers pin by SHA:
+#
+#   jobs:
+#     coverage-gate:
+#       uses: sebastienrousseau/noyalib/.github/workflows/shared-coverage.yml@<sha>
+
+on:
+  workflow_call:
+    inputs:
+      ignore-filename-regex:
+        description: >-
+          Regex passed to `cargo llvm-cov --ignore-filename-regex`
+          to exclude paths from the coverage denominator (e.g.
+          wasm-bindgen glue, subprocess-driving tests).
+        required: false
+        type: string
+        default: 'crates/noyalib-wasm/src/lib\.rs|crates/noyalib-(mcp|lsp)/tests/protocol|crates/xtask/src/main\.rs'
+      fail-under-functions:
+        description: Minimum function-coverage percentage.
+        required: false
+        type: number
+        default: 96
+      fail-under-lines:
+        description: Minimum line-coverage percentage.
+        required: false
+        type: number
+        default: 94
+      fail-under-regions:
+        description: Minimum region-coverage percentage.
+        required: false
+        type: number
+        default: 93
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Coverage gate (≥95%)
+    runs-on: ubuntu-latest
+    env:
+      CARGO_TARGET_DIR: ${{ github.workspace }}/target-coverage
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: dtolnay/rust-toolchain@fa04a1451ff1842e2626ccb99004d0195b455a88 # master
+        with:
+          toolchain: nightly
+          components: llvm-tools-preview
+      - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
+        with:
+          workspaces: ". -> target-coverage"
+          key: coverage-nightly
+      - name: Install cargo-llvm-cov
+        uses: taiki-e/install-action@16b05812d776ae1dfaabc8277e421fb6d2506419 # v2.82.7
+        with:
+          tool: cargo-llvm-cov
+      - name: "Coverage report"
+        env:
+          NOYALIB_COVERAGE: '1'
+        # `cargo +nightly` is required because `rust-toolchain.toml`
+        # pins stable; without `+nightly` the project default wins
+        # and `feature(coverage_attribute)` (activated when
+        # `NOYALIB_COVERAGE=1` triggers `--cfg noyalib_coverage` via
+        # build.rs) fails to compile on stable.
+        run: |
+          cargo +nightly llvm-cov --workspace --all-features --no-fail-fast \
+            --ignore-filename-regex '${{ inputs.ignore-filename-regex }}' \
+            --fail-under-functions ${{ inputs.fail-under-functions }} \
+            --fail-under-lines ${{ inputs.fail-under-lines }} \
+            --fail-under-regions ${{ inputs.fail-under-regions }}

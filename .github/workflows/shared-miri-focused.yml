@@ -1,0 +1,73 @@
+# SPDX-FileCopyrightText: 2026 Noyalib
+# SPDX-License-Identifier: MIT OR Apache-2.0
+
+name: shared / Miri (focused, per-PR)
+
+# Reusable per-PR Miri gate. Runs `scripts/miri.sh` (the caller's
+# focused Miri subset) on ubuntu-latest, nightly Rust, with the
+# Miri sysroot cached across runs so a fresh runner does not eat
+# the ~12-minute sysroot build every time.
+#
+# CACHE-POISONING GUARD: Miri builds use `-Zmiri-*` flags plus the
+# Miri sysroot — completely distinct fingerprint from every stable
+# / nightly cargo build. Isolated CARGO_TARGET_DIR (target-miri)
+# so a stale non-Miri artefact set cannot mask a Miri regression.
+# The Miri sysroot lives at `~/.cache/miri` and `target-miri/miri`
+# — cached across PRs via actions/cache keyed on the toolchain +
+# Cargo.lock hash.
+#
+# The caller MUST ship a Miri driver at `scripts/miri.sh` (a small
+# wrapper that invokes `cargo +nightly miri test` with any
+# per-crate exclusions the caller wants).
+#
+# Consumers pin by SHA:
+#
+#   jobs:
+#     miri-focused:
+#       uses: sebastienrousseau/noyalib/.github/workflows/shared-miri-focused.yml@<sha>
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Miri (focused, per-PR)
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    # Wall-clock measurements (noyalib):
+    #   Local M-series Mac (aarch64 NEON): ~32 min on a fresh sysroot.
+    #   GitHub ubuntu-latest (x86_64, 2 vCPU): ~45+ min.
+    # 60 min leaves headroom for runner contention without letting
+    # a real hang sit forever; the scheduled `miri-full` still covers
+    # the deeper sweep plus big-endian.
+    timeout-minutes: 60
+    env:
+      CARGO_TARGET_DIR: ${{ github.workspace }}/target-miri
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - name: Install Rust nightly with Miri
+        uses: dtolnay/rust-toolchain@fa04a1451ff1842e2626ccb99004d0195b455a88 # master
+        with:
+          toolchain: nightly
+          components: miri
+      # Amortise the Miri sysroot build across PRs.
+      - name: Cache Miri sysroot
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cache/miri
+            target-miri/miri
+          key: miri-${{ runner.os }}-${{ hashFiles('rust-toolchain.toml', 'Cargo.lock') }}
+          restore-keys: |
+            miri-${{ runner.os }}-
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
+        with:
+          workspaces: ". -> target-miri"
+          key: miri-focused
+          save-if: false
+      - name: Run focused Miri suite
+        run: ./scripts/miri.sh
