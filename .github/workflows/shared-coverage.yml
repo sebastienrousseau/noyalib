@@ -37,7 +37,7 @@ on:
           wasm-bindgen glue, subprocess-driving tests).
         required: false
         type: string
-        default: 'crates/noyalib-wasm/src/lib\.rs|crates/noyalib-(mcp|lsp)/tests/protocol|crates/xtask/src/main\.rs'
+        default: 'crates/noyalib-(mcp|lsp)/tests/protocol|crates/xtask/src/main\.rs'
       fail-under-functions:
         description: Minimum function-coverage percentage.
         required: false

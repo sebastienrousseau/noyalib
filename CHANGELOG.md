@@ -11,24 +11,64 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [v0.0.12] - 2026-07-02
 
-The **MCP-discoverability** cut. Registers `noyalib-mcp` with the
-official Model Context Protocol Registry (via OCI packaging), adds
-MCP-spec conformance CI, ships a Glama directory manifest, and
-cross-links the sibling banking MCP servers.
+Three threads land together in this cut:
 
-Workspace-lockstep versioning: all 5 publishable crates bump from
-`0.0.11` → `0.0.12` (`noyalib`, `noyalib-mcp`, `noyalib-lsp`,
-`noyalib-wasm`, `noya-cli`). `xtask` stays at `0.0.1` per workspace
-convention. The functional surface of the non-MCP crates is
-unchanged from `0.0.11` — the bump keeps every publishable crate in
-lockstep, which is what the release workflow expects when the tag
-is pushed.
+1. **`noyalib-wasm` split** — first satellite to leave the
+   monorepo under [ADR-0005](doc/adr/0005-workspace-split.md).
+   Moves to
+   [`sebastienrousseau/noyalib-wasm`](https://github.com/sebastienrousseau/noyalib-wasm)
+   with 11 commits of history preserved. Strict-lockstep
+   versioning contract: satellite pins `noyalib = "=0.0.12"`.
+2. **MCP-discoverability** — registers `noyalib-mcp` with the
+   official Model Context Protocol Registry (via OCI packaging),
+   adds MCP-spec conformance CI, ships a Glama directory
+   manifest, and cross-links the sibling banking MCP servers.
+3. **Workspace-split CI shared-workflows** (phases 1–4, PRs
+   #135–#139): 20+ new `shared-*.yml` reusable workflows,
+   `ci.yml` refactored to delegate to them (-480 lines), CI
+   duration monitor, crates.io ownership harness, and ADR-0005.
 
-Also bundles the pre-existing **workspace-split CI shared-workflows
-work** (phases 1–4, PRs #135–#139) that was already sitting on the
-`feat/v0.0.12` branch: 20+ new `shared-*.yml` reusable workflows,
-`ci.yml` refactored to delegate to them (-480 lines), CI-duration
-monitor, crates.io ownership harness, and ADR-0005.
+Lockstep versioning: 4 in-workspace publishable crates
+(`noyalib`, `noyalib-mcp`, `noyalib-lsp`, `noya-cli`) bump from
+`0.0.11` → `0.0.12`. `noyalib-wasm` releases the same `0.0.12`
+from the satellite repo. `xtask` stays at `0.0.1` per workspace
+convention.
+
+### Added — workspace split (v0.0.12 pilot)
+
+- **`noyalib-wasm` extracted** to
+  [`sebastienrousseau/noyalib-wasm`](https://github.com/sebastienrousseau/noyalib-wasm)
+  via `git subtree split`. 11 commits with authorship
+  preserved. Satellite consumes reusable workflows from this
+  repo pinned by SHA; a hardening pass here propagates within
+  48h via Dependabot.
+- **Permissions-gotcha table** added to ADR-0005 §Shared
+  reusable workflows — v0.0.13 / v0.0.14 / v0.0.15 satellites
+  MUST union `pull-requests: read` into their caller
+  `ci.yml permissions:` block or first CI runs will
+  startup_failure with 0 scheduled jobs. Discovered on the
+  pilot; documented so successors don't repeat.
+- **Post-implementation update** in ADR-0005 records the
+  pilot's concrete outcome (subtree extraction, lockstep
+  enforcement, ruleset applied).
+
+### Removed — workspace split (v0.0.12 pilot)
+
+- `crates/noyalib-wasm/` directory (history preserved on the
+  satellite repo). Root `Cargo.toml` workspace member list
+  drops the entry.
+- `release.yml` version cross-check now covers 3 in-workspace
+  satellites; the `noyalib-wasm` cross-check moves to the
+  satellite's own release workflow.
+- `release-binaries.yml` drops the `npm-publish` job for
+  `@noyalib/noyalib-wasm`. That publish now runs from the
+  satellite repo.
+- Coverage `ignore-filename-regex` in `.github/workflows/ci.yml`,
+  `shared-coverage.yml`, and `scripts/coverage-gap-report.sh`
+  no longer references `crates/noyalib-wasm/src/lib.rs`.
+- README ecosystem table + per-crate README pointers link to
+  the satellite repo. `doc/USER-GUIDE.md` and
+  `doc/ARCHITECTURE.md` reflect the split.
 
 ### Added — MCP registry work (noyalib-mcp only)
 

@@ -564,13 +564,14 @@ other channels in [`pkg/PUBLISH.md`](../pkg/PUBLISH.md).
 
 ## 12. WASM, MCP, and LSP
 
-Three satellite crates in the workspace target specific
-deployment shapes:
+Three satellite crates target specific deployment shapes:
 
-- **`noyalib-wasm`** (`crates/noyalib-wasm/`). `wasm-pack`
-  output published to npm as `@noyalib/noyalib-wasm`. Browser
-  IDEs use it for live YAML formatting / validation; the
-  bundle is ~338 KB after LTO.
+- **`noyalib-wasm`** ([`sebastienrousseau/noyalib-wasm`](https://github.com/sebastienrousseau/noyalib-wasm)).
+  `wasm-pack` output published to npm as
+  `@noyalib/noyalib-wasm`. Browser IDEs use it for live YAML
+  formatting / validation; the bundle is ~338 KB after LTO.
+  Split to its own repo in v0.0.12 (ADR-0005); releases in
+  strict lockstep with this workspace.
 
 - **`noyalib-mcp`** (`crates/noyalib-mcp/`). Model Context
   Protocol server speaking JSON-RPC over stdio. AI agents

@@ -5,9 +5,12 @@ members = [
     "crates/noya-cli",
     "crates/noyalib-lsp",
     "crates/noyalib-mcp",
-    "crates/noyalib-wasm",
     "crates/xtask",
 ]
+# `noyalib-wasm` was split out to
+# https://github.com/sebastienrousseau/noyalib-wasm as of
+# v0.0.12 (ADR-0005 pilot). It releases in strict lockstep
+# at the same `=0.0.X` version as this workspace.
 exclude = ["crates/noyalib/examples/wasm", "fuzz"]
 
 [profile.dev]
@@ -34,7 +37,7 @@ lto = true
 # scanner's tight per-byte dispatch and the loader's per-event
 # match get fully inlined and vectorized. WASM bundle size is
 # managed separately by `wasm-pack`'s post-build `wasm-opt -Os`
-# pass (see `crates/noyalib-wasm/README.md`).
+# pass in the noyalib-wasm satellite repo (ADR-0005).
 opt-level = 3
 # Keep overflow checks: the parser handles untrusted input and
 # wraparound on indent/depth/size counters could turn DoS limit

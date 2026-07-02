@@ -333,12 +333,16 @@ Workspace coverage is measured by `cargo +nightly llvm-cov` and
 gated in CI at 95 % functions / 92 % regions / 93 % lines.
 Excluded from instrumentation:
 
-- `crates/noyalib-wasm/src/lib.rs` (JsValue marshalling needs
-  the wasm-bindgen runtime; covered by separate
-  `wasm_bindgen_test` invocations).
 - `crates/noyalib-{mcp,lsp}/tests/protocol*.rs` (subprocess-
   driven smoke tests; the same logic is covered by per-module
   unit tests).
+
+(Prior to v0.0.12, `crates/noyalib-wasm/src/lib.rs` was also
+excluded — its JsValue marshalling requires the wasm-bindgen
+runtime, so it's covered by `wasm_bindgen_test` invocations in
+the satellite repo at
+[`sebastienrousseau/noyalib-wasm`](https://github.com/sebastienrousseau/noyalib-wasm)
+per ADR-0005.)
 
 Phase 7 of `PLAN.md` ratchets these gates to 98 / 98 / 98.
 

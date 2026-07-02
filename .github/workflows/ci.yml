@@ -148,13 +148,15 @@ jobs:
   coverage-gate:
     # Dogfooded from shared-coverage.yml. noyalib's thresholds
     # (96% fn / 94% line / 93% region) exceed the 95% gold-standard
-    # promise; the ignore-regex excludes wasm-bindgen glue, the
-    # subprocess-driving MCP/LSP tests, and internal xtask tooling.
+    # promise; the ignore-regex excludes the subprocess-driving
+    # MCP/LSP tests and internal xtask tooling. (`noyalib-wasm`
+    # coverage was excluded via the same regex until v0.0.12,
+    # when the crate was split to its own repo per ADR-0005.)
     # Satellites can override any input to match their own coverage
     # baseline.
     uses: ./.github/workflows/shared-coverage.yml
     with:
-      ignore-filename-regex: 'crates/noyalib-wasm/src/lib\.rs|crates/noyalib-(mcp|lsp)/tests/protocol|crates/xtask/src/main\.rs'
+      ignore-filename-regex: 'crates/noyalib-(mcp|lsp)/tests/protocol|crates/xtask/src/main\.rs'
       fail-under-functions: 96
       fail-under-lines: 94
       fail-under-regions: 93

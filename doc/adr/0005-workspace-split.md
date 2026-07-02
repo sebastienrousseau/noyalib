@@ -386,6 +386,37 @@ public artefacts inappropriate for a rehearsal.
 compilation, not git plumbing; a real rollback on a runner with
 a warm cache would land inside 5 minutes.
 
+### v0.0.12 pilot — noyalib-wasm split (2026-07-02)
+
+**Status:** pilot infrastructure landed in
+[`sebastienrousseau/noyalib-wasm`](https://github.com/sebastienrousseau/noyalib-wasm)
+PR #1. Awaits parent v0.0.12 publish before final CI green.
+
+Concrete results from the pilot:
+
+- History extraction via `git subtree split
+  --prefix=crates/noyalib-wasm` produced 11 commits on the new
+  repo's `main`. Authorship (per-commit `Author:` line) preserved
+  intact; commit signatures do not carry through subtree, which
+  matches the ADR's expectation.
+- Strict-lockstep versioning is mechanically enforced: satellite
+  `Cargo.toml` pins `noyalib = { version = "=0.0.12", features =
+  ["std"] }`; Dependabot config explicitly ignores the `noyalib`
+  dep (see satellite `.github/dependabot.yml`).
+- Shared reusable workflows are consumed by SHA. First run hit a
+  **startup_failure with 0 scheduled jobs** because
+  `shared-verify-signatures.yml` declares `permissions:
+  pull-requests: read` and the caller only granted `contents:
+  read`. GitHub Actions rejects the reusable-workflow invocation
+  when the callee's permission scope exceeds the caller's, with
+  no annotation surfaced. Documented in the permissions table
+  above; new satellites (v0.0.13 mcp, v0.0.14 lsp, v0.0.15 cli)
+  must copy the union of required permissions.
+- Repository ruleset (signed commits, linear history, 1-approver
+  PR + CODEOWNERS review, required status checks) applied to the
+  new repo's default branch via API. Matches the parent noyalib
+  ruleset.
+
 ### Soak review signals
 
 The 14-day soak reviews at each split window will record their

@@ -21,7 +21,10 @@
 #                                                                   ▼
 #         ┌─────┬─────┬───────────┬──────────────┬────────────┐
 #         ▼     ▼     ▼           ▼              ▼            ▼
-#     homebrew aur  scoop  vscode-extension  npm-publish  container-publish
+#     homebrew aur  scoop  vscode-extension  npm-publish-mcp  container-publish
+#
+# `npm-publish` for @noyalib/noyalib-wasm was moved to the split
+# repo sebastienrousseau/noyalib-wasm in v0.0.12 (ADR-0005).
 #
 # Every artefact is signed with cosign keyless and carries a SLSA
 # L3 build provenance attestation. Per-channel jobs are gated on
@@ -811,45 +814,9 @@ jobs:
           gh release upload "${{ inputs.tag }}" \
               "noyalib-${{ env.VERSION }}.vsix" --clobber 2>/dev/null || true
 
-  # ── npm publish (wasm-pack) ─────────────────────────────────────────
-  npm-publish:
-    name: Publish @noyalib/noyalib-wasm to npm
-    needs: [create-release, github-release]
-    if: ${{ !inputs.dry_run }}
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write
-    steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-        with:
-          ref: ${{ inputs.tag }}
-
-      - uses: dtolnay/rust-toolchain@fa04a1451ff1842e2626ccb99004d0195b455a88 # master
-        with:
-          toolchain: stable
-          targets:   wasm32-unknown-unknown
-
-      - uses: jetli/wasm-pack-action@0d096b08b4e5a7de8c28de67e11e945404e9eefa # v0.4.0
-        with:
-          version: 'latest'
-
-      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
-        with:
-          node-version: '20'
-          registry-url: 'https://registry.npmjs.org'
-
-      - name: Build (wasm-pack)
-        run: |
-          wasm-pack build --release \
-              --target bundler \
-              --scope noyalib \
-              crates/noyalib-wasm
-
-      - name: Publish (Trusted Publishing + provenance)
-        run: |
-          cd crates/noyalib-wasm/pkg
-          npm publish --provenance --access public
+  # `noyalib-wasm` npm publish moved to
+  # sebastienrousseau/noyalib-wasm as of v0.0.12 (ADR-0005 pilot).
+  # See that repo's `.github/workflows/release-binaries.yml`.
 
   # ── npm publish — MCP wrapper ───────────────────────────────────────
   npm-publish-mcp:

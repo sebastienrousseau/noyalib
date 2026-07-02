@@ -36,7 +36,7 @@ echo "→ Running cargo +nightly llvm-cov (this takes ~2 min)..."
 # Capture summary table; tee for diagnostic visibility.
 SUMMARY="$(NOYALIB_COVERAGE=1 cargo +nightly llvm-cov \
     --workspace --all-features --no-fail-fast \
-    --ignore-filename-regex 'noyalib-wasm/src/lib\.rs|noyalib-(mcp|lsp)/tests/protocol' \
+    --ignore-filename-regex 'noyalib-(mcp|lsp)/tests/protocol' \
     --summary-only 2>&1 | tee /tmp/noyalib-coverage.log)"
 
 echo
