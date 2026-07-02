@@ -317,8 +317,53 @@ which would have added migration cost for downstream users of
 
 ## Post-implementation update
 
-The rollback dry-run was performed on: **PENDING** (target: pilot
-pre-work window). Wall-clock time recorded: **PENDING**.
+### Rollback-recipe dry-run — 2026-07-02
+
+Executed the 9-step rollback recipe against a scratch clone
+mocking a v0.0.12-pilot-shipped state:
+
+1. `git clone git@github.com:sebastienrousseau/noyalib.git` at
+   tag `v0.0.11` (the pre-split monorepo tip on `main`).
+2. Mocked the split by extracting `crates/noyalib-wasm/`'s
+   history via `git subtree split --prefix=crates/noyalib-wasm
+   --branch=mock-satellite-wasm` — 11 commits pulled out.
+3. Pushed the mock satellite to a local bare repo at
+   `file:///tmp/rollback-dry-run/mock-satellite-wasm.git` — that
+   stands in for `git@github.com:sebastienrousseau/noyalib-wasm.git`
+   at pilot completion.
+4. Simulated the post-split working tree: `git rm -rq
+   crates/noyalib-wasm` + removed the corresponding
+   `"crates/noyalib-wasm"` line from the root `Cargo.toml`
+   workspace member list, then committed.
+5. Executed the rollback recipe verbatim from the scratch clone:
+   `git remote add satellite-wasm …` → `git fetch --tags
+   satellite-wasm` → `git subtree add --prefix=crates/noyalib-wasm
+   satellite-wasm main` → restore workspace membership →
+   `cargo test --workspace --no-run` → smoke `cargo test -p
+   noyalib-wasm --tests native`.
+
+Wall-clock time from `git subtree add` through cargo-test-green:
+
+> **1 min 42 sec (102 s)**
+
+Well within the AC target of ≤ 60 minutes. The vast majority of
+the elapsed time was the `cargo test --workspace --no-run`
+compilation on a fresh target dir — the git-level restoration
+steps (subtree add + Cargo.toml edit + commit) completed in
+under 5 seconds.
+
+Steps 7-9 of the recipe (cut a rollback release, yank the
+satellite crate versions on crates.io, update the parent-repo
+README to note the rollback) were **not** exercised in this
+dry-run — they are irreversible publish-time actions covered by
+the existing release + `cargo yank` flows and would produce
+public artefacts inappropriate for a rehearsal.
+
+**Assessment**: recipe is executable. The bottleneck is cargo
+compilation, not git plumbing; a real rollback on a runner with
+a warm cache would land inside 5 minutes.
+
+### Soak review signals
 
 The 14-day soak reviews at each split window will record their
 GO / NO-GO signal here as an inline update rather than moving the
