@@ -26,6 +26,7 @@ path = [
     "supply-chain/audits.toml",
     "supply-chain/config.toml",
     "supply-chain/imports.lock",
+    "server.json",
 ]
 precedence = "aggregate"
 SPDX-FileCopyrightText = "2026 Noyalib"
