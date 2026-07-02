@@ -139,6 +139,29 @@ trigger and pinned by SHA in each satellite. A hardening pass
 lands as one PR in this repo plus N (small, Dependabot-managed)
 SHA-bump PRs in the satellites.
 
+**Caller-side permissions must be at least as broad as every
+consumed workflow.** When the callee declares a `permissions:`
+scope the caller does not, GitHub Actions rejects the entire
+workflow with a 0s `startup_failure` — no jobs are scheduled and
+no annotation is emitted. The parent repo's own `ci.yml` sets
+`permissions: read-all` and never hits this. Satellites narrow to
+the specific scopes their consumed workflows demand:
+
+| Consumed workflow                | Required caller permissions |
+|----------------------------------|------------------------------|
+| `shared-cargo-deny.yml`          | `contents: read`             |
+| `shared-cargo-vet.yml`           | `contents: read`             |
+| `shared-cargo-machete.yml`       | `contents: read`             |
+| `shared-reuse.yml`               | `contents: read`             |
+| `shared-rustdoc-strict.yml`      | `contents: read`             |
+| `shared-test-matrix.yml`         | `contents: read`             |
+| `shared-verify-signatures.yml`   | `contents: read` **and** `pull-requests: read` |
+
+The `pull-requests: read` gap was hit by the v0.0.12 pilot
+(noyalib-wasm PR #1); root-cause + fix documented there. New
+satellites MUST copy the union of required permissions into their
+top-level `ci.yml permissions:` block or they will startup-fail.
+
 ### Rollback recipe
 
 The rollback recipe MUST be executable in **≤60 minutes** of
