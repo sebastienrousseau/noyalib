@@ -1,0 +1,47 @@
+# SPDX-FileCopyrightText: 2026 Noyalib
+# SPDX-License-Identifier: MIT OR Apache-2.0
+
+name: Shared-workflow propagation SLA monitor
+
+# AC #6 of issue #127 — cross-repo propagation SLA monitor.
+#
+# Under the strict-lockstep versioning contract from ADR-0005,
+# every satellite must consume noyalib's shared reusable
+# workflows via SHA-pinned `uses:` references. When noyalib bumps
+# a shared workflow (typically a security hardening pass),
+# Dependabot opens a SHA-bump PR in each satellite. If any of
+# those PRs sits open for more than 48 hours the corresponding
+# satellite is running stale CI — defeating the propagation
+# invariant.
+#
+# This workflow calls `scripts/shared-workflow-propagation-monitor.sh`
+# daily to enforce the 48h SLA across every satellite.
+#
+# Pre-split (before v0.0.12 pilot ships), no satellite repos
+# exist yet — the monitor SKIPs cleanly and reports zero
+# violations. After the pilot creates
+# `sebastienrousseau/noyalib-wasm`, the monitor starts checking
+# that repo automatically.
+
+on:
+  schedule:
+    - cron: '0 6 * * *'   # Daily 06:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: shared-workflow-propagation
+  cancel-in-progress: true
+
+jobs:
+  monitor:
+    name: Cross-repo Dependabot SLA check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - name: Run propagation monitor
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash scripts/shared-workflow-propagation-monitor.sh

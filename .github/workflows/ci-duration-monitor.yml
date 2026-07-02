@@ -1,0 +1,50 @@
+# SPDX-FileCopyrightText: 2026 Noyalib
+# SPDX-License-Identifier: MIT OR Apache-2.0
+
+name: CI duration monitor
+
+# AC #5 of issue #127 — wall-clock CI regression monitor.
+#
+# Queries the last 6 successful CI runs on main via the GitHub
+# REST API, computes the rolling 5-run average duration, and
+# fails if the most-recent run exceeds 1.1× that baseline.
+#
+# The idea: a shared-workflow SHA bump that silently doubles CI
+# runtime should surface here rather than propagate to every
+# satellite unchallenged. When this workflow fails, the
+# maintainer investigates the bumps landed since the last green
+# baseline.
+#
+# Runs on:
+#   * every push to main — catches regressions the moment they
+#     merge, so the alert lands within minutes of the offending
+#     commit;
+#   * scheduled daily at 05:00 UTC — belt-and-braces safety net
+#     in case a push-triggered run got cancelled or missed;
+#   * on-demand via workflow_dispatch — for manual re-checks.
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '0 5 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: ci-duration-monitor
+  cancel-in-progress: true
+
+jobs:
+  monitor:
+    name: CI wall-clock regression check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - name: Run duration monitor
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash scripts/ci-duration-monitor.sh
