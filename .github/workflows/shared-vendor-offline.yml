@@ -1,0 +1,48 @@
+# SPDX-FileCopyrightText: 2026 Noyalib
+# SPDX-License-Identifier: MIT OR Apache-2.0
+
+name: shared / vendor + offline build
+
+# Reusable air-gapped-build gate. Runs `cargo vendor` to materialise
+# the full dep tree into `vendor/`, configures cargo to read from
+# that vendored source, then builds the workspace with `--offline
+# --locked`. Critical for air-gapped, RHEL, and FIPS-bound
+# deployments that cannot reach crates.io at build time — a
+# transitive dep that fails vendoring or a lockfile drift would
+# silently break those consumers otherwise.
+#
+# Consumers pin by SHA:
+#
+#   jobs:
+#     vendor-build:
+#       uses: sebastienrousseau/noyalib/.github/workflows/shared-vendor-offline.yml@<sha>
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: vendor + offline build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: dtolnay/rust-toolchain@fa04a1451ff1842e2626ccb99004d0195b455a88 # master
+        with:
+          toolchain: stable
+      - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
+      - name: cargo vendor
+        run: cargo vendor --versioned-dirs vendor
+      - name: Configure cargo for offline build
+        run: |
+          mkdir -p .cargo
+          cat > .cargo/config.toml <<'EOF'
+          [source.crates-io]
+          replace-with = "vendored"
+          [source.vendored]
+          directory = "vendor"
+          EOF
+      - name: cargo build --offline
+        run: cargo build --workspace --all-features --offline --locked

@@ -1,0 +1,54 @@
+# SPDX-FileCopyrightText: 2026 Noyalib
+# SPDX-License-Identifier: MIT OR Apache-2.0
+
+name: shared / Differential fuzz (10s smoke)
+
+# Reusable differential-fuzz PR gate. Burns 10 seconds of fuzzing
+# per push against the caller's `fuzz_diff` target to catch
+# immediate divergences from ecosystem reference implementations.
+# The full multi-hour campaign runs on the weekly soak job in
+# `security.yml`; 10s is enough to surface trivial regressions the
+# instant they land without slowing PR feedback.
+#
+# CACHE-POISONING GUARD: cargo-fuzz uses a sanitiser-enabled
+# nightly build with `-Cinstrument-coverage=off -Cpasses=sancov-module`
+# under the hood — a distinct fingerprint from every other cargo
+# job. Isolated CARGO_TARGET_DIR so a stale non-fuzz artefact set
+# cannot short-circuit the sanitiser build.
+#
+# The caller MUST ship a `fuzz_diff` fuzz target at
+# `fuzz/fuzz_targets/fuzz_diff.rs`.
+#
+# Consumers pin by SHA:
+#
+#   jobs:
+#     fuzz-diff:
+#       uses: sebastienrousseau/noyalib/.github/workflows/shared-fuzz-diff.yml@<sha>
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Differential fuzz (10s smoke)
+    # Only meaningful on non-scheduled events.
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-latest
+    env:
+      CARGO_TARGET_DIR: ${{ github.workspace }}/target-fuzz
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: dtolnay/rust-toolchain@fa04a1451ff1842e2626ccb99004d0195b455a88 # master
+        with:
+          toolchain: nightly
+      - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
+        with:
+          workspaces: ". -> target-fuzz"
+          key: fuzz-diff
+      - run: cargo install --locked cargo-fuzz
+      - run: cargo +nightly fuzz run fuzz_diff -- -max_total_time=10
+        working-directory: .
+        continue-on-error: true

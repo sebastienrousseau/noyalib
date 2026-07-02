@@ -1,0 +1,35 @@
+# SPDX-FileCopyrightText: 2026 Noyalib
+# SPDX-License-Identifier: MIT OR Apache-2.0
+
+name: shared / Per-crate MSRV
+
+# Reusable per-crate MSRV gate. Invokes `scripts/msrv-per-crate.sh`
+# which walks every crate in the workspace, resolves its declared
+# `rust-version` from its `Cargo.toml`, and runs
+# `cargo +<msrv> check` against that crate — so a satellite crate
+# adopting a feature above its declared floor never silently breaks
+# a downstream user pinned to the crate's advertised MSRV.
+#
+# The caller MUST ship `scripts/msrv-per-crate.sh` at that same
+# path.
+#
+# Consumers pin by SHA:
+#
+#   jobs:
+#     msrv-per-crate:
+#       uses: sebastienrousseau/noyalib/.github/workflows/shared-per-crate-msrv.yml@<sha>
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Per-crate MSRV
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - name: Run scripts/msrv-per-crate.sh
+        run: ./scripts/msrv-per-crate.sh

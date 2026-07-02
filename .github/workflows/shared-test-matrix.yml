@@ -1,0 +1,73 @@
+# SPDX-FileCopyrightText: 2026 Noyalib
+# SPDX-License-Identifier: MIT OR Apache-2.0
+
+name: shared / Test matrix
+
+# Reusable OS × toolchain test grid. Runs `cargo test --all-features`
+# across every (os, toolchain) combination in the caller-declared
+# JSON matrix. Nightly failures are non-fatal
+# (`continue-on-error`) so a nightly regression cannot block a PR
+# that stable is happy with.
+#
+# The caller controls the matrix via JSON inputs so a satellite
+# can trim OSes it doesn't support (e.g. `noyalib-wasm` might skip
+# non-linux OSes, `noya-cli` might skip nightly).
+#
+# Consumers pin by SHA:
+#
+#   jobs:
+#     test-matrix:
+#       uses: sebastienrousseau/noyalib/.github/workflows/shared-test-matrix.yml@<sha>
+#       with:
+#         os-list:        '["ubuntu-latest", "macos-latest", "windows-latest"]'
+#         toolchain-list: '["stable", "nightly"]'
+
+on:
+  workflow_call:
+    inputs:
+      os-list:
+        description: >-
+          JSON array of runners to test on. Default:
+          `["ubuntu-latest", "macos-latest", "windows-latest"]`.
+        required: false
+        type: string
+        default: '["ubuntu-latest", "macos-latest", "windows-latest"]'
+      toolchain-list:
+        description: >-
+          JSON array of Rust toolchains to test with. Default:
+          `["stable", "nightly"]`.
+        required: false
+        type: string
+        default: '["stable", "nightly"]'
+      cargo-test-flags:
+        description: >-
+          Extra flags for `cargo test`. Default `--all-features`.
+        required: false
+        type: string
+        default: '--all-features'
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Test (${{ matrix.os }}, ${{ matrix.toolchain }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ${{ fromJSON(inputs.os-list) }}
+        toolchain: ${{ fromJSON(inputs.toolchain-list) }}
+    continue-on-error: ${{ matrix.toolchain == 'nightly' }}
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - name: Install Rust ${{ matrix.toolchain }}
+        uses: dtolnay/rust-toolchain@fa04a1451ff1842e2626ccb99004d0195b455a88 # master
+        with:
+          toolchain: ${{ matrix.toolchain }}
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
+        with:
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+      - name: Run tests
+        run: cargo test ${{ inputs.cargo-test-flags }}

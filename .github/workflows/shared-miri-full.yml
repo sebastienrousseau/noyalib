@@ -1,0 +1,61 @@
+# SPDX-FileCopyrightText: 2026 Noyalib
+# SPDX-License-Identifier: MIT OR Apache-2.0
+
+name: shared / Miri (full + big-endian, scheduled)
+
+# Reusable weekly Miri full-sweep. Runs `cargo miri test --lib`
+# (with `-Zmiri-disable-isolation`) plus a big-endian cross-target
+# run (`mips64-unknown-linux-gnuabi64`) via the caller's
+# `scripts/miri.sh`. Catches endianness assumptions that would
+# slip past the focused per-PR job.
+#
+# Bandwidth-intensive (~30+ minutes) so gated behind the
+# `schedule` / `workflow_dispatch` event.
+#
+# CACHE-POISONING GUARD: same isolated CARGO_TARGET_DIR pattern
+# as the focused Miri job (target-miri-full for this one).
+#
+# Consumers pin by SHA:
+#
+#   jobs:
+#     miri-full:
+#       uses: sebastienrousseau/noyalib/.github/workflows/shared-miri-full.yml@<sha>
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Miri (full + big-endian, scheduled)
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      RUSTUP_TOOLCHAIN: nightly
+      CARGO_TARGET_DIR: ${{ github.workspace }}/target-miri-full
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - name: Install Rust nightly with Miri
+        uses: dtolnay/rust-toolchain@fa04a1451ff1842e2626ccb99004d0195b455a88 # master
+        with:
+          toolchain: nightly
+          components: miri
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
+        with:
+          workspaces: ". -> target-miri-full"
+          key: miri-full
+          save-if: false
+      - name: Setup Miri
+        run: cargo +nightly miri setup
+      - name: Run full Miri suite (native)
+        run: cargo +nightly miri test --lib
+        env:
+          MIRIFLAGS: -Zmiri-disable-isolation
+      - name: Run focused Miri suite (big-endian mips64)
+        run: ./scripts/miri.sh
+        env:
+          MIRI_TARGET: mips64-unknown-linux-gnuabi64
