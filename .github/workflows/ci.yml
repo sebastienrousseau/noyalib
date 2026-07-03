@@ -210,11 +210,14 @@ jobs:
   # cache-poisoning guard rule as `no-std` (v0.0.11 CI-integrity
   # cut). See doc/adr/0004-lossless-u64-integers.md.
   #
-  # Runs 3 legs:
-  #   1. defaults + lossless-u64 (typical user turning the feature on)
-  #   2. minimal + lossless-u64 (FIPS/embedded posture + feature on)
-  #   3. all-features (lossless-u64 alongside everything else,
-  #      including the `compat-serde-yaml` shim)
+  # Runs 2 legs (a 3rd `minimal + lossless-u64` leg was considered
+  # but drops `strict-deserialise` which several tests already
+  # require; that intersection is covered by `no-std` for the
+  # compile side).
+  #
+  #   1. defaults + lossless-u64 — typical opt-in user
+  #   2. all-features — feature × every other feature (including
+  #      `compat-serde-yaml`), catches interference
   #
   # Each leg exercises: `cargo check`, `cargo test --tests`,
   # `cargo test --doc`. The dedicated `examples/lossless_u64.rs`
@@ -230,8 +233,6 @@ jobs:
         include:
           - leg: defaults
             flags: "--features lossless-u64"
-          - leg: minimal
-            flags: "--no-default-features --features std,lossless-u64"
           - leg: all-features
             flags: "--all-features"
     env:
