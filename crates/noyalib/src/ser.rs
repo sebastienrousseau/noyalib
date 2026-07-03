@@ -233,7 +233,6 @@ impl SerializerConfig {
         self.max_depth = depth;
         self
     }
-
 }
 
 /// Serialize a Rust value to a YAML `String`.
