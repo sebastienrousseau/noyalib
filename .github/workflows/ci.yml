@@ -200,3 +200,57 @@ jobs:
     # only runs on pull_request events (controlled inside the
     # shared workflow's `if:`).
     uses: ./.github/workflows/shared-verify-signatures.yml
+
+  # ── Feature-matrix guard: `lossless-u64` ────────────────────────
+  # `lossless-u64` is an opt-in Cargo feature that adds a public
+  # enum variant (`Number::Unsigned`). Ships with its own compile
+  # + test legs using an isolated `CARGO_TARGET_DIR` so a stale
+  # artefact set from the default-feature build cannot serve as a
+  # passing fingerprint for the feature-on build. Same
+  # cache-poisoning guard rule as `no-std` (v0.0.11 CI-integrity
+  # cut). See doc/adr/0004-lossless-u64-integers.md.
+  #
+  # Runs 3 legs:
+  #   1. defaults + lossless-u64 (typical user turning the feature on)
+  #   2. minimal + lossless-u64 (FIPS/embedded posture + feature on)
+  #   3. all-features (lossless-u64 alongside everything else,
+  #      including the `compat-serde-yaml` shim)
+  #
+  # Each leg exercises: `cargo check`, `cargo test --tests`,
+  # `cargo test --doc`. The dedicated `examples/lossless_u64.rs`
+  # runs on the defaults leg.
+  lossless-u64-matrix:
+    name: lossless-u64 (${{ matrix.leg }})
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - leg: defaults
+            flags: "--features lossless-u64"
+          - leg: minimal
+            flags: "--no-default-features --features std,lossless-u64"
+          - leg: all-features
+            flags: "--all-features"
+    env:
+      CARGO_TARGET_DIR: ${{ github.workspace }}/target-lossless-u64-${{ matrix.leg }}
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: dtolnay/rust-toolchain@fa04a1451ff1842e2626ccb99004d0195b455a88 # master
+        with:
+          toolchain: stable
+      - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
+        with:
+          workspaces: ". -> target-lossless-u64-${{ matrix.leg }}"
+          key: lossless-u64-${{ matrix.leg }}
+      - name: cargo check (${{ matrix.leg }})
+        run: cargo check -p noyalib ${{ matrix.flags }} --locked
+      - name: cargo test --tests (${{ matrix.leg }})
+        run: cargo test -p noyalib ${{ matrix.flags }} --tests --locked
+      - name: cargo test --doc (${{ matrix.leg }})
+        run: cargo test -p noyalib ${{ matrix.flags }} --doc --locked
+      - name: Run the lossless_u64 example
+        if: matrix.leg == 'defaults'
+        run: cargo run -p noyalib --example lossless_u64 --features lossless-u64 --locked
