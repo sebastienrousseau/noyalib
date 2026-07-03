@@ -100,6 +100,8 @@ fn yaml_value_to_json(v: &Value) -> serde_json::Value {
                 serde_json::json!(*f)
             }
         }
+        // `Number` is `#[non_exhaustive]`; future variants land here.
+        Value::Number(_) => serde_json::Value::Null,
         Value::String(s) => serde_json::Value::String(s.clone()),
         Value::Sequence(seq) => {
             serde_json::Value::Array(seq.iter().map(yaml_value_to_json).collect())

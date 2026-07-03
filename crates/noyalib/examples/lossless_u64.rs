@@ -23,7 +23,12 @@ fn main() {
     support::header("noyalib -- lossless u64");
 
     let parse_cfg = ParserConfig::new().lossless_u64_integers(true);
-    let ser_cfg = SerializerConfig::new().lossless_u64_integers(true);
+    // The serializer side has no runtime toggle: when the
+    // `lossless-u64` feature is compiled in, `Number::Unsigned` is
+    // the emitted variant for values above `i64::MAX`. When the
+    // feature is off the variant does not exist. `SerializerConfig`
+    // still governs indentation / flow style / etc.
+    let ser_cfg = SerializerConfig::new();
 
     let yaml = format!("id: {}\n", u64::MAX);
 

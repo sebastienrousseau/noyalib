@@ -94,12 +94,6 @@ pub struct SerializerConfig {
     pub min_fold_chars: usize,
     /// Maximum nesting depth allowed during serialization (default: 128).
     pub max_depth: usize,
-    /// When `true`, and the `lossless-u64` Cargo feature is enabled,
-    /// typed `u64` values above `i64::MAX` serialize as YAML integer
-    /// scalars instead of following the legacy error path.
-    #[cfg(feature = "lossless-u64")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "lossless-u64")))]
-    pub lossless_u64_integers: bool,
 }
 
 impl Default for SerializerConfig {
@@ -118,8 +112,6 @@ impl Default for SerializerConfig {
             folded_wrap_chars: 80,
             min_fold_chars: 80,
             max_depth: 128,
-            #[cfg(feature = "lossless-u64")]
-            lossless_u64_integers: false,
         }
     }
 }
@@ -242,18 +234,6 @@ impl SerializerConfig {
         self
     }
 
-    /// Enable or disable lossless `u64` serialization.
-    ///
-    /// With the `lossless-u64` feature enabled, setting this to
-    /// `true` lets typed `u64` values above `i64::MAX` emit as plain
-    /// YAML integer scalars.
-    #[cfg(feature = "lossless-u64")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "lossless-u64")))]
-    #[must_use]
-    pub fn lossless_u64_integers(mut self, enabled: bool) -> Self {
-        self.lossless_u64_integers = enabled;
-        self
-    }
 }
 
 /// Serialize a Rust value to a YAML `String`.
@@ -1516,21 +1496,22 @@ impl ser::Serializer for Serializer {
 
     fn serialize_u64(self, v: u64) -> Result<Value> {
         if v <= i64::MAX as u64 {
-            Ok(Value::Number(Number::Integer(v as i64)))
-        } else if cfg!(feature = "lossless-u64") {
-            #[cfg(feature = "lossless-u64")]
-            {
-                Ok(Value::Number(Number::Unsigned(v)))
-            }
-            #[cfg(not(feature = "lossless-u64"))]
-            {
-                Err(Error::Serialize(format!(
-                    "u64 value {v} exceeds i64::MAX and cannot be represented losslessly"
-                )))
-            }
-        } else {
+            return Ok(Value::Number(Number::Integer(v as i64)));
+        }
+        // Values above `i64::MAX` require the `lossless-u64` feature.
+        // Without it the `Number::Unsigned` variant does not exist and
+        // there is no lossless representation to fall back to — return
+        // an explicit serialise-time error so callers can surface the
+        // limit to their users.
+        #[cfg(feature = "lossless-u64")]
+        {
+            Ok(Value::Number(Number::Unsigned(v)))
+        }
+        #[cfg(not(feature = "lossless-u64"))]
+        {
             Err(Error::Serialize(format!(
-                "u64 value {v} exceeds i64::MAX and cannot be represented losslessly"
+                "u64 value {v} exceeds i64::MAX and cannot be represented losslessly; \
+                 enable the `lossless-u64` Cargo feature to opt in to unsigned integer support"
             )))
         }
     }

@@ -9,7 +9,15 @@ use core::hash::{Hash, Hasher};
 use core::str::FromStr;
 
 /// Represents a YAML number.
+///
+/// Marked `#[non_exhaustive]` so future numeric variants can be
+/// added without breaking downstream `match` arms. Callers must
+/// include a `_ => { … }` wildcard when pattern-matching. Adding
+/// `Unsigned(u64)` behind `feature = "lossless-u64"` is the first
+/// use of this contract; see
+/// [ADR-0004](https://github.com/sebastienrousseau/noyalib/blob/main/doc/adr/0004-lossless-u64-integers.md).
 #[derive(Debug, Clone, Copy)]
+#[non_exhaustive]
 pub enum Number {
     /// A signed integer.
     Integer(i64),
