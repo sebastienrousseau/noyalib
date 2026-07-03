@@ -26,7 +26,8 @@ reference back. Nothing is silently rewritten.
 | [0001](./0001-cst-rowan-shape.md) | CST shape: parallel green tree, not unified | accepted |
 | [0002](./0002-yaml-1.2-default.md) | YAML 1.2 strict semantics by default; 1.1 opt-in | accepted |
 | [0003](./0003-zero-unsafe-policy.md) | `#![forbid(unsafe_code)]` workspace-wide | accepted |
-| [0005](./0005-workspace-split.md) | Split the workspace into 4 satellite repos with strict-lockstep versioning | proposed |
+| [0004](./0004-lossless-u64-integers.md) | Opt in to lossless `u64` integers | proposed |
+| [0005](./0005-workspace-split.md) | Split workspace into 4 satellite repositories with strict-lockstep versioning | accepted |
 
 ## When to add an ADR
 

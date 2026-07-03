@@ -85,6 +85,7 @@ const EXAMPLES: &[&str] = &[
 //   cargo run --example recovery_lenient      --features recovery
 //   cargo run --example sval_streaming        --features sval
 //   cargo run --example tokio_async_reader    --features tokio
+//   cargo run --example lossless_u64          --features lossless-u64
 
 fn main() {
     println!("\n  \x1b[1mnoyalib examples\x1b[0m\n");

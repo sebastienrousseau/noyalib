@@ -62,7 +62,7 @@
 
 ```toml
 [dependencies]
-noyalib = "0.0.12"
+noyalib = "0.0.11"
 ```
 
 ### As a CLI tool
@@ -106,7 +106,7 @@ maintainer runbook.
 
 ```toml
 [dependencies]
-noyalib = { version = "0.0.12", default-features = false }
+noyalib = { version = "0.0.11", default-features = false }
 ```
 
 Requires `alloc`. Core data binding (`from_str`, `to_string`, `Value`,
@@ -169,14 +169,24 @@ the application needs.
 | `simd` | — | `noyalib::simd::*` primitives + parser hot path | [Benchmarks](#benchmarks) |
 | `nightly-simd` | `simd` (nightly toolchain) | `core::simd`-backed `StructuralIter` (32-byte chunks) | [Benchmarks](#benchmarks) |
 | `compat-serde-yaml` | — | `noyalib::compat::serde_yaml` shim for migration | [When not to use noyalib](#when-not-to-use-noyalib) |
+| `lossless-u64` | — | `Number::Unsigned(u64)` plus opt-in parser/serializer config for scalars in `(i64::MAX, u64::MAX]` | [`doc/adr/0004-lossless-u64-integers.md`](doc/adr/0004-lossless-u64-integers.md), `examples/lossless_u64.rs`, `benches/lossless_u64.rs` |
 | `compare-saphyr` | `serde-saphyr` *(dev only)* | Cross-library bench comparison arms | `benches/comparison.rs` |
 | `noyavalidate` | `std` + `miette` + `validate-schema` | The `noyavalidate` CLI binary | [Tooling](#tooling) |
 
 ```toml
 # Example: rich diagnostics + schema validation
 [dependencies]
-noyalib = { version = "0.0.12", features = ["miette", "validate-schema"] }
+noyalib = { version = "0.0.11", features = ["miette", "validate-schema"] }
 ```
+
+**Optional features:** `lossless-u64` preserves YAML integer scalars above
+`i64::MAX` as `Number::Unsigned(u64)` instead of lossy `f64` widening —
+useful for distributed-system IDs, content hashes, and timestamp fields.
+Enable the Cargo feature, then opt in at runtime with
+`ParserConfig::lossless_u64_integers(true)` and
+`SerializerConfig::lossless_u64_integers(true)`. See
+[`doc/adr/0004-lossless-u64-integers.md`](doc/adr/0004-lossless-u64-integers.md)
+for rationale and migration notes.
 
 ---
 
@@ -224,7 +234,7 @@ the four satellites wrap it for specific delivery surfaces.
 | **`noya-cli`** | Two binaries: `noyafmt` (formatter), `noyavalidate` (schema validator + autofixer) | CI gates, pre-commit hooks, ad-hoc command-line use. |
 | **`noyalib-lsp`** | Language Server Protocol server | Editor integration — VS Code, Neovim, Helix, Emacs, Zed, Sublime, IntelliJ. |
 | **`noyalib-mcp`** | Model Context Protocol server | LLM agent tooling — Claude Desktop, Cursor, Continue.dev, Zed assistant, mcp.run. |
-| **`noyalib-wasm`** ([own repo](https://github.com/sebastienrousseau/noyalib-wasm)) | `wasm-bindgen` wrapper around the library | Browser, Node, Cloudflare Workers, Deno, any WASM-capable host. |
+| **`noyalib-wasm`** | `wasm-bindgen` wrapper around the library | Browser, Node, Cloudflare Workers, Deno, any WASM-capable host. |
 
 ### Install the binaries
 
@@ -247,7 +257,7 @@ Per-crate READMEs cover the surface specific to each artifact:
 - **CLI**: [`crates/noya-cli/README.md`](crates/noya-cli/README.md) — flags, exit codes, recipes.
 - **LSP**: [`crates/noyalib-lsp/README.md`](crates/noyalib-lsp/README.md) — capabilities, editor configs.
 - **MCP**: [`crates/noyalib-mcp/README.md`](crates/noyalib-mcp/README.md) — tools, host configs.
-- **WASM**: [`sebastienrousseau/noyalib-wasm`](https://github.com/sebastienrousseau/noyalib-wasm) — JS API, bundling (split repo since v0.0.12; releases in strict lockstep per [ADR-0005](doc/adr/0005-workspace-split.md)).
+- **WASM**: [`crates/noyalib-wasm/README.md`](crates/noyalib-wasm/README.md) — JS API, bundling.
 
 ### Per-host quick links
 
@@ -256,7 +266,7 @@ Per-crate READMEs cover the surface specific to each artifact:
 | **VS Code / JetBrains / Neovim / Helix / Emacs / Zed / Sublime** | [editor configs in `noyalib-lsp/examples/`](crates/noyalib-lsp/examples/) |
 | **Claude Desktop / Cursor / Continue.dev / Zed assistant / hosted MCP** | [client configs in `noyalib-mcp/examples/`](crates/noyalib-mcp/examples/) |
 | **GitHub Actions / pre-commit / Helm / Compose / pyproject-adjacent YAML** | [validation gates in `noya-cli/examples/`](crates/noya-cli/examples/) |
-| **Vite / Webpack / Next.js / Cloudflare Workers / Deno / Bun** | [bundling guide (noyalib-wasm repo)](https://github.com/sebastienrousseau/noyalib-wasm/blob/main/doc/bundling.md) |
+| **Vite / Webpack / Next.js / Cloudflare Workers / Deno / Bun** | [bundling guide](crates/noyalib-wasm/doc/bundling.md) |
 
 The rest of this README covers the **library** surface
 (`noyalib` itself). For the satellite crates, jump straight to
@@ -280,7 +290,7 @@ tables for each.
 -[dependencies]
 -serde_yaml = "0.9"
 +[dependencies]
-+noyalib = "0.0.12"
++noyalib = "0.0.11"
 ```
 
 ```diff
@@ -502,6 +512,7 @@ criterion `--warm-up-time 2 --measurement-time 4`):
 | Round-trip nested | **12.0 µs** | **1.83×** | — | — | — |
 | Structural-discovery (1 MiB, nightly-SIMD) | **311 µs** | — | — | — | 9.2× over memchr loop |
 | SWAR decimal parse (`i64::MAX`) | **9.75 ns** | — | — | — | 2.5× over stdlib |
+| Lossless-u64 parser resolution (`benches/lossless_u64.rs`) | see harness | — | — | — | knob on vs off for large unsigned scalars |
 
 (`serde_yml` was previously a comparison column — retired in
 v0.0.6 since RUSTSEC-2025-0068 flagged it unsound + unmaintained;
@@ -1198,6 +1209,7 @@ cargo run --example all
 | | `stream` | Multi-document streams |
 | | `types` | Custom YAML tags |
 | | `binary` | Large ints, .inf, .nan, hex/octal |
+| | `lossless_u64` | Opt-in `Number::Unsigned` for scalars above `i64::MAX` |
 | **Security** | `strict` | strict\_booleans, DuplicateKeyPolicy |
 | | `secure` | ParserConfig limits |
 | | `schema` | Schema validation |
@@ -1530,9 +1542,9 @@ The per-crate READMEs at
 [`crates/noya-cli`](crates/noya-cli/README.md),
 [`crates/noyalib-mcp`](crates/noyalib-mcp/README.md),
 [`crates/noyalib-lsp`](crates/noyalib-lsp/README.md), and
-[`sebastienrousseau/noyalib-wasm`](https://github.com/sebastienrousseau/noyalib-wasm)
-document the surface specific to each artifact (binaries, MCP
-tools, LSP capabilities, WASM bindings).
+[`crates/noyalib-wasm`](crates/noyalib-wasm/README.md) document
+the surface specific to each artifact (binaries, MCP tools,
+LSP capabilities, WASM bindings).
 
 ---
 

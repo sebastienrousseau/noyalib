@@ -50,7 +50,7 @@ dependency.
 | `serde_yaml_ng::to_value` | `noyalib::to_value` |
 | `serde_yaml_ng::Value` | `noyalib::Value` (same 7 variants) |
 | `serde_yaml_ng::Mapping` | `noyalib::Mapping` |
-| `serde_yaml_ng::Number` | `noyalib::Number` |
+| `serde_yaml_ng::Number` | `noyalib::Number` (default `Integer` / `Float`; opt-in `Unsigned(u64)` behind `lossless-u64`) |
 | `serde_yaml_ng::Error` | `noyalib::Error` |
 | `serde_yaml_ng::Deserializer` | `noyalib::Deserializer` |
 | `serde_yaml_ng::Serializer` | `noyalib::Serializer` |

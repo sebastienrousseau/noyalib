@@ -69,7 +69,7 @@ type — there's no transitive dependency on the archived
 | `serde_yaml::to_value(&v)` | `noyalib::to_value(&v)` | Identical. |
 | `serde_yaml::Value` | `noyalib::Value` | Identical 7-variant enum (`Null`, `Bool`, `Number`, `String`, `Sequence`, `Mapping`, `Tagged`). |
 | `serde_yaml::Mapping` | `noyalib::Mapping` | Wraps `IndexMap<String, Value>`; iteration order preserved. |
-| `serde_yaml::Number` | `noyalib::Number` | Same `Integer` / `Float` split. |
+| `serde_yaml::Number` | `noyalib::Number` | Default mode keeps the same `Integer` / `Float` split. Enabling `lossless-u64` adds an opt-in `Unsigned(u64)` variant; see [ADR 0004](./adr/0004-lossless-u64-integers.md). |
 | `serde_yaml::Error` | `noyalib::Error` | Different variant set, same `Display` shape. See "Error handling" below. |
 | `serde_yaml::with::singleton_map` | `noyalib::with::singleton_map` | Identical. |
 | `serde_yaml::with::singleton_map_optional` | `noyalib::with::singleton_map_optional` | Identical. |

@@ -386,6 +386,8 @@ impl Serialize for BorrowedValue<'_> {
             Self::Bool(b) => serializer.serialize_bool(*b),
             Self::Number(n) => match n {
                 crate::value::Number::Integer(i) => serializer.serialize_i64(*i),
+                #[cfg(feature = "lossless-u64")]
+                crate::value::Number::Unsigned(u) => serializer.serialize_u64(*u),
                 crate::value::Number::Float(f) => serializer.serialize_f64(*f),
             },
             Self::String(s) => serializer.serialize_str(s),
@@ -610,6 +612,12 @@ struct BorrowedBuilder<'a> {
     /// owned path does.
     alias_expansions: usize,
     max_alias_expansions: usize,
+    strict_booleans: bool,
+    legacy_booleans: bool,
+    no_schema: bool,
+    legacy_octal_numbers: bool,
+    legacy_sexagesimal: bool,
+    lossless_u64_integers: bool,
 }
 
 impl<'a> BorrowedBuilder<'a> {
@@ -623,6 +631,12 @@ impl<'a> BorrowedBuilder<'a> {
             anchors: FxHashMap::default(),
             alias_expansions: 0,
             max_alias_expansions: config.max_alias_expansions,
+            strict_booleans: config.strict_booleans,
+            legacy_booleans: config.legacy_booleans,
+            no_schema: config.no_schema,
+            legacy_octal_numbers: config.legacy_octal_numbers,
+            legacy_sexagesimal: config.legacy_sexagesimal,
+            lossless_u64_integers: config.lossless_u64_integers(),
         }
     }
 
@@ -635,34 +649,28 @@ impl<'a> BorrowedBuilder<'a> {
             return BorrowedValue::String(value);
         }
 
-        match &*value {
-            "" | "~" | "null" | "Null" | "NULL" => BorrowedValue::Null,
-            "true" | "True" | "TRUE" => BorrowedValue::Bool(true),
-            "false" | "False" | "FALSE" => BorrowedValue::Bool(false),
-            ".inf" | ".Inf" | ".INF" | "+.inf" | "+.Inf" | "+.INF" => {
-                BorrowedValue::Number(crate::value::Number::Float(f64::INFINITY))
+        match crate::streaming::resolve_plain_ext(
+            &value,
+            self.strict_booleans,
+            self.legacy_booleans,
+            self.no_schema,
+            self.legacy_octal_numbers,
+            self.legacy_sexagesimal,
+            self.lossless_u64_integers,
+        ) {
+            crate::streaming::Scalar::Null => BorrowedValue::Null,
+            crate::streaming::Scalar::Bool(b) => BorrowedValue::Bool(b),
+            crate::streaming::Scalar::Int(i) => {
+                BorrowedValue::Number(crate::value::Number::Integer(i))
             }
-            "-.inf" | "-.Inf" | "-.INF" => {
-                BorrowedValue::Number(crate::value::Number::Float(f64::NEG_INFINITY))
+            #[cfg(feature = "lossless-u64")]
+            crate::streaming::Scalar::Uint(u) => {
+                BorrowedValue::Number(crate::value::Number::Unsigned(u))
             }
-            ".nan" | ".NaN" | ".NAN" => {
-                BorrowedValue::Number(crate::value::Number::Float(f64::NAN))
+            crate::streaming::Scalar::Float(f) => {
+                BorrowedValue::Number(crate::value::Number::Float(f))
             }
-            s => {
-                let bytes = s.as_bytes();
-                if !bytes.is_empty() {
-                    let first = bytes[0];
-                    if first.is_ascii_digit() || first == b'+' || first == b'-' || first == b'.' {
-                        if let Ok(n) = s.parse::<i64>() {
-                            return BorrowedValue::Number(crate::value::Number::Integer(n));
-                        }
-                        if let Ok(f) = s.parse::<f64>() {
-                            return BorrowedValue::Number(crate::value::Number::Float(f));
-                        }
-                    }
-                }
-                BorrowedValue::String(value)
-            }
+            crate::streaming::Scalar::Str(_) => BorrowedValue::String(value),
         }
     }
 

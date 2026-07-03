@@ -9,7 +9,12 @@
 //! path queries (`get_path`, `query`), and conversion to owned `Value`
 //! via `into_owned`.
 
+use noyalib::Value;
+#[cfg(feature = "lossless-u64")]
+use noyalib::borrowed::from_str_borrowed_with_config;
 use noyalib::borrowed::{BorrowedValue, from_str_borrowed};
+#[cfg(feature = "lossless-u64")]
+use noyalib::{Number, ParserConfig};
 
 // ── Construction & accessors ────────────────────────────────────────────
 
@@ -35,6 +40,16 @@ fn string_scalar() {
 fn integer_scalar() {
     let v: BorrowedValue<'_> = from_str_borrowed("42").unwrap();
     assert_eq!(v.as_i64(), Some(42));
+}
+
+#[cfg(feature = "lossless-u64")]
+#[test]
+fn lossless_u64_integer_scalar() {
+    let cfg = ParserConfig::new().lossless_u64_integers(true);
+    let v = from_str_borrowed_with_config("18446744073709551615\n", &cfg).unwrap();
+    let owned = v.into_owned();
+    assert_eq!(owned.as_u64(), Some(u64::MAX));
+    assert!(!matches!(owned, Value::Number(Number::Float(_))));
 }
 
 #[test]
@@ -150,7 +165,7 @@ fn into_owned_preserves_structure() {
     let owned = v.into_owned();
     // Owned Value should roundtrip via to_string / from_str.
     let yaml_out = noyalib::to_string(&owned).unwrap();
-    let reparsed: noyalib::Value = noyalib::from_str(&yaml_out).unwrap();
+    let reparsed: Value = noyalib::from_str(&yaml_out).unwrap();
     assert_eq!(owned, reparsed);
 }
 

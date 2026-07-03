@@ -619,7 +619,10 @@ fn ser_ser_empty_string_double_quoted() {
 fn ser_ser_u64_overflow_returns_error() {
     let big: u64 = u64::MAX;
     let res = to_string(&big);
+    #[cfg(not(feature = "lossless-u64"))]
     assert!(res.is_err());
+    #[cfg(feature = "lossless-u64")]
+    assert_eq!(res.unwrap().trim(), u64::MAX.to_string());
 }
 
 #[test]

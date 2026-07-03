@@ -7,6 +7,8 @@
 
 use std::collections::BTreeMap;
 
+#[cfg(feature = "lossless-u64")]
+use noyalib::{ParserConfig, from_str_with_config};
 use noyalib::{from_str, to_string};
 use serde::{Deserialize, Serialize};
 
@@ -53,6 +55,24 @@ fn test_serde_unsigned() {
     test_serde(&42u16, &["42"]);
     test_serde(&42u32, &["42"]);
     test_serde(&42u64, &["42"]);
+}
+
+#[cfg(feature = "lossless-u64")]
+#[test]
+fn test_serde_lossless_u64_struct_field() {
+    #[derive(Debug, Serialize, Deserialize, PartialEq)]
+    struct Record {
+        id: u64,
+    }
+
+    let cfg = ParserConfig::new().lossless_u64_integers(true);
+    for id in [i64::MAX as u64, i64::MAX as u64 + 1, u64::MAX] {
+        let value = Record { id };
+        let yaml = to_string(&value).unwrap();
+        assert!(yaml.contains(&format!("id: {id}")));
+        let parsed: Record = from_str_with_config(&yaml, &cfg).unwrap();
+        assert_eq!(parsed, value);
+    }
 }
 
 #[test]

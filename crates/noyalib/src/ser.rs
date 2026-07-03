@@ -94,6 +94,12 @@ pub struct SerializerConfig {
     pub min_fold_chars: usize,
     /// Maximum nesting depth allowed during serialization (default: 128).
     pub max_depth: usize,
+    /// When `true`, and the `lossless-u64` Cargo feature is enabled,
+    /// typed `u64` values above `i64::MAX` serialize as YAML integer
+    /// scalars instead of following the legacy error path.
+    #[cfg(feature = "lossless-u64")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "lossless-u64")))]
+    pub lossless_u64_integers: bool,
 }
 
 impl Default for SerializerConfig {
@@ -112,6 +118,8 @@ impl Default for SerializerConfig {
             folded_wrap_chars: 80,
             min_fold_chars: 80,
             max_depth: 128,
+            #[cfg(feature = "lossless-u64")]
+            lossless_u64_integers: false,
         }
     }
 }
@@ -231,6 +239,19 @@ impl SerializerConfig {
     #[must_use]
     pub fn max_depth(mut self, depth: usize) -> Self {
         self.max_depth = depth;
+        self
+    }
+
+    /// Enable or disable lossless `u64` serialization.
+    ///
+    /// With the `lossless-u64` feature enabled, setting this to
+    /// `true` lets typed `u64` values above `i64::MAX` emit as plain
+    /// YAML integer scalars.
+    #[cfg(feature = "lossless-u64")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "lossless-u64")))]
+    #[must_use]
+    pub fn lossless_u64_integers(mut self, enabled: bool) -> Self {
+        self.lossless_u64_integers = enabled;
         self
     }
 }
@@ -676,6 +697,18 @@ fn write_value(
         Value::Null => output.push_str("null"),
         Value::Bool(b) => output.push_str(if *b { "true" } else { "false" }),
         Value::Number(Number::Integer(n)) => {
+            #[cfg(feature = "fast-int")]
+            {
+                let mut buf = itoa::Buffer::new();
+                output.push_str(buf.format(*n));
+            }
+            #[cfg(not(feature = "fast-int"))]
+            {
+                let _ = write!(output, "{n}");
+            }
+        }
+        #[cfg(feature = "lossless-u64")]
+        Value::Number(Number::Unsigned(n)) => {
             #[cfg(feature = "fast-int")]
             {
                 let mut buf = itoa::Buffer::new();
@@ -1484,6 +1517,17 @@ impl ser::Serializer for Serializer {
     fn serialize_u64(self, v: u64) -> Result<Value> {
         if v <= i64::MAX as u64 {
             Ok(Value::Number(Number::Integer(v as i64)))
+        } else if cfg!(feature = "lossless-u64") {
+            #[cfg(feature = "lossless-u64")]
+            {
+                Ok(Value::Number(Number::Unsigned(v)))
+            }
+            #[cfg(not(feature = "lossless-u64"))]
+            {
+                Err(Error::Serialize(format!(
+                    "u64 value {v} exceeds i64::MAX and cannot be represented losslessly"
+                )))
+            }
         } else {
             Err(Error::Serialize(format!(
                 "u64 value {v} exceeds i64::MAX and cannot be represented losslessly"
@@ -1760,6 +1804,8 @@ impl ser::SerializeMap for SerializeMap {
         let key_str = match key_value {
             Value::String(s) => s,
             Value::Number(Number::Integer(n)) => n.to_string(),
+            #[cfg(feature = "lossless-u64")]
+            Value::Number(Number::Unsigned(n)) => n.to_string(),
             Value::Bool(b) => b.to_string(),
             _ => return Err(Error::Serialize("map key must be a string".to_string())),
         };

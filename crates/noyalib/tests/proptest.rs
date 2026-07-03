@@ -7,6 +7,8 @@
 // Copyright (c) 2026 Noyalib. All rights reserved.
 
 use noyalib::{Mapping, Number, Value, from_str, from_value, to_string, to_value};
+#[cfg(feature = "lossless-u64")]
+use noyalib::{ParserConfig, from_str_with_config};
 use proptest::prelude::*;
 
 // ============================================================================
@@ -14,9 +16,23 @@ use proptest::prelude::*;
 // ============================================================================
 
 /// Generate arbitrary Number values
+#[cfg(not(feature = "lossless-u64"))]
 fn arb_number() -> impl Strategy<Value = Number> {
     prop_oneof![
         any::<i64>().prop_map(Number::Integer),
+        // Use finite floats to avoid NaN comparison issues
+        any::<f64>()
+            .prop_filter("finite floats only", |f| f.is_finite())
+            .prop_map(Number::Float),
+    ]
+}
+
+/// Generate arbitrary Number values, including canonical unsigned values.
+#[cfg(feature = "lossless-u64")]
+fn arb_number() -> impl Strategy<Value = Number> {
+    prop_oneof![
+        any::<i64>().prop_map(Number::Integer),
+        ((i64::MAX as u64 + 1)..=u64::MAX).prop_map(Number::Unsigned),
         // Use finite floats to avoid NaN comparison issues
         any::<f64>()
             .prop_filter("finite floats only", |f| f.is_finite())
@@ -98,6 +114,18 @@ proptest! {
         let parsed: Value = from_str(&yaml).expect("deserialization should succeed");
 
         prop_assert_eq!(parsed.as_i64(), Some(n));
+    }
+
+    /// Unsigned integers should roundtrip exactly when the opt-in is active.
+    #[cfg(feature = "lossless-u64")]
+    #[test]
+    fn roundtrip_unsigned_integer(n in any::<u64>()) {
+        let value = Value::Number(Number::from(n));
+        let yaml = to_string(&value).expect("serialization should succeed");
+        let cfg = ParserConfig::new().lossless_u64_integers(true);
+        let parsed: Value = from_str_with_config(&yaml, &cfg).expect("deserialization should succeed");
+
+        prop_assert_eq!(parsed.as_u64(), Some(n));
     }
 
     /// Booleans should roundtrip exactly
@@ -419,6 +447,8 @@ fn values_equal(a: &Value, b: &Value) -> bool {
         (Value::Null, Value::Null) => true,
         (Value::Bool(a), Value::Bool(b)) => a == b,
         (Value::Number(Number::Integer(a)), Value::Number(Number::Integer(b))) => a == b,
+        #[cfg(feature = "lossless-u64")]
+        (Value::Number(Number::Unsigned(a)), Value::Number(Number::Unsigned(b))) => a == b,
         (Value::Number(Number::Float(a)), Value::Number(Number::Float(b))) => {
             (a - b).abs() < 1e-10 || (a.is_nan() && b.is_nan())
         }
@@ -426,6 +456,14 @@ fn values_equal(a: &Value, b: &Value) -> bool {
             (*a as f64 - b).abs() < 1e-10
         }
         (Value::Number(Number::Float(a)), Value::Number(Number::Integer(b))) => {
+            (a - *b as f64).abs() < 1e-10
+        }
+        #[cfg(feature = "lossless-u64")]
+        (Value::Number(Number::Unsigned(a)), Value::Number(Number::Float(b))) => {
+            (*a as f64 - b).abs() < 1e-10
+        }
+        #[cfg(feature = "lossless-u64")]
+        (Value::Number(Number::Float(a)), Value::Number(Number::Unsigned(b))) => {
             (a - *b as f64).abs() < 1e-10
         }
         (Value::String(a), Value::String(b)) => a == b,

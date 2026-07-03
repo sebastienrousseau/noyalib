@@ -2334,11 +2334,13 @@ fn looks_like_number(s: &str) -> bool {
     // Defer the actual parse to `Number`'s integer/float resolvers via
     // the streaming scalar resolver (which is the source of truth for
     // what the parser would treat as a number).
-    let scalar = crate::streaming::resolve_plain_ext(s, false, false, false, false, false);
-    matches!(
-        scalar,
-        crate::streaming::Scalar::Int(_) | crate::streaming::Scalar::Float(_)
-    )
+    let scalar = crate::streaming::resolve_plain_ext(s, false, false, false, false, false, false);
+    match scalar {
+        crate::streaming::Scalar::Int(_) | crate::streaming::Scalar::Float(_) => true,
+        #[cfg(feature = "lossless-u64")]
+        crate::streaming::Scalar::Uint(_) => true,
+        _ => false,
+    }
 }
 
 fn format_single_quoted(s: &str) -> String {

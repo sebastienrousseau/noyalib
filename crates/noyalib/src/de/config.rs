@@ -169,6 +169,15 @@ pub struct ParserConfig {
     /// migrations from YAML 1.1 / Ruby / pyyaml configs that use
     /// the legacy time-of-day notation.
     pub legacy_sexagesimal: bool,
+    /// When `true`, and the `lossless-u64` Cargo feature is enabled,
+    /// YAML integer scalars in `(i64::MAX, u64::MAX]` resolve as
+    /// unsigned integers instead of falling through to `f64`.
+    ///
+    /// Default `false` to preserve the historical public
+    /// `Integer(i64)` / `Float(f64)` model and serde-yaml compatibility.
+    #[cfg(feature = "lossless-u64")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "lossless-u64")))]
+    pub lossless_u64_integers: bool,
     /// Indentation-validation mode. See [`RequireIndent`].
     /// Default: [`RequireIndent::Unchecked`] — accept any
     /// well-formed YAML indent.
@@ -263,6 +272,8 @@ impl Default for ParserConfig {
             legacy_octal_numbers: false,
             ignore_binary_tag_for_string: false,
             legacy_sexagesimal: false,
+            #[cfg(feature = "lossless-u64")]
+            lossless_u64_integers: false,
             require_indent: RequireIndent::Unchecked,
             policies: Vec::new(),
             #[cfg(feature = "std")]
@@ -326,6 +337,8 @@ impl ParserConfig {
             legacy_octal_numbers: false,
             ignore_binary_tag_for_string: false,
             legacy_sexagesimal: false,
+            #[cfg(feature = "lossless-u64")]
+            lossless_u64_integers: false,
             require_indent: RequireIndent::Even,
             policies: Vec::new(),
             #[cfg(feature = "std")]
@@ -876,6 +889,20 @@ impl ParserConfig {
     #[must_use]
     pub fn legacy_sexagesimal(mut self, on: bool) -> Self {
         self.legacy_sexagesimal = on;
+        self
+    }
+
+    /// Enable or disable lossless unsigned integer resolution.
+    ///
+    /// With the `lossless-u64` feature enabled, setting this to
+    /// `true` lets YAML integer scalars in `(i64::MAX, u64::MAX]`
+    /// resolve as `Number::Unsigned` instead of falling through to
+    /// `Number::Float`.
+    #[cfg(feature = "lossless-u64")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "lossless-u64")))]
+    #[must_use]
+    pub fn lossless_u64_integers(mut self, on: bool) -> Self {
+        self.lossless_u64_integers = on;
         self
     }
 }

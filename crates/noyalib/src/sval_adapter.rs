@@ -84,6 +84,8 @@ impl sval::Value for Number {
     fn stream<'sval, S: sval::Stream<'sval> + ?Sized>(&'sval self, stream: &mut S) -> sval::Result {
         match self {
             Number::Integer(i) => stream.i64(*i),
+            #[cfg(feature = "lossless-u64")]
+            Number::Unsigned(u) => stream.u64(*u),
             Number::Float(f) => stream.f64(*f),
         }
     }

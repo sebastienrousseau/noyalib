@@ -27,6 +27,18 @@ fn test_serialize_integers() {
     assert!(to_string(&0i32).unwrap().contains("0"));
 }
 
+#[cfg(feature = "lossless-u64")]
+#[test]
+fn test_serialize_lossless_u64_plain_scalars() {
+    for value in [i64::MAX as u64, i64::MAX as u64 + 1, u64::MAX] {
+        let yaml = to_string(&value).unwrap();
+        assert_eq!(yaml.trim(), value.to_string());
+        assert!(!yaml.contains('"'));
+        assert!(!yaml.contains('\''));
+        assert!(!yaml.contains('.'));
+    }
+}
+
 #[test]
 fn test_serialize_floats() {
     let yaml = to_string(&3.125f64).unwrap();
@@ -77,6 +89,16 @@ fn test_serialize_map() {
     let yaml = to_string(&map).unwrap();
     assert!(yaml.contains("a: 1") || yaml.contains("a:"));
     assert!(yaml.contains("b: 2") || yaml.contains("b:"));
+}
+
+#[cfg(feature = "lossless-u64")]
+#[test]
+fn test_serialize_lossless_u64_map_key() {
+    let mut map = BTreeMap::new();
+    let _ = map.insert(u64::MAX, "max");
+    let yaml = to_string(&map).unwrap();
+    assert!(yaml.contains("18446744073709551615"));
+    assert!(yaml.contains("max"));
 }
 
 #[test]
@@ -555,9 +577,11 @@ fn test_serialize_integers_unsigned() {
     let yaml = to_string(&u32_val).unwrap();
     assert!(yaml.contains("4294967295"));
 
-    // u64 max value exceeds i64::MAX and should return an error
     let u64_val: u64 = u64::MAX;
+    #[cfg(not(feature = "lossless-u64"))]
     assert!(to_string(&u64_val).is_err());
+    #[cfg(feature = "lossless-u64")]
+    assert_eq!(to_string(&u64_val).unwrap().trim(), u64::MAX.to_string());
 
     // u64 values that fit in i64 should serialize fine
     let u64_val: u64 = i64::MAX as u64;

@@ -1195,7 +1195,10 @@ fn number_i64_max() {
 #[test]
 fn number_u64_max_errors() {
     let result = to_value(&u64::MAX);
+    #[cfg(not(feature = "lossless-u64"))]
     assert!(result.is_err());
+    #[cfg(feature = "lossless-u64")]
+    assert_eq!(result.unwrap().as_u64(), Some(u64::MAX));
 }
 
 #[test]

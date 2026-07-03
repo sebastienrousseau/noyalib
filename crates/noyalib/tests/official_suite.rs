@@ -91,6 +91,8 @@ fn yaml_value_to_json(v: &Value) -> serde_json::Value {
         Value::Null => serde_json::Value::Null,
         Value::Bool(b) => serde_json::Value::Bool(*b),
         Value::Number(Number::Integer(n)) => serde_json::json!(*n),
+        #[cfg(feature = "lossless-u64")]
+        Value::Number(Number::Unsigned(n)) => serde_json::json!(*n),
         Value::Number(Number::Float(f)) => {
             if f.is_finite() && f.fract() == 0.0 && f.abs() < (i64::MAX as f64) {
                 serde_json::json!(*f as i64)

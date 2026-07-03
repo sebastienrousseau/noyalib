@@ -8,6 +8,8 @@
 use std::collections::BTreeMap;
 
 use noyalib::{Number, Value, from_str, from_value};
+#[cfg(feature = "lossless-u64")]
+use noyalib::{ParserConfig, from_str_with_config};
 use serde::Deserialize;
 
 /// Helper function to test deserialization
@@ -64,6 +66,33 @@ fn test_integers() {
     let yaml = "9223372036854775807\n";
     let value: i64 = from_str(yaml).unwrap();
     assert_eq!(value, i64::MAX);
+}
+
+#[cfg(feature = "lossless-u64")]
+#[test]
+fn test_lossless_u64_boundaries_with_config() {
+    let cfg = ParserConfig::new().lossless_u64_integers(true);
+    for value in [i64::MAX as u64, i64::MAX as u64 + 1, u64::MAX] {
+        let yaml = format!("{value}\n");
+        let parsed: u64 = from_str_with_config(&yaml, &cfg).unwrap();
+        assert_eq!(parsed, value);
+    }
+}
+
+#[cfg(feature = "lossless-u64")]
+#[test]
+fn test_lossless_u64_rejects_overflow_with_config() {
+    let cfg = ParserConfig::new().lossless_u64_integers(true);
+    let err = from_str_with_config::<u64>("18446744073709551616\n", &cfg).unwrap_err();
+    assert!(err.to_string().contains("unsigned integer") || err.to_string().contains("u64"));
+}
+
+#[cfg(feature = "lossless-u64")]
+#[test]
+fn test_from_value_unsigned_to_u64() {
+    let value = Value::Number(Number::Unsigned(u64::MAX));
+    let parsed: u64 = from_value(&value).unwrap();
+    assert_eq!(parsed, u64::MAX);
 }
 
 #[test]

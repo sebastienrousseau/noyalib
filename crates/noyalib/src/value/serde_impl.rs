@@ -35,7 +35,7 @@ impl<'de> Deserialize<'de> for Value {
             }
 
             fn visit_u64<E>(self, v: u64) -> Result<Value, E> {
-                Ok(Value::Number(Number::Integer(v as i64)))
+                Ok(Value::Number(Number::from(v)))
             }
 
             fn visit_f64<E>(self, v: f64) -> Result<Value, E> {
@@ -151,6 +151,8 @@ impl Serialize for Value {
             Value::Null => serializer.serialize_none(),
             Value::Bool(b) => serializer.serialize_bool(*b),
             Value::Number(Number::Integer(n)) => serializer.serialize_i64(*n),
+            #[cfg(feature = "lossless-u64")]
+            Value::Number(Number::Unsigned(n)) => serializer.serialize_u64(*n),
             Value::Number(Number::Float(n)) => serializer.serialize_f64(*n),
             Value::String(s) => serializer.serialize_str(s),
             Value::Sequence(s) => s.serialize(serializer),
@@ -247,6 +249,8 @@ impl<'de> serde::Deserializer<'de> for &'de Value {
             Value::Null => visitor.visit_unit(),
             Value::Bool(b) => visitor.visit_bool(*b),
             Value::Number(Number::Integer(n)) => visitor.visit_i64(*n),
+            #[cfg(feature = "lossless-u64")]
+            Value::Number(Number::Unsigned(n)) => visitor.visit_u64(*n),
             Value::Number(Number::Float(n)) => visitor.visit_f64(*n),
             Value::String(s) => visitor.visit_borrowed_str(s),
             Value::Sequence(seq) => visitor.visit_seq(ValueSeqAccess { iter: seq.iter() }),

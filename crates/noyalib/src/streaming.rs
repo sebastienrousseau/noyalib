@@ -43,6 +43,8 @@ pub(crate) enum Scalar<'a> {
     Null,
     Bool(bool),
     Int(i64),
+    #[cfg(feature = "lossless-u64")]
+    Uint(u64),
     Float(f64),
     Str(Cow<'a, str>),
 }
@@ -596,6 +598,7 @@ impl<'a> StreamingDeserializer<'a> {
                 self.config.no_schema,
                 self.config.legacy_octal_numbers,
                 self.config.legacy_sexagesimal,
+                self.config.lossless_u64_integers(),
             )
         } else {
             Scalar::Str(Cow::Borrowed(value))
@@ -630,6 +633,8 @@ impl<'de> de::Deserializer<'de> for &mut StreamingDeserializer<'de> {
                     Scalar::Null => visitor.visit_none(),
                     Scalar::Bool(b) => visitor.visit_bool(b),
                     Scalar::Int(n) => visitor.visit_i64(n),
+                    #[cfg(feature = "lossless-u64")]
+                    Scalar::Uint(n) => visitor.visit_u64(n),
                     Scalar::Float(f) => visitor.visit_f64(f),
                     Scalar::Str(Cow::Borrowed(b)) => visitor.visit_borrowed_str(b),
                     Scalar::Str(Cow::Owned(o)) => visitor.visit_string(o),
@@ -638,6 +643,8 @@ impl<'de> de::Deserializer<'de> for &mut StreamingDeserializer<'de> {
                     Scalar::Null => visitor.visit_none(),
                     Scalar::Bool(b) => visitor.visit_bool(b),
                     Scalar::Int(n) => visitor.visit_i64(n),
+                    #[cfg(feature = "lossless-u64")]
+                    Scalar::Uint(n) => visitor.visit_u64(n),
                     Scalar::Float(f) => visitor.visit_f64(f),
                     Scalar::Str(_) => visitor.visit_string(s),
                 },
@@ -730,6 +737,8 @@ impl<'de> de::Deserializer<'de> for &mut StreamingDeserializer<'de> {
         if let Event::Scalar { value, style, .. } = self.next_event()? {
             match self.resolve_scalar(&value, style) {
                 Scalar::Int(n) if n >= 0 => return visitor.visit_u64(n as u64),
+                #[cfg(feature = "lossless-u64")]
+                Scalar::Uint(n) => return visitor.visit_u64(n),
                 Scalar::Float(f)
                     if f.is_finite() && f.fract() == 0.0 && f >= 0.0 && f <= u64::MAX as f64 =>
                 {
@@ -753,6 +762,8 @@ impl<'de> de::Deserializer<'de> for &mut StreamingDeserializer<'de> {
             match self.resolve_scalar(&value, style) {
                 Scalar::Float(f) => return visitor.visit_f64(f),
                 Scalar::Int(n) => return visitor.visit_f64(n as f64),
+                #[cfg(feature = "lossless-u64")]
+                Scalar::Uint(n) => return visitor.visit_f64(n as f64),
                 _ => {}
             }
         }
@@ -1121,6 +1132,11 @@ impl<'de> de::Deserializer<'de> for &mut StreamingDeserializer<'de> {
                     found: "bool".into(),
                 }),
                 Scalar::Int(_) => Err(Error::TypeMismatch {
+                    expected: "bytes",
+                    found: "integer".into(),
+                }),
+                #[cfg(feature = "lossless-u64")]
+                Scalar::Uint(_) => Err(Error::TypeMismatch {
                     expected: "bytes",
                     found: "integer".into(),
                 }),
@@ -1598,6 +1614,9 @@ fn is_fallback_error(e: &Error) -> bool {
 ///   colon-separated base-60 numbers (`60:00` → 3 600,
 ///   `1:30:00` → 5 400). Off by default; YAML 1.2 dropped the
 ///   sexagesimal schema.
+/// - `lossless_u64` — when `true` and the `lossless-u64` feature is
+///   enabled, resolve unsigned integer scalars up to `u64::MAX`
+///   before considering a float fallback.
 pub(crate) fn resolve_plain_ext(
     s: &str,
     strict: bool,
@@ -1605,6 +1624,7 @@ pub(crate) fn resolve_plain_ext(
     no_schema: bool,
     legacy_octal: bool,
     legacy_sexagesimal: bool,
+    lossless_u64: bool,
 ) -> Scalar<'_> {
     if no_schema {
         // Schema-strict mode: every plain scalar surfaces as a
@@ -1625,8 +1645,14 @@ pub(crate) fn resolve_plain_ext(
         "on" | "On" | "ON" if !strict && legacy => Scalar::Bool(true),
         "off" | "Off" | "OFF" if !strict && legacy => Scalar::Bool(false),
         _ => {
-            if let Some(n) = parse_integer(s, legacy_octal) {
-                Scalar::Int(n)
+            if let Some(n) = parse_integer(s, legacy_octal, lossless_u64) {
+                match n {
+                    ParsedInteger::Signed(n) => Scalar::Int(n),
+                    #[cfg(feature = "lossless-u64")]
+                    ParsedInteger::Unsigned(n) => Scalar::Uint(n),
+                }
+            } else if lossless_u64 && looks_like_integer_literal(s, legacy_octal) {
+                Scalar::Str(Cow::Borrowed(s))
             } else if legacy_sexagesimal {
                 if let Some(n) = parse_sexagesimal_int(s) {
                     Scalar::Int(n)
@@ -1644,6 +1670,30 @@ pub(crate) fn resolve_plain_ext(
             }
         }
     }
+}
+
+fn looks_like_integer_literal(s: &str, legacy_octal: bool) -> bool {
+    let b = s.as_bytes();
+    if b.is_empty() {
+        return false;
+    }
+    if b.len() > 2 && b[0] == b'0' && (bytes_to_char(b[1]) == 'x' || bytes_to_char(b[1]) == 'X') {
+        return b[2..].iter().all(|c| c.is_ascii_hexdigit());
+    }
+    if b.len() > 2 && b[0] == b'0' && (bytes_to_char(b[1]) == 'o' || bytes_to_char(b[1]) == 'O') {
+        return b[2..].iter().all(|c| (b'0'..=b'7').contains(c));
+    }
+    if legacy_octal && b.len() >= 2 && b[0] == b'0' {
+        return b[1..].iter().all(|c| (b'0'..=b'7').contains(c));
+    }
+    let start = if b[0] == b'+' || b[0] == b'-' { 1 } else { 0 };
+    start < b.len() && b[start..].iter().all(u8::is_ascii_digit)
+}
+
+enum ParsedInteger {
+    Signed(i64),
+    #[cfg(feature = "lossless-u64")]
+    Unsigned(u64),
 }
 
 /// Parse a YAML 1.1 sexagesimal integer like `60:00` or
@@ -1718,16 +1768,16 @@ fn parse_sexagesimal_float(s: &str) -> Option<f64> {
     Some(sign * total)
 }
 
-fn parse_integer(s: &str, legacy_octal: bool) -> Option<i64> {
+fn parse_integer(s: &str, legacy_octal: bool, lossless_u64: bool) -> Option<ParsedInteger> {
     let b = s.as_bytes();
     if b.is_empty() {
         return None;
     }
     if b.len() > 2 && b[0] == b'0' && (bytes_to_char(b[1]) == 'x' || bytes_to_char(b[1]) == 'X') {
-        return i64::from_str_radix(&s[2..], 16).ok();
+        return parse_radix_integer(&s[2..], 16, lossless_u64);
     }
     if b.len() > 2 && b[0] == b'0' && (bytes_to_char(b[1]) == 'o' || bytes_to_char(b[1]) == 'O') {
-        return i64::from_str_radix(&s[2..], 8).ok();
+        return parse_radix_integer(&s[2..], 8, lossless_u64);
     }
     // YAML 1.1-style bare `0`-prefix octal — only when explicitly
     // opted in. The leading `0` must be followed by an octal digit
@@ -1738,7 +1788,7 @@ fn parse_integer(s: &str, legacy_octal: bool) -> Option<i64> {
         && b[0] == b'0'
         && b[1..].iter().all(|&c| c.is_ascii_digit() && c <= b'7')
     {
-        return i64::from_str_radix(&s[1..], 8).ok();
+        return parse_radix_integer(&s[1..], 8, lossless_u64);
     }
     let start = if b[0] == b'+' || b[0] == b'-' { 1 } else { 0 };
     if start >= b.len() {
@@ -1749,10 +1799,34 @@ fn parse_integer(s: &str, legacy_octal: bool) -> Option<i64> {
         // to `s.parse::<i64>()` but processes 8 digits per cycle on
         // the inner pipeline, beating the stdlib byte-by-byte loop
         // on data-heavy workloads (telemetry, IDs, port numbers).
-        crate::simd::parse_decimal_i64(b)
+        if let Some(n) = crate::simd::parse_decimal_i64(b) {
+            return Some(ParsedInteger::Signed(n));
+        }
+        #[cfg(feature = "lossless-u64")]
+        if lossless_u64 && b[0] != b'-' {
+            let digits = if b[0] == b'+' { &b[1..] } else { b };
+            return crate::simd::parse_decimal_u64(digits).map(ParsedInteger::Unsigned);
+        }
+        None
     } else {
         None
     }
+}
+
+fn parse_radix_integer(s: &str, radix: u32, lossless_u64: bool) -> Option<ParsedInteger> {
+    #[cfg(not(feature = "lossless-u64"))]
+    let _ = lossless_u64;
+    if let Ok(n) = i64::from_str_radix(s, radix) {
+        return Some(ParsedInteger::Signed(n));
+    }
+    #[cfg(feature = "lossless-u64")]
+    if lossless_u64 {
+        return u64::from_str_radix(s, radix)
+            .ok()
+            .map(ParsedInteger::Unsigned);
+    }
+    #[allow(unreachable_code)]
+    None
 }
 
 fn bytes_to_char(b: u8) -> char {

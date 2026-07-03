@@ -69,7 +69,7 @@ enum shape (8 variants vs 7).
 | `serde_yaml_bw::Value` (8 variants) | `noyalib::Value` (7 variants — see below) |
 | `serde_yaml_bw::Value::Alias(name)` | resolved at parse time; no longer a separate variant |
 | `serde_yaml_bw::Mapping` | `noyalib::Mapping` |
-| `serde_yaml_bw::Number` | `noyalib::Number` |
+| `serde_yaml_bw::Number` | `noyalib::Number` (default `Integer` / `Float`; opt-in `Unsigned(u64)` behind `lossless-u64`) |
 | `serde_yaml_bw::Error` | `noyalib::Error` |
 | `serde_yaml_bw::SerializerBuilder` | `noyalib::SerializerConfig` + `to_writer_with_config` |
 | `serde_yaml_bw::SerializerOptions` | `noyalib::SerializerConfig` |

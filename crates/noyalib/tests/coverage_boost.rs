@@ -1521,9 +1521,11 @@ fn loader_mapping_key_limit() {
 
 #[test]
 fn number_from_u64_overflow() {
-    // u64::MAX overflows i64, stored as Float
     let n = Number::from(u64::MAX);
+    #[cfg(not(feature = "lossless-u64"))]
     assert!(n.is_float());
+    #[cfg(feature = "lossless-u64")]
+    assert_eq!(n.as_u64(), Some(u64::MAX));
 }
 
 #[test]

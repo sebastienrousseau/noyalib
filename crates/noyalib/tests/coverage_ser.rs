@@ -158,9 +158,16 @@ fn document_end_marker() {
 
 #[test]
 fn serialize_u64_max() {
-    // u64::MAX exceeds i64::MAX — should error
     let result = to_value(&u64::MAX);
-    assert!(result.is_err());
+    #[cfg(not(feature = "lossless-u64"))]
+    {
+        // Legacy model cannot represent u64::MAX losslessly.
+        assert!(result.is_err());
+    }
+    #[cfg(feature = "lossless-u64")]
+    {
+        assert_eq!(result.unwrap().as_u64(), Some(u64::MAX));
+    }
 }
 
 #[test]

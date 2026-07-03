@@ -377,6 +377,10 @@ This contract holds for all three tag-bearing shapes:
 | `!!str 42` | `Value::String("42")` *(core tag — resolves)* |
 | `!!int 42` | `Value::Number(Integer(42))` *(core tag — resolves)* |
 
+With the `lossless-u64` feature enabled and
+`ParserConfig::lossless_u64_integers(true)`, `!!int` scalars in
+`(i64::MAX, u64::MAX]` resolve as `Value::Number(Unsigned(_))`.
+
 **Reading through the wrapper.** Two helpers on `Value` step
 through the tag for transparent reads:
 
@@ -483,7 +487,7 @@ diagnostics list and offer autocomplete on the recoverable
 subtrees.
 
 ```rust
-// Cargo.toml: noyalib = { version = "0.0.12", features = ["recovery"] }
+// Cargo.toml: noyalib = { version = "0.0.11", features = ["recovery"] }
 use noyalib::recovery::parse_lenient;
 
 let half_typed = "name: noyalib\nfeatures: [recovery, sval\n# ^ unclosed\n";
@@ -506,7 +510,7 @@ For high-concurrency services parsing YAML from network sources,
 the `tokio` feature lets you skip `spawn_blocking`:
 
 ```rust
-// Cargo.toml: noyalib = { version = "0.0.12", features = ["tokio"] }
+// Cargo.toml: noyalib = { version = "0.0.11", features = ["tokio"] }
 use noyalib::tokio_async::{from_async_reader_multi, YamlDecoder};
 
 // Pattern 1: drain-and-parse
@@ -530,7 +534,7 @@ cost of serde monomorphisation. The adapter implements
 `sval::Stream` consumer can read it:
 
 ```rust
-// Cargo.toml: noyalib = { version = "0.0.12", features = ["sval"] }
+// Cargo.toml: noyalib = { version = "0.0.11", features = ["sval"] }
 let value: noyalib::Value = noyalib::from_str("name: noyalib")?;
 sval::Value::stream(&value, &mut my_stream)?;
 ```
@@ -564,7 +568,8 @@ other channels in [`pkg/PUBLISH.md`](../pkg/PUBLISH.md).
 
 ## 12. WASM, MCP, and LSP
 
-Three satellite crates target specific deployment shapes:
+Three satellite crates in the workspace target specific
+deployment shapes:
 
 - **`noyalib-wasm`** ([`sebastienrousseau/noyalib-wasm`](https://github.com/sebastienrousseau/noyalib-wasm)).
   `wasm-pack` output published to npm as

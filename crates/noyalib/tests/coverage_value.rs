@@ -9,6 +9,8 @@ use std::str::FromStr;
 use noyalib::{
     Mapping, MappingAny, MaybeTag, Number, Tag, TaggedValue, Value, check_for_tag, from_str, nobang,
 };
+#[cfg(feature = "lossless-u64")]
+use serde::Deserialize;
 
 // ============================================================================
 // Mapping — capacity, reserve, shrink
@@ -21,6 +23,15 @@ fn mapping_with_capacity_and_reserve() {
     m.reserve(20);
     assert!(m.capacity() >= 20);
     m.shrink_to_fit();
+}
+
+#[cfg(feature = "lossless-u64")]
+#[test]
+fn value_deserialize_visit_u64_preserves_unsigned() {
+    let producer = serde_json::Value::from(u64::MAX);
+    let value = Value::deserialize(producer).unwrap();
+    assert_eq!(value.as_u64(), Some(u64::MAX));
+    assert!(matches!(value, Value::Number(Number::Unsigned(n)) if n == u64::MAX));
 }
 
 #[test]
@@ -875,7 +886,10 @@ fn number_from_types() {
 #[test]
 fn number_u64_max_becomes_float() {
     let n = Number::from(u64::MAX);
+    #[cfg(not(feature = "lossless-u64"))]
     assert!(n.is_float());
+    #[cfg(feature = "lossless-u64")]
+    assert_eq!(n.as_u64(), Some(u64::MAX));
 }
 
 // ============================================================================

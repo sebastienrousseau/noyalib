@@ -16,6 +16,9 @@
 //! (telemetry, port numbers, IDs in mappings) where every value
 //! is parsed.
 //!
+//! This harness measures **scalar decimal parsing primitives** only,
+//! not full YAML `from_str` resolution (see `benches/lossless_u64.rs`).
+//!
 //! Run: `cargo bench --bench numeric_parse`
 
 #![allow(missing_docs, unused_results)]
@@ -38,6 +41,8 @@ fn bench_parse_u64(c: &mut Criterion) {
         ("10_digits", 1_234_567_890u64),
         ("16_digits", 1_234_567_890_123_456u64),
         ("19_digits", 9_223_372_036_854_775_807u64),
+        ("20_digits_u64_max", u64::MAX),
+        ("i64_max_plus_1", i64::MAX as u64 + 1),
     ] {
         let s = val.to_string();
         let bytes = s.as_bytes();

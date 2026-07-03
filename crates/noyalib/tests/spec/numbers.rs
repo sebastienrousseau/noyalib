@@ -3,6 +3,8 @@
 
 // YAML spec: Number representations
 
+#[cfg(feature = "lossless-u64")]
+use noyalib::{ParserConfig, from_str_with_config, to_string_value};
 use noyalib::{Value, from_str};
 
 // --- Integers ---
@@ -47,6 +49,39 @@ fn integer_octal() {
 fn integer_large() {
     let v: i64 = from_str("1000000000").unwrap();
     assert_eq!(v, 1_000_000_000);
+}
+
+#[cfg(feature = "lossless-u64")]
+#[test]
+fn integer_lossless_u64_plain_scalars() {
+    let cfg = ParserConfig::new().lossless_u64_integers(true);
+    for value in [i64::MAX as u64, i64::MAX as u64 + 1, u64::MAX] {
+        let yaml = format!("{value}\n");
+        let v: Value = from_str_with_config(&yaml, &cfg).unwrap();
+        assert_eq!(v.as_u64(), Some(value));
+        assert!(v.is_u64());
+        assert!(!matches!(v, Value::Number(n) if n.is_float()));
+
+        let emitted = to_string_value(&v).unwrap();
+        assert_eq!(emitted.trim(), value.to_string());
+        let reparsed: Value = from_str_with_config(&emitted, &cfg).unwrap();
+        assert_eq!(reparsed.as_u64(), Some(value));
+    }
+}
+
+#[cfg(feature = "lossless-u64")]
+#[test]
+fn integer_lossless_u64_tagged_and_radix_scalars() {
+    let cfg = ParserConfig::new().lossless_u64_integers(true);
+    for (yaml, expected) in [
+        ("!!int 18446744073709551615\n", u64::MAX),
+        ("0x8000000000000000\n", i64::MAX as u64 + 1),
+        ("0xffffffffffffffff\n", u64::MAX),
+        ("!!int 0xffffffffffffffff\n", u64::MAX),
+    ] {
+        let v: Value = from_str_with_config(yaml, &cfg).unwrap();
+        assert_eq!(v.as_u64(), Some(expected), "{yaml}");
+    }
 }
 
 // --- Floats ---

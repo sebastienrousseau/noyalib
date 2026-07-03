@@ -201,6 +201,11 @@ name = "lossless_edit"
 path = "examples/lossless_edit.rs"
 
 [[example]]
+name = "lossless_u64"
+path = "examples/lossless_u64.rs"
+required-features = ["lossless-u64"]
+
+[[example]]
 name = "comments_at"
 path = "examples/comments_at.rs"
 
@@ -439,6 +444,11 @@ name = "numeric_parse"
 harness = false
 
 [[bench]]
+name = "lossless_u64"
+harness = false
+required-features = ["lossless-u64"]
+
+[[bench]]
 name = "v006_features"
 harness = false
 required-features = ["recovery", "sval", "tokio"]
@@ -497,6 +507,10 @@ noyavalidate = ["std", "miette", "miette/fancy", "validate-schema"]
 # re-export of the archived upstream crate. Off by default so users
 # who do not need migration help do not see the extra surface.
 compat-serde-yaml = []
+# Opt-in unsigned integer model for YAML `!!int` scalars in the
+# `i64::MAX + 1..=u64::MAX` range. Dependency-free; off by default
+# because it exposes an additional public `Number` variant.
+lossless-u64 = []
 # JSON Schema codegen via `schemars`. With this on you can
 # `#[derive(noyalib::JsonSchema)]` for a Rust type and call
 # `noyalib::schema_for::<T>()` / `schema_for_yaml::<T>()` to obtain
