@@ -86,8 +86,17 @@ jobs:
         # `NOYALIB_COVERAGE=1` triggers `--cfg noyalib_coverage` via
         # build.rs) fails to compile on stable.
         run: |
+          # `--ignore-filename-regex` rejects an empty string
+          # ("empty string is not allowed"), so only pass the flag
+          # when the caller provided a non-empty regex. A single-crate
+          # repo (like this one post-workspace-split) may legitimately
+          # have nothing to exclude.
+          IGNORE_ARGS=()
+          if [ -n "${{ inputs.ignore-filename-regex }}" ]; then
+            IGNORE_ARGS+=(--ignore-filename-regex "${{ inputs.ignore-filename-regex }}")
+          fi
           cargo +nightly llvm-cov --workspace --all-features --no-fail-fast \
-            --ignore-filename-regex '${{ inputs.ignore-filename-regex }}' \
+            "${IGNORE_ARGS[@]}" \
             --fail-under-functions ${{ inputs.fail-under-functions }} \
             --fail-under-lines ${{ inputs.fail-under-lines }} \
             --fail-under-regions ${{ inputs.fail-under-regions }}
