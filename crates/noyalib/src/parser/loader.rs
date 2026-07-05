@@ -389,6 +389,18 @@ impl<'a> Loader<'a> {
                 tag,
                 span,
             } => {
+                // An empty plain scalar with no anchor or tag is the
+                // implicit null the parser synthesizes for an absent
+                // block-mapping value or empty sequence item. The span it
+                // was handed is the `:` / `-` indicator it followed, not the
+                // value's own bytes, so mark the leaf zero-width: the node
+                // has no source of its own and `span_at` should report None.
+                // Quoted empties carry a non-Plain style and `~` / `null` a
+                // non-empty value, so both keep their real spans.
+                let is_implicit_empty = value.is_empty()
+                    && matches!(style, crate::parser::ScalarStyle::Plain)
+                    && anchor.is_none()
+                    && tag.is_none();
                 let v = if let Some(t) = tag {
                     resolve_tagged_scalar(&t.0, &t.1, &value, self.config.lossless_u64_integers())?
                 } else if style != crate::parser::ScalarStyle::Plain {
@@ -416,7 +428,11 @@ impl<'a> Loader<'a> {
                     }
                 };
 
-                let st = SpanTree::Leaf(span.start, span.end);
+                let st = if is_implicit_empty {
+                    SpanTree::Leaf(span.start, span.start)
+                } else {
+                    SpanTree::Leaf(span.start, span.end)
+                };
                 if let Some(name) = anchor {
                     let _ = self.anchor_map.insert(name, (v.clone(), st.clone()));
                 }

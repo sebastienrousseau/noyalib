@@ -1498,12 +1498,16 @@ fn resolve_span(
     segments: &[QuerySegment],
 ) -> Option<(usize, usize)> {
     if segments.is_empty() {
-        return Some(match span_tree {
-            SpanTree::Leaf(s, e) => (*s, *e),
+        return match span_tree {
+            // A zero-width leaf marks an implicit null (an absent
+            // block-mapping value or empty sequence item): the node has no
+            // source bytes of its own, so it has no span.
+            SpanTree::Leaf(s, e) if s == e => None,
+            SpanTree::Leaf(s, e) => Some((*s, *e)),
             SpanTree::Sequence { start, end, .. } | SpanTree::Mapping { start, end, .. } => {
-                (*start, *end)
+                Some((*start, *end))
             }
-        });
+        };
     }
     let (head, tail) = segments.split_first()?;
     match (head, value, span_tree) {

@@ -653,6 +653,40 @@ fn coverage_doc_span_at_empty_path_returns_root_collection() {
     assert!(span.is_some() || span.is_none());
 }
 
+// ── Implicit-null nodes have no span of their own ───────────────────
+
+#[test]
+fn coverage_doc_span_at_implicit_null_is_none() {
+    // An absent block-mapping value is the implicit null; its bytes are
+    // the `:` indicator, which is not the value, so span_at reports None.
+    let doc = parse_document("c:\nother: 1\n").unwrap();
+    assert_eq!(doc.span_at("c"), None);
+
+    // Same at end of input.
+    let doc = parse_document("a: 1\nc:\n").unwrap();
+    assert_eq!(doc.span_at("c"), None);
+
+    // Empty sequence item (the `-` indicator) is likewise byte-less.
+    let doc = parse_document("- \n- x\n").unwrap();
+    assert_eq!(doc.span_at("[0]"), None);
+}
+
+#[test]
+fn coverage_doc_span_at_explicit_null_and_empty_quote_keep_span() {
+    // Explicit nulls and quoted empties DO have source bytes.
+    let doc = parse_document("c: ~\nother: 1\n").unwrap();
+    let (s, e) = doc.span_at("c").unwrap();
+    assert_eq!(&doc.source()[s..e], "~");
+
+    let doc = parse_document("c: null\n").unwrap();
+    let (s, e) = doc.span_at("c").unwrap();
+    assert_eq!(&doc.source()[s..e], "null");
+
+    let doc = parse_document("c: ''\n").unwrap();
+    let (s, e) = doc.span_at("c").unwrap();
+    assert_eq!(&doc.source()[s..e], "''");
+}
+
 // ── parse_stream propagates errors from document_boundaries (L985) ──
 
 #[test]
