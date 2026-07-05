@@ -529,7 +529,15 @@ impl<'a> Scanner<'a> {
     #[inline]
     fn advance(&mut self) {
         if self.pos < self.input.len() {
-            if self.input[self.pos] == b'\n' {
+            // YAML 1.2.2 §5.4: a line break is LF, CR, or CRLF. A lone CR
+            // (classic-Mac, not followed by LF) resets the column exactly
+            // like LF; without this, CR-only input desyncs indentation
+            // tracking and yields spurious "inconsistent indentation".
+            // CRLF is consumed via `advance_by`, so its `\r` never reaches
+            // this branch; and even byte-by-byte a `\r\n` pair still nets
+            // col = 0, matching the previous behavior.
+            let b = self.input[self.pos];
+            if b == b'\n' || b == b'\r' {
                 self.col = 0;
             } else {
                 self.col += 1;
@@ -542,11 +550,14 @@ impl<'a> Scanner<'a> {
     fn advance_by(&mut self, n: usize) {
         let end = (self.pos + n).min(self.input.len());
         let slice = &self.input[self.pos..end];
-        // Fast path: no newlines in the slice (common for scalar content).
-        match slice.iter().rposition(|&b| b == b'\n') {
-            Some(last_nl) => {
-                // Column resets at the last newline, then counts remaining bytes.
-                self.col = slice.len() - last_nl - 1;
+        // Column resets at the last line break in the slice. A line break is
+        // LF, CR, or CRLF (YAML 1.2.2 §5.4); for CRLF the trailing `\n` is the
+        // last matched byte, so the column count after it is identical to
+        // matching `\n` alone — this only additionally handles a trailing lone
+        // CR (classic-Mac), mirroring `advance`.
+        match slice.iter().rposition(|&b| b == b'\n' || b == b'\r') {
+            Some(last_break) => {
+                self.col = slice.len() - last_break - 1;
             }
             None => {
                 self.col += slice.len();
@@ -1754,9 +1765,15 @@ impl<'a> Scanner<'a> {
                 // Roll indent for block mapping.
                 if self.flow_level == 0 {
                     self.reject_block_inline_with_doc_start("':'")?;
+                    // A line break is LF, CR, or CRLF (YAML 1.2.2 §5.4);
+                    // scan back for either so a key following a lone CR
+                    // (classic-Mac) is measured from its true line start.
+                    // Matching only `\n` over-counts such a key's column,
+                    // splitting the mapping (the same failure the BOM case
+                    // below guards against).
                     let mut line_start = self.input[..sk.index]
                         .iter()
-                        .rposition(|&b| b == b'\n')
+                        .rposition(|&b| b == b'\n' || b == b'\r')
                         .map_or(0, |nl| nl + 1);
                     // A leading BOM occupies the first three bytes of the
                     // stream but contributes no visual column. Exclude it so a

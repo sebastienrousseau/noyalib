@@ -432,3 +432,33 @@ fn spanned_sequence_deserialization() {
     let v: Spanned<Vec<i32>> = from_str(yaml).unwrap();
     assert_eq!(v.value.len(), 3);
 }
+
+// ── Classic-Mac CR-only line endings (YAML 1.2.2 §5.4) ──────────────────
+
+#[test]
+fn cr_only_line_endings_parse_as_line_breaks() {
+    // A lone CR (not part of CRLF) is a valid YAML line break. Before the
+    // scanner reset the column on a bare `\r`, this was rejected with a
+    // spurious "inconsistent indentation" error.
+    let yaml = "a: 1\rb: 2\r";
+    let v: Value = from_str(yaml).unwrap();
+    assert_eq!(v["a"], Value::from(1));
+    assert_eq!(v["b"], Value::from(2));
+}
+
+#[test]
+fn cr_only_block_sequence_parses() {
+    let yaml = "- one\r- two\r- three\r";
+    let v: Value = from_str(yaml).unwrap();
+    assert_eq!(v.as_sequence().map(|s| s.len()), Some(3));
+    assert_eq!(v[0], Value::String("one".to_string()));
+    assert_eq!(v[2], Value::String("three".to_string()));
+}
+
+#[test]
+fn cr_only_round_trips_byte_for_byte() {
+    // The CST keeps source bytes verbatim regardless of line-ending flavor.
+    let yaml = "a: 1\rb: 2\r";
+    let doc = noyalib::cst::parse_document(yaml).unwrap();
+    assert_eq!(doc.source(), yaml);
+}
