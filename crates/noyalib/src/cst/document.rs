@@ -1419,10 +1419,17 @@ fn entry_value(
                     if *kind == SyntaxKind::ColonIndicator {
                         after_colon = true;
                     }
+                } else if *kind == SyntaxKind::AliasMark {
+                    // An alias reference (`*name`) is a single token with
+                    // no value node of its own; its bytes are a dangling
+                    // alias that does not re-parse standalone. Bail so
+                    // span_at falls back to the typed cache, whose SpanTree
+                    // resolves the alias through to its anchor definition's
+                    // self-contained value span.
+                    return None;
                 } else if is_value_property_kind(*kind) {
-                    // `!Tag` / `&anchor` / `*alias` prefix —
-                    // remember the earliest start and keep
-                    // scanning for the scalar that follows.
+                    // `!Tag` / `&anchor` prefix — remember the earliest
+                    // start and keep scanning for the scalar that follows.
                     let _ = prefix_start.get_or_insert(child_start);
                 } else if !is_trivia_kind(*kind) {
                     let start = prefix_start.unwrap_or(child_start);
@@ -1466,6 +1473,10 @@ fn item_value(
                     if *kind == SyntaxKind::DashIndicator {
                         after_dash = true;
                     }
+                } else if *kind == SyntaxKind::AliasMark {
+                    // Alias reference as a sequence item: bail to the typed
+                    // cache, which resolves it to the anchor's value span.
+                    return None;
                 } else if is_value_property_kind(*kind) {
                     let _ = prefix_start.get_or_insert(child_start);
                 } else if !is_trivia_kind(*kind) {
@@ -1506,10 +1517,10 @@ fn is_trivia_kind(k: SyntaxKind) -> bool {
 /// tag and the quoted scalar) rather than `6..13` (the tag
 /// alone, which was the pre-fix behaviour).
 fn is_value_property_kind(k: SyntaxKind) -> bool {
-    matches!(
-        k,
-        SyntaxKind::AnchorMark | SyntaxKind::TagMark | SyntaxKind::AliasMark
-    )
+    // Alias marks are handled separately (they bail the green walk to the
+    // typed cache); only anchor/tag definition prefixes stretch the value
+    // span to cover the property plus the scalar / node that follows.
+    matches!(k, SyntaxKind::AnchorMark | SyntaxKind::TagMark)
 }
 
 // ── Path resolution ─────────────────────────────────────────────────
