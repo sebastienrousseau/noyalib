@@ -1324,6 +1324,32 @@ fn decode_single_quoted(raw: &str) -> Option<Cow<'_, str>> {
 /// Find the value position inside a `MappingEntry` and either
 /// return its byte range (if `tail` is empty) or recurse into it
 /// with `tail`.
+/// Whether a resolved value node is a block (indentation-structured)
+/// collection, whose span begins on its own source line.
+fn is_block_collection(k: SyntaxKind) -> bool {
+    matches!(k, SyntaxKind::BlockMapping | SyntaxKind::BlockSequence)
+}
+
+/// Back `start` up over the inline whitespace that indents a value's first
+/// line, but only when that value begins its own line (the whitespace run is
+/// preceded by a line break or the start of input). A value that shares its
+/// line with a `-` / `:` / `{` (e.g. the inner sequence of `- - a`) is left
+/// untouched. This makes a block collection's slice uniformly indented — its
+/// first line keeps the indentation the following lines already carry — so it
+/// re-parses to the selected value instead of silently re-nesting.
+fn extend_to_line_start(source: &str, start: usize) -> usize {
+    let b = source.as_bytes();
+    let mut i = start;
+    while i > 0 && matches!(b[i - 1], b' ' | b'\t') {
+        i -= 1;
+    }
+    if i == 0 || matches!(b[i - 1], b'\n' | b'\r') {
+        i
+    } else {
+        start
+    }
+}
+
 fn resolve_value_in_entry(
     entry: &GreenNode,
     base: usize,
@@ -1332,17 +1358,19 @@ fn resolve_value_in_entry(
 ) -> Option<(usize, usize)> {
     let (value_kind, value_range, value_node) = entry_value(entry, base)?;
     if tail.is_empty() {
-        return Some(value_range);
+        // A block collection's node starts at its first key/item token,
+        // leaving its first line's indentation just outside the span; widen
+        // to the line start so the slice is uniformly indented.
+        let start = if is_block_collection(value_kind) {
+            extend_to_line_start(source, value_range.0)
+        } else {
+            value_range.0
+        };
+        return Some((start, value_range.1));
     }
     // Recursing further requires the value to be a composite.
     let node = value_node?;
-    walk_path(node, tail, value_range.0, source).map(|(s, e)| {
-        // Defensive: ensure recursion stays inside the value's
-        // span — composite parents may contain trailing trivia
-        // that's outside the conceptual "value" range.
-        let _ = value_kind;
-        (s, e)
-    })
+    walk_path(node, tail, value_range.0, source)
 }
 
 fn resolve_value_in_item(
@@ -1351,9 +1379,14 @@ fn resolve_value_in_item(
     tail: &[QuerySegment],
     source: &str,
 ) -> Option<(usize, usize)> {
-    let (_, value_range, value_node) = item_value(item, base)?;
+    let (value_kind, value_range, value_node) = item_value(item, base)?;
     if tail.is_empty() {
-        return Some(value_range);
+        let start = if is_block_collection(value_kind) {
+            extend_to_line_start(source, value_range.0)
+        } else {
+            value_range.0
+        };
+        return Some((start, value_range.1));
     }
     let node = value_node?;
     walk_path(node, tail, value_range.0, source)

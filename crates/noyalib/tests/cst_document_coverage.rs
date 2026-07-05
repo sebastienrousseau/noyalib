@@ -840,6 +840,51 @@ fn coverage_doc_span_at_clip_and_strip_block_scalars_still_trim() {
     assert_eq!(&strip.source()[s..e], "|-\n  kept");
 }
 
+// ── Block-collection value spans include their first line's indent ──
+
+#[test]
+fn coverage_doc_span_at_block_mapping_value_is_uniformly_indented() {
+    // The value span must include the first line's indentation so the
+    // slice is uniformly indented and re-parses to the selected value.
+    let src = "config:\n  debug: true\n  level: info\nafter: 1\n";
+    let doc = parse_document(src).unwrap();
+    let (s, e) = doc.span_at("config").unwrap();
+    assert_eq!(&doc.source()[s..e], "  debug: true\n  level: info");
+    let reparsed: Value = noyalib::from_str(&doc.source()[s..e]).unwrap();
+    assert_eq!(reparsed, doc.as_value().get("config").cloned().unwrap());
+}
+
+#[test]
+fn coverage_doc_span_at_nested_block_sequence_does_not_renest() {
+    // Regression: a dedented first line ('- alpha\n    - beta') silently
+    // re-parses as the single scalar ["alpha - beta"]. The uniformly
+    // indented slice re-parses to the real two-element sequence.
+    let src = "spec:\n  items:\n    - alpha\n    - beta\n";
+    let doc = parse_document(src).unwrap();
+    let (s, e) = doc.span_at("spec.items").unwrap();
+    assert_eq!(&doc.source()[s..e], "    - alpha\n    - beta");
+    let reparsed: Value = noyalib::from_str(&doc.source()[s..e]).unwrap();
+    // Two elements, not one folded scalar.
+    assert_eq!(reparsed.as_sequence().map(|s| s.len()), Some(2));
+    let expected = doc
+        .as_value()
+        .get("spec")
+        .and_then(|s| s.get("items"))
+        .cloned()
+        .unwrap();
+    assert_eq!(reparsed, expected);
+}
+
+#[test]
+fn coverage_doc_span_at_same_line_nested_sequence_not_extended() {
+    // The inner sequence of `- - a` shares its line with the outer `-`,
+    // so its span must NOT be widened over the `- ` prefix.
+    let src = "outer:\n  - - a\n";
+    let doc = parse_document(src).unwrap();
+    let (s, e) = doc.span_at("outer[0]").unwrap();
+    assert_eq!(&doc.source()[s..e], "- a");
+}
+
 // ── resolve_span sequence index out-of-bounds typed-cache fallback ──
 
 #[test]
