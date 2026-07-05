@@ -199,7 +199,7 @@ impl Document {
         // through `set` / `set_value` no longer warms the typed
         // cache between iterations.
         if let Some((s, e)) = resolve_path_in_green(&self.green, &segments, &self.source) {
-            return Some(trim_trailing_blank(&self.source, s, e));
+            return Some(trim_value_span(&self.source, s, e));
         }
         // Fallback for paths the green-tree walker doesn't
         // currently handle — e.g. quoted keys with escapes,
@@ -208,7 +208,7 @@ impl Document {
         let cache = self.cache.borrow();
         let (value, span_tree) = cache.as_ref().expect("ensure_cache populated");
         let (s, e) = resolve_span(value, span_tree, &segments)?;
-        Some(trim_trailing_blank(&self.source, s, e))
+        Some(trim_value_span(&self.source, s, e))
     }
 
     /// Populate the typed cache from `self.source` if it is empty.
@@ -1490,6 +1490,42 @@ fn trim_trailing_blank(source: &str, start: usize, mut end: usize) -> (usize, us
         }
     }
     (start, end)
+}
+
+/// Trim trailing separator whitespace from a *value* span, except for
+/// keep-chomped (`|+` / `>+`) block scalars, whose trailing line breaks are
+/// content rather than separation. Trimming those would yield a slice that
+/// re-parses to a shorter, different value (`"kept\n"` instead of the true
+/// `"kept\n\n\n"`).
+fn trim_value_span(source: &str, start: usize, end: usize) -> (usize, usize) {
+    if is_keep_chomped_block_scalar(source, start, end) {
+        (start, end)
+    } else {
+        trim_trailing_blank(source, start, end)
+    }
+}
+
+/// Whether `[start, end)` denotes a keep-chomped block scalar: it begins with
+/// a `|` / `>` block indicator carrying a `+` chomping indicator on the header
+/// line (`|+`, `>+`, `|+2`, `|2+`). A value span's start is the block
+/// indicator itself (the scanner marks it there), and no plain/quoted scalar
+/// or collection value begins with a bare `|` / `>`, so this cannot misfire on
+/// other node kinds.
+fn is_keep_chomped_block_scalar(source: &str, start: usize, end: usize) -> bool {
+    let bytes = source.as_bytes();
+    if start >= end || (bytes[start] != b'|' && bytes[start] != b'>') {
+        return false;
+    }
+    // A `+` anywhere on the header line (before the first line break) is the
+    // keep-chomping indicator.
+    for &b in &bytes[start + 1..end] {
+        match b {
+            b'\n' | b'\r' => return false,
+            b'+' => return true,
+            _ => {}
+        }
+    }
+    false
 }
 
 fn resolve_span(

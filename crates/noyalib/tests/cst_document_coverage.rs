@@ -802,6 +802,44 @@ fn coverage_doc_span_at_mapping_value_is_a_sequence() {
     assert!(txt.contains("- one"));
 }
 
+// ── Keep-chomped block scalars retain their kept trailing blanks ────
+
+#[test]
+fn coverage_doc_span_at_keep_chomped_block_scalar_keeps_trailing_blanks() {
+    // `|+` chomping keeps trailing line breaks as *content*. The value
+    // span must include them; trimming (as clip/strip spans do) would
+    // yield a slice that re-parses to a shorter, different value.
+    let src = "key: |+\n  kept\n\n\n";
+    let doc = parse_document(src).unwrap();
+    let (s, e) = doc.span_at("key").unwrap();
+    assert_eq!(&doc.source()[s..e], "|+\n  kept\n\n\n");
+    // The slice re-parses to exactly the scalar's value.
+    let reparsed: Value = noyalib::from_str(&doc.source()[s..e]).unwrap();
+    assert_eq!(reparsed, Value::String("kept\n\n\n".to_string()));
+}
+
+#[test]
+fn coverage_doc_span_at_folded_keep_chomped_keeps_trailing_blanks() {
+    // Same for the folded (`>+`) keep-chomped form.
+    let src = "key: >+\n  kept\n\n\n";
+    let doc = parse_document(src).unwrap();
+    let (s, e) = doc.span_at("key").unwrap();
+    assert_eq!(&doc.source()[s..e], ">+\n  kept\n\n\n");
+}
+
+#[test]
+fn coverage_doc_span_at_clip_and_strip_block_scalars_still_trim() {
+    // Clip (`|`) and strip (`|-`) block scalars do NOT own trailing
+    // blank lines, so their value span is trimmed as before.
+    let clip = parse_document("key: |\n  kept\n\n\n").unwrap();
+    let (s, e) = clip.span_at("key").unwrap();
+    assert_eq!(&clip.source()[s..e], "|\n  kept");
+
+    let strip = parse_document("key: |-\n  kept\n\n\n").unwrap();
+    let (s, e) = strip.span_at("key").unwrap();
+    assert_eq!(&strip.source()[s..e], "|-\n  kept");
+}
+
 // ── resolve_span sequence index out-of-bounds typed-cache fallback ──
 
 #[test]
