@@ -19,7 +19,7 @@ change (still 1.85). Users pulling
 crates.io see no behaviour change beyond a version bump.
 Users pulling `noyalib-wasm` from crates.io / npm also see no
 behaviour change — the same `=0.0.12` version and same
-`@noyalib/noyalib-wasm` npm package continue to publish, just
+`@sebastienrousseau/noyalib-wasm` npm package continue to publish, just
 from
 [`sebastienrousseau/noyalib-wasm`](https://github.com/sebastienrousseau/noyalib-wasm)
 now instead of this repo's `crates/noyalib-wasm/`
@@ -77,7 +77,7 @@ they're built against.
   settle → `noya-cli`, `noyalib-mcp`, `noyalib-lsp` in
   parallel.
 - `release-binaries.yml` drops the `npm-publish` job for
-  `@noyalib/noyalib-wasm`. That npm publish moves to the
+  `@sebastienrousseau/noyalib-wasm`. That npm publish moves to the
   satellite repo's release workflow, still using Trusted
   Publishing + npm provenance.
 - Coverage `ignore-filename-regex` in `.github/workflows/ci.yml`
@@ -108,7 +108,7 @@ publishes:
 
 - The `noyalib-wasm` crate on crates.io (same name, same
   version as the workspace).
-- The `@noyalib/noyalib-wasm` npm package on npmjs.org (same
+- The `@sebastienrousseau/noyalib-wasm` npm package on npmjs.org (same
   name, same version).
 - SLSA L3 build provenance attestation (via
   `actions/attest-build-provenance`).
@@ -140,7 +140,7 @@ for downstream users.
   `0.0.12`. No API changes.
 - **`noyalib-wasm` users on crates.io**: same as above.
   Update from `0.0.11` to `0.0.12`.
-- **`@noyalib/noyalib-wasm` npm users**: same. The npm
+- **`@sebastienrousseau/noyalib-wasm` npm users**: same. The npm
   publish moved repositories but not identity.
 - **Downstream repos vendoring the monorepo**: if you had a
   `path = "crates/noyalib-wasm"` reference, switch to

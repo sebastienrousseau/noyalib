@@ -61,7 +61,7 @@ convention.
   satellites; the `noyalib-wasm` cross-check moves to the
   satellite's own release workflow.
 - `release-binaries.yml` drops the `npm-publish` job for
-  `@noyalib/noyalib-wasm`. That publish now runs from the
+  `@sebastienrousseau/noyalib-wasm`. That publish now runs from the
   satellite repo.
 - Coverage `ignore-filename-regex` in `.github/workflows/ci.yml`,
   `shared-coverage.yml`, and `scripts/coverage-gap-report.sh`

@@ -82,7 +82,7 @@ library's dependency graph for downstream embedders).
 | Scoop (Windows) | `scoop bucket add sebastienrousseau https://github.com/sebastienrousseau/scoop-bucket && scoop install noyalib` |
 | Nix / NixOS | `nix run github:sebastienrousseau/noyalib` |
 | Container (GHCR) | `docker run --rm ghcr.io/sebastienrousseau/noyafmt:latest --version` |
-| npm (WASM) | `npm install @noyalib/noyalib-wasm` |
+| npm (WASM) | `npm install @sebastienrousseau/noyalib-wasm` |
 | npm (MCP) | `npx noyalib-mcp` (no Rust toolchain needed) |
 | VS Code | search `noyalib` in the Marketplace |
 | Open VSX | search `noyalib` in [open-vsx.org](https://open-vsx.org) |
@@ -239,7 +239,7 @@ cargo install noyalib-lsp
 cargo install noyalib-mcp
 
 # WASM bundle
-npm install @noyalib/noyalib-wasm
+npm install @sebastienrousseau/noyalib-wasm
 ```
 
 Per-crate READMEs cover the surface specific to each artifact:
