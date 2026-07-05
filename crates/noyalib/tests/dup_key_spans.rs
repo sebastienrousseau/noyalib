@@ -172,3 +172,55 @@ fn spanned_fields_stay_aligned_after_duplicate_key() {
         "Spanned span after a duplicate key must not be shifted"
     );
 }
+
+// ── Distinct-typed key collisions are refused, not silently collapsed ──
+//
+// The mapping key model is `Mapping<String, Value>`. Two DISTINCT YAML
+// keys that stringify the same — the integer `1` and the string `"1"`,
+// `true` and `"true"`, the null `~` and `"null"` — would otherwise
+// overwrite each other, silently losing an entry. That is data loss, so
+// the loader raises `Error::KeyCollision` instead. A genuine duplicate
+// (the same typed key twice) keeps its `DuplicateKeyPolicy` behaviour.
+
+#[test]
+fn distinct_typed_keys_collide_loudly() {
+    for src in [
+        "1: a\n\"1\": b\n",          // int vs string
+        "true: yes\n\"true\": no\n", // bool vs string
+        "~: a\n\"null\": b\n",       // null vs string
+    ] {
+        let err = parse_document(src).expect_err("distinct-typed collision must error");
+        assert!(
+            matches!(err, noyalib::Error::KeyCollision(_)),
+            "expected KeyCollision for {src:?}, got {err:?}"
+        );
+        assert!(format!("{err}").contains("collide"), "{err}");
+    }
+}
+
+#[test]
+fn genuine_duplicate_keys_are_not_a_collision() {
+    // The same typed key twice is an authored duplicate: default
+    // last-wins keeps one entry, no error.
+    let doc = parse_document("1: a\n1: b\n").unwrap();
+    let v = doc.as_value();
+    let m = v.as_mapping().unwrap();
+    assert_eq!(m.len(), 1);
+    assert_eq!(m.get("1"), Some(&noyalib::Value::String("b".into())));
+}
+
+#[test]
+fn non_colliding_scalar_keys_load() {
+    // A lone numeric or bool key stringifies without colliding.
+    assert!(parse_document("8080: service\n").is_ok());
+    assert!(parse_document("true: on\n").is_ok());
+    assert!(parse_document("a: 1\nb: 2\n").is_ok());
+}
+
+#[test]
+fn merge_keys_do_not_trip_the_collision_check() {
+    // `<<` merge values are buffered separately and never run through
+    // the ordinary-insert collision check.
+    let src = "defaults: &d\n  timeout: 30\nservice:\n  <<: *d\n  name: web\n";
+    assert!(parse_document(src).is_ok());
+}

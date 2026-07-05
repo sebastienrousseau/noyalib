@@ -208,6 +208,11 @@ enum Frame {
     MappingKey {
         map: Mapping,
         span_entries: Vec<((usize, usize), SpanTree)>,
+        /// The original typed key of each inserted entry, in insertion
+        /// order (parallel to `map`). Retained to tell a genuine YAML
+        /// duplicate (`1`/`1`) apart from a distinct-typed collision
+        /// (`1`/`"1"`) once both collapse to the same string key.
+        typed_keys: Vec<Value>,
         start: usize,
         anchor: Option<String>,
         merge_values: Vec<Value>,
@@ -219,7 +224,10 @@ enum Frame {
     MappingValue {
         map: Mapping,
         span_entries: Vec<((usize, usize), SpanTree)>,
+        typed_keys: Vec<Value>,
         key: String,
+        /// The typed key that produced `key`, kept for the collision check.
+        key_value: Value,
         key_span: (usize, usize),
         start: usize,
         anchor: Option<String>,
@@ -468,6 +476,7 @@ impl<'a> Loader<'a> {
                 self.stack.push(Frame::MappingKey {
                     map: Mapping::new(),
                     span_entries: Vec::new(),
+                    typed_keys: Vec::new(),
                     start: span.start,
                     anchor,
                     merge_values: Vec::new(),
@@ -479,6 +488,7 @@ impl<'a> Loader<'a> {
                 if let Some(Frame::MappingKey {
                     mut map,
                     span_entries,
+                    typed_keys: _,
                     start,
                     anchor,
                     merge_values,
@@ -530,11 +540,17 @@ impl<'a> Loader<'a> {
             Frame::MappingKey {
                 map,
                 span_entries,
+                typed_keys,
                 start,
                 anchor,
                 merge_values,
                 tag,
             } => {
+                // Retain the typed key before it is coerced to a string, so
+                // the insert site can tell a genuine duplicate apart from a
+                // distinct-typed collision. The clone is off the hot path
+                // (keys only) and only used for the equality check.
+                let key_value = value.clone();
                 // Coerce scalar keys to strings; complex keys (sequences,
                 // mappings) are stringified via their YAML serialization
                 // so the final `Mapping<String, Value>` can hold them.
@@ -555,6 +571,7 @@ impl<'a> Loader<'a> {
                 };
                 let old_map = core::mem::take(map);
                 let old_span_entries = core::mem::take(span_entries);
+                let old_typed_keys = core::mem::take(typed_keys);
                 let old_start = *start;
                 let old_anchor = anchor.take();
                 let old_merge_values = core::mem::take(merge_values);
@@ -563,7 +580,9 @@ impl<'a> Loader<'a> {
                 *self.stack.last_mut().unwrap() = Frame::MappingValue {
                     map: old_map,
                     span_entries: old_span_entries,
+                    typed_keys: old_typed_keys,
                     key: key_str,
+                    key_value,
                     key_span,
                     start: old_start,
                     anchor: old_anchor,
@@ -574,7 +593,9 @@ impl<'a> Loader<'a> {
             Frame::MappingValue {
                 map,
                 span_entries,
+                typed_keys,
                 key,
+                key_value,
                 key_span,
                 start,
                 anchor,
@@ -609,11 +630,26 @@ impl<'a> Loader<'a> {
                     // slot is discarded. Each branch is the last use of
                     // `key`, so the move is sound.
                     let key = core::mem::take(key);
+                    let key_value = core::mem::take(key_value);
+                    // Distinct-typed collision: the string key already exists
+                    // but was produced by a *different* typed key (e.g. `1`
+                    // then `"1"`, or `true` then `"true"`). Collapsing them
+                    // would silently drop an entry, so refuse regardless of
+                    // DuplicateKeyPolicy. A genuine duplicate (same typed key)
+                    // falls through to the policy below.
+                    if let Some(idx) = map.get_index_of(&key) {
+                        // Nested (not a `let`-chain) to keep the crate's
+                        // 1.85 MSRV: `let`-chains stabilized in 1.88.
+                        if typed_keys[idx] != key_value {
+                            return Err(Error::KeyCollision(key));
+                        }
+                    }
                     match self.config.duplicate_key_policy {
                         DuplicateKeyPolicy::First => {
                             if !map.contains_key(&key) {
                                 let _ = map.insert(key, value);
                                 span_entries.push((*key_span, span));
+                                typed_keys.push(key_value);
                             }
                         }
                         DuplicateKeyPolicy::Last => {
@@ -627,9 +663,12 @@ impl<'a> Loader<'a> {
                             if let Some(idx) = map.get_index_of(&key) {
                                 let _ = map.insert(key, value);
                                 span_entries[idx] = (*key_span, span);
+                                // `typed_keys[idx]` is unchanged: a genuine
+                                // duplicate carries the same typed key.
                             } else {
                                 let _ = map.insert(key, value);
                                 span_entries.push((*key_span, span));
+                                typed_keys.push(key_value);
                             }
                         }
                         DuplicateKeyPolicy::Error => {
@@ -638,12 +677,14 @@ impl<'a> Loader<'a> {
                             }
                             let _ = map.insert(key, value);
                             span_entries.push((*key_span, span));
+                            typed_keys.push(key_value);
                         }
                     }
                 }
 
                 let old_map = core::mem::take(map);
                 let old_span_entries = core::mem::take(span_entries);
+                let old_typed_keys = core::mem::take(typed_keys);
                 let old_start = *start;
                 let old_anchor = anchor.take();
                 let old_merge_values = core::mem::take(merge_values);
@@ -652,6 +693,7 @@ impl<'a> Loader<'a> {
                 *self.stack.last_mut().unwrap() = Frame::MappingKey {
                     map: old_map,
                     span_entries: old_span_entries,
+                    typed_keys: old_typed_keys,
                     start: old_start,
                     anchor: old_anchor,
                     merge_values: old_merge_values,

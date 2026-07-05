@@ -423,6 +423,23 @@ pub enum Error {
     /// ```
     DuplicateKey(String),
 
+    /// Two distinct-typed keys collapsed to the same string key.
+    ///
+    /// The mapping key model is `Mapping<String, Value>`, so keys are
+    /// stringified. Distinct YAML keys that share a spelling — e.g. the
+    /// integer `1` and the string `"1"`, or `true` and `"true"` — would
+    /// silently overwrite each other, losing an entry. This is raised
+    /// instead, carrying the collapsed string key. Unlike
+    /// [`Self::DuplicateKey`], it fires regardless of `DuplicateKeyPolicy`
+    /// because it is data loss, not an authored duplicate.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let _e = noyalib::Error::KeyCollision("1".into());
+    /// ```
+    KeyCollision(String),
+
     /// Repetition limit exceeded (security limit against billion-laughs).
     ///
     /// # Examples
@@ -711,6 +728,11 @@ impl fmt::Display for Error {
                 write!(f, "recursion depth limit exceeded: {depth}")
             }
             Error::DuplicateKey(name) => write!(f, "duplicate key: {name}"),
+            Error::KeyCollision(name) => write!(
+                f,
+                "distinct mapping keys collide after string conversion: {name} \
+                 (e.g. `1` and `\"1\"`, or `true` and `\"true\"`)"
+            ),
             Error::RepetitionLimitExceeded => f.write_str("alias expansion limit exceeded"),
             Error::Budget(breach) => write!(f, "{breach}"),
             Error::UnknownAnchor(name) => write!(f, "unknown anchor: {name}"),
@@ -1392,6 +1414,7 @@ impl miette::Diagnostic for Error {
             Error::Budget(_) => "noyalib::budget",
             Error::UnknownAnchor(_) | Error::UnknownAnchorAt { .. } => "noyalib::unknown_anchor",
             Error::DuplicateKey(_) => "noyalib::duplicate_key",
+            Error::KeyCollision(_) => "noyalib::key_collision",
             Error::EndOfStream => "noyalib::eof",
             Error::MoreThanOneDocument => "noyalib::multi_document",
             Error::Io(_) => "noyalib::io",
@@ -1424,6 +1447,9 @@ impl miette::Diagnostic for Error {
             Error::DuplicateKey(_) => {
                 Some("use DuplicateKeyPolicy::Last or ::Error to control behaviour".into())
             }
+            Error::KeyCollision(_) => Some(
+                "give the colliding keys distinct spellings, or quote them consistently".into(),
+            ),
             Error::MoreThanOneDocument => {
                 Some("use noyalib::load_all() to parse multi-document streams".into())
             }
