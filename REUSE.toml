@@ -60,16 +60,12 @@ path = [
     "crates/noyalib/tests/README.md",
     "crates/noyalib-lsp/README.md",
     "crates/noyalib-lsp/examples/README.md",
-    "crates/noyalib-mcp/README.md",
-    "crates/noyalib-mcp/examples/README.md",
     "crates/noyalib/doc/**",
     "crates/noya-cli/doc/**",
     "crates/noyalib-lsp/doc/**",
-    "crates/noyalib-mcp/doc/**",
-    # noyalib-wasm was split to its own repo in v0.0.12 (ADR-0005);
-    # its README, examples, and doc/ tree now live at
-    # https://github.com/sebastienrousseau/noyalib-wasm and are
-    # licensed there via the satellite's own REUSE.toml.
+    # Split satellites carry their own REUSE.toml:
+    #   - noyalib-wasm → https://github.com/sebastienrousseau/noyalib-wasm (v0.0.12)
+    #   - noyalib-mcp  → https://github.com/sebastienrousseau/noyalib-mcp  (v0.0.13)
 ]
 precedence = "aggregate"
 SPDX-FileCopyrightText = "2026 Noyalib"
@@ -153,7 +149,6 @@ path = [
     ".cargo/config.toml",
     "crates/noya-cli/Cargo.toml",
     "crates/noyalib/Cargo.toml",
-    "crates/noyalib-mcp/Cargo.toml",
     "crates/noyalib-lsp/Cargo.toml",
     "crates/xtask/Cargo.toml",
     "crates/noyalib/examples/wasm/.gitignore",

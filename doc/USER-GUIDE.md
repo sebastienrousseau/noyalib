@@ -578,13 +578,16 @@ deployment shapes:
   Split to its own repo in v0.0.12 (ADR-0005); releases in
   strict lockstep with this workspace.
 
-- **`noyalib-mcp`** (`crates/noyalib-mcp/`). Model Context
-  Protocol server speaking JSON-RPC over stdio. AI agents
-  (Claude Code, GitHub Copilot, …) call `parse`, `format`,
-  `get`, `set`, `validate` tools without needing a Rust
-  toolchain. Available as `npx noyalib-mcp` (the wrapper at
-  `pkg/npm-mcp-wrapper/` bootstraps the binary) and as a
-  GHCR container image.
+- **`noyalib-mcp`** ([`sebastienrousseau/noyalib-mcp`](https://github.com/sebastienrousseau/noyalib-mcp)).
+  Model Context Protocol server speaking JSON-RPC over stdio.
+  AI agents (Claude Code, GitHub Copilot, …) call `parse`,
+  `format`, `get`, `set`, `validate` tools without needing a
+  Rust toolchain. Available as
+  `npx @sebastienrousseau/noyalib-mcp` (the wrapper bootstraps
+  the binary) and as a GHCR container image
+  `ghcr.io/sebastienrousseau/noyalib-mcp`. Split to its own
+  repo in v0.0.13 (ADR-0005); releases in strict lockstep with
+  this workspace.
 
 - **`noyalib-lsp`** (`crates/noyalib-lsp/`). Language Server
   Protocol implementation. Editors get format-on-save,

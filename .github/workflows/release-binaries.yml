@@ -21,10 +21,14 @@
 #                                                                   ▼
 #         ┌─────┬─────┬───────────┬──────────────┬────────────┐
 #         ▼     ▼     ▼           ▼              ▼            ▼
-#     homebrew aur  scoop  vscode-extension  npm-publish-mcp  container-publish
+#     homebrew aur  scoop  vscode-extension            container-publish
 #
-# `npm-publish` for @noyalib/noyalib-wasm was moved to the split
-# repo sebastienrousseau/noyalib-wasm in v0.0.12 (ADR-0005).
+# Two publish channels moved to split repos under ADR-0005:
+#   - `@sebastienrousseau/noyalib-wasm` npm-publish → sebastienrousseau/noyalib-wasm (v0.0.12)
+#   - `@sebastienrousseau/noyalib-mcp`  npm-publish → sebastienrousseau/noyalib-mcp  (v0.0.13)
+# The `container-publish` matrix here only ships the parent's own
+# images (noyafmt, noyalib); the noyalib-mcp container also ships
+# from the split repo since v0.0.13.
 #
 # Every artefact is signed with cosign keyless and carries a SLSA
 # L3 build provenance attestation. Per-channel jobs are gated on
@@ -818,34 +822,9 @@ jobs:
   # sebastienrousseau/noyalib-wasm as of v0.0.12 (ADR-0005 pilot).
   # See that repo's `.github/workflows/release-binaries.yml`.
 
-  # ── npm publish — MCP wrapper ───────────────────────────────────────
-  npm-publish-mcp:
-    name: Publish noyalib-mcp wrapper to npm
-    needs: [create-release, github-release]
-    if: ${{ !inputs.dry_run }}
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write
-    steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-        with:
-          ref: ${{ inputs.tag }}
-
-      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
-        with:
-          node-version: '20'
-          registry-url: 'https://registry.npmjs.org'
-
-      - name: Sync version from tag
-        run: |
-          cd pkg/npm-mcp-wrapper
-          npm version "${{ needs.create-release.outputs.version }}" --no-git-tag-version --allow-same-version
-
-      - name: Publish (Trusted Publishing + provenance)
-        run: |
-          cd pkg/npm-mcp-wrapper
-          npm publish --provenance --access public
+  # `noyalib-mcp` npm wrapper publish moved to
+  # sebastienrousseau/noyalib-mcp as of v0.0.13 (ADR-0005 pilot).
+  # See that repo's `.github/workflows/release.yml`.
 
   # ── Container images (multi-arch via buildx) ────────────────────────
   container-publish:
@@ -864,7 +843,8 @@ jobs:
         image:
           - { name: noyafmt,      dockerfile: pkg/docker/Dockerfile     }
           - { name: noyalib,      dockerfile: pkg/docker/Dockerfile.full }
-          - { name: noyalib-mcp,  dockerfile: pkg/docker/Dockerfile.mcp }
+          # `noyalib-mcp` container publish moved to
+          # sebastienrousseau/noyalib-mcp as of v0.0.13 (ADR-0005).
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:

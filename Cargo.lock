@@ -1204,16 +1204,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "noyalib-mcp"
-version = "0.0.13"
-dependencies = [
- "criterion",
- "noyalib",
- "serde",
- "serde_json",
-]
-
-[[package]]
 name = "num"
 version = "0.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"

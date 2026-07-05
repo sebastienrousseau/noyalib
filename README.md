@@ -83,7 +83,7 @@ library's dependency graph for downstream embedders).
 | Nix / NixOS | `nix run github:sebastienrousseau/noyalib` |
 | Container (GHCR) | `docker run --rm ghcr.io/sebastienrousseau/noyafmt:latest --version` |
 | npm (WASM) | `npm install @sebastienrousseau/noyalib-wasm` |
-| npm (MCP) | `npx noyalib-mcp` (no Rust toolchain needed) |
+| npm (MCP) | `npx @sebastienrousseau/noyalib-mcp` (no Rust toolchain needed) |
 | VS Code | search `noyalib` in the Marketplace |
 | Open VSX | search `noyalib` in [open-vsx.org](https://open-vsx.org) |
 
@@ -233,8 +233,8 @@ the four satellites wrap it for specific delivery surfaces.
 | **`noyalib`** | Library — YAML 1.2 parser, serializer, lossless CST, JSON Schema validator | Embed YAML support in any Rust binary or library. |
 | **`noya-cli`** | Two binaries: `noyafmt` (formatter), `noyavalidate` (schema validator + autofixer) | CI gates, pre-commit hooks, ad-hoc command-line use. |
 | **`noyalib-lsp`** | Language Server Protocol server | Editor integration — VS Code, Neovim, Helix, Emacs, Zed, Sublime, IntelliJ. |
-| **`noyalib-mcp`** | Model Context Protocol server | LLM agent tooling — Claude Desktop, Cursor, Continue.dev, Zed assistant, mcp.run. |
-| **`noyalib-wasm`** | `wasm-bindgen` wrapper around the library | Browser, Node, Cloudflare Workers, Deno, any WASM-capable host. |
+| **`noyalib-mcp`** ([own repo](https://github.com/sebastienrousseau/noyalib-mcp)) | Model Context Protocol server | LLM agent tooling — Claude Desktop, Cursor, Continue.dev, Zed assistant, mcp.run. |
+| **`noyalib-wasm`** ([own repo](https://github.com/sebastienrousseau/noyalib-wasm)) | `wasm-bindgen` wrapper around the library | Browser, Node, Cloudflare Workers, Deno, any WASM-capable host. |
 
 ### Install the binaries
 
@@ -256,17 +256,17 @@ Per-crate READMEs cover the surface specific to each artifact:
 
 - **CLI**: [`crates/noya-cli/README.md`](crates/noya-cli/README.md) — flags, exit codes, recipes.
 - **LSP**: [`crates/noyalib-lsp/README.md`](crates/noyalib-lsp/README.md) — capabilities, editor configs.
-- **MCP**: [`crates/noyalib-mcp/README.md`](crates/noyalib-mcp/README.md) — tools, host configs.
-- **WASM**: [`crates/noyalib-wasm/README.md`](crates/noyalib-wasm/README.md) — JS API, bundling.
+- **MCP**: [`sebastienrousseau/noyalib-mcp`](https://github.com/sebastienrousseau/noyalib-mcp) — tools, host configs (split repo since v0.0.13; strict lockstep per [ADR-0005](doc/adr/0005-workspace-split.md)).
+- **WASM**: [`sebastienrousseau/noyalib-wasm`](https://github.com/sebastienrousseau/noyalib-wasm) — JS API, bundling (split repo since v0.0.12).
 
 ### Per-host quick links
 
 | If you use… | Drop-in config |
 |---|---|
 | **VS Code / JetBrains / Neovim / Helix / Emacs / Zed / Sublime** | [editor configs in `noyalib-lsp/examples/`](crates/noyalib-lsp/examples/) |
-| **Claude Desktop / Cursor / Continue.dev / Zed assistant / hosted MCP** | [client configs in `noyalib-mcp/examples/`](crates/noyalib-mcp/examples/) |
+| **Claude Desktop / Cursor / Continue.dev / Zed assistant / hosted MCP** | [client configs (noyalib-mcp repo)](https://github.com/sebastienrousseau/noyalib-mcp/tree/main/examples) |
 | **GitHub Actions / pre-commit / Helm / Compose / pyproject-adjacent YAML** | [validation gates in `noya-cli/examples/`](crates/noya-cli/examples/) |
-| **Vite / Webpack / Next.js / Cloudflare Workers / Deno / Bun** | [bundling guide](crates/noyalib-wasm/doc/bundling.md) |
+| **Vite / Webpack / Next.js / Cloudflare Workers / Deno / Bun** | [bundling guide (noyalib-wasm repo)](https://github.com/sebastienrousseau/noyalib-wasm/blob/main/doc/bundling.md) |
 
 The rest of this README covers the **library** surface
 (`noyalib` itself). For the satellite crates, jump straight to
@@ -1540,11 +1540,13 @@ value.interpolate_properties_lossy(&map);
 The per-crate READMEs at
 [`crates/noyalib`](crates/noyalib/README.md),
 [`crates/noya-cli`](crates/noya-cli/README.md),
-[`crates/noyalib-mcp`](crates/noyalib-mcp/README.md),
-[`crates/noyalib-lsp`](crates/noyalib-lsp/README.md), and
-[`crates/noyalib-wasm`](crates/noyalib-wasm/README.md) document
-the surface specific to each artifact (binaries, MCP tools,
-LSP capabilities, WASM bindings).
+[`crates/noyalib-lsp`](crates/noyalib-lsp/README.md), and the
+split-out satellite repos
+[`sebastienrousseau/noyalib-mcp`](https://github.com/sebastienrousseau/noyalib-mcp)
+and
+[`sebastienrousseau/noyalib-wasm`](https://github.com/sebastienrousseau/noyalib-wasm)
+document the surface specific to each artifact (binaries, MCP
+tools, LSP capabilities, WASM bindings).
 
 ---
 

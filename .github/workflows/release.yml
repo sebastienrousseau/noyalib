@@ -74,17 +74,18 @@ jobs:
           fi
           # Cross-check that every in-workspace publishable satellite
           # is on the same version (catches a partial workspaces-bump
-          # that forgot to update one crate). `noyalib-wasm` was split
-          # to its own repo in v0.0.12 (ADR-0005) and is verified
-          # separately by the satellite's own release workflow.
-          for crate in noya-cli noyalib-mcp noyalib-lsp; do
+          # that forgot to update one crate). Split satellites verify
+          # their own version via their own release workflow:
+          #   - noyalib-wasm split at v0.0.12 (ADR-0005)
+          #   - noyalib-mcp  split at v0.0.13 (ADR-0005)
+          for crate in noya-cli noyalib-lsp; do
             v=$(grep '^version' "crates/$crate/Cargo.toml" | head -1 | sed 's/.*"\(.*\)".*/\1/')
             if [ "$v" != "$CARGO_VERSION" ]; then
               echo "::error::crates/$crate/Cargo.toml version ($v) is out of sync with crates/noyalib ($CARGO_VERSION)"
               exit 1
             fi
           done
-          echo "Version verified across noyalib + 3 in-workspace satellites: $TAG_VERSION"
+          echo "Version verified across noyalib + 2 in-workspace satellites: $TAG_VERSION"
 
   # ── Build checksums & SBOM ──────────────────────────────────────────
   artifacts:
@@ -122,9 +123,10 @@ jobs:
           set -euo pipefail
           cd target/package
           # `cargo package --workspace` produces one `.crate` per
-          # publishable crate (noyalib, noya-cli, noyalib-mcp,
-          # noyalib-lsp, plus xtask which is private).
-          # `noyalib-wasm` is packaged from its own repo since v0.0.12.
+          # publishable crate (noyalib, noya-cli, noyalib-lsp, plus
+          # xtask which is private).
+          # `noyalib-wasm` was split at v0.0.12, `noyalib-mcp` at
+          # v0.0.13 — both package from their own repos now (ADR-0005).
           # The original implementation captured `$(ls *.crate)`
           # as a single string and passed it to sha*sum — which
           # treats embedded newlines as part of the filename and
@@ -302,9 +304,9 @@ jobs:
         #   3. Satellite crates that depend on `noyalib`. Publish
         #      them in any order — they don't depend on each other.
         # `xtask` is `publish = false`; cargo refuses anyway.
-        # `noyalib-wasm` was split to its own repo in v0.0.12
-        # (ADR-0005) — it publishes from
-        # sebastienrousseau/noyalib-wasm, not here.
+        # Split satellites publish from their own repos (ADR-0005):
+        #   - noyalib-wasm at sebastienrousseau/noyalib-wasm (since v0.0.12)
+        #   - noyalib-mcp  at sebastienrousseau/noyalib-mcp  (since v0.0.13)
         run: |
           set -euxo pipefail
           cargo publish -p noyalib --all-features
@@ -313,5 +315,4 @@ jobs:
           # publish doesn't fail with "could not find `noyalib`".
           sleep 60
           cargo publish -p noya-cli --all-features
-          cargo publish -p noyalib-mcp --all-features
           cargo publish -p noyalib-lsp --all-features

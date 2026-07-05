@@ -4,13 +4,13 @@ members = [
     "crates/noyalib",
     "crates/noya-cli",
     "crates/noyalib-lsp",
-    "crates/noyalib-mcp",
     "crates/xtask",
 ]
-# `noyalib-wasm` was split out to
-# https://github.com/sebastienrousseau/noyalib-wasm as of
-# v0.0.12 (ADR-0005 pilot). It releases in strict lockstep
-# at the same `=0.0.X` version as this workspace.
+# Split-out satellites (ADR-0005 pilot):
+#   - `noyalib-wasm` → https://github.com/sebastienrousseau/noyalib-wasm (since v0.0.12)
+#   - `noyalib-mcp`  → https://github.com/sebastienrousseau/noyalib-mcp  (since v0.0.13)
+# Both release in strict lockstep at the same `=0.0.X` version
+# as this workspace.
 exclude = ["crates/noyalib/examples/wasm", "fuzz"]
 
 [profile.dev]

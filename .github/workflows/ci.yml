@@ -156,7 +156,7 @@ jobs:
     # baseline.
     uses: ./.github/workflows/shared-coverage.yml
     with:
-      ignore-filename-regex: 'crates/noyalib-(mcp|lsp)/tests/protocol|crates/xtask/src/main\.rs'
+      ignore-filename-regex: 'crates/noyalib-lsp/tests/protocol|crates/xtask/src/main\.rs'
       fail-under-functions: 96
       fail-under-lines: 94
       fail-under-regions: 93

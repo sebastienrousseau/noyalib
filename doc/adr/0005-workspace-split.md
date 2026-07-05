@@ -417,6 +417,33 @@ Concrete results from the pilot:
   new repo's default branch via API. Matches the parent noyalib
   ruleset.
 
+### v0.0.13 pilot — noyalib-mcp split (2026-07-05)
+
+**Status:** pilot infrastructure landed in
+[`sebastienrousseau/noyalib-mcp`](https://github.com/sebastienrousseau/noyalib-mcp)
+PR #1. Awaits parent v0.0.13 publish before final CI green.
+
+Concrete results from the pilot:
+
+- Playbook applied line-for-line from v0.0.12; the only new
+  work was the multi-channel release workflow (crates.io + npm
+  wrapper + GHCR + MCP Registry) which extends the v0.0.12
+  crates-only+npm pattern with two additional channels.
+- Subtree extraction via `git subtree split
+  --prefix=crates/noyalib-mcp` produced 14 commits on the new
+  repo's `main`. Authorship preserved.
+- Caller-side `pull-requests: read` permission included in the
+  satellite's `ci.yml` from day one (v0.0.12 pilot's
+  hard-earned lesson, applied preemptively — no startup_failure
+  this time).
+- Registry manifests (`server.json`, `glama.json`) moved from
+  parent root to satellite root, with URLs rewritten to point
+  at the satellite repo. Version-locked to the crate via the
+  release workflow's `validate` job.
+- npm wrapper renamed to `@sebastienrousseau/noyalib-mcp`
+  matching the v0.0.12 pilot's scope decision (no `@noyalib`
+  npm org exists).
+
 ### Soak review signals
 
 The 14-day soak reviews at each split window will record their

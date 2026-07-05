@@ -29,10 +29,17 @@ crates/
 │   └── benches/          # Criterion benches
 ├── noya-cli/             # noyafmt + noyavalidate binaries
 ├── noyalib-lsp/          # Language Server Protocol implementation
-├── noyalib-mcp/          # Model Context Protocol server
-├── noyalib-wasm/         # wasm-bindgen wrapper
 └── xtask/                # internal release tooling
 ```
+
+Two crates that used to live under `crates/` have been split
+into their own repositories per ADR-0005:
+
+- `noyalib-mcp` → [`sebastienrousseau/noyalib-mcp`](https://github.com/sebastienrousseau/noyalib-mcp) (split at v0.0.13)
+- `noyalib-wasm` → [`sebastienrousseau/noyalib-wasm`](https://github.com/sebastienrousseau/noyalib-wasm) (split at v0.0.12)
+
+Both consume `noyalib` from crates.io via strict-lockstep
+`=X.Y.Z` version pins.
 
 The lib crate is `#![forbid(unsafe_code)]` workspace-wide. The
 satellite crates inherit the same forbid; only the third-party
