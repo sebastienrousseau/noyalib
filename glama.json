@@ -4,7 +4,7 @@
   "title": "noyalib-mcp",
   "display_name": "Noyalib MCP",
   "description": "Model Context Protocol server exposing noyalib's lossless YAML 1.2 editing to AI agents. Pure Rust, zero unsafe, 100% spec compliance (406/406 official test suite), streaming-first serde, lossless CST, JSON Schema validation. Tools: parse, format, get, set, validate. Works with Claude Desktop, Claude Code, Cursor, Zed, and Continue.dev.",
-  "version": "0.0.12",
+  "version": "0.0.13",
   "repository": "https://github.com/sebastienrousseau/noyalib",
   "homepage": "https://github.com/sebastienrousseau/noyalib",
   "license": "Apache-2.0 OR MIT",
@@ -29,10 +29,10 @@
   "mcpServers": {
     "noyalib": {
       "command": "docker",
-      "args": ["run", "--rm", "-i", "ghcr.io/sebastienrousseau/noyalib-mcp:0.0.12"]
+      "args": ["run", "--rm", "-i", "ghcr.io/sebastienrousseau/noyalib-mcp:0.0.13"]
     }
   },
   "installation": {
-    "docker": "docker run --rm -i ghcr.io/sebastienrousseau/noyalib-mcp:0.0.12"
+    "docker": "docker run --rm -i ghcr.io/sebastienrousseau/noyalib-mcp:0.0.13"
   }
 }
