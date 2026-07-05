@@ -1,16 +1,24 @@
 [workspace]
 resolver = "2"
-members = [
-    "crates/noyalib",
-    "crates/noya-cli",
-    "crates/noyalib-lsp",
-    "crates/xtask",
-]
-# Split-out satellites (ADR-0005 pilot):
+members = ["crates/noyalib"]
+# All four satellites now ship from their own repositories per
+# ADR-0005 workspace split:
 #   - `noyalib-wasm` → https://github.com/sebastienrousseau/noyalib-wasm (since v0.0.12)
 #   - `noyalib-mcp`  → https://github.com/sebastienrousseau/noyalib-mcp  (since v0.0.13)
-# Both release in strict lockstep at the same `=0.0.X` version
-# as this workspace.
+#   - `noyalib-lsp`  → https://github.com/sebastienrousseau/noyalib-lsp  (since v0.0.13)
+#   - `noya-cli`     → https://github.com/sebastienrousseau/noya-cli     (since v0.0.13)
+#
+# All four release in strict lockstep at the same `=0.0.X`
+# version as this workspace.
+#
+# The `[workspace]` table is retained (as a single-member
+# workspace) to keep root-level `cargo` invocations working
+# during the transition. Post-v0.0.14 will follow #134 to
+# collapse this into a plain single-crate repo.
+#
+# `xtask` was internal tooling; the parts that need to keep
+# running (release-prep automation, bench runner) migrate
+# into `noya-cli` at #134 (release notes for v0.0.14).
 exclude = ["crates/noyalib/examples/wasm", "fuzz"]
 
 [profile.dev]

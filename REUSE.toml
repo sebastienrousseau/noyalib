@@ -54,18 +54,15 @@ path = [
     "SECURITY.md",
     "SUPPORT.md",
     "doc/**",
-    "crates/noya-cli/README.md",
-    "crates/noya-cli/examples/README.md",
+    "MIGRATION.md",
     "crates/noyalib/README.md",
     "crates/noyalib/tests/README.md",
-    "crates/noyalib-lsp/README.md",
-    "crates/noyalib-lsp/examples/README.md",
     "crates/noyalib/doc/**",
-    "crates/noya-cli/doc/**",
-    "crates/noyalib-lsp/doc/**",
-    # Split satellites carry their own REUSE.toml:
+    # All four satellites carry their own REUSE.toml:
     #   - noyalib-wasm → https://github.com/sebastienrousseau/noyalib-wasm (v0.0.12)
     #   - noyalib-mcp  → https://github.com/sebastienrousseau/noyalib-mcp  (v0.0.13)
+    #   - noyalib-lsp  → https://github.com/sebastienrousseau/noyalib-lsp  (v0.0.13)
+    #   - noya-cli     → https://github.com/sebastienrousseau/noya-cli     (v0.0.13)
 ]
 precedence = "aggregate"
 SPDX-FileCopyrightText = "2026 Noyalib"
@@ -147,10 +144,7 @@ SPDX-License-Identifier = "MIT OR Apache-2.0"
 [[annotations]]
 path = [
     ".cargo/config.toml",
-    "crates/noya-cli/Cargo.toml",
     "crates/noyalib/Cargo.toml",
-    "crates/noyalib-lsp/Cargo.toml",
-    "crates/xtask/Cargo.toml",
     "crates/noyalib/examples/wasm/.gitignore",
     "crates/noyalib/examples/wasm/Cargo.toml",
     "crates/noyalib/examples/wasm/index.html",

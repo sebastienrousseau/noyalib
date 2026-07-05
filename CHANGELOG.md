@@ -11,19 +11,25 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [v0.0.13] - 2026-07-05
 
-The **`noyalib-mcp` split** cut. Second satellite to leave the
-monorepo per ADR-0005 (first was `noyalib-wasm` at v0.0.12).
-Playbook mechanically identical to v0.0.12 pilot, extended to
-the four MCP publish channels (crates.io + npm wrapper + GHCR
-container + MCP Registry). Also folds in the `lossless-u64`
-opt-in feature from PR #142 (originally from @canardleteer's
-PR #117 takeover).
+The **workspace-split completion** cut. All three remaining
+satellites — `noyalib-mcp`, `noyalib-lsp`, `noya-cli` — leave
+the monorepo per ADR-0005 in a single bundled release,
+alongside `noyalib-wasm` which had already split at v0.0.12.
+The parent repo becomes a **single-crate** repo hosting only
+the `noyalib` library core.
 
-Lockstep versioning: 3 in-workspace publishable crates
-(`noyalib`, `noyalib-lsp`, `noya-cli`) bump from `0.0.12` →
-`0.0.13`. `noyalib-mcp` releases the same `0.0.13` from the
-satellite repo. `xtask` stays at `0.0.1` per workspace
-convention.
+Also folds in three PR takeovers:
+
+- **`lossless-u64`** opt-in feature from @canardleteer's PR #117
+  (via PR #142 rebase).
+- **Duplicate mapping key last-wins fix** from @zoosky's PR #143.
+
+Lockstep versioning: `noyalib` bumps `0.0.12` → `0.0.13`.
+All four satellites publish `=0.0.13` from their own repos:
+- [`sebastienrousseau/noyalib-wasm@0.0.13`](https://github.com/sebastienrousseau/noyalib-wasm)
+- [`sebastienrousseau/noyalib-mcp@0.0.13`](https://github.com/sebastienrousseau/noyalib-mcp)
+- [`sebastienrousseau/noyalib-lsp@0.0.13`](https://github.com/sebastienrousseau/noyalib-lsp)
+- [`sebastienrousseau/noya-cli@0.0.13`](https://github.com/sebastienrousseau/noya-cli)
 
 ### Added — workspace split (v0.0.13 pilot)
 

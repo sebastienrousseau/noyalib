@@ -72,20 +72,10 @@ jobs:
             echo "::error::Tag version ($TAG_VERSION) does not match crates/noyalib/Cargo.toml version ($CARGO_VERSION)"
             exit 1
           fi
-          # Cross-check that every in-workspace publishable satellite
-          # is on the same version (catches a partial workspaces-bump
-          # that forgot to update one crate). Split satellites verify
-          # their own version via their own release workflow:
-          #   - noyalib-wasm split at v0.0.12 (ADR-0005)
-          #   - noyalib-mcp  split at v0.0.13 (ADR-0005)
-          for crate in noya-cli noyalib-lsp; do
-            v=$(grep '^version' "crates/$crate/Cargo.toml" | head -1 | sed 's/.*"\(.*\)".*/\1/')
-            if [ "$v" != "$CARGO_VERSION" ]; then
-              echo "::error::crates/$crate/Cargo.toml version ($v) is out of sync with crates/noyalib ($CARGO_VERSION)"
-              exit 1
-            fi
-          done
-          echo "Version verified across noyalib + 2 in-workspace satellites: $TAG_VERSION"
+          # All satellites split to their own repos as of v0.0.13.
+          # Each verifies its own lockstep version via its own
+          # release workflow's `validate` job.
+          echo "Version verified: $TAG_VERSION"
 
   # ── Build checksums & SBOM ──────────────────────────────────────────
   artifacts:
@@ -295,24 +285,13 @@ jobs:
       - name: Publish
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
-        # Publish each crate explicitly. The workspace root has no
-        # package, so a bare `cargo publish` would fail. Order:
-        #   1. `noyalib` — the library (no intra-workspace deps).
-        #   2. Wait for crates.io's index to settle (~30s for new
-        #      crate; 60s for first-publish since the API needs to
-        #      provision the namespace).
-        #   3. Satellite crates that depend on `noyalib`. Publish
-        #      them in any order — they don't depend on each other.
-        # `xtask` is `publish = false`; cargo refuses anyway.
-        # Split satellites publish from their own repos (ADR-0005):
-        #   - noyalib-wasm at sebastienrousseau/noyalib-wasm (since v0.0.12)
-        #   - noyalib-mcp  at sebastienrousseau/noyalib-mcp  (since v0.0.13)
+        # Parent repo publishes only `noyalib` (the library core).
+        # All four satellites publish from their own repos per
+        # ADR-0005 workspace split:
+        #   - noyalib-wasm at sebastienrousseau/noyalib-wasm (v0.0.12+)
+        #   - noyalib-mcp  at sebastienrousseau/noyalib-mcp  (v0.0.13+)
+        #   - noyalib-lsp  at sebastienrousseau/noyalib-lsp  (v0.0.13+)
+        #   - noya-cli     at sebastienrousseau/noya-cli     (v0.0.13+)
         run: |
           set -euxo pipefail
           cargo publish -p noyalib --all-features
-          # Crates.io's sparse index can take a moment to surface
-          # a new crate version; sleep briefly so the satellite
-          # publish doesn't fail with "could not find `noyalib`".
-          sleep 60
-          cargo publish -p noya-cli --all-features
-          cargo publish -p noyalib-lsp --all-features

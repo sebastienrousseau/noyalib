@@ -231,8 +231,8 @@ the four satellites wrap it for specific delivery surfaces.
 | Crate | What it is | Use case |
 |---|---|---|
 | **`noyalib`** | Library — YAML 1.2 parser, serializer, lossless CST, JSON Schema validator | Embed YAML support in any Rust binary or library. |
-| **`noya-cli`** | Two binaries: `noyafmt` (formatter), `noyavalidate` (schema validator + autofixer) | CI gates, pre-commit hooks, ad-hoc command-line use. |
-| **`noyalib-lsp`** | Language Server Protocol server | Editor integration — VS Code, Neovim, Helix, Emacs, Zed, Sublime, IntelliJ. |
+| **`noya-cli`** ([own repo](https://github.com/sebastienrousseau/noya-cli)) | Two binaries: `noyafmt` (formatter), `noyavalidate` (schema validator + autofixer) | CI gates, pre-commit hooks, ad-hoc command-line use. |
+| **`noyalib-lsp`** ([own repo](https://github.com/sebastienrousseau/noyalib-lsp)) | Language Server Protocol server | Editor integration — VS Code, Neovim, Helix, Emacs, Zed, Sublime, IntelliJ. |
 | **`noyalib-mcp`** ([own repo](https://github.com/sebastienrousseau/noyalib-mcp)) | Model Context Protocol server | LLM agent tooling — Claude Desktop, Cursor, Continue.dev, Zed assistant, mcp.run. |
 | **`noyalib-wasm`** ([own repo](https://github.com/sebastienrousseau/noyalib-wasm)) | `wasm-bindgen` wrapper around the library | Browser, Node, Cloudflare Workers, Deno, any WASM-capable host. |
 
