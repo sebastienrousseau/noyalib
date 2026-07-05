@@ -30,3 +30,4 @@ tarpaulin-report.html
 /debug.rs
 /scratch.*
 crates/noyalib-wasm/Cargo.lock
+.corral-state.json
