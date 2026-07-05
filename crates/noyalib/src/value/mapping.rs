@@ -261,6 +261,27 @@ impl Mapping {
         self.0.get_index_mut(index)
     }
 
+    /// Returns the index of the given key, if present.
+    ///
+    /// Indexing follows insertion order (this is an `IndexMap`); a key
+    /// keeps its original index when its value is overwritten by a
+    /// later [`Mapping::insert`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use noyalib::{Mapping, Value};
+    /// let mut m = Mapping::new();
+    /// m.insert("first", Value::from(1_i64));
+    /// m.insert("second", Value::from(2_i64));
+    /// assert_eq!(m.get_index_of("second"), Some(1));
+    /// assert_eq!(m.get_index_of("absent"), None);
+    /// ```
+    #[must_use]
+    pub fn get_index_of(&self, key: &str) -> Option<usize> {
+        self.0.get_index_of(key)
+    }
+
     /// Removes a key from the mapping, returning the value if the key was
     /// present.
     ///

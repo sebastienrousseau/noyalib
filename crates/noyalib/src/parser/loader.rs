@@ -617,8 +617,20 @@ impl<'a> Loader<'a> {
                             }
                         }
                         DuplicateKeyPolicy::Last => {
-                            let _ = map.insert(key, value);
-                            span_entries.push((*key_span, span));
+                            // `IndexMap::insert` keeps a re-inserted key at
+                            // its original index, so the parallel span entry
+                            // must be replaced in place: pushing a second
+                            // entry would leave the stale first-occurrence
+                            // span selected for this key and shift the
+                            // span pairing of every key that follows the
+                            // duplicate by one.
+                            if let Some(idx) = map.get_index_of(&key) {
+                                let _ = map.insert(key, value);
+                                span_entries[idx] = (*key_span, span);
+                            } else {
+                                let _ = map.insert(key, value);
+                                span_entries.push((*key_span, span));
+                            }
                         }
                         DuplicateKeyPolicy::Error => {
                             if map.contains_key(&key) {

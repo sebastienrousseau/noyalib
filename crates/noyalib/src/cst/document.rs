@@ -162,6 +162,12 @@ impl Document {
     /// `items[0]`, `items[0].name`). Wildcard / recursive-descent
     /// segments are not supported here — they have no single span.
     ///
+    /// A duplicated mapping key resolves to its *last* occurrence,
+    /// the same occurrence the typed view keeps (`as_value` loads
+    /// with the default `DuplicateKeyPolicy::Last`, the YAML 1.2
+    /// behaviour) — the returned span always denotes the node that
+    /// `as_value` selects for the path.
+    ///
     /// # Examples
     ///
     /// ```
@@ -170,6 +176,18 @@ impl Document {
     /// let doc = parse_document("name: noyalib\nversion: 0.0.1\n").unwrap();
     /// let (s, e) = doc.span_at("version").unwrap();
     /// assert_eq!(&doc.source()[s..e], "0.0.1");
+    /// ```
+    ///
+    /// A duplicate key resolves to the occurrence the typed view
+    /// keeps:
+    ///
+    /// ```
+    /// use noyalib::cst::parse_document;
+    ///
+    /// let doc = parse_document("k: one\nk: two\n").unwrap();
+    /// let (s, e) = doc.span_at("k").unwrap();
+    /// assert_eq!(&doc.source()[s..e], "two");
+    /// assert_eq!(doc.get("k"), Some("two"));
     /// ```
     #[must_use]
     pub fn span_at(&self, path: &str) -> Option<(usize, usize)> {
@@ -1192,21 +1210,42 @@ fn walk_mapping(
     base: usize,
     source: &str,
 ) -> Option<(usize, usize)> {
+    // Duplicate keys resolve to the *last* occurrence, matching the
+    // typed view: under the default `DuplicateKeyPolicy::Last` (the
+    // YAML 1.2 behaviour, and the config `as_value` loads with),
+    // `k: one\nk: two` yields `k = "two"`, so the span for `k` must
+    // denote `two` — never the bytes of a node the typed view did
+    // not select. The whole mapping is scanned before committing.
+    //
+    // An entry whose key text cannot be decoded here (double-quoted
+    // escapes, complex keys) could be a hidden duplicate of `key`,
+    // making the green walk inconclusive — bail out and let the
+    // caller resolve via the typed cache, which sees every key in
+    // decoded form.
+    let mut found: Option<(&GreenNode, usize)> = None;
+    let mut undecodable_key = false;
     let mut pos = base;
     for child in node.children() {
         let len = child.text_len();
         if let GreenChild::Node(entry) = child {
             if entry.kind() == SyntaxKind::MappingEntry {
-                if let Some(entry_key) = entry_key_text(entry, source, pos) {
-                    if entry_key == key {
-                        return resolve_value_in_entry(entry, pos, tail, source);
+                match entry_key_text(entry, source, pos) {
+                    Some(entry_key) => {
+                        if entry_key == key {
+                            found = Some((entry, pos));
+                        }
                     }
+                    None => undecodable_key = true,
                 }
             }
         }
         pos += len;
     }
-    None
+    if undecodable_key {
+        return None;
+    }
+    let (entry, entry_pos) = found?;
+    resolve_value_in_entry(entry, entry_pos, tail, source)
 }
 
 fn walk_sequence(
