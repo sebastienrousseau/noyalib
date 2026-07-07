@@ -20,13 +20,13 @@ fn main() {
     // ── 1. Single-byte search ────────────────────────────────
     // The 1-needle path routes through memchr → SSE2/NEON.
     let line = b"key: value  # trailing comment";
-    assert_eq!(find_any_of(line, &[b':']), Some(3));
-    println!("find_any_of(':') → {:?}", find_any_of(line, &[b':']));
+    assert_eq!(find_any_of(line, b":"), Some(3));
+    println!("find_any_of(':') → {:?}", find_any_of(line, b":"));
 
     // ── 2. Multi-byte search ─────────────────────────────────
     // 4+ needles route through the SWAR path (8 bytes per lane).
     // Classic YAML plain-scalar-terminator set.
-    let plain_end = find_any_of(line, &[b':', b',', b'#', b'\n']);
+    let plain_end = find_any_of(line, b":,#\n");
     assert_eq!(plain_end, Some(3));
     println!("plain-terminator set → {plain_end:?}");
 
@@ -35,7 +35,7 @@ fn main() {
     // the exact question a scanner asks when scoping a plain
     // scalar. Same result as find_any_of but expresses the intent
     // directly.
-    let advance = clean_prefix_len(b"abc def:more", &[b':', b',', b'#', b'\n']);
+    let advance = clean_prefix_len(b"abc def:more", b":,#\n");
     assert_eq!(advance, 7); // "abc def"
     println!("clean_prefix_len before terminator → {advance}");
 
@@ -71,6 +71,6 @@ fn main() {
 
     // ── 6. Miss case ─────────────────────────────────────────
     // Returns None when no needle byte is present.
-    assert_eq!(find_any_of(b"abcdefgh", &[b'X', b'Y', b'Z']), None);
+    assert_eq!(find_any_of(b"abcdefgh", b"XYZ"), None);
     println!("find_any_of on a needle-free haystack → None");
 }
