@@ -93,6 +93,25 @@ this branch:
 - Lone `\r` (classic-Mac CR-only line breaks) is now a valid
   line break for YAML 1.2.2 §5.4 compliance.
 
+### Added — coverage (examples + benches)
+
+Closes the "zero examples / zero benches" gaps identified by
+the coverage audit. Every public module now has at least one
+example and every performance-relevant path has a bench:
+
+- `examples/interner.rs` — key deduplication on a
+  Kubernetes-shaped 10 000-record workload.
+- `examples/parallel.rs` — sequential (`load_all_as`) vs
+  parallel (`parallel::parse`) with real speedup measurement.
+- `examples/simd.rs` — single/multi-byte search + prebuilt
+  `ByteBitmap` + stateful `SimdScanner`.
+- `benches/interner.rs` — naïve `String` vs `Arc` vs
+  `KeyInterner` on realistic Kubernetes keys.
+- `benches/parallel.rs` — sweeps document-size to expose the
+  break-even between sequential and parallel.
+- `benches/borrowed_vs_value.rs` — `BorrowedValue` vs `Value`
+  throughput on a string-heavy workload.
+
 ### Notes for the `no_std` and typed-target audit
 
 - The distinct-typed key-collision check is now enforced on

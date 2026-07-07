@@ -301,6 +301,21 @@ name = "tokio_async_reader"
 path = "examples/tokio_async_reader.rs"
 required-features = ["tokio"]
 
+## ── Coverage-gap examples added in v0.0.14 ──
+[[example]]
+name = "interner"
+path = "examples/interner.rs"
+
+[[example]]
+name = "parallel"
+path = "examples/parallel.rs"
+required-features = ["parallel"]
+
+[[example]]
+name = "simd"
+path = "examples/simd.rs"
+required-features = ["simd"]
+
 [dependencies]
 serde = { version = "1.0", default-features = false, features = ["derive", "alloc"] }
 indexmap = { version = ">=2, <3", features = ["serde"] }
@@ -433,6 +448,19 @@ harness = false
 
 [[bench]]
 name = "mapping_key_clone"
+harness = false
+
+[[bench]]
+name = "interner"
+harness = false
+
+[[bench]]
+name = "parallel"
+harness = false
+required-features = ["parallel"]
+
+[[bench]]
+name = "borrowed_vs_value"
 harness = false
 
 [[bench]]
