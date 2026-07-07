@@ -829,10 +829,17 @@ impl fmt::Display for Error {
     }
 }
 
-#[cfg(feature = "std")]
-impl std::error::Error for Error {
-    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+// `core::error::Error` stabilised in Rust 1.81 — the crate MSRV
+// is 1.85, so the trait implementation is unconditional. Only
+// the `Io(std::io::Error)` arm needs an in-line `cfg` gate,
+// because `Error::Io` itself is `#[cfg(feature = "std")]`. Under
+// `no_std` callers keep full access to the trait for routing via
+// `core::error::Error`-consuming ecosystems (`snafu-nostd`,
+// `miette` no-std shim, embedded HAL error stacks).
+impl core::error::Error for Error {
+    fn source(&self) -> Option<&(dyn core::error::Error + 'static)> {
         match self {
+            #[cfg(feature = "std")]
             Error::Io(e) => Some(e),
             Error::Shared(arc) => Some(arc.as_ref()),
             _ => None,

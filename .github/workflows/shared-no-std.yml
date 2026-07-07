@@ -50,5 +50,28 @@ jobs:
           # CARGO_TARGET_DIR above is the real guarantee.
           workspaces: ". -> target-no-std"
           key: no-std
-      - name: cargo check --no-default-features
+      - name: cargo check --no-default-features (native target)
         run: cargo check --no-default-features --lib --locked
+
+  # Bare-metal proof: `wasm32-unknown-unknown` has no `std`
+  # libraries available, so any leaked `std::` symbol fails to
+  # link. The native-target check above catches feature-flag
+  # drift; this one catches a transitive dep silently enabling
+  # `std` via feature unification.
+  wasm-bare:
+    name: no_std (wasm32-unknown-unknown bare-metal)
+    runs-on: ubuntu-latest
+    env:
+      CARGO_TARGET_DIR: ${{ github.workspace }}/target-no-std-wasm
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: dtolnay/rust-toolchain@fa04a1451ff1842e2626ccb99004d0195b455a88 # master
+        with:
+          toolchain: stable
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
+        with:
+          workspaces: ". -> target-no-std-wasm"
+          key: no-std-wasm
+      - name: cargo check --no-default-features --target wasm32-unknown-unknown
+        run: cargo check --no-default-features --lib --locked --target wasm32-unknown-unknown
