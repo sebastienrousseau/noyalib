@@ -242,6 +242,10 @@ struct Loader<'a> {
     docs: Vec<(Value, SpanTree)>,
     stack: Vec<Frame>,
     anchor_map: IndexMap<String, (Value, SpanTree)>,
+    /// Source byte-index of each anchor's definition (parity with
+    /// the streaming path's `anchor_def_spans`) — powers the
+    /// "did you mean …?" affordance on `Error::UnknownAnchorAt`.
+    anchor_def_spans: IndexMap<String, usize>,
     alias_count: usize,
     alias_bytes: usize,
     config: &'a ParseConfig,
@@ -270,6 +274,7 @@ impl<'a> Loader<'a> {
             docs: Vec::with_capacity(1),
             stack: Vec::with_capacity(16),
             anchor_map: IndexMap::with_capacity(4),
+            anchor_def_spans: IndexMap::with_capacity(4),
             alias_count: 0,
             alias_bytes: 0,
             config,
@@ -326,6 +331,7 @@ impl<'a> Loader<'a> {
             Event::DocumentStart => {
                 self.in_document = true;
                 self.anchor_map.clear();
+                self.anchor_def_spans.clear();
                 self.alias_count = 0;
                 self.alias_bytes = 0;
                 // Budget: max_documents
@@ -363,10 +369,23 @@ impl<'a> Loader<'a> {
 
                 let (value, span_tree) =
                     self.anchor_map.get(&anchor).cloned().ok_or_else(|| {
+                        let alias_loc = crate::error::Location::from_index(input, span.start);
+                        let suggestion = crate::error::closest_name(
+                            &anchor,
+                            self.anchor_def_spans.keys().map(|s| s.as_str()),
+                        )
+                        .and_then(|s| {
+                            self.anchor_def_spans.get(s).map(|&idx| {
+                                (
+                                    s.to_string(),
+                                    crate::error::Location::from_index(input, idx),
+                                )
+                            })
+                        });
                         Error::UnknownAnchorAt {
                             name: anchor.clone(),
-                            location: crate::error::Location::from_index(input, span.start),
-                            suggestion: None,
+                            location: alias_loc,
+                            suggestion,
                         }
                     })?;
 
@@ -434,6 +453,7 @@ impl<'a> Loader<'a> {
                     SpanTree::Leaf(span.start, span.end)
                 };
                 if let Some(name) = anchor {
+                    let _ = self.anchor_def_spans.insert(name.clone(), span.start);
                     let _ = self.anchor_map.insert(name, (v.clone(), st.clone()));
                 }
                 self.push_node(v, st, input)?;
@@ -444,6 +464,9 @@ impl<'a> Loader<'a> {
                 self.depth += 1;
                 if self.depth > self.config.max_depth {
                     return Err(Error::RecursionLimitExceeded { depth: self.depth });
+                }
+                if let Some(name) = anchor.as_ref() {
+                    let _ = self.anchor_def_spans.insert(name.clone(), span.start);
                 }
                 self.stack.push(Frame::Sequence {
                     items: Vec::new(),
@@ -488,6 +511,9 @@ impl<'a> Loader<'a> {
                 self.depth += 1;
                 if self.depth > self.config.max_depth {
                     return Err(Error::RecursionLimitExceeded { depth: self.depth });
+                }
+                if let Some(name) = anchor.as_ref() {
+                    let _ = self.anchor_def_spans.insert(name.clone(), span.start);
                 }
                 self.stack.push(Frame::MappingKey {
                     map: Mapping::new(),
@@ -564,9 +590,17 @@ impl<'a> Loader<'a> {
             } => {
                 // Retain the typed key before it is coerced to a string, so
                 // the insert site can tell a genuine duplicate apart from a
-                // distinct-typed collision. The clone is off the hot path
-                // (keys only) and only used for the equality check.
-                let key_value = value.clone();
+                // distinct-typed collision. Skip the clone when the key is
+                // a merge key (`<<`) that will be buffered rather than
+                // inserted — merge values bypass the collision check, so
+                // the clone would be pure waste on `<<`-heavy documents.
+                let is_buffered_merge_key = matches!(&value, Value::String(s) if s == MERGE_KEY)
+                    && !matches!(self.config.merge_key_policy, MergeKeyPolicy::AsOrdinary);
+                let key_value = if is_buffered_merge_key {
+                    Value::Null
+                } else {
+                    value.clone()
+                };
                 // Coerce scalar keys to strings; complex keys (sequences,
                 // mappings) are stringified via their YAML serialization
                 // so the final `Mapping<String, Value>` can hold them.
@@ -802,13 +836,22 @@ enum NoSpanFrame {
     },
     MappingKey {
         map: Mapping,
+        // Parallel to `map`: retains the *typed* value that produced
+        // each string key so the value-arm's collision check can tell
+        // a distinct-typed collision (`1` vs `"1"`) apart from a
+        // genuine duplicate (`1` twice). Mirrors the span-full loader.
+        typed_keys: Vec<Value>,
         anchor: Option<String>,
         merge_values: Vec<Value>,
         tag: Option<(String, String)>,
     },
     MappingValue {
         map: Mapping,
+        typed_keys: Vec<Value>,
         key: String,
+        // The typed key value the current `key` string was derived
+        // from; consumed by the collision check in the value arm.
+        key_value: Value,
         anchor: Option<String>,
         merge_values: Vec<Value>,
         tag: Option<(String, String)>,
@@ -819,8 +862,17 @@ struct NoSpanLoader<'a> {
     docs: Vec<Value>,
     stack: Vec<NoSpanFrame>,
     anchor_map: IndexMap<String, Value>,
+    // Source byte-index of each anchor's definition, keyed by name.
+    // Populated alongside `anchor_map` so an unknown-alias error can
+    // point at the closest known definition — the same "did you mean
+    // `&logger`?" affordance the streaming path already offers.
+    anchor_def_spans: IndexMap<String, usize>,
     alias_count: usize,
     alias_bytes: usize,
+    // Merge-key occurrences seen across the current document (for
+    // `max_merge_keys`). Mirrors the span-full loader's counter so a
+    // billion-merges DoS is refused on the `Value` fast path too.
+    merge_key_count: usize,
     config: &'a ParseConfig,
     depth: usize,
     in_document: bool,
@@ -832,8 +884,10 @@ impl<'a> NoSpanLoader<'a> {
             docs: Vec::new(),
             stack: Vec::new(),
             anchor_map: IndexMap::new(),
+            anchor_def_spans: IndexMap::new(),
             alias_count: 0,
             alias_bytes: 0,
+            merge_key_count: 0,
             config,
             depth: 0,
             in_document: false,
@@ -854,6 +908,7 @@ impl<'a> NoSpanLoader<'a> {
             Event::DocumentStart => {
                 self.in_document = true;
                 self.anchor_map.clear();
+                self.anchor_def_spans.clear();
             }
             Event::DocumentEnd => {
                 self.in_document = false;
@@ -864,14 +919,33 @@ impl<'a> NoSpanLoader<'a> {
                     return Err(Error::RepetitionLimitExceeded);
                 }
                 let value = self.anchor_map.get(&anchor).cloned().ok_or_else(|| {
+                    let alias_loc = crate::error::Location::from_index(input, span.start);
+                    let suggestion = crate::error::closest_name(
+                        &anchor,
+                        self.anchor_def_spans.keys().map(|s| s.as_str()),
+                    )
+                    .and_then(|s| {
+                        self.anchor_def_spans.get(s).map(|&idx| {
+                            (
+                                s.to_string(),
+                                crate::error::Location::from_index(input, idx),
+                            )
+                        })
+                    });
                     Error::UnknownAnchorAt {
                         name: anchor,
-                        location: crate::error::Location::from_index(input, span.start),
-                        suggestion: None,
+                        location: alias_loc,
+                        suggestion,
                     }
                 })?;
                 self.alias_bytes += estimate_value_size(&value);
-                if self.alias_bytes > MAX_ALIAS_BYTES {
+                // Bound cumulative alias expansion by both the crate-level
+                // hard cap and the caller-supplied `max_document_length`.
+                // Mirrors the span-full loader (billion-laughs guard) so
+                // the `Value` fast path can't outrun either budget.
+                if self.alias_bytes > self.config.max_document_length
+                    || self.alias_bytes > MAX_ALIAS_BYTES
+                {
                     return Err(Error::RepetitionLimitExceeded);
                 }
                 self.push_value(value)?;
@@ -881,7 +955,7 @@ impl<'a> NoSpanLoader<'a> {
                 style,
                 anchor,
                 tag,
-                ..
+                span,
             } => {
                 let v = if let Some(t) = tag {
                     resolve_tagged_scalar(&t.0, &t.1, &value, self.config.lossless_u64_integers())?
@@ -907,14 +981,18 @@ impl<'a> NoSpanLoader<'a> {
                     }
                 };
                 if let Some(name) = anchor {
+                    let _ = self.anchor_def_spans.insert(name.clone(), span.start);
                     let _ = self.anchor_map.insert(name, v.clone());
                 }
                 self.push_value(v)?;
             }
-            Event::SequenceStart { anchor, tag, .. } => {
+            Event::SequenceStart { anchor, tag, span } => {
                 self.depth += 1;
                 if self.depth > self.config.max_depth {
                     return Err(Error::RecursionLimitExceeded { depth: self.depth });
+                }
+                if let Some(name) = anchor.as_ref() {
+                    let _ = self.anchor_def_spans.insert(name.clone(), span.start);
                 }
                 self.stack.push(NoSpanFrame::Sequence {
                     items: Vec::new(),
@@ -933,13 +1011,17 @@ impl<'a> NoSpanLoader<'a> {
                     self.push_value(v)?;
                 }
             }
-            Event::MappingStart { anchor, tag, .. } => {
+            Event::MappingStart { anchor, tag, span } => {
                 self.depth += 1;
                 if self.depth > self.config.max_depth {
                     return Err(Error::RecursionLimitExceeded { depth: self.depth });
                 }
+                if let Some(name) = anchor.as_ref() {
+                    let _ = self.anchor_def_spans.insert(name.clone(), span.start);
+                }
                 self.stack.push(NoSpanFrame::MappingKey {
                     map: Mapping::new(),
+                    typed_keys: Vec::new(),
                     anchor,
                     merge_values: Vec::new(),
                     tag,
@@ -949,6 +1031,7 @@ impl<'a> NoSpanLoader<'a> {
                 self.depth = self.depth.saturating_sub(1);
                 if let Some(NoSpanFrame::MappingKey {
                     mut map,
+                    typed_keys: _,
                     anchor,
                     merge_values,
                     tag,
@@ -976,22 +1059,44 @@ impl<'a> NoSpanLoader<'a> {
         }
         match self.stack.last_mut().unwrap() {
             NoSpanFrame::Sequence { items, .. } => {
+                if items.len() >= self.config.max_sequence_length {
+                    return Err(Error::Serialize(
+                        "sequence length limit exceeded".to_owned(),
+                    ));
+                }
                 items.push(value);
             }
             NoSpanFrame::MappingKey {
                 map,
+                typed_keys,
                 anchor,
                 merge_values,
                 tag,
             } => {
+                // Retain the typed key before coercing to a string so
+                // the value arm can distinguish a distinct-typed
+                // collision (`1` vs `"1"`) from a genuine duplicate.
+                // Skip the clone on merge keys that will be buffered
+                // rather than inserted; merge values bypass the
+                // collision check, so the clone would be waste.
+                let is_buffered_merge_key = matches!(&value, Value::String(s) if s == MERGE_KEY)
+                    && !matches!(self.config.merge_key_policy, MergeKeyPolicy::AsOrdinary);
+                let key_value = if is_buffered_merge_key {
+                    Value::Null
+                } else {
+                    value.clone()
+                };
                 if let Some(key) = value_to_key_string(value) {
                     let old_map = core::mem::take(map);
+                    let old_typed_keys = core::mem::take(typed_keys);
                     let old_anchor = anchor.take();
                     let old_merge_values = core::mem::take(merge_values);
                     let old_tag = tag.take();
                     *self.stack.last_mut().unwrap() = NoSpanFrame::MappingValue {
                         map: old_map,
+                        typed_keys: old_typed_keys,
                         key,
+                        key_value,
                         anchor: old_anchor,
                         merge_values: old_merge_values,
                         tag: old_tag,
@@ -1000,7 +1105,9 @@ impl<'a> NoSpanLoader<'a> {
             }
             NoSpanFrame::MappingValue {
                 map,
+                typed_keys,
                 key,
+                key_value,
                 anchor,
                 merge_values,
                 tag,
@@ -1015,20 +1122,65 @@ impl<'a> NoSpanLoader<'a> {
                     ));
                 }
                 if is_merge && !merge_treat_as_ordinary {
+                    self.merge_key_count = self.merge_key_count.saturating_add(1);
+                    if self.merge_key_count > self.config.max_merge_keys {
+                        return Err(Error::Budget(crate::BudgetBreach::MaxMergeKeys {
+                            limit: self.config.max_merge_keys,
+                            observed: self.merge_key_count,
+                        }));
+                    }
                     merge_values.push(value);
                 } else {
+                    if map.len() >= self.config.max_mapping_keys {
+                        return Err(Error::Serialize("mapping key limit exceeded".to_owned()));
+                    }
                     // Steal the owned key out of the frame instead of
                     // cloning it — the frame is overwritten (without
                     // `key`) immediately below, so the emptied slot is
                     // discarded.
-                    let _ = map.insert(core::mem::take(key), value);
+                    let key = core::mem::take(key);
+                    let key_value = core::mem::take(key_value);
+                    // Distinct-typed collision: the string key already
+                    // exists but was produced by a different typed key
+                    // (e.g. `1` then `"1"`). Silently collapsing these
+                    // would drop an entry — refuse regardless of
+                    // DuplicateKeyPolicy so the fast `Value` path has
+                    // the same guard as the span-full loader.
+                    if let Some(idx) = map.get_index_of(&key) {
+                        if typed_keys[idx] != key_value {
+                            return Err(Error::KeyCollision(key));
+                        }
+                        // Genuine duplicate: apply the caller's
+                        // policy. Mirrors the span-full loader arms.
+                        match self.config.duplicate_key_policy {
+                            DuplicateKeyPolicy::First => {
+                                // Keep the first occurrence: no-op.
+                            }
+                            DuplicateKeyPolicy::Last => {
+                                let _ = map.insert(key, value);
+                            }
+                            DuplicateKeyPolicy::Error => {
+                                return Err(Error::DuplicateKey(key));
+                            }
+                        }
+                    } else {
+                        let _ = map.insert(key, value);
+                        typed_keys.push(key_value);
+                    }
+                    debug_assert_eq!(
+                        map.len(),
+                        typed_keys.len(),
+                        "typed_keys must remain parallel to map"
+                    );
                 }
                 let old_map = core::mem::take(map);
+                let old_typed_keys = core::mem::take(typed_keys);
                 let old_anchor = anchor.take();
                 let old_merge_values = core::mem::take(merge_values);
                 let old_tag = tag.take();
                 *self.stack.last_mut().unwrap() = NoSpanFrame::MappingKey {
                     map: old_map,
+                    typed_keys: old_typed_keys,
                     anchor: old_anchor,
                     merge_values: old_merge_values,
                     tag: old_tag,
@@ -1071,6 +1223,20 @@ fn value_to_key_string(value: Value) -> Option<String> {
             }
         }
         Value::Number(Number::Float(n)) => {
+            // Special-value floats need spec-shaped spellings so a
+            // YAML `nan:` or `.inf:` key round-trips as the string
+            // it was written as. Rust's Debug prints these as `NaN`
+            // and `inf`; ryu prints them as `NaN` and `inf` too —
+            // both diverge from the resolver's accepted plain forms
+            // (`nan`, `inf`, `-inf`) that keyed lookups typically
+            // use. Canonicalise to lowercase-plain here so keys
+            // survive `Value` deserialization.
+            if n.is_nan() {
+                return Some("nan".into());
+            }
+            if n.is_infinite() {
+                return Some(if n.is_sign_negative() { "-inf".into() } else { "inf".into() });
+            }
             #[cfg(feature = "fast-float")]
             {
                 Some(ryu::Buffer::new().format(n).to_owned())

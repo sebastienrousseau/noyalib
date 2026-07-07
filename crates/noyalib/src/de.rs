@@ -401,11 +401,24 @@ where
     // axis, route through the AST loader so the relevant toggle
     // takes effect. Active `properties` interpolation also disables
     // the streaming path so the post-parse substitution walk runs.
+    //
+    // The `Value` target is *excluded* from the streaming path
+    // (unless a tag registry is active — the registry strips
+    // registered tags off scalars, and that only happens on the
+    // streaming path today). Rationale: serde asks the streaming
+    // deserializer for `String` keys, which stringifies typed
+    // scalars *before* `ValueVisitor::visit_map` can tell `1` and
+    // `"1"` apart — the distinct-typed `KeyCollision` guard is
+    // unreachable there. The `Value`-target fast path a few lines
+    // down runs the span-free loader which owns the collision
+    // check and the DoS budgets.
+    let value_target_bypass = is_value_target::<T>() && config.tag_registry.is_none();
     let stream_eligible = config.merge_key_policy == MergeKeyPolicy::Auto
         && !config.ignore_binary_tag_for_string
         && config.policies.is_empty()
         && properties_inactive(config)
-        && includes_inactive(config);
+        && includes_inactive(config)
+        && !value_target_bypass;
     if stream_eligible {
         if let Some(res) = crate::streaming::from_str_streaming(s, config) {
             return res;
@@ -413,6 +426,19 @@ where
     }
 
     let parse_config = parser::ParseConfig::from(config);
+
+    // The streaming path enforces `max_document_length` inline
+    // (`streaming::from_str_streaming` at head-of-fn). When the
+    // streaming path is skipped — either because the caller opted
+    // into a non-default policy or because T is `Value` — the check
+    // must fire here so the AST loader can't be walked over an
+    // oversized document.
+    if s.len() > parse_config.max_document_length {
+        return Err(Error::Parse(format!(
+            "document exceeds maximum length of {} bytes",
+            parse_config.max_document_length
+        )));
+    }
 
     // Skip-span + zero-rewalk fast path: when T == Value, the AST
     // we just parsed *is* the answer. The default path would

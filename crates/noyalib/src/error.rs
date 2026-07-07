@@ -246,6 +246,62 @@ impl fmt::Display for BudgetBreach {
     }
 }
 
+/// Coarse-grained classification of an [`Error`], exposed for
+/// callers that need to route errors without pattern-matching
+/// every variant. Prefer this over inventing per-variant boolean
+/// accessors (`is_syntax()`, `is_io()`, …): one classifier scales
+/// as new variants land under [`Error`]'s `#[non_exhaustive]`
+/// attribute.
+///
+/// This enum is itself `#[non_exhaustive]` so future variants
+/// (e.g. a dedicated Timeout kind) can be added without a semver
+/// break.
+///
+/// # Examples
+///
+/// ```
+/// use noyalib::{from_str, ErrorKind, Value};
+/// let err = from_str::<Value>("1: a\n\"1\": b\n").unwrap_err();
+/// assert_eq!(err.kind(), ErrorKind::KeyCollision);
+/// ```
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[non_exhaustive]
+pub enum ErrorKind {
+    /// The document was malformed: unterminated flow collection,
+    /// bad indentation, invalid escape, unexpected token, etc.
+    Syntax,
+    /// An I/O operation failed while reading the input.
+    Io,
+    /// A configurable DoS budget or hard security limit was
+    /// exceeded (recursion depth, alias expansion, mapping size,
+    /// merge-key count, …). Covers every `Error::Budget` breach
+    /// as well as [`Error::RecursionLimitExceeded`] and
+    /// [`Error::RepetitionLimitExceeded`].
+    Budget,
+    /// A user-supplied [`crate::policy::Policy`] rejected the
+    /// document, or a policy-only structural rule (merge-value
+    /// shape, scalar-in-merge) tripped.
+    Policy,
+    /// Two distinct-typed YAML keys collapsed to the same string
+    /// key — see [`Error::KeyCollision`].
+    KeyCollision,
+    /// A genuine duplicate key was refused under
+    /// [`crate::DuplicateKeyPolicy::Error`].
+    DuplicateKey,
+    /// The parser reached end-of-stream where more input was
+    /// required.
+    EndOfStream,
+    /// The document parsed but the requested target type could
+    /// not be built (missing field, unknown field, type mismatch,
+    /// bad tag, unknown anchor, …). Covers the whole
+    /// serde-facing "shape doesn't match" family.
+    Data,
+    /// The error came in via [`Error::Custom`] or [`Error::Message`]
+    /// (usually from a `serde::de::Error` bridge) and doesn't map
+    /// cleanly to any of the other kinds.
+    Other,
+}
+
 /// # Examples
 ///
 /// ```
@@ -435,8 +491,20 @@ pub enum Error {
     ///
     /// # Examples
     ///
+    /// The construction shape:
+    ///
     /// ```
     /// let _e = noyalib::Error::KeyCollision("1".into());
+    /// ```
+    ///
+    /// Reproduces from real YAML. The integer key `1` and the
+    /// string key `"1"` both stringify to `"1"`, so parsing must
+    /// refuse rather than silently drop the first entry:
+    ///
+    /// ```
+    /// use noyalib::{Error, Value, from_str};
+    /// let err = from_str::<Value>("1: a\n\"1\": b\n").unwrap_err();
+    /// assert!(matches!(err, Error::KeyCollision(_)));
     /// ```
     KeyCollision(String),
 
@@ -796,6 +864,56 @@ impl Error {
             Error::UnknownAnchorAt { location, .. } => Some(*location),
             Error::Shared(arc) => arc.location(),
             _ => None,
+        }
+    }
+
+    /// Coarse-grained classification for routing without matching
+    /// every variant of the `#[non_exhaustive]` [`Error`] enum.
+    ///
+    /// The mapping is stable across variant additions: new
+    /// variants land under an existing [`ErrorKind`] whenever
+    /// possible, so downstream `match err.kind()` sites keep
+    /// compiling. When a new *category* is needed the enum grows
+    /// (also `#[non_exhaustive]`).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use noyalib::{from_str, ErrorKind, Value};
+    ///
+    /// let syntax = from_str::<Value>("a: [unclosed").unwrap_err();
+    /// assert_eq!(syntax.kind(), ErrorKind::Syntax);
+    ///
+    /// let collision = from_str::<Value>("1: a\n\"1\": b\n").unwrap_err();
+    /// assert_eq!(collision.kind(), ErrorKind::KeyCollision);
+    /// ```
+    pub fn kind(&self) -> ErrorKind {
+        match self {
+            Error::Parse(_) | Error::ParseWithLocation { .. } => ErrorKind::Syntax,
+            Error::Serialize(_) => ErrorKind::Data,
+            Error::Deserialize(_) | Error::DeserializeWithLocation { .. } => ErrorKind::Data,
+            #[cfg(feature = "std")]
+            Error::Io(_) => ErrorKind::Io,
+            Error::Custom(_) => ErrorKind::Other,
+            Error::RecursionLimitExceeded { .. } => ErrorKind::Budget,
+            Error::DuplicateKey(_) => ErrorKind::DuplicateKey,
+            Error::KeyCollision(_) => ErrorKind::KeyCollision,
+            Error::RepetitionLimitExceeded => ErrorKind::Budget,
+            Error::Budget(_) => ErrorKind::Budget,
+            Error::UnknownAnchor(_) | Error::UnknownAnchorAt { .. } => ErrorKind::Data,
+            Error::MissingField(_) | Error::UnknownField(_) => ErrorKind::Data,
+            Error::ScalarInMergeElement
+            | Error::SequenceInMergeElement
+            | Error::TaggedInMerge
+            | Error::ScalarInMerge => ErrorKind::Policy,
+            Error::Invalid(_) => ErrorKind::Data,
+            Error::TypeMismatch { .. } => ErrorKind::Data,
+            Error::Shared(arc) => arc.kind(),
+            Error::EndOfStream => ErrorKind::EndOfStream,
+            Error::MoreThanOneDocument => ErrorKind::Data,
+            Error::EmptyTag => ErrorKind::Syntax,
+            Error::FailedToParseNumber(_) => ErrorKind::Syntax,
+            Error::Message(_, _) => ErrorKind::Other,
         }
     }
 
