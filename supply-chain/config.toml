@@ -38,6 +38,11 @@ suggest = false
 version = "1.12.0"
 criteria = "safe-to-deploy"
 
+[[exemptions.crossbeam-epoch]]
+version = "0.9.20"
+criteria = "safe-to-deploy"
+suggest = false
+
 [[exemptions.data-encoding]]
 version = "2.11.0"
 criteria = "safe-to-deploy"
