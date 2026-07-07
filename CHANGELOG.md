@@ -7,7 +7,104 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
-(Nothing yet - `[v0.0.13]` is the cut.)
+(Nothing yet — `[v0.0.14]` is the cut.)
+
+## [v0.0.14] - 2026-07-07
+
+The **loader-parity** cut. Fixes a fast-path silent-collapse of
+distinct-typed mapping keys plus three DoS-budget parity gaps
+between the span-full and span-free loaders, adds a coarse
+`Error::kind()` classifier for downstream routing, and lands
+five CST `span_at` fixes and one scanner lone-CR fix.
+
+Lockstep versioning: `noyalib` bumps `0.0.13` → `0.0.14`.
+Satellites publish `=0.0.14` from their own repos:
+- [`sebastienrousseau/noyalib-wasm@0.0.14`](https://github.com/sebastienrousseau/noyalib-wasm)
+- [`sebastienrousseau/noyalib-mcp@0.0.14`](https://github.com/sebastienrousseau/noyalib-mcp)
+- [`sebastienrousseau/noyalib-lsp@0.0.14`](https://github.com/sebastienrousseau/noyalib-lsp)
+- [`sebastienrousseau/noya-cli@0.0.14`](https://github.com/sebastienrousseau/noya-cli)
+
+### Fixed — loader parity (security)
+
+- **`from_str::<Value>` no longer silently collapses distinct-
+  typed key collisions.** The fast `Value` path
+  (`parse_one_value` → `NoSpanLoader`) previously accepted
+  `1: a\n"1": b\n` and dropped the first entry — data loss.
+  The `NoSpanLoader` now runs the same distinct-typed-key
+  check as the span-full loader and raises
+  `Error::KeyCollision` instead. The streaming fast-path is
+  bypassed for the `Value` target when no tag registry is
+  active, so the collision check is reachable there too.
+- **DoS-budget parity on the `Value` fast path.** `NoSpanLoader`
+  now enforces `max_sequence_length`, `max_mapping_keys`,
+  `max_merge_keys`, `max_document_length` (via `alias_bytes`),
+  and `MergeKeyPolicy::Error` — all previously span-full-only.
+- **`DuplicateKeyPolicy` parity.** `NoSpanLoader` now honours
+  `First` / `Last` / `Error` on the `Value` fast path instead
+  of always defaulting to last-wins.
+- **`from_str_with_config` enforces `max_document_length` inline.**
+  Previously the check lived only on the streaming path; typed
+  targets that dropped through to the AST loader could parse
+  oversized documents.
+- **Merge-key clone gate.** The typed-key `Value::clone()`
+  retained on every mapping key for the collision check is now
+  skipped when the key is a merge key (`<<`) that will be
+  buffered rather than inserted — `<<`-heavy documents no
+  longer pay the clone cost.
+
+### Added — API & tooling
+
+- **`Error::kind() -> ErrorKind`** — coarse-grained
+  classification for downstream error routing without
+  pattern-matching every variant of the `#[non_exhaustive]`
+  `Error` enum. `ErrorKind` is itself `#[non_exhaustive]`.
+- **Anchor typo suggestions on the AST loader.** Both `Loader`
+  and `NoSpanLoader` now populate `Error::UnknownAnchorAt`'s
+  `suggestion` field with the closest-known-anchor name and its
+  definition location — parity with the streaming path's
+  `build_unknown_anchor`.
+- **Special-value float keys.** `nan` / `inf` / `-inf` mapping
+  keys now stringify to their canonical plain-scalar form
+  (`"nan"`, `"inf"`, `"-inf"`) instead of Rust's `{:?}` output
+  (`"NaN"`), so keyed lookups match how the YAML was written.
+- **New criterion bench: `mapping_key_clone`** — guards the
+  ordinary vs merge-heavy mapping-key hot path against a
+  future regression.
+- **New fuzz target: `fuzz_no_span_loader`** — cross-checks
+  `from_str::<Value>` against `cst::parse_document` on
+  arbitrary input; any divergence is a parity bug.
+
+### Fixed — CST spans
+
+Five `span_at` correctness fixes from the earlier commits on
+this branch:
+
+- Alias references resolve through to the anchor value's span.
+- Block-collection value spans include their first line's
+  indentation, so the returned slice re-parses to the selected
+  value.
+- Keep-chomped block scalars (`|+`, `>+`) retain their kept
+  trailing blank lines in `span_at`.
+- Implicit-null nodes report no span (`None`) instead of the
+  indicator character's location.
+
+### Fixed — scanner
+
+- Lone `\r` (classic-Mac CR-only line breaks) is now a valid
+  line break for YAML 1.2.2 §5.4 compliance.
+
+### Notes for the `no_std` and typed-target audit
+
+- The distinct-typed key-collision check is now enforced on
+  every parse of `Value` — `std` and `no_std`.
+  `no_default_features` users get the same defensive behaviour
+  as `std` users.
+- The `Error::kind()` classifier reports `Budget` for every
+  `BudgetBreach` variant and for `RecursionLimitExceeded` /
+  `RepetitionLimitExceeded`. Note: `max_sequence_length` and
+  `max_mapping_keys` currently surface as `Error::Serialize`
+  (historical spelling) and classify as `Data` — worth folding
+  under `Error::Budget` in v0.0.15 for full parity.
 
 ## [v0.0.13] - 2026-07-05
 

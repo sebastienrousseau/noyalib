@@ -62,7 +62,7 @@
 
 ```toml
 [dependencies]
-noyalib = "0.0.11"
+noyalib = "0.0.14"
 ```
 
 ### As a CLI tool
@@ -106,7 +106,7 @@ maintainer runbook.
 
 ```toml
 [dependencies]
-noyalib = { version = "0.0.11", default-features = false }
+noyalib = { version = "0.0.14", default-features = false }
 ```
 
 Requires `alloc`. Core data binding (`from_str`, `to_string`, `Value`,
@@ -176,7 +176,7 @@ the application needs.
 ```toml
 # Example: rich diagnostics + schema validation
 [dependencies]
-noyalib = { version = "0.0.11", features = ["miette", "validate-schema"] }
+noyalib = { version = "0.0.14", features = ["miette", "validate-schema"] }
 ```
 
 **Optional features:** `lossless-u64` preserves YAML integer scalars above
@@ -290,7 +290,7 @@ tables for each.
 -[dependencies]
 -serde_yaml = "0.9"
 +[dependencies]
-+noyalib = "0.0.11"
++noyalib = "0.0.14"
 ```
 
 ```diff
