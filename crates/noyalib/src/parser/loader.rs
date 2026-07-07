@@ -1235,7 +1235,11 @@ fn value_to_key_string(value: Value) -> Option<String> {
                 return Some("nan".into());
             }
             if n.is_infinite() {
-                return Some(if n.is_sign_negative() { "-inf".into() } else { "inf".into() });
+                return Some(if n.is_sign_negative() {
+                    "-inf".into()
+                } else {
+                    "inf".into()
+                });
             }
             #[cfg(feature = "fast-float")]
             {

@@ -17,8 +17,8 @@
 // Copyright (c) 2026 Noyalib. All rights reserved.
 
 use noyalib::{
-    BudgetBreach, DuplicateKeyPolicy, Error, MergeKeyPolicy, ParserConfig, Value,
-    from_str, from_str_with_config,
+    BudgetBreach, DuplicateKeyPolicy, Error, MergeKeyPolicy, ParserConfig, Value, from_str,
+    from_str_with_config,
 };
 
 // ── Distinct-typed collisions on the Value fast path ──────────────

@@ -88,16 +88,12 @@ fn bench_mapping_key_clone(c: &mut Criterion) {
         );
 
         group.throughput(Throughput::Bytes(str_yaml.len() as u64));
-        group.bench_with_input(
-            BenchmarkId::new("string_keys", label),
-            &str_yaml,
-            |b, y| {
-                b.iter(|| {
-                    let v: Value = from_str(black_box(y)).unwrap();
-                    black_box(v);
-                });
-            },
-        );
+        group.bench_with_input(BenchmarkId::new("string_keys", label), &str_yaml, |b, y| {
+            b.iter(|| {
+                let v: Value = from_str(black_box(y)).unwrap();
+                black_box(v);
+            });
+        });
 
         group.throughput(Throughput::Bytes(merge_yaml.len() as u64));
         group.bench_with_input(
