@@ -1,6 +1,6 @@
 [package]
 name = "noyalib"
-version = "0.0.13"
+version = "0.0.14"
 edition = "2024"
 rust-version = "1.85.0"
 license = "MIT OR Apache-2.0"
@@ -429,6 +429,10 @@ required-features = ["simd"]
 
 [[bench]]
 name = "streaming_vs_value"
+harness = false
+
+[[bench]]
+name = "mapping_key_clone"
 harness = false
 
 [[bench]]

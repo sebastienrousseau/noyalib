@@ -82,3 +82,10 @@ path = "fuzz_targets/fuzz_double_quoted.rs"
 test = false
 doc = false
 bench = false
+
+[[bin]]
+name = "fuzz_no_span_loader"
+path = "fuzz_targets/fuzz_no_span_loader.rs"
+test = false
+doc = false
+bench = false
