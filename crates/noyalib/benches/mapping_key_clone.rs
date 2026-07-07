@@ -26,8 +26,19 @@
 #![allow(missing_docs, unused_results)]
 
 use criterion::{BenchmarkId, Criterion, Throughput, criterion_group, criterion_main};
-use noyalib::{Value, from_str};
+use noyalib::{ParserConfig, Value, from_str, from_str_with_config};
 use std::hint::black_box;
+
+/// Config with expanded alias/merge budgets so the merge-heavy
+/// bench isn't limited by `max_alias_expansions` at large sizes.
+/// The hot path being measured is the mapping-key insert/clone,
+/// not the DoS budgets — those are exercised by the parity tests.
+fn permissive_config() -> ParserConfig {
+    let mut cfg = ParserConfig::default();
+    cfg.max_alias_expansions = 100_000;
+    cfg.max_merge_keys = 100_000;
+    cfg
+}
 
 /// Build a mapping of `count` distinct integer keys with a
 /// two-character string value each. Exercises the non-merge
@@ -95,13 +106,18 @@ fn bench_mapping_key_clone(c: &mut Criterion) {
             });
         });
 
+        // The merge-heavy shape can produce more alias
+        // expansions than the default `max_alias_expansions`
+        // permits — lift that budget so the bench measures the
+        // key-insert path, not the DoS guard.
+        let merge_cfg = permissive_config();
         group.throughput(Throughput::Bytes(merge_yaml.len() as u64));
         group.bench_with_input(
             BenchmarkId::new("merge_heavy", label),
             &merge_yaml,
             |b, y| {
                 b.iter(|| {
-                    let v: Value = from_str(black_box(y)).unwrap();
+                    let v: Value = from_str_with_config(black_box(y), &merge_cfg).unwrap();
                     black_box(v);
                 });
             },
