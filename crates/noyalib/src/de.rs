@@ -402,17 +402,17 @@ where
     // takes effect. Active `properties` interpolation also disables
     // the streaming path so the post-parse substitution walk runs.
     //
-    // The `Value` target is *excluded* from the streaming path
-    // (unless a tag registry is active — the registry strips
-    // registered tags off scalars, and that only happens on the
-    // streaming path today). Rationale: serde asks the streaming
-    // deserializer for `String` keys, which stringifies typed
-    // scalars *before* `ValueVisitor::visit_map` can tell `1` and
-    // `"1"` apart — the distinct-typed `KeyCollision` guard is
-    // unreachable there. The `Value`-target fast path a few lines
-    // down runs the span-free loader which owns the collision
-    // check and the DoS budgets.
-    let value_target_bypass = is_value_target::<T>() && config.tag_registry.is_none();
+    // The `Value` target is *always* excluded from the streaming path.
+    // Rationale: serde asks the streaming deserializer for `String`
+    // keys, which stringifies typed scalars *before*
+    // `ValueVisitor::visit_map` can tell `1` and `"1"` apart — the
+    // distinct-typed `KeyCollision` guard is unreachable there. The
+    // `Value`-target fast path a few lines down runs the span-free
+    // loader, which owns the collision check and the DoS budgets — and
+    // strips registry-registered tags itself (loader `resolve_untagged_scalar`),
+    // so an active tag registry no longer forces `Value` back onto the
+    // streaming path where the collision guard cannot run.
+    let value_target_bypass = is_value_target::<T>();
     let stream_eligible = config.merge_key_policy == MergeKeyPolicy::Auto
         && !config.ignore_binary_tag_for_string
         && config.policies.is_empty()

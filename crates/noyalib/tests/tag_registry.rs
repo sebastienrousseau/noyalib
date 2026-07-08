@@ -8,7 +8,7 @@
 
 use std::sync::Arc;
 
-use noyalib::{ParserConfig, TagRegistry, from_str_with_config};
+use noyalib::{Error, ParserConfig, TagRegistry, Value, from_str_with_config};
 use serde::Deserialize;
 
 fn cfg(tags: &[&str]) -> ParserConfig {
@@ -89,8 +89,8 @@ fn unregistered_tag_on_scalar_falls_back_to_string() {
     // that wrapper and lets the typed target see through the
     // tag — the path the strongly-typed `Celsius` test uses.
     let cfg = ParserConfig::new();
-    let v: noyalib::Value = from_str_with_config("!Other 42", &cfg).unwrap();
-    let noyalib::Value::Tagged(t) = &v else {
+    let v: Value = from_str_with_config("!Other 42", &cfg).unwrap();
+    let Value::Tagged(t) = &v else {
         panic!("expected Tagged, got {v:?}");
     };
     assert_eq!(t.tag().as_str(), "!Other");
@@ -117,8 +117,8 @@ fn empty_registry_is_no_op() {
     // Empty registry is equivalent to no registry — same AST
     // routing + tag-preserving deserialise. The custom tag
     // surfaces as `Value::Tagged`; opt out by registering it.
-    let v: noyalib::Value = from_str_with_config("!Other 42", &cfg).unwrap();
-    let noyalib::Value::Tagged(t) = &v else {
+    let v: Value = from_str_with_config("!Other 42", &cfg).unwrap();
+    let Value::Tagged(t) = &v else {
         panic!("expected Tagged, got {v:?}");
     };
     assert_eq!(t.tag().as_str(), "!Other");
@@ -160,4 +160,61 @@ fn registry_contains_matches_registered() {
     assert!(!reg.contains("!c"));
     assert_eq!(reg.len(), 2);
     assert!(!reg.is_empty());
+}
+
+// ── Value target + registry: KeyCollision guard + streaming parity ───
+//
+// v0.0.14 review regression. `from_str::<Value>` WITH a tag registry
+// active used to route through the streaming path, which stringifies
+// keys before the distinct-typed `KeyCollision` guard can run — so `1`
+// and `"1"` silently collapsed. `Value`+registry now uses the AST loader
+// (which owns the guard) and the loader strips registered tags itself, so
+// its output matches what streaming produced.
+
+#[test]
+fn value_target_with_registry_detects_distinct_typed_key_collision() {
+    let cfg = cfg(&["!Celsius"]);
+    let res: Result<Value, _> = from_str_with_config("1: a\n\"1\": b\n", &cfg);
+    assert!(
+        matches!(res, Err(Error::KeyCollision(_))),
+        "Value+registry must detect the 1 vs \"1\" collision, got {res:?}"
+    );
+    // Parity with the no-registry Value path, which already errored.
+    let res2: Result<Value, _> = from_str_with_config("1: a\n\"1\": b\n", &ParserConfig::new());
+    assert!(matches!(res2, Err(Error::KeyCollision(_))));
+}
+
+#[test]
+fn value_target_registry_strip_is_style_correct() {
+    let cfg = cfg(&["!Celsius"]);
+    // Plain scalar under a registered tag: stripped, then schema-resolved
+    // to a number — exactly what streaming yields.
+    let v: Value = from_str_with_config("!Celsius 42", &cfg).unwrap();
+    assert_eq!(v.as_i64(), Some(42));
+    // Quoted scalar under the same tag: stripped, but the quoted STYLE is
+    // honoured so it stays a string. A post-parse Value walk could not know
+    // this (the AST tagged node discards style) — proving the strip must
+    // happen at parse time.
+    let v: Value = from_str_with_config("!Celsius \"42\"", &cfg).unwrap();
+    assert_eq!(v.as_str(), Some("42"));
+    // Without the registry the tag is preserved as Value::Tagged.
+    let v: Value = from_str_with_config("!Celsius 42", &ParserConfig::new()).unwrap();
+    assert!(
+        v.as_tagged().is_some(),
+        "unregistered tag must stay tagged, got {v:?}"
+    );
+}
+
+#[test]
+fn value_target_registry_strips_collection_tag() {
+    // A registered tag on a collection is stripped too (streaming parity),
+    // exposing the bare mapping rather than a Value::Tagged wrapper.
+    let cfg = cfg(&["!Config"]);
+    let v: Value = from_str_with_config("!Config\na: 1\nb: 2\n", &cfg).unwrap();
+    assert!(
+        v.as_tagged().is_none(),
+        "registered collection tag must be stripped, got {v:?}"
+    );
+    assert_eq!(v["a"].as_i64(), Some(1));
+    assert_eq!(v["b"].as_i64(), Some(2));
 }

@@ -556,23 +556,9 @@ impl<'a> StreamingDeserializer<'a> {
     /// resolution) that the AST resolver must see. Registering one of
     /// those tags is a no-op.
     fn tag_in_registry(&self, tag: &(String, String)) -> bool {
-        if matches!(
-            (tag.0.as_str(), tag.1.as_str()),
-            ("!!", "int")
-                | ("!!", "float")
-                | ("!!", "str")
-                | ("!!", "bool")
-                | ("!!", "null")
-                | ("!!", "seq")
-                | ("!!", "map")
-        ) {
-            return false;
-        }
-        let Some(registry) = self.tag_registry.as_ref() else {
-            return false;
-        };
-        let full = format!("{}{}", tag.0, tag.1);
-        registry.contains(&full)
+        self.tag_registry
+            .as_ref()
+            .is_some_and(|r| tag_is_registry_stripped(&tag.0, &tag.1, r))
     }
 
     /// Put a tag back onto the currently-cached event. Used to restore
@@ -1597,6 +1583,33 @@ fn is_fallback_error(e: &Error) -> bool {
         Error::Custom(msg) => msg == FALLBACK_SENTINEL,
         _ => false,
     }
+}
+
+/// Is the tag `{handle}{suffix}` registered for strip-through in `registry`?
+///
+/// Core YAML 1.2 tags (`!!int`, `!!float`, `!!str`, `!!bool`, `!!null`,
+/// `!!seq`, `!!map`) are never stripped — their tag carries semantic
+/// resolution the loader/streamer must see, so registering one is a no-op.
+/// Shared by the streaming deserializer and the AST loader so both agree on
+/// exactly what a registry strips (three-loader parity).
+pub(crate) fn tag_is_registry_stripped(
+    handle: &str,
+    suffix: &str,
+    registry: &crate::TagRegistry,
+) -> bool {
+    if matches!(
+        (handle, suffix),
+        ("!!", "int")
+            | ("!!", "float")
+            | ("!!", "str")
+            | ("!!", "bool")
+            | ("!!", "null")
+            | ("!!", "seq")
+            | ("!!", "map")
+    ) {
+        return false;
+    }
+    registry.contains(&format!("{handle}{suffix}"))
 }
 
 /// Resolve a plain scalar according to YAML 1.2's implicit-typing
