@@ -487,7 +487,7 @@ diagnostics list and offer autocomplete on the recoverable
 subtrees.
 
 ```rust
-// Cargo.toml: noyalib = { version = "0.0.11", features = ["recovery"] }
+// Cargo.toml: noyalib = { version = "0.0.14", features = ["recovery"] }
 use noyalib::recovery::parse_lenient;
 
 let half_typed = "name: noyalib\nfeatures: [recovery, sval\n# ^ unclosed\n";
@@ -510,7 +510,7 @@ For high-concurrency services parsing YAML from network sources,
 the `tokio` feature lets you skip `spawn_blocking`:
 
 ```rust
-// Cargo.toml: noyalib = { version = "0.0.11", features = ["tokio"] }
+// Cargo.toml: noyalib = { version = "0.0.14", features = ["tokio"] }
 use noyalib::tokio_async::{from_async_reader_multi, YamlDecoder};
 
 // Pattern 1: drain-and-parse
@@ -534,7 +534,7 @@ cost of serde monomorphisation. The adapter implements
 `sval::Stream` consumer can read it:
 
 ```rust
-// Cargo.toml: noyalib = { version = "0.0.11", features = ["sval"] }
+// Cargo.toml: noyalib = { version = "0.0.14", features = ["sval"] }
 let value: noyalib::Value = noyalib::from_str("name: noyalib")?;
 sval::Value::stream(&value, &mut my_stream)?;
 ```
