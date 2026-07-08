@@ -49,6 +49,10 @@ pub struct ParseConfig {
     #[cfg(feature = "lossless-u64")]
     pub lossless_u64_integers: bool,
     pub policies: Vec<Arc<dyn crate::policy::Policy>>,
+    /// Tags registered for strip-through. When set, the loader resolves a
+    /// registered tag's scalar as if untagged (matching the streaming path)
+    /// instead of producing a [`Value::Tagged`].
+    pub tag_registry: Option<Arc<crate::TagRegistry>>,
 }
 
 impl Default for ParseConfig {
@@ -76,6 +80,7 @@ impl Default for ParseConfig {
             #[cfg(feature = "lossless-u64")]
             lossless_u64_integers: false,
             policies: Vec::new(),
+            tag_registry: None,
         }
     }
 }
@@ -126,6 +131,7 @@ impl From<&crate::de::ParserConfig> for ParseConfig {
             #[cfg(feature = "lossless-u64")]
             lossless_u64_integers: c.lossless_u64_integers,
             policies: c.policies.clone(),
+            tag_registry: c.tag_registry.clone(),
         }
     }
 }
@@ -420,32 +426,25 @@ impl<'a> Loader<'a> {
                     && matches!(style, crate::parser::ScalarStyle::Plain)
                     && anchor.is_none()
                     && tag.is_none();
-                let v = if let Some(t) = tag {
-                    resolve_tagged_scalar(&t.0, &t.1, &value, self.config.lossless_u64_integers())?
-                } else if style != crate::parser::ScalarStyle::Plain {
-                    // Quoted/literal/folded scalars always resolve as
-                    // strings — YAML schema resolution only applies to
-                    // plain scalars.
-                    Value::String(value.into_owned())
-                } else {
-                    match crate::streaming::resolve_plain_ext(
-                        &value,
-                        self.config.strict_booleans,
-                        self.config.legacy_booleans,
-                        self.config.no_schema,
-                        self.config.legacy_octal_numbers,
-                        self.config.legacy_sexagesimal,
-                        self.config.lossless_u64_integers(),
-                    ) {
-                        crate::streaming::Scalar::Null => Value::Null,
-                        crate::streaming::Scalar::Bool(b) => Value::Bool(b),
-                        crate::streaming::Scalar::Int(i) => Value::Number(Number::Integer(i)),
-                        #[cfg(feature = "lossless-u64")]
-                        crate::streaming::Scalar::Uint(u) => Value::Number(Number::Unsigned(u)),
-                        crate::streaming::Scalar::Float(f) => Value::Number(Number::Float(f)),
-                        crate::streaming::Scalar::Str(s) => Value::String(s.into_owned()),
-                    }
-                };
+                let v =
+                    if let Some(t) = tag {
+                        if self.config.tag_registry.as_ref().is_some_and(|r| {
+                            crate::streaming::tag_is_registry_stripped(&t.0, &t.1, r)
+                        }) {
+                            // Registered tag: strip through and resolve as if
+                            // untagged, exactly as the streaming path does.
+                            resolve_untagged_scalar(value, style, self.config)
+                        } else {
+                            resolve_tagged_scalar(
+                                &t.0,
+                                &t.1,
+                                &value,
+                                self.config.lossless_u64_integers(),
+                            )?
+                        }
+                    } else {
+                        resolve_untagged_scalar(value, style, self.config)
+                    };
 
                 let st = if is_implicit_empty {
                     SpanTree::Leaf(span.start, span.start)
@@ -487,7 +486,7 @@ impl<'a> Loader<'a> {
                 }) = self.stack.pop()
                 {
                     let inner = Value::Sequence(items);
-                    let v = wrap_with_tag(inner, tag.as_ref());
+                    let v = wrap_with_tag(inner, tag.as_ref(), self.config.tag_registry.as_deref());
                     let st = SpanTree::Sequence {
                         start,
                         end: span.end,
@@ -542,7 +541,7 @@ impl<'a> Loader<'a> {
                     }
 
                     let inner = Value::Mapping(map);
-                    let v = wrap_with_tag(inner, tag.as_ref());
+                    let v = wrap_with_tag(inner, tag.as_ref(), self.config.tag_registry.as_deref());
                     let st = SpanTree::Mapping {
                         start,
                         end: span.end,
@@ -909,6 +908,13 @@ impl<'a> NoSpanLoader<'a> {
                 self.in_document = true;
                 self.anchor_map.clear();
                 self.anchor_def_spans.clear();
+                // Reset the per-document alias budget, matching the span-full
+                // Loader (see DocumentStart above). Without this, alias counts
+                // accumulate across a multi-document stream, so a stream whose
+                // documents are each within budget can be spuriously rejected
+                // on the no-span path — a std/no_std divergence.
+                self.alias_count = 0;
+                self.alias_bytes = 0;
             }
             Event::DocumentEnd => {
                 self.in_document = false;
@@ -957,29 +963,25 @@ impl<'a> NoSpanLoader<'a> {
                 tag,
                 span,
             } => {
-                let v = if let Some(t) = tag {
-                    resolve_tagged_scalar(&t.0, &t.1, &value, self.config.lossless_u64_integers())?
-                } else if style != crate::parser::ScalarStyle::Plain {
-                    Value::String(value.into_owned())
-                } else {
-                    match crate::streaming::resolve_plain_ext(
-                        &value,
-                        self.config.strict_booleans,
-                        self.config.legacy_booleans,
-                        self.config.no_schema,
-                        self.config.legacy_octal_numbers,
-                        self.config.legacy_sexagesimal,
-                        self.config.lossless_u64_integers(),
-                    ) {
-                        crate::streaming::Scalar::Null => Value::Null,
-                        crate::streaming::Scalar::Bool(b) => Value::Bool(b),
-                        crate::streaming::Scalar::Int(i) => Value::Number(Number::Integer(i)),
-                        #[cfg(feature = "lossless-u64")]
-                        crate::streaming::Scalar::Uint(u) => Value::Number(Number::Unsigned(u)),
-                        crate::streaming::Scalar::Float(f) => Value::Number(Number::Float(f)),
-                        crate::streaming::Scalar::Str(s) => Value::String(s.into_owned()),
-                    }
-                };
+                let v =
+                    if let Some(t) = tag {
+                        if self.config.tag_registry.as_ref().is_some_and(|r| {
+                            crate::streaming::tag_is_registry_stripped(&t.0, &t.1, r)
+                        }) {
+                            // Registered tag: strip through and resolve as if
+                            // untagged, exactly as the streaming path does.
+                            resolve_untagged_scalar(value, style, self.config)
+                        } else {
+                            resolve_tagged_scalar(
+                                &t.0,
+                                &t.1,
+                                &value,
+                                self.config.lossless_u64_integers(),
+                            )?
+                        }
+                    } else {
+                        resolve_untagged_scalar(value, style, self.config)
+                    };
                 if let Some(name) = anchor {
                     let _ = self.anchor_def_spans.insert(name.clone(), span.start);
                     let _ = self.anchor_map.insert(name, v.clone());
@@ -1004,7 +1006,7 @@ impl<'a> NoSpanLoader<'a> {
                 self.depth = self.depth.saturating_sub(1);
                 if let Some(NoSpanFrame::Sequence { items, anchor, tag }) = self.stack.pop() {
                     let inner = Value::Sequence(items);
-                    let v = wrap_with_tag(inner, tag.as_ref());
+                    let v = wrap_with_tag(inner, tag.as_ref(), self.config.tag_registry.as_deref());
                     if let Some(name) = anchor {
                         let _ = self.anchor_map.insert(name, v.clone());
                     }
@@ -1041,7 +1043,7 @@ impl<'a> NoSpanLoader<'a> {
                         apply_merge(&mut map, mv)?;
                     }
                     let inner = Value::Mapping(map);
-                    let v = wrap_with_tag(inner, tag.as_ref());
+                    let v = wrap_with_tag(inner, tag.as_ref(), self.config.tag_registry.as_deref());
                     if let Some(name) = anchor {
                         let _ = self.anchor_map.insert(name, v.clone());
                     }
@@ -1287,10 +1289,19 @@ fn value_to_key_string(value: Value) -> Option<String> {
 /// stripped — they are no-ops on a sequence/mapping anyway and
 /// `!!seq` / `!!map` would otherwise leak into the deserialise
 /// return path as redundant metadata.
-fn wrap_with_tag(inner: Value, tag: Option<&(String, String)>) -> Value {
+fn wrap_with_tag(
+    inner: Value,
+    tag: Option<&(String, String)>,
+    registry: Option<&crate::TagRegistry>,
+) -> Value {
     let Some((handle, suffix)) = tag else {
         return inner;
     };
+    // A tag registered for strip-through drops the tag and exposes the bare
+    // collection, matching what the streaming path yields.
+    if registry.is_some_and(|r| crate::streaming::tag_is_registry_stripped(handle, suffix, r)) {
+        return inner;
+    }
     // `!!seq` / `!!map` (and the explicit URI form) are
     // pure-metadata core tags on collections; the `Sequence` or
     // `Mapping` variant of `Value` already conveys "seq" /
@@ -1322,6 +1333,40 @@ fn concat_str(a: &str, b: &str) -> String {
 /// Resolve a tagged scalar into a typed `Value`. Handles the YAML 1.2
 /// core schema tags (`!!int`, `!!float`, `!!bool`, `!!null`, `!!str`)
 /// and any custom tag falls through to the `Tagged` wrapper.
+/// Resolve a scalar as if it carried no tag: quoted / literal / folded →
+/// `String`; plain → YAML 1.2 schema resolution (via the shared
+/// `resolve_plain_ext`, so the two loaders and the streaming path agree).
+/// This is also the strip-through result for a tag registered in the active
+/// [`TagRegistry`], keeping AST and streaming byte-for-byte equivalent.
+fn resolve_untagged_scalar(
+    value: Cow<'_, str>,
+    style: crate::parser::ScalarStyle,
+    config: &ParseConfig,
+) -> Value {
+    if style != crate::parser::ScalarStyle::Plain {
+        // Quoted/literal/folded scalars always resolve as strings — YAML
+        // schema resolution only applies to plain scalars.
+        return Value::String(value.into_owned());
+    }
+    match crate::streaming::resolve_plain_ext(
+        &value,
+        config.strict_booleans,
+        config.legacy_booleans,
+        config.no_schema,
+        config.legacy_octal_numbers,
+        config.legacy_sexagesimal,
+        config.lossless_u64_integers(),
+    ) {
+        crate::streaming::Scalar::Null => Value::Null,
+        crate::streaming::Scalar::Bool(b) => Value::Bool(b),
+        crate::streaming::Scalar::Int(i) => Value::Number(Number::Integer(i)),
+        #[cfg(feature = "lossless-u64")]
+        crate::streaming::Scalar::Uint(u) => Value::Number(Number::Unsigned(u)),
+        crate::streaming::Scalar::Float(f) => Value::Number(Number::Float(f)),
+        crate::streaming::Scalar::Str(s) => Value::String(s.into_owned()),
+    }
+}
+
 fn resolve_tagged_scalar(
     handle: &str,
     suffix: &str,
@@ -1487,4 +1532,48 @@ fn run_event_policies(
         }
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // Regression (v0.0.14 review): NoSpanLoader must zero the alias budget
+    // at each DocumentStart, like the span-full Loader. A multi-document
+    // stream whose documents are each within budget must not be rejected
+    // because the per-document counts accumulate across the stream (a
+    // std/no_std divergence, since the no-span loader is the no_std default).
+    #[test]
+    fn no_span_loader_resets_alias_budget_per_document() {
+        let src = "\
+p: &x 1
+q: *x
+r: *x
+---
+p: &y 2
+q: *y
+r: *y
+---
+p: &z 3
+q: *z
+r: *z
+";
+        // Each document uses exactly 2 aliases (== the limit); three
+        // documents sum to 6. Pre-fix the no-span loader accumulated and
+        // tripped RepetitionLimitExceeded partway through the second doc.
+        let config = ParseConfig {
+            max_alias_expansions: 2,
+            ..ParseConfig::default()
+        };
+        let docs = load_all_no_spans(src, &config)
+            .expect("each document is within the per-document alias budget");
+        assert_eq!(docs.len(), 3);
+
+        // Cross-path parity: the span-full loader already resets per
+        // document, so it accepts the identical stream under the identical
+        // budget. Both paths must agree.
+        let via_span_full =
+            crate::parser::parse(src, &config).expect("span-full loader accepts the same stream");
+        assert_eq!(via_span_full.len(), 3);
+    }
 }
