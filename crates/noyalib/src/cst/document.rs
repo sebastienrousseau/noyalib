@@ -474,6 +474,13 @@ impl Document {
     /// assert_eq!(doc.to_string(), "name: foo\nversion: 0.0.2\n");
     /// ```
     pub fn set(&mut self, path: &str, fragment: &str) -> Result<()> {
+        let segments = parse_query_path(path);
+        if value_is_alias_reference(&self.green, &segments, &self.source) {
+            return Err(Error::Parse(format!(
+                "cannot set `{path}`: its value is an alias reference (`*name`); \
+                 edit the anchor definition or replace the alias explicitly"
+            )));
+        }
         let (s, e) = self
             .span_at(path)
             .ok_or_else(|| Error::Parse(format!("path not found: {path}")))?;
@@ -516,6 +523,13 @@ impl Document {
     /// assert_eq!(doc.to_string(), "name: noyalib\nversion: 0.0.2\n");
     /// ```
     pub fn set_value(&mut self, path: &str, value: &Value) -> Result<()> {
+        let segments = parse_query_path(path);
+        if value_is_alias_reference(&self.green, &segments, &self.source) {
+            return Err(Error::Parse(format!(
+                "cannot set `{path}`: its value is an alias reference (`*name`); \
+                 edit the anchor definition or replace the alias explicitly"
+            )));
+        }
         let (s, e) = self
             .span_at(path)
             .ok_or_else(|| Error::Parse(format!("path not found: {path}")))?;
@@ -1156,6 +1170,127 @@ fn resolve_path_in_green(
     // point.
     let (collection, base) = first_collection_child(root, 0)?;
     walk_path(collection, segments, base, source)
+}
+
+/// Does the value at `segments` resolve *directly* to an alias
+/// reference (`*name`)?
+///
+/// `span_at` deliberately resolves an alias *through* to its anchor's
+/// definition span (issue #149) — the right target for a read, but the
+/// wrong one for a write: splicing there rewrites the anchor's value and
+/// corrupts a *different* key. `set` / `set_value` call this and refuse
+/// the edit rather than mutate the wrong bytes. Read-only span
+/// resolution is untouched.
+fn value_is_alias_reference(root: &GreenNode, segments: &[QuerySegment], source: &str) -> bool {
+    match first_collection_child(root, 0) {
+        Some((collection, base)) => terminal_is_alias(collection, segments, base, source),
+        None => false,
+    }
+}
+
+fn terminal_is_alias(
+    node: &GreenNode,
+    segments: &[QuerySegment],
+    base: usize,
+    source: &str,
+) -> bool {
+    let Some((head, tail)) = segments.split_first() else {
+        return false;
+    };
+    match (head, node.kind()) {
+        (QuerySegment::Key(k), SyntaxKind::BlockMapping | SyntaxKind::FlowMapping) => {
+            // Last matching entry wins (DuplicateKeyPolicy::Last), mirroring
+            // walk_mapping so this agrees with what span_at would target.
+            let mut found: Option<(&GreenNode, usize)> = None;
+            let mut pos = base;
+            for child in node.children() {
+                let len = child.text_len();
+                if let GreenChild::Node(entry) = child {
+                    if entry.kind() == SyntaxKind::MappingEntry
+                        && entry_key_text(entry, source, pos).as_deref() == Some(k.as_str())
+                    {
+                        found = Some((entry, pos));
+                    }
+                }
+                pos += len;
+            }
+            match found {
+                Some((entry, entry_pos)) => value_after_sep_is_alias(
+                    entry,
+                    entry_pos,
+                    tail,
+                    source,
+                    SyntaxKind::ColonIndicator,
+                ),
+                None => false,
+            }
+        }
+        (QuerySegment::Index(i), SyntaxKind::BlockSequence | SyntaxKind::FlowSequence) => {
+            let mut pos = base;
+            let mut idx = 0usize;
+            for child in node.children() {
+                let len = child.text_len();
+                if let GreenChild::Node(item) = child {
+                    if item.kind() == SyntaxKind::SequenceItem {
+                        if idx == *i {
+                            return value_after_sep_is_alias(
+                                item,
+                                pos,
+                                tail,
+                                source,
+                                SyntaxKind::DashIndicator,
+                            );
+                        }
+                        idx += 1;
+                    }
+                }
+                pos += len;
+            }
+            false
+        }
+        // Wildcards / kind mismatch: span_at would bail to the cache; the
+        // conservative answer for a write is "not a known alias target".
+        _ => false,
+    }
+}
+
+/// Within a `MappingEntry` / `SequenceItem`, decide whether the value —
+/// the first non-trivia, non-property token after `sep` — is an alias.
+/// For a deeper path, recurse into a nested collection instead.
+fn value_after_sep_is_alias(
+    container: &GreenNode,
+    base: usize,
+    tail: &[QuerySegment],
+    source: &str,
+    sep: SyntaxKind,
+) -> bool {
+    let mut pos = base;
+    let mut after_sep = false;
+    for child in container.children() {
+        let len = child.text_len();
+        match child {
+            GreenChild::Token { kind, .. } => {
+                if !after_sep {
+                    if *kind == sep {
+                        after_sep = true;
+                    }
+                } else if *kind == SyntaxKind::AliasMark {
+                    // Only a *terminal* alias is a mutation hazard; a path that
+                    // tries to descend into an alias resolves nowhere anyway.
+                    return tail.is_empty();
+                } else if !is_trivia_kind(*kind) && !is_value_property_kind(*kind) {
+                    return false; // a real scalar leaf — safe to mutate
+                }
+            }
+            GreenChild::Node(inner) => {
+                if after_sep {
+                    return terminal_is_alias(inner, tail, pos, source);
+                }
+            }
+        }
+        pos += len;
+    }
+    false
 }
 
 fn first_collection_child(node: &GreenNode, base: usize) -> Option<(&GreenNode, usize)> {

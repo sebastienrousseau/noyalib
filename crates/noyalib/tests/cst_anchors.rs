@@ -349,3 +349,48 @@ other: 1
     assert!(doc.to_string().contains("&flags"));
     assert!(doc.to_string().contains("other: 2"));
 }
+
+// ── Regression: set/set_value must not write through an alias ────────
+
+#[test]
+fn set_through_alias_is_refused_not_written_to_the_anchor() {
+    // v0.0.14 review regression. `span_at` resolves an alias reference
+    // *through* to its anchor's value span (issue #149) — the correct
+    // target for a read. `set` / `set_value` reused that span for writes,
+    // so `set("ref", …)` spliced over the ANCHOR's value (`foo` on the
+    // `base:` line), silently corrupting a *different* key and leaving the
+    // alias untouched. They must refuse the edit instead.
+    let mut doc = parse_document("base: &a foo\nref: *a\n").unwrap();
+    let before = doc.to_string();
+
+    let err = doc.set("ref", "bar");
+    assert!(
+        err.is_err(),
+        "set through an alias must be refused, not silently mis-applied to the anchor"
+    );
+    assert_eq!(
+        doc.to_string(),
+        before,
+        "a refused set must leave the document byte-for-byte unchanged (no anchor corruption)"
+    );
+
+    // set_value shares the hazard and the guard.
+    let err = doc.set_value("ref", &noyalib::Value::String("bar".into()));
+    assert!(err.is_err());
+    assert_eq!(doc.to_string(), before);
+
+    // A plain (non-aliased) sibling value is still writable — the guard is
+    // scoped to alias targets, it does not block ordinary edits.
+    let mut doc2 = parse_document("base: &a foo\nplain: keep\n").unwrap();
+    doc2.set("plain", "changed").unwrap();
+    assert!(doc2.to_string().contains("plain: changed"));
+}
+
+#[test]
+fn set_through_aliased_sequence_item_is_refused() {
+    // The same hazard exists for an alias used as a sequence item.
+    let mut doc = parse_document("anchor: &a foo\nlist:\n  - *a\n").unwrap();
+    let before = doc.to_string();
+    assert!(doc.set("list.0", "bar").is_err());
+    assert_eq!(doc.to_string(), before);
+}
