@@ -908,6 +908,13 @@ impl<'a> NoSpanLoader<'a> {
                 self.in_document = true;
                 self.anchor_map.clear();
                 self.anchor_def_spans.clear();
+                // Reset the per-document alias budget, matching the span-full
+                // Loader (see DocumentStart above). Without this, alias counts
+                // accumulate across a multi-document stream, so a stream whose
+                // documents are each within budget can be spuriously rejected
+                // on the no-span path — a std/no_std divergence.
+                self.alias_count = 0;
+                self.alias_bytes = 0;
             }
             Event::DocumentEnd => {
                 self.in_document = false;
@@ -1525,4 +1532,48 @@ fn run_event_policies(
         }
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // Regression (v0.0.14 review): NoSpanLoader must zero the alias budget
+    // at each DocumentStart, like the span-full Loader. A multi-document
+    // stream whose documents are each within budget must not be rejected
+    // because the per-document counts accumulate across the stream (a
+    // std/no_std divergence, since the no-span loader is the no_std default).
+    #[test]
+    fn no_span_loader_resets_alias_budget_per_document() {
+        let src = "\
+p: &x 1
+q: *x
+r: *x
+---
+p: &y 2
+q: *y
+r: *y
+---
+p: &z 3
+q: *z
+r: *z
+";
+        // Each document uses exactly 2 aliases (== the limit); three
+        // documents sum to 6. Pre-fix the no-span loader accumulated and
+        // tripped RepetitionLimitExceeded partway through the second doc.
+        let config = ParseConfig {
+            max_alias_expansions: 2,
+            ..ParseConfig::default()
+        };
+        let docs = load_all_no_spans(src, &config)
+            .expect("each document is within the per-document alias budget");
+        assert_eq!(docs.len(), 3);
+
+        // Cross-path parity: the span-full loader already resets per
+        // document, so it accepts the identical stream under the identical
+        // budget. Both paths must agree.
+        let via_span_full =
+            crate::parser::parse(src, &config).expect("span-full loader accepts the same stream");
+        assert_eq!(via_span_full.len(), 3);
+    }
 }
