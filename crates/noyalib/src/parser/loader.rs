@@ -1266,7 +1266,7 @@ impl<'a> NoSpanLoader<'a> {
 /// sequences and mappings use a deterministic inline YAML-like representation
 /// so the parser can still build a `Mapping<String, Value>` from YAML with
 /// complex keys (common in the official YAML Test Suite).
-fn value_to_key_string(value: Value) -> Option<String> {
+pub(crate) fn value_to_key_string(value: Value) -> Option<String> {
     use core::fmt::Write as _;
     match value {
         Value::String(s) => Some(s),
