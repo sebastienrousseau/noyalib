@@ -876,6 +876,12 @@ struct NoSpanLoader<'a> {
     // `max_merge_keys`). Mirrors the span-full loader's counter so a
     // billion-merges DoS is refused on the `Value` fast path too.
     merge_key_count: usize,
+    /// Total parser events seen (for `max_events`).
+    event_count: usize,
+    /// Cumulative scalar bytes seen (for `max_total_scalar_bytes`).
+    scalar_bytes: usize,
+    /// Anchors defined (denominator for the `alias_anchor_ratio` heuristic).
+    anchor_count: usize,
     config: &'a ParseConfig,
     depth: usize,
     in_document: bool,
@@ -891,6 +897,9 @@ impl<'a> NoSpanLoader<'a> {
             alias_count: 0,
             alias_bytes: 0,
             merge_key_count: 0,
+            event_count: 0,
+            scalar_bytes: 0,
+            anchor_count: 0,
             config,
             depth: 0,
             in_document: false,
@@ -905,6 +914,37 @@ impl<'a> NoSpanLoader<'a> {
     fn process_event(&mut self, event: Event<'_>, input: &str) -> Result<()> {
         if !self.config.policies.is_empty() {
             run_event_policies(&event, &self.config.policies)?;
+        }
+        // Budget parity with the span-full Loader (see its `process_event`):
+        // total events, cumulative scalar bytes, and the anchor counter that
+        // the `alias_anchor_ratio` heuristic divides by.
+        self.event_count += 1;
+        if self.event_count > self.config.max_events {
+            return Err(Error::Budget(crate::BudgetBreach::MaxEvents {
+                limit: self.config.max_events,
+                observed: self.event_count,
+            }));
+        }
+        if let Event::Scalar { value, .. } = &event {
+            self.scalar_bytes = self.scalar_bytes.saturating_add(value.len());
+            if self.scalar_bytes > self.config.max_total_scalar_bytes {
+                return Err(Error::Budget(crate::BudgetBreach::MaxTotalScalarBytes {
+                    limit: self.config.max_total_scalar_bytes,
+                    observed: self.scalar_bytes,
+                }));
+            }
+        }
+        if let Event::Scalar {
+            anchor: Some(_), ..
+        }
+        | Event::SequenceStart {
+            anchor: Some(_), ..
+        }
+        | Event::MappingStart {
+            anchor: Some(_), ..
+        } = &event
+        {
+            self.anchor_count = self.anchor_count.saturating_add(1);
         }
         match event {
             Event::StreamStart | Event::StreamEnd => {}
@@ -934,9 +974,24 @@ impl<'a> NoSpanLoader<'a> {
                 self.in_document = false;
             }
             Event::Alias { anchor, span } => {
+                if !self.in_document {
+                    return Err(Error::parse_at("alias outside document", input, span.start));
+                }
                 self.alias_count += 1;
                 if self.alias_count > self.config.max_alias_expansions {
                     return Err(Error::RepetitionLimitExceeded);
+                }
+                // Budget: alias_anchor_ratio (billion-laughs amplification
+                // fingerprint), mirroring the span-full Loader.
+                if let Some(ratio) = self.config.alias_anchor_ratio {
+                    let anchors = self.anchor_count.max(1) as f64;
+                    if (self.alias_count as f64) > ratio * anchors {
+                        return Err(Error::Budget(crate::BudgetBreach::AliasAnchorRatio {
+                            ratio,
+                            anchors: self.anchor_count,
+                            aliases: self.alias_count,
+                        }));
+                    }
                 }
                 let value = self.anchor_map.get(&anchor).cloned().ok_or_else(|| {
                     let alias_loc = crate::error::Location::from_index(input, span.start);
