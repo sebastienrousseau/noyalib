@@ -394,3 +394,40 @@ fn set_through_aliased_sequence_item_is_refused() {
     assert!(doc.set("list.0", "bar").is_err());
     assert_eq!(doc.to_string(), before);
 }
+
+// ── Regression: alias-write guard must cover undecodable (quoted) keys ──
+
+#[test]
+fn set_through_double_quoted_alias_key_is_refused() {
+    // ultrareview BUG003. The alias-write guard matched keys via
+    // `entry_key_text`, which can't decode double-quoted keys, so
+    // `set("target_key", …)` on a double-quoted alias entry slipped past
+    // the guard and spliced the ANCHOR's value — silent corruption of a
+    // different key. Must be refused.
+    let src = "anchor_key: &a foo\n\"target_key\": *a\n";
+    let mut doc = parse_document(src).unwrap();
+    let before = doc.to_string();
+    assert!(
+        doc.set("target_key", "bar").is_err(),
+        "set through a double-quoted alias key must be refused"
+    );
+    assert_eq!(
+        doc.to_string(),
+        before,
+        "document must be unchanged (no anchor corruption)"
+    );
+}
+
+#[test]
+fn set_double_quoted_key_with_plain_value_still_works() {
+    // No regression: an ordinary double-quoted key whose value is NOT an
+    // alias is still writable — the guard only fires on alias values.
+    let mut doc = parse_document("\"my key\": old\nplain: keep\n").unwrap();
+    doc.set("my key", "new").unwrap();
+    assert!(
+        doc.to_string().contains("\"my key\": new"),
+        "got {:?}",
+        doc.to_string()
+    );
+    assert!(doc.to_string().contains("plain: keep"));
+}

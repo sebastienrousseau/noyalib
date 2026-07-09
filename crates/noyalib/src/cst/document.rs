@@ -1202,14 +1202,36 @@ fn terminal_is_alias(
             // Last matching entry wins (DuplicateKeyPolicy::Last), mirroring
             // walk_mapping so this agrees with what span_at would target.
             let mut found: Option<(&GreenNode, usize)> = None;
+            // `entry_key_text` can't decode every key spelling (double-quoted,
+            // complex, merge). For such an entry `span_at` falls back to the
+            // typed cache and, matching by the cache's decoded key, resolves an
+            // alias *through* to its anchor — the exact write hazard this guard
+            // exists to catch. We can't match the undecodable key by text here,
+            // so if any undecodable-key entry's value is an alias, treat the
+            // (undecodable) target as a possible hit and refuse conservatively.
+            let mut undecodable_alias = false;
             let mut pos = base;
             for child in node.children() {
                 let len = child.text_len();
                 if let GreenChild::Node(entry) = child {
-                    if entry.kind() == SyntaxKind::MappingEntry
-                        && entry_key_text(entry, source, pos).as_deref() == Some(k.as_str())
-                    {
-                        found = Some((entry, pos));
+                    if entry.kind() == SyntaxKind::MappingEntry {
+                        match entry_key_text(entry, source, pos) {
+                            Some(key) if key.as_ref() == k.as_str() => {
+                                found = Some((entry, pos));
+                            }
+                            Some(_) => {}
+                            None => {
+                                if value_after_sep_is_alias(
+                                    entry,
+                                    pos,
+                                    tail,
+                                    source,
+                                    SyntaxKind::ColonIndicator,
+                                ) {
+                                    undecodable_alias = true;
+                                }
+                            }
+                        }
                     }
                 }
                 pos += len;
@@ -1222,7 +1244,9 @@ fn terminal_is_alias(
                     source,
                     SyntaxKind::ColonIndicator,
                 ),
-                None => false,
+                // No decodable key matched: refuse if an undecodable-key entry
+                // is an alias (the target could be it).
+                None => undecodable_alias,
             }
         }
         (QuerySegment::Index(i), SyntaxKind::BlockSequence | SyntaxKind::FlowSequence) => {
@@ -1692,6 +1716,13 @@ fn trim_value_span(source: &str, start: usize, end: usize) -> (usize, usize) {
 /// other node kinds.
 fn is_keep_chomped_block_scalar(source: &str, start: usize, end: usize) -> bool {
     let bytes = source.as_bytes();
+    // The value span's start may have been widened leftward over an anchor
+    // (`&name`) / tag (`!Tag`, `!!str`) property prefix (see `entry_value`), so
+    // the block indicator is not necessarily at `start`. Skip those property
+    // tokens before inspecting for `|` / `>`, otherwise an anchored/tagged
+    // keep-chomped scalar (`key: &anc |+`) is misclassified and its kept
+    // trailing blank lines are trimmed.
+    let start = skip_value_property_prefix(bytes, start, end);
     if start >= end || (bytes[start] != b'|' && bytes[start] != b'>') {
         return false;
     }
@@ -1705,6 +1736,26 @@ fn is_keep_chomped_block_scalar(source: &str, start: usize, end: usize) -> bool 
         }
     }
     false
+}
+
+/// Advance past leading anchor (`&name`) / tag (`!Tag`, `!!str`) property
+/// tokens and the whitespace between them, returning the index of the value
+/// content proper. Value spans are widened leftward over these properties, so
+/// callers inspecting the value's first byte must skip them first.
+fn skip_value_property_prefix(bytes: &[u8], mut start: usize, end: usize) -> usize {
+    loop {
+        while start < end && matches!(bytes[start], b' ' | b'\t') {
+            start += 1;
+        }
+        if start < end && matches!(bytes[start], b'&' | b'!') {
+            start += 1;
+            while start < end && !matches!(bytes[start], b' ' | b'\t' | b'\n' | b'\r') {
+                start += 1;
+            }
+        } else {
+            return start;
+        }
+    }
 }
 
 fn resolve_span(
