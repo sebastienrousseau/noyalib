@@ -1,0 +1,36 @@
+{
+  "$schema": "https://glama.ai/mcp/schemas/server.json",
+  "maintainers": ["sebastienrousseau"],
+  "title": "noyalib-mcp",
+  "display_name": "Noyalib YAML MCP",
+  "description": "Model Context Protocol server for lossless YAML 1.2 editing by AI agents. Two tools over stdio (JSON-RPC 2.0): noyalib_get (read the value at a dotted/indexed path, returning the source slice exactly) and noyalib_set (write a value at a path, rewriting only the touched span so comments, blank lines, and sibling entries are preserved byte-for-byte, written atomically). Built on noyalib's lossless concrete syntax tree.",
+  "version": "0.0.8",
+  "repository": "https://github.com/sebastienrousseau/noyalib",
+  "homepage": "https://github.com/sebastienrousseau/noyalib",
+  "license": "MIT OR Apache-2.0",
+  "language": "Rust",
+  "runtime": "rust",
+  "categories": ["dev-tools"],
+  "tags": [
+    "yaml",
+    "yaml-1.2",
+    "noyalib",
+    "lossless-editing",
+    "cst",
+    "config",
+    "renovate",
+    "json-schema",
+    "json-rpc",
+    "agent-tools"
+  ],
+  "mcpServers": {
+    "noyalib": {
+      "command": "npx",
+      "args": ["noyalib-mcp"]
+    }
+  },
+  "installation": {
+    "npm": "npx noyalib-mcp",
+    "docker": "docker run -i ghcr.io/sebastienrousseau/noyalib-mcp"
+  }
+}

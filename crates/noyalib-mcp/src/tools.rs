@@ -18,10 +18,24 @@ pub fn descriptors() -> Vec<JsonValue> {
     vec![
         json!({
             "name": "noyalib_get",
+            "title": "Read a YAML value (lossless)",
+            // Reads a caller-supplied YAML file without modifying it:
+            // read-only, idempotent, never destructive, and open-world
+            // (it touches the local filesystem). These MCP annotations let
+            // clients and the Glama quality grader reason about safety and
+            // auto-approval without executing the tool.
+            "annotations": {
+                "title": "Read a YAML value (lossless)",
+                "readOnlyHint": true,
+                "destructiveHint": false,
+                "idempotentHint": true,
+                "openWorldHint": true
+            },
             "description": "Read the YAML value at a dotted/indexed path \
-                in the given file. Returns the source slice exactly — no \
-                re-quoting, no canonicalisation. Preserves comments and \
-                formatting for any later `noyalib_set`.",
+                in the given file and return the source slice exactly — no \
+                re-quoting, no canonicalisation, comments and formatting \
+                preserved. Use this to inspect a value before changing it; \
+                use `noyalib_set` to write a value back losslessly.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
@@ -40,11 +54,26 @@ pub fn descriptors() -> Vec<JsonValue> {
         }),
         json!({
             "name": "noyalib_set",
-            "description": "Set the YAML value at a dotted/indexed path \
-                in the given file. Only the touched span is rewritten — \
-                every comment, blank line, and sibling entry is preserved \
-                byte-for-byte. Useful for Renovate-style version bumps and \
-                config patches by AI agents.",
+            "title": "Write a YAML value (lossless)",
+            // Overwrites the value at a path in a caller-supplied file on
+            // disk: NOT read-only, and destructive (it replaces existing
+            // content in place). Re-running with the same arguments yields
+            // the same file state, so it is idempotent; it touches the
+            // filesystem, so it is open-world.
+            "annotations": {
+                "title": "Write a YAML value (lossless)",
+                "readOnlyHint": false,
+                "destructiveHint": true,
+                "idempotentHint": true,
+                "openWorldHint": true
+            },
+            "description": "Set the YAML value at a dotted/indexed path in \
+                the given file, rewriting only the touched span so every \
+                comment, blank line, and sibling entry is preserved \
+                byte-for-byte (written atomically). Use this for \
+                Renovate-style version bumps and config patches; use \
+                `noyalib_get` first when you need to read the current \
+                value. On a parse error the document is left unchanged.",
             "inputSchema": {
                 "type": "object",
                 "properties": {
