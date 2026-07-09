@@ -431,3 +431,59 @@ fn set_double_quoted_key_with_plain_value_still_works() {
     );
     assert!(doc.to_string().contains("plain: keep"));
 }
+
+// ── Alias-write guard: resolution-layer coverage (ultrareview #2) ──────
+// The guard now keys off resolve_span's through-alias flag (the same
+// resolution span_at uses), closing four holes the green-tree detector
+// missed: flow collections, nested descent, mixed duplicate keys, and a
+// false-positive refusal.
+
+#[test]
+fn set_through_alias_in_flow_sequence_is_refused() {
+    // HOLE1: flow collections keep flat tokens (no SequenceItem nodes), so
+    // the old green-walk missed them and set spliced the anchor.
+    let mut doc = parse_document("a: &x foo\nb: [*x, 2]\n").unwrap();
+    let before = doc.to_string();
+    assert!(doc.set("b[0]", "bar").is_err());
+    assert_eq!(doc.to_string(), before, "anchor must be untouched");
+}
+
+#[test]
+fn set_nested_through_alias_is_refused() {
+    // HOLE2: `ref.foo` descends through the alias into the anchor's mapping.
+    let mut doc = parse_document("anchor: &a\n  foo: 1\n  bar: 2\nref: *a\n").unwrap();
+    let before = doc.to_string();
+    assert!(doc.set("ref.foo", "10").is_err());
+    assert_eq!(
+        doc.to_string(),
+        before,
+        "anchor's nested value must be untouched"
+    );
+}
+
+#[test]
+fn set_duplicate_key_last_is_alias_is_refused() {
+    // HOLE3: `key: value1` then `"key": *a` — DuplicateKeyPolicy::Last makes
+    // the resolved value the alias entry, even though a decodable plain entry
+    // also matched the key.
+    let mut doc = parse_document("anchor_key: &a foo\nkey: value1\n\"key\": *a\n").unwrap();
+    let before = doc.to_string();
+    assert!(doc.set("key", "bar").is_err());
+    assert_eq!(doc.to_string(), before, "anchor must be untouched");
+}
+
+#[test]
+fn set_quoted_key_with_plain_value_beside_alias_sibling_still_works() {
+    // HOLE4: a plain-valued double-quoted key must remain writable even when
+    // an unrelated sibling is an alias (the old boolean-flag guard wrongly
+    // refused this).
+    let mut doc =
+        parse_document("anchor: &a foo\n\"my key\": old\n\"other quoted\": *a\n").unwrap();
+    doc.set("my key", "new").unwrap();
+    assert!(
+        doc.to_string().contains("\"my key\": new"),
+        "got {:?}",
+        doc.to_string()
+    );
+    assert!(doc.to_string().contains("&a foo"), "anchor unchanged");
+}

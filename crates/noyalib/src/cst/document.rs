@@ -207,7 +207,9 @@ impl Document {
         self.ensure_cache();
         let cache = self.cache.borrow();
         let (value, span_tree) = cache.as_ref().expect("ensure_cache populated");
-        let (s, e) = resolve_span(value, span_tree, &segments)?;
+        // Reads resolve an alias through to its anchor (issue #149); the
+        // through-alias flag only matters for writes (see `write_span`).
+        let ((s, e), _through_alias) = resolve_span(value, span_tree, &segments)?;
         Some(trim_value_span(&self.source, s, e))
     }
 
@@ -474,17 +476,36 @@ impl Document {
     /// assert_eq!(doc.to_string(), "name: foo\nversion: 0.0.2\n");
     /// ```
     pub fn set(&mut self, path: &str, fragment: &str) -> Result<()> {
+        let (s, e) = self.write_span(path)?;
+        self.replace_span(s, e, fragment)
+    }
+
+    /// Resolve `path` to a byte span for a **write**, refusing when the value
+    /// is (or resolves through) an alias reference.
+    ///
+    /// `span_at` resolves an alias *through* to its anchor's value span (issue
+    /// #149) — the right target for a read, but splicing there would rewrite
+    /// the **anchor's** bytes, a different key. The green-tree fast path never
+    /// yields an alias (it bails on `AliasMark`), so only the typed-cache
+    /// fallback can; `resolve_span`'s `through_alias` flag is the single source
+    /// of truth for that, so the two paths cannot disagree.
+    fn write_span(&self, path: &str) -> Result<(usize, usize)> {
         let segments = parse_query_path(path);
-        if value_is_alias_reference(&self.green, &segments, &self.source) {
+        if let Some((s, e)) = resolve_path_in_green(&self.green, &segments, &self.source) {
+            return Ok(trim_value_span(&self.source, s, e));
+        }
+        self.ensure_cache();
+        let cache = self.cache.borrow();
+        let (value, span_tree) = cache.as_ref().expect("ensure_cache populated");
+        let ((s, e), through_alias) = resolve_span(value, span_tree, &segments)
+            .ok_or_else(|| Error::Parse(format!("path not found: {path}")))?;
+        if through_alias {
             return Err(Error::Parse(format!(
-                "cannot set `{path}`: its value is an alias reference (`*name`); \
-                 edit the anchor definition or replace the alias explicitly"
+                "cannot set `{path}`: its value is (or resolves through) an alias \
+                 reference; edit the anchor definition or replace the alias explicitly"
             )));
         }
-        let (s, e) = self
-            .span_at(path)
-            .ok_or_else(|| Error::Parse(format!("path not found: {path}")))?;
-        self.replace_span(s, e, fragment)
+        Ok(trim_value_span(&self.source, s, e))
     }
 
     /// Replace the value at `path` with a typed [`Value`], formatting
@@ -523,16 +544,7 @@ impl Document {
     /// assert_eq!(doc.to_string(), "name: noyalib\nversion: 0.0.2\n");
     /// ```
     pub fn set_value(&mut self, path: &str, value: &Value) -> Result<()> {
-        let segments = parse_query_path(path);
-        if value_is_alias_reference(&self.green, &segments, &self.source) {
-            return Err(Error::Parse(format!(
-                "cannot set `{path}`: its value is an alias reference (`*name`); \
-                 edit the anchor definition or replace the alias explicitly"
-            )));
-        }
-        let (s, e) = self
-            .span_at(path)
-            .ok_or_else(|| Error::Parse(format!("path not found: {path}")))?;
+        let (s, e) = self.write_span(path)?;
         let kind = leaf_kind_at(&self.green, s).ok_or_else(|| {
             Error::Parse("could not locate green-tree leaf at target span".into())
         })?;
@@ -1172,151 +1184,6 @@ fn resolve_path_in_green(
     walk_path(collection, segments, base, source)
 }
 
-/// Does the value at `segments` resolve *directly* to an alias
-/// reference (`*name`)?
-///
-/// `span_at` deliberately resolves an alias *through* to its anchor's
-/// definition span (issue #149) — the right target for a read, but the
-/// wrong one for a write: splicing there rewrites the anchor's value and
-/// corrupts a *different* key. `set` / `set_value` call this and refuse
-/// the edit rather than mutate the wrong bytes. Read-only span
-/// resolution is untouched.
-fn value_is_alias_reference(root: &GreenNode, segments: &[QuerySegment], source: &str) -> bool {
-    match first_collection_child(root, 0) {
-        Some((collection, base)) => terminal_is_alias(collection, segments, base, source),
-        None => false,
-    }
-}
-
-fn terminal_is_alias(
-    node: &GreenNode,
-    segments: &[QuerySegment],
-    base: usize,
-    source: &str,
-) -> bool {
-    let Some((head, tail)) = segments.split_first() else {
-        return false;
-    };
-    match (head, node.kind()) {
-        (QuerySegment::Key(k), SyntaxKind::BlockMapping | SyntaxKind::FlowMapping) => {
-            // Last matching entry wins (DuplicateKeyPolicy::Last), mirroring
-            // walk_mapping so this agrees with what span_at would target.
-            let mut found: Option<(&GreenNode, usize)> = None;
-            // `entry_key_text` can't decode every key spelling (double-quoted,
-            // complex, merge). For such an entry `span_at` falls back to the
-            // typed cache and, matching by the cache's decoded key, resolves an
-            // alias *through* to its anchor — the exact write hazard this guard
-            // exists to catch. We can't match the undecodable key by text here,
-            // so if any undecodable-key entry's value is an alias, treat the
-            // (undecodable) target as a possible hit and refuse conservatively.
-            let mut undecodable_alias = false;
-            let mut pos = base;
-            for child in node.children() {
-                let len = child.text_len();
-                if let GreenChild::Node(entry) = child {
-                    if entry.kind() == SyntaxKind::MappingEntry {
-                        match entry_key_text(entry, source, pos) {
-                            Some(key) if key.as_ref() == k.as_str() => {
-                                found = Some((entry, pos));
-                            }
-                            Some(_) => {}
-                            None => {
-                                if value_after_sep_is_alias(
-                                    entry,
-                                    pos,
-                                    tail,
-                                    source,
-                                    SyntaxKind::ColonIndicator,
-                                ) {
-                                    undecodable_alias = true;
-                                }
-                            }
-                        }
-                    }
-                }
-                pos += len;
-            }
-            match found {
-                Some((entry, entry_pos)) => value_after_sep_is_alias(
-                    entry,
-                    entry_pos,
-                    tail,
-                    source,
-                    SyntaxKind::ColonIndicator,
-                ),
-                // No decodable key matched: refuse if an undecodable-key entry
-                // is an alias (the target could be it).
-                None => undecodable_alias,
-            }
-        }
-        (QuerySegment::Index(i), SyntaxKind::BlockSequence | SyntaxKind::FlowSequence) => {
-            let mut pos = base;
-            let mut idx = 0usize;
-            for child in node.children() {
-                let len = child.text_len();
-                if let GreenChild::Node(item) = child {
-                    if item.kind() == SyntaxKind::SequenceItem {
-                        if idx == *i {
-                            return value_after_sep_is_alias(
-                                item,
-                                pos,
-                                tail,
-                                source,
-                                SyntaxKind::DashIndicator,
-                            );
-                        }
-                        idx += 1;
-                    }
-                }
-                pos += len;
-            }
-            false
-        }
-        // Wildcards / kind mismatch: span_at would bail to the cache; the
-        // conservative answer for a write is "not a known alias target".
-        _ => false,
-    }
-}
-
-/// Within a `MappingEntry` / `SequenceItem`, decide whether the value —
-/// the first non-trivia, non-property token after `sep` — is an alias.
-/// For a deeper path, recurse into a nested collection instead.
-fn value_after_sep_is_alias(
-    container: &GreenNode,
-    base: usize,
-    tail: &[QuerySegment],
-    source: &str,
-    sep: SyntaxKind,
-) -> bool {
-    let mut pos = base;
-    let mut after_sep = false;
-    for child in container.children() {
-        let len = child.text_len();
-        match child {
-            GreenChild::Token { kind, .. } => {
-                if !after_sep {
-                    if *kind == sep {
-                        after_sep = true;
-                    }
-                } else if *kind == SyntaxKind::AliasMark {
-                    // Only a *terminal* alias is a mutation hazard; a path that
-                    // tries to descend into an alias resolves nowhere anyway.
-                    return tail.is_empty();
-                } else if !is_trivia_kind(*kind) && !is_value_property_kind(*kind) {
-                    return false; // a real scalar leaf — safe to mutate
-                }
-            }
-            GreenChild::Node(inner) => {
-                if after_sep {
-                    return terminal_is_alias(inner, tail, pos, source);
-                }
-            }
-        }
-        pos += len;
-    }
-    false
-}
-
 fn first_collection_child(node: &GreenNode, base: usize) -> Option<(&GreenNode, usize)> {
     let mut pos = base;
     for child in node.children() {
@@ -1758,21 +1625,53 @@ fn skip_value_property_prefix(bytes: &[u8], mut start: usize, end: usize) -> usi
     }
 }
 
+/// The end byte of a span tree, transparently unwrapping alias indirection.
+fn span_tree_end(t: &SpanTree) -> usize {
+    match t {
+        SpanTree::Leaf(_, e) => *e,
+        SpanTree::Sequence { end, .. } | SpanTree::Mapping { end, .. } => *end,
+        SpanTree::Alias(inner) => span_tree_end(inner),
+    }
+}
+
+/// The `(start, end)` bounds of a span tree, transparently unwrapping alias
+/// indirection.
+fn span_tree_bounds(t: &SpanTree) -> (usize, usize) {
+    match t {
+        SpanTree::Leaf(s, e) => (*s, *e),
+        SpanTree::Sequence { start, end, .. } | SpanTree::Mapping { start, end, .. } => {
+            (*start, *end)
+        }
+        SpanTree::Alias(inner) => span_tree_bounds(inner),
+    }
+}
+
+/// Resolve `segments` to a byte span in the typed cache. The returned `bool`
+/// is `true` when resolution passed *through* an alias reference (the span
+/// then belongs to the anchor, not the addressed key) — correct to return for
+/// a read, but a write must refuse it.
 fn resolve_span(
     value: &Value,
     span_tree: &SpanTree,
     segments: &[QuerySegment],
-) -> Option<(usize, usize)> {
+) -> Option<((usize, usize), bool)> {
+    // An alias site substitutes the anchor's (value, tree). Resolve against the
+    // anchor but flag that the path went through an alias — at any depth, so
+    // `ref` and `ref.nested` and `[*a]` are all caught.
+    if let SpanTree::Alias(inner) = span_tree {
+        return resolve_span(value, inner, segments).map(|(span, _)| (span, true));
+    }
     if segments.is_empty() {
         return match span_tree {
             // A zero-width leaf marks an implicit null (an absent
             // block-mapping value or empty sequence item): the node has no
             // source bytes of its own, so it has no span.
             SpanTree::Leaf(s, e) if s == e => None,
-            SpanTree::Leaf(s, e) => Some((*s, *e)),
+            SpanTree::Leaf(s, e) => Some(((*s, *e), false)),
             SpanTree::Sequence { start, end, .. } | SpanTree::Mapping { start, end, .. } => {
-                Some((*start, *end))
+                Some(((*start, *end), false))
             }
+            SpanTree::Alias(_) => None, // unwrapped above
         };
     }
     let (head, tail) = segments.split_first()?;
@@ -1861,10 +1760,7 @@ fn entry_line_span(
                 .position(|(mk, _)| mk == k)
                 .ok_or_else(|| Error::Parse(format!("path not found: missing key {k:?}")))?;
             let ((key_start, _key_end), child_tree) = &entries[pos];
-            let raw_value_end = match child_tree {
-                SpanTree::Leaf(_, e) => *e,
-                SpanTree::Sequence { end, .. } | SpanTree::Mapping { end, .. } => *end,
-            };
+            let raw_value_end = span_tree_end(child_tree);
             let (_, value_end) = trim_trailing_blank(source, *key_start, raw_value_end);
             require_single_line(source, *key_start, value_end)?;
             Ok(line_extent(source, *key_start, value_end))
@@ -1878,12 +1774,7 @@ fn entry_line_span(
             let item_tree = items
                 .get(*i)
                 .ok_or_else(|| Error::Parse(format!("path not found: index {i} out of bounds")))?;
-            let (value_start, raw_value_end) = match item_tree {
-                SpanTree::Leaf(s, e) => (*s, *e),
-                SpanTree::Sequence { start, end, .. } | SpanTree::Mapping { start, end, .. } => {
-                    (*start, *end)
-                }
-            };
+            let (value_start, raw_value_end) = span_tree_bounds(item_tree);
             let (_, value_end) = trim_trailing_blank(source, value_start, raw_value_end);
             // The `-` indicator sits before the value on the same line,
             // separated by inline whitespace. Walk backward to find it.
