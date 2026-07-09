@@ -172,3 +172,24 @@ fn duplicate_policy_first_still_wins_on_value_path() {
     // policy is overridden; both loaders honour it.
     assert_eq!(m.get("k"), Some(&Value::String("one".into())));
 }
+
+// ── max_documents parity on the Value fast path (ultrareview BUG006) ──
+
+#[test]
+fn value_fast_path_enforces_max_documents() {
+    // `from_str::<Value>` routes through NoSpanLoader, which lacked the
+    // `max_documents` guard the span-full loader enforces — so a caller
+    // using max_documents as a DoS mitigation got no enforcement on the
+    // fast path, and the whole stream was materialised.
+    let cfg = ParserConfig::new().max_documents(1);
+    let src = "a: 1\n---\nb: 2\n---\nc: 3\n";
+    let err = from_str_with_config::<Value>(src, &cfg)
+        .expect_err("max_documents must be enforced on the Value fast path");
+    assert!(
+        matches!(
+            err,
+            Error::Budget(BudgetBreach::MaxDocuments { limit: 1, .. })
+        ),
+        "expected MaxDocuments budget error, got {err:?}"
+    );
+}

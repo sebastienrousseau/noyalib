@@ -966,3 +966,22 @@ fn coverage_doc_insert_entry_into_empty_mapping_errors() {
         "{msg}"
     );
 }
+
+#[test]
+fn coverage_doc_span_at_anchored_tagged_keep_chomped_keeps_trailing_blanks() {
+    // ultrareview BUG001: an anchor (`&name`) / tag (`!Tag`, `!!str`) property
+    // widens the value span start over `&` / `!`, so the keep-chomp guard must
+    // skip the prefix before inspecting the block indicator. Otherwise the kept
+    // trailing blank lines are trimmed and the slice re-parses to a shorter
+    // value.
+    for (src, want) in [
+        ("key: &anc |+\n  kept\n\n\n", "&anc |+\n  kept\n\n\n"),
+        ("key: !!str |+\n  kept\n\n\n", "!!str |+\n  kept\n\n\n"),
+        ("key: !Tag |+\n  kept\n\n\n", "!Tag |+\n  kept\n\n\n"),
+        ("key: &anc >+\n  kept\n\n\n", "&anc >+\n  kept\n\n\n"),
+    ] {
+        let doc = parse_document(src).unwrap();
+        let (s, e) = doc.span_at("key").unwrap();
+        assert_eq!(&doc.source()[s..e], want, "span for {src:?}");
+    }
+}

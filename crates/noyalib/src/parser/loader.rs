@@ -915,6 +915,16 @@ impl<'a> NoSpanLoader<'a> {
                 // on the no-span path — a std/no_std divergence.
                 self.alias_count = 0;
                 self.alias_bytes = 0;
+                // Budget: max_documents (mirror the span-full Loader).
+                // `from_str::<Value>` always routes through this loader, so
+                // without this the fast path silently materialises the whole
+                // stream past the caller's document limit.
+                if self.docs.len() + 1 > self.config.max_documents {
+                    return Err(Error::Budget(crate::BudgetBreach::MaxDocuments {
+                        limit: self.config.max_documents,
+                        observed: self.docs.len() + 1,
+                    }));
+                }
             }
             Event::DocumentEnd => {
                 self.in_document = false;
