@@ -248,6 +248,19 @@ mod tests {
         assert_eq!(docs.len(), 1, "got: {docs:?}");
     }
 
+    // Rayon's global thread pool pulls in `crossbeam-epoch`, whose
+    // epoch-based reclamation performs integer-to-pointer casts that
+    // Miri rejects under `-Zmiri-strict-provenance` (see the weekly
+    // `soak-miri` job). The provenance issue is entirely inside the
+    // third-party dep — noyalib's own call sites stay
+    // `#![forbid(unsafe_code)]` — so the rayon-invoking tests are
+    // skipped under Miri while every other test still runs. Mirrors
+    // `scripts/miri.sh`, which excludes rayon from the focused sweep
+    // for the same reason.
+    #[cfg_attr(
+        miri,
+        ignore = "rayon/crossbeam-epoch uses int-to-ptr casts unsupported under -Zmiri-strict-provenance"
+    )]
     #[test]
     fn parse_round_trips_typed_records() {
         #[derive(Debug, Deserialize, PartialEq)]
@@ -262,6 +275,10 @@ mod tests {
         );
     }
 
+    #[cfg_attr(
+        miri,
+        ignore = "rayon/crossbeam-epoch uses int-to-ptr casts unsupported under -Zmiri-strict-provenance"
+    )]
     #[test]
     fn values_yields_value_per_document() {
         let yaml = "---\na: 1\n---\nb: 2\n";
@@ -271,6 +288,10 @@ mod tests {
         assert_eq!(docs[1]["b"].as_i64(), Some(2));
     }
 
+    #[cfg_attr(
+        miri,
+        ignore = "rayon/crossbeam-epoch uses int-to-ptr casts unsupported under -Zmiri-strict-provenance"
+    )]
     #[test]
     fn parse_propagates_first_error() {
         #[derive(Debug, Deserialize)]
@@ -284,6 +305,10 @@ mod tests {
         assert!(res.is_err());
     }
 
+    #[cfg_attr(
+        miri,
+        ignore = "rayon/crossbeam-epoch uses int-to-ptr casts unsupported under -Zmiri-strict-provenance"
+    )]
     #[test]
     fn parse_matches_sequential_for_correctness() {
         // Stress test: 50 small documents. The parallel and
