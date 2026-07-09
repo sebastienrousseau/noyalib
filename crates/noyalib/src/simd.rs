@@ -766,15 +766,11 @@ pub fn parse_decimal_u64(bytes: &[u8]) -> Option<u64> {
     while i + 8 <= bytes.len() {
         let mut arr = [0u8; 8];
         arr.copy_from_slice(&bytes[i..i + 8]);
-        match parse_8_digits(arr) {
-            Some(eight) => {
-                // Shift the accumulator up by 8 decimal places
-                // and add the new chunk. Overflow → bail.
-                result = result.checked_mul(100_000_000)?.checked_add(eight)?;
-                i += 8;
-            }
-            None => return None,
-        }
+        // Shift the accumulator up by 8 decimal places and add the new
+        // chunk. A non-numeric chunk or overflow bails via `?`.
+        let eight = parse_8_digits(arr)?;
+        result = result.checked_mul(100_000_000)?.checked_add(eight)?;
+        i += 8;
     }
     // Scalar tail: 0..7 remaining bytes.
     while i < bytes.len() {
