@@ -34,6 +34,12 @@ pub(crate) enum SpanTree {
         end: usize,
         entries: Vec<((usize, usize), SpanTree)>,
     },
+    /// An alias reference (`*name`) resolved *through* to its anchor's
+    /// definition tree (issue #149): the wrapped tree is the anchor's, so a
+    /// read here yields the anchor's value span. The wrapper records that the
+    /// resolution passed through an alias — a *write* would splice the
+    /// anchor's bytes (a different key), which `Document::set` must refuse.
+    Alias(Box<SpanTree>),
 }
 
 /// Holds the span map and source string for the current deserialization.
@@ -139,5 +145,7 @@ fn walk(value: &Value, tree: &SpanTree, map: &mut FxHashMap<usize, (usize, usize
                 }
             }
         }
+        // An alias site maps to the anchor's spans; walk through it.
+        SpanTree::Alias(inner) => walk(value, inner, map),
     }
 }

@@ -405,7 +405,11 @@ impl<'a> Loader<'a> {
                     return Err(Error::RepetitionLimitExceeded);
                 }
 
-                self.push_node(value, span_tree, input)?;
+                // Wrap the anchor's cloned tree so span resolution can tell it
+                // reached this value *through* an alias — a read resolves
+                // through (issue #149), a write must refuse (would splice the
+                // anchor's bytes, a different key).
+                self.push_node(value, SpanTree::Alias(Box::new(span_tree)), input)?;
             }
             Event::Scalar {
                 value,
