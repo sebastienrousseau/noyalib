@@ -31,13 +31,30 @@ IFS=$'\n\t'
 
 THRESHOLD="${1:-98}"
 
+# Optional second arg: a regex of files to ignore. Defaults to empty
+# (measure everything). `cargo-llvm-cov` >= 0.8.7 rejects an empty
+# `--ignore-filename-regex`, so — mirroring
+# .github/workflows/shared-coverage.yml — we only pass the flag when
+# the value is non-empty. Passing '' unconditionally makes the tool
+# exit non-zero ("empty string is not allowed").
+IGNORE_REGEX="${2:-}"
+
+IGNORE_ARGS=()
+if [ -n "${IGNORE_REGEX}" ]; then
+    IGNORE_ARGS+=(--ignore-filename-regex "${IGNORE_REGEX}")
+fi
+
 echo "→ Running cargo +nightly llvm-cov (this takes ~2 min)..."
 
-# Capture summary table; tee for diagnostic visibility.
+# Capture the summary table from *stdout* only; build / doctest
+# progress goes to stderr, which we tee to a diagnostic log. Merging
+# the two (an earlier `2>&1`) polluted the table with `Compiling …`
+# and `test … ok` lines, which the awk row filter below then
+# miscounted as under-threshold files.
 SUMMARY="$(NOYALIB_COVERAGE=1 cargo +nightly llvm-cov \
     --workspace --all-features --no-fail-fast \
-    --ignore-filename-regex '' \
-    --summary-only 2>&1 | tee /tmp/noyalib-coverage.log)"
+    ${IGNORE_ARGS[@]+"${IGNORE_ARGS[@]}"} \
+    --summary-only 2> >(tee /tmp/noyalib-coverage.log >&2))"
 
 echo
 echo "→ Parsing rows below ${THRESHOLD} %..."
@@ -56,7 +73,10 @@ echo "$SUMMARY" | awk -v T="${THRESHOLD}" '
     /^-{10,}/        { next }
     /^Filename/      { next }
     /^TOTAL/         { next }
-    NF >= 12 {
+    # A real summary row has the coverage cells as `NN.NN%`. Requiring
+    # the percent-suffixed cells rejects any stray build/test line that
+    # happens to survive with >= 12 fields.
+    NF >= 12 && $4 ~ /%$/ && $7 ~ /%$/ && $10 ~ /%$/ {
         # Region cover (col 4) is index 4 after splitting on whitespace.
         # llvm-cov columns:
         #   1=file, 2=regs, 3=missed, 4=region%, 5=fns, 6=missed, 7=fn%,
