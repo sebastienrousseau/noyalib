@@ -36,7 +36,7 @@ fn number_ord_integer_vs_unsigned() {
 #[test]
 fn number_ord_unsigned_vs_float_and_nan() {
     let umax = Value::from(u64::MAX);
-    let flt = Value::from(3.14_f64);
+    let flt = Value::from(2.5_f64);
     let nan = Value::from(f64::NAN);
 
     // Unsigned vs Float and the symmetric Float vs Unsigned.
@@ -50,7 +50,7 @@ fn number_ord_unsigned_vs_float_and_nan() {
 #[test]
 fn number_ord_integer_vs_float() {
     let neg = Value::from(-5_i64);
-    let flt = Value::from(3.14_f64);
+    let flt = Value::from(2.5_f64);
     assert_eq!(neg.cmp(&flt), Ordering::Less);
     assert_eq!(flt.cmp(&neg), Ordering::Greater);
 }
@@ -58,10 +58,10 @@ fn number_ord_integer_vs_float() {
 #[test]
 fn number_ord_sort_mixed_types() {
     // A sort exercises many cross-type comparisons at once.
-    let mut xs = vec![
+    let mut xs = [
         Value::from(u64::MAX),
         Value::from(-5_i64),
-        Value::from(3.14_f64),
+        Value::from(2.5_f64),
         Value::from(5_i64),
         Value::from(0_i64),
     ];
