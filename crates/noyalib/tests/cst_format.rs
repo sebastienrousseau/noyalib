@@ -270,3 +270,138 @@ fn numeric_values_preserved() {
     assert!(formatted.contains("42"));
     assert!(formatted.contains("3.14"));
 }
+
+// ── Coverage: formatter branch arms in cst/format.rs ─────────────────
+// These target the block-collection non-entry children, nested block
+// collections after `-`/`:`, flow verbatim, document markers, and
+// anchor/alias node routing that the assertions above don't reach.
+
+#[test]
+fn cov_standalone_comment_folds_onto_previous_mapping_entry() {
+    // A comment on its own line is parsed as a trailing child of the
+    // preceding entry, so the canonicaliser folds it up onto that
+    // entry's line (current formatter behaviour).
+    let input = "a: 1\n# middle\nb: 2\n";
+    let formatted = format(input).unwrap();
+    assert_eq!(formatted, "a: 1 # middle\nb: 2\n");
+}
+
+#[test]
+fn cov_blank_lines_between_mapping_entries_collapse() {
+    // Blank lines are Newline tokens that are direct children of the
+    // BlockMapping — this drives format_block_mapping's token arm.
+    let input = "a: 1\n\n\nb: 2\n";
+    let formatted = format(input).unwrap();
+    assert_eq!(formatted, "a: 1\nb: 2\n");
+}
+
+#[test]
+fn cov_blank_lines_between_sequence_items_collapse() {
+    // Same for BlockSequence: blank-line Newline tokens are direct
+    // children of the sequence, driving format_block_sequence's token
+    // arm.
+    let input = "- 1\n\n\n- 2\n";
+    let formatted = format(input).unwrap();
+    assert_eq!(formatted, "- 1\n- 2\n");
+}
+
+#[test]
+fn cov_standalone_comment_folds_onto_previous_sequence_item() {
+    let input = "- 1\n# between\n- 2\n";
+    let formatted = format(input).unwrap();
+    assert_eq!(formatted, "- 1 # between\n- 2\n");
+}
+
+#[test]
+fn cov_sequence_item_holding_block_mapping() {
+    // `- key: val` — the SequenceItem contains a BlockMapping, taking
+    // the block-collection-after-dash arm (indent bump).
+    let input = "- name: a\n  port: 1\n- name: b\n  port: 2\n";
+    let formatted = format(input).unwrap();
+    assert_eq!(formatted, "- name: a\n  port: 1\n- name: b\n  port: 2\n");
+}
+
+#[test]
+fn cov_nested_sequence_of_sequences() {
+    // `- - x` — a SequenceItem whose child is a BlockSequence; also
+    // exercises a dash that is not at line start.
+    let input = "- - 1\n  - 2\n";
+    let formatted = format(input).unwrap();
+    assert!(formatted.contains("- 1"), "{formatted:?}");
+    assert!(formatted.contains("- 2"), "{formatted:?}");
+}
+
+#[test]
+fn cov_flow_mapping_written_verbatim() {
+    let input = "a: {x: 1, y: 2}\n";
+    let formatted = format(input).unwrap();
+    // Flow collections are emitted verbatim, not block-expanded.
+    assert!(formatted.contains("{x: 1, y: 2}"), "{formatted:?}");
+}
+
+#[test]
+fn cov_flow_sequence_written_verbatim() {
+    let input = "a: [1, 2, 3]\n";
+    let formatted = format(input).unwrap();
+    assert!(formatted.contains("[1, 2, 3]"), "{formatted:?}");
+}
+
+#[test]
+fn cov_document_markers_preserved() {
+    let input = "---\na: 1\n...\n";
+    let formatted = format(input).unwrap();
+    assert!(formatted.starts_with("---\n"), "{formatted:?}");
+    assert!(formatted.contains("a: 1"), "{formatted:?}");
+    assert!(formatted.contains("..."), "{formatted:?}");
+}
+
+#[test]
+fn cov_anchor_and_alias_nodes_route_through_format_node() {
+    // Anchor/alias produce node kinds that fall through format_node's
+    // catch-all arm rather than the collection-specific arms.
+    let input = "base: &a 1\nref: *a\n";
+    let formatted = format(input).unwrap();
+    assert!(formatted.contains("&a"), "{formatted:?}");
+    assert!(formatted.contains("*a"), "{formatted:?}");
+}
+
+#[test]
+fn cov_sequence_item_with_anchored_scalar() {
+    // `- &a 1` — dash followed by a non-collection node (anchored
+    // scalar), taking the else arm of the seq-item node handling.
+    let input = "- &a 1\n- 2\n";
+    let formatted = format(input).unwrap();
+    assert!(formatted.contains("&a"), "{formatted:?}");
+    assert!(formatted.contains("- 2"), "{formatted:?}");
+}
+
+#[test]
+fn cov_flow_collection_as_mapping_key() {
+    // A flow mapping used as a key: the key is a Node child that
+    // appears *before* the colon, driving the pre-colon node arm of
+    // format_mapping_entry.
+    let input = "{a: b}: v\n";
+    let formatted = format(input).unwrap();
+    assert!(formatted.contains("{a: b}"), "{formatted:?}");
+    assert!(formatted.contains(": v"), "{formatted:?}");
+}
+
+#[test]
+fn cov_flow_mapping_after_dash() {
+    // `- {x: 1}` — a SequenceItem holding a flow-mapping Node (not a
+    // block collection), driving the non-block node arm after the dash.
+    let input = "- {x: 1}\n- {y: 2}\n";
+    let formatted = format(input).unwrap();
+    assert!(formatted.contains("{x: 1}"), "{formatted:?}");
+    assert!(formatted.contains("{y: 2}"), "{formatted:?}");
+}
+
+#[test]
+fn cov_block_scalar_value_node() {
+    // A block (literal) scalar value node routes through format_node's
+    // fall-through arm rather than a collection-specific arm.
+    let input = "text: |\n  line one\n  line two\n";
+    let formatted = format(input).unwrap();
+    assert!(formatted.contains("text:"), "{formatted:?}");
+    assert!(formatted.contains("line one"), "{formatted:?}");
+}
