@@ -7,6 +7,11 @@
 //! exercise `validate_against_schema`, leaving the coercion machinery
 //! (which drives the `coerce_to_schema` public API) untested.
 
+// `coerce_to_schema` / `validate_against_schema` live behind the
+// `schema` feature and need `jsonschema`; the `validate-schema` feature
+// enables both. Without this gate the file fails to compile under the
+// default feature set (the `cargo test --tests (defaults)` CI leg).
+#![cfg(feature = "validate-schema")]
 #![allow(missing_docs)]
 #![allow(clippy::unwrap_used)]
 
