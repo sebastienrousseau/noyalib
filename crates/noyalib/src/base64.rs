@@ -226,4 +226,37 @@ mod tests {
         let s = encode(&bytes);
         assert_eq!(decode(&s).unwrap(), bytes);
     }
+
+    #[test]
+    fn build_lut_maps_alphabet_and_sentinels() {
+        // `build_lut` is a `const fn` used only to initialise the
+        // `static LUT` at compile time, so runtime coverage never sees
+        // its body. Calling it in this (non-const) test context executes
+        // it under instrumentation and validates every arm of the table.
+        let lut = build_lut();
+        // A-Z -> 0..=25
+        assert_eq!(lut[b'A' as usize], 0);
+        assert_eq!(lut[b'Z' as usize], 25);
+        // a-z -> 26..=51
+        assert_eq!(lut[b'a' as usize], 26);
+        assert_eq!(lut[b'z' as usize], 51);
+        // 0-9 -> 52..=61
+        assert_eq!(lut[b'0' as usize], 52);
+        assert_eq!(lut[b'9' as usize], 61);
+        // Non-alphabet symbols.
+        assert_eq!(lut[b'+' as usize], 62);
+        assert_eq!(lut[b'/' as usize], 63);
+        assert_eq!(lut[b'=' as usize], -2, "padding sentinel");
+        // Everything else is rejected (-1).
+        assert_eq!(lut[b' ' as usize], -1);
+        assert_eq!(lut[0], -1);
+        assert_eq!(lut[255], -1);
+        // Agreement with the standard base64 alphabet: decoding the i-th
+        // alphabet byte yields i.
+        let alphabet: &[u8; 64] =
+            b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+        for (i, &c) in alphabet.iter().enumerate() {
+            assert_eq!(lut[c as usize], i as i8, "alphabet byte {c} at index {i}");
+        }
+    }
 }
