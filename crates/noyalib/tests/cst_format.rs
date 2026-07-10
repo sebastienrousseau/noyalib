@@ -405,3 +405,51 @@ fn cov_block_scalar_value_node() {
     assert!(formatted.contains("text:"), "{formatted:?}");
     assert!(formatted.contains("line one"), "{formatted:?}");
 }
+
+// ── Coverage: formatter arms reachable only via malformed / edge input ──
+// A follow-up to the reachable-branch tests above. `format()` accepts
+// arbitrary (possibly malformed) YAML and the CST uses error-recovery,
+// so shapes that well-formed input never produces — bare tokens as
+// direct children of a BlockMapping / BlockSequence, colon/dash markers
+// with no key/value — DO occur here. These reach the block-collection
+// token arms that were previously assumed unreachable.
+
+#[test]
+fn cov_malformed_bare_colon_value() {
+    // `: novalue` recovers into a BlockMapping whose children include a
+    // bare colon token (no key node) — the token arm of
+    // format_block_mapping.
+    assert_eq!(format(": novalue\n").unwrap(), ":novalue\n");
+}
+
+#[test]
+fn cov_malformed_empty_sequence_item() {
+    // A dash with no value, recovered as a bare token under the
+    // BlockSequence.
+    assert_eq!(format("- \n- 2\n").unwrap(), "-\n- 2\n");
+}
+
+#[test]
+fn cov_malformed_key_then_bare_colon() {
+    assert_eq!(format("a:\n:\n").unwrap(), "a:\n:\n");
+}
+
+#[test]
+fn cov_malformed_bare_explicit_key_markers() {
+    // Two `?` explicit-key indicators with nothing attached.
+    assert_eq!(format("?\n?\n").unwrap(), "?\n?\n");
+}
+
+#[test]
+fn cov_malformed_nested_empty_dashes() {
+    assert_eq!(format("- - \n- x\n").unwrap(), "- \n  -\n- x\n");
+}
+
+#[test]
+fn cov_comment_only_stream() {
+    // A document that is nothing but comments and blank lines.
+    assert_eq!(
+        format("\n\n# only comments\n\n").unwrap(),
+        "# only comments\n"
+    );
+}
