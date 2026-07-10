@@ -16,7 +16,6 @@ use noyalib::{
     BudgetBreach, DuplicateKeyPolicy, Error, MergeKeyPolicy, ParserConfig, Spanned, Value,
     document::load_all_with_config, from_str, from_str_with_config,
 };
-use serde::Deserialize;
 
 // ════════════════════════════════════════════════════════════════════
 // scanner.rs
@@ -465,7 +464,7 @@ fn parser_scanner_directive_with_trailing_comment() {
 // ════════════════════════════════════════════════════════════════════
 
 // Helper struct that forces the AST loader path via `Spanned`.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, serde::Deserialize)]
 #[allow(dead_code)]
 struct AstDoc {
     a: Spanned<i64>,
@@ -487,7 +486,7 @@ fn parser_loader_max_total_scalar_bytes_breach() {
     let big = "x".repeat(2_000);
     let yaml = format!("a: '{big}'\nb: '{big}'\n");
     let cfg = ParserConfig::new().max_total_scalar_bytes(1_000);
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     #[allow(dead_code)]
     struct D {
         a: Spanned<String>,
@@ -519,7 +518,7 @@ fn parser_loader_alias_anchor_ratio_breach() {
     let cfg = ParserConfig::new()
         .alias_anchor_ratio(Some(2.0))
         .max_alias_expansions(1_000);
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     #[allow(dead_code)]
     struct D {
         anchor: Spanned<i64>,
@@ -535,7 +534,7 @@ fn parser_loader_alias_anchor_ratio_breach() {
 #[test]
 fn parser_loader_unknown_alias_at_errors() {
     let yaml = "v: *missing\n";
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     #[allow(dead_code)]
     struct D {
         v: Spanned<String>,
@@ -586,7 +585,7 @@ fn parser_loader_merge_key_policy_as_ordinary_keeps_key() {
 #[test]
 fn parser_loader_anchor_on_tagged_scalar() {
     let yaml = "anchor: &a !!int 42\nuse: *a\n";
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     #[allow(dead_code)]
     struct D {
         anchor: Spanned<i64>,

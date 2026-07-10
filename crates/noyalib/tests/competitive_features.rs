@@ -3,19 +3,16 @@
 
 //! Integration tests for the 4 competitive features.
 
-use serde::Deserialize;
-
 // ── Feature 1: Anchor Event Replay in Streaming Deserializer ────────────
 
 /// Tests that anchors and aliases work through the streaming path
 /// (which used to fall back to the Value AST path).
 mod anchor_replay {
-    use super::*;
 
     #[test]
     fn scalar_anchor_alias() {
         let yaml = "a: &val hello\nb: *val\n";
-        #[derive(Debug, Deserialize, PartialEq)]
+        #[derive(Debug, serde::Deserialize, PartialEq)]
         struct Doc {
             a: String,
             b: String,
@@ -28,7 +25,7 @@ mod anchor_replay {
     #[test]
     fn sequence_anchor_alias() {
         let yaml = "original: &items\n  - 1\n  - 2\ncopy: *items\n";
-        #[derive(Debug, Deserialize, PartialEq)]
+        #[derive(Debug, serde::Deserialize, PartialEq)]
         struct Doc {
             original: Vec<i32>,
             copy: Vec<i32>,
@@ -46,12 +43,12 @@ base: &base
   port: 8080
 dev: *base
 "#;
-        #[derive(Debug, Deserialize, PartialEq)]
+        #[derive(Debug, serde::Deserialize, PartialEq)]
         struct Server {
             host: String,
             port: u16,
         }
-        #[derive(Debug, Deserialize, PartialEq)]
+        #[derive(Debug, serde::Deserialize, PartialEq)]
         struct Doc {
             base: Server,
             dev: Server,
@@ -64,7 +61,7 @@ dev: *base
     #[test]
     fn multiple_aliases_same_anchor() {
         let yaml = "x: &v 42\ny: *v\nz: *v\n";
-        #[derive(Debug, Deserialize)]
+        #[derive(Debug, serde::Deserialize)]
         struct Doc {
             x: i32,
             y: i32,
@@ -79,7 +76,7 @@ dev: *base
     #[test]
     fn nested_sequence_alias() {
         let yaml = "items: &list\n  - a\n  - b\nother: *list\n";
-        #[derive(Debug, Deserialize)]
+        #[derive(Debug, serde::Deserialize)]
         struct Doc {
             items: Vec<String>,
             other: Vec<String>,
@@ -92,7 +89,7 @@ dev: *base
     #[test]
     fn bool_anchor_alias() {
         let yaml = "a: &flag true\nb: *flag\n";
-        #[derive(Debug, Deserialize)]
+        #[derive(Debug, serde::Deserialize)]
         struct Doc {
             a: bool,
             b: bool,
@@ -105,7 +102,7 @@ dev: *base
     #[test]
     fn float_anchor_alias() {
         let yaml = "a: &pi 3.125\nb: *pi\n";
-        #[derive(Debug, Deserialize)]
+        #[derive(Debug, serde::Deserialize)]
         struct Doc {
             a: f64,
             b: f64,
@@ -118,7 +115,7 @@ dev: *base
     #[test]
     fn optional_with_anchor() {
         let yaml = "a: &v hello\nb: *v\nc: null\n";
-        #[derive(Debug, Deserialize)]
+        #[derive(Debug, serde::Deserialize)]
         struct Doc {
             a: Option<String>,
             b: Option<String>,
@@ -135,13 +132,13 @@ dev: *base
 
 #[cfg(feature = "miette")]
 mod diagnostic_bridge {
-    use super::*;
+
     use noyalib::Spanned;
 
     #[test]
     fn spanned_error_report() {
         let yaml = "port: 80\n";
-        #[derive(Deserialize)]
+        #[derive(serde::Deserialize)]
         struct Cfg {
             port: Spanned<u16>,
         }
@@ -158,7 +155,7 @@ mod diagnostic_bridge {
         use miette::Diagnostic;
 
         let yaml = "name: test\nvalue: 42\n";
-        #[derive(Deserialize)]
+        #[derive(serde::Deserialize)]
         struct Cfg {
             #[allow(dead_code)]
             name: String,
@@ -344,9 +341,7 @@ mod robotics_types {
 
     #[test]
     fn strict_float_in_struct() {
-        use serde::Deserialize;
-
-        #[derive(Debug, Deserialize)]
+        #[derive(Debug, serde::Deserialize)]
         struct Measurement {
             distance: StrictFloat,
             angle: Radians,

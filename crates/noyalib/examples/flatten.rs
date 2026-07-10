@@ -9,17 +9,16 @@
 mod support;
 
 use noyalib::{from_str, to_string};
-use serde::{Deserialize, Serialize};
 
 // ── Flatten: merge nested struct fields into parent ──────────────────
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
 struct Metadata {
     created_by: String,
     version: u32,
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
 struct Document {
     title: String,
     #[serde(flatten)]
@@ -28,14 +27,14 @@ struct Document {
 
 // ── Untagged enum: infer variant from structure ──────────────────────
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
 #[serde(untagged)]
 enum Endpoint {
     Simple(String),
     Detailed { url: String, timeout: u32 },
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
 struct Service {
     name: String,
     endpoints: Vec<Endpoint>,
@@ -43,7 +42,7 @@ struct Service {
 
 // ── Internally tagged enum ───────────────────────────────────────────
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
 #[serde(tag = "type")]
 enum Resource {
     #[serde(rename = "database")]

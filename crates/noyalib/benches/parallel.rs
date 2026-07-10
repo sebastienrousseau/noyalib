@@ -15,10 +15,9 @@
 #![allow(missing_docs, unused_results)]
 
 use criterion::{BenchmarkId, Criterion, Throughput, criterion_group, criterion_main};
-use serde::Deserialize;
 use std::hint::black_box;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, serde::Deserialize)]
 #[allow(dead_code)]
 struct Record {
     id: u32,

@@ -12,11 +12,11 @@
 async fn main() {
     use bytes::BytesMut;
     use noyalib::tokio_async::{YamlDecoder, from_async_reader_multi};
-    use serde::Deserialize;
+
     use tokio::io::BufReader;
     use tokio_util::codec::Decoder;
 
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     struct Pkg {
         name: String,
         version: String,

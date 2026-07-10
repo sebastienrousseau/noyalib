@@ -11,7 +11,6 @@
 //!   * Duplicate-key policy `First` / `Last` / `Error` in the streaming path.
 
 use noyalib::{DuplicateKeyPolicy, ParserConfig, Value, from_str, from_str_with_config};
-use serde::Deserialize;
 use std::collections::BTreeMap;
 
 // ── Tagged-scalar resolution via AST fallback ────────────────────────────
@@ -190,7 +189,7 @@ second: &s
 target:
   <<: [*f, *s]
 "#;
-    #[derive(Deserialize)]
+    #[derive(serde::Deserialize)]
     struct Doc {
         target: BTreeMap<String, i64>,
     }
@@ -203,7 +202,7 @@ target:
 #[test]
 fn merge_key_with_empty_anchor_target() {
     let yaml = "empty: &e {}\ntarget:\n  <<: *e\n  only: here\n";
-    #[derive(Deserialize)]
+    #[derive(serde::Deserialize)]
     struct Doc {
         target: BTreeMap<String, String>,
     }

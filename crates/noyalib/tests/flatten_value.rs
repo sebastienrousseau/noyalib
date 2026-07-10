@@ -19,11 +19,10 @@
 #![allow(missing_docs)]
 
 use noyalib::{Spanned, Value, from_str};
-use serde::{Deserialize, Serialize};
 
 // ── Supported: flatten Value ─────────────────────────────────────────
 
-#[derive(Debug, Deserialize, Serialize, PartialEq)]
+#[derive(Debug, serde::Deserialize, serde::Serialize, PartialEq)]
 struct Config {
     name: String,
     version: String,
@@ -83,7 +82,7 @@ fn flatten_value_with_no_residue() {
 
 // ── Documented limitation: flatten Spanned<Value> ────────────────────
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, serde::Deserialize)]
 struct ConfigSpanned {
     #[allow(dead_code)]
     name: String,
@@ -119,7 +118,7 @@ port: 8080
 
 // ── Spanned<Value> in regular (non-flatten) position ─────────────────
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, serde::Deserialize)]
 struct WithSpannedField {
     name: String,
     extra: Spanned<Value>,
@@ -163,7 +162,7 @@ fn spanned_value_for_scalar() {
     // whichever variant the YAML produced.
     let yaml = "name: noyalib\nport: 8080\n";
 
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     struct Sc {
         #[allow(dead_code)]
         name: String,

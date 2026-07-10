@@ -34,8 +34,7 @@ fn unclosed_flow_renders_with_source_excerpt() {
 
 #[test]
 fn typed_target_error_renders() {
-    use serde::Deserialize;
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     struct Cfg {
         #[allow(dead_code)]
         port: u16,

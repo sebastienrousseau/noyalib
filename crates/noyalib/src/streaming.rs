@@ -61,7 +61,7 @@ pub(crate) enum Scalar<'a> {
 /// use noyalib::StreamingDeserializer;
 /// use serde::Deserialize;
 ///
-/// #[derive(Deserialize)]
+/// #[derive(serde::Deserialize)]
 /// struct Doc { k: i32 }
 ///
 /// let mut de = StreamingDeserializer::new("k: 42\n");
@@ -149,7 +149,7 @@ impl<'a> StreamingDeserializer<'a> {
     /// use serde::Deserialize;
     /// use std::sync::Arc;
     ///
-    /// #[derive(Deserialize)]
+    /// #[derive(serde::Deserialize)]
     /// struct Temp(f64);
     ///
     /// let reg = Arc::new(TagRegistry::new().with("!Celsius"));

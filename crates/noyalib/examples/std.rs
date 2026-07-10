@@ -11,7 +11,6 @@ mod support;
 use std::collections::HashMap;
 
 use noyalib::{from_str, to_string};
-use serde::{Deserialize, Serialize};
 
 fn main() {
     support::header("noyalib -- std");
@@ -42,7 +41,7 @@ fn main() {
     });
 
     support::task_with_output("Serialize and roundtrip nested collections", || {
-        #[derive(Debug, Serialize, Deserialize, PartialEq)]
+        #[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
         struct Config {
             name: String,
             tags: Vec<String>,

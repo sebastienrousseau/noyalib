@@ -6,7 +6,6 @@
 // Copyright (c) 2026 Noyalib. All rights reserved.
 
 use noyalib::{Mapping, Value, from_str, from_value, to_string};
-use serde::{Deserialize, Serialize};
 
 // ── Scanner: escape sequences, line folding, error paths ────────────────
 
@@ -534,7 +533,7 @@ fn loader_anchored_mapping() {
 #[test]
 fn de_deserialize_ignored_any_returns_unit() {
     // Extra fields in a struct should be ignored
-    #[derive(Deserialize, Debug)]
+    #[derive(serde::Deserialize, Debug)]
     struct Simple {
         name: String,
     }
@@ -568,7 +567,7 @@ fn de_spanned_map_access_all_fields() {
 
 #[test]
 fn de_type_mismatch_on_enum_from_non_map_non_string() {
-    #[derive(Deserialize, Debug)]
+    #[derive(serde::Deserialize, Debug)]
     enum MyEnum {
         A,
         B,
@@ -735,7 +734,7 @@ fn value_deserialize_via_ref() {
 
 #[test]
 fn value_deserialize_enum_from_ref() {
-    #[derive(Deserialize, Debug, PartialEq)]
+    #[derive(serde::Deserialize, Debug, PartialEq)]
     enum Color {
         Red,
         Blue,
@@ -785,13 +784,13 @@ fn spanned_unknown_field_skipped() {
 
 #[test]
 fn singleton_map_recursive_tagged_value_transforms() {
-    #[derive(Debug, Serialize, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
     enum Status {
         Active,
         Inactive,
     }
 
-    #[derive(Debug, Serialize, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
     struct Container {
         #[serde(with = "noyalib::with::singleton_map_recursive")]
         status: Status,
@@ -807,13 +806,13 @@ fn singleton_map_recursive_tagged_value_transforms() {
 
 #[test]
 fn singleton_map_recursive_nested_sequence() {
-    #[derive(Debug, Serialize, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
     enum Item {
         A,
         B { x: i32 },
     }
 
-    #[derive(Debug, Serialize, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
     struct Wrapper {
         #[serde(with = "noyalib::with::singleton_map_recursive")]
         items: Vec<Item>,

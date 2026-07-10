@@ -21,16 +21,15 @@
 mod support;
 
 use noyalib::{Flattened, Value, from_str};
-use serde::Deserialize;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, serde::Deserialize)]
 struct ServerConfig {
     host: String,
     port: u16,
     tls: bool,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, serde::Deserialize)]
 struct Envelope {
     name: String,
     // Capture both the typed `ServerConfig` view AND the raw

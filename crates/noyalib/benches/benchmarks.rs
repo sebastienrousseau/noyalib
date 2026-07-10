@@ -81,7 +81,6 @@ use noyalib::{
     validate_yaml_failsafe_schema,
     validate_yaml_json_schema,
 };
-use serde::{Deserialize, Serialize};
 use std::hint::black_box;
 
 // ============================================================================
@@ -203,14 +202,14 @@ fn generate_wide_sequence(count: usize) -> String {
 // Helper Types for Serde Benchmarks
 // ============================================================================
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 struct SimpleConfig {
     name: String,
     version: u64,
     enabled: bool,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, serde::Deserialize)]
 struct SpannedConfig {
     #[allow(dead_code)]
     port: Spanned<u16>,
@@ -218,26 +217,26 @@ struct SpannedConfig {
     name: Spanned<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
 enum Action {
     Get(String),
     Set { key: String, value: String },
     Delete,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 struct SingletonAction {
     #[serde(with = "noyalib::with::singleton_map")]
     action: Action,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 struct RecursiveAction {
     #[serde(with = "noyalib::with::singleton_map_recursive")]
     action: Action,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 struct OptionalAction {
     #[serde(with = "noyalib::with::singleton_map_optional")]
     action: Option<Action>,

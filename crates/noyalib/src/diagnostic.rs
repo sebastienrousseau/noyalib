@@ -8,9 +8,8 @@
 //!
 //! ```
 //! use noyalib::{from_str, Spanned, diagnostic::spanned_error};
-//! use serde::Deserialize;
 //!
-//! #[derive(Deserialize)]
+//! #[derive(serde::Deserialize)]
 //! struct Cfg { port: Spanned<u16> }
 //! let yaml = "port: 80\n";
 //! let cfg: Cfg = from_str(yaml).unwrap();
@@ -72,9 +71,8 @@ impl miette::Diagnostic for SpannedDiagnostic {
 ///
 /// ```
 /// use noyalib::{from_str, Spanned, diagnostic::spanned_error};
-/// use serde::Deserialize;
 ///
-/// #[derive(Deserialize)]
+/// #[derive(serde::Deserialize)]
 /// struct Cfg { port: Spanned<u16> }
 /// let yaml = "port: 80\n";
 /// let cfg: Cfg = from_str(yaml).unwrap();
@@ -108,8 +106,7 @@ pub fn spanned_error<T, M: fmt::Display>(
 ///
 /// ```rust,no_run
 /// # use noyalib::{from_str, Spanned, diagnostic::spanned_error_with_context};
-/// # use serde::Deserialize;
-/// #[derive(Deserialize)]
+/// #[derive(serde::Deserialize)]
 /// struct Cfg {
 ///     anchor: Spanned<String>,
 ///     alias: Spanned<String>,

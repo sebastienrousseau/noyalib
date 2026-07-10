@@ -4,11 +4,10 @@
 // Copyright (c) 2026 Noyalib. All rights reserved.
 
 use noyalib::{Spanned, from_str, to_string};
-use serde::{Deserialize, Serialize};
 
 #[test]
 fn test_spanned_basic() {
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     struct Config {
         port: Spanned<u16>,
     }
@@ -39,7 +38,7 @@ fn test_spanned_locations_real() {
 
 #[test]
 fn test_spanned_in_struct() {
-    #[derive(Debug, Serialize, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
     struct Config {
         name: Spanned<String>,
         port: Spanned<u16>,

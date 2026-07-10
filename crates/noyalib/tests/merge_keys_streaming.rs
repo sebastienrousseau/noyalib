@@ -9,14 +9,13 @@
 //! AST path — these tests verify correctness on both paths.
 
 use noyalib::from_str;
-use serde::Deserialize;
 use std::collections::BTreeMap;
 
 // ── Native: single-anchor merge at start of mapping ──────────────────────
 
 #[test]
 fn native_merge_at_start_single_anchor() {
-    #[derive(Debug, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Deserialize, PartialEq)]
     struct Cfg {
         timeout: u32,
         retries: u32,
@@ -30,7 +29,7 @@ server:
   <<: *d
   host: example.com
 "#;
-    #[derive(Deserialize)]
+    #[derive(serde::Deserialize)]
     struct Doc {
         server: Cfg,
     }
@@ -42,7 +41,7 @@ server:
 
 #[test]
 fn native_merge_local_key_overrides_merged() {
-    #[derive(Debug, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Deserialize, PartialEq)]
     struct Cfg {
         host: String,
         port: u16,
@@ -55,7 +54,7 @@ server:
   <<: *b
   host: override.local
 "#;
-    #[derive(Deserialize)]
+    #[derive(serde::Deserialize)]
     struct Doc {
         server: Cfg,
     }
@@ -89,7 +88,7 @@ target:
   <<: *e
   only: here
 "#;
-    #[derive(Deserialize)]
+    #[derive(serde::Deserialize)]
     struct Doc {
         target: BTreeMap<String, String>,
     }
@@ -100,12 +99,12 @@ target:
 
 #[test]
 fn native_merge_preserves_merged_nested_value() {
-    #[derive(Debug, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Deserialize, PartialEq)]
     struct Limits {
         max: u32,
         min: u32,
     }
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     struct Cfg {
         limits: Limits,
         name: String,
@@ -119,7 +118,7 @@ target:
   <<: *b
   name: test
 "#;
-    #[derive(Deserialize)]
+    #[derive(serde::Deserialize)]
     struct Doc {
         target: Cfg,
     }
@@ -136,7 +135,7 @@ fn fallback_locals_before_merge_still_correct() {
     // `host` appears BEFORE the merge, so native path would let the merged
     // `host` override the local (wrong). We fall back to the AST which
     // implements correct "local wins" semantics.
-    #[derive(Debug, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Deserialize, PartialEq)]
     struct Cfg {
         host: String,
         port: u16,
@@ -149,7 +148,7 @@ server:
   host: local.local
   <<: *b
 "#;
-    #[derive(Deserialize)]
+    #[derive(serde::Deserialize)]
     struct Doc {
         server: Cfg,
     }
@@ -161,7 +160,7 @@ server:
 #[test]
 fn fallback_sequence_merge_still_correct() {
     // `<<: [*a, *b]` is not handled by native path, falls back.
-    #[derive(Debug, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Deserialize, PartialEq)]
     struct Cfg {
         a: u32,
         b: u32,
@@ -177,7 +176,7 @@ src2: &s2
 target:
   <<: [*s1, *s2]
 "#;
-    #[derive(Deserialize)]
+    #[derive(serde::Deserialize)]
     struct Doc {
         target: Cfg,
     }
@@ -197,12 +196,12 @@ target:
   <<: *missing
   host: x
 "#;
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     #[allow(dead_code)]
     struct Cfg {
         host: String,
     }
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     #[allow(dead_code)]
     struct Doc {
         target: Cfg,
@@ -224,7 +223,7 @@ target:
 #[test]
 fn roundtrip_after_native_merge() {
     use noyalib::to_string;
-    #[derive(Debug, Deserialize, serde::Serialize, PartialEq)]
+    #[derive(Debug, serde::Deserialize, serde::Serialize, PartialEq)]
     struct Cfg {
         host: String,
         port: u16,
@@ -236,7 +235,7 @@ base: &b
 target:
   <<: *b
 "#;
-    #[derive(Deserialize, serde::Serialize)]
+    #[derive(serde::Deserialize, serde::Serialize)]
     struct Doc {
         target: Cfg,
     }
@@ -260,7 +259,7 @@ one:
 two:
   <<: *bb
 "#;
-    #[derive(Deserialize)]
+    #[derive(serde::Deserialize)]
     struct Doc {
         one: BTreeMap<String, i64>,
         two: BTreeMap<String, i64>,

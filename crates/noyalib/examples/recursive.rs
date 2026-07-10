@@ -12,11 +12,10 @@
 mod support;
 
 use noyalib::{from_str, to_string};
-use serde::{Deserialize, Serialize};
 
 // ── File system tree ─────────────────────────────────────────────────
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
 #[serde(untagged)]
 enum FsEntry {
     File {
@@ -31,7 +30,7 @@ enum FsEntry {
 
 // ── Org chart ────────────────────────────────────────────────────────
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
 struct Person {
     name: String,
     title: String,
@@ -41,7 +40,7 @@ struct Person {
 
 // ── Generic tree (Box<T> recursion) ──────────────────────────────────
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
 struct TreeNode {
     label: String,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]

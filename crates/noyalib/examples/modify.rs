@@ -9,9 +9,8 @@
 mod support;
 
 use noyalib::{Mapping, MappingAny, Value, from_str, from_value, to_value};
-use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
 struct Server {
     host: String,
     port: u16,

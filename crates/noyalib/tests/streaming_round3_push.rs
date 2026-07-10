@@ -130,7 +130,7 @@ fn r3_restore_tag_to_seq_event_for_str_target() {
     // A custom-tagged sequence at a String field triggers
     // `deserialize_str` → `take_tag_from_current` → `restore_tag_to_current`
     // on a SequenceStart event before falling back to AST.
-    #[derive(Deserialize)]
+    #[derive(serde::Deserialize)]
     #[allow(dead_code)]
     struct D {
         s: String,
@@ -186,7 +186,7 @@ fn r3_f64_from_sequence_errors() {
 
 #[test]
 fn r3_string_field_rejects_plain_int() {
-    #[derive(Deserialize)]
+    #[derive(serde::Deserialize)]
     #[allow(dead_code)]
     struct D {
         s: String,
@@ -197,7 +197,7 @@ fn r3_string_field_rejects_plain_int() {
 
 #[test]
 fn r3_string_field_rejects_plain_bool() {
-    #[derive(Deserialize)]
+    #[derive(serde::Deserialize)]
     #[allow(dead_code)]
     struct D {
         s: String,
@@ -208,7 +208,7 @@ fn r3_string_field_rejects_plain_bool() {
 
 #[test]
 fn r3_string_field_rejects_plain_float() {
-    #[derive(Deserialize)]
+    #[derive(serde::Deserialize)]
     #[allow(dead_code)]
     struct D {
         s: String,
@@ -219,7 +219,7 @@ fn r3_string_field_rejects_plain_float() {
 
 #[test]
 fn r3_string_field_rejects_plain_null() {
-    #[derive(Deserialize)]
+    #[derive(serde::Deserialize)]
     #[allow(dead_code)]
     struct D {
         s: String,
@@ -244,7 +244,7 @@ fn r3_string_target_with_top_level_quoted_passes() {
 
 #[test]
 fn r3_option_some_seq_inner() {
-    #[derive(Deserialize)]
+    #[derive(serde::Deserialize)]
     struct D {
         x: Option<Vec<i32>>,
     }
@@ -254,7 +254,7 @@ fn r3_option_some_seq_inner() {
 
 #[test]
 fn r3_option_some_map_inner() {
-    #[derive(Deserialize)]
+    #[derive(serde::Deserialize)]
     struct D {
         x: Option<BTreeMap<String, i32>>,
     }
@@ -282,7 +282,7 @@ fn r3_unit_top_level_via_streaming_de() {
 
 #[test]
 fn r3_unit_struct_top_level() {
-    #[derive(Deserialize)]
+    #[derive(serde::Deserialize)]
     struct U;
     let _: U = from_str("~\n").unwrap();
 }
@@ -293,7 +293,7 @@ fn r3_unit_struct_top_level() {
 
 #[test]
 fn r3_newtype_with_core_null_tag() {
-    #[derive(Deserialize, Debug, PartialEq)]
+    #[derive(serde::Deserialize, Debug, PartialEq)]
     struct N(Option<String>);
     let n: N = from_str("!!null ~\n").unwrap();
     assert_eq!(n, N(None));
@@ -301,7 +301,7 @@ fn r3_newtype_with_core_null_tag() {
 
 #[test]
 fn r3_newtype_with_core_bool_tag() {
-    #[derive(Deserialize, Debug, PartialEq)]
+    #[derive(serde::Deserialize, Debug, PartialEq)]
     struct N(bool);
     let n: N = from_str("!!bool true\n").unwrap();
     assert_eq!(n, N(true));
@@ -309,7 +309,7 @@ fn r3_newtype_with_core_bool_tag() {
 
 #[test]
 fn r3_newtype_with_core_float_tag() {
-    #[derive(Deserialize, Debug, PartialEq)]
+    #[derive(serde::Deserialize, Debug, PartialEq)]
     struct N(f64);
     let n: N = from_str("!!float 1.5\n").unwrap();
     assert!((n.0 - 1.5).abs() < 1e-9);
@@ -317,7 +317,7 @@ fn r3_newtype_with_core_float_tag() {
 
 #[test]
 fn r3_newtype_with_core_seq_tag() {
-    #[derive(Deserialize, Debug, PartialEq)]
+    #[derive(serde::Deserialize, Debug, PartialEq)]
     struct N(Vec<i64>);
     let n: N = from_str("!!seq [1, 2]\n").unwrap();
     assert_eq!(n, N(vec![1, 2]));
@@ -325,7 +325,7 @@ fn r3_newtype_with_core_seq_tag() {
 
 #[test]
 fn r3_newtype_with_core_map_tag() {
-    #[derive(Deserialize, Debug, PartialEq)]
+    #[derive(serde::Deserialize, Debug, PartialEq)]
     struct N(BTreeMap<String, i64>);
     let n: N = from_str("!!map {a: 1}\n").unwrap();
     assert_eq!(n.0["a"], 1);
@@ -355,7 +355,7 @@ fn r3_map_target_sees_sequence_event_errors() {
 
 #[test]
 fn r3_enum_mapping_with_non_scalar_variant_name_errors() {
-    #[derive(Debug, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Deserialize, PartialEq)]
     #[allow(dead_code)]
     enum E {
         A(i32),
@@ -369,7 +369,7 @@ fn r3_enum_mapping_with_non_scalar_variant_name_errors() {
 // ── L1342-L1351 — unit_variant: variant body is null/empty ────────────
 // Use serde's enum-variant-as-mapping form where the variant value is `~`.
 
-#[derive(Debug, Deserialize, PartialEq)]
+#[derive(Debug, serde::Deserialize, PartialEq)]
 enum E2 {
     Unit,
     Wrap(i32),
@@ -416,7 +416,7 @@ fn r3_streaming_struct_variant_value() {
 fn r3_identifier_via_struct_field_name() {
     // serde's struct deserialise calls `deserialize_identifier` for
     // each key — exercise the success arm.
-    #[derive(Deserialize)]
+    #[derive(serde::Deserialize)]
     #[allow(dead_code)]
     struct D {
         alpha: i32,
@@ -429,7 +429,7 @@ fn r3_identifier_via_struct_field_name() {
 #[test]
 fn r3_ignored_any_skips_seq_inside_map() {
     use serde::de::IgnoredAny;
-    #[derive(Deserialize)]
+    #[derive(serde::Deserialize)]
     #[allow(dead_code)]
     struct D {
         keep: i32,
@@ -542,7 +542,7 @@ fn r3_tag_enum_access_unit_variant_dispatch() {
     // Tagged enum where the tag string IS the variant name. The
     // streaming path routes tagged scalars on enum targets through
     // `StreamingTagEnumAccess::variant_seed` then unit_variant.
-    #[derive(Debug, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Deserialize, PartialEq)]
     enum E {
         #[serde(rename = "!Tag")]
         Tag,
@@ -555,7 +555,7 @@ fn r3_tag_enum_access_unit_variant_dispatch() {
 #[test]
 fn r3_tag_enum_access_newtype_variant_dispatch() {
     // Tag-as-variant name with newtype payload.
-    #[derive(Debug, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Deserialize, PartialEq)]
     enum E {
         #[serde(rename = "!Wrap")]
         Wrap(i32),
@@ -567,7 +567,7 @@ fn r3_tag_enum_access_newtype_variant_dispatch() {
 
 #[test]
 fn r3_tag_enum_access_struct_variant_dispatch() {
-    #[derive(Debug, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Deserialize, PartialEq)]
     enum E {
         #[serde(rename = "!S")]
         S { a: i32 },
@@ -579,7 +579,7 @@ fn r3_tag_enum_access_struct_variant_dispatch() {
 
 #[test]
 fn r3_tag_enum_access_tuple_variant_dispatch() {
-    #[derive(Debug, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Deserialize, PartialEq)]
     enum E {
         #[serde(rename = "!P")]
         P(i32, i32),
@@ -795,7 +795,7 @@ target:
 
 #[test]
 fn r3_spanned_map_shape() {
-    #[derive(Deserialize)]
+    #[derive(serde::Deserialize)]
     struct D {
         m: Spanned<BTreeMap<String, i32>>,
     }
@@ -858,7 +858,7 @@ fn r3_streaming_de_with_registry_strips_custom_tag() {
 // path and variant-name routing (L1219, L1222, L1224, L1229)
 // ─────────────────────────────────────────────────────────────────
 
-#[derive(Debug, Deserialize, PartialEq)]
+#[derive(Debug, serde::Deserialize, PartialEq)]
 #[serde(tag = "kind")]
 enum InternallyTagged {
     First { x: i32 },

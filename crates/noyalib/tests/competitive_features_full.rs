@@ -6,7 +6,6 @@
 //! Covers all permutations of anchor replay, AnchorRegistry,
 //! robotics numeric types, and miette diagnostic bridge.
 
-use serde::Deserialize;
 use std::collections::BTreeMap;
 
 // ════════════════════════════════════════════════════════════════════════
@@ -63,12 +62,12 @@ mod anchor_replay {
     #[test]
     fn mapping_anchor_alias() {
         let yaml = "base: &cfg\n  host: localhost\n  port: 8080\ncopy: *cfg\n";
-        #[derive(Debug, Deserialize, PartialEq)]
+        #[derive(Debug, serde::Deserialize, PartialEq)]
         struct Endpoint {
             host: String,
             port: u16,
         }
-        #[derive(Debug, Deserialize)]
+        #[derive(Debug, serde::Deserialize)]
         struct Doc {
             base: Endpoint,
             copy: Endpoint,
@@ -82,7 +81,7 @@ mod anchor_replay {
     #[test]
     fn sequence_anchor_alias() {
         let yaml = "orig: &items\n  - a\n  - b\n  - c\ncopy: *items\n";
-        #[derive(Debug, Deserialize, PartialEq)]
+        #[derive(Debug, serde::Deserialize, PartialEq)]
         struct Doc {
             orig: Vec<String>,
             copy: Vec<String>,
@@ -103,16 +102,16 @@ config:
     port: 5432
 replica: *db_cfg
 "#;
-        #[derive(Debug, Deserialize, PartialEq)]
+        #[derive(Debug, serde::Deserialize, PartialEq)]
         struct DbCfg {
             host: String,
             port: u16,
         }
-        #[derive(Debug, Deserialize)]
+        #[derive(Debug, serde::Deserialize)]
         struct Config {
             db: DbCfg,
         }
-        #[derive(Debug, Deserialize)]
+        #[derive(Debug, serde::Deserialize)]
         struct Doc {
             config: Config,
             replica: DbCfg,
@@ -153,13 +152,13 @@ primary: &srv
   memory: 16
 failover: *srv
 "#;
-        #[derive(Debug, Deserialize, PartialEq)]
+        #[derive(Debug, serde::Deserialize, PartialEq)]
         struct Server {
             name: String,
             cpu: u32,
             memory: u32,
         }
-        #[derive(Debug, Deserialize)]
+        #[derive(Debug, serde::Deserialize)]
         struct Doc {
             primary: Server,
             failover: Server,
@@ -173,13 +172,13 @@ failover: *srv
     #[test]
     fn anchor_typed_enum() {
         let yaml = "status: &s active\ncopy: *s\n";
-        #[derive(Debug, Deserialize, PartialEq)]
+        #[derive(Debug, serde::Deserialize, PartialEq)]
         #[serde(rename_all = "lowercase")]
         enum Status {
             Active,
             Inactive,
         }
-        #[derive(Debug, Deserialize)]
+        #[derive(Debug, serde::Deserialize)]
         struct Doc {
             status: Status,
             copy: Status,
@@ -194,7 +193,7 @@ failover: *srv
     #[test]
     fn anchor_typed_tuple() {
         let yaml = "pair: &p\n  - 10\n  - 20\ncopy: *p\n";
-        #[derive(Debug, Deserialize, PartialEq)]
+        #[derive(Debug, serde::Deserialize, PartialEq)]
         struct Doc {
             pair: (i32, i32),
             copy: (i32, i32),
@@ -209,7 +208,7 @@ failover: *srv
     #[test]
     fn anchor_in_sequence_items() {
         let yaml = "items:\n  - &x 10\n  - &y 20\n  - *x\n  - *y\n  - *x\n";
-        #[derive(Debug, Deserialize)]
+        #[derive(Debug, serde::Deserialize)]
         struct Doc {
             items: Vec<i32>,
         }
@@ -239,23 +238,23 @@ l1:
         value: found
 shallow: *deep
 "#;
-        #[derive(Debug, Deserialize, PartialEq)]
+        #[derive(Debug, serde::Deserialize, PartialEq)]
         struct L4 {
             value: String,
         }
-        #[derive(Debug, Deserialize, PartialEq)]
+        #[derive(Debug, serde::Deserialize, PartialEq)]
         struct L3 {
             l4: L4,
         }
-        #[derive(Debug, Deserialize)]
+        #[derive(Debug, serde::Deserialize)]
         struct L2 {
             l3: L3,
         }
-        #[derive(Debug, Deserialize)]
+        #[derive(Debug, serde::Deserialize)]
         struct L1 {
             l2: L2,
         }
-        #[derive(Debug, Deserialize)]
+        #[derive(Debug, serde::Deserialize)]
         struct Doc {
             l1: L1,
             shallow: L3,
@@ -268,12 +267,12 @@ shallow: *deep
 
     #[test]
     fn roundtrip_serialize_deserialize() {
-        #[derive(Debug, Serialize, Deserialize, PartialEq)]
+        #[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
         struct Data {
             name: String,
             count: u32,
         }
-        use serde::Serialize;
+
         let original = Data {
             name: "test".into(),
             count: 42,
@@ -618,14 +617,12 @@ mod robotics_tests {
 
     #[test]
     fn struct_with_radians_fields() {
-        use serde::Deserialize;
-
         let yaml = r#"
 joint1: 90.0
 joint2: -45.0
 joint3: 180.0
 "#;
-        #[derive(Debug, Deserialize)]
+        #[derive(Debug, serde::Deserialize)]
         struct Arm {
             joint1: Radians,
             joint2: Radians,
@@ -654,12 +651,11 @@ joint3: 180.0
 mod diagnostic_tests {
     use miette::Diagnostic;
     use noyalib::Spanned;
-    use serde::Deserialize;
 
     #[test]
     fn spanned_error_creates_report() {
         let yaml = "port: 80\n";
-        #[derive(Deserialize)]
+        #[derive(serde::Deserialize)]
         struct Cfg {
             port: Spanned<u16>,
         }
@@ -672,7 +668,7 @@ mod diagnostic_tests {
     #[test]
     fn diagnostic_has_correct_source_code() {
         let yaml = "value: 42\n";
-        #[derive(Deserialize)]
+        #[derive(serde::Deserialize)]
         struct Doc {
             value: Spanned<i32>,
         }
@@ -685,7 +681,7 @@ mod diagnostic_tests {
     #[test]
     fn diagnostic_has_correct_labels() {
         let yaml = "value: 42\n";
-        #[derive(Deserialize)]
+        #[derive(serde::Deserialize)]
         struct Doc {
             value: Spanned<i32>,
         }
@@ -700,7 +696,7 @@ mod diagnostic_tests {
     #[test]
     fn diagnostic_has_code() {
         let yaml = "x: 1\n";
-        #[derive(Deserialize)]
+        #[derive(serde::Deserialize)]
         struct Doc {
             x: Spanned<i32>,
         }
@@ -714,7 +710,7 @@ mod diagnostic_tests {
     #[test]
     fn multiple_validation_errors() {
         let yaml = "host: \"\"\nport: 80\n";
-        #[derive(Deserialize)]
+        #[derive(serde::Deserialize)]
         struct Cfg {
             host: Spanned<String>,
             port: Spanned<u16>,
@@ -745,7 +741,7 @@ mod diagnostic_tests {
     #[test]
     fn integration_parse_validate_diagnose() {
         let yaml = "database:\n  host: db.local\n  port: 80\n  name: prod\n";
-        #[derive(Deserialize)]
+        #[derive(serde::Deserialize)]
         struct DbCfg {
             #[allow(dead_code)]
             host: String,
@@ -753,7 +749,7 @@ mod diagnostic_tests {
             #[allow(dead_code)]
             name: String,
         }
-        #[derive(Deserialize)]
+        #[derive(serde::Deserialize)]
         struct Root {
             database: DbCfg,
         }

@@ -8,7 +8,6 @@
 use std::collections::BTreeMap;
 
 use noyalib::{Mapping, Number, SerializerConfig, Value, to_string};
-use serde::Serialize;
 
 // ============================================================================
 // Basic Type Tests
@@ -112,7 +111,7 @@ fn test_serialize_empty_map() {
 // Struct Tests
 // ============================================================================
 
-#[derive(Serialize)]
+#[derive(serde::Serialize)]
 struct SimpleStruct {
     name: String,
     value: i32,
@@ -129,7 +128,7 @@ fn test_serialize_simple_struct() {
     assert!(yaml.contains("value: 42") || yaml.contains("value:"));
 }
 
-#[derive(Serialize)]
+#[derive(serde::Serialize)]
 struct NestedStruct {
     outer: String,
     inner: SimpleStruct,
@@ -149,7 +148,7 @@ fn test_serialize_nested_struct() {
     assert!(yaml.contains("inner:"));
 }
 
-#[derive(Serialize)]
+#[derive(serde::Serialize)]
 struct OptionalFields {
     required: String,
     optional: Option<String>,
@@ -181,7 +180,7 @@ fn test_serialize_optional_none() {
 // Enum Tests
 // ============================================================================
 
-#[derive(Serialize)]
+#[derive(serde::Serialize)]
 #[allow(dead_code)]
 enum UnitEnum {
     A,
@@ -195,7 +194,7 @@ fn test_serialize_unit_enum() {
     assert!(yaml.contains("A"));
 }
 
-#[derive(Serialize)]
+#[derive(serde::Serialize)]
 enum NewtypeEnum {
     Text(String),
     Number(i32),
@@ -212,7 +211,7 @@ fn test_serialize_newtype_enum() {
     assert!(yaml.contains("42"));
 }
 
-#[derive(Serialize)]
+#[derive(serde::Serialize)]
 enum StructEnum {
     Point { x: i32, y: i32 },
 }
@@ -229,7 +228,7 @@ fn test_serialize_struct_enum() {
 // Complex Structure Tests
 // ============================================================================
 
-#[derive(Serialize)]
+#[derive(serde::Serialize)]
 struct Config {
     name: String,
     version: u32,
@@ -289,9 +288,8 @@ fn test_serialize_emoji() {
 #[test]
 fn test_roundtrip_simple() {
     use noyalib::from_str;
-    use serde::Deserialize;
 
-    #[derive(Debug, Serialize, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
     struct Data {
         name: String,
         value: i32,
@@ -310,15 +308,14 @@ fn test_roundtrip_simple() {
 #[test]
 fn test_roundtrip_nested() {
     use noyalib::from_str;
-    use serde::Deserialize;
 
-    #[derive(Debug, Serialize, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
     struct Inner {
         x: i32,
         y: i32,
     }
 
-    #[derive(Debug, Serialize, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
     struct Outer {
         name: String,
         inner: Inner,
@@ -339,9 +336,8 @@ fn test_roundtrip_nested() {
 #[test]
 fn test_roundtrip_collections() {
     use noyalib::from_str;
-    use serde::Deserialize;
 
-    #[derive(Debug, Serialize, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
     struct Data {
         items: Vec<i32>,
         lookup: BTreeMap<String, String>,
@@ -368,7 +364,7 @@ fn test_roundtrip_collections() {
 
 #[test]
 fn test_serialize_to_writer() {
-    #[derive(Debug, Serialize)]
+    #[derive(Debug, serde::Serialize)]
     struct Data {
         name: String,
         value: i32,
@@ -389,7 +385,7 @@ fn test_serialize_to_writer() {
 
 #[test]
 fn test_serialize_with_config() {
-    #[derive(Debug, Serialize)]
+    #[derive(Debug, serde::Serialize)]
     struct Data {
         name: String,
     }
@@ -413,7 +409,7 @@ fn test_serialize_with_config() {
 
 #[test]
 fn test_serialize_to_writer_with_config() {
-    #[derive(Debug, Serialize)]
+    #[derive(Debug, serde::Serialize)]
     struct Data {
         name: String,
     }
@@ -452,7 +448,7 @@ fn test_serialize_unit() {
 
 #[test]
 fn test_serialize_unit_struct() {
-    #[derive(Serialize)]
+    #[derive(serde::Serialize)]
     struct UnitStruct;
 
     let yaml = to_string(&UnitStruct).unwrap();
@@ -461,7 +457,7 @@ fn test_serialize_unit_struct() {
 
 #[test]
 fn test_serialize_newtype_struct() {
-    #[derive(Serialize)]
+    #[derive(serde::Serialize)]
     struct Wrapper(i32);
 
     let wrapper = Wrapper(42);
@@ -480,7 +476,7 @@ fn test_serialize_tuple() {
 
 #[test]
 fn test_serialize_tuple_struct() {
-    #[derive(Serialize)]
+    #[derive(serde::Serialize)]
     struct Point(i32, i32);
 
     let point = Point(10, 20);
@@ -491,7 +487,7 @@ fn test_serialize_tuple_struct() {
 
 #[test]
 fn test_serialize_enum_unit_variant() {
-    #[derive(Serialize)]
+    #[derive(serde::Serialize)]
     enum Color {
         Red,
     }
@@ -502,7 +498,7 @@ fn test_serialize_enum_unit_variant() {
 
 #[test]
 fn test_serialize_enum_tuple_variant() {
-    #[derive(Serialize)]
+    #[derive(serde::Serialize)]
     enum Message {
         Write(String),
     }
@@ -515,7 +511,7 @@ fn test_serialize_enum_tuple_variant() {
 
 #[test]
 fn test_serialize_enum_struct_variant() {
-    #[derive(Serialize)]
+    #[derive(serde::Serialize)]
     enum Shape {
         Rectangle { width: u32, height: u32 },
     }
@@ -602,7 +598,7 @@ fn test_serialize_floats_precision() {
 
 #[test]
 fn test_to_value() {
-    #[derive(Serialize)]
+    #[derive(serde::Serialize)]
     struct Data {
         name: String,
         value: i32,
@@ -809,7 +805,7 @@ fn test_serialize_sequence_with_nested_sequence() {
 
 #[test]
 fn test_serialize_bytes_array() {
-    #[derive(Serialize)]
+    #[derive(serde::Serialize)]
     struct WithBytes<'a> {
         #[serde(with = "serde_bytes")]
         data: &'a [u8],

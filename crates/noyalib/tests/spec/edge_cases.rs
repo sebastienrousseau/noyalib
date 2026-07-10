@@ -6,7 +6,6 @@
 use std::collections::HashMap;
 
 use noyalib::{Value, from_str, to_string};
-use serde::{Deserialize, Serialize};
 
 #[test]
 fn unicode_string() {
@@ -73,7 +72,7 @@ fn carriage_return_in_string() {
 
 #[test]
 fn roundtrip_complex_struct() {
-    #[derive(Debug, Serialize, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
     struct Config {
         name: String,
         port: u16,
@@ -95,11 +94,11 @@ fn roundtrip_complex_struct() {
 
 #[test]
 fn roundtrip_nested_option() {
-    #[derive(Debug, Serialize, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
     struct Outer {
         inner: Option<Inner>,
     }
-    #[derive(Debug, Serialize, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
     struct Inner {
         value: i64,
     }
@@ -114,7 +113,7 @@ fn roundtrip_nested_option() {
 
 #[test]
 fn roundtrip_enum_variants() {
-    #[derive(Debug, Serialize, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
     enum Color {
         Red,
         Green,
@@ -130,7 +129,7 @@ fn roundtrip_enum_variants() {
 
 #[test]
 fn roundtrip_newtype_struct() {
-    #[derive(Debug, Serialize, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
     struct Wrapper(i64);
 
     let orig = Wrapper(42);
@@ -141,7 +140,7 @@ fn roundtrip_newtype_struct() {
 
 #[test]
 fn roundtrip_tuple_struct() {
-    #[derive(Debug, Serialize, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
     struct Point(f64, f64);
 
     let orig = Point(1.5, 2.5);
@@ -152,7 +151,7 @@ fn roundtrip_tuple_struct() {
 
 #[test]
 fn roundtrip_unit_struct() {
-    #[derive(Debug, Serialize, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
     struct Unit;
 
     let yaml = to_string(&Unit).unwrap();

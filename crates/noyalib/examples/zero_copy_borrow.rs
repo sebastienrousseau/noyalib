@@ -18,16 +18,15 @@ mod support;
 
 use noyalib::borrowed::TransformReason;
 use noyalib::from_str_borrowing;
-use serde::Deserialize;
 use std::borrow::Cow;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, serde::Deserialize)]
 struct Config<'a> {
     name: &'a str,
     role: &'a str,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, serde::Deserialize)]
 struct CowConfig<'a> {
     #[serde(borrow)]
     plain: Cow<'a, str>,

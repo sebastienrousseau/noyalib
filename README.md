@@ -194,9 +194,8 @@ for rationale and migration notes.
 
 ```rust
 use noyalib::{from_str, to_string};
-use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
 struct Config {
     name: String,
     port: u16,
@@ -589,9 +588,8 @@ fix-up engine that rewrites these to match the schema:
 
 ```rust
 use noyalib::{coerce_to_schema, from_str, schema_for, validate_against_schema, JsonSchema};
-use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, JsonSchema)]
+#[derive(serde::Serialize, serde::Deserialize, JsonSchema)]
 struct ServerConfig {
     /// Port the server binds on.
     port: u16,
@@ -668,9 +666,7 @@ gap when a config-key typo (e.g. `replicass: 3`) deserialises into
 a struct whose `replicas` field stays at its `Default`:
 
 ```rust
-use serde::Deserialize;
-
-#[derive(Debug, Deserialize)]
+#[derive(Debug, serde::Deserialize)]
 struct Config {
     port: u16,
     host: String,
@@ -1096,12 +1092,10 @@ let yaml = to_string_multi(&[config1, config2])?;
 <summary><b>Enum serialization</b></summary>
 
 ```rust
-use serde::{Deserialize, Serialize};
-
-#[derive(Serialize, Deserialize)]
+#[derive(serde::Serialize, serde::Deserialize)]
 enum Action { StartServer, StopServer }
 
-#[derive(Serialize, Deserialize)]
+#[derive(serde::Serialize, serde::Deserialize)]
 struct Task {
     #[serde(with = "noyalib::with::singleton_map")]
     action: Action,

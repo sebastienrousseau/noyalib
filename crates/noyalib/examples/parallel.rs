@@ -17,10 +17,9 @@
 //! ```
 
 use noyalib::Value;
-use serde::Deserialize;
 use std::time::Instant;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, serde::Deserialize)]
 #[allow(dead_code)]
 struct Event {
     id: u32,

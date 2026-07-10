@@ -6,20 +6,19 @@
 use std::collections::BTreeMap;
 
 use noyalib::{from_str, to_string};
-use serde::{Deserialize, Serialize};
 
 // ============================================================================
 // singleton_map Tests
 // ============================================================================
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
 enum Action {
     Start,
     Stop,
     Restart { delay: u32 },
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
 struct Task {
     name: String,
     #[serde(with = "noyalib::with::singleton_map")]
@@ -57,7 +56,7 @@ fn test_singleton_map_struct_variant() {
 // singleton_map_optional Tests
 // ============================================================================
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
 struct OptionalTask {
     name: String,
     #[serde(
@@ -113,14 +112,14 @@ fn test_singleton_map_optional_struct_variant() {
 // singleton_map_recursive Tests
 // ============================================================================
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
 enum Status {
     Active,
     Inactive,
     Error { code: i32 },
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
 struct ServiceList {
     name: String,
     #[serde(with = "noyalib::with::singleton_map_recursive")]
@@ -139,7 +138,7 @@ fn test_singleton_map_recursive_vec() {
     assert_eq!(parsed, list);
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
 struct ServiceMap {
     name: String,
     #[serde(with = "noyalib::with::singleton_map_recursive")]
@@ -166,7 +165,7 @@ fn test_singleton_map_recursive_map() {
 // nested_singleton_map Alias Tests
 // ============================================================================
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
 struct AliasTest {
     #[serde(with = "noyalib::with::nested_singleton_map")]
     items: Vec<Status>,
@@ -187,14 +186,14 @@ fn test_nested_singleton_map_alias() {
 // Complex Nested Structures
 // ============================================================================
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
 enum Command {
     Run { script: String },
     Wait { seconds: u32 },
     Parallel(Vec<Command>),
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
 struct Pipeline {
     name: String,
     #[serde(with = "noyalib::with::singleton_map_recursive")]
@@ -242,14 +241,14 @@ fn test_empty_collections() {
     assert_eq!(parsed, list);
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
 enum Mixed {
     StringVal(String),
     IntVal(i32),
     Nested { inner: Box<Mixed> },
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
 struct MixedContainer {
     #[serde(with = "noyalib::with::singleton_map")]
     value: Mixed,

@@ -10,11 +10,10 @@ use noyalib::{
     document::{load_all, load_all_as, load_all_with_config, try_load_all},
     from_str, from_str_with_config,
 };
-use serde::Deserialize;
 
 // ── Spanned<T> forces the span-aware AST loader (hits most error paths) ─
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, serde::Deserialize)]
 struct SpannedCfg {
     #[allow(dead_code)]
     name: Spanned<String>,
@@ -44,12 +43,12 @@ fn spanned_struct_recursion_limit_via_ast() {
 #[test]
 fn ast_depth_limit_enforced_on_deeply_nested_value() {
     // from_str::<Value> with Spanned forces AST.
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     struct Nested {
         #[allow(dead_code)]
         level: Spanned<i32>,
     }
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     struct Outer {
         #[allow(dead_code)]
         inner: Nested,
@@ -63,7 +62,7 @@ fn ast_depth_limit_enforced_on_deeply_nested_value() {
 
 #[test]
 fn ast_duplicate_policy_first_keeps_first() {
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     struct Doc {
         #[allow(dead_code)]
         a: Spanned<String>,
@@ -76,7 +75,7 @@ fn ast_duplicate_policy_first_keeps_first() {
 
 #[test]
 fn ast_duplicate_policy_last_keeps_last() {
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     struct Doc {
         #[allow(dead_code)]
         a: Spanned<String>,
@@ -89,7 +88,7 @@ fn ast_duplicate_policy_last_keeps_last() {
 
 #[test]
 fn ast_duplicate_policy_error_rejects() {
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     struct Doc {
         #[allow(dead_code)]
         a: Spanned<String>,
@@ -120,7 +119,7 @@ fn alias_outside_document_via_ast() {
 #[test]
 fn ast_unknown_anchor_error() {
     // Spanned forces AST; unknown alias should surface UnknownAnchorAt.
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     struct Doc {
         #[allow(dead_code)]
         v: Spanned<String>,
@@ -136,7 +135,7 @@ fn ast_unknown_anchor_error() {
 fn ast_alias_expansion_count_limit() {
     let config = ParserConfig::new().max_alias_expansions(2);
     // Spanned to force AST path.
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     #[allow(dead_code)]
     struct Doc {
         anchor: Spanned<String>,
@@ -159,7 +158,7 @@ fn ast_mapping_key_limit_enforced() {
         yaml.push_str(&format!("key{i}: val{i}\n"));
     }
     // Value deser uses streaming; Spanned forces AST.
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     #[allow(dead_code)]
     struct Doc {
         key0: Spanned<String>,
@@ -177,7 +176,7 @@ fn ast_sequence_length_limit_enforced() {
     for i in 0..10 {
         yaml.push_str(&format!("  - {i}\n"));
     }
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     #[allow(dead_code)]
     struct Doc {
         items: Vec<Spanned<i32>>,
@@ -213,7 +212,7 @@ fn try_load_all_is_alias_for_load_all() {
 
 #[test]
 fn load_all_as_typed_struct() {
-    #[derive(Deserialize, Debug)]
+    #[derive(serde::Deserialize, Debug)]
     #[allow(dead_code)]
     struct Doc {
         name: String,
@@ -246,14 +245,14 @@ fn load_all_empty_stream_returns_empty() {
 
 #[test]
 fn ast_merge_key_single_anchor() {
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     #[allow(dead_code)]
     struct Target {
         a: Spanned<i32>,
         b: Spanned<i32>,
         c: Spanned<i32>,
     }
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     #[allow(dead_code)]
     struct Doc {
         target: Target,
@@ -356,7 +355,7 @@ fn ast_anchor_on_mapping() {
 #[test]
 fn ast_spanned_in_multi_document() {
     let yaml = "---\nname: first\n---\nname: second\n";
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     #[allow(dead_code)]
     struct Doc {
         name: Spanned<String>,
@@ -381,7 +380,7 @@ fn ast_merge_empty_anchor() {
 
 #[test]
 fn ast_scalar_anchor_alias() {
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     #[allow(dead_code)]
     struct Doc {
         a: Spanned<String>,
@@ -399,7 +398,7 @@ fn ast_scalar_anchor_alias() {
 fn ast_deep_sequence_hits_recursion_limit() {
     // Deep sequence through AST (Spanned forces it).
     let config = ParserConfig::new().max_depth(3);
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     #[allow(dead_code)]
     struct Doc {
         deep: Spanned<Vec<Vec<Vec<Vec<i32>>>>>,
@@ -419,7 +418,7 @@ fn ast_alias_bytes_limit_hits_repetition() {
     for i in 0..20 {
         yaml.push_str(&format!("ref{i}: *a\n"));
     }
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     #[allow(dead_code)]
     struct Doc {
         anchor: Spanned<String>,

@@ -12,9 +12,8 @@ use noyalib::{
     Number, ParserConfig, SerializerConfig, Value, from_str_with_config,
     to_string_value_with_config,
 };
-use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
 struct Record {
     id: u64,
 }

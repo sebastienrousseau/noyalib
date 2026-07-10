@@ -151,9 +151,7 @@ fn malformed_schema_distinguished_from_data_error() {
 
 #[test]
 fn validate_data_against_schemars_emitted_schema() {
-    use serde::{Deserialize, Serialize};
-
-    #[derive(Serialize, Deserialize, noyalib::JsonSchema)]
+    #[derive(serde::Serialize, serde::Deserialize, noyalib::JsonSchema)]
     #[allow(dead_code)]
     struct ServerConfig {
         port: u16,

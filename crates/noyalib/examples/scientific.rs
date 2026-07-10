@@ -28,7 +28,6 @@ fn main() {
 #[cfg(feature = "robotics")]
 fn run_robotics_examples() {
     use noyalib::robotics::{Degrees, Radians, StrictFloat};
-    use serde::Deserialize;
 
     // ── StrictFloat: valid values ────────────────────────────────────
     support::task_with_output("StrictFloat: valid values", || {
@@ -101,7 +100,7 @@ joint4: 0.0
 joint5: 270.0
 joint6: 135.0
 "#;
-        #[derive(Debug, Deserialize)]
+        #[derive(Debug, serde::Deserialize)]
         struct RobotArm {
             joint1: Radians,
             joint2: Radians,
@@ -145,7 +144,7 @@ offset_x: 0.001
 offset_y: -0.002
 scale: 1.00015
 "#;
-        #[derive(Debug, Deserialize)]
+        #[derive(Debug, serde::Deserialize)]
         struct Calibration {
             offset_x: StrictFloat,
             offset_y: StrictFloat,

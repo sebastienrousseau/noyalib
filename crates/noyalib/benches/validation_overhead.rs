@@ -9,10 +9,9 @@
 
 use criterion::{Criterion, criterion_group, criterion_main};
 use noyalib::{Spanned, from_str};
-use serde::Deserialize;
 use std::hint::black_box;
 
-#[derive(Deserialize)]
+#[derive(serde::Deserialize)]
 #[allow(dead_code)]
 struct ErrorHeavy {
     items: Vec<Spanned<u8>>,

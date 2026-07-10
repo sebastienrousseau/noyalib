@@ -11,7 +11,6 @@
 #![allow(clippy::unwrap_used)]
 
 use noyalib::from_str;
-use serde::Deserialize;
 
 #[test]
 fn int_tag_resolves_to_integer() {
@@ -39,7 +38,7 @@ fn bool_tag_resolves_to_bool() {
 
 #[test]
 fn null_tag_resolves_to_unit() {
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     struct N {
         x: Option<i64>,
     }
@@ -55,7 +54,7 @@ fn seq_tag_resolves_to_sequence() {
 
 #[test]
 fn map_tag_resolves_to_mapping() {
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     struct Doc {
         a: i64,
         b: i64,

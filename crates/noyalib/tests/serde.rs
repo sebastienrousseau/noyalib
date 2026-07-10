@@ -60,7 +60,7 @@ fn test_serde_unsigned() {
 #[cfg(feature = "lossless-u64")]
 #[test]
 fn test_serde_lossless_u64_struct_field() {
-    #[derive(Debug, Serialize, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
     struct Record {
         id: u64,
     }
@@ -130,7 +130,7 @@ fn test_serde_btreemap() {
 // Structs
 // ============================================================================
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
 struct Point {
     x: i32,
     y: i32,
@@ -142,7 +142,7 @@ fn test_serde_simple_struct() {
     test_serde(&point, &["x:", "y:"]);
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
 struct Rectangle {
     top_left: Point,
     bottom_right: Point,
@@ -157,7 +157,7 @@ fn test_serde_nested_struct() {
     test_serde(&rect, &["top_left:", "bottom_right:"]);
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
 struct WithOptional {
     required: String,
     optional: Option<String>,
@@ -183,7 +183,7 @@ fn test_serde_optional_none() {
     assert_eq!(value, parsed);
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, Default)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq, Default)]
 struct WithDefault {
     value: i32,
     #[serde(default)]
@@ -202,7 +202,7 @@ fn test_serde_default() {
 // Enums
 // ============================================================================
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
 enum Color {
     Red,
     Green,
@@ -216,7 +216,7 @@ fn test_serde_unit_enum() {
     test_serde(&Color::Blue, &["Blue"]);
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
 enum Wrapper {
     Int(i32),
     Str(String),
@@ -228,7 +228,7 @@ fn test_serde_newtype_enum() {
     test_serde(&Wrapper::Str("hello".to_string()), &["Str:", "hello"]);
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
 enum Shape {
     Circle { radius: f64 },
     Rectangle { width: i32, height: i32 },
@@ -246,7 +246,7 @@ fn test_serde_struct_enum() {
     );
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
 enum Tuple {
     Pair(i32, i32),
     Triple(i32, i32, i32),
@@ -269,7 +269,7 @@ fn test_serde_tuple_enum() {
 // Tuple and Newtype Structs
 // ============================================================================
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
 struct Newtype(i32);
 
 #[test]
@@ -277,7 +277,7 @@ fn test_serde_newtype_struct() {
     test_serde(&Newtype(42), &["42"]);
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
 struct TupleStruct(i32, String, bool);
 
 #[test]
@@ -292,7 +292,7 @@ fn test_serde_tuple_struct() {
 // Complex Types
 // ============================================================================
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
 struct Config {
     name: String,
     version: u32,
@@ -378,7 +378,7 @@ fn test_serde_string_with_colon() {
 
 #[test]
 fn test_serde_numeric_string() {
-    #[derive(Debug, Serialize, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
     struct Data {
         value: String,
     }
@@ -393,7 +393,7 @@ fn test_serde_numeric_string() {
 
 #[test]
 fn test_serde_bool_like_string() {
-    #[derive(Debug, Serialize, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
     struct Data {
         value: String,
     }

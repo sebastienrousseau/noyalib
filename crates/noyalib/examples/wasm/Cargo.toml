@@ -18,9 +18,8 @@ serde-wasm-bindgen = "0.6"
 wasm-opt = false
 
 [package.metadata.cargo-machete]
-# `serde` here is consumed by the inline `#[derive(Serialize,
-# Deserialize)]` macros in the example source; cargo-machete's
-# AST scan misses the proc-macro reference.
+# `serde` here is consumed by the inline serde derive macros in the example source
+# cargo-machete's AST scan misses the proc-macro reference.
 ignored = ["serde"]
 
 [profile.release]

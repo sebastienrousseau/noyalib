@@ -165,10 +165,9 @@ fn pnpm_lockfile_50000_pkgs_does_not_recursion_limit() {
 /// migrate to when leaving `serde_yml`.
 #[test]
 fn pnpm_lockfile_typed_struct_parses_with_default_config() {
-    use serde::Deserialize;
     use std::collections::BTreeMap;
 
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     #[allow(dead_code)]
     struct Lockfile {
         #[serde(rename = "lockfileVersion")]

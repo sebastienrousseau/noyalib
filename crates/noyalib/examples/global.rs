@@ -9,9 +9,8 @@
 mod support;
 
 use noyalib::{SerializerConfig, Value, to_string, to_string_with_config};
-use serde::Serialize;
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, serde::Serialize)]
 struct ServerConfig {
     host: String,
     port: u16,

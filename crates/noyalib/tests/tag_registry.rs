@@ -21,7 +21,7 @@ fn cfg(tags: &[&str]) -> ParserConfig {
 
 // ── Scalar newtype pass-through ──────────────────────────────────────
 
-#[derive(Debug, Deserialize, PartialEq)]
+#[derive(Debug, serde::Deserialize, PartialEq)]
 struct Celsius(f64);
 
 #[test]
@@ -44,9 +44,9 @@ fn scalar_tag_not_registered_errors_on_newtype_without_registry() {
 
 #[test]
 fn multiple_tags_in_registry() {
-    #[derive(Debug, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Deserialize, PartialEq)]
     struct Meters(f64);
-    #[derive(Debug, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Deserialize, PartialEq)]
     struct Seconds(f64);
 
     let cfg = cfg(&["!Meters", "!Seconds"]);
@@ -69,7 +69,7 @@ fn registered_tag_on_sequence_strips_and_deserializes() {
 
 #[test]
 fn registered_tag_on_mapping_strips_and_deserializes() {
-    #[derive(Debug, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Deserialize, PartialEq)]
     struct Point {
         x: i32,
         y: i32,

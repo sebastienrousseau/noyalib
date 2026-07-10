@@ -12,9 +12,8 @@ use std::collections::BTreeMap;
 
 use noyalib::fmt::{Commented, FlowMap, FlowSeq, LitString, SpaceAfter};
 use noyalib::to_string;
-use serde::Serialize;
 
-#[derive(Serialize)]
+#[derive(serde::Serialize)]
 struct Config {
     tags: FlowSeq<Vec<String>>,
     metadata: FlowMap<BTreeMap<String, String>>,

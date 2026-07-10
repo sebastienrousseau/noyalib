@@ -125,8 +125,8 @@ fn typed_deserialization_respects_no_schema() {
     // When no_schema is on, a `port: 8080` line surfaces as a
     // string. Asking for `u16` should error — the user must quote
     // intent or the schema breaks. This is the contract.
-    use serde::Deserialize;
-    #[derive(Debug, Deserialize)]
+
+    #[derive(Debug, serde::Deserialize)]
     struct Cfg {
         #[allow(dead_code)]
         port: u16,
@@ -141,8 +141,7 @@ fn typed_deserialization_respects_no_schema() {
 
 #[test]
 fn typed_deserialization_with_legacy_octal_round_trip() {
-    use serde::Deserialize;
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     struct Perms {
         umask: i64,
     }

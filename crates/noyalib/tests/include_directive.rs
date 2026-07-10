@@ -145,8 +145,7 @@ fn non_string_spec_errors() {
 
 #[test]
 fn typed_target_sees_substituted_value() {
-    use serde::Deserialize;
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     struct Server {
         host: String,
         port: u16,
@@ -155,7 +154,7 @@ fn typed_target_sees_substituted_value() {
     let _ = files.insert("server.yaml", "host: db.local\nport: 5432\n");
     let cfg = ParserConfig::new().include_resolver(mem_resolver(files));
     let yaml = "server: !include server.yaml\n";
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     struct Root {
         server: Server,
     }

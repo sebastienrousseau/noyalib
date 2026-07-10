@@ -14,7 +14,6 @@
 #![allow(missing_docs, unused_results)]
 
 use criterion::{Criterion, criterion_group, criterion_main};
-use serde::Deserialize;
 use std::hint::black_box;
 
 // ── Test Payloads ────────────────────────────────────────────────────
@@ -113,14 +112,14 @@ fn billion_laughs(depth: usize) -> String {
 
 // ── Typed structs for streaming vs AST comparison ────────────────────
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, serde::Deserialize)]
 #[allow(dead_code)]
 struct K8sMetadata {
     name: String,
     namespace: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, serde::Deserialize)]
 #[allow(dead_code)]
 struct K8sDeployment {
     #[serde(rename = "apiVersion")]
@@ -129,7 +128,7 @@ struct K8sDeployment {
     metadata: K8sMetadata,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, serde::Deserialize)]
 #[allow(dead_code)]
 struct ZeroCopyConfig {
     host: String,
@@ -180,7 +179,7 @@ fn bench_streaming_vs_ast(c: &mut Criterion) {
 
 // ── Benchmark: Span Tracking Overhead ────────────────────────────────
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, serde::Deserialize)]
 #[allow(dead_code)]
 struct SpannedConfig {
     host: noyalib::Spanned<String>,

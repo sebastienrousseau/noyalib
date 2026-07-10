@@ -20,9 +20,8 @@
 #![allow(missing_docs)]
 
 use noyalib::{Error, from_reader_strict, from_slice_strict, from_str, from_str_strict};
-use serde::Deserialize;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, serde::Deserialize)]
 #[allow(dead_code)]
 struct ServerConfig {
     port: u16,
@@ -89,7 +88,7 @@ unknown_c: 3
 
 #[test]
 fn strict_walks_into_nested_structs() {
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     #[allow(dead_code)]
     struct Outer {
         name: String,
