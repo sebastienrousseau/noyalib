@@ -3,9 +3,7 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 // Copyright (c) 2026 Noyalib. All rights reserved.
 
-use super::{
-    Mapping, Number, TAGGED_VALUE_FIELD_TAG, TAGGED_VALUE_FIELD_VALUE, Tag, TaggedValue, Value,
-};
+use super::{Mapping, Number, TaggedValue, Value};
 use crate::prelude::*;
 use indexmap::map::Iter;
 use serde::{Deserialize, Serialize};
@@ -81,43 +79,7 @@ impl<'de> Deserialize<'de> for Value {
             where
                 A: MapAccess<'de>,
             {
-                // Tag-preserving fast path: noyalib's own
-                // [`crate::de::Deserializer::deserialize_any`]
-                // routes `Value::Tagged(...)` through a
-                // [`TagPreservingMapAccess`] when its
-                // `preserve_tags` flag is on (set automatically
-                // for `from_str::<Value>` / `from_value::<Value>`
-                // — see [`crate::de::is_value_target`]). The first
-                // key of that map is the [`TAGGED_VALUE_FIELD_TAG`]
-                // sentinel; detect it and reconstruct
-                // `Value::Tagged` so the tag survives the
-                // data-binding return path.
-                //
-                // Other Deserializers (serde_json, FlatMap, …)
-                // never see this magic shape, so this branch is
-                // strictly additive.
                 let first_key: Option<String> = map.next_key()?;
-                if let Some(k) = first_key.as_deref() {
-                    if k == TAGGED_VALUE_FIELD_TAG {
-                        let tag_str: String = map.next_value()?;
-                        let second_key: String = map.next_key()?.ok_or_else(|| {
-                            <A::Error as serde::de::Error>::custom(
-                                "tag-preserving map missing $__noyalib_value entry",
-                            )
-                        })?;
-                        if second_key != TAGGED_VALUE_FIELD_VALUE {
-                            return Err(<A::Error as serde::de::Error>::custom(format!(
-                                "tag-preserving map: expected `{}`, got `{}`",
-                                TAGGED_VALUE_FIELD_VALUE, second_key
-                            )));
-                        }
-                        let inner: Value = map.next_value()?;
-                        return Ok(Value::Tagged(Box::new(TaggedValue::new(
-                            Tag::new(tag_str),
-                            inner,
-                        ))));
-                    }
-                }
                 // Regular mapping path — collect every (k, v) pair
                 // including the (k, v) we already consumed.
                 // Pre-size when the MapAccess provides a usable
