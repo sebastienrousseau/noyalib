@@ -864,3 +864,89 @@ where
     }
     T::deserialize(Deserializer::new(value))
 }
+
+// The figment integration entry `from_str_typed_no_tag_preserve` is
+// `pub(crate)`, reachable only from within this crate (figment's
+// `Format::from_str` calls it). These unit tests drive it directly so
+// both of its arms are exercised: the streaming fast-path
+// (`return res`) and the AST fallback taken when the streaming layer
+// defers (e.g. on a merge key). Integration tests can't reach a
+// `pub(crate)` fn, so this is the only home for the coverage.
+#[cfg(all(test, feature = "std", feature = "figment"))]
+mod figment_entry_tests {
+    use super::*;
+    use serde::Deserialize;
+
+    #[derive(Debug, Deserialize, PartialEq)]
+    struct Endpoint {
+        name: String,
+        port: u16,
+    }
+
+    #[test]
+    fn no_tag_preserve_takes_streaming_fast_path() {
+        // A plain mapping is handled entirely by the streaming layer,
+        // so `from_str_streaming` returns `Some(..)` and the function
+        // returns through the fast-path arm.
+        let cfg = ParserConfig::default();
+        let got: Endpoint = from_str_typed_no_tag_preserve("name: alpha\nport: 7\n", &cfg).unwrap();
+        assert_eq!(
+            got,
+            Endpoint {
+                name: "alpha".into(),
+                port: 7
+            }
+        );
+    }
+
+    #[test]
+    fn no_tag_preserve_falls_back_to_ast_on_merge_key() {
+        // A merge key makes the streaming layer defer, so
+        // `from_str_streaming` yields `None` and the function takes the
+        // AST loader + policy-walk fallback arm. The merged result must
+        // still deserialise identically.
+        let cfg = ParserConfig::default();
+        let yaml = "\
+_defaults: &d\n  name: beta\n  port: 9\n<<: *d\n";
+        let got: Endpoint = from_str_typed_no_tag_preserve(yaml, &cfg).unwrap();
+        assert_eq!(
+            got,
+            Endpoint {
+                name: "beta".into(),
+                port: 9
+            }
+        );
+    }
+
+    #[test]
+    fn no_tag_preserve_surfaces_parse_error() {
+        // Over-long input trips the document-length guard before either
+        // path — exercises the error return the figment provider maps
+        // into a `FigmentError`.
+        let cfg = ParserConfig::default().max_document_length(4);
+        let res: Result<Endpoint> = from_str_typed_no_tag_preserve("name: alpha\n", &cfg);
+        assert!(matches!(res, Err(Error::Parse(_))), "got {res:?}");
+    }
+
+    #[test]
+    fn no_tag_preserve_runs_value_policies() {
+        // A non-empty policy set makes the streaming path ineligible
+        // (it requires `policies.is_empty()`), forcing the AST branch
+        // and exercising the post-load policy walk
+        // (`for p in &config.policies { p.check_value(..)? }`) plus its
+        // error-propagation edge.
+        #[derive(Debug)]
+        struct RejectAll;
+        impl crate::policy::Policy for RejectAll {
+            fn check_value(&self, _v: &Value) -> Result<()> {
+                Err(Error::Deserialize("rejected by policy".into()))
+            }
+        }
+        let cfg = ParserConfig::default().with_policy(RejectAll);
+        let res: Result<Endpoint> = from_str_typed_no_tag_preserve("name: alpha\nport: 7\n", &cfg);
+        assert!(
+            matches!(res, Err(Error::Deserialize(_))),
+            "policy rejection must surface: {res:?}"
+        );
+    }
+}

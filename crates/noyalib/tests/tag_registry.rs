@@ -218,3 +218,28 @@ fn value_target_registry_strips_collection_tag() {
     assert_eq!(v["a"].as_i64(), Some(1));
     assert_eq!(v["b"].as_i64(), Some(2));
 }
+
+// ── Borrowing entry honours the registry ─────────────────────────────
+
+#[test]
+fn borrowing_entry_attaches_tag_registry() {
+    // Every other registry test drives the *owning*
+    // `from_str_with_config`. This exercises the *borrowing* entry
+    // (`from_str_borrowing_with_config`), whose registry-attach branch
+    // (`de.rs` line 153) is otherwise never taken. A registered
+    // `!Celsius` must be stripped so the inner scalar deserialises into
+    // the newtype exactly as on the owning path.
+    let cfg = cfg(&["!Celsius"]);
+    let c: Celsius = noyalib::from_str_borrowing_with_config("!Celsius 42.5", &cfg).unwrap();
+    assert_eq!(c, Celsius(42.5));
+}
+
+#[test]
+fn borrowing_entry_without_registry_keeps_tag_opaque() {
+    // Control for the test above: with no registry installed the
+    // borrowing entry must *not* strip the tag, so the newtype visitor
+    // rejects the wrapped `{tag, value}` shape.
+    let res: Result<Celsius, Error> =
+        noyalib::from_str_borrowing_with_config("!Celsius 42.5", &ParserConfig::new());
+    assert!(res.is_err(), "unregistered tag must not strip: {res:?}");
+}
