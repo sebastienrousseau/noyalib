@@ -7,7 +7,47 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
-(Nothing yet — `[v0.0.14]` is the cut.)
+(Nothing yet — `[v0.0.15]` is the cut.)
+
+## [v0.0.15] - 2026-07-11
+
+The **loader-parity completion + coverage-hardening** cut. Finishes the
+three-loader DoS-budget parity started in v0.0.14 by extending the
+remaining budgets to the `NoSpanLoader` fast path and the
+distinct-typed-key collision guard to the streaming loader, then drives a
+workspace-wide coverage campaign (≈16 files to effective-100%) with no
+change to public API or behaviour beyond the parity fixes.
+
+Lockstep versioning: `noyalib` bumps `0.0.14` → `0.0.15`.
+Satellites publish `=0.0.15` from their own repos:
+- [`sebastienrousseau/noyalib-wasm@0.0.15`](https://github.com/sebastienrousseau/noyalib-wasm)
+- [`sebastienrousseau/noyalib-mcp@0.0.15`](https://github.com/sebastienrousseau/noyalib-mcp)
+- [`sebastienrousseau/noyalib-lsp@0.0.15`](https://github.com/sebastienrousseau/noyalib-lsp)
+- [`sebastienrousseau/noya-cli@0.0.15`](https://github.com/sebastienrousseau/noya-cli)
+
+### Fixed — loader parity (security)
+
+- **`NoSpanLoader` DoS-budget parity, completed.** The `Value` fast path
+  now also enforces `max_events`, the total-scalar-bytes budget, and the
+  `alias_anchor_ratio` — the three budgets still span-full-only after
+  v0.0.14. All three loaders (streaming, span-full `Loader`,
+  `NoSpanLoader`) now enforce the same DoS budgets, with cross-path
+  tests (`no_span_loader_parity`).
+- **Distinct-typed key-collision guard on the streaming loader.** The
+  guard that raises `Error::KeyCollision` for `1: a` vs `"1": b` (added
+  to the AST paths in v0.0.14) now also runs on the streaming
+  deserialiser, closing the last loader where the collision could
+  silently collapse (`key_collision_streaming`).
+
+### Testing / tooling
+
+- Workspace coverage campaign: ~16 files driven to effective-100%
+  (`de`, `include`, `schema_validate`, `compat/serde_yaml`, `base64`,
+  `cst/coerce`, `error`, `ser`, `value/number`, `cst/green`, `recovery`,
+  and more). Region/line/function coverage rises across the workspace;
+  no behavioural change.
+- `make coverage-gap` restored under `cargo-llvm-cov ≥ 0.8.7` (the
+  empty `--ignore-filename-regex` is now guarded, matching CI).
 
 ## [v0.0.14] - 2026-07-07
 
