@@ -27,8 +27,117 @@
 use std::sync::Arc;
 
 use noyalib::{
-    BudgetBreach, CroppedRegion, Error, Location, RenderOptions, Result, Value, from_str,
+    BudgetBreach, CroppedRegion, Error, ErrorKind, Location, RenderOptions, Result, Value, from_str,
 };
+
+/// One instance of every `Error` variant, used to drive the `kind()`
+/// classifier and the `miette::Diagnostic` arms (`code` / `help` /
+/// `labels`) across their full match. Kept in one place so the two
+/// method-coverage tests below stay in lock-step with the enum.
+fn variant_gallery() -> Vec<Error> {
+    vec![
+        Error::Parse("p".into()),
+        Error::ParseWithLocation {
+            message: "p".into(),
+            location: Location::from_index("a: [", 3),
+        },
+        Error::Serialize("s".into()),
+        Error::Deserialize("d".into()),
+        Error::DeserializeWithLocation {
+            message: "d".into(),
+            location: Location::from_index("ab", 1),
+        },
+        Error::Custom("c".into()),
+        Error::RecursionLimitExceeded { depth: 4 },
+        Error::DuplicateKey("k".into()),
+        Error::KeyCollision("k".into()),
+        Error::RepetitionLimitExceeded,
+        Error::Budget(BudgetBreach::MaxNodes {
+            limit: 1,
+            observed: 2,
+        }),
+        Error::UnknownAnchor("a".into()),
+        Error::UnknownAnchorAt {
+            name: "a".into(),
+            location: Location::default(),
+            suggestion: Some(("ab".into(), Location::default())),
+        },
+        Error::MissingField("f".into()),
+        Error::UnknownField("f".into()),
+        Error::ScalarInMergeElement,
+        Error::SequenceInMergeElement,
+        Error::TaggedInMerge,
+        Error::ScalarInMerge,
+        Error::Invalid("v".into()),
+        Error::TypeMismatch {
+            expected: "int",
+            found: "str".into(),
+        },
+        Error::Shared(Arc::new(Error::EndOfStream)),
+        Error::EndOfStream,
+        Error::MoreThanOneDocument,
+        Error::EmptyTag,
+        Error::FailedToParseNumber("nan".into()),
+        Error::Message("m".into(), Some(7)),
+        Error::Message("m".into(), None),
+        Error::Io(std::io::Error::other("i")),
+    ]
+}
+
+#[test]
+fn kind_classifier_covers_every_variant() {
+    // Execute every arm of `Error::kind()`. Precise mappings are pinned
+    // in error_kind.rs; here we drive the whole match and spot-check a
+    // handful that the parse-driven suite can't reach.
+    for e in &variant_gallery() {
+        let _ = e.kind();
+    }
+    assert_eq!(Error::EndOfStream.kind(), ErrorKind::EndOfStream);
+    assert_eq!(Error::EmptyTag.kind(), ErrorKind::Syntax);
+    assert_eq!(Error::ScalarInMerge.kind(), ErrorKind::Policy);
+    assert_eq!(Error::TaggedInMerge.kind(), ErrorKind::Policy);
+    assert_eq!(Error::MoreThanOneDocument.kind(), ErrorKind::Data);
+    assert_eq!(Error::RepetitionLimitExceeded.kind(), ErrorKind::Budget);
+    assert_eq!(
+        Error::TypeMismatch {
+            expected: "int",
+            found: "s".into()
+        }
+        .kind(),
+        ErrorKind::Data
+    );
+    // `Shared` forwards to the inner error's kind.
+    assert_eq!(
+        Error::Shared(Arc::new(Error::EmptyTag)).kind(),
+        ErrorKind::Syntax
+    );
+}
+
+#[cfg(feature = "miette")]
+#[test]
+fn miette_code_help_labels_cover_every_variant() {
+    use miette::Diagnostic;
+    for e in variant_gallery() {
+        let _ = e.code().map(|c| c.to_string());
+        let _ = e.help().map(|h| h.to_string());
+        let _ = e.labels().map(|it| it.count());
+    }
+    // Spot-check representative code() / help() / labels() outputs so
+    // this is not assertion-free.
+    let rec = Error::RecursionLimitExceeded { depth: 3 };
+    assert_eq!(rec.code().unwrap().to_string(), "noyalib::recursion_limit");
+    let budget = Error::Budget(BudgetBreach::MaxNodes {
+        limit: 1,
+        observed: 2,
+    });
+    assert!(budget.help().is_some(), "budget errors carry a hint");
+    // A located deserialise error emits exactly one miette label.
+    let located = Error::DeserializeWithLocation {
+        message: "expected int".into(),
+        location: Location::from_index("ab", 1),
+    };
+    assert_eq!(located.labels().map(|it| it.count()), Some(1));
+}
 
 // ============================================================================
 // Error::source — every arm
