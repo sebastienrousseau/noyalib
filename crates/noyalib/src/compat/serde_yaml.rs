@@ -432,6 +432,38 @@ mod tests {
     }
 
     #[test]
+    fn from_reader_typed() {
+        // `serde_yaml::from_reader` drop-in: deserialize straight from
+        // an `io::Read` (a `&[u8]` is one).
+        let bytes = b"name: noyalib\nport: 8080\n";
+        let cfg: Config = from_reader(&bytes[..]).unwrap();
+        assert_eq!(
+            cfg,
+            Config {
+                name: "noyalib".into(),
+                port: 8080
+            }
+        );
+    }
+
+    #[test]
+    fn to_writer_then_from_str_round_trips() {
+        // `serde_yaml::to_writer` drop-in: serialize into an
+        // `io::Write` sink and confirm the emitted YAML round-trips.
+        let cfg = Config {
+            name: "noyalib".into(),
+            port: 8080,
+        };
+        let mut buf: Vec<u8> = Vec::new();
+        to_writer(&mut buf, &cfg).unwrap();
+        let s = String::from_utf8(buf).expect("valid utf-8");
+        assert!(s.contains("name: noyalib"), "{s}");
+        assert!(s.contains("port: 8080"), "{s}");
+        let back: Config = from_str(&s).unwrap();
+        assert_eq!(cfg, back);
+    }
+
+    #[test]
     fn from_value_takes_by_value_like_serde_yaml() {
         let mut m = Mapping::new();
         let _ = m.insert("name", Value::String("noyalib".into()));
@@ -484,9 +516,13 @@ mod tests {
         // `noyalib::Error` are the same type, so callers' existing
         // error-handling code keeps working.
         #[allow(unused_qualifications)]
-        fn _identity(e: super::Error) -> crate::error::Error {
+        fn identity(e: super::Error) -> crate::error::Error {
             e
         }
+        // Exercise it at runtime so the coincidence of the two paths is
+        // observed, not merely compiled.
+        let e = identity(Error::Custom("compat".into()));
+        assert!(e.to_string().contains("compat"), "{e}");
     }
 
     #[test]
