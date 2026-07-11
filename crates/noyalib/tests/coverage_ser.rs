@@ -8,8 +8,8 @@ use std::collections::BTreeMap;
 
 use noyalib::{
     FlowStyle, Mapping, ScalarStyle, SerializerConfig, Value, to_string,
-    to_string_multi_with_config, to_string_with_config, to_value, to_writer_multi_with_config,
-    to_writer_with_config,
+    to_string_multi_with_config, to_string_value, to_string_with_config, to_value,
+    to_writer_multi_with_config, to_writer_with_config,
 };
 
 // ============================================================================
@@ -315,4 +315,68 @@ fn write_infinity() {
 fn write_neg_infinity() {
     let yaml = to_string(&f64::NEG_INFINITY).unwrap();
     assert!(yaml.contains("-.inf"));
+}
+
+// ── Coverage: scattered serializer branch arms in ser.rs ─────────────
+
+#[test]
+fn quote_all_single_quotes_and_escapes_embedded_quote() {
+    // `quote_all` routes strings through write_single_quoted; an
+    // embedded `'` exercises both the `''` escape arm and the
+    // normal-char arm.
+    let mut m = Mapping::new();
+    let _ = m.insert("k", Value::String("it's a test".into()));
+    let cfg = SerializerConfig::new().quote_all(true);
+    let yaml = to_string_with_config(&Value::Mapping(m), &cfg).unwrap();
+    assert!(yaml.contains("'it''s a test'"), "{yaml}");
+}
+
+#[test]
+fn auto_flow_nested_collections_recurse_eligibility() {
+    // auto_flow_eligible's Sequence and Mapping arms only fire on
+    // *nested* collections (it recurses into a sequence's / mapping's
+    // elements). A sequence-of-sequences and a sequence-of-mappings
+    // drive both arms.
+    let cfg = SerializerConfig::new()
+        .flow_style(FlowStyle::Auto)
+        .flow_threshold(8);
+    let seq_of_seq = Value::Sequence(vec![
+        Value::Sequence(vec![Value::from(1_i64), Value::from(2_i64)]),
+        Value::Sequence(vec![Value::from(3_i64), Value::from(4_i64)]),
+    ]);
+    let yaml = to_string_with_config(&seq_of_seq, &cfg).unwrap();
+    assert!(yaml.contains('1') && yaml.contains('4'), "{yaml}");
+
+    let mut inner = Mapping::new();
+    let _ = inner.insert("a", Value::from(1_i64));
+    let seq_of_map = Value::Sequence(vec![Value::Mapping(inner)]);
+    let yaml2 = to_string_with_config(&seq_of_map, &cfg).unwrap();
+    assert!(yaml2.contains('a'), "{yaml2}");
+}
+
+#[test]
+fn two_element_nested_sequence_block_layout() {
+    // needs_block_layout's `len == 2` special case recurses into the
+    // second element; a two-element sequence whose 2nd element is
+    // itself a collection drives that recursion.
+    let v = Value::Sequence(vec![
+        Value::Sequence(vec![Value::from(1_i64), Value::from(2_i64)]),
+        Value::Mapping({
+            let mut m = Mapping::new();
+            let _ = m.insert("k", Value::String("v".into()));
+            m
+        }),
+    ]);
+    let yaml = to_string_value(&v).unwrap();
+    assert!(yaml.contains("k"), "{yaml}");
+    assert!(yaml.contains('1'), "{yaml}");
+}
+
+#[test]
+fn nested_empty_string_value_is_quoted() {
+    // Empty string under a mapping key: emitted as `""`.
+    let mut m = Mapping::new();
+    let _ = m.insert("k", Value::String(String::new()));
+    let yaml = to_string_value(&Value::Mapping(m)).unwrap();
+    assert!(yaml.contains("\"\""), "{yaml}");
 }
