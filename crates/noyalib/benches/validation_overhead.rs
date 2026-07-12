@@ -4,6 +4,8 @@
 //! Microbenchmark that stresses span resolution on a large `Spanned<T>`
 //! document with a trailing error, isolating the cost of the span
 //! lookup + `Location` computation per field.
+//!
+//! Run: `cargo bench --bench validation_overhead`
 
 #![allow(missing_docs, unused_results, clippy::unwrap_used)]
 

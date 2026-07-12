@@ -89,7 +89,8 @@ pub struct PolicyEvent<'a> {
     /// The fully-reconstructed tag on this node, if any (e.g.
     /// `"!!str"`, `"!Custom"`, or `"tag:yaml.org,2002:binary"`).
     pub tag: Option<&'a str>,
-    /// The raw scalar text, present only for [`PolicyEventKind::Scalar`].
+    /// The decoded scalar content (escapes already resolved), present
+    /// only for [`PolicyEventKind::Scalar`].
     pub scalar: Option<&'a str>,
 }
 
@@ -211,9 +212,10 @@ impl Policy for DenyTags {
 
 /// Cap the byte length of any individual scalar.
 ///
-/// Counts the raw scalar text, *not* the post-resolution value;
-/// numeric / boolean scalars are measured by their source
-/// representation. Helpful for resource-constrained pipelines that
+/// Counts the decoded scalar content (escape sequences resolved),
+/// *not* the post-resolution typed value; numeric / boolean scalars
+/// are measured by their textual representation. Helpful for
+/// resource-constrained pipelines that
 /// cannot trust upstream input size.
 ///
 /// # Examples

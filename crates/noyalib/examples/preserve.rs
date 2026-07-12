@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 // Copyright (c) 2026 Noyalib. All rights reserved.
 
-//! CST preservation foundations: what's possible today and what's planned.
+//! CST preservation: comment injection and formatting control.
 //!
-//! Demonstrates the current approach to comment injection, formatting
-//! control, and the structural hooks that will enable full CST
-//! round-tripping in v0.0.6.
+//! Demonstrates comment injection and formatting control on the
+//! serialization side. For full lossless CST round-tripping (byte-for-byte
+//! preserving edits), see the shipped `noyalib::cst` layer and the
+//! `lossless_edit.rs` / `entry_api.rs` examples.
 //!
 //! Run: `cargo run --example preserve`
 
@@ -105,23 +106,25 @@ fn main() {
                 output.lines().count()
             ),
             "YAML spec: comments are not part of the data model.".to_string(),
-            "Full CST preservation planned for v0.0.6 (#20).".to_string(),
+            "Full CST preservation ships in noyalib::cst (see \
+             lossless_edit.rs)."
+                .to_string(),
         ]
     });
 
-    // ── Future: CST roadmap ──────────────────────────────────────────
-    support::task_with_output("CST roadmap (v0.0.6)", || {
+    // ── Two paths: serialization hooks vs the lossless CST ────────────
+    support::task_with_output("Preservation options", || {
         vec![
-            "Today:".to_string(),
+            "Serialization hooks (this example):".to_string(),
             "  Commented<T>   — inject comments on write".to_string(),
             "  SpaceAfter<T>  — control blank lines".to_string(),
             "  FlowSeq/Map    — preserve inline style".to_string(),
             "  LitStr/FoldStr — preserve block scalar style".to_string(),
             "  Tagged values  — structural extensibility".to_string(),
             String::new(),
-            "v0.0.6 (#20):".to_string(),
-            "  CstDocument    — preserves all source bytes".to_string(),
-            "  CstNode        — retains comments + whitespace".to_string(),
+            "Lossless CST (noyalib::cst):".to_string(),
+            "  cst::Document  — preserves all source bytes".to_string(),
+            "  span_at/comments_at — retains comments + whitespace".to_string(),
             "  Surgical edits — modify one value, keep rest intact".to_string(),
             "  Full round-trip — read -> modify -> write without loss".to_string(),
         ]

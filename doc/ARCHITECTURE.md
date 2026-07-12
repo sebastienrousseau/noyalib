@@ -25,21 +25,24 @@ crates/
 │   │   ├── simd.rs       # find_any_of, SWAR decimals, structural-bitmask
 │   │   └── …
 │   ├── tests/            # integration tests + YAML 1.2 official suite
-│   ├── examples/         # 56+ runnable usage examples
+│   ├── examples/         # 76 runnable usage examples
 │   └── benches/          # Criterion benches
-├── noya-cli/             # noyafmt + noyavalidate binaries
-├── noyalib-lsp/          # Language Server Protocol implementation
-└── xtask/                # internal release tooling
 ```
 
-Two crates that used to live under `crates/` have been split
-into their own repositories per ADR-0005:
+The only workspace member is `crates/noyalib`
+(`members = ["crates/noyalib"]`). Crates that used to live
+under `crates/` have been split into their own repositories per
+ADR-0005, and the `xtask` crate was removed:
 
+- `noya-cli` (noyafmt + noyavalidate binaries) → [`sebastienrousseau/noya-cli`](https://github.com/sebastienrousseau/noya-cli) (split at v0.0.13)
+- `noyalib-lsp` (Language Server Protocol implementation) → [`sebastienrousseau/noyalib-lsp`](https://github.com/sebastienrousseau/noyalib-lsp) (split at v0.0.13)
 - `noyalib-mcp` → [`sebastienrousseau/noyalib-mcp`](https://github.com/sebastienrousseau/noyalib-mcp) (split at v0.0.13)
 - `noyalib-wasm` → [`sebastienrousseau/noyalib-wasm`](https://github.com/sebastienrousseau/noyalib-wasm) (split at v0.0.12)
+- `xtask` (internal release tooling) → removed; PGO and release
+  tasks now run from `scripts/`
 
-Both consume `noyalib` from crates.io via strict-lockstep
-`=X.Y.Z` version pins.
+The split satellite crates consume `noyalib` from crates.io via
+strict-lockstep `=X.Y.Z` version pins.
 
 The lib crate is `#![forbid(unsafe_code)]` workspace-wide. The
 satellite crates inherit the same forbid; only the third-party
@@ -325,11 +328,11 @@ arms in
 | Suite | Where | What |
 |---|---|---|
 | Unit | inline `#[cfg(test)]` blocks | Per-module logic |
-| Integration | `crates/noyalib/tests/` | Cross-module surfaces (~30 files) |
+| Integration | `crates/noyalib/tests/` | Cross-module surfaces (139 files) |
 | Doc-tests | every `///` block with a code-fence | Public-API examples |
 | Property | `crates/noyalib/tests/proptest_*.rs` | Roundtrip invariants via `proptest` |
-| Official YAML 1.2 suite | `crates/noyalib/tests/yaml-test-suite/**` | 387/387 strict-pass, 0 failures, 19 deliberate skips |
-| CLI smoke | `crates/noya-cli/tests/` | End-to-end `noyafmt` / `noyavalidate` runs |
+| Official YAML 1.2 suite | `crates/noyalib/tests/yaml-test-suite/**` | 406/406 strict-pass, 0 failures, 0 deliberate skips |
+| CLI smoke | `crates/noya-cli/tests/` | End-to-end `noyafmt` / `noyavalidate` runs (in the split `noya-cli` repo) |
 
 Total: ~4100 tests. Runtime: ~110 s for `cargo test --workspace
 --all-features --no-fail-fast` on an M-series Mac.
@@ -337,12 +340,13 @@ Total: ~4100 tests. Runtime: ~110 s for `cargo test --workspace
 ## Coverage
 
 Workspace coverage is measured by `cargo +nightly llvm-cov` and
-gated in CI at 95 % functions / 92 % regions / 93 % lines.
+gated in CI at 96 % functions / 94 % lines / 93 % regions.
 Excluded from instrumentation:
 
-- `crates/noyalib-{mcp,lsp}/tests/protocol*.rs` (subprocess-
-  driven smoke tests; the same logic is covered by per-module
-  unit tests).
+- subprocess-driven protocol smoke tests (the same logic is
+  covered by per-module unit tests). These live in the split
+  `noyalib-mcp` / `noyalib-lsp` repos per ADR-0005, so they are
+  no longer part of this workspace's instrumentation set.
 
 (Prior to v0.0.12, `crates/noyalib-wasm/src/lib.rs` was also
 excluded — its JsValue marshalling requires the wasm-bindgen

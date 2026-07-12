@@ -104,7 +104,7 @@ use noyalib::{from_str, Value};
 let v: Value = from_str(yaml)?;
 
 // Dot-path traversal.
-let port = v.get_path("server.port").and_then(|n| n.as_u16());
+let port = v.get_path("server.port").and_then(|n| n.as_u64());
 
 // Sequence indexing.
 let first = v.get("items").and_then(|s| s.get(0));
@@ -371,9 +371,9 @@ This contract holds for all three tag-bearing shapes:
 
 | YAML | Resulting `Value` |
 | :--- | :--- |
-| `!Custom 'hello'` | `Value::Tagged(Tag("!Custom"), Value::String("hello"))` |
-| `!List [a, b]` | `Value::Tagged(Tag("!List"), Value::Sequence(...))` |
-| `!Map {k: v}` | `Value::Tagged(Tag("!Map"), Value::Mapping(...))` |
+| `!Custom 'hello'` | `Value::Tagged(t)`, `t.tag() == "!Custom"`, `t.value() == Value::String("hello")` |
+| `!List [a, b]` | `Value::Tagged(t)`, `t.tag() == "!List"`, `t.value() == Value::Sequence(...)` |
+| `!Map {k: v}` | `Value::Tagged(t)`, `t.tag() == "!Map"`, `t.value() == Value::Mapping(...)` |
 | `!!str 42` | `Value::String("42")` *(core tag — resolves)* |
 | `!!int 42` | `Value::Number(Integer(42))` *(core tag — resolves)* |
 
@@ -461,7 +461,9 @@ streams). The eager API:
 ```rust
 use noyalib::{load_all, load_all_as};
 
-let docs: Vec<Value>      = load_all(stream)?;
+// `load_all` yields a lazy iterator of `Result<Value>`; collect it.
+let docs: Vec<Value>      = load_all(stream)?.collect::<Result<_, _>>()?;
+// `load_all_as` deserializes every document and returns a `Vec<T>` directly.
 let typed: Vec<MyConfig>  = load_all_as::<MyConfig>(stream)?;
 ```
 
@@ -545,7 +547,9 @@ See [`crates/noyalib/examples/sval_streaming.rs`](../crates/noyalib/examples/sva
 
 ## 11. The CLI tools (`noyafmt`, `noyavalidate`)
 
-Two command-line companions ship under `crates/noya-cli/`:
+Two command-line companions ship from the split-out
+[`sebastienrousseau/noya-cli`](https://github.com/sebastienrousseau/noya-cli)
+repo (split at v0.0.13, ADR-0005; released in strict lockstep):
 
 ```bash
 # Format YAML in-place via the lossless CST.
@@ -568,8 +572,9 @@ other channels in [`pkg/PUBLISH.md`](../pkg/PUBLISH.md).
 
 ## 12. WASM, MCP, and LSP
 
-Three satellite crates in the workspace target specific
-deployment shapes:
+Three satellite crates — each split to its own repo (ADR-0005)
+and released in strict lockstep with this library — target
+specific deployment shapes:
 
 - **`noyalib-wasm`** ([`sebastienrousseau/noyalib-wasm`](https://github.com/sebastienrousseau/noyalib-wasm)).
   `wasm-pack` output published to npm as
@@ -589,7 +594,8 @@ deployment shapes:
   repo in v0.0.13 (ADR-0005); releases in strict lockstep with
   this workspace.
 
-- **`noyalib-lsp`** (`crates/noyalib-lsp/`). Language Server
+- **`noyalib-lsp`** ([`sebastienrousseau/noyalib-lsp`](https://github.com/sebastienrousseau/noyalib-lsp)).
+  Language Server
   Protocol implementation. Editors get format-on-save,
   inline diagnostics, schema-driven hover docs. Bundled into
   the noyalib VS Code / Open VSX extension (`pkg/vscode/`).

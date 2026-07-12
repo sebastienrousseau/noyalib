@@ -34,7 +34,7 @@
 - [Examples](#examples) — runnable example index
 - [Benchmarks](#benchmarks) — performance evidence
 - [When not to use noyalib](#when-not-to-use-noyalib) — limitations
-- [Migrating from `serde_yaml`](#migrating-from-serde_yaml) — name-for-name mapping
+- [Migrating from another YAML crate](#migrating-from-another-yaml-crate) — name-for-name mapping
 - [Documentation](#documentation) — extended reading
 - [License](#license)
 
@@ -69,7 +69,7 @@ to `core::fmt` (slower, output remains valid YAML); the
 typo-detection helpers are absent. Re-enable individually with
 `features = ["fast-int", "fast-float", "strict-deserialise"]`.
 
-**MSRV: Rust 1.75.0**, enforced by the `msrv-1-75-core` CI job.
+**MSRV: Rust 1.85.0** (edition 2024), enforced by the `msrv-1-85-core` CI job.
 
 ---
 
@@ -101,9 +101,9 @@ noyalib targets the niche `serde_yaml` / `serde_yml` / `libyml`
 occupy — read YAML into typed Rust structs, write Rust structs
 back as YAML — and is written from scratch against the YAML 1.2
 spec. The implementation runs the official YAML test suite to
-**100% strict compliance — 387/387 attempted cases pass, 0
-failures**; 19 cases are deliberately skipped (tracked in
-`tests/yaml_compliance_report.rs`). It is not a fork of `serde_yaml`;
+**100% strict compliance — 406/406 attempted cases pass, 0
+failures, 0 skips** (verified by `tests/yaml_compliance_report.rs`).
+It is not a fork of `serde_yaml`;
 the parser, scanner, serialiser, and CST are independent code.
 
 Two architectural choices motivate the rewrite:
@@ -164,10 +164,9 @@ and `thiserror` are all absent. `cargo audit`, `cargo deny`, and
 
 Validated against the
 [official YAML test suite](https://github.com/yaml/yaml-test-suite)
-at **100% strict compliance — 387 / 387 attempted cases pass, 0
-failures, 19 deliberately skipped**. The skip list is tracked in
-`tests/yaml_compliance_report.rs` so the gap is explicit and
-audit-friendly. The conformance report rebuilds on every CI run
+at **100% strict compliance — 406 / 406 attempted cases pass, 0
+failures, 0 skips**. The conformance report is tracked in
+`tests/yaml_compliance_report.rs` and rebuilds on every CI run
 via `cargo test --test yaml_compliance_report`.
 
 The same suite also exercises:
@@ -281,7 +280,7 @@ assert_eq!(cfg.port.start.line(), 1);
 
 ## Examples
 
-60+ runnable examples under
+76 runnable examples under
 [`crates/noyalib/examples/`](examples/):
 
 ```bash
@@ -336,7 +335,7 @@ throughput tables sit in the
 [Benchmarks section of the workspace README](https://github.com/sebastienrousseau/noyalib#benchmarks):
 `noyalib` is **faster than every other pure-Rust YAML library
 on every deserialize fixture measured**. Speedup ranges:
-**1.69×–2.00×** vs `serde-saphyr`, **1.48×–1.96×** vs `serde_yml`,
+**1.69×–2.00×** vs `serde-saphyr`,
 **1.42×–1.84×** vs `serde_yaml_ng`, **1.38×–1.74×** vs
 `yaml-spanned`, **1.11×–1.36×** vs `yaml-rust2`. Serialize is
 **3.00×–4.34×** ahead of `serde_yaml_ng`. The structural-bitmask

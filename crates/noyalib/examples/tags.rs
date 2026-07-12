@@ -3,7 +3,7 @@
 
 //! Singleton map enum serialization: singleton_map, optional, recursive.
 //!
-//! Run: `cargo run --example singleton_map`
+//! Run: `cargo run --example tags`
 
 #[path = "support.rs"]
 mod support;

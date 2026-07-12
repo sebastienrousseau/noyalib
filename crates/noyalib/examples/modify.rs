@@ -3,7 +3,7 @@
 
 //! Value manipulation: to_value, from_value, MappingAny, get_path_mut, ValueIndex.
 //!
-//! Run: `cargo run --example value_manipulation`
+//! Run: `cargo run --example modify`
 
 #[path = "support.rs"]
 mod support;

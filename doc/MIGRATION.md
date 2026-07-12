@@ -34,7 +34,7 @@ its forks; opt-outs are documented per guide.
 
 1. **`Value::Tagged` is preserved through the `Value` data path.**
    `from_str::<Value>("!Custom 'hi'\n")` returns
-   `Value::Tagged(Tag("!Custom"), Value::String("hi"))`. Typed
+   `Value::Tagged(t)` (`t.tag() == "!Custom"`, `t.value() == Value::String("hi")`). Typed
    targets (`#[derive(Deserialize)] struct Foo { … }`) still
    see through the tag transparently — the preservation only
    affects the dynamic `Value` path.

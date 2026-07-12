@@ -54,7 +54,7 @@ the `Value` DOM, the `Spanned<T>` wrapper, the lossless
 | `serde_saphyr::from_str_with_options(input, options)` | `noyalib::from_str_with_config(input, &cfg)` |
 | `serde_saphyr::from_slice_with_options` | `noyalib::from_slice_with_config` |
 | `serde_saphyr::from_reader_with_options` | `noyalib::from_reader_with_config` |
-| `serde_saphyr::from_multiple_with_options` | `noyalib::load_all_as_with_config` |
+| `serde_saphyr::from_multiple_with_options` | `noyalib::load_all_with_config` (untyped `DocumentIterator`; deserialize each item, or `load_all_as::<T>` without a config) |
 | `serde_saphyr::to_string` | `noyalib::to_string` |
 | `serde_saphyr::to_io_writer` | `noyalib::to_writer` |
 | `serde_saphyr::to_fmt_writer` | `noyalib::to_fmt_writer` |
@@ -119,7 +119,7 @@ mappings via `IndexMap`).
    (`max_depth`, `max_alias_expansions`, `max_document_length`).
 3. **`Value::Tagged` exists in noyalib.** Custom-tag scalars
    like `!Custom 'hi'` surface as
-   `Value::Tagged(Tag("!Custom"), Value::String("hi"))`. If
+   `Value::Tagged(t)` (`t.tag() == "!Custom"`, `t.value() == Value::String("hi")`). If
    you hit a tagged scalar in `serde_saphyr`'s typed path the
    tag was simply preserved in the YAML 1.2 sense; noyalib
    typed deserialise sees through the tag transparently to the

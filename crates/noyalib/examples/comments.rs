@@ -8,8 +8,9 @@
 //! attaching comments during serialization.
 //!
 //! For true comment preservation (read → modify → write with comments
-//! intact), a CST-based approach is needed. This is tracked as a future
-//! enhancement.
+//! intact), use the shipped CST layer: `noyalib::cst::parse_document` +
+//! `Document::comments_at` (see `comments_at.rs`, `lossless_edit.rs`,
+//! `entry_api.rs`).
 //!
 //! Run: `cargo run --example comments`
 
@@ -97,13 +98,15 @@ pool_size: 10    # max connections
         output.lines().map(|l| l.to_string()).collect()
     });
 
-    // ── Limitation: no roundtrip preservation ────────────────────────
+    // ── Preservation: data path vs CST path ──────────────────────────
     support::task_with_output("Comment preservation status", || {
         vec![
-            "Parsing:  comments stripped (YAML spec compliant)".to_string(),
-            "Writing:  Commented<T> adds inline comments".to_string(),
-            "Roundtrip: comments NOT preserved (by design)".to_string(),
-            "Future:   CST-based editing for preservation".to_string(),
+            "Data path: comments stripped (YAML spec compliant)".to_string(),
+            "Writing:   Commented<T> adds inline comments".to_string(),
+            "Data roundtrip: comments NOT preserved (by design)".to_string(),
+            "CST path:  comments preserved byte-for-byte via \
+                        noyalib::cst (see comments_at.rs)"
+                .to_string(),
         ]
     });
 

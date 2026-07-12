@@ -3,7 +3,7 @@
 
 //! ParserConfig: security limits for untrusted input.
 //!
-//! Run: `cargo run --example parser_config`
+//! Run: `cargo run --example secure`
 
 #[path = "support.rs"]
 mod support;

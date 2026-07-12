@@ -90,13 +90,13 @@ make fmt            # rustfmt --check
 make deny           # cargo-deny supply-chain audit
 ```
 
-Prerequisites: **Rust 1.75.0+** for the core library, **1.85.0+**
-for the CLI / LSP satellite crates (their dep trees pull edition-2024
-transitives). `make` orchestrates the full local check suite.
+Prerequisites: **Rust 1.85.0+** (edition 2024) for the core library and
+the CLI / LSP satellite crates alike. `make` orchestrates the full local
+check suite.
 
 ## Running examples
 
-The `crates/noyalib/examples/` directory contains 50+ runnable
+The `crates/noyalib/examples/` directory contains 76 runnable
 examples covering every public surface — schema validation,
 borrowed-path parsing, CST editing, no_std, robotics newtypes,
 figment integration, and more. Each compiles independently:

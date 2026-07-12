@@ -1,6 +1,8 @@
 //! Serialization configuration example for noyalib.
 //!
 //! Demonstrates using SerializerConfig to customize YAML output.
+//!
+//! Run: `cargo run --example global`
 
 // SPDX-License-Identifier: MIT OR Apache-2.0
 // Copyright (c) 2026 Noyalib. All rights reserved.

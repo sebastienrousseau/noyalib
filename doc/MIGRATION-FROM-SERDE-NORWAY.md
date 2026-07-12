@@ -78,7 +78,7 @@ fork apply here too. Full discussion in
 
 1. **`Value::Tagged` is preserved through the `Value` data path.**
    `from_str::<Value>("!Custom 'hi'\n")` returns
-   `Value::Tagged(Tag("!Custom"), Value::String("hi"))`. Call
+   `Value::Tagged(t)` (`t.tag() == "!Custom"`, `t.value() == Value::String("hi")`). Call
    `.untag()` to get the inner if you used the unwrapped form.
 2. **YAML 1.2 strict booleans by default.** Same default as
    `serde_norway` — no behavioural change.

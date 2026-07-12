@@ -50,7 +50,7 @@ repos:
 ```yaml
 - name: noyafmt --check
   run: |
-    cargo install noya-cli --version 0.0.1 --locked --no-default-features --features noyafmt
+    cargo install noya-cli --version 0.0.15 --locked --no-default-features --features noyafmt
     git ls-files '*.yaml' '*.yml' | xargs noyafmt --check
 ```
 

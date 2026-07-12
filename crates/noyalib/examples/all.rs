@@ -3,7 +3,7 @@
 
 //! Run all noyalib examples in sequence.
 //!
-//! Usage: `cargo run --example run_all`
+//! Usage: `cargo run --example all`
 
 use std::process::Command;
 use std::time::Instant;

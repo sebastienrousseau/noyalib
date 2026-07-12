@@ -3,6 +3,8 @@
 //! Demonstrates the `Path` type for tracking locations within YAML structures.
 //! Useful for providing detailed error messages that show exactly where
 //! in the document a problem occurred.
+//!
+//! Run: `cargo run --example trace`
 
 // SPDX-License-Identifier: MIT OR Apache-2.0
 // Copyright (c) 2026 Noyalib. All rights reserved.

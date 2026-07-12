@@ -3,7 +3,7 @@
 
 //! Basic usage: serialize and deserialize structs.
 //!
-//! Run: `cargo run --example basic`
+//! Run: `cargo run --example hello`
 
 #[path = "support.rs"]
 mod support;

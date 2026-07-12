@@ -3,7 +3,7 @@
 
 //! Nested structure serialization and roundtrip.
 //!
-//! Run: `cargo run --example nested`
+//! Run: `cargo run --example deep`
 
 #[path = "support.rs"]
 mod support;

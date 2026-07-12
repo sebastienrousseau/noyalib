@@ -202,7 +202,7 @@
 //! | `validator` | ⛔ | `validator 0.19` | [`ValidatedValidator<T>`] | — |
 //! | `robotics` | ⛔ | — | `Degrees` / `Radians` / `StrictFloat` newtypes | — |
 //! | `parallel` | ⛔ | `rayon 1.10` | [`parallel::parse`], [`parallel::values`] | `std` |
-//! | `simd` | ⛔ | — | `noyalib::simd::*` primitives | — |
+//! | `simd` | ⛔ | — | forward-compat no-op — `noyalib::simd::*` is always available; the hot path uses it unconditionally | — |
 //! | `nightly-simd` | ⛔ | nightly rustc | 32-byte `StructuralIter` | `simd` |
 //! | `compat-serde-yaml` | ⛔ | — | `noyalib::compat::serde_yaml` shim | — |
 //! | `compare-saphyr` | ⛔ | `serde-saphyr` | comparison-bench arms (dev-only — do **not** ship in release builds) | — |

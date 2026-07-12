@@ -35,9 +35,8 @@ file wins.
 
 | Crate | MSRV | Rationale |
 |---|---|---|
-| `noyalib` (library core) | **1.75.0** | The lowest published MSRV; chosen so embedded / RHEL / FIPS shops on older toolchains can adopt the parser without forcing a toolchain bump. |
-| `xtask` (internal release tooling) | 1.75.0 | Matches the library to keep one toolchain across the workspace where possible. |
-| `noyalib-mcp` | 1.75.0 | Stays at library MSRV; the MCP wire surface is text-only JSON-RPC and pulls no nightly-only deps. |
+| `noyalib` (library core) | **1.85.0** | The committed floor since v0.0.5 (edition 2024). Enforced by the dedicated `msrv-1-85-core` CI job. |
+| `noyalib-mcp` | 1.85.0 | Same floor; the MCP wire surface is text-only JSON-RPC and pulls no nightly-only deps. |
 | `noya-cli` (binaries) | 1.85.0 | Newer binaries pull `clap_complete` 4.x and `miette` 7.x which require 1.85+. |
 | `noyalib-lsp` | 1.85.0 | Pulls `tower-lsp` and async deps that have set 1.85 floors. |
 | `noyalib-wasm` | 1.85.0 | `wasm-bindgen` 0.2 ecosystem floors at 1.85. |
@@ -139,13 +138,13 @@ Reference: [`SECURITY.md`](../SECURITY.md) at the repo root.
 The parser has explicit DoS guards. Defaults are conservative;
 override via `ParserConfig`.
 
-| Limit | Default | Purpose | Override |
-|---|---|---|---|
-| `max_depth` | 1024 | Stack-overflow guard on deeply-nested input | `ParserConfig::max_depth(N)` |
-| `max_alias_expansions` | 100 | Billion-laughs amplification cap | `ParserConfig::max_alias_expansions(N)` |
-| `max_document_length` | input length | Per-document size cap | `ParserConfig::max_document_length(N)` |
-| `max_sequence_length` | `usize::MAX` | Per-sequence item count cap | `ParserConfig::max_sequence_length(N)` |
-| `max_mapping_keys` | `usize::MAX` | Per-mapping key count cap | `ParserConfig::max_mapping_keys(N)` |
+| Limit | Default | `strict()` | Purpose | Override |
+|---|---|---|---|---|
+| `max_depth` | 128 | 64 | Stack-overflow guard on deeply-nested input | `ParserConfig::max_depth(N)` |
+| `max_alias_expansions` | 1024 | 100 | Billion-laughs amplification cap | `ParserConfig::max_alias_expansions(N)` |
+| `max_document_length` | 64 MiB | 1 MiB | Per-document size cap | `ParserConfig::max_document_length(N)` |
+| `max_sequence_length` | 65536 | 1024 | Per-sequence item count cap | `ParserConfig::max_sequence_length(N)` |
+| `max_mapping_keys` | 65536 | 1024 | Per-mapping key count cap | `ParserConfig::max_mapping_keys(N)` |
 
 The corresponding regression tests live in
 [`tests/stress_load.rs`](../crates/noyalib/tests/stress_load.rs).
@@ -380,7 +379,7 @@ Per-host-triple training is required — a Mac-trained
   *fast enough* that splitting a single doc across cores
   costs more than it gains for typical inputs.
 - **Multi-document streams** can be parsed in parallel via
-  `noyalib::parallel::par_load_all_as::<T>(input)` (gated
+  `noyalib::parallel::parse::<T>(input)` (gated
   behind the `parallel` feature). Each document parses on
   its own rayon job.
 - The `Deserializer` itself is not `Sync`-after-construction
@@ -476,7 +475,7 @@ When in `no_std` mode:
 | `garde` | no | `garde` validator integration | `garde` |
 | `validator` | no | `validator` validator integration | `validator` |
 | `figment` | no | Figment provider implementation | `figment` |
-| `parallel` | no | `par_load_all_as::<T>` on rayon | `rayon` |
+| `parallel` | no | `parallel::parse::<T>` on rayon | `rayon` |
 | `simd` | no | optional explicit SIMD acceleration | (none — uses portable_simd / std::simd via cfg) |
 | `compat-serde-yaml` | no | name-for-name shim under `noyalib::compat::serde_yaml` | (none) |
 | `robotics` | no | ROS-style overlay/redaction helpers | (none) |

@@ -3,7 +3,7 @@
 
 //! Serializer configuration: every output knob demonstrated.
 //!
-//! Run: `cargo run --example serializer_config`
+//! Run: `cargo run --example emit`
 
 #[path = "support.rs"]
 mod support;

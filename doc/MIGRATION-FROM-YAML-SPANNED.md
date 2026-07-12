@@ -108,8 +108,8 @@ println!(
 );
 println!(
     "port range: bytes {}..{}",
-    cfg.port.span().0,
-    cfg.port.span().1,
+    cfg.port.start.index(),
+    cfg.port.end.index(),
 );
 ```
 
@@ -132,7 +132,7 @@ preserve.
 
 `yaml-spanned`'s `from_str_lossy*` family silently drops
 documents that fail to parse. noyalib's `load_all` returns a
-`DocumentIterator<Result<T, Error>>` — the caller decides
+`DocumentIterator` yielding `Result<Value>` — the caller decides
 whether to drop, log, or fail-fast:
 
 ```diff

@@ -63,7 +63,7 @@ artefact that satisfies it.
 | Working build system | `cargo build --workspace --all-features` |
 | Working test system | `cargo test --workspace --all-features` (~5 400 tests) |
 | Tests run on every change | `.github/workflows/ci.yml` triggers on push + pull_request |
-| Code-coverage measurement | `.github/workflows/ci.yml` § `Coverage gate (≥95%)` — `cargo llvm-cov` |
+| Code-coverage measurement | `.github/workflows/ci.yml` § `Coverage gate (≥96%)` — `cargo llvm-cov` |
 | Coverage tool integration | Same |
 | New features include tests | Required by review process; enforced by `cargo-machete`, strict-doc gate |
 | Documented coding style | Workspace-level lints in `crates/noyalib/Cargo.toml`; `cargo fmt` enforced by CI |
@@ -75,7 +75,7 @@ artefact that satisfies it.
 | :--- | :--- |
 | Cryptographic best practices | Releases signed via cosign keyless + SLSA L3 build provenance attestations on every artefact |
 | Inputs validated before use | Parser enforces `ParserConfig` limits (`max_depth`, `max_document_length`, `max_alias_expansions`, …) |
-| Hardened against vulnerabilities | `#![forbid(unsafe_code)]` workspace-wide, fuzz suite (4 targets) + Miri soak runs in `.github/workflows/security.yml` |
+| Hardened against vulnerabilities | `#![forbid(unsafe_code)]` workspace-wide, fuzz suite (10 targets) + Miri soak runs in `.github/workflows/security.yml` |
 | Vulnerability disclosure tested | One historical CVE-equivalent (issue #46 RecursionLimitExceeded false-positive) — patched in v0.0.6 within the same release cycle |
 | Security expertise consulted | Audit pipeline: `cargo-deny`, `cargo-vet`, `cargo-audit`, `cargo-machete`, CodeQL — see `doc/POLICIES.md` |
 
@@ -85,7 +85,7 @@ artefact that satisfies it.
 | :--- | :--- |
 | Static analysis applied | `cargo clippy --workspace --all-features -- -D warnings` on every PR; CodeQL on `.github/workflows/security.yml` |
 | Dynamic analysis applied | Differential fuzz (10 s smoke per PR) + soak fuzz (1 h per target weekly); Miri (focused per PR + full weekly) |
-| Coverage-guided fuzzing | `cargo-fuzz` with `libFuzzer`, 4 targets: `fuzz_parse`, `fuzz_roundtrip`, `fuzz_diff`, `fuzz_strict` |
+| Coverage-guided fuzzing | `cargo-fuzz` with `libFuzzer`, 10 targets: `fuzz_borrowed_alias`, `fuzz_diff`, `fuzz_double_quoted`, `fuzz_from_value`, `fuzz_multi_doc`, `fuzz_no_span_loader`, `fuzz_parse`, `fuzz_roundtrip`, `fuzz_strict`, `fuzz_yaml_v1_1` |
 | Memory-safety analysis | `#![forbid(unsafe_code)]` (the strongest possible static guarantee) + Miri runs to verify transitive `unsafe` blocks in dev-deps |
 
 ## Silver / Gold level (future)

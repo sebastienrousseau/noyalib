@@ -8,7 +8,7 @@ Rust 1.95 stable**, criterion `--warm-up-time 2 --measurement-time 4`.
 All libraries compiled with `--release` (LTO=fat, codegen-units=1,
 panic=abort). Run locally via `cargo bench --bench comparison`.
 
-> **PGO** — `cargo xtask pgo-build` runs the full LLVM
+> **PGO** — `scripts/pgo.sh` runs the full LLVM
 > profile-guided optimisation pipeline (instrument → train against
 > the YAML test suite + `benches/fixtures/` → merge profdata →
 > optimised rebuild). Adds 5-15% on top of the numbers below;
@@ -237,8 +237,8 @@ cargo bench --bench v006_features --features recovery,sval,tokio
 | **Source** | 26,000+ lines across the workspace |
 | **Test suite** | 3,686 tests + 431 doctests + CLI smoke + 13 stress/load |
 | **YAML Test Suite** | 100% strict compliance: 406/406 attempted cases pass, 0 failures, 0 deliberate skips |
-| **Examples** | 60+ runnable examples across all crates |
-| **Coverage** | 95%+ function coverage / 92%+ region coverage / 93%+ line coverage (CI-gated) |
+| **Examples** | 76 runnable examples |
+| **Coverage** | 96%+ function coverage / 94%+ line coverage / 93%+ region coverage (CI-gated) |
 | **Dependencies** | 5 unconditional + 3 default-on optional (`itoa`, `ryu`, `serde_ignored`) + 12 opt-in optional (`miette`, `garde`, `validator`, `schemars`, `serde_json`, `jsonschema`, `figment`, `rayon`, `serde-saphyr`, plus the three default-on opt-outs) |
 | **WASM binary** | 338 KB (release, LTO) |
 | **MSRV** | Rust 1.85.0 (core, since v0.0.5 — edition 2024); newer for optional features (see [POLICIES.md](POLICIES.md#1-msrv-minimum-supported-rust-version)) |

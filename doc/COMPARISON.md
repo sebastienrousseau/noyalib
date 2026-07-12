@@ -25,7 +25,7 @@ linked from there.
 | **SIMD scanning** | Yes (memchr + bitmask) | No | No | No | No | No |
 | **SWAR numeric parse** | Yes | No | No | No | No | No |
 | **Parallel multi-doc** | Yes (`parallel::parse`) | No | No | No | No | No |
-| **DoS hardened** | 7 budgets | Basic | Basic | Yes | No | Yes |
+| **DoS hardened** | ~12 budgets | Basic | Basic | Yes | No | Yes |
 | **Pluggable policies** | Yes (`policy::Policy`) | No | No | No | No | No |
 | **Secret interpolation** | Yes (`${VAR}`) | No | No | Yes | No | No |
 | **CST manipulation** | Yes (`cst::Document`) | No | No | No | No | No |
@@ -58,10 +58,12 @@ linked from there.
   events directly into the typed target without building an
   intermediate `Value` AST. The other crates that *do* have
   serde integration build the AST first.
-- **DoS hardening (7 budgets)** — `max_depth`,
+- **DoS hardening (~12 budgets)** — `max_depth`,
   `max_alias_expansions`, `max_document_length`,
-  `max_sequence_length`, `max_mapping_keys`, plus the
-  cumulative-alias-byte budget and the per-document size
+  `max_sequence_length`, `max_mapping_keys`, `max_events`,
+  `max_nodes`, `max_total_scalar_bytes`, `max_documents`,
+  `max_merge_keys`, plus the cumulative-alias-byte budget, the
+  alias/anchor ratio guard, and the per-document size
   cap. See [`POLICIES.md`](POLICIES.md#3-security--audits)
   for defaults and override knobs.
 

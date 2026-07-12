@@ -94,7 +94,7 @@ the headlines:
 
 1. **`Value::Tagged` is preserved through the `Value` data path.**
    `noyalib::from_str::<Value>("!Custom 'hi'\n")` returns
-   `Value::Tagged(Tag("!Custom"), Value::String("hi"))`. To get
+   `Value::Tagged(t)` (`t.tag() == "!Custom"`, `t.value() == Value::String("hi")`). To get
    the unwrapped inner, call `value.untag().as_str()`.
 2. **YAML 1.2 strict booleans by default.** `country: NO`
    stays `Value::String("NO")`. Opt into legacy YAML 1.1

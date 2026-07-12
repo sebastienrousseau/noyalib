@@ -53,8 +53,8 @@ the non-PGO baseline.
 
 ## Requirements
 
-- **rustc 1.75+**. PGO has been stable since Rust 1.45;
-  noyalib's MSRV (1.75) easily clears that.
+- **rustc 1.85.0+**. PGO has been stable since Rust 1.45;
+  noyalib's MSRV (1.85.0) easily clears that.
 - **`llvm-profdata`** on `$PATH`. Install via
   `rustup component add llvm-tools-preview`. The script
   auto-discovers the rustup-shipped binary if `$PATH` lookup

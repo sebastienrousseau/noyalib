@@ -3,7 +3,7 @@
 
 //! Custom key transformations with singleton_map_with.
 //!
-//! Run: `cargo run --example custom_serialization`
+//! Run: `cargo run --example rename`
 
 #[path = "support.rs"]
 mod support;
