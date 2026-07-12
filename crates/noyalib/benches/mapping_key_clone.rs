@@ -37,6 +37,10 @@ fn permissive_config() -> ParserConfig {
     let mut cfg = ParserConfig::default();
     cfg.max_alias_expansions = 100_000;
     cfg.max_merge_keys = 100_000;
+    // The merge-heavy fixture aliases one anchor many times, which trips
+    // the alias/anchor-ratio DoS guard added in v0.0.15. This bench
+    // measures the key-insert path, not the guard, so disable the ratio.
+    cfg.alias_anchor_ratio = None;
     cfg
 }
 

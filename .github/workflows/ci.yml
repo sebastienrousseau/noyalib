@@ -201,6 +201,58 @@ jobs:
     # shared workflow's `if:`).
     uses: ./.github/workflows/shared-verify-signatures.yml
 
+  # ── Run every example to completion ─────────────────────────────
+  # The main test job only *compiles* examples. A compiled example
+  # can still panic at run time. scripts/run-all-examples.sh
+  # auto-discovers every `[[example]]` target from `cargo metadata`
+  # and runs each with its own `required-features`, so a runtime
+  # regression (or a newly added example) is caught automatically.
+  # Isolated CARGO_TARGET_DIR per the cache-poisoning doctrine.
+  run-examples:
+    name: Run all examples
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      CARGO_TARGET_DIR: ${{ github.workspace }}/target-run-examples
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: dtolnay/rust-toolchain@fa04a1451ff1842e2626ccb99004d0195b455a88 # master
+        with:
+          toolchain: stable
+      - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
+        with:
+          workspaces: ". -> target-run-examples"
+          key: run-examples
+      - name: Run every example to completion
+        run: bash scripts/run-all-examples.sh
+
+  # ── Smoke-run every benchmark ───────────────────────────────────
+  # `cargo build --benches` only compiles the benches; a bench can
+  # compile yet panic on its first iteration (a stale fixture, a
+  # renamed API, a tightened DoS budget). scripts/smoke-benches.sh
+  # runs each bench once via Criterion's `--test` fast path — no
+  # measurement, just execution — auto-discovered from cargo
+  # metadata with their required-features.
+  smoke-benches:
+    name: Smoke-run all benches
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      CARGO_TARGET_DIR: ${{ github.workspace }}/target-smoke-benches
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: dtolnay/rust-toolchain@fa04a1451ff1842e2626ccb99004d0195b455a88 # master
+        with:
+          toolchain: stable
+      - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
+        with:
+          workspaces: ". -> target-smoke-benches"
+          key: smoke-benches
+      - name: Smoke-run every bench (Criterion --test)
+        run: bash scripts/smoke-benches.sh
+
   # ── Feature-matrix guard: `lossless-u64` ────────────────────────
   # `lossless-u64` is an opt-in Cargo feature that adds a public
   # enum variant (`Number::Unsigned`). Ships with its own compile

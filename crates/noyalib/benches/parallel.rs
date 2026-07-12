@@ -29,11 +29,14 @@ struct Record {
 fn build_stream(doc_count: usize, body_repeats: usize) -> String {
     let mut s = String::with_capacity(doc_count * (48 + body_repeats * 24));
     for i in 0..doc_count {
-        s.push_str(&format!("---\nid: {i}\nkind: audit\npayload: "));
+        // Quote the payload so the `tiny_docs` shape (body_repeats == 0)
+        // yields an empty string rather than YAML null, which would fail
+        // to deserialize into `Record::payload: String`.
+        s.push_str(&format!("---\nid: {i}\nkind: audit\npayload: \""));
         for j in 0..body_repeats {
             s.push_str(&format!("field-{j}-{i} "));
         }
-        s.push('\n');
+        s.push_str("\"\n");
     }
     s
 }

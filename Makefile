@@ -19,7 +19,7 @@
 #   make examples  — run all examples sequentially
 #   make clean    — remove build artifacts
 
-.PHONY: all check clippy test fmt deny doc miri miri-full miri-bigendian sbom notice vendor vendor-build msrv-per-crate coverage-gap examples compliance clean
+.PHONY: all check clippy test fmt deny doc miri miri-full miri-bigendian sbom notice vendor vendor-build msrv-per-crate coverage-gap examples bench-smoke compliance clean
 
 all: check clippy test
 
@@ -98,26 +98,16 @@ msrv-per-crate:
 coverage-gap:
 	./scripts/coverage-gap-report.sh
 
+# Run every `[[example]]` target to completion (auto-discovered
+# from cargo metadata with per-example required-features). Mirrors
+# the `run-examples` CI gate. No hand-maintained list to drift.
 examples:
-	@for ex in hello std variants deep dynamic modify tags \
-	           alias smart overlay inherit stream types binary \
-	           strict secure schema env \
-	           errors trace source style \
-	           emit rename flatten bridge pipes global \
-	           portable mask patch suggest schema_ext \
-	           untagged borrow transcode comments \
-	           diagnostic nostd preserve \
-	           replay registry scientific validation anchor_shared \
-	           async_io recursive bench; do \
-	    printf "\033[90m%-25s\033[0m" "$$ex" ; \
-	    if cargo run --example $$ex --quiet 2>/dev/null 1>/dev/null; then \
-	        printf "\033[32m[ok]\033[0m\n" ; \
-	    else \
-	        printf "\033[31m[fail]\033[0m\n" ; \
-	        exit 1; \
-	    fi; \
-	done
-	@printf "\n\033[1;32mAll examples passed.\033[0m\n"
+	./scripts/run-all-examples.sh
+
+# Smoke-run every `[[bench]]` once via Criterion `--test` (no
+# measurement). Mirrors the `smoke-benches` CI gate.
+bench-smoke:
+	./scripts/smoke-benches.sh
 
 clean:
 	cargo clean
