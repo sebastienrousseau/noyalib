@@ -14,9 +14,13 @@
 #![allow(missing_docs)]
 #![allow(clippy::unwrap_used)]
 
-use noyalib::{Value, from_value};
+// Every item below is used only by the `lossless-u64` tests; the
+// `cst::format` tests call through a fully-qualified path. Gate the
+// imports with the same cfg so the default-feature build does not trip
+// `-D unused-imports`.
 #[cfg(feature = "lossless-u64")]
-use noyalib::Number;
+use noyalib::{Number, Value, from_value};
+#[cfg(feature = "lossless-u64")]
 use serde::Deserialize;
 
 // ---------------------------------------------------------------------
