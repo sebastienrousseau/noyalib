@@ -35,11 +35,11 @@ file wins.
 
 | Crate | MSRV | Rationale |
 |---|---|---|
-| `noyalib` (library core) | **1.85.0** | The committed floor since v0.0.5 (edition 2024). Enforced by the dedicated `msrv-1-85-core` CI job. |
-| `noyalib-mcp` | 1.85.0 | Same floor; the MCP wire surface is text-only JSON-RPC and pulls no nightly-only deps. |
-| `noya-cli` (binaries) | 1.85.0 | Newer binaries pull `clap_complete` 4.x and `miette` 7.x which require 1.85+. |
-| `noyalib-lsp` | 1.85.0 | Pulls `tower-lsp` and async deps that have set 1.85 floors. |
-| `noyalib-wasm` | 1.85.0 | `wasm-bindgen` 0.2 ecosystem floors at 1.85. |
+| `noyalib` (library core) | **1.86.0** | Raised from 1.85 in v0.0.16 so the shipped `validate-schema` feature (jsonschema → ICU 2.x) builds on the declared floor. Enforced by the dedicated `msrv-core` CI job. |
+| `noyalib-mcp` | 1.86.0 | Lockstep with the core floor; the MCP wire surface is text-only JSON-RPC and pulls no nightly-only deps. |
+| `noya-cli` (binaries) | 1.86.0 | Lockstep with the core floor; `clap_builder` 4.6 is edition-2024 and requires 1.86+. |
+| `noyalib-lsp` | 1.86.0 | Lockstep with the core floor; also consumes `validate-schema`, which requires 1.86. |
+| `noyalib-wasm` | 1.86.0 | Lockstep with the core floor; the `wasm-bindgen` 0.2 ecosystem floors at 1.86. |
 
 **MSRV bump policy:** the `noyalib` core MSRV is treated like an
 API guarantee — bumping it is a **minor-version event** (not a

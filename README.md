@@ -130,21 +130,22 @@ downstream users pinned to the core's floor.
 
 | Crate | MSRV | Why |
 |---|---|---|
-| `noyalib` (core lib) | **1.85.0** | The committed floor since v0.0.5 (edition 2024). Enforced by the dedicated MSRV CI job. |
-| `noyalib-mcp` | 1.85.0 | Same floor; small dep tree, no transitives requiring a higher edition. |
-| `noya-cli` (binaries) | 1.85.0 | `clap_builder 4.6` (a transitive of `clap = "4.5"`) ships in edition 2024. |
-| `noyalib-lsp` | 1.85.0 | LSP transport-stack transitives (`litemap`, `uuid`) require recent stables. |
+| `noyalib` (core lib) | **1.86.0** | Raised from 1.85 in v0.0.16 so the shipped `validate-schema` feature (jsonschema → ICU 2.x) builds on the declared floor. Enforced by the dedicated MSRV CI job. |
+| `noyalib-mcp` | 1.86.0 | Lockstep with the core floor; small dep tree, no transitives requiring more. |
+| `noya-cli` (binaries) | 1.86.0 | Lockstep with the core floor; `clap_builder 4.6` (a transitive of `clap = "4.5"`) ships in edition 2024. |
+| `noyalib-lsp` | 1.86.0 | Lockstep with the core floor; LSP transport-stack transitives (`litemap`, `uuid`) require recent stables. |
+| `noyalib-wasm` | 1.86.0 | Lockstep with the core floor; the `wasm-bindgen` 0.2 ecosystem floors at 1.86. |
 
-Optional core-lib features pull in ergonomics deps that have
-themselves bumped past 1.85 — `miette` → backtrace 1.82+,
-`garde` → 1.84+, `validate-schema` / `figment` → ICU chain
-1.86+, `parallel` → rayon-core 1.80+. Use those with a current
-stable toolchain; the core lib stays buildable on the Ubuntu
-24.04 LTS rustc-1.85 floor.
+As of v0.0.16 the whole lockstep set shares one floor, 1.86.0 —
+the historical split (core at a lower floor than the satellites)
+is gone. The one surface still above it is the opt-in, bench-only
+`compare-saphyr` feature: `serde-saphyr` uses let-chains and needs
+rustc 1.88+, so `--all-features` requires a newer toolchain than
+the MSRV and is excluded from the MSRV gate.
 
 `rust-toolchain.toml` itself selects `stable` for local
-development; the 1.85.0 floor on the core surface is enforced
-by the dedicated `msrv-1-85-core` CI job (Ubuntu,
+development; the 1.86.0 floor on the core surface is enforced
+by the dedicated `msrv-core` CI job (Ubuntu,
 no-default-features + default-features build paths).
 
 ### Cargo features

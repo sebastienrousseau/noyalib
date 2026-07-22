@@ -358,7 +358,7 @@ figment = { version = "0.10", optional = true, features = ["env"] }
 # only used inside `#[cfg(feature = "compare-saphyr")]` bench
 # arms; nothing in the runtime crate references it. Off by default
 # so an `--all-features` build doesn't pull in the saphyr crate
-# (which is fine on MSRV 1.85+ but still extra deps the rest of
+# (which is fine on MSRV 1.86+ but still extra deps the rest of
 # the workspace doesn't need).
 serde-saphyr = { version = "0.0", optional = true }
 # Parallel multi-document parsing — pulled in only when the

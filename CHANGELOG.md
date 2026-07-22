@@ -35,12 +35,18 @@ Satellites publish `=0.0.16` from their own repos:
 
 ### Changed — MSRV 1.85 → 1.86
 
-- **The minimum supported Rust version is now 1.86.0.** Raised so the
-  shipped optional `validate-schema` feature builds on the declared
-  MSRV: its `jsonschema` → ICU 2.x chain requires 1.86, which
-  previously left that feature unbuildable on the stated floor. The
-  core (default-feature) surface still compiles on 1.85; this is a
-  policy alignment, not a code requirement.
+- **The minimum supported Rust version is now 1.86.0 — for the core
+  library as well as every satellite.** Raised so the shipped optional
+  `validate-schema` feature builds on the declared MSRV: its
+  `jsonschema` → ICU 2.x chain requires 1.86, which previously left
+  that feature unbuildable on the stated floor.
+- **The historical split MSRV is gone.** Docs previously claimed the
+  core library floored at 1.75 while satellites sat at 1.85 — an
+  inconsistency that had already drifted out of sync with the actual
+  `rust-version` (1.85). The whole lockstep set now shares one floor,
+  1.86.0, recorded in `doc/POLICIES.md`.
+- The MSRV CI job was renamed `msrv-1-85-core` → `msrv-core` so future
+  bumps do not churn the job (and required-status-check) name.
 - The opt-in, bench-only `compare-saphyr` feature remains outside the
   MSRV gate — `serde-saphyr` uses let-chains and needs rustc 1.88+.
   `--all-features` therefore still requires a newer toolchain than the

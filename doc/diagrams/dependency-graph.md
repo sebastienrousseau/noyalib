@@ -6,12 +6,12 @@ means `noya-cli` pulls `noyalib` from the workspace.
 
 ```mermaid
 graph TD
-    noyalib["noyalib<br/>core library<br/>MSRV 1.75"]
+    noyalib["noyalib<br/>core library<br/>MSRV 1.86"]
 
-    noya_cli["noya-cli<br/>noyafmt + noyavalidate<br/>MSRV 1.85"]
-    noyalib_lsp["noyalib-lsp<br/>LSP server<br/>MSRV 1.85"]
-    noyalib_mcp["noyalib-mcp<br/>MCP server<br/>MSRV 1.75"]
-    noyalib_wasm["noyalib-wasm<br/>WASM bindings<br/>MSRV 1.75"]
+    noya_cli["noya-cli<br/>noyafmt + noyavalidate<br/>MSRV 1.86"]
+    noyalib_lsp["noyalib-lsp<br/>LSP server<br/>MSRV 1.86"]
+    noyalib_mcp["noyalib-mcp<br/>MCP server<br/>MSRV 1.86"]
+    noyalib_wasm["noyalib-wasm<br/>WASM bindings<br/>MSRV 1.86"]
     xtask["xtask<br/>internal tooling"]
 
     noya_cli --> noyalib
@@ -49,21 +49,22 @@ dependency footprint minimal and the integration tests independent.
 shared clap-derive command builders, and `noyalib` transitively.
 It is `publish = false` and never ships to crates.io.
 
-## MSRV layering
+## MSRV (single lockstep floor)
 
 | Crate | MSRV | Reason |
 |---|---|---|
-| `noyalib` | **1.75.0** | Pure-library code; the workspace's lowest-common-denominator floor |
-| `noyalib-mcp` | 1.75.0 | Stays at the core floor — only depends on `noyalib` and `serde_json` |
-| `noyalib-wasm` | 1.75.0 | wasm-bindgen toolchain compatible at this floor |
-| `noya-cli` | **1.85.0** | `clap_builder 4.6` is edition-2024 |
-| `noyalib-lsp` | **1.85.0** | LSP transport stack (`litemap 0.7.5`, `uuid 1.23`) is edition-2024 |
-| `xtask` | 1.85.0 | Inherits the higher floor via `noya-cli` |
+| `noyalib` | **1.86.0** | Single lockstep floor since v0.0.16; `validate-schema` (jsonschema → ICU 2.x) requires it |
+| `noyalib-mcp` | 1.86.0 | Lockstep with the core floor |
+| `noyalib-wasm` | 1.86.0 | Lockstep with the core floor; wasm-bindgen 0.2 floors at 1.86 |
+| `noya-cli` | 1.86.0 | Lockstep with the core floor; `clap_builder 4.6` is edition-2024 |
+| `noyalib-lsp` | 1.86.0 | Lockstep with the core floor; LSP transport stack (`litemap`, `uuid`) is edition-2024 |
+| `xtask` | 1.86.0 | Inherits the lockstep floor |
 
-CI's `Per-crate MSRV` job enforces these floors per crate — the
-`noyalib` core can be picked up by 1.75-pinned downstream
-projects even though the CLI binaries require 1.85. This is the
-explicit value of the split graph.
+CI's `Per-crate MSRV` job still enforces the floor per crate, so a
+satellite adopting a higher floor cannot silently drag the core up
+with it. As of v0.0.16 the split is gone in practice: every crate
+declares 1.86.0, because the core's own `validate-schema` feature
+requires it.
 
 ## External dependency surface
 

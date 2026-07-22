@@ -128,9 +128,9 @@ through the AST fallback.
 
 ## Cargo / build terms
 
-**MSRV.** Minimum Supported Rust Version. The noyalib core library
-floor is **1.75.0**; the satellite crates with edition-2024
-transitive deps are **1.86.0**.
+**MSRV.** Minimum Supported Rust Version. The whole lockstep set —
+the noyalib core library and every satellite crate — shares a single
+floor of **1.86.0** as of v0.0.16.
 
 **`#![forbid(unsafe_code)]`.** A crate-root attribute that makes
 any `unsafe` block a compile error. Applied to every crate in the

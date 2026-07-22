@@ -130,7 +130,7 @@ jobs:
     # `uses: sebastienrousseau/noyalib/.github/workflows/shared-reuse.yml@<sha>`.
     uses: ./.github/workflows/shared-reuse.yml
 
-  msrv-1-85-core:
+  msrv-core:
     # Dogfooded from shared-msrv-core.yml. Runs three sub-checks
     # (no_std, default, clippy) at the MSRV toolchain — each in
     # its own isolated CARGO_TARGET_DIR so a stale-but-passing
