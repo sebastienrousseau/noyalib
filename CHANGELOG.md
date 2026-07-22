@@ -22,6 +22,13 @@ Satellites publish `=0.0.16` from their own repos:
 - [`sebastienrousseau/noyalib-lsp@0.0.16`](https://github.com/sebastienrousseau/noyalib-lsp)
 - [`sebastienrousseau/noya-cli@0.0.16`](https://github.com/sebastienrousseau/noya-cli)
 
+> **Satellite note — `noyalib-lsp` carries a user-facing fix in this
+> cut.** `textDocument/formatting` was a silent no-op: the server derived
+> its output from a byte-faithful CST round-trip, so it always returned
+> an empty `TextEdit[]` and no editor ever saw a formatting change. Fixed
+> by calling `cst::format`. See that repo's `CHANGELOG.md`. Nothing in
+> the core crate changed as a result — the bug was in the LSP wrapper.
+
 ### Fixed
 
 - **`cargo check --all-targets` no longer fails on default features.**
