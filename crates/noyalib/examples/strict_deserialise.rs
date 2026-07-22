@@ -23,15 +23,14 @@
 mod support;
 
 use noyalib::{from_slice_strict, from_str, from_str_strict};
-use serde::Deserialize;
 
-#[derive(Debug, Deserialize, PartialEq)]
+#[derive(Debug, serde::Deserialize, PartialEq)]
 struct ServerConfig {
     host: String,
     port: u16,
 }
 
-#[derive(Debug, Deserialize, PartialEq)]
+#[derive(Debug, serde::Deserialize, PartialEq)]
 struct AppConfig {
     name: String,
     server: ServerConfig,

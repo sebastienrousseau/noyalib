@@ -20,8 +20,6 @@
 // `-D unused-imports`.
 #[cfg(feature = "lossless-u64")]
 use noyalib::{Number, Value, from_value};
-#[cfg(feature = "lossless-u64")]
-use serde::Deserialize;
 
 // ---------------------------------------------------------------------
 // de/deserializer.rs — `Number::Unsigned` arms
@@ -84,7 +82,7 @@ fn unsigned_round_trips_through_deserialize_any() {
 #[cfg(feature = "lossless-u64")]
 #[test]
 fn unsigned_through_newtype_struct() {
-    #[derive(Debug, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Deserialize, PartialEq)]
     struct Wrapper(u64);
 
     let v = Value::Number(Number::Unsigned(u64::MAX));
