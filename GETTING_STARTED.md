@@ -90,7 +90,7 @@ make fmt            # rustfmt --check
 make deny           # cargo-deny supply-chain audit
 ```
 
-Prerequisites: **Rust 1.85.0+** (edition 2024) for the core library and
+Prerequisites: **Rust 1.86.0+** (edition 2024) for the core library and
 the CLI / LSP satellite crates alike. `make` orchestrates the full local
 check suite.
 

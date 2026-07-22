@@ -5,7 +5,7 @@ Contributions are welcome. This guide covers the essentials.
 ## Prerequisites
 
 - **Rust 1.75.0+** for the core `noyalib` crate
-- **Rust 1.85.0+** if you also work on `noya-cli` or `noyalib-lsp`
+- **Rust 1.86.0+** if you also work on `noya-cli` or `noyalib-lsp`
   (their dep trees include edition-2024 transitives — see
   [`doc/diagrams/dependency-graph.md`](./doc/diagrams/dependency-graph.md))
 - Git with [commit signing](https://docs.github.com/en/authentication/managing-commit-signature-verification/signing-commits) configured

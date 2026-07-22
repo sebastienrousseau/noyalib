@@ -38,11 +38,11 @@ jobs:
     # comes from the shared workflow's defaults. Satellites can
     # trim OSes / toolchains they don't support by passing custom
     # JSON to the `os-list` / `toolchain-list` inputs.
-    # NOTE: MSRV-1.85 lives in msrv-core (below) — the optional
-    # features pull in ergonomics deps that themselves require
-    # newer rustc (miette → backtrace ≥ 1.82, garde → 1.84,
-    # ICU chain → 1.86), so `cargo test --all-features` cannot
-    # run on 1.85. The MSRV gate covers the *core* feature set.
+    # NOTE: MSRV-1.86 lives in msrv-core (below) — the opt-in
+    # `compare-saphyr` bench feature pulls serde-saphyr, which
+    # uses let-chains (1.88+), so `cargo test --all-features`
+    # cannot run on the MSRV toolchain. The MSRV gate covers the
+    # *core* feature set plus `validate-schema`.
     uses: ./.github/workflows/shared-test-matrix.yml
 
   miri-focused:
@@ -135,15 +135,17 @@ jobs:
     # (no_std, default, clippy) at the MSRV toolchain — each in
     # its own isolated CARGO_TARGET_DIR so a stale-but-passing
     # cache from one config cannot mask a regression in another.
-    # noyalib's MSRV is 1.85 for the core feature set: default
+    # noyalib's MSRV is 1.86 for the core feature set: default
     # features (`std`) plus the always-on parser / serializer /
-    # Value / CST. Optional features pull in ergonomics deps that
-    # themselves require newer rustc (miette → backtrace ≥ 1.82,
-    # garde → 1.84, figment / validate-schema → various ICU 1.86
-    # dragnet); those are covered by the stable test matrix.
+    # Value / CST. Raised from 1.85 in v0.0.16 so the shipped
+    # `validate-schema` feature builds on the declared MSRV — its
+    # jsonschema → ICU 2.x chain requires 1.86. The opt-in,
+    # bench-only `compare-saphyr` feature still needs a newer
+    # rustc (serde-saphyr uses let-chains, 1.88+) and is therefore
+    # excluded from the MSRV gate, as is `--all-features`.
     uses: ./.github/workflows/shared-msrv-core.yml
     with:
-      toolchain: "1.85.0"
+      toolchain: "1.86.0"
 
   coverage-gate:
     # Dogfooded from shared-coverage.yml. noyalib's thresholds

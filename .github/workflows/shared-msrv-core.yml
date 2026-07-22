@@ -14,7 +14,7 @@ name: shared / MSRV core build
 #   3. `cargo clippy --lib --locked -- -D warnings`
 #      — clippy on the core lib.
 #
-# The MSRV toolchain is passed as an input (default 1.85.0) so
+# The MSRV toolchain is passed as an input (default 1.86.0) so
 # each satellite can declare its own floor.
 #
 # Consumers pin by SHA:
@@ -23,18 +23,18 @@ name: shared / MSRV core build
 #     msrv-core:
 #       uses: sebastienrousseau/noyalib/.github/workflows/shared-msrv-core.yml@<sha>
 #       with:
-#         toolchain: "1.85.0"
+#         toolchain: "1.86.0"
 
 on:
   workflow_call:
     inputs:
       toolchain:
         description: >-
-          MSRV toolchain to check against (e.g. "1.85.0"). Should
+          MSRV toolchain to check against (e.g. "1.86.0"). Should
           match the caller's `rust-version` in Cargo.toml.
         required: false
         type: string
-        default: "1.85.0"
+        default: "1.86.0"
 
 permissions:
   contents: read

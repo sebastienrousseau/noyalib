@@ -33,6 +33,19 @@ Satellites publish `=0.0.16` from their own repos:
   it would have compiled by default while breaking every
   `--all-features` build.
 
+### Changed — MSRV 1.85 → 1.86
+
+- **The minimum supported Rust version is now 1.86.0.** Raised so the
+  shipped optional `validate-schema` feature builds on the declared
+  MSRV: its `jsonschema` → ICU 2.x chain requires 1.86, which
+  previously left that feature unbuildable on the stated floor. The
+  core (default-feature) surface still compiles on 1.85; this is a
+  policy alignment, not a code requirement.
+- The opt-in, bench-only `compare-saphyr` feature remains outside the
+  MSRV gate — `serde-saphyr` uses let-chains and needs rustc 1.88+.
+  `--all-features` therefore still requires a newer toolchain than the
+  declared MSRV, as before.
+
 ### Changed — dependencies
 
 - **`jsonschema` 0.46 → 0.48.** Optional, behind `validate-schema`. The

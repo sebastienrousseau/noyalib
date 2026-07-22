@@ -130,7 +130,7 @@ through the AST fallback.
 
 **MSRV.** Minimum Supported Rust Version. The noyalib core library
 floor is **1.75.0**; the satellite crates with edition-2024
-transitive deps are **1.85.0**.
+transitive deps are **1.86.0**.
 
 **`#![forbid(unsafe_code)]`.** A crate-root attribute that makes
 any `unsafe` block a compile error. Applied to every crate in the
