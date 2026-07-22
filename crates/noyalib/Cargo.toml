@@ -222,6 +222,11 @@ name = "schema_validation"
 path = "examples/schema_validation.rs"
 required-features = ["validate-schema"]
 
+[[example]]
+name = "strict_deserialise"
+path = "examples/strict_deserialise.rs"
+required-features = ["strict-deserialise"]
+
 ## ── Ecosystem Citizen ──
 [[example]]
 name = "include"
