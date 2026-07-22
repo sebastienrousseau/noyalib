@@ -47,6 +47,25 @@ Satellites publish `=0.0.16` from their own repos:
   1.86.0, recorded in `doc/POLICIES.md`.
 - The MSRV CI job was renamed `msrv-1-85-core` → `msrv-core` so future
   bumps do not churn the job (and required-status-check) name.
+  **Action required:** if `msrv-1-85-core` is a required status check in
+  branch protection, update the rule to `msrv-core` or PRs will block
+  on a check that no longer reports.
+
+### Changed — MSRV bump policy
+
+- **An MSRV bump is now a patch, not a minor-version event, while the
+  project is on `0.0.x`.** `doc/POLICIES.md` previously declared a core
+  MSRV bump a *minor-version event*; taken literally, this release
+  would have had to be `0.1.0`. That rule was written when `0.1.0` was
+  the next planned cut, but §2 of the same document commits to
+  iterating `0.0.2 … 0.0.99` before graduating to `0.1.0` — so there is
+  no minor slot to spend, and the two rules contradicted each other.
+  The policy is revised to match the actual `0.0.x` posture: MSRV bumps
+  ship as patches, in lockstep, and must be called out under an
+  explicit `### Changed — MSRV` heading (as here).
+- This reverts to a genuine minor-version event at `1.0`, per the gates
+  in `PLAN.md`. Recorded in `doc/POLICIES.md` §1 with the superseded
+  rule quoted in full rather than deleted.
 - The opt-in, bench-only `compare-saphyr` feature remains outside the
   MSRV gate — `serde-saphyr` uses let-chains and needs rustc 1.88+.
   `--all-features` therefore still requires a newer toolchain than the

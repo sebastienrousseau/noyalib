@@ -10,7 +10,7 @@ matrix. Every README in the workspace links here; if there's a
 contradiction between this file and a per-crate README, this
 file wins.
 
-> **Last reviewed:** 2026-05-08. The dates on individual
+> **Last reviewed:** 2026-07-22. The dates on individual
 > sections capture when each policy was last audited.
 
 ---
@@ -41,13 +41,25 @@ file wins.
 | `noyalib-lsp` | 1.86.0 | Lockstep with the core floor; also consumes `validate-schema`, which requires 1.86. |
 | `noyalib-wasm` | 1.86.0 | Lockstep with the core floor; the `wasm-bindgen` 0.2 ecosystem floors at 1.86. |
 
-**MSRV bump policy:** the `noyalib` core MSRV is treated like an
-API guarantee — bumping it is a **minor-version event** (not a
-patch). The satellite crate MSRVs may bump in any release if a
-transitive dependency forces it; that bump is a **patch** for
-those crates because they ship as application-style binaries
-(noya-cli, noyalib-lsp, noyalib-mcp) rather than library
-surface.
+**MSRV bump policy** *(revised 2026-07-22, effective v0.0.16)*:
+while the project is in its `0.0.x` line, an MSRV bump — core or
+satellite — ships as a **patch** (`0.0.x` → `0.0.x+1`), in
+lockstep across all five crates. It must be called out in
+[`CHANGELOG.md`](../CHANGELOG.md) under an explicit
+`### Changed — MSRV` heading so consumers can find it by
+scanning, and the new floor must be reflected in the table above,
+which is the single source of truth.
+
+> **This supersedes the previous rule** that a core MSRV bump was
+> a *minor-version event*. That rule was written when `0.1.0` was
+> the next planned cut; under the current `0.0.x` posture there is
+> no minor slot to spend, and `SUPPORT.md` already warns that a
+> patch may carry breaking changes in `0.x`. Treating MSRV bumps
+> as patches keeps the version line monotonic and honest rather
+> than reserving a semantic that the `0.0.x` scheme cannot express.
+> **This changes at 1.0:** once the crate is `1.x`, an MSRV bump
+> becomes a genuine minor-version event again, per the `1.0` gates
+> in [`PLAN.md`](../PLAN.md).
 
 CI matrix verifies the MSRV per-crate via the
 `Per-crate MSRV` workflow job — no change to that job is
@@ -96,8 +108,11 @@ A change is **breaking** (requires a major-version bump under
 
 ### Pre-1.0 (current state — 0.0.x)
 
-While on the `0.0.x` line, **every minor bump may be breaking**
-per SemVer's pre-1.0 carve-out. We try to avoid it; the
+While on the `0.0.x` line, **every release may be breaking** per
+SemVer's pre-1.0 carve-out — Cargo treats each `0.0.x` as its own
+incompatible version, so the patch position is the only one that
+moves (see the MSRV bump policy in §1, which follows from this).
+We try to avoid breakage anyway; the
 `cargo-semver-checks` CI gate catches accidental breaks. The
 `0.0.x` line is intentionally narrow: we expect to ship a
 single big-bang `0.0.1`, then iterate `0.0.2`, `0.0.3`, …
