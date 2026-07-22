@@ -7,7 +7,41 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
-(Nothing yet — `[v0.0.15]` is the cut.)
+(Nothing yet — `[v0.0.16]` is the cut.)
+
+## [v0.0.16] - 2026-07-22
+
+A **build-fix + dependency-refresh** cut. No public API or behaviour
+change; `main` was left unbuildable under `--all-targets` by a
+feature-gated import, and the dependency set had drifted.
+
+Lockstep versioning: `noyalib` bumps `0.0.15` → `0.0.16`.
+Satellites publish `=0.0.16` from their own repos:
+- [`sebastienrousseau/noyalib-wasm@0.0.16`](https://github.com/sebastienrousseau/noyalib-wasm)
+- [`sebastienrousseau/noyalib-mcp@0.0.16`](https://github.com/sebastienrousseau/noyalib-mcp)
+- [`sebastienrousseau/noyalib-lsp@0.0.16`](https://github.com/sebastienrousseau/noyalib-lsp)
+- [`sebastienrousseau/noya-cli@0.0.16`](https://github.com/sebastienrousseau/noya-cli)
+
+### Fixed
+
+- **`cargo check --all-targets` no longer fails on default features.**
+  `tests/coverage_value_serde.rs` imported `to_value` unconditionally,
+  but its only consumer is gated behind `#[cfg(feature =
+  "lossless-u64")]`. With default features the import was unused and
+  `-D unused` promoted it to a hard error, breaking the test build. The
+  import is now gated by the same `cfg` rather than removed — removing
+  it would have compiled by default while breaking every
+  `--all-features` build.
+
+### Changed — dependencies
+
+- **`jsonschema` 0.46 → 0.48.** Optional, behind `validate-schema`. The
+  consumed surface (`validator_for`, `JsonType`,
+  `error::{TypeKind, ValidationErrorKind}`) is unchanged; new transitive
+  `jsonschema-value` clears the `cargo-deny` licence allowlist.
+- **Lockfile refreshed** to the latest semver-compatible versions
+  (71 crates, including `memchr`, the `serde` group and the
+  `tokio-stack` group). No manifest constraints changed.
 
 ## [v0.0.15] - 2026-07-11
 
