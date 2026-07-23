@@ -438,10 +438,33 @@ feature opts in to rayon thread-pool use).
 
 ### no_std (alloc-only) build
 
-The `noyalib` crate compiles cleanly with `--no-default-features
---features minimal` against `core` + `alloc`. The
-`Per-crate no_std (alloc-only) build` workflow job verifies
-this on every PR.
+The `noyalib` crate compiles cleanly with **`--no-default-features`**
+against `core` + `alloc`. The `Per-crate no_std (alloc-only) build`
+workflow job runs exactly that on every PR.
+
+> **Do not add `--features minimal` when you want `no_std`.** `minimal`
+> is defined as `minimal = ["std"]` — it is a *dependency-budget* alias
+> that turns `std` back on while dropping `itoa`, `ryu` and
+> `serde_ignored` (see §7, *Feature compatibility*). Combining it with
+> `--no-default-features` yields a `std` build, so it silently does not
+> test what the name suggests. This document previously recommended that
+> exact combination; corrected in v0.0.16.
+
+**Hosted targets only.** "no_std" here means *alloc-only on a hosted
+target* — the crate is verified with `--no-default-features` on the
+native host and on `wasm32-unknown-unknown`. It does **not** currently
+build for bare-metal `*-none` targets (e.g. `thumbv7em-none-eabihf`,
+`riscv32imac-unknown-none-elf`, `aarch64-unknown-none`), and those are
+not in the supported set above. Two things block it, both pre-existing:
+
+1. `indexmap`, `rustc-hash` and `memchr` are declared without
+   `default-features = false`, so they pull `std` in transitively.
+2. The crate uses `rustc_hash::FxHashMap` / `FxHashSet`, which do not
+   exist without `std`; a bare-metal build would need `hashbrown` with
+   `FxBuildHasher` instead.
+
+If you need bare-metal support, please open an issue — it is a tractable
+change, but it is a deliberate non-goal today rather than an oversight.
 
 When in `no_std` mode:
 
