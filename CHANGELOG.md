@@ -43,10 +43,13 @@ Satellites publish `=0.0.16` from their own repos:
 ### Changed — MSRV 1.85 → 1.86
 
 - **The minimum supported Rust version is now 1.86.0 — for the core
-  library as well as every satellite.** Raised so the shipped optional
-  `validate-schema` feature builds on the declared MSRV: its
-  `jsonschema` → ICU 2.x chain requires 1.86, which previously left
-  that feature unbuildable on the stated floor.
+  library as well as every satellite.** This is a **deliberate policy
+  choice**, not a dependency requirement: the crate still compiles on
+  1.85 today. The floor is raised to give one consistent number across
+  the lockstep set and headroom for the dependency tree, so a future
+  transitive bump does not force an unplanned MSRV change mid-cycle.
+  If you are pinned to 1.85 and cannot move, v0.0.15 remains available
+  and this is the only reason to stay on it.
 - **The historical split MSRV is gone.** Docs previously claimed the
   core library floored at 1.75 while satellites sat at 1.85 — an
   inconsistency that had already drifted out of sync with the actual

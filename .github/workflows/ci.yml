@@ -137,9 +137,9 @@ jobs:
     # cache from one config cannot mask a regression in another.
     # noyalib's MSRV is 1.86 for the core feature set: default
     # features (`std`) plus the always-on parser / serializer /
-    # Value / CST. Raised from 1.85 in v0.0.16 so the shipped
-    # `validate-schema` feature builds on the declared MSRV — its
-    # jsonschema → ICU 2.x chain requires 1.86. The opt-in,
+    # Value / CST. Raised from 1.85 in v0.0.16 as a deliberate
+    # policy choice — one floor for the whole lockstep set. No
+    # dependency currently requires it. The opt-in,
     # bench-only `compare-saphyr` feature still needs a newer
     # rustc (serde-saphyr uses let-chains, 1.88+) and is therefore
     # excluded from the MSRV gate, as is `--all-features`.

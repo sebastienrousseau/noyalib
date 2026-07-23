@@ -53,7 +53,7 @@ It is `publish = false` and never ships to crates.io.
 
 | Crate | MSRV | Reason |
 |---|---|---|
-| `noyalib` | **1.86.0** | Single lockstep floor since v0.0.16; `validate-schema` (jsonschema → ICU 2.x) requires it |
+| `noyalib` | **1.86.0** | Single lockstep floor since v0.0.16; a policy choice, not a dependency requirement |
 | `noyalib-mcp` | 1.86.0 | Lockstep with the core floor |
 | `noyalib-wasm` | 1.86.0 | Lockstep with the core floor; wasm-bindgen 0.2 floors at 1.86 |
 | `noya-cli` | 1.86.0 | Lockstep with the core floor; `clap_builder 4.6` is edition-2024 |

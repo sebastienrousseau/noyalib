@@ -35,10 +35,10 @@ file wins.
 
 | Crate | MSRV | Rationale |
 |---|---|---|
-| `noyalib` (library core) | **1.86.0** | Raised from 1.85 in v0.0.16 so the shipped `validate-schema` feature (jsonschema → ICU 2.x) builds on the declared floor. Enforced by the dedicated `msrv-core` CI job. |
+| `noyalib` (library core) | **1.86.0** | Raised from 1.85 in v0.0.16 as a deliberate policy choice: one floor across the whole lockstep set, with headroom for the dependency tree. No current dependency *requires* 1.86 — the crate still compiles on 1.85. Enforced by the dedicated `msrv-core` CI job. |
 | `noyalib-mcp` | 1.86.0 | Lockstep with the core floor; the MCP wire surface is text-only JSON-RPC and pulls no nightly-only deps. |
 | `noya-cli` (binaries) | 1.86.0 | Lockstep with the core floor; `clap_builder` 4.6 is edition-2024 and requires 1.86+. |
-| `noyalib-lsp` | 1.86.0 | Lockstep with the core floor; also consumes `validate-schema`, which requires 1.86. |
+| `noyalib-lsp` | 1.86.0 | Lockstep with the core floor. |
 | `noyalib-wasm` | 1.86.0 | Lockstep with the core floor; the `wasm-bindgen` 0.2 ecosystem floors at 1.86. |
 
 **MSRV bump policy** *(revised 2026-07-22, effective v0.0.16)*:

@@ -130,7 +130,7 @@ downstream users pinned to the core's floor.
 
 | Crate | MSRV | Why |
 |---|---|---|
-| `noyalib` (core lib) | **1.86.0** | Raised from 1.85 in v0.0.16 so the shipped `validate-schema` feature (jsonschema → ICU 2.x) builds on the declared floor. Enforced by the dedicated MSRV CI job. |
+| `noyalib` (core lib) | **1.86.0** | Raised from 1.85 in v0.0.16 as a deliberate policy choice: one floor across the whole lockstep set, with headroom for the dependency tree. No current dependency *requires* 1.86. Enforced by the dedicated MSRV CI job. |
 | `noyalib-mcp` | 1.86.0 | Lockstep with the core floor; small dep tree, no transitives requiring more. |
 | `noya-cli` (binaries) | 1.86.0 | Lockstep with the core floor; `clap_builder 4.6` (a transitive of `clap = "4.5"`) ships in edition 2024. |
 | `noyalib-lsp` | 1.86.0 | Lockstep with the core floor; LSP transport-stack transitives (`litemap`, `uuid`) require recent stables. |
