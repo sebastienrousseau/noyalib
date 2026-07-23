@@ -131,18 +131,33 @@ jobs:
     uses: ./.github/workflows/shared-reuse.yml
 
   msrv-core:
-    # Dogfooded from shared-msrv-core.yml. Runs three sub-checks
-    # (no_std, default, clippy) at the MSRV toolchain — each in
-    # its own isolated CARGO_TARGET_DIR so a stale-but-passing
-    # cache from one config cannot mask a regression in another.
-    # noyalib's MSRV is 1.86 for the core feature set: default
+    # Dogfooded from shared-msrv-core.yml. Runs exactly three
+    # sub-checks at the MSRV toolchain, each in its own isolated
+    # CARGO_TARGET_DIR so a stale-but-passing cache from one
+    # config cannot mask a regression in another:
+    #
+    #   1. cargo check --no-default-features --lib --locked
+    #   2. cargo check --locked            (default features)
+    #   3. cargo clippy --lib --locked -- -D warnings
+    #
+    # That is the whole gate. NO optional feature is enabled by
+    # it — in particular `validate-schema` is NOT covered here,
+    # despite compiling on the MSRV toolchain when checked by
+    # hand. If you want an optional feature gated at the MSRV,
+    # add a step to shared-msrv-core.yml; do not assume this job
+    # already covers it.
+    #
+    # noyalib's MSRV is 1.86 for that core surface: default
     # features (`std`) plus the always-on parser / serializer /
-    # Value / CST. Raised from 1.85 in v0.0.16 as a deliberate
-    # policy choice — one floor for the whole lockstep set. No
-    # dependency currently requires it. The opt-in,
-    # bench-only `compare-saphyr` feature still needs a newer
-    # rustc (serde-saphyr uses let-chains, 1.88+) and is therefore
-    # excluded from the MSRV gate, as is `--all-features`.
+    # Value / CST. 1.86 is the lowest toolchain the project can
+    # be built AND tested on — `criterion 0.8` (dev-dependency)
+    # requires 1.86, so `cargo check --all-targets`, the benches
+    # and the coverage gate all fail on 1.85. The library alone
+    # still compiles on 1.85, but nothing here could verify that
+    # claim, so we do not publish it. The opt-in, bench-only
+    # `compare-saphyr` feature needs a newer rustc (serde-saphyr
+    # uses let-chains, 1.88+), so it and `--all-features` are out
+    # of scope for the MSRV gate by construction.
     uses: ./.github/workflows/shared-msrv-core.yml
     with:
       toolchain: "1.86.0"

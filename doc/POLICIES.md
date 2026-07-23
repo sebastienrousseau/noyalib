@@ -35,13 +35,32 @@ file wins.
 
 | Crate | MSRV | Rationale |
 |---|---|---|
-| `noyalib` (library core) | **1.86.0** | Raised from 1.85 in v0.0.16 as a deliberate policy choice: one floor across the whole lockstep set, with headroom for the dependency tree. No current dependency *requires* 1.86 — the crate still compiles on 1.85. Enforced by the dedicated `msrv-core` CI job. |
+| `noyalib` (library core) | **1.86.0** | The lowest toolchain the project can be built *and tested* on: `criterion 0.8` (dev-dependency) declares `rust-version = 1.86`, so `cargo check --all-targets`, the bench suite, and the coverage gate all fail on 1.85. Enforced by the dedicated `msrv-core` CI job. |
 | `noyalib-mcp` | 1.86.0 | Lockstep with the core floor; the MCP wire surface is text-only JSON-RPC and pulls no nightly-only deps. |
 | `noya-cli` (binaries) | 1.86.0 | Lockstep with the core floor; `clap_builder` 4.6 is edition-2024 and requires 1.86+. |
 | `noyalib-lsp` | 1.86.0 | Lockstep with the core floor. |
 | `noyalib-wasm` | 1.86.0 | Lockstep with the core floor; the `wasm-bindgen` 0.2 ecosystem floors at 1.86. |
 
-**MSRV bump policy** *(revised 2026-07-22, effective v0.0.16)*:
+**What the MSRV number means here.** It is the lowest toolchain
+on which the project can be **built and tested**, not the lowest
+on which the library alone happens to compile. Those differ
+today: `cargo +1.85.0 check --lib` succeeds, but
+`cargo +1.85.0 check --all-targets` fails with
+`criterion@0.8.2 requires rustc 1.86`. We publish the number we
+verify. Advertising 1.85 would be an untested promise — no CI
+leg could run there, so nothing would catch the day it broke.
+
+**When we bump it.** Only when the toolchain we build and test
+at actually moves — a dependency (runtime *or* dev) raising its
+floor, or a language feature we choose to adopt. **Never
+speculatively, and never for tidiness.** "Headroom" is not a
+reason: an MSRV can be raised the day it is needed, and raising
+it early only costs downstream users. As a standing guarantee,
+noyalib will not require a rustc newer than **12 months old** at
+the time of release (1.86.0 shipped 2025-04-03, so the current
+floor is comfortably inside that).
+
+**How it ships** *(revised 2026-07-22, effective v0.0.16)*:
 while the project is in its `0.0.x` line, an MSRV bump — core or
 satellite — ships as a **patch** (`0.0.x` → `0.0.x+1`), in
 lockstep across all five crates. It must be called out in
@@ -631,6 +650,28 @@ opt-outs covered in §7.
   silent-bumps.
 - Audit advisories (`cargo audit`) fail the build on any
   flagged dep.
+
+### `cargo-vet` exemption conventions
+
+`supply-chain/config.toml` is machine-generated — **`cargo vet fmt`
+strips comments**, so the conventions governing it are recorded here
+instead of inline.
+
+- **Exemptions are version-pinned.** Bumping a dependency invalidates
+  its exemption and the crate re-enters the unaudited set. This is
+  deliberate: it is why a blanket `cargo update` is not a routine
+  operation here (see the v0.0.16 notes, where a 71-crate refresh put
+  81 crates back on the unaudited list at once).
+- **`suggest = false` means "deliberately parked"** — `cargo vet
+  suggest` will stop proposing it. New exemptions are added **without**
+  it, so they stay on the suggest list until someone either audits them
+  or consciously parks them. The absence of `suggest = false` is a
+  to-do marker, not an oversight; do not add it in bulk to quieten the
+  suggest output.
+- **Never add exemptions in bulk to make a red gate green.** An
+  exemption is an assertion that a human looked. If a change produces
+  more new exemptions than a reviewer can actually read, the change is
+  too large — split it.
 
 ---
 

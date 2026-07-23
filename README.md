@@ -130,7 +130,7 @@ downstream users pinned to the core's floor.
 
 | Crate | MSRV | Why |
 |---|---|---|
-| `noyalib` (core lib) | **1.86.0** | Raised from 1.85 in v0.0.16 as a deliberate policy choice: one floor across the whole lockstep set, with headroom for the dependency tree. No current dependency *requires* 1.86. Enforced by the dedicated MSRV CI job. |
+| `noyalib` (core lib) | **1.86.0** | The lowest toolchain the project builds *and tests* on — `criterion 0.8` (dev-dependency) requires 1.86, so tests, benches and coverage cannot run below it. Enforced by the dedicated MSRV CI job. |
 | `noyalib-mcp` | 1.86.0 | Lockstep with the core floor; small dep tree, no transitives requiring more. |
 | `noya-cli` (binaries) | 1.86.0 | Lockstep with the core floor; `clap_builder 4.6` (a transitive of `clap = "4.5"`) ships in edition 2024. |
 | `noyalib-lsp` | 1.86.0 | Lockstep with the core floor; LSP transport-stack transitives (`litemap`, `uuid`) require recent stables. |
@@ -138,7 +138,18 @@ downstream users pinned to the core's floor.
 
 As of v0.0.16 the whole lockstep set shares one floor, 1.86.0 —
 the historical split (core at a lower floor than the satellites)
-is gone. The one surface still above it is the opt-in, bench-only
+is gone.
+
+The number is the floor we **verify**, not the floor the library
+happens to reach: `cargo +1.85.0 check --lib` still succeeds, but
+`cargo +1.85.0 check --all-targets` fails because `criterion 0.8`
+requires 1.86, so no test, bench or coverage run can execute
+there. We do not advertise an MSRV that CI cannot exercise. We
+also guarantee never to require a rustc newer than 12 months old
+at release time — see
+[`doc/POLICIES.md` §1](doc/POLICIES.md#1-msrv-minimum-supported-rust-version).
+
+The one surface still above the floor is the opt-in, bench-only
 `compare-saphyr` feature: `serde-saphyr` uses let-chains and needs
 rustc 1.88+, so `--all-features` requires a newer toolchain than
 the MSRV and is excluded from the MSRV gate.

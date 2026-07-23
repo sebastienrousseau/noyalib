@@ -53,18 +53,31 @@ It is `publish = false` and never ships to crates.io.
 
 | Crate | MSRV | Reason |
 |---|---|---|
-| `noyalib` | **1.86.0** | Single lockstep floor since v0.0.16; a policy choice, not a dependency requirement |
+| `noyalib` | **1.86.0** | Single lockstep floor since v0.0.16; the lowest toolchain the project builds *and tests* on (`criterion 0.8` dev-dep requires 1.86) |
 | `noyalib-mcp` | 1.86.0 | Lockstep with the core floor |
 | `noyalib-wasm` | 1.86.0 | Lockstep with the core floor; wasm-bindgen 0.2 floors at 1.86 |
 | `noya-cli` | 1.86.0 | Lockstep with the core floor; `clap_builder 4.6` is edition-2024 |
 | `noyalib-lsp` | 1.86.0 | Lockstep with the core floor; LSP transport stack (`litemap`, `uuid`) is edition-2024 |
 | `xtask` | 1.86.0 | Inherits the lockstep floor |
 
-CI's `Per-crate MSRV` job still enforces the floor per crate, so a
-satellite adopting a higher floor cannot silently drag the core up
-with it. As of v0.0.16 the split is gone in practice: every crate
-declares 1.86.0, because the core's own `validate-schema` feature
-requires it.
+CI's `Per-crate MSRV` job still enforces the floor per crate — it reads
+each `crates/*/Cargo.toml`'s `rust-version` and compiles against exactly
+that — so a satellite adopting a higher floor cannot silently drag the
+core up with it. The mechanism that kept the floors independent is
+intact; what changed in v0.0.16 is only the numbers it reads.
+
+As of v0.0.16 every crate declares 1.86.0. The binding constraint is
+`criterion 0.8`, a **dev-dependency**: with `rust-version` temporarily
+set to 1.85, `cargo +1.85.0 check --lib` compiles cleanly but
+`cargo +1.85.0 check --all-targets` fails with
+`criterion@0.8.2 requires rustc 1.86`. So no test, bench or coverage run
+can execute below 1.86, and the project publishes the floor it verifies
+rather than the lower one the library alone would reach.
+
+No *runtime* dependency of the core crate requires 1.86 — the highest
+runtime floor in the tree is 1.85. The earlier claim that
+`validate-schema`'s ICU chain forced 1.86 was an artefact of a lockfile
+refresh that did not ship; see `CHANGELOG.md` for v0.0.16.
 
 ## External dependency surface
 
