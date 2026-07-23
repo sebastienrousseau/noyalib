@@ -66,6 +66,10 @@ version = "0.48.5"
 criteria = "safe-to-deploy"
 suggest = false
 
+[[exemptions.jsonschema-value]]
+version = "0.48.5"
+criteria = "safe-to-deploy"
+
 [[exemptions.micromap]]
 version = "0.3.0"
 criteria = "safe-to-deploy"
@@ -86,6 +90,14 @@ suggest = false
 
 [[exemptions.serde-saphyr]]
 version = "0.0.29"
+criteria = "safe-to-deploy"
+
+[[exemptions.strum]]
+version = "0.28.0"
+criteria = "safe-to-deploy"
+
+[[exemptions.strum_macros]]
+version = "0.28.0"
 criteria = "safe-to-deploy"
 
 [[exemptions.sval]]
@@ -123,15 +135,3 @@ criteria = "safe-to-run"
 [[exemptions.yaml-rust2]]
 version = "0.11.0"
 criteria = "safe-to-run"
-
-[[exemptions.jsonschema-value]]
-version = "0.48.5"
-criteria = "safe-to-deploy"
-
-[[exemptions.strum]]
-version = "0.28.0"
-criteria = "safe-to-deploy"
-
-[[exemptions.strum_macros]]
-version = "0.28.0"
-criteria = "safe-to-deploy"
