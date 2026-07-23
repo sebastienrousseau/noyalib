@@ -203,6 +203,12 @@ every input shape:
 | `&[u8]` | `from_slice_strict::<T>(b)` |
 | `impl io::Read` | `from_reader_strict::<R, T>(r)` |
 
+Strictness is opt-in **per call site**, not global — be strict
+about config you own and lenient about a third party's payload in
+the same program. Runnable walk-through:
+[`crates/noyalib/examples/strict_deserialise.rs`](../crates/noyalib/examples/strict_deserialise.rs)
+(`cargo run --example strict_deserialise --features strict-deserialise`).
+
 ## 6. Parser policies (defence in depth)
 
 YAML's anchor / merge-key / custom-tag features have historically

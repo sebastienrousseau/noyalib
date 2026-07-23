@@ -90,21 +90,47 @@ mod schema_codegen {
     }
 
     /// `schema_for` returns the schema as a `Value` tree.
+    ///
+    /// Asserted by navigating the tree rather than substring-matching a
+    /// `{:?}` rendering: a Debug-repr match passes if "name" appears
+    /// anywhere at all — including in a doc string or a `$ref` — and
+    /// breaks the moment `schemars` changes its Debug formatting.
     #[test]
     fn schema_for_emits_object_with_declared_properties() {
         let schema = noyalib::schema_for::<Config>().unwrap();
-        let text = format!("{schema:?}");
-        assert!(text.contains("name"), "missing `name` property: {text}");
-        assert!(text.contains("port"), "missing `port` property: {text}");
+
+        assert_eq!(schema["type"].as_str(), Some("object"));
+
+        let props = schema["properties"]
+            .as_mapping()
+            .expect("`properties` should be a mapping");
+        assert!(props.contains_key("name"), "missing `name`: {schema:?}");
+        assert!(props.contains_key("port"), "missing `port`: {schema:?}");
+
+        assert_eq!(
+            schema["properties"]["name"]["type"].as_str(),
+            Some("string")
+        );
+        assert_eq!(
+            schema["properties"]["port"]["type"].as_str(),
+            Some("integer")
+        );
     }
 
     /// `schema_for_yaml` returns the same schema rendered as YAML text.
     #[test]
     fn schema_for_yaml_emits_parsable_yaml() {
         let yaml = noyalib::schema_for_yaml::<Config>().unwrap();
-        assert!(yaml.contains("name"), "missing `name` in YAML: {yaml}");
-        // The emitted text must itself round-trip back through the parser.
+
+        // The emitted text must itself round-trip back through the
+        // parser, and must reparse to the *same* tree `schema_for`
+        // returns — that is the contract between the two entry points.
         let reparsed: noyalib::Value = noyalib::from_str(&yaml).unwrap();
         assert!(reparsed.is_mapping(), "schema YAML should be a mapping");
+        assert_eq!(
+            reparsed,
+            noyalib::schema_for::<Config>().unwrap(),
+            "schema_for_yaml must render exactly what schema_for returns"
+        );
     }
 }

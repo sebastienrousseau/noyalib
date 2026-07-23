@@ -22,7 +22,7 @@
 #[path = "support.rs"]
 mod support;
 
-use noyalib::{from_slice_strict, from_str, from_str_strict};
+use noyalib::{from_reader_strict, from_slice_strict, from_str, from_str_strict};
 
 #[derive(Debug, serde::Deserialize, PartialEq)]
 struct ServerConfig {
@@ -86,6 +86,16 @@ fn main() {
         vec![msg]
     });
 
+    support::task_with_output("`from_reader_strict` for any `io::Read`", || {
+        // Same guarantee streaming off a reader — a file, a socket, or
+        // the `Cursor` used here so the example stays self-contained.
+        let reader = std::io::Cursor::new("host: 10.0.0.1\nport: 443\ntimeuot: 30\n");
+        let err = from_reader_strict::<_, ServerConfig>(reader).unwrap_err();
+        let msg = err.to_string();
+        assert!(msg.contains("timeuot"));
+        vec![msg]
+    });
+
     support::task_with_output("Strictness is per call site, not global", || {
         let yaml = "host: h\nport: 1\nvendor_ext: {}\n";
         assert!(from_str::<ServerConfig>(yaml).is_ok());
@@ -93,6 +103,6 @@ fn main() {
         vec!["lenient: Ok    strict: Err — same bytes, same process".to_string()]
     });
 
-    support::summary(6);
+    support::summary(7);
     support::footer();
 }
