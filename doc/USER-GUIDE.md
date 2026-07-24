@@ -203,6 +203,12 @@ every input shape:
 | `&[u8]` | `from_slice_strict::<T>(b)` |
 | `impl io::Read` | `from_reader_strict::<R, T>(r)` |
 
+Strictness is opt-in **per call site**, not global — be strict
+about config you own and lenient about a third party's payload in
+the same program. Runnable walk-through:
+[`crates/noyalib/examples/strict_deserialise.rs`](../crates/noyalib/examples/strict_deserialise.rs)
+(`cargo run --example strict_deserialise --features strict-deserialise`).
+
 ## 6. Parser policies (defence in depth)
 
 YAML's anchor / merge-key / custom-tag features have historically
@@ -489,7 +495,7 @@ diagnostics list and offer autocomplete on the recoverable
 subtrees.
 
 ```rust
-// Cargo.toml: noyalib = { version = "0.0.15", features = ["recovery"] }
+// Cargo.toml: noyalib = { version = "0.0.16", features = ["recovery"] }
 use noyalib::recovery::parse_lenient;
 
 let half_typed = "name: noyalib\nfeatures: [recovery, sval\n# ^ unclosed\n";
@@ -512,7 +518,7 @@ For high-concurrency services parsing YAML from network sources,
 the `tokio` feature lets you skip `spawn_blocking`:
 
 ```rust
-// Cargo.toml: noyalib = { version = "0.0.15", features = ["tokio"] }
+// Cargo.toml: noyalib = { version = "0.0.16", features = ["tokio"] }
 use noyalib::tokio_async::{from_async_reader_multi, YamlDecoder};
 
 // Pattern 1: drain-and-parse
@@ -536,7 +542,7 @@ cost of serde monomorphisation. The adapter implements
 `sval::Stream` consumer can read it:
 
 ```rust
-// Cargo.toml: noyalib = { version = "0.0.15", features = ["sval"] }
+// Cargo.toml: noyalib = { version = "0.0.16", features = ["sval"] }
 let value: noyalib::Value = noyalib::from_str("name: noyalib")?;
 sval::Value::stream(&value, &mut my_stream)?;
 ```

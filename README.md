@@ -62,7 +62,7 @@
 
 ```toml
 [dependencies]
-noyalib = "0.0.15"
+noyalib = "0.0.16"
 ```
 
 ### As a CLI tool
@@ -106,7 +106,7 @@ maintainer runbook.
 
 ```toml
 [dependencies]
-noyalib = { version = "0.0.15", default-features = false }
+noyalib = { version = "0.0.16", default-features = false }
 ```
 
 Requires `alloc`. Core data binding (`from_str`, `to_string`, `Value`,
@@ -130,21 +130,33 @@ downstream users pinned to the core's floor.
 
 | Crate | MSRV | Why |
 |---|---|---|
-| `noyalib` (core lib) | **1.85.0** | The committed floor since v0.0.5 (edition 2024). Enforced by the dedicated MSRV CI job. |
-| `noyalib-mcp` | 1.85.0 | Same floor; small dep tree, no transitives requiring a higher edition. |
-| `noya-cli` (binaries) | 1.85.0 | `clap_builder 4.6` (a transitive of `clap = "4.5"`) ships in edition 2024. |
-| `noyalib-lsp` | 1.85.0 | LSP transport-stack transitives (`litemap`, `uuid`) require recent stables. |
+| `noyalib` (core lib) | **1.86.0** | The lowest toolchain the project builds *and tests* on — `criterion 0.8` (dev-dependency) requires 1.86, so tests, benches and coverage cannot run below it. Enforced by the dedicated MSRV CI job. |
+| `noyalib-mcp` | 1.86.0 | Lockstep with the core floor; small dep tree, no transitives requiring more. |
+| `noya-cli` (binaries) | 1.86.0 | Lockstep with the core floor; `clap_builder 4.6` (a transitive of `clap = "4.5"`) ships in edition 2024. |
+| `noyalib-lsp` | 1.86.0 | Lockstep with the core floor; LSP transport-stack transitives (`litemap`, `uuid`) require recent stables. |
+| `noyalib-wasm` | 1.86.0 | Lockstep with the core floor; the `wasm-bindgen` 0.2 ecosystem floors at 1.86. |
 
-Optional core-lib features pull in ergonomics deps that have
-themselves bumped past 1.85 — `miette` → backtrace 1.82+,
-`garde` → 1.84+, `validate-schema` / `figment` → ICU chain
-1.86+, `parallel` → rayon-core 1.80+. Use those with a current
-stable toolchain; the core lib stays buildable on the Ubuntu
-24.04 LTS rustc-1.85 floor.
+As of v0.0.16 the whole lockstep set shares one floor, 1.86.0 —
+the historical split (core at a lower floor than the satellites)
+is gone.
+
+The number is the floor we **verify**, not the floor the library
+happens to reach: `cargo +1.85.0 check --lib` still succeeds, but
+`cargo +1.85.0 check --all-targets` fails because `criterion 0.8`
+requires 1.86, so no test, bench or coverage run can execute
+there. We do not advertise an MSRV that CI cannot exercise. We
+also guarantee never to require a rustc newer than 12 months old
+at release time — see
+[`doc/POLICIES.md` §1](doc/POLICIES.md#1-msrv-minimum-supported-rust-version).
+
+The one surface still above the floor is the opt-in, bench-only
+`compare-saphyr` feature: `serde-saphyr` uses let-chains and needs
+rustc 1.88+, so `--all-features` requires a newer toolchain than
+the MSRV and is excluded from the MSRV gate.
 
 `rust-toolchain.toml` itself selects `stable` for local
-development; the 1.85.0 floor on the core surface is enforced
-by the dedicated `msrv-1-85-core` CI job (Ubuntu,
+development; the 1.86.0 floor on the core surface is enforced
+by the dedicated `msrv-core` CI job (Ubuntu,
 no-default-features + default-features build paths).
 
 ### Cargo features
@@ -180,7 +192,7 @@ the application needs.
 ```toml
 # Example: rich diagnostics + schema validation
 [dependencies]
-noyalib = { version = "0.0.15", features = ["miette", "validate-schema"] }
+noyalib = { version = "0.0.16", features = ["miette", "validate-schema"] }
 ```
 
 **Optional features:** `lossless-u64` preserves YAML integer scalars above
@@ -294,7 +306,7 @@ tables for each.
 -[dependencies]
 -serde_yaml = "0.9"
 +[dependencies]
-+noyalib = "0.0.15"
++noyalib = "0.0.16"
 ```
 
 ```diff
@@ -1280,7 +1292,7 @@ disagreement on priorities.
 - **You have a hard dependency budget that cannot tolerate a
   Grisu / Ryu float formatter and a hash-randomised lookup
   table.** Default profile carries 8 runtime deps. `noyalib =
-  { version = "0.0.15", default-features = false, features =
+  { version = "0.0.16", default-features = false, features =
   ["std"] }` (or the equivalent `features = ["minimal"]`) drops
   to 5 — `itoa`, `ryu`, and `serde_ignored` become opt-in via
   the `fast-int` / `fast-float` / `strict-deserialise` features.

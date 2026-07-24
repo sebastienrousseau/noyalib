@@ -692,7 +692,7 @@ impl<'a> Loader<'a> {
                     // falls through to the policy below.
                     if let Some(idx) = map.get_index_of(&key) {
                         // Nested (not a `let`-chain) to keep the crate's
-                        // 1.85 MSRV: `let`-chains stabilized in 1.88.
+                        // 1.86 MSRV: `let`-chains stabilized in 1.88.
                         if typed_keys[idx] != key_value {
                             return Err(Error::KeyCollision(key));
                         }

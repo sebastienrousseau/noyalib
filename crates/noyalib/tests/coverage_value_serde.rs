@@ -13,7 +13,11 @@
 #![allow(missing_docs)]
 #![allow(clippy::unwrap_used)]
 
-use noyalib::{Value, from_value, to_value};
+use noyalib::{Value, from_value};
+// Only the `lossless-u64` test below uses `to_value`; gate the import with the
+// same cfg so the default-feature build does not trip `-D unused-imports`.
+#[cfg(feature = "lossless-u64")]
+use noyalib::to_value;
 use serde::Deserialize;
 
 #[test]

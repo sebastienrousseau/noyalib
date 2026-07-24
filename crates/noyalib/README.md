@@ -44,14 +44,14 @@
 
 ```toml
 [dependencies]
-noyalib = "0.0.15"
+noyalib = "0.0.16"
 ```
 
 `no_std` (alloc-only) builds:
 
 ```toml
 [dependencies]
-noyalib = { version = "0.0.15", default-features = false }
+noyalib = { version = "0.0.16", default-features = false }
 ```
 
 Core data binding (`from_str`, `to_string`, `Value`, schemas) and
@@ -69,7 +69,7 @@ to `core::fmt` (slower, output remains valid YAML); the
 typo-detection helpers are absent. Re-enable individually with
 `features = ["fast-int", "fast-float", "strict-deserialise"]`.
 
-**MSRV: Rust 1.85.0** (edition 2024), enforced by the `msrv-1-85-core` CI job.
+**MSRV: Rust 1.86.0** (edition 2024), enforced by the `msrv-core` CI job.
 
 ---
 

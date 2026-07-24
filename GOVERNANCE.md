@@ -55,7 +55,7 @@ the full CI suite. Direct pushes to `main` are not used.
 - Versioning follows the `0.x` posture and the `1.0` gates in
   [`PLAN.md`](PLAN.md). Under `0.x`, breaking changes are allowed and
   documented in [`CHANGELOG.md`](CHANGELOG.md).
-- The minimum supported Rust version (MSRV) is **1.85**; changes to it
+- The minimum supported Rust version (MSRV) is **1.86**; changes to it
   are treated as notable and called out in the changelog.
 - Releases are tag-driven and automated (signed crates + binaries, SBOM,
   SLSA provenance); the cut process is encoded in the release workflows,

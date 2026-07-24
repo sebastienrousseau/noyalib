@@ -38,7 +38,7 @@ prompt, confidential response.
   may carry breaking changes. Pin a specific `0.0.x` and read
   [`CHANGELOG.md`](CHANGELOG.md) before upgrading. The path to a stable
   `1.0` is described in [`PLAN.md`](PLAN.md) → *Road to 1.0*.
-- Minimum supported Rust version (MSRV): **1.85**.
+- Minimum supported Rust version (MSRV): **1.86**.
 
 ## Response expectations
 

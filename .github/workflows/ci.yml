@@ -38,11 +38,11 @@ jobs:
     # comes from the shared workflow's defaults. Satellites can
     # trim OSes / toolchains they don't support by passing custom
     # JSON to the `os-list` / `toolchain-list` inputs.
-    # NOTE: MSRV-1.85 lives in msrv-core (below) — the optional
-    # features pull in ergonomics deps that themselves require
-    # newer rustc (miette → backtrace ≥ 1.82, garde → 1.84,
-    # ICU chain → 1.86), so `cargo test --all-features` cannot
-    # run on 1.85. The MSRV gate covers the *core* feature set.
+    # NOTE: MSRV-1.86 lives in msrv-core (below) — the opt-in
+    # `compare-saphyr` bench feature pulls serde-saphyr, which
+    # uses let-chains (1.88+), so `cargo test --all-features`
+    # cannot run on the MSRV toolchain. The MSRV gate covers the
+    # *core* feature set plus `validate-schema`.
     uses: ./.github/workflows/shared-test-matrix.yml
 
   miri-focused:
@@ -94,7 +94,7 @@ jobs:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           fetch-depth: 0
-      - uses: dtolnay/rust-toolchain@fa04a1451ff1842e2626ccb99004d0195b455a88 # master
+      - uses: dtolnay/rust-toolchain@2c7215f132e9ebf062739d9130488b56d53c060c # master
         with:
           toolchain: stable
       - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
@@ -130,20 +130,37 @@ jobs:
     # `uses: sebastienrousseau/noyalib/.github/workflows/shared-reuse.yml@<sha>`.
     uses: ./.github/workflows/shared-reuse.yml
 
-  msrv-1-85-core:
-    # Dogfooded from shared-msrv-core.yml. Runs three sub-checks
-    # (no_std, default, clippy) at the MSRV toolchain — each in
-    # its own isolated CARGO_TARGET_DIR so a stale-but-passing
-    # cache from one config cannot mask a regression in another.
-    # noyalib's MSRV is 1.85 for the core feature set: default
+  msrv-core:
+    # Dogfooded from shared-msrv-core.yml. Runs exactly three
+    # sub-checks at the MSRV toolchain, each in its own isolated
+    # CARGO_TARGET_DIR so a stale-but-passing cache from one
+    # config cannot mask a regression in another:
+    #
+    #   1. cargo check --no-default-features --lib --locked
+    #   2. cargo check --locked            (default features)
+    #   3. cargo clippy --lib --locked -- -D warnings
+    #
+    # That is the whole gate. NO optional feature is enabled by
+    # it — in particular `validate-schema` is NOT covered here,
+    # despite compiling on the MSRV toolchain when checked by
+    # hand. If you want an optional feature gated at the MSRV,
+    # add a step to shared-msrv-core.yml; do not assume this job
+    # already covers it.
+    #
+    # noyalib's MSRV is 1.86 for that core surface: default
     # features (`std`) plus the always-on parser / serializer /
-    # Value / CST. Optional features pull in ergonomics deps that
-    # themselves require newer rustc (miette → backtrace ≥ 1.82,
-    # garde → 1.84, figment / validate-schema → various ICU 1.86
-    # dragnet); those are covered by the stable test matrix.
+    # Value / CST. 1.86 is the lowest toolchain the project can
+    # be built AND tested on — `criterion 0.8` (dev-dependency)
+    # requires 1.86, so `cargo check --all-targets`, the benches
+    # and the coverage gate all fail on 1.85. The library alone
+    # still compiles on 1.85, but nothing here could verify that
+    # claim, so we do not publish it. The opt-in, bench-only
+    # `compare-saphyr` feature needs a newer rustc (serde-saphyr
+    # uses let-chains, 1.88+), so it and `--all-features` are out
+    # of scope for the MSRV gate by construction.
     uses: ./.github/workflows/shared-msrv-core.yml
     with:
-      toolchain: "1.85.0"
+      toolchain: "1.86.0"
 
   coverage-gate:
     # Dogfooded from shared-coverage.yml. noyalib's thresholds
@@ -217,7 +234,7 @@ jobs:
       CARGO_TARGET_DIR: ${{ github.workspace }}/target-run-examples
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-      - uses: dtolnay/rust-toolchain@fa04a1451ff1842e2626ccb99004d0195b455a88 # master
+      - uses: dtolnay/rust-toolchain@2c7215f132e9ebf062739d9130488b56d53c060c # master
         with:
           toolchain: stable
       - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
@@ -243,7 +260,7 @@ jobs:
       CARGO_TARGET_DIR: ${{ github.workspace }}/target-smoke-benches
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-      - uses: dtolnay/rust-toolchain@fa04a1451ff1842e2626ccb99004d0195b455a88 # master
+      - uses: dtolnay/rust-toolchain@2c7215f132e9ebf062739d9130488b56d53c060c # master
         with:
           toolchain: stable
       - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
@@ -291,7 +308,7 @@ jobs:
       CARGO_TARGET_DIR: ${{ github.workspace }}/target-lossless-u64-${{ matrix.leg }}
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-      - uses: dtolnay/rust-toolchain@fa04a1451ff1842e2626ccb99004d0195b455a88 # master
+      - uses: dtolnay/rust-toolchain@2c7215f132e9ebf062739d9130488b56d53c060c # master
         with:
           toolchain: stable
       - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2

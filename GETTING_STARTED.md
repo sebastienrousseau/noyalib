@@ -10,7 +10,7 @@ wants to *use* the library. The full reference is the
 
 ```toml
 [dependencies]
-noyalib = "0.0.15"
+noyalib = "0.0.16"
 ```
 
 `no_std` (alloc-only) and lean profiles are documented in the
@@ -90,7 +90,7 @@ make fmt            # rustfmt --check
 make deny           # cargo-deny supply-chain audit
 ```
 
-Prerequisites: **Rust 1.85.0+** (edition 2024) for the core library and
+Prerequisites: **Rust 1.86.0+** (edition 2024) for the core library and
 the CLI / LSP satellite crates alike. `make` orchestrates the full local
 check suite.
 

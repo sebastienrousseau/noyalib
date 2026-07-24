@@ -45,7 +45,7 @@ to crates.io as before:
 
 ```toml
 [dependencies]
-noyalib = "0.0.15"
+noyalib = "0.0.16"
 ```
 
 ### Consuming a satellite crate
@@ -56,8 +56,8 @@ version pin:
 
 ```toml
 [dependencies]
-noyalib-wasm = "0.0.15"   # crates.io — repo doesn't matter to Cargo
-noyalib-mcp  = "0.0.15"
+noyalib-wasm = "0.0.16"   # crates.io — repo doesn't matter to Cargo
+noyalib-mcp  = "0.0.16"
 ```
 
 The [ADR-0005 strict-lockstep contract](doc/adr/0005-workspace-split.md#versioning-contract)
@@ -184,7 +184,7 @@ If you were also depending on `pkg/npm-mcp-wrapper/` or
 ## What did NOT change
 
 - `noyalib` library crate: same identity, same public API, same
-  MSRV (1.85). Any patch fix here still lands here.
+  MSRV (1.86, raised in v0.0.16). Any patch fix here still lands here.
 - `noyalib` docs (docs.rs, GitHub Pages): unchanged.
 - Sigstore verification recipes: unchanged (identity migrated
   to the split repos where applicable — see cosign snippets

@@ -241,4 +241,4 @@ cargo bench --bench v006_features --features recovery,sval,tokio
 | **Coverage** | 96%+ function coverage / 94%+ line coverage / 93%+ region coverage (CI-gated) |
 | **Dependencies** | 5 unconditional + 3 default-on optional (`itoa`, `ryu`, `serde_ignored`) + 12 opt-in optional (`miette`, `garde`, `validator`, `schemars`, `serde_json`, `jsonschema`, `figment`, `rayon`, `serde-saphyr`, plus the three default-on opt-outs) |
 | **WASM binary** | 338 KB (release, LTO) |
-| **MSRV** | Rust 1.85.0 (core, since v0.0.5 — edition 2024); newer for optional features (see [POLICIES.md](POLICIES.md#1-msrv-minimum-supported-rust-version)) |
+| **MSRV** | Rust 1.86.0 (whole lockstep set, since v0.0.16); the opt-in `compare-saphyr` bench feature needs 1.88+ (see [POLICIES.md](POLICIES.md#1-msrv-minimum-supported-rust-version)) |

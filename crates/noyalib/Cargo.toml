@@ -1,8 +1,8 @@
 [package]
 name = "noyalib"
-version = "0.0.15"
+version = "0.0.16"
 edition = "2024"
-rust-version = "1.85.0"
+rust-version = "1.86.0"
 license = "MIT OR Apache-2.0"
 description = "A pure Rust YAML library with zero unsafe code and full serde integration"
 repository = "https://github.com/sebastienrousseau/noyalib"
@@ -222,6 +222,11 @@ name = "schema_validation"
 path = "examples/schema_validation.rs"
 required-features = ["validate-schema"]
 
+[[example]]
+name = "strict_deserialise"
+path = "examples/strict_deserialise.rs"
+required-features = ["strict-deserialise"]
+
 ## ── Ecosystem Citizen ──
 [[example]]
 name = "include"
@@ -347,7 +352,7 @@ serde_json = { version = "1.0", optional = true }
 # `validate-schema` feature is on. Default features are disabled so
 # we don't drag in `reqwest` for HTTP `$ref` resolution; users who
 # need that can re-enable it via their own dep.
-jsonschema = { version = "0.46", optional = true, default-features = false }
+jsonschema = { version = "0.48", optional = true, default-features = false }
 # `figment` integration — drop-in `Provider` for the popular
 # layered-configuration crate. Pulled in only when the `figment`
 # feature is on so non-figment users don't pay for it.
@@ -358,7 +363,7 @@ figment = { version = "0.10", optional = true, features = ["env"] }
 # only used inside `#[cfg(feature = "compare-saphyr")]` bench
 # arms; nothing in the runtime crate references it. Off by default
 # so an `--all-features` build doesn't pull in the saphyr crate
-# (which is fine on MSRV 1.85+ but still extra deps the rest of
+# (which is fine on MSRV 1.86+ but still extra deps the rest of
 # the workspace doesn't need).
 serde-saphyr = { version = "0.0", optional = true }
 # Parallel multi-document parsing — pulled in only when the

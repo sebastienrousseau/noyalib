@@ -195,9 +195,14 @@ impl<'de> de::Deserializer<'de> for Deserializer<'de> {
             #[cfg(feature = "lossless-u64")]
             Value::Number(Number::Unsigned(n)) => match i64::try_from(*n) {
                 Ok(n) => self.wrap_err(visitor.visit_i64(n)),
+                // `type_name` reports both `Integer` and `Unsigned` as
+                // "integer", so reusing it here would render the useless
+                // "expected integer, found integer". Name the actual
+                // problem instead: the value is an integer, it just does
+                // not fit the signed target.
                 Err(_) => self.wrap_err(Err(Error::TypeMismatch {
-                    expected: "integer",
-                    found: type_name(self.value),
+                    expected: "signed integer (i64)",
+                    found: format!("unsigned integer {n}, above i64::MAX"),
                 })),
             },
             Value::Number(Number::Float(n))
@@ -244,6 +249,14 @@ impl<'de> de::Deserializer<'de> for Deserializer<'de> {
             Value::Number(Number::Integer(n)) if *n >= 0 => {
                 self.wrap_err(visitor.visit_u64(*n as u64))
             }
+            // Mirror of the `Unsigned` -> i64 case in `deserialize_i64`:
+            // falling through to the catch-all would report "expected
+            // unsigned integer, found integer", which does not tell the
+            // caller that the problem is the sign.
+            Value::Number(Number::Integer(n)) => self.wrap_err(Err(Error::TypeMismatch {
+                expected: "unsigned integer",
+                found: format!("negative integer {n}"),
+            })),
             #[cfg(feature = "lossless-u64")]
             Value::Number(Number::Unsigned(n)) => self.wrap_err(visitor.visit_u64(*n)),
             Value::Number(Number::Float(n))
