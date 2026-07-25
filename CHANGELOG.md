@@ -7,7 +7,32 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
-(Nothing yet — `[v0.0.16]` is the cut.)
+(Nothing yet — `[v0.0.17]` is the cut.)
+
+## [v0.0.17] - 2026-07-25
+
+A **lockstep-only** cut. The core crate has **no code or behaviour change**
+since v0.0.16 — `main` was byte-identical to the v0.0.16 tag. It is
+republished at 0.0.17 solely so the satellite crates, which carry real
+fixes, can pin `=0.0.17` under the ADR-0005 strict-lockstep contract.
+
+### Satellite fixes shipping in this lockstep
+
+- **`noyalib-lsp`** — `textDocument/formatting` is no longer a silent
+  no-op. It used a byte-faithful CST round-trip and always returned an
+  empty edit list; it now calls `cst::format`. (The v0.0.16 changelog
+  claimed this was fixed; it was not — this is the actual fix.)
+- **`noyalib-lsp` / `noya-cli`** — `crossbeam-epoch` bumped to 0.9.20
+  (RUSTSEC-2026-0204, invalid-pointer-dereference), which was present in
+  their v0.0.16 lockfiles via a transitive dependency.
+
+### Repository hardening (all crates, CI/docs only)
+
+- Coverage, MSRV, CodeQL, and OpenSSF Scorecard gates brought to parity
+  across the four satellites; `noyalib-wasm` gained a CI `wasm-test`
+  job (`wasm-pack test --node`) gating its wasm-bindgen surface.
+- Upstream cargo-vet audit imports added to the satellites; branch-
+  protection tightened so commit signing is unskippable.
 
 ## [v0.0.16] - 2026-07-22
 
