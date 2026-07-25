@@ -1,0 +1,90 @@
+# SPDX-FileCopyrightText: 2026 Noyalib
+# SPDX-License-Identifier: MIT OR Apache-2.0
+#
+# Auto-refresh cargo-vet exemptions on Dependabot PRs.
+#
+# WHY
+#   cargo-vet exemptions are version-pinned, so every Dependabot bump to a
+#   crate version not yet covered by an imported upstream audit turns the
+#   `cargo-vet` required check red — and the PR cannot auto-merge. This
+#   workflow runs `cargo vet regenerate exemptions` on the PR and commits the
+#   result back, so the check goes green without a human round-trip.
+#
+# SECURITY MODEL — read before editing
+#   * Runs ONLY for `dependabot[bot]` (the `if:` guard). Dependabot branches
+#     live in THIS repo (not a fork) and only ever change dependency versions.
+#   * `pull_request_target` is used so the job gets a writable token to push
+#     the fix back. The privileged surface is deliberately tiny: it installs
+#     the pinned, trusted `cargo-vet` and runs `cargo vet regenerate`, which
+#     only reads `cargo metadata` + the lockfile — it does NOT compile the
+#     crates or run their build scripts, so no untrusted code executes with
+#     the write token. Do NOT add a `cargo build`/`cargo test` step here.
+#   * The commit is made through the REST contents API, so GitHub signs it
+#     (Verified) — required, because `verify-signatures` is a merge gate and
+#     the `signatures-enforced` ruleset has no bypass.
+#   * Loop-safe: the commit-back is a `synchronize` event that re-runs this
+#     job, which regenerates, finds no diff, and exits without committing.
+
+name: Dependabot cargo-vet exemptions
+
+on:
+  pull_request_target:
+    branches: [main]
+    paths:
+      - "Cargo.lock"
+      - "Cargo.toml"
+
+permissions:
+  contents: read
+
+jobs:
+  regen:
+    name: refresh vet exemptions
+    if: ${{ github.actor == 'dependabot[bot]' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          # Dependabot branches are in-repo; head.repo == base repo.
+          fetch-depth: 0
+
+      - uses: dtolnay/rust-toolchain@2c7215f132e9ebf062739d9130488b56d53c060c # master
+        with:
+          toolchain: stable
+
+      - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
+
+      - name: Install cargo-vet
+        run: cargo install --locked cargo-vet
+
+      - name: Regenerate exemptions
+        run: cargo vet regenerate exemptions
+
+      - name: Commit refreshed exemptions back (signed, via API)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          BRANCH: ${{ github.event.pull_request.head.ref }}
+          TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          set -euo pipefail
+          # Only supply-chain/ files are ever touched by regenerate.
+          changed="$(git diff --name-only -- supply-chain/ || true)"
+          if [ -z "$changed" ]; then
+            echo "No exemption changes — nothing to commit."
+            exit 0
+          fi
+          echo "Changed: $changed"
+          for f in $changed; do
+            # current blob sha of the file on the PR branch (required by the API)
+            blobsha="$(gh api "repos/${REPO}/contents/${f}?ref=${BRANCH}" --jq '.sha')"
+            gh api -X PUT "repos/${REPO}/contents/${f}" \
+              -f message="chore(vet): regenerate exemptions for ${TITLE}" \
+              -f branch="${BRANCH}" \
+              -f sha="${blobsha}" \
+              -f content="$(base64 -w0 < "${f}")" >/dev/null
+            echo "committed ${f} (GitHub-signed)"
+          done
