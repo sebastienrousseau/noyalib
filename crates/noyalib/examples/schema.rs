@@ -3,7 +3,7 @@
 
 //! YAML schema validation (core, JSON, failsafe).
 //!
-//! Run: `cargo run --example schema_validation`
+//! Run: `cargo run --example schema`
 
 #[path = "support.rs"]
 mod support;

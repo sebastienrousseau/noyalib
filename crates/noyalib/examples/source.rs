@@ -3,7 +3,7 @@
 
 //! Spanned<T>: track exact source locations for deserialized fields.
 //!
-//! Run: `cargo run --example spanned`
+//! Run: `cargo run --example source`
 
 #[path = "support.rs"]
 mod support;

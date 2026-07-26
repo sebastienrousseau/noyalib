@@ -3,7 +3,7 @@
 
 //! Anchors, aliases, and merge keys.
 //!
-//! Run: `cargo run --example anchors`
+//! Run: `cargo run --example alias`
 
 #[path = "support.rs"]
 mod support;

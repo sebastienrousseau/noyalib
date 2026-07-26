@@ -3,7 +3,7 @@
 
 //! Serde interop: bridge between noyalib and serde_json.
 //!
-//! Run: `cargo run --example serde_interop`
+//! Run: `cargo run --example bridge`
 
 #[path = "support.rs"]
 mod support;

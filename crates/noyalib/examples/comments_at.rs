@@ -9,6 +9,8 @@
 //! value is the natural source. With this API, the agent reads the
 //! value AND the human's annotation in a single call — and edits via
 //! `Document::set` round-trip both untouched.
+//!
+//! Run: `cargo run --example comments_at`
 
 use noyalib::cst::parse_document;
 

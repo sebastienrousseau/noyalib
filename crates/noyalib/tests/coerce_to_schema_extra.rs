@@ -127,3 +127,59 @@ properties:
     assert_eq!(n, 0);
     assert!(after.contains("port: 8080"));
 }
+
+// ── Coverage: value_path_from_pointer / coerce_logical edge arms ──────
+
+#[test]
+fn coerce_nested_pointer_builds_dotted_path() {
+    // A nested property coercion drives value_path_from_pointer's
+    // multi-segment branch (the `i > 0` dot separator).
+    let yaml = "server:\n  port: \"5432\"\n";
+    let schema = r#"
+type: object
+properties:
+  server:
+    type: object
+    properties:
+      port: { type: integer }
+"#;
+    let (n, after) = run_coerce(yaml, schema).unwrap();
+    assert_eq!(n, 1, "nested port should coerce");
+    assert!(after.contains("port: 5432"), "{after}");
+}
+
+#[test]
+fn coerce_root_type_error_is_skipped() {
+    // A bare scalar document that the schema wants to be an object:
+    // the type error's instance path is the root (empty JSON pointer),
+    // so `parse_json_pointer` yields no segments and
+    // `value_path_from_pointer` returns None — the target is skipped,
+    // not coerced.
+    let yaml = "just a scalar\n";
+    let schema = "type: object\n";
+    let (n, _after) = run_coerce(yaml, schema).unwrap();
+    assert_eq!(n, 0, "root-level type error is not coercible");
+}
+
+#[test]
+fn coerce_uncoercible_target_type_is_skipped() {
+    // The addressed scalar exists, but the schema wants a *container*
+    // (object) there — `coerce_logical` has no scalar-to-object rule,
+    // so it returns None and the value is left in place.
+    let yaml = "x: hello\n";
+    let schema = "type: object\nproperties:\n  x:\n    type: object\n";
+    let (n, after) = run_coerce(yaml, schema).unwrap();
+    assert_eq!(n, 0, "string cannot be coerced to object");
+    assert!(after.contains("x: hello"), "{after}");
+}
+
+#[test]
+fn coerce_single_quoted_scalar_is_unwrapped() {
+    // A single-quoted numeric string exercises strip_quotes' quote
+    // branch before the integer parse.
+    let yaml = "port: '8080'\n";
+    let schema = "type: object\nproperties:\n  port: { type: integer }\n";
+    let (n, after) = run_coerce(yaml, schema).unwrap();
+    assert_eq!(n, 1);
+    assert!(after.contains("port: 8080"), "{after}");
+}

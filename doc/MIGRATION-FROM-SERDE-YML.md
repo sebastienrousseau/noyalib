@@ -79,7 +79,7 @@ for the full discussion; the headlines:
 
 1. **`Value::Tagged` is preserved through the `Value` data path.**
    `noyalib::from_str::<Value>("!Custom 'hi'\n")` returns
-   `Value::Tagged(Tag("!Custom"), Value::String("hi"))`, not the
+   `Value::Tagged(t)` (`t.tag() == "!Custom"`, `t.value() == Value::String("hi")`), not the
    transparent-unwrapped `Value::String("hi")`. `serde_yml`'s
    behaviour matched `serde_yaml`'s pre-Tagged behaviour. To get
    the unwrapped string, call `value.untag().as_str()`.

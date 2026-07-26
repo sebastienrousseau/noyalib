@@ -156,7 +156,8 @@ If you relied on `serde_yaml_bw`'s anchor metadata on each
 scalar variant, noyalib does not surface that on the `Value`
 tree directly. The CST layer (`noyalib::cst::Document`) keeps
 anchor / alias source spans and exposes them via the
-`Document::annotations` API for editor-grade tooling.
+`Document::span_at(path)` and `Document::comments_at(path)`
+APIs for editor-grade tooling.
 
 ## Behavioural differences worth knowing
 
@@ -172,12 +173,12 @@ anchor / alias source spans and exposes them via the
    `ParserConfig::new().max_alias_expansions(...)`.
 3. **Merge keys (`<<`)** — both crates support YAML 1.1 merge
    keys. noyalib's `MergeKeyPolicy` enum lets you choose:
-   `Merge` (default), `AsOrdinary` (treat `<<` as a literal
+   `Auto` (default), `AsOrdinary` (treat `<<` as a literal
    key), or `Error` (reject).
 4. **`Value::Tagged` is preserved.**
    `from_str::<Value>("!Custom 'hi'\n")` returns
-   `Value::Tagged(Tag("!Custom"), Value::String("hi"))` — same
-   as `serde_yaml_bw`.
+   `Value::Tagged(t)` where `t.tag() == "!Custom"` and
+   `t.value() == Value::String("hi")` — same as `serde_yaml_bw`.
 5. **YAML 1.2 strict booleans by default.** `country: NO`
    stays `Value::String("NO")`. Opt into YAML 1.1 boolean
    recognition via `ParserConfig::new().legacy_booleans(true)`.

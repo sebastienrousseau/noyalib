@@ -218,3 +218,57 @@ fn nested_lossy_substitution_in_complex_doc() {
     // HOST_B missing → empty in lossy mode.
     assert_eq!(s1["url"].as_str(), Some("https:///"));
 }
+
+// ── redacting variant ────────────────────────────────────────────────
+//
+// `interpolate_properties_redacted` had no test coverage at all, while
+// its `_lossy` and strict siblings were well covered. Its whole purpose
+// is that the *placeholder name* must not leak into the error, so the
+// negative assertion below is the point of the API, not incidental.
+
+#[test]
+fn redacted_substitutes_normally_on_success() {
+    let mut v: Value = from_str("greeting: hello ${WHO}").unwrap();
+    v.interpolate_properties_redacted(&props(&[("WHO", "world")]))
+        .unwrap();
+    assert_eq!(v["greeting"], Value::String("hello world".into()));
+}
+
+#[test]
+fn redacted_hides_placeholder_name_in_error() {
+    let mut v: Value = from_str("token: ${SECRET_TOKEN_NAME}").unwrap();
+    let empty: HashMap<String, String> = HashMap::new();
+    let err = v.interpolate_properties_redacted(&empty).unwrap_err();
+    let msg = err.to_string();
+    assert!(msg.contains("<redacted>"), "expected redaction, got: {msg}");
+    assert!(
+        !msg.contains("SECRET_TOKEN_NAME"),
+        "placeholder name leaked into error: {msg}"
+    );
+}
+
+/// Documents an easily-missed semantic: interpolation is applied **in
+/// place as it walks**, so a failure part-way through leaves the
+/// already-substituted entries mutated. `interpolate_properties` (the
+/// strict, non-redacting sibling) behaves identically — this is not a
+/// quirk of the redacting variant. Callers who need all-or-nothing must
+/// clone before calling.
+#[test]
+fn redacted_applies_partially_before_failing() {
+    let mut v: Value = from_str("a: ${KNOWN}\nb: ${UNKNOWN}").unwrap();
+    let err = v
+        .interpolate_properties_redacted(&props(&[("KNOWN", "x")]))
+        .unwrap_err();
+    assert!(err.to_string().contains("<redacted>"));
+    // `a` was reached first and substituted; `b` failed and is left raw.
+    assert_eq!(v["a"], Value::String("x".into()));
+    assert_eq!(v["b"], Value::String("${UNKNOWN}".into()));
+}
+
+#[test]
+fn redacted_substitutes_nested_and_repeated_placeholders() {
+    let mut v: Value = from_str("outer:\n  inner: ${A}-${A}-${B}\n").unwrap();
+    v.interpolate_properties_redacted(&props(&[("A", "1"), ("B", "2")]))
+        .unwrap();
+    assert_eq!(v["outer"]["inner"], Value::String("1-1-2".into()));
+}

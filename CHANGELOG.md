@@ -7,7 +7,258 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
-(Nothing yet — `[v0.0.14]` is the cut.)
+(Nothing yet — `[v0.0.17]` is the cut.)
+
+## [v0.0.17] - 2026-07-25
+
+A **lockstep-only** cut. The core crate has **no code or behaviour change**
+since v0.0.16 — `main` was byte-identical to the v0.0.16 tag. It is
+republished at 0.0.17 solely so the satellite crates, which carry real
+fixes, can pin `=0.0.17` under the ADR-0005 strict-lockstep contract.
+
+### Satellite fixes shipping in this lockstep
+
+- **`noyalib-lsp`** — `textDocument/formatting` is no longer a silent
+  no-op. It used a byte-faithful CST round-trip and always returned an
+  empty edit list; it now calls `cst::format`. (The v0.0.16 changelog
+  claimed this was fixed; it was not — this is the actual fix.)
+- **`noyalib-lsp` / `noya-cli`** — `crossbeam-epoch` bumped to 0.9.20
+  (RUSTSEC-2026-0204, invalid-pointer-dereference), which was present in
+  their v0.0.16 lockfiles via a transitive dependency.
+
+### Repository hardening (all crates, CI/docs only)
+
+- Coverage, MSRV, CodeQL, and OpenSSF Scorecard gates brought to parity
+  across the four satellites; `noyalib-wasm` gained a CI `wasm-test`
+  job (`wasm-pack test --node`) gating its wasm-bindgen surface.
+- Upstream cargo-vet audit imports added to the satellites; branch-
+  protection tightened so commit signing is unskippable.
+
+## [v0.0.16] - 2026-07-22
+
+A **build-fix + dependency-refresh** cut. `main` was left unbuildable
+under `--all-targets` by a feature-gated import, and the dependency set
+had drifted. No public API change (`cargo-semver-checks` green); two
+deserialiser error-message strings change wording — see *Fixed*.
+
+Full narrative: [`RELEASE-NOTES-v0.0.16.md`](RELEASE-NOTES-v0.0.16.md).
+
+Lockstep versioning: `noyalib` bumps `0.0.15` → `0.0.16`.
+Satellites publish `=0.0.16` from their own repos:
+- [`sebastienrousseau/noyalib-wasm@0.0.16`](https://github.com/sebastienrousseau/noyalib-wasm)
+- [`sebastienrousseau/noyalib-mcp@0.0.16`](https://github.com/sebastienrousseau/noyalib-mcp)
+- [`sebastienrousseau/noyalib-lsp@0.0.16`](https://github.com/sebastienrousseau/noyalib-lsp)
+- [`sebastienrousseau/noya-cli@0.0.16`](https://github.com/sebastienrousseau/noya-cli)
+
+> **Satellite note — `noyalib-lsp` carries a user-facing fix in this
+> cut.** `textDocument/formatting` was a silent no-op: the server derived
+> its output from a byte-faithful CST round-trip, so it always returned
+> an empty `TextEdit[]` and no editor ever saw a formatting change. Fixed
+> by calling `cst::format`. See that repo's `CHANGELOG.md`. Nothing in
+> the core crate changed as a result — the bug was in the LSP wrapper.
+
+### Fixed
+
+- **`cargo check --all-targets` no longer fails on default features.**
+  `tests/coverage_value_serde.rs` imported `to_value` unconditionally,
+  but its only consumer is gated behind `#[cfg(feature =
+  "lossless-u64")]`. With default features the import was unused and
+  `-D unused` promoted it to a hard error, breaking the test build. The
+  import is now gated by the same `cfg` rather than removed — removing
+  it would have compiled by default while breaking every
+  `--all-features` build.
+- **`expected integer, found integer`.** Deserialising a
+  `Number::Unsigned` above `i64::MAX` into an `i64` rendered both sides
+  of the mismatch with the same word, because `type_name` collapses
+  `Integer` and `Unsigned` onto one label — the message told the caller
+  nothing. It now reads `type mismatch: expected signed integer (i64),
+  found unsigned integer <n>, above i64::MAX`. Requires `lossless-u64`.
+  The branch was reachable but untested, which is why the text had never
+  been read by a human; it now has an exact-match regression test.
+- **The mirror case**: a negative `Number::Integer` deserialised into a
+  `u64` reported `found integer` without mentioning the sign. It now
+  reads `type mismatch: expected unsigned integer, found negative
+  integer <n>`.
+
+  > Both are message-wording changes only. No `Error` variant, no
+  > `Error::kind()` classification, and no miette code changed. Error
+  > wording is explicitly outside the stability contract (variant names
+  > are stable) — but if you match on the rendered string, match on
+  > `Error::TypeMismatch { .. }` instead.
+
+### Changed — MSRV 1.85 → 1.86
+
+- **The minimum supported Rust version is now 1.86.0 — for the core
+  library as well as every satellite.** 1.86 is the lowest toolchain the
+  project can be **built and tested** on: `criterion 0.8` (a
+  dev-dependency) declares `rust-version = 1.86`, so `cargo check
+  --all-targets`, the bench suite and the coverage gate all fail on
+  1.85 with `criterion@0.8.2 requires rustc 1.86`.
+  The library *alone* still compiles on 1.85 (`cargo +1.85.0 check
+  --lib` succeeds) — but no CI leg can run there, so a 1.85 claim would
+  be an MSRV the project cannot verify, and nothing would catch the day
+  it broke. **We publish the floor we test.** If you are pinned to 1.85
+  and cannot move, v0.0.15 remains available and this is the only reason
+  to stay on it.
+- **The bump policy is now explicit: never speculative.** The MSRV moves
+  only when the toolchain we build and test at actually moves — a
+  dependency raising its floor, or a language feature we adopt — and
+  never for tidiness or "headroom". As a standing guarantee, noyalib
+  will not require a rustc newer than 12 months old at release time
+  (1.86.0 shipped 2025-04-03). Recorded in `doc/POLICIES.md` §1.
+- **The historical split MSRV is gone.** Docs previously claimed the
+  core library floored at 1.75 while satellites sat at 1.85 — an
+  inconsistency that had already drifted out of sync with the actual
+  `rust-version` (1.85). The whole lockstep set now shares one floor,
+  1.86.0, recorded in `doc/POLICIES.md`.
+- The MSRV CI job was renamed `msrv-1-85-core` → `msrv-core` so future
+  bumps do not churn the job (and required-status-check) name.
+  **Action required:** if `msrv-1-85-core` is a required status check in
+  branch protection, update the rule to `msrv-core` or PRs will block
+  on a check that no longer reports.
+
+### Changed — MSRV bump policy
+
+- **An MSRV bump is now a patch, not a minor-version event, while the
+  project is on `0.0.x`.** `doc/POLICIES.md` previously declared a core
+  MSRV bump a *minor-version event*; taken literally, this release
+  would have had to be `0.1.0`. That rule was written when `0.1.0` was
+  the next planned cut, but §2 of the same document commits to
+  iterating `0.0.2 … 0.0.99` before graduating to `0.1.0` — so there is
+  no minor slot to spend, and the two rules contradicted each other.
+  The policy is revised to match the actual `0.0.x` posture: MSRV bumps
+  ship as patches, in lockstep, and must be called out under an
+  explicit `### Changed — MSRV` heading (as here).
+- This reverts to a genuine minor-version event at `1.0`, per the gates
+  in `PLAN.md`. Recorded in `doc/POLICIES.md` §1 with the superseded
+  rule quoted in full rather than deleted.
+- The opt-in, bench-only `compare-saphyr` feature remains outside the
+  MSRV gate — `serde-saphyr` uses let-chains and needs rustc 1.88+.
+  `--all-features` therefore still requires a newer toolchain than the
+  declared MSRV, as before.
+
+### Changed — dependencies
+
+- **`jsonschema` 0.46 → 0.48.** Optional, behind `validate-schema`. The
+  consumed surface is unchanged — `validator_for`, `JsonType` and
+  `error::{TypeKind, ValidationErrorKind}`, used from
+  `src/schema_validate.rs` and `src/cst/coerce.rs`. No behavioural delta
+  was observed: the 55 tests across `schema_validate`, `schema_codegen`,
+  `coverage_schema_validate`, `coerce_to_schema`, `coerce_to_schema_extra`
+  and `cst_schema_tag_audit` pass unmodified against 0.48.
+- **Three new transitive crates** arrive with it, all reachable only
+  under `validate-schema`: `jsonschema-value`, `strum` and
+  `strum_macros` (a proc-macro). Each is recorded as a version-pinned
+  `safe-to-deploy` exemption in `supply-chain/config.toml` pending an
+  upstream audit, and all three clear the `cargo-deny` licence
+  allowlist.
+- **The lockfile is otherwise unchanged from `main`.** An earlier
+  revision of this branch refreshed 71 crates to their latest
+  semver-compatible versions; that was reverted before merge because
+  `cargo-vet` exemptions are version-pinned, so the refresh invalidated
+  81 of them at once. The shipped lockfile is `main`'s baseline plus the
+  `jsonschema` bump above — a six-crate vet surface a reviewer can
+  actually check. The Dependabot PRs the refresh had superseded (the
+  `serde` group #201, the `tokio-stack` group #202) were closed rather
+  than merged, so those updates are **not** in this release; they will
+  be re-proposed against the next published version and land
+  individually, each with its own reviewable `cargo-vet` delta.
+
+### Changed — shared workflows
+
+- `shared-msrv-core.yml`'s default `toolchain` input moved `1.85.0` →
+  `1.86.0`. Satellites that call the workflow **without** passing an
+  explicit `toolchain:` will adopt the 1.86 floor the moment they bump
+  their pinned SHA. Satellites that pass the input are unaffected.
+- Pinned action SHAs refreshed across every workflow
+  (`dtolnay/rust-toolchain`, `github/codeql-action` v3 → v4.37.1,
+  `EmbarkStudios/cargo-deny-action` v2.0.20 → v2.1.1) and the
+  `Dockerfile.full` builder image moved `rust:1.96-bookworm` →
+  `rust:1.97-bookworm`, digest-pinned as before.
+
+### Documentation
+
+- **Corrected a `no_std` instruction that verified nothing.**
+  `doc/POLICIES.md` recommended `--no-default-features --features
+  minimal`, but `minimal = ["std"]` — it is a *dependency-budget* alias
+  that turns `std` back on while dropping `itoa`, `ryu` and
+  `serde_ignored`. That command silently produced a `std` build. The
+  correct invocation is `--no-default-features` alone, which is what CI
+  has always run.
+- **Scoped the `no_std` claim to hosted targets.** Bare-metal `*-none`
+  targets do not build today — `indexmap`, `rustc-hash` and `memchr` are
+  declared without `default-features = false`, and the crate uses
+  `rustc_hash::FxHashMap`, which needs `std`. Both blockers are
+  pre-existing and are now documented as a deliberate non-goal.
+- **`src/lib.rs`'s MSRV section** still declared 1.85 and a third,
+  different bump policy ("ships a major version") that matched neither
+  `doc/POLICIES.md` before this release nor after it. Rewritten to match
+  §1 of `doc/POLICIES.md`, which is the single source of truth.
+- **`cargo-vet` exemption conventions** documented in `doc/POLICIES.md`
+  §10 — including what `suggest = false` means and why exemptions are
+  never added in bulk. They live there rather than inline because
+  `cargo vet fmt` strips comments from `supply-chain/config.toml`.
+- Added `RELEASE-NOTES-v0.0.16.md`, matching the per-release file
+  `doc/CII-BEST-PRACTICES.md` claims for every tagged release. No CI gate
+  asserts this; noted as a follow-up.
+- Added `examples/strict_deserialise.rs` — the default-on
+  `strict-deserialise` feature had no example. Linked from
+  `doc/USER-GUIDE.md` §5.
+
+### Testing (no behavioural change)
+
+- Coverage for public API with **zero** prior test references —
+  `Mapping::get_index_of`, `cst::Document::comments_at`, `schema_for`,
+  `schema_for_yaml` — found by cross-referencing every `pub fn` in
+  `src/` against the whole `tests/` tree.
+- Coverage for the `lossless-u64` `Number::Unsigned` widening and
+  overflow-rejection arms, and the `cst::format` flow-collection paths.
+  Exercising the overflow arm is what surfaced the
+  `expected integer, found integer` defect fixed above.
+- `interpolate_properties_redacted` had no coverage while its strict and
+  lossy siblings were well covered; it now has four tests, including the
+  negative assertion that is the point of the API (the placeholder name
+  must not leak into the error).
+
+## [v0.0.15] - 2026-07-11
+
+The **loader-parity completion + coverage-hardening** cut. Finishes the
+three-loader DoS-budget parity started in v0.0.14 by extending the
+remaining budgets to the `NoSpanLoader` fast path and the
+distinct-typed-key collision guard to the streaming loader, then drives a
+workspace-wide coverage campaign (≈16 files to effective-100%) with no
+change to public API or behaviour beyond the parity fixes.
+
+Lockstep versioning: `noyalib` bumps `0.0.14` → `0.0.15`.
+Satellites publish `=0.0.15` from their own repos:
+- [`sebastienrousseau/noyalib-wasm@0.0.15`](https://github.com/sebastienrousseau/noyalib-wasm)
+- [`sebastienrousseau/noyalib-mcp@0.0.15`](https://github.com/sebastienrousseau/noyalib-mcp)
+- [`sebastienrousseau/noyalib-lsp@0.0.15`](https://github.com/sebastienrousseau/noyalib-lsp)
+- [`sebastienrousseau/noya-cli@0.0.15`](https://github.com/sebastienrousseau/noya-cli)
+
+### Fixed — loader parity (security)
+
+- **`NoSpanLoader` DoS-budget parity, completed.** The `Value` fast path
+  now also enforces `max_events`, the total-scalar-bytes budget, and the
+  `alias_anchor_ratio` — the three budgets still span-full-only after
+  v0.0.14. All three loaders (streaming, span-full `Loader`,
+  `NoSpanLoader`) now enforce the same DoS budgets, with cross-path
+  tests (`no_span_loader_parity`).
+- **Distinct-typed key-collision guard on the streaming loader.** The
+  guard that raises `Error::KeyCollision` for `1: a` vs `"1": b` (added
+  to the AST paths in v0.0.14) now also runs on the streaming
+  deserialiser, closing the last loader where the collision could
+  silently collapse (`key_collision_streaming`).
+
+### Testing / tooling
+
+- Workspace coverage campaign: ~16 files driven to effective-100%
+  (`de`, `include`, `schema_validate`, `compat/serde_yaml`, `base64`,
+  `cst/coerce`, `error`, `ser`, `value/number`, `cst/green`, `recovery`,
+  and more). Region/line/function coverage rises across the workspace;
+  no behavioural change.
+- `make coverage-gap` restored under `cargo-llvm-cov ≥ 0.8.7` (the
+  empty `--ignore-filename-regex` is now guarded, matching CI).
 
 ## [v0.0.14] - 2026-07-07
 

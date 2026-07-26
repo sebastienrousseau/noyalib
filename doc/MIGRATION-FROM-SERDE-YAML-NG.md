@@ -72,7 +72,7 @@ here. Full discussion in
 headlines:
 
 1. **`Value::Tagged` is preserved.** `from_str::<Value>("!Custom 'hi'\n")`
-   returns `Value::Tagged(Tag("!Custom"), Value::String("hi"))`.
+   returns `Value::Tagged(t)` (`t.tag() == "!Custom"`, `t.value() == Value::String("hi")`).
    `serde_yaml_ng` matched `serde_yaml`'s pre-Tagged behaviour;
    noyalib preserves the wrapper. Call `.untag()` to get the
    inner.

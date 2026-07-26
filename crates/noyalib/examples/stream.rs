@@ -3,7 +3,7 @@
 
 //! Multi-document YAML streams separated by `---`.
 //!
-//! Run: `cargo run --example multi_document`
+//! Run: `cargo run --example stream`
 
 #[path = "support.rs"]
 mod support;

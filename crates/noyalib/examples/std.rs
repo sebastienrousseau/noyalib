@@ -1,6 +1,8 @@
 //! Collection serialization example for noyalib.
 //!
 //! Demonstrates serializing Vec, HashMap, and other collections.
+//!
+//! Run: `cargo run --example std`
 
 // SPDX-License-Identifier: MIT OR Apache-2.0
 // Copyright (c) 2026 Noyalib. All rights reserved.

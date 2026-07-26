@@ -19,7 +19,6 @@ pub type Sequence = Vec<Value>;
 
 mod tag;
 pub use tag::{MaybeTag, Tag, TaggedValue, check_for_tag, nobang};
-pub(crate) use tag::{TAGGED_VALUE_FIELD_TAG, TAGGED_VALUE_FIELD_VALUE, TagPreservingMapAccess};
 
 /// Represents any valid YAML value.
 #[derive(Debug, Clone, Default)]

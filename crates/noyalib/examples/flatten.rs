@@ -3,7 +3,7 @@
 
 //! Serde flatten and untagged enums in YAML context.
 //!
-//! Run: `cargo run --example flattened_data`
+//! Run: `cargo run --example flatten`
 
 #[path = "support.rs"]
 mod support;

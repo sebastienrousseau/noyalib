@@ -3,7 +3,7 @@
 
 //! Smart pointer anchors: RcAnchor, ArcAnchor for shared YAML data.
 //!
-//! Run: `cargo run --example shared_anchors`
+//! Run: `cargo run --example smart`
 
 #[path = "support.rs"]
 mod support;

@@ -4,8 +4,8 @@ Contributions are welcome. This guide covers the essentials.
 
 ## Prerequisites
 
-- **Rust 1.75.0+** for the core `noyalib` crate
-- **Rust 1.85.0+** if you also work on `noya-cli` or `noyalib-lsp`
+- **Rust 1.86.0+** for the core `noyalib` crate
+- Same **1.86.0** floor for `noya-cli` and `noyalib-lsp`
   (their dep trees include edition-2024 transitives — see
   [`doc/diagrams/dependency-graph.md`](./doc/diagrams/dependency-graph.md))
 - Git with [commit signing](https://docs.github.com/en/authentication/managing-commit-signature-verification/signing-commits) configured
@@ -33,7 +33,7 @@ reviewers what kind of change to expect before they open the diff:
 | `refactor/` | restructuring code without behaviour change | `refactor/extract-resolver` |
 | `docs/` | docs-only changes | `docs/adr-cst-shape` |
 | `test/` | tests-only changes | `test/cover-merge-key-edge-cases` |
-| `ci/` | CI / build / packaging changes | `ci/pin-toolchain-1.85` |
+| `ci/` | CI / build / packaging changes | `ci/pin-toolchain-1.86` |
 | `chore/` | dependency bumps and similar housekeeping | `chore/bump-criterion-0.5` |
 
 The current release branch is `feat/v0.0.1`. Open PRs against that

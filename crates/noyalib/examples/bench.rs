@@ -3,7 +3,7 @@
 
 //! Quick performance overview.
 //!
-//! Run: `cargo run --example bench-comparison --release`
+//! Run: `cargo run --example bench --release`
 
 #![allow(unused_results)]
 

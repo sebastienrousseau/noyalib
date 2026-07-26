@@ -6,7 +6,7 @@
 //! Demonstrates how noyalib handles edge cases at the boundary of YAML's
 //! type system and Rust's numeric types.
 //!
-//! Run: `cargo run --example binary_data`
+//! Run: `cargo run --example binary`
 
 #[path = "support.rs"]
 mod support;

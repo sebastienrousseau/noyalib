@@ -3,7 +3,7 @@
 
 //! Custom YAML tags: local (!), global (!!), and user-defined types.
 //!
-//! Run: `cargo run --example custom_tags`
+//! Run: `cargo run --example types`
 
 #[path = "support.rs"]
 mod support;

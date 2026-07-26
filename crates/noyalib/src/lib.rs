@@ -158,20 +158,37 @@
 //!
 //! ## MSRV policy
 //!
-//! - **Core library (`noyalib`)** — Rust **1.85.0** stable
-//!   (edition 2024, raised in v0.0.5). CI's MSRV gate builds
-//!   the `default-features = false` and the standard `default`
-//!   set on `rustc 1.85.0` for every PR. The MSRV is treated as
-//!   part of the public contract: a bump within `0.0.x` is a
-//!   breaking change and ships a major version.
-//! - **Optional features** that pull a dep with a higher floor
-//!   (`miette`, `garde`, `validate-schema`, `figment`,
-//!   `parallel`, `validator`, `tokio`) inherit that dep's MSRV
-//!   — typically `1.85`–`1.86` depending on the feature. The
-//!   CI matrix runs each one against the dep's declared
-//!   `rust-version`.
-//! - **Companion crates** ([`noya-cli`], [`noyalib-lsp`]) carry
-//!   the same `1.85.0` floor.
+//! - **Core library (`noyalib`)** — Rust **1.86.0** stable
+//!   (edition 2024; raised from 1.85.0 in v0.0.16). CI's
+//!   `msrv-core` gate builds the `default-features = false` and
+//!   the standard `default` set, and runs clippy on the core
+//!   lib, on `rustc 1.86.0` for every PR. The MSRV is treated as
+//!   part of the public contract and is always called out in
+//!   the CHANGELOG under a `### Changed — MSRV` heading.
+//! - **The number is the floor we verify, not the floor the
+//!   library happens to reach.** `cargo +1.85.0 check --lib`
+//!   still succeeds, but `cargo +1.85.0 check --all-targets`
+//!   fails — `criterion 0.8` (dev-dependency) requires 1.86, so
+//!   no test, bench or coverage run can execute there. An
+//!   unverifiable MSRV is not a contract, so we do not publish
+//!   one. The MSRV moves only when the toolchain we build and
+//!   test at moves — never speculatively — and will never
+//!   require a rustc newer than 12 months old at release time.
+//! - **Bumping the MSRV is a patch release while the crate is on
+//!   `0.0.x`.** Cargo treats every `0.0.x` as its own
+//!   incompatible version, so the patch position is the only one
+//!   that moves; there is no minor slot to spend. This becomes a
+//!   genuine minor-version event at `1.0`. See
+//!   [`doc/POLICIES.md`](https://github.com/sebastienrousseau/noyalib/blob/main/doc/POLICIES.md)
+//!   §1, which is the single source of truth for the floor.
+//! - **Companion crates** ([`noya-cli`], [`noyalib-lsp`]) share
+//!   the same `1.86.0` floor — as of v0.0.16 the whole lockstep
+//!   set declares one number.
+//! - **`compare-saphyr`** is the one surface above the floor:
+//!   it is an opt-in, bench-only feature whose `serde-saphyr`
+//!   dependency uses let-chains and needs rustc 1.88+. It is
+//!   therefore excluded from the MSRV gate, as is
+//!   `--all-features`.
 //! - **`nightly-simd`** is the only feature that requires nightly
 //!   rustc (`#![feature(portable_simd)]`); a `build.rs` cfg-detect
 //!   probe means stable builds with `--all-features` still
@@ -201,7 +218,7 @@
 //! | `validator` | ⛔ | `validator 0.19` | [`ValidatedValidator<T>`] | — |
 //! | `robotics` | ⛔ | — | `Degrees` / `Radians` / `StrictFloat` newtypes | — |
 //! | `parallel` | ⛔ | `rayon 1.10` | [`parallel::parse`], [`parallel::values`] | `std` |
-//! | `simd` | ⛔ | — | `noyalib::simd::*` primitives | — |
+//! | `simd` | ⛔ | — | forward-compat no-op — `noyalib::simd::*` is always available; the hot path uses it unconditionally | — |
 //! | `nightly-simd` | ⛔ | nightly rustc | 32-byte `StructuralIter` | `simd` |
 //! | `compat-serde-yaml` | ⛔ | — | `noyalib::compat::serde_yaml` shim | — |
 //! | `compare-saphyr` | ⛔ | `serde-saphyr` | comparison-bench arms (dev-only — do **not** ship in release builds) | — |

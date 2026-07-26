@@ -4,6 +4,8 @@
 //! Value type example for noyalib.
 //!
 //! Demonstrates working with the dynamic Value type.
+//!
+//! Run: `cargo run --example dynamic`
 
 #[path = "support.rs"]
 mod support;

@@ -7,7 +7,7 @@
 //! This is a user-space pattern — noyalib parses the YAML, then you walk the
 //! tree and expand variables.
 //!
-//! Run: `cargo run --example env_expansion`
+//! Run: `cargo run --example env`
 
 #[path = "support.rs"]
 mod support;

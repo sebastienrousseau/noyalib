@@ -3,7 +3,7 @@
 
 //! Formatting wrappers for per-value output control.
 //!
-//! Run: `cargo run --example fmt_wrappers`
+//! Run: `cargo run --example style`
 
 #[path = "support.rs"]
 mod support;

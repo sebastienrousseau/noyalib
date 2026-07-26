@@ -3,7 +3,7 @@
 
 //! I/O format examples: from_slice, from_reader, to_writer, to_fmt_writer.
 //!
-//! Run: `cargo run --example io_formats`
+//! Run: `cargo run --example pipes`
 
 #[path = "support.rs"]
 mod support;

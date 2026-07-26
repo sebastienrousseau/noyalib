@@ -830,7 +830,7 @@ impl fmt::Display for Error {
 }
 
 // `core::error::Error` stabilised in Rust 1.81 — the crate MSRV
-// is 1.85, so the trait implementation is unconditional. Only
+// is 1.86, so the trait implementation is unconditional. Only
 // the `Io(std::io::Error)` arm needs an in-line `cfg` gate,
 // because `Error::Io` itself is `#[cfg(feature = "std")]`. Under
 // `no_std` callers keep full access to the trait for routing via

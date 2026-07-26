@@ -6,7 +6,7 @@
 //! Merge keys are resolved automatically during parsing. `apply_merge()`
 //! is available for post-parse resolution on manually constructed Values.
 //!
-//! Run: `cargo run --example merge_keys`
+//! Run: `cargo run --example inherit`
 
 #[path = "support.rs"]
 mod support;

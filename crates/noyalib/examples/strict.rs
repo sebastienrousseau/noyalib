@@ -3,7 +3,7 @@
 
 //! Strict parsing: strict_booleans, duplicate key policies, security limits.
 //!
-//! Run: `cargo run --example strict_parsing`
+//! Run: `cargo run --example strict`
 
 #[path = "support.rs"]
 mod support;

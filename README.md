@@ -62,7 +62,7 @@
 
 ```toml
 [dependencies]
-noyalib = "0.0.14"
+noyalib = "0.0.17"
 ```
 
 ### As a CLI tool
@@ -106,7 +106,7 @@ maintainer runbook.
 
 ```toml
 [dependencies]
-noyalib = { version = "0.0.14", default-features = false }
+noyalib = { version = "0.0.17", default-features = false }
 ```
 
 Requires `alloc`. Core data binding (`from_str`, `to_string`, `Value`,
@@ -130,21 +130,33 @@ downstream users pinned to the core's floor.
 
 | Crate | MSRV | Why |
 |---|---|---|
-| `noyalib` (core lib) | **1.85.0** | The committed floor since v0.0.5 (edition 2024). Enforced by the dedicated MSRV CI job. |
-| `noyalib-mcp` | 1.85.0 | Same floor; small dep tree, no transitives requiring a higher edition. |
-| `noya-cli` (binaries) | 1.85.0 | `clap_builder 4.6` (a transitive of `clap = "4.5"`) ships in edition 2024. |
-| `noyalib-lsp` | 1.85.0 | LSP transport-stack transitives (`litemap`, `uuid`) require recent stables. |
+| `noyalib` (core lib) | **1.86.0** | The lowest toolchain the project builds *and tests* on — `criterion 0.8` (dev-dependency) requires 1.86, so tests, benches and coverage cannot run below it. Enforced by the dedicated MSRV CI job. |
+| `noyalib-mcp` | 1.86.0 | Lockstep with the core floor; small dep tree, no transitives requiring more. |
+| `noya-cli` (binaries) | 1.86.0 | Lockstep with the core floor; `clap_builder 4.6` (a transitive of `clap = "4.5"`) ships in edition 2024. |
+| `noyalib-lsp` | 1.86.0 | Lockstep with the core floor; LSP transport-stack transitives (`litemap`, `uuid`) require recent stables. |
+| `noyalib-wasm` | 1.86.0 | Lockstep with the core floor; the `wasm-bindgen` 0.2 ecosystem floors at 1.86. |
 
-Optional core-lib features pull in ergonomics deps that have
-themselves bumped past 1.75 — `miette` → backtrace 1.82+,
-`garde` → 1.84+, `validate-schema` / `figment` → ICU chain
-1.86+, `parallel` → rayon-core 1.80+. Use those with a current
-stable toolchain; the core lib stays buildable on the Ubuntu
-24.04 LTS rustc-1.75 floor.
+As of v0.0.16 the whole lockstep set shares one floor, 1.86.0 —
+the historical split (core at a lower floor than the satellites)
+is gone.
+
+The number is the floor we **verify**, not the floor the library
+happens to reach: `cargo +1.85.0 check --lib` still succeeds, but
+`cargo +1.85.0 check --all-targets` fails because `criterion 0.8`
+requires 1.86, so no test, bench or coverage run can execute
+there. We do not advertise an MSRV that CI cannot exercise. We
+also guarantee never to require a rustc newer than 12 months old
+at release time — see
+[`doc/POLICIES.md` §1](doc/POLICIES.md#1-msrv-minimum-supported-rust-version).
+
+The one surface still above the floor is the opt-in, bench-only
+`compare-saphyr` feature: `serde-saphyr` uses let-chains and needs
+rustc 1.88+, so `--all-features` requires a newer toolchain than
+the MSRV and is excluded from the MSRV gate.
 
 `rust-toolchain.toml` itself selects `stable` for local
-development; the 1.75.0 floor on the core surface is enforced
-by the dedicated `msrv-1-75-core` CI job (Ubuntu,
+development; the 1.86.0 floor on the core surface is enforced
+by the dedicated `msrv-core` CI job (Ubuntu,
 no-default-features + default-features build paths).
 
 ### Cargo features
@@ -156,6 +168,9 @@ the application needs.
 | :--- | :--- | :--- | :--- |
 | `std` *(default)* | — | `from_reader`, `to_writer`, `Spanned<T>`, CST module | [Install](#install) |
 | `miette` | `miette` 7 | Rich terminal diagnostics with source spans | [Library Usage](#library-usage), `examples/diagnostic.rs` |
+| `ariadne` | `ariadne` | Alternative `ariadne`-rendered diagnostics | `examples/ariadne_diagnostic.rs` |
+| `include` | — | `$include` directive resolution via an in-memory resolver | `examples/include_directive.rs` |
+| `include_fs` | `include` + `std` | Filesystem include resolver (`SafeFileResolver`) | `examples/include_directive.rs` |
 | `schema` | `schemars`, `serde_json` | `JsonSchema` derive + `schema_for::<T>()`. **Downstream callers that derive `JsonSchema` must add `schemars = "1.2"` to their own `Cargo.toml`** — the proc-macro emits `::schemars::*` paths that need to resolve in the call-site dep graph. | [Capabilities in 0.0.1](#capabilities-in-001) |
 | `validate-schema` | `schema` + `jsonschema` | `validate_against_schema`, `coerce_to_schema` | [Governance: schema-driven autofix](#governance-schema-driven-autofix) |
 | `figment` | `figment` 0.10 | `noyalib::figment::Yaml` provider | `examples/figment.rs` |
@@ -166,17 +181,18 @@ the application needs.
 | `recovery` | — | `noyalib::recovery::parse_lenient` — best-effort tree + error list for LSP / IDE half-typed documents | `examples/recovery_lenient.rs`, `benches/v006_features.rs` |
 | `sval` | `sval` 2 | `impl sval::Value` for `Value` / `Number` / `Mapping` / `MappingAny` / `TaggedValue`, `noyalib::sval_adapter::to_sval_writer` | `examples/sval_streaming.rs`, `benches/v006_features.rs` |
 | `tokio` | `tokio`, `tokio-util`, `bytes` | `noyalib::tokio_async::from_async_reader` / `from_async_reader_multi` and `YamlDecoder` codec for `tokio_util::codec::Framed` pipelines | `examples/tokio_async_reader.rs`, `benches/v006_features.rs` |
-| `simd` | — | `noyalib::simd::*` primitives + parser hot path | [Benchmarks](#benchmarks) |
+| `simd` | — | Forward-compat no-op — `noyalib::simd::*` is always available and the parser hot path uses it unconditionally | [Benchmarks](#benchmarks) |
 | `nightly-simd` | `simd` (nightly toolchain) | `core::simd`-backed `StructuralIter` (32-byte chunks) | [Benchmarks](#benchmarks) |
 | `compat-serde-yaml` | — | `noyalib::compat::serde_yaml` shim for migration | [When not to use noyalib](#when-not-to-use-noyalib) |
 | `lossless-u64` | — | `Number::Unsigned(u64)` plus opt-in parser/serializer config for scalars in `(i64::MAX, u64::MAX]` | [`doc/adr/0004-lossless-u64-integers.md`](doc/adr/0004-lossless-u64-integers.md), `examples/lossless_u64.rs`, `benches/lossless_u64.rs` |
 | `compare-saphyr` | `serde-saphyr` *(dev only)* | Cross-library bench comparison arms | `benches/comparison.rs` |
-| `noyavalidate` | `std` + `miette` + `validate-schema` | The `noyavalidate` CLI binary | [Tooling](#tooling) |
+| `wasm-opt` | — | Build-time flag opting the `noyalib-wasm` bundle into `wasm-opt` size passes (no API surface) | [`sebastienrousseau/noyalib-wasm`](https://github.com/sebastienrousseau/noyalib-wasm) |
+| `noyavalidate` | `std` + `miette` + `validate-schema` | Enables the schema-validation surface the `noyavalidate` CLI is built on | [`doc/USER-GUIDE.md` §11](doc/USER-GUIDE.md) |
 
 ```toml
 # Example: rich diagnostics + schema validation
 [dependencies]
-noyalib = { version = "0.0.14", features = ["miette", "validate-schema"] }
+noyalib = { version = "0.0.17", features = ["miette", "validate-schema"] }
 ```
 
 **Optional features:** `lossless-u64` preserves YAML integer scalars above
@@ -289,7 +305,7 @@ tables for each.
 -[dependencies]
 -serde_yaml = "0.9"
 +[dependencies]
-+noyalib = "0.0.14"
++noyalib = "0.0.17"
 ```
 
 ```diff
@@ -356,10 +372,10 @@ noyalib targets the niche `serde_yaml` / `serde_yml` / `libyml`
 occupy — read YAML into typed Rust structs, write Rust structs back
 as YAML — and is written from scratch against the YAML 1.2 spec.
 The implementation runs the official YAML test suite to **100%
-strict compliance — 387/387 attempted cases pass, 0 failures**;
-19 cases are deliberately skipped (tracked alongside the suite in
-[`tests/yaml_compliance_report.rs`](crates/noyalib/tests/yaml_compliance_report.rs)
-so the gap is explicit). It is not a fork of `serde_yaml`; the parser,
+strict compliance — 406/406 attempted cases pass, 0 failures, 0
+skips** (rebuilt on every CI run via
+[`tests/yaml_compliance_report.rs`](crates/noyalib/tests/yaml_compliance_report.rs)).
+It is not a fork of `serde_yaml`; the parser,
 scanner, serialiser, and CST are independent code.
 
 Two architectural choices motivate the rewrite:
@@ -419,7 +435,7 @@ table below groups the inventory by capability theme.
 
 | Theme | Headline deliverables |
 | :--- | :--- |
-| Spec compliance | YAML 1.2 official test suite at 100% strict (387/387 attempted, 0 failures, 19 deliberately skipped — gap tracked in `tests/yaml_compliance_report.rs`); YAML 1.1 opt-in compatibility for the "Norway problem"; multi-document streams |
+| Spec compliance | YAML 1.2 official test suite at 100% strict (406/406 attempted, 0 failures, 0 skips — verified by `tests/yaml_compliance_report.rs`); YAML 1.1 opt-in compatibility for the "Norway problem"; multi-document streams |
 | Migration from `serde_yaml` | `compat-serde-yaml` feature with name-for-name re-exports; `From`/`TryFrom` parity for `Value`/`Mapping`/`Number`; `Document::validate`; comment-aware reads via `load_comments` |
 | Binary scalars | First-class `!!binary` tag; RFC 4648 base64 round-trip with `serde_bytes::ByteBuf`/`Bytes`; non-UTF-8 payloads supported |
 | Flatten guard | `Spanned<Value>` in `#[serde(flatten)]` returns an actionable error pointing at the working alternative |
@@ -1270,7 +1286,7 @@ disagreement on priorities.
 - **You have a hard dependency budget that cannot tolerate a
   Grisu / Ryu float formatter and a hash-randomised lookup
   table.** Default profile carries 8 runtime deps. `noyalib =
-  { version = "0.0.1", default-features = false, features =
+  { version = "0.0.17", default-features = false, features =
   ["std"] }` (or the equivalent `features = ["minimal"]`) drops
   to 5 — `itoa`, `ryu`, and `serde_ignored` become opt-in via
   the `fast-int` / `fast-float` / `strict-deserialise` features.
@@ -1381,7 +1397,8 @@ strictness:
 
 - **Tagged data is fully preserved.**
   `from_str::<Value>("!Custom 'hello'\n")` returns
-  `Value::Tagged(Tag("!Custom"), Value::String("hello"))` — the
+  `Value::Tagged(t)` where `t.tag() == "!Custom"` and
+  `t.value() == Value::String("hello")` — the
   same shape that already covered tagged sequences and tagged
   mappings. Downstream code can read the tag via
   `Value::Tagged(t)` pattern matching, dispatch on it, or step

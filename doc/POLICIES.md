@@ -10,7 +10,7 @@ matrix. Every README in the workspace links here; if there's a
 contradiction between this file and a per-crate README, this
 file wins.
 
-> **Last reviewed:** 2026-05-08. The dates on individual
+> **Last reviewed:** 2026-07-22. The dates on individual
 > sections capture when each policy was last audited.
 
 ---
@@ -35,20 +35,50 @@ file wins.
 
 | Crate | MSRV | Rationale |
 |---|---|---|
-| `noyalib` (library core) | **1.75.0** | The lowest published MSRV; chosen so embedded / RHEL / FIPS shops on older toolchains can adopt the parser without forcing a toolchain bump. |
-| `xtask` (internal release tooling) | 1.75.0 | Matches the library to keep one toolchain across the workspace where possible. |
-| `noyalib-mcp` | 1.75.0 | Stays at library MSRV; the MCP wire surface is text-only JSON-RPC and pulls no nightly-only deps. |
-| `noya-cli` (binaries) | 1.85.0 | Newer binaries pull `clap_complete` 4.x and `miette` 7.x which require 1.85+. |
-| `noyalib-lsp` | 1.85.0 | Pulls `tower-lsp` and async deps that have set 1.85 floors. |
-| `noyalib-wasm` | 1.85.0 | `wasm-bindgen` 0.2 ecosystem floors at 1.85. |
+| `noyalib` (library core) | **1.86.0** | The lowest toolchain the project can be built *and tested* on: `criterion 0.8` (dev-dependency) declares `rust-version = 1.86`, so `cargo check --all-targets`, the bench suite, and the coverage gate all fail on 1.85. Enforced by the dedicated `msrv-core` CI job. |
+| `noyalib-mcp` | 1.86.0 | Lockstep with the core floor; the MCP wire surface is text-only JSON-RPC and pulls no nightly-only deps. |
+| `noya-cli` (binaries) | 1.86.0 | Lockstep with the core floor; `clap_builder` 4.6 is edition-2024 and requires 1.86+. |
+| `noyalib-lsp` | 1.86.0 | Lockstep with the core floor. |
+| `noyalib-wasm` | 1.86.0 | Lockstep with the core floor; the `wasm-bindgen` 0.2 ecosystem floors at 1.86. |
 
-**MSRV bump policy:** the `noyalib` core MSRV is treated like an
-API guarantee — bumping it is a **minor-version event** (not a
-patch). The satellite crate MSRVs may bump in any release if a
-transitive dependency forces it; that bump is a **patch** for
-those crates because they ship as application-style binaries
-(noya-cli, noyalib-lsp, noyalib-mcp) rather than library
-surface.
+**What the MSRV number means here.** It is the lowest toolchain
+on which the project can be **built and tested**, not the lowest
+on which the library alone happens to compile. Those differ
+today: `cargo +1.85.0 check --lib` succeeds, but
+`cargo +1.85.0 check --all-targets` fails with
+`criterion@0.8.2 requires rustc 1.86`. We publish the number we
+verify. Advertising 1.85 would be an untested promise — no CI
+leg could run there, so nothing would catch the day it broke.
+
+**When we bump it.** Only when the toolchain we build and test
+at actually moves — a dependency (runtime *or* dev) raising its
+floor, or a language feature we choose to adopt. **Never
+speculatively, and never for tidiness.** "Headroom" is not a
+reason: an MSRV can be raised the day it is needed, and raising
+it early only costs downstream users. As a standing guarantee,
+noyalib will not require a rustc newer than **12 months old** at
+the time of release (1.86.0 shipped 2025-04-03, so the current
+floor is comfortably inside that).
+
+**How it ships** *(revised 2026-07-22, effective v0.0.16)*:
+while the project is in its `0.0.x` line, an MSRV bump — core or
+satellite — ships as a **patch** (`0.0.x` → `0.0.x+1`), in
+lockstep across all five crates. It must be called out in
+[`CHANGELOG.md`](../CHANGELOG.md) under an explicit
+`### Changed — MSRV` heading so consumers can find it by
+scanning, and the new floor must be reflected in the table above,
+which is the single source of truth.
+
+> **This supersedes the previous rule** that a core MSRV bump was
+> a *minor-version event*. That rule was written when `0.1.0` was
+> the next planned cut; under the current `0.0.x` posture there is
+> no minor slot to spend, and `SUPPORT.md` already warns that a
+> patch may carry breaking changes in `0.x`. Treating MSRV bumps
+> as patches keeps the version line monotonic and honest rather
+> than reserving a semantic that the `0.0.x` scheme cannot express.
+> **This changes at 1.0:** once the crate is `1.x`, an MSRV bump
+> becomes a genuine minor-version event again, per the `1.0` gates
+> in [`PLAN.md`](../PLAN.md).
 
 CI matrix verifies the MSRV per-crate via the
 `Per-crate MSRV` workflow job — no change to that job is
@@ -97,8 +127,11 @@ A change is **breaking** (requires a major-version bump under
 
 ### Pre-1.0 (current state — 0.0.x)
 
-While on the `0.0.x` line, **every minor bump may be breaking**
-per SemVer's pre-1.0 carve-out. We try to avoid it; the
+While on the `0.0.x` line, **every release may be breaking** per
+SemVer's pre-1.0 carve-out — Cargo treats each `0.0.x` as its own
+incompatible version, so the patch position is the only one that
+moves (see the MSRV bump policy in §1, which follows from this).
+We try to avoid breakage anyway; the
 `cargo-semver-checks` CI gate catches accidental breaks. The
 `0.0.x` line is intentionally narrow: we expect to ship a
 single big-bang `0.0.1`, then iterate `0.0.2`, `0.0.3`, …
@@ -139,13 +172,13 @@ Reference: [`SECURITY.md`](../SECURITY.md) at the repo root.
 The parser has explicit DoS guards. Defaults are conservative;
 override via `ParserConfig`.
 
-| Limit | Default | Purpose | Override |
-|---|---|---|---|
-| `max_depth` | 1024 | Stack-overflow guard on deeply-nested input | `ParserConfig::max_depth(N)` |
-| `max_alias_expansions` | 100 | Billion-laughs amplification cap | `ParserConfig::max_alias_expansions(N)` |
-| `max_document_length` | input length | Per-document size cap | `ParserConfig::max_document_length(N)` |
-| `max_sequence_length` | `usize::MAX` | Per-sequence item count cap | `ParserConfig::max_sequence_length(N)` |
-| `max_mapping_keys` | `usize::MAX` | Per-mapping key count cap | `ParserConfig::max_mapping_keys(N)` |
+| Limit | Default | `strict()` | Purpose | Override |
+|---|---|---|---|---|
+| `max_depth` | 128 | 64 | Stack-overflow guard on deeply-nested input | `ParserConfig::max_depth(N)` |
+| `max_alias_expansions` | 1024 | 100 | Billion-laughs amplification cap | `ParserConfig::max_alias_expansions(N)` |
+| `max_document_length` | 64 MiB | 1 MiB | Per-document size cap | `ParserConfig::max_document_length(N)` |
+| `max_sequence_length` | 65536 | 1024 | Per-sequence item count cap | `ParserConfig::max_sequence_length(N)` |
+| `max_mapping_keys` | 65536 | 1024 | Per-mapping key count cap | `ParserConfig::max_mapping_keys(N)` |
 
 The corresponding regression tests live in
 [`tests/stress_load.rs`](../crates/noyalib/tests/stress_load.rs).
@@ -380,7 +413,7 @@ Per-host-triple training is required — a Mac-trained
   *fast enough* that splitting a single doc across cores
   costs more than it gains for typical inputs.
 - **Multi-document streams** can be parsed in parallel via
-  `noyalib::parallel::par_load_all_as::<T>(input)` (gated
+  `noyalib::parallel::parse::<T>(input)` (gated
   behind the `parallel` feature). Each document parses on
   its own rayon job.
 - The `Deserializer` itself is not `Sync`-after-construction
@@ -424,10 +457,33 @@ feature opts in to rayon thread-pool use).
 
 ### no_std (alloc-only) build
 
-The `noyalib` crate compiles cleanly with `--no-default-features
---features minimal` against `core` + `alloc`. The
-`Per-crate no_std (alloc-only) build` workflow job verifies
-this on every PR.
+The `noyalib` crate compiles cleanly with **`--no-default-features`**
+against `core` + `alloc`. The `Per-crate no_std (alloc-only) build`
+workflow job runs exactly that on every PR.
+
+> **Do not add `--features minimal` when you want `no_std`.** `minimal`
+> is defined as `minimal = ["std"]` — it is a *dependency-budget* alias
+> that turns `std` back on while dropping `itoa`, `ryu` and
+> `serde_ignored` (see §7, *Feature compatibility*). Combining it with
+> `--no-default-features` yields a `std` build, so it silently does not
+> test what the name suggests. This document previously recommended that
+> exact combination; corrected in v0.0.16.
+
+**Hosted targets only.** "no_std" here means *alloc-only on a hosted
+target* — the crate is verified with `--no-default-features` on the
+native host and on `wasm32-unknown-unknown`. It does **not** currently
+build for bare-metal `*-none` targets (e.g. `thumbv7em-none-eabihf`,
+`riscv32imac-unknown-none-elf`, `aarch64-unknown-none`), and those are
+not in the supported set above. Two things block it, both pre-existing:
+
+1. `indexmap`, `rustc-hash` and `memchr` are declared without
+   `default-features = false`, so they pull `std` in transitively.
+2. The crate uses `rustc_hash::FxHashMap` / `FxHashSet`, which do not
+   exist without `std`; a bare-metal build would need `hashbrown` with
+   `FxBuildHasher` instead.
+
+If you need bare-metal support, please open an issue — it is a tractable
+change, but it is a deliberate non-goal today rather than an oversight.
 
 When in `no_std` mode:
 
@@ -476,7 +532,7 @@ When in `no_std` mode:
 | `garde` | no | `garde` validator integration | `garde` |
 | `validator` | no | `validator` validator integration | `validator` |
 | `figment` | no | Figment provider implementation | `figment` |
-| `parallel` | no | `par_load_all_as::<T>` on rayon | `rayon` |
+| `parallel` | no | `parallel::parse::<T>` on rayon | `rayon` |
 | `simd` | no | optional explicit SIMD acceleration | (none — uses portable_simd / std::simd via cfg) |
 | `compat-serde-yaml` | no | name-for-name shim under `noyalib::compat::serde_yaml` | (none) |
 | `robotics` | no | ROS-style overlay/redaction helpers | (none) |
@@ -594,6 +650,28 @@ opt-outs covered in §7.
   silent-bumps.
 - Audit advisories (`cargo audit`) fail the build on any
   flagged dep.
+
+### `cargo-vet` exemption conventions
+
+`supply-chain/config.toml` is machine-generated — **`cargo vet fmt`
+strips comments**, so the conventions governing it are recorded here
+instead of inline.
+
+- **Exemptions are version-pinned.** Bumping a dependency invalidates
+  its exemption and the crate re-enters the unaudited set. This is
+  deliberate: it is why a blanket `cargo update` is not a routine
+  operation here (see the v0.0.16 notes, where a 71-crate refresh put
+  81 crates back on the unaudited list at once).
+- **`suggest = false` means "deliberately parked"** — `cargo vet
+  suggest` will stop proposing it. New exemptions are added **without**
+  it, so they stay on the suggest list until someone either audits them
+  or consciously parks them. The absence of `suggest = false` is a
+  to-do marker, not an oversight; do not add it in bulk to quieten the
+  suggest output.
+- **Never add exemptions in bulk to make a red gate green.** An
+  exemption is an assertion that a human looked. If a change produces
+  more new exemptions than a reviewer can actually read, the change is
+  too large — split it.
 
 ---
 

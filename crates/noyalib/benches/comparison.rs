@@ -1,4 +1,5 @@
-//! Head-to-head benchmarks: noyalib vs serde_yaml_ng vs yaml-rust2.
+//! Head-to-head benchmarks: noyalib vs serde_yaml_ng, yaml-rust2, and
+//! yaml-spanned (plus serde-saphyr under `--features compare-saphyr`).
 //!
 //! Run: `cargo bench --bench comparison`
 

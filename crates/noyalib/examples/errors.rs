@@ -3,7 +3,7 @@
 
 //! Error handling: error types, locations, formatted diagnostics.
 //!
-//! Run: `cargo run --example error_handling`
+//! Run: `cargo run --example errors`
 
 #[path = "support.rs"]
 mod support;

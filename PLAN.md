@@ -178,6 +178,16 @@ cargo deny check
 
 ### 1.3 Workspace `Cargo.toml` shape
 
+> **Historical.** This is the multi-crate shape as originally planned.
+> It is **not** the current layout: ADR-0005 split all four satellites
+> into their own repositories (`noyalib-wasm` v0.0.12; `noyalib-mcp`,
+> `noyalib-lsp`, `noya-cli` v0.0.13), leaving a single-member
+> workspace. The edition, floor and member list below are the v0.0.1-era
+> values — the live values are edition 2024, `rust-version = "1.86.0"`,
+> `members = ["crates/noyalib"]`. See the root `Cargo.toml` and
+> [`doc/POLICIES.md`](doc/POLICIES.md) §1, which is the source of truth
+> for the MSRV.
+
 ```toml
 [workspace]
 resolver = "2"
@@ -192,8 +202,8 @@ members = [
 exclude = ["fuzz", "examples/wasm"]
 
 [workspace.package]
-edition      = "2021"
-rust-version = "1.75.0"
+edition      = "2021"   # historical — now 2024
+rust-version = "1.75.0" # historical — now 1.86.0
 authors      = ["Sebastien Rousseau <sebastian.rousseau@gmail.com>"]
 license      = "MIT OR Apache-2.0"
 repository   = "https://github.com/sebastienrousseau/noyalib"
@@ -620,7 +630,7 @@ for crate in crates/*/; do
 done
 ```
 
-CI job `msrv-per-crate` runs this on every PR. Catches drift if e.g. `noyalib-lsp` adopts a feature that requires Rust 1.80 while the workspace floor is still 1.75 — which would silently break distros pinned to the lower rustc.
+CI job `msrv-per-crate` runs this on every PR. It reads `rust-version` from each manifest rather than hard-coding a number, so it catches drift if e.g. `noyalib-lsp` adopts a feature requiring a newer rustc than the declared floor — which would silently break distros pinned to the lower rustc. The current floor is **1.86.0** across all five crates (see [`doc/POLICIES.md`](doc/POLICIES.md) §1).
 
 ### 7.6 Intra-doc link strictness
 

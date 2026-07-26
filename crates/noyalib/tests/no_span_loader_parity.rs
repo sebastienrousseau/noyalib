@@ -193,3 +193,43 @@ fn value_fast_path_enforces_max_documents() {
         "expected MaxDocuments budget error, got {err:?}"
     );
 }
+
+// ── Further DoS-budget parity on the Value fast path (v0.0.15, bug_003) ──
+
+#[test]
+fn value_fast_path_enforces_alias_anchor_ratio() {
+    // 1 anchor, 10 aliases, ratio 2.0 — the billion-laughs amplification
+    // fingerprint the span-full loader / cst::parse_document already catch.
+    let cfg = ParserConfig::new().alias_anchor_ratio(Some(2.0));
+    let src = "a: &x 1\nb: [*x, *x, *x, *x, *x, *x, *x, *x, *x, *x]\n";
+    let err = from_str_with_config::<Value>(src, &cfg)
+        .expect_err("alias_anchor_ratio must be enforced on the Value fast path");
+    assert!(
+        matches!(err, Error::Budget(BudgetBreach::AliasAnchorRatio { .. })),
+        "got {err:?}"
+    );
+}
+
+#[test]
+fn value_fast_path_enforces_max_events() {
+    let cfg = ParserConfig::new().max_events(3);
+    let src = "a: 1\nb: 2\nc: 3\nd: 4\n"; // well over 3 events
+    let err = from_str_with_config::<Value>(src, &cfg)
+        .expect_err("max_events must be enforced on the Value fast path");
+    assert!(
+        matches!(err, Error::Budget(BudgetBreach::MaxEvents { .. })),
+        "got {err:?}"
+    );
+}
+
+#[test]
+fn value_fast_path_enforces_max_total_scalar_bytes() {
+    let cfg = ParserConfig::new().max_total_scalar_bytes(4);
+    let src = "key: aaaaaaaaaa\n"; // 10-byte scalar > 4
+    let err = from_str_with_config::<Value>(src, &cfg)
+        .expect_err("max_total_scalar_bytes must be enforced on the Value fast path");
+    assert!(
+        matches!(err, Error::Budget(BudgetBreach::MaxTotalScalarBytes { .. })),
+        "got {err:?}"
+    );
+}

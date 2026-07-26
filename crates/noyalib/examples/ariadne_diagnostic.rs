@@ -3,11 +3,11 @@
 
 //! Render a noyalib parse error through `ariadne`.
 //!
-//! Pairs with the existing `miette` adapter (\`cargo run --example
-//! diagnostic\`); same source position information rendered with
+//! Pairs with the existing `miette` adapter (`cargo run --example
+//! diagnostic`); same source position information rendered with
 //! whichever diagnostic crate the caller's pipeline already uses.
 //!
-//! Run: \`cargo run --example ariadne_diagnostic --features ariadne\`
+//! Run: `cargo run --example ariadne_diagnostic --features ariadne`
 
 #[path = "support.rs"]
 mod support;

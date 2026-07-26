@@ -17,6 +17,7 @@ use smallvec::SmallVec;
 
 use crate::error::{Error, Result, closest_name};
 use crate::parser::{Event, ParseConfig, Parser, ScalarStyle};
+use crate::value::Value;
 use core::fmt;
 
 /// Sentinel error message used to signal fallback to the Value-based path.
@@ -661,6 +662,7 @@ impl<'de> de::Deserializer<'de> for &mut StreamingDeserializer<'de> {
                     has_emitted_key: false,
                     key_count: 0,
                     seen_keys: FxHashSet::default(),
+                    seen_typed: FxHashMap::default(),
                 });
                 // Decrement on both Ok and Err so a failed inner
                 // visit_map doesn't leak a depth count into the
@@ -961,6 +963,7 @@ impl<'de> de::Deserializer<'de> for &mut StreamingDeserializer<'de> {
                 has_emitted_key: false,
                 key_count: 0,
                 seen_keys: FxHashSet::default(),
+                seen_typed: FxHashMap::default(),
             });
             // Decrement on Ok and Err (issue #46).
             self.depth = self.depth.saturating_sub(1);
@@ -1208,6 +1211,21 @@ impl Drop for StreamingSeqAccess<'_, '_> {
     }
 }
 
+/// Convert a resolved streaming `Scalar` into an owned `Value` — used only to
+/// canonicalise a mapping key for distinct-typed collision detection, matching
+/// the AST loader's untagged-scalar resolution.
+fn scalar_to_value(s: Scalar<'_>) -> Value {
+    match s {
+        Scalar::Null => Value::Null,
+        Scalar::Bool(b) => Value::Bool(b),
+        Scalar::Int(n) => Value::Number(crate::value::Number::Integer(n)),
+        #[cfg(feature = "lossless-u64")]
+        Scalar::Uint(n) => Value::Number(crate::value::Number::Unsigned(n)),
+        Scalar::Float(f) => Value::Number(crate::value::Number::Float(f)),
+        Scalar::Str(s) => Value::String(s.into_owned()),
+    }
+}
+
 struct StreamingMapAccess<'a, 'de> {
     de: &'a mut StreamingDeserializer<'de>,
     finished: bool,
@@ -1217,6 +1235,11 @@ struct StreamingMapAccess<'a, 'de> {
     /// `DuplicateKeyPolicy`. Populated lazily; bypassed when the policy
     /// is `First` (the visitor's own insertion order already matches).
     seen_keys: FxHashSet<String>,
+    /// Canonical key string → the typed key `Value` first seen for it, to
+    /// detect distinct-typed key collisions (`1` vs `"1"`, `~` vs `"null"`)
+    /// in parity with the AST loader. Separate from `DuplicateKeyPolicy`:
+    /// a same-string/different-type clash is always a `KeyCollision` error.
+    seen_typed: FxHashMap<String, Value>,
 }
 
 impl<'de> MapAccess<'de> for StreamingMapAccess<'_, 'de> {
@@ -1296,11 +1319,39 @@ impl<'de> MapAccess<'de> for StreamingMapAccess<'_, 'de> {
             // is applied before the visitor sees it. Extract the key
             // eagerly so the `ev` borrow is released before we touch
             // `self.de` again.
-            let key_str_opt = if let Event::Scalar { value: key_val, .. } = ev {
-                Some(key_val.to_string())
+            let key_info = if let Event::Scalar {
+                value: key_val,
+                style,
+                tag,
+                ..
+            } = ev
+            {
+                Some((key_val.to_string(), *style, tag.is_none()))
             } else {
                 None
             };
+            // Distinct-typed key-collision guard (parity with the AST loader):
+            // two keys whose canonical map-key string matches but whose typed
+            // Value differs (`1` vs `"1"`, `~` vs `"null"`, `true` vs `"true"`)
+            // are a `KeyCollision`, independent of `DuplicateKeyPolicy`. This is
+            // the guard the streaming path lacked, so `from_str::<map/struct>`
+            // and `from_str_borrowing::<Value>` silently collapsed such keys.
+            // Untagged scalar keys only; tagged keys keep their prior behaviour.
+            if let Some((ref raw, style, true)) = key_info {
+                let typed = scalar_to_value(self.de.resolve_scalar(raw, style));
+                if let Some(canon) = crate::parser::value_to_key_string(typed.clone()) {
+                    match self.seen_typed.get(&canon) {
+                        Some(prev) if *prev != typed => {
+                            return Err(Error::KeyCollision(canon));
+                        }
+                        Some(_) => {}
+                        None => {
+                            let _ = self.seen_typed.insert(canon, typed);
+                        }
+                    }
+                }
+            }
+            let key_str_opt = key_info.map(|(s, _, _)| s);
             let policy = self.de.config.duplicate_key_policy;
             if let Some(key_str) = key_str_opt {
                 if policy != crate::parser::InternalDuplicateKeyPolicy::Last {

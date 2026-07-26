@@ -9,12 +9,12 @@ runs, and how to extend it.
 ```mermaid
 graph TD
     A[Doctests<br/>~384] --> B[Unit tests<br/>inline #[cfg(test)]]
-    B --> C[Integration tests<br/>tests/*.rs · 107 files]
+    B --> C[Integration tests<br/>tests/*.rs · 139 files]
     C --> D[Property + proptest]
-    D --> E[Fuzz · libfuzzer<br/>9 targets]
+    D --> E[Fuzz · libfuzzer<br/>10 targets]
     F[Miri · UB detection] -.parallel.-> C
-    G[Bench · Criterion<br/>13 harnesses] -.parallel.-> C
-    H[Spec compliance<br/>387/387 strict yaml-test-suite] -.parallel.-> C
+    G[Bench · Criterion<br/>16 harnesses] -.parallel.-> C
+    H[Spec compliance<br/>406/406 strict yaml-test-suite] -.parallel.-> C
 ```
 
 Each layer catches a different bug class. None replaces another —
@@ -44,7 +44,7 @@ Used for tightly-scoped invariants — encoding tables, scanner
 state machines, format-config heuristics. Not the place for
 end-to-end flows; those live in `tests/`.
 
-## Integration tests (107 files in `crates/noyalib/tests/`)
+## Integration tests (139 files in `crates/noyalib/tests/`)
 
 Each file is a focused theme. Selection of the most load-bearing:
 
@@ -72,7 +72,7 @@ total over valid YAML, etc. Catches edge cases that case-by-case
 tests miss because the input space is hostile in shape, not just
 content.
 
-## Fuzz (9 targets, libfuzzer)
+## Fuzz (10 targets, libfuzzer)
 
 Located in `fuzz/fuzz_targets/`:
 
@@ -85,6 +85,7 @@ Located in `fuzz/fuzz_targets/`:
 | `fuzz_strict` | `from_str_strict<T>` unknown-key surfacing |
 | `fuzz_diff` | Differential against `yaml-rust2` / `saphyr` / `serde_yaml_ng` |
 | `fuzz_borrowed_alias` | P4 alias resolution + bomb cap |
+| `fuzz_no_span_loader` | `NoSpanLoader` path — three-loader parity |
 | `fuzz_yaml_v1_1` | P2 1.1 resolver bundle + individual flag overrides |
 | `fuzz_double_quoted` | Surrogate pair pairing + scalar escape branches |
 
@@ -123,17 +124,17 @@ Miri + big-endian sweep on schedule.
 
 **Run:** `./scripts/miri.sh`
 
-## Benchmarks (13 Criterion harnesses)
+## Benchmarks (16 Criterion harnesses)
 
 Performance is treated as a correctness invariant — regressions
 are bugs the same way wrong output is. Per-crate harnesses:
 
 | Crate | Harnesses | What they cover |
 |---|---|---|
-| `noyalib` | 10 | core parser, comparison vs serde_yaml_ng / yaml-rust2 / saphyr, SIMD, incremental repair, validation overhead, large-doc soak, structural bitmask, numeric parse |
-| `noya-cli` | 1 | clap argv parse + command-tree construction |
-| `noyalib-lsp` | 1 | `textDocument/formatting` + parse-for-diagnostics |
-| `noyalib-mcp` | 1 | the four `tools/call` operations |
+| `noyalib` | 16 | core parser, comparison vs serde_yaml_ng / yaml-rust2 / saphyr, SIMD, incremental repair, validation overhead, large-doc soak, structural bitmask, numeric parse |
+| `noya-cli` (split repo) | 1 | clap argv parse + command-tree construction |
+| `noyalib-lsp` (split repo) | 1 | `textDocument/formatting` + parse-for-diagnostics |
+| `noyalib-mcp` (split repo) | 1 | the four `tools/call` operations |
 
 CI runs the comparison + microbench suites via CodSpeed on every
 PR (the `CodSpeed perf dashboard` workflow); regressions block
@@ -141,15 +142,14 @@ merge.
 
 **Run:** `cargo bench --workspace`
 
-## Spec compliance: 387/387 strict
+## Spec compliance: 406/406 strict
 
 The `yaml-test-suite` is the canonical 1.2 conformance corpus.
-noyalib's compliance harness reports **387/387 strict-pass, 0
-failures, and 19 deliberate skips out of 406 total cases** (each
+noyalib's compliance harness reports **406/406 strict-pass, 0
+failures, and 0 skips out of 406 total cases** (each
 case directory yields one or more variant assertions; the totals
-reflect those variant counts). The full breakdown — including
-which tags each skipped case carries — rebuilds on every CI run
-into `target/yaml-compliance-report.md`.
+reflect those variant counts). The full breakdown rebuilds on
+every CI run into `target/yaml-compliance-report.md`.
 
 The strict-pass set is locked by `tests/official_suite.rs` so a
 regression — any case dropping from pass to skip / fail — fails
@@ -158,12 +158,12 @@ corresponding suite case unblocked.
 
 ## Coverage gate
 
-CI's `Coverage gate (≥95%)` job runs `cargo +nightly llvm-cov`
+CI's `Coverage gate (≥96%)` job runs `cargo +nightly llvm-cov`
 across the workspace and fails under:
 
-- `--fail-under-functions 95` — every public/private fn
-- `--fail-under-lines 93` — line coverage
-- `--fail-under-regions 92` — region (branch) coverage
+- `--fail-under-functions 96` — every public/private fn
+- `--fail-under-lines 94` — line coverage
+- `--fail-under-regions 93` — region (branch) coverage
 
 Excluded from the report: `noyalib-wasm/src/lib.rs` (JsValue
 marshalling needs a wasm-bindgen runtime; covered separately by

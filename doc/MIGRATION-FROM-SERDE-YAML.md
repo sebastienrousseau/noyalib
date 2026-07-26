@@ -74,9 +74,9 @@ type — there's no transitive dependency on the archived
 | `serde_yaml::with::singleton_map` | `noyalib::with::singleton_map` | Identical. |
 | `serde_yaml::with::singleton_map_optional` | `noyalib::with::singleton_map_optional` | Identical. |
 | `serde_yaml::with::singleton_map_recursive` | `noyalib::with::singleton_map_recursive` | Identical. |
-| `serde_yaml::Index` | `noyalib::value::Index` | Same trait surface (`get`, `get_mut`). |
+| `serde_yaml::Index` | `noyalib::ValueIndex` | Same trait surface (`get`, `get_mut`). |
 | `serde_yaml::value::Mapping::get_mut` | `noyalib::Mapping::get_mut` | Identical. |
-| `serde_yaml::Deserializer::from_str` | `noyalib::Deserializer::new` | Constructor name differs; behaviour identical. |
+| `serde_yaml::Deserializer::from_str` | `noyalib::from_str` | To parse a `&str` use `from_str`. `noyalib::Deserializer::new` wraps an already-parsed `&Value` (a serde driver), it does not parse source text. |
 | `serde_yaml::Serializer::new` | `noyalib::Serializer::new` | Identical. |
 
 ## Things `noyalib` adds (no equivalent in `serde_yaml`)
@@ -90,7 +90,7 @@ migration above doesn't require any of them.
 | `noyalib::Spanned<T>` | Wraps `T` and tracks the source `(line, column, byte offset)` of every deserialised value. Survives `flatten`. |
 | `noyalib::cst::Document` | Lossless CST — read YAML in, mutate via `Document::set("server.port", "9090")`, write out byte-for-byte preserved (only the touched span changes). Foundation of the `noyafmt` / `noyavalidate --fix` tools. |
 | `noyalib::policy::{DenyAnchors, DenyTags, MaxScalarLength}` | Pluggable parser policies. Reject documents that violate organisational constraints at parse time (e.g. ban anchors to defeat billion-laughs). |
-| `noyalib::interpolate_properties` | Substitute `${VAR}` references inside string scalars from a property map; pair with `secrecy::Secret<T>` for redacted-by-default credential handling. |
+| `Value::interpolate_properties` | Substitute `${VAR}` references inside string scalars from a property map; pair with `secrecy::Secret<T>` for redacted-by-default credential handling. |
 | `noyalib::parallel::parse<T>` | Parse `---`-separated multi-document streams across the Rayon thread pool. Linear with cores. (Requires the `parallel` feature.) |
 | `noyalib::Error::format_with_source(input)` | Renders a rustc-style snippet pointing at the offending line + column. Always available; richer output under `--features miette`. |
 | `noyalib::diagnostic::*` | First-class `miette::Diagnostic` integration: error codes, help text, source spans, ANSI-coloured terminal output. Under `--features miette`. |
@@ -107,7 +107,7 @@ See the public API surface map at the top of `crates/noyalib/src/lib.rs`.
 - **Implicit `<<:` merge keys outside of explicit handling.**
   YAML 1.2 dropped merge keys from the spec; `noyalib` follows
   1.2 by default but ships an opt-in
-  `MergeKeyPolicy::AutoExpand` for backwards compatibility.
+  `MergeKeyPolicy::Auto` for backwards compatibility.
 - **Custom-tag dispatch via `serde(rename)`.** `noyalib`
   surfaces non-core tags as `Value::Tagged(...)` rather than
   routing them to a typed enum variant by tag-string. Adopt
@@ -131,7 +131,7 @@ See the public API surface map at the top of `crates/noyalib/src/lib.rs`.
      Value::String(s)    => …,
      Value::Sequence(s)  => …,
      Value::Mapping(m)   => …,
-+    Value::Tagged(t)    => handle_tag(&t.tag, &t.value),
++    Value::Tagged(t)    => handle_tag(t.tag(), t.value()),
  }
 ```
 
@@ -140,7 +140,7 @@ drops custom-tag scalars from the `Value` tree by default — a
 `!Custom 'hello'` scalar deserialises into `Value::String("hello")`
 and the tag is lost. `noyalib` preserves the tag:
 `from_str::<Value>("!Custom 'hello'\n")` returns
-`Value::Tagged(Tag("!Custom"), Value::String("hello"))`. This
+`Value::Tagged(t)` (`t.tag() == "!Custom"`, `t.value() == Value::String("hello")`). This
 matches noyalib's behaviour for tagged sequences and tagged
 mappings — three Tagged shapes, one consistent rule.
 
@@ -193,8 +193,8 @@ assert_eq!(v["country"].as_bool(), Some(false));
 // Eager parse, returns Vec<T>.
 let docs: Vec<MyType> = noyalib::load_all_as::<MyType>(stream)?;
 
-// Or iterate Values lazily.
-let docs: Vec<noyalib::Value> = noyalib::load_all(stream)?;
+// Or collect Values — `load_all` yields a lazy `Result<Value>` iterator.
+let docs: Vec<noyalib::Value> = noyalib::load_all(stream)?.collect::<Result<_, _>>()?;
 ```
 
 For very large streams (audit logs, Kubernetes-resource snapshots),
@@ -224,7 +224,7 @@ error: expected ',' or ']'
 
 `from_str_with_config` accepts a `ParserConfig` carrying every
 limit you might want (`max_depth`, `max_alias_expansions`,
-`max_scalar_length`, `duplicate_key_policy`,
+`max_total_scalar_bytes`, `duplicate_key_policy`,
 `strict_booleans`, etc.). The factory `ParserConfig::strict()`
 turns every dial up for untrusted input.
 

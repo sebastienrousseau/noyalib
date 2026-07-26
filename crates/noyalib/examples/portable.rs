@@ -10,7 +10,7 @@
 //! Serve:       `cd examples/wasm && python3 -m http.server 8080`
 //! Open:        `http://localhost:8080/index.html`
 //!
-//! Run native:  `cargo run --example wasm`
+//! Run native:  `cargo run --example portable`
 
 #[path = "support.rs"]
 mod support;

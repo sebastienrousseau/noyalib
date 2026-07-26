@@ -3,11 +3,12 @@
 
 //! Zero-copy patterns: minimize allocations during deserialization.
 //!
-//! noyalib currently materializes a Value AST before deserializing into
-//! structs. True zero-copy `&'de str` from the input is planned for v0.0.3.
+//! For true zero-copy `&'de str` borrowing straight from the input, use
+//! `from_str_borrowing` (typed) or `from_str_borrowed` → `BorrowedValue`
+//! (untyped) — demonstrated in `zero_copy_borrow.rs`.
 //!
-//! This example demonstrates the patterns available today for reducing
-//! allocations: Cow<str>, from_value with references, and Value-as-view.
+//! This example demonstrates the complementary allocation-reduction
+//! patterns: Cow<str>, from_value with references, and Value-as-view.
 //!
 //! Run: `cargo run --example borrow`
 
@@ -117,13 +118,15 @@ fn main() {
         ]
     });
 
-    // ── Status: zero-copy roadmap ────────────────────────────────────
+    // ── Status: zero-copy options ────────────────────────────────────
     support::task_with_output("Zero-copy status", || {
         vec![
             "Today:   Value::as_str() borrows from parsed AST".to_string(),
             "Today:   get_path() traverses without cloning".to_string(),
             "Today:   Cow<str> for conditional ownership".to_string(),
-            "Planned: &'de str from input (v0.0.3, issue #8)".to_string(),
+            "Today:   from_str_borrowing / BorrowedValue borrow &'de str \
+                      from input (see zero_copy_borrow.rs)"
+                .to_string(),
         ]
     });
 
