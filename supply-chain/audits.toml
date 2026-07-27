@@ -1,11 +1,31 @@
 
 # cargo-vet audits file
 
+[[audits.jsonschema-regex]]
+who = "Sebastien Rousseau <sebastian.rousseau@gmail.com>"
+criteria = "safe-to-deploy"
+delta = "0.48.5 -> 0.49.1"
+
 [[audits.num-cmp]]
 who = "Sebastien Rousseau <sebastian.rousseau@gmail.com>"
 criteria = "safe-to-deploy"
 version = "0.1.0"
 notes = "Reviewed: 697 lines src + 478 lines tests, zero unsafe blocks, no extern, no FFI. Pure trait-impl mathematical comparison crate (i32 vs u32 etc). Used by jsonschema for cross-type numeric bounds checking. No filesystem/network/process side effects."
+
+[[audits.strum]]
+who = "Sebastien Rousseau <sebastian.rousseau@gmail.com>"
+criteria = "safe-to-deploy"
+delta = "0.27.2 -> 0.28.0"
+
+[[audits.strum_macros]]
+who = "Sebastien Rousseau <sebastian.rousseau@gmail.com>"
+criteria = "safe-to-deploy"
+delta = "0.27.2 -> 0.28.0"
+
+[[audits.yaml-rust2]]
+who = "Sebastien Rousseau <sebastian.rousseau@gmail.com>"
+criteria = "safe-to-deploy"
+delta = "0.10.4 -> 0.11.0"
 
 [[trusted.addr2line]]
 criteria = "safe-to-deploy"
@@ -771,7 +791,7 @@ end = "2027-05-09"
 
 [[trusted.serde-wasm-bindgen]]
 criteria = "safe-to-deploy"
-user-id = 5799 # Ingvar Stepanyan (RReverser)
+user-id = 5799
 start = "2019-05-16"
 end = "2027-05-09"
 
@@ -1059,7 +1079,7 @@ end = "2027-05-09"
 
 [[trusted.yaml-rust2]]
 criteria = "safe-to-run"
-user-id = 250563
+user-id = 250563 # Ethiraric
 start = "2024-02-08"
 end = "2027-05-09"
 
