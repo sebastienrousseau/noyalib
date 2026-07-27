@@ -25,6 +25,9 @@ url = "https://raw.githubusercontent.com/mozilla/supply-chain/main/audits.toml"
 [imports.zcash]
 url = "https://raw.githubusercontent.com/zcash/rust-ecosystem/main/supply-chain/audits.toml"
 
+[policy.noyalib]
+audit-as-crates-io = false
+
 [[exemptions.annotate-snippets]]
 version = "0.12.15"
 criteria = "safe-to-deploy"
