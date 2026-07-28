@@ -32,6 +32,11 @@ who = "Sebastien Rousseau <sebastian.rousseau@gmail.com>"
 criteria = "safe-to-deploy"
 delta = "0.27.2 -> 0.28.0"
 
+[[audits.tokio]]
+who = "Sebastien Rousseau <sebastian.rousseau@gmail.com>"
+criteria = "safe-to-deploy"
+delta = "1.52.3 -> 1.53.1"
+
 [[audits.yaml-rust2]]
 who = "Sebastien Rousseau <sebastian.rousseau@gmail.com>"
 criteria = "safe-to-deploy"
