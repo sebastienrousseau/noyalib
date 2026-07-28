@@ -1,16 +1,26 @@
 
 # cargo-vet audits file
 
-[[audits.jsonschema-regex]]
-who = "Sebastien Rousseau <sebastian.rousseau@gmail.com>"
-criteria = "safe-to-deploy"
-delta = "0.48.5 -> 0.49.1"
-
 [[audits.num-cmp]]
 who = "Sebastien Rousseau <sebastian.rousseau@gmail.com>"
 criteria = "safe-to-deploy"
 version = "0.1.0"
 notes = "Reviewed: 697 lines src + 478 lines tests, zero unsafe blocks, no extern, no FFI. Pure trait-impl mathematical comparison crate (i32 vs u32 etc). Used by jsonschema for cross-type numeric bounds checking. No filesystem/network/process side effects."
+
+[[audits.serde]]
+who = "Sebastien Rousseau <sebastian.rousseau@gmail.com>"
+criteria = "safe-to-deploy"
+delta = "1.0.228 -> 1.0.229"
+
+[[audits.serde_core]]
+who = "Sebastien Rousseau <sebastian.rousseau@gmail.com>"
+criteria = "safe-to-deploy"
+delta = "1.0.228 -> 1.0.229"
+
+[[audits.serde_derive]]
+who = "Sebastien Rousseau <sebastian.rousseau@gmail.com>"
+criteria = "safe-to-deploy"
+delta = "1.0.228 -> 1.0.229"
 
 [[audits.strum]]
 who = "Sebastien Rousseau <sebastian.rousseau@gmail.com>"

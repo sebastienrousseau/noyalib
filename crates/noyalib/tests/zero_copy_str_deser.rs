@@ -27,12 +27,11 @@
 
 use noyalib::borrowed::TransformReason;
 use noyalib::from_str_borrowing;
-use serde::Deserialize;
 use std::borrow::Cow;
 
 #[test]
 fn cow_str_target_handles_plain_and_escaped() {
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     struct CowDoc<'a> {
         #[serde(borrow)]
         plain: Cow<'a, str>,
@@ -52,7 +51,7 @@ fn terminal_scalar_borrows_zero_copy() {
     // allowing the streaming deserialiser to call
     // `visit_borrowed_str` and satisfy `Deserialize<'de> for &'de str`.
     let yaml = "value: terminal";
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     struct One<'a> {
         value: &'a str,
     }
@@ -71,7 +70,7 @@ fn typical_yaml_borrows_zero_copy() {
     // covers `key: value\n`), the typical YAML shape now produces
     // `Cow::Borrowed` events. `&'a str` deserialise should succeed
     // and point back into the input buffer.
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     struct Doc<'a> {
         name: &'a str,
         role: &'a str,
@@ -91,7 +90,7 @@ fn cow_target_works_with_typical_yaml() {
     // The common `key: value\n` shape produces an owned scalar event
     // (parser slow-path), so `&str` targets fail. `Cow<'a, str>`
     // accepts both forms — the recommended target shape today.
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     struct One<'a> {
         #[serde(borrow)]
         value: Cow<'a, str>,
@@ -105,7 +104,7 @@ fn strict_str_target_errors_clearly_when_owned() {
     // For inputs where the parser allocated, `&'de str` deserialise
     // fails with serde's "expected a borrowed string" — a clean
     // error rather than a silent allocation.
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     struct One<'a> {
         #[allow(dead_code)]
         s: &'a str,

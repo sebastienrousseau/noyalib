@@ -20,9 +20,8 @@
 //! use figment::providers::Format;
 //! use figment::Figment;
 //! use noyalib::figment::Yaml;
-//! use serde::Deserialize;
 //!
-//! #[derive(Deserialize)]
+//! #[derive(serde::Deserialize)]
 //! struct Config {
 //!     name: String,
 //!     port: u16,

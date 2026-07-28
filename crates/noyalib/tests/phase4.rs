@@ -4,13 +4,12 @@
 // Copyright (c) 2026 Noyalib. All rights reserved.
 
 use noyalib::{SerializerConfig, Value, from_str, to_string, to_string_with_config};
-use serde::{Deserialize, Serialize};
 
 // ============================================================================
 // SerializerConfig Tests
 // ============================================================================
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
 struct SimpleConfig {
     name: String,
     port: u16,
@@ -74,12 +73,12 @@ fn test_both_document_markers() {
     assert!(yaml.ends_with("\n..."));
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
 struct Nested {
     outer: Inner,
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
 struct Inner {
     value: i32,
 }
@@ -118,7 +117,7 @@ fn test_custom_indent_4() {
 // Block Scalar Tests
 // ============================================================================
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
 struct ScriptConfig {
     name: String,
     script: String,
@@ -236,7 +235,7 @@ fn test_full_config_combination() {
 
 #[test]
 fn test_empty_string_not_block() {
-    #[derive(Serialize)]
+    #[derive(serde::Serialize)]
     struct Empty {
         value: String,
     }
@@ -266,17 +265,17 @@ fn test_config_builder_chaining() {
     assert_eq!(config.block_scalar_threshold, 2);
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
 struct DeepNested {
     level1: Level1,
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
 struct Level1 {
     level2: Level2,
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
 struct Level2 {
     value: String,
 }

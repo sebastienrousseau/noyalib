@@ -117,9 +117,7 @@ fn spanned_roundtrip_string() {
 
 #[test]
 fn spanned_in_struct() {
-    use serde::{Deserialize, Serialize};
-
-    #[derive(Debug, Serialize, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
     struct Config {
         port: Spanned<u16>,
         name: Spanned<String>,
@@ -150,9 +148,7 @@ fn spanned_with_complex_inner() {
 
 #[test]
 fn spanned_nested_vec() {
-    use serde::Deserialize;
-
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     struct Doc {
         items: Spanned<Vec<Spanned<String>>>,
     }
@@ -181,9 +177,7 @@ fn spanned_from_value_fallback() {
 
 #[test]
 fn spanned_multiline_document() {
-    use serde::Deserialize;
-
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     struct Doc {
         first: Spanned<String>,
         second: Spanned<i64>,

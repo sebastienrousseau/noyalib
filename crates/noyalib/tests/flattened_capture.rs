@@ -7,15 +7,14 @@
 #![allow(missing_docs)]
 
 use noyalib::{Flattened, Value, from_str, to_string};
-use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Deserialize, Serialize, PartialEq, Clone)]
+#[derive(Debug, serde::Deserialize, serde::Serialize, PartialEq, Clone)]
 struct Inner {
     port: u16,
     host: String,
 }
 
-#[derive(Debug, Deserialize, Serialize, PartialEq, Clone)]
+#[derive(Debug, serde::Deserialize, serde::Serialize, PartialEq, Clone)]
 struct Config {
     name: String,
     inner: Flattened<Inner>,
@@ -87,7 +86,7 @@ fn flatten_attribute_works_with_wrapper() {
     // pointing at a `Flattened<T>` field. The wrapper captures
     // every residue key the source supplied, so callers see the
     // typed view AND the raw extras.
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     struct Outer {
         version: u8,
         #[serde(flatten)]
@@ -124,7 +123,7 @@ debug: true
 
 #[test]
 fn flattened_inside_sequence() {
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     #[allow(dead_code)]
     struct Item {
         id: u32,

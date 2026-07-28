@@ -14,24 +14,23 @@
 #![allow(missing_docs)]
 
 use noyalib::{Deserializer, Value, from_str};
-use serde::Deserialize;
 
 // ── serde_path_to_error ─────────────────────────────────────────────
 
-#[derive(Debug, Deserialize, PartialEq)]
+#[derive(Debug, serde::Deserialize, PartialEq)]
 struct App {
     name: String,
     server: Server,
 }
 
-#[derive(Debug, Deserialize, PartialEq)]
+#[derive(Debug, serde::Deserialize, PartialEq)]
 struct Server {
     host: String,
     port: u16,
     database: Database,
 }
 
-#[derive(Debug, Deserialize, PartialEq)]
+#[derive(Debug, serde::Deserialize, PartialEq)]
 struct Database {
     url: String,
     pool_size: u16,
@@ -113,7 +112,7 @@ server:
 
 #[test]
 fn path_to_error_inside_sequence() {
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     #[allow(dead_code)]
     struct Replicas {
         replicas: Vec<Server>,
@@ -147,7 +146,7 @@ replicas:
 
 // ── serde_ignored ───────────────────────────────────────────────────
 
-#[derive(Debug, Deserialize, PartialEq)]
+#[derive(Debug, serde::Deserialize, PartialEq)]
 struct Slim {
     name: String,
     port: u16,
@@ -176,12 +175,12 @@ another_unknown: 1
 
 #[test]
 fn serde_ignored_collects_unknown_nested_keys() {
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     #[allow(dead_code)]
     struct Outer {
         inner: Inner,
     }
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     #[allow(dead_code)]
     struct Inner {
         a: u16,

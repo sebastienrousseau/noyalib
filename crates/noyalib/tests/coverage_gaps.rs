@@ -14,7 +14,6 @@ use noyalib::{
     load_all_as, load_all_with_config, to_string, to_string_multi, to_string_multi_with_config,
     to_string_with_config, to_value, to_writer, to_writer_with_config, try_load_all,
 };
-use serde::{Deserialize, Serialize};
 
 // ============================================================================
 // from_slice: valid + invalid + UTF-8 error
@@ -30,7 +29,7 @@ fn from_slice_valid_yaml() {
 
 #[test]
 fn from_slice_typed_struct() {
-    #[derive(Deserialize, PartialEq, Debug)]
+    #[derive(serde::Deserialize, PartialEq, Debug)]
     struct Cfg {
         name: String,
         port: u16,
@@ -78,7 +77,7 @@ fn from_reader_valid() {
 
 #[test]
 fn from_reader_typed() {
-    #[derive(Deserialize)]
+    #[derive(serde::Deserialize)]
     struct Item {
         name: String,
     }
@@ -220,7 +219,7 @@ fn to_writer_roundtrip() {
 
 #[test]
 fn to_writer_struct() {
-    #[derive(Serialize)]
+    #[derive(serde::Serialize)]
     struct Item {
         name: String,
         count: i32,
@@ -295,7 +294,7 @@ fn to_string_multi_with_config_flow() {
 fn flow_seq_serialize_roundtrip() {
     use noyalib::fmt::FlowSeq;
 
-    #[derive(Serialize, Deserialize, PartialEq, Debug)]
+    #[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug)]
     struct Doc {
         tags: FlowSeq<Vec<String>>,
     }
@@ -338,7 +337,7 @@ fn flow_seq_debug() {
 fn flow_map_serialize_roundtrip() {
     use noyalib::fmt::FlowMap;
 
-    #[derive(Serialize, Deserialize, PartialEq, Debug)]
+    #[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug)]
     struct Doc {
         meta: FlowMap<BTreeMap<String, i32>>,
     }
@@ -370,7 +369,7 @@ fn flow_map_deref_into_inner_from_debug() {
 fn lit_string_serialize() {
     use noyalib::fmt::LitString;
 
-    #[derive(Serialize)]
+    #[derive(serde::Serialize)]
     struct Doc {
         script: LitString,
     }
@@ -563,7 +562,7 @@ fn try_load_all_invalid() {
 
 #[test]
 fn load_all_as_typed() {
-    #[derive(Deserialize, PartialEq, Debug)]
+    #[derive(serde::Deserialize, PartialEq, Debug)]
     struct Doc {
         name: String,
     }
@@ -889,7 +888,7 @@ fn location_from_index_at_newline() {
 
 #[test]
 fn spanned_unicode_location() {
-    #[derive(Deserialize)]
+    #[derive(serde::Deserialize)]
     struct Doc {
         name: Spanned<String>,
     }
@@ -913,7 +912,7 @@ fn spanned_from_value_returns_zero_locations() {
 
 #[test]
 fn spanned_nested_vec() {
-    #[derive(Deserialize)]
+    #[derive(serde::Deserialize)]
     struct Doc {
         items: Spanned<Vec<Spanned<String>>>,
     }

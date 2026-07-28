@@ -223,9 +223,8 @@ fn yr2_21_inline_comments_stripped() {
 #[test]
 fn yr2_27_source_spans_via_spanned() {
     use noyalib::Spanned;
-    use serde::Deserialize;
 
-    #[derive(Deserialize)]
+    #[derive(serde::Deserialize)]
     struct Config {
         host: Spanned<String>,
         port: Spanned<u16>,
@@ -274,9 +273,7 @@ fn yr2_22_multi_document_parsing() {
 
 #[test]
 fn yr2_22_multi_document_typed() {
-    use serde::Deserialize;
-
-    #[derive(Debug, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Deserialize, PartialEq)]
     struct Doc {
         name: String,
     }

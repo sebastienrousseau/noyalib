@@ -13,7 +13,6 @@
 mod support;
 
 use noyalib::{ArcAnchor, RcAnchor, to_string, to_string_tracking_shared};
-use serde::Serialize;
 
 fn main() {
     support::header("noyalib -- anchor_shared (automatic Rc/Arc anchor emission)");
@@ -54,12 +53,12 @@ fn main() {
 
     // ── Struct with shared mapping leaf ──────────────────────────────
     support::task_with_output("Struct field sharing a mapping inner", || {
-        #[derive(Clone, Serialize)]
+        #[derive(Clone, serde::Serialize)]
         struct Endpoint {
             host: String,
             port: u16,
         }
-        #[derive(Serialize)]
+        #[derive(serde::Serialize)]
         struct Topology {
             primary: RcAnchor<Endpoint>,
             replica: RcAnchor<Endpoint>,

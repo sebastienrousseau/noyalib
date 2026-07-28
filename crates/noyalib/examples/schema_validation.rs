@@ -26,9 +26,8 @@
 mod support;
 
 use noyalib::{JsonSchema, Value, coerce_to_schema, from_str, schema_for, validate_against_schema};
-use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, JsonSchema)]
+#[derive(serde::Serialize, serde::Deserialize, JsonSchema)]
 #[allow(dead_code)]
 struct ServerConfig {
     /// Port the server binds on.

@@ -36,7 +36,7 @@ fn with_config_accepts_custom_parser_settings() {
 
 #[test]
 fn struct_deserialisation_skips_ast() {
-    #[derive(Debug, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Deserialize, PartialEq)]
     struct Server {
         host: String,
         port: u16,
@@ -61,12 +61,12 @@ fn nested_collections_work() {
 
 #[test]
 fn anchor_alias_handled_natively() {
-    #[derive(Debug, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Deserialize, PartialEq)]
     struct Endpoint {
         host: String,
         port: u16,
     }
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     struct Doc {
         primary: Endpoint,
         replica: Endpoint,
@@ -175,7 +175,7 @@ fn debug_impl_does_not_panic() {
 
 #[test]
 fn equivalent_to_from_str_for_simple_inputs() {
-    #[derive(Debug, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Deserialize, PartialEq)]
     struct Cfg {
         name: String,
         count: u32,

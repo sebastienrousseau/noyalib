@@ -9,7 +9,6 @@
 mod support;
 
 use noyalib::{Value, load_all, load_all_as, try_load_all};
-use serde::Deserialize;
 
 /// Format a Value as a compact one-liner (no debug dump).
 fn compact(v: &Value) -> String {
@@ -67,7 +66,7 @@ fn main() {
 
     // ── load_all_as: typed structs ───────────────────────────────────
     support::task_with_output("load_all_as: typed deserialization", || {
-        #[derive(Debug, Deserialize)]
+        #[derive(Debug, serde::Deserialize)]
         struct Config {
             name: String,
             value: i32,

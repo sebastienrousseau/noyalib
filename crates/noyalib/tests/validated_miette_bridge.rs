@@ -16,9 +16,8 @@ mod garde_bridge {
     use super::*;
     use garde::Validate;
     use noyalib::validated_miette::garde_errors_to_miette;
-    use serde::Deserialize;
 
-    #[derive(Debug, Deserialize, Validate)]
+    #[derive(Debug, serde::Deserialize, Validate)]
     struct Cfg {
         #[garde(range(min = 1024, max = 65535))]
         port: u16,
@@ -61,10 +60,10 @@ mod garde_bridge {
 mod validator_bridge {
     use super::*;
     use noyalib::validated_miette::validator_errors_to_miette;
-    use serde::Deserialize;
+
     use validator::Validate;
 
-    #[derive(Debug, Deserialize, Validate)]
+    #[derive(Debug, serde::Deserialize, Validate)]
     struct Cfg {
         #[validate(range(min = 1024, max = 65535))]
         port: u16,

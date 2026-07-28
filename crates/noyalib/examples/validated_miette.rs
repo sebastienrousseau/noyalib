@@ -12,9 +12,8 @@ mod support;
 use garde::Validate;
 use noyalib::Spanned;
 use noyalib::validated_miette::garde_errors_to_miette;
-use serde::Deserialize;
 
-#[derive(Debug, Deserialize, Validate)]
+#[derive(Debug, serde::Deserialize, Validate)]
 struct ServerCfg {
     #[garde(length(min = 1, max = 255))]
     host: String,

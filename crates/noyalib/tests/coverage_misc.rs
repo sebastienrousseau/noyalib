@@ -19,7 +19,7 @@ mod diagnostic {
     use noyalib::Spanned;
     use noyalib::diagnostic::{spanned_error, spanned_error_with_context};
 
-    #[derive(Deserialize)]
+    #[derive(serde::Deserialize)]
     struct TwoFields {
         a: Spanned<String>,
         b: Spanned<i32>,
@@ -77,7 +77,7 @@ mod span_context {
     #[test]
     fn spanned_field_reports_location_of_value() {
         let yaml = "port: 8080\n";
-        #[derive(Deserialize)]
+        #[derive(serde::Deserialize)]
         struct Cfg {
             port: Spanned<u16>,
         }
@@ -94,11 +94,11 @@ mod span_context {
     #[test]
     fn spanned_in_nested_mapping() {
         let yaml = "outer:\n  inner: hello\n";
-        #[derive(Deserialize)]
+        #[derive(serde::Deserialize)]
         struct Inner {
             inner: Spanned<String>,
         }
-        #[derive(Deserialize)]
+        #[derive(serde::Deserialize)]
         struct Outer {
             outer: Inner,
         }
@@ -112,7 +112,7 @@ mod span_context {
     #[test]
     fn spanned_in_sequence() {
         let yaml = "items:\n  - first\n  - second\n";
-        #[derive(Deserialize)]
+        #[derive(serde::Deserialize)]
         struct Doc {
             items: Vec<Spanned<String>>,
         }
@@ -281,7 +281,7 @@ mod validated_extra {
     use garde::Validate;
     use noyalib::Validated;
 
-    #[derive(Debug, Deserialize, Validate)]
+    #[derive(Debug, serde::Deserialize, Validate)]
     struct Plain {
         #[garde(skip)]
         x: i32,

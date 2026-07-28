@@ -11,7 +11,6 @@ mod support;
 use std::collections::BTreeMap;
 
 use noyalib::{Value, from_str};
-use serde::Deserialize;
 
 fn main() {
     support::header("noyalib -- alias");
@@ -61,7 +60,7 @@ server2:
     });
 
     // Typed deserialization
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     #[allow(dead_code)]
     struct ServerConfig {
         host: String,

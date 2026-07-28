@@ -14,7 +14,6 @@ mod support;
 use std::collections::BTreeMap;
 
 use noyalib::{Value, from_str};
-use serde::Deserialize;
 
 fn main() {
     support::header("noyalib -- replay (anchor event replay)");
@@ -22,7 +21,7 @@ fn main() {
     // ── Simple scalar anchors and aliases ────────────────────────────
     support::task_with_output("Scalar anchor and alias (string)", || {
         let yaml = "name: &who Alice\ngreeting: *who\n";
-        #[derive(Debug, Deserialize)]
+        #[derive(Debug, serde::Deserialize)]
         struct Doc {
             name: String,
             greeting: String,
@@ -55,12 +54,12 @@ defaults: &cfg
   port: 8080
 staging: *cfg
 "#;
-        #[derive(Debug, Deserialize, PartialEq)]
+        #[derive(Debug, serde::Deserialize, PartialEq)]
         struct Endpoint {
             host: String,
             port: u16,
         }
-        #[derive(Debug, Deserialize)]
+        #[derive(Debug, serde::Deserialize)]
         struct Doc {
             defaults: Endpoint,
             staging: Endpoint,
@@ -87,7 +86,7 @@ copies:
   - *second
   - *first
 "#;
-        #[derive(Debug, Deserialize)]
+        #[derive(Debug, serde::Deserialize)]
         struct Doc {
             items: Vec<String>,
             copies: Vec<String>,
@@ -103,12 +102,12 @@ copies:
     // ── Multiple aliases to the same anchor ──────────────────────────
     support::task_with_output("Multiple aliases to the same anchor", || {
         let yaml = "origin: &pt\n  x: 0\n  y: 0\na: *pt\nb: *pt\nc: *pt\n";
-        #[derive(Debug, Deserialize, PartialEq)]
+        #[derive(Debug, serde::Deserialize, PartialEq)]
         struct Point {
             x: i32,
             y: i32,
         }
-        #[derive(Debug, Deserialize)]
+        #[derive(Debug, serde::Deserialize)]
         struct Doc {
             origin: Point,
             a: Point,
@@ -132,13 +131,13 @@ database: &db
 read_replica: *db
 analytics_replica: *db
 "#;
-        #[derive(Debug, Deserialize, PartialEq)]
+        #[derive(Debug, serde::Deserialize, PartialEq)]
         struct DbConfig {
             host: String,
             port: u16,
             name: String,
         }
-        #[derive(Debug, Deserialize)]
+        #[derive(Debug, serde::Deserialize)]
         struct Topology {
             database: DbConfig,
             read_replica: DbConfig,

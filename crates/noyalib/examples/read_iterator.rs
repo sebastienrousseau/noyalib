@@ -16,10 +16,9 @@
 mod support;
 
 use noyalib::read;
-use serde::Deserialize;
 use std::io::Cursor;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, serde::Deserialize)]
 struct Doc {
     id: u32,
     name: String,

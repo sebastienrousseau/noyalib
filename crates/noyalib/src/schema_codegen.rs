@@ -24,9 +24,8 @@
 //!
 //! ```
 //! use noyalib::{schema_for, schema_for_yaml, JsonSchema};
-//! use serde::{Deserialize, Serialize};
 //!
-//! #[derive(Serialize, Deserialize, JsonSchema)]
+//! #[derive(serde::Serialize, serde::Deserialize, JsonSchema)]
 //! struct ServerConfig {
 //!     /// Port the server binds on.
 //!     port: u16,
@@ -168,9 +167,8 @@ pub fn schema_for_yaml<T: JsonSchema>() -> Result<String> {
 ///
 /// ```
 /// use noyalib::{schema_for, JsonSchema, Value};
-/// use serde::{Deserialize, Serialize};
 ///
-/// #[derive(Serialize, Deserialize, JsonSchema)]
+/// #[derive(serde::Serialize, serde::Deserialize, JsonSchema)]
 /// struct Envelope {
 ///     id: String,
 ///     payload: Value,
@@ -223,9 +221,8 @@ impl JsonSchema for Value {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use serde::{Deserialize, Serialize};
 
-    #[derive(Serialize, Deserialize, JsonSchema)]
+    #[derive(serde::Serialize, serde::Deserialize, JsonSchema)]
     #[allow(dead_code)]
     struct Cfg {
         port: u16,
@@ -264,7 +261,7 @@ mod tests {
         assert_eq!(port["maximum"].as_i64(), Some(65_535));
     }
 
-    #[derive(Serialize, Deserialize, JsonSchema)]
+    #[derive(serde::Serialize, serde::Deserialize, JsonSchema)]
     #[allow(dead_code)]
     struct WithDoc {
         /// Bound TCP port.
@@ -278,7 +275,7 @@ mod tests {
         assert_eq!(desc, Some("Bound TCP port."));
     }
 
-    #[derive(Serialize, Deserialize, JsonSchema)]
+    #[derive(serde::Serialize, serde::Deserialize, JsonSchema)]
     #[allow(dead_code)]
     struct WithDefault {
         port: u16,
@@ -301,7 +298,7 @@ mod tests {
         );
     }
 
-    #[derive(Serialize, Deserialize, JsonSchema)]
+    #[derive(serde::Serialize, serde::Deserialize, JsonSchema)]
     #[allow(dead_code)]
     struct Renamed {
         #[serde(rename = "bind_port")]

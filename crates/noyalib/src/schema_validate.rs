@@ -418,9 +418,8 @@ properties:
     fn schema_for_codegen_round_trip_validates_self() {
         // Phase 3.1 + 3.2 together — derive JsonSchema, emit, then
         // validate sample data against the emitted schema.
-        use serde::{Deserialize, Serialize};
 
-        #[derive(Serialize, Deserialize, crate::JsonSchema)]
+        #[derive(serde::Serialize, serde::Deserialize, crate::JsonSchema)]
         #[allow(dead_code)]
         struct Cfg {
             port: u16,

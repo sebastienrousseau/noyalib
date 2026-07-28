@@ -6,7 +6,6 @@
 
 use noyalib::document::{load_all, load_all_as, load_all_with_config, try_load_all};
 use noyalib::{ParserConfig, Value};
-use serde::Deserialize;
 
 // ============================================================================
 // load_all
@@ -157,7 +156,7 @@ fn try_load_all_invalid() {
 
 #[test]
 fn load_all_as_basic() {
-    #[derive(Debug, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Deserialize, PartialEq)]
     struct Doc {
         name: String,
     }

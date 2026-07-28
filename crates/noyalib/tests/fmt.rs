@@ -9,7 +9,6 @@ use noyalib::fmt::{
     Commented, FlowMap, FlowSeq, FoldStr, FoldString, LitStr, LitString, SpaceAfter,
 };
 use noyalib::{from_str, to_string};
-use serde::{Deserialize, Serialize};
 
 #[test]
 fn test_flow_seq_serialize() {
@@ -79,7 +78,7 @@ fn test_fold_string_deserialize() {
 
 #[test]
 fn test_flow_seq_in_struct() {
-    #[derive(Serialize, Deserialize, Debug, PartialEq)]
+    #[derive(serde::Serialize, serde::Deserialize, Debug, PartialEq)]
     struct Config {
         tags: FlowSeq<Vec<String>>,
     }
@@ -98,7 +97,7 @@ fn test_flow_seq_in_struct() {
 
 #[test]
 fn test_flow_map_in_struct() {
-    #[derive(Serialize, Deserialize, Debug, PartialEq)]
+    #[derive(serde::Serialize, serde::Deserialize, Debug, PartialEq)]
     struct Config {
         env: FlowMap<BTreeMap<String, String>>,
     }

@@ -70,13 +70,13 @@ fn synthetic_yaml(target_bytes: usize) -> String {
     s
 }
 
-#[derive(Deserialize)]
+#[derive(serde::Deserialize)]
 #[allow(dead_code)]
 struct Doc {
     services: Vec<Record>,
 }
 
-#[derive(Deserialize)]
+#[derive(serde::Deserialize)]
 #[allow(dead_code)]
 struct Record {
     name: String,

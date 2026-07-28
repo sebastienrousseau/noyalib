@@ -1449,8 +1449,8 @@ fn test_value_visitor_none() {
 #[test]
 fn test_value_visitor_unit() {
     // JSON doesn't have a unit type, but this tests the visitor path
-    use serde::Deserialize;
-    #[derive(Deserialize)]
+
+    #[derive(serde::Deserialize)]
     struct UnitWrapper(Value);
 
     let json = "null";

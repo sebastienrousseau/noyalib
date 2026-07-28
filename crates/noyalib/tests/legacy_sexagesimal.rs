@@ -135,8 +135,7 @@ fn does_not_misinterpret_iso_timestamps_as_sexagesimal() {
 
 #[test]
 fn typed_deserialize_minutes_seconds() {
-    use serde::Deserialize;
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     struct Cfg {
         timeout: u64,
     }

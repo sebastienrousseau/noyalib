@@ -8,11 +8,10 @@
 #![cfg(feature = "validator")]
 
 use noyalib::{from_str, to_string, validated::ValidatedValidator};
-use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use validator::Validate;
 
-#[derive(Debug, Deserialize, Serialize, Validate)]
+#[derive(Debug, serde::Deserialize, serde::Serialize, Validate)]
 struct Server {
     #[validate(length(min = 1, max = 64))]
     host: String,
@@ -86,7 +85,7 @@ fn multiple_errors_reported_together() {
 
 // ── Collection validation ────────────────────────────────────────────────
 
-#[derive(Debug, Deserialize, Serialize, Validate)]
+#[derive(Debug, serde::Deserialize, serde::Serialize, Validate)]
 struct Cluster {
     #[validate(length(min = 1, max = 10))]
     nodes: Vec<String>,
@@ -149,7 +148,7 @@ fn roundtrip_value_equivalence() {
 #[test]
 fn sibling_type_without_wrapper_works() {
     // Non-validator Server variant must still parse normally.
-    #[derive(Deserialize)]
+    #[derive(serde::Deserialize)]
     struct Plain {
         #[allow(dead_code)]
         host: String,

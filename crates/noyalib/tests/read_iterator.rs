@@ -19,10 +19,9 @@
 #![allow(clippy::unwrap_used)]
 
 use noyalib::{DocumentReadIterator, ParserConfig, Value, read, read_with_config};
-use serde::Deserialize;
 use std::io::Cursor;
 
-#[derive(Debug, Deserialize, PartialEq)]
+#[derive(Debug, serde::Deserialize, PartialEq)]
 struct Doc {
     id: u32,
     name: String,

@@ -19,9 +19,8 @@ mod support;
 
 use garde::Validate;
 use noyalib::Validated;
-use serde::Deserialize;
 
-#[derive(Debug, Deserialize, Validate)]
+#[derive(Debug, serde::Deserialize, Validate)]
 #[allow(dead_code)]
 struct ServerConfig {
     #[garde(length(min = 1, max = 253))]
@@ -37,7 +36,7 @@ struct ServerConfig {
     service_name: String,
 }
 
-#[derive(Debug, Deserialize, Validate)]
+#[derive(Debug, serde::Deserialize, Validate)]
 #[allow(dead_code)]
 struct DeployConfig {
     #[garde(length(min = 1, max = 32))]

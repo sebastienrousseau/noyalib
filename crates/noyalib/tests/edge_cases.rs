@@ -6,7 +6,6 @@
 // Copyright (c) 2026 Noyalib. All rights reserved.
 
 use noyalib::{Value, from_str, to_string};
-use serde::{Deserialize, Serialize};
 
 // ============================================================================
 // Number Edge Cases
@@ -470,7 +469,7 @@ name: test
 
 #[test]
 fn test_type_mismatch_error() {
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     #[allow(dead_code)]
     struct Typed {
         count: i32,
@@ -483,7 +482,7 @@ fn test_type_mismatch_error() {
 
 #[test]
 fn test_missing_required_field_error() {
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     #[allow(dead_code)]
     struct Required {
         name: String,
@@ -523,7 +522,7 @@ fn test_error_location() {
 
 #[test]
 fn test_serialize_option_none() {
-    #[derive(Debug, Serialize, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
     struct WithOption {
         name: String,
         #[serde(skip_serializing_if = "Option::is_none")]
@@ -540,7 +539,7 @@ fn test_serialize_option_none() {
 
 #[test]
 fn test_serialize_option_some() {
-    #[derive(Debug, Serialize, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
     struct WithOption {
         name: String,
         optional: Option<i32>,
@@ -557,7 +556,7 @@ fn test_serialize_option_some() {
 
 #[test]
 fn test_serialize_unit_struct() {
-    #[derive(Debug, Serialize, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
     struct UnitStruct;
 
     let value = UnitStruct;
@@ -568,7 +567,7 @@ fn test_serialize_unit_struct() {
 
 #[test]
 fn test_serialize_newtype_struct() {
-    #[derive(Debug, Serialize, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
     struct Wrapper(i32);
 
     let value = Wrapper(42);
@@ -579,7 +578,7 @@ fn test_serialize_newtype_struct() {
 
 #[test]
 fn test_serialize_tuple_struct() {
-    #[derive(Debug, Serialize, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
     struct Point(i32, i32);
 
     let value = Point(10, 20);
@@ -590,7 +589,7 @@ fn test_serialize_tuple_struct() {
 
 #[test]
 fn test_serialize_enum_variants() {
-    #[derive(Debug, Serialize, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
     enum MyEnum {
         Unit,
         Newtype(i32),
