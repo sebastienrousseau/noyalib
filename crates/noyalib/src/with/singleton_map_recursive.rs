@@ -7,21 +7,20 @@
 //!
 //! ```rust
 //! use noyalib::with::singleton_map_recursive;
-//! use serde::{Deserialize, Serialize};
 //!
-//! #[derive(Debug, Serialize, Deserialize, PartialEq)]
+//! #[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
 //! enum Inner {
 //!     A,
 //!     B { value: i32 },
 //! }
 //!
-//! #[derive(Debug, Serialize, Deserialize, PartialEq)]
+//! #[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
 //! enum Outer {
 //!     Single(Inner),
 //!     Multiple(Vec<Inner>),
 //! }
 //!
-//! #[derive(Debug, Serialize, Deserialize, PartialEq)]
+//! #[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
 //! struct Config {
 //!     #[serde(with = "singleton_map_recursive")]
 //!     items: Vec<Outer>,
@@ -67,15 +66,14 @@ fn transform_to_singleton_map(value: crate::Value) -> crate::Value {
 ///
 /// ```rust
 /// use noyalib::with::singleton_map_recursive;
-/// use serde::{Deserialize, Serialize};
 ///
-/// #[derive(Debug, Serialize, Deserialize)]
+/// #[derive(Debug, serde::Serialize, serde::Deserialize)]
 /// enum Status {
 ///     Active,
 ///     Pending,
 /// }
 ///
-/// #[derive(Debug, Serialize, Deserialize)]
+/// #[derive(Debug, serde::Serialize, serde::Deserialize)]
 /// struct Task {
 ///     #[serde(with = "singleton_map_recursive")]
 ///     statuses: Vec<Status>,
@@ -105,12 +103,11 @@ where
 ///
 /// ```
 /// use noyalib::with::singleton_map_recursive;
-/// use serde::{Deserialize, Serialize};
 ///
-/// #[derive(Deserialize, Serialize, PartialEq, Debug)]
+/// #[derive(serde::Deserialize, serde::Serialize, PartialEq, Debug)]
 /// enum Inner { A }
 ///
-/// #[derive(Deserialize, Debug)]
+/// #[derive(serde::Deserialize, Debug)]
 /// struct Doc {
 ///     #[serde(with = "singleton_map_recursive")]
 ///     items: Vec<Inner>,
@@ -134,15 +131,14 @@ where
 
 #[cfg(test)]
 mod tests {
-    use serde::{Deserialize, Serialize};
 
-    #[derive(Debug, Serialize, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
     enum Inner {
         A,
         B { value: i32 },
     }
 
-    #[derive(Debug, Serialize, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
     struct Container {
         name: String,
         #[serde(with = "crate::with::singleton_map_recursive")]
@@ -161,7 +157,7 @@ mod tests {
         assert_eq!(parsed, container);
     }
 
-    #[derive(Debug, Serialize, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
     struct Nested {
         #[serde(with = "crate::with::singleton_map_recursive")]
         data: std::collections::BTreeMap<String, Inner>,

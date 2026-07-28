@@ -164,9 +164,7 @@ fn deserialize_option_some() {
 
 #[test]
 fn deserialize_ignored_any() {
-    use serde::Deserialize;
-
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     struct Partial {
         name: String,
     }
@@ -177,8 +175,7 @@ fn deserialize_ignored_any() {
 
 #[test]
 fn deserialize_enum_unit() {
-    use serde::Deserialize;
-    #[derive(Debug, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Deserialize, PartialEq)]
     enum Color {
         Red,
         Green,
@@ -191,8 +188,7 @@ fn deserialize_enum_unit() {
 
 #[test]
 fn deserialize_enum_newtype() {
-    use serde::Deserialize;
-    #[derive(Debug, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Deserialize, PartialEq)]
     enum Wrapper {
         Int(i64),
     }
@@ -203,8 +199,7 @@ fn deserialize_enum_newtype() {
 
 #[test]
 fn deserialize_enum_struct() {
-    use serde::Deserialize;
-    #[derive(Debug, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Deserialize, PartialEq)]
     enum Shape {
         Circle { radius: f64 },
     }
@@ -217,8 +212,7 @@ fn deserialize_enum_struct() {
 
 #[test]
 fn deserialize_enum_tuple() {
-    use serde::Deserialize;
-    #[derive(Debug, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Deserialize, PartialEq)]
     enum Pair {
         Point(f64, f64),
     }
@@ -229,9 +223,7 @@ fn deserialize_enum_tuple() {
 
 #[test]
 fn from_value_struct() {
-    use serde::Deserialize;
-
-    #[derive(Debug, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Deserialize, PartialEq)]
     struct Config {
         name: String,
         port: u16,

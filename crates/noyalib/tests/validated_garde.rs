@@ -11,11 +11,10 @@
 
 use garde::Validate;
 use noyalib::{Validated, from_str};
-use serde::{Deserialize, Serialize};
 
 // ── Basic: passing validation returns Validated(T) ──────────────────────
 
-#[derive(Debug, Deserialize, Serialize, Validate)]
+#[derive(Debug, serde::Deserialize, serde::Serialize, Validate)]
 struct Server {
     #[garde(length(min = 1, max = 64))]
     host: String,
@@ -78,7 +77,7 @@ fn multiple_errors_reported_together() {
 
 // ── Nested validation ───────────────────────────────────────────────────
 
-#[derive(Debug, Deserialize, Validate)]
+#[derive(Debug, serde::Deserialize, Validate)]
 struct Database {
     #[garde(length(min = 1))]
     name: String,
@@ -99,7 +98,7 @@ fn nested_validation_reports_dotted_path() {
 
 // ── Collection validation ────────────────────────────────────────────────
 
-#[derive(Debug, Deserialize, Validate)]
+#[derive(Debug, serde::Deserialize, Validate)]
 struct Cluster {
     #[garde(length(min = 1, max = 10))]
     nodes: Vec<String>,

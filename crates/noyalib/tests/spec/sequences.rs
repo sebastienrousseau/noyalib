@@ -4,7 +4,6 @@
 // YAML spec: Sequences
 
 use noyalib::{Value, from_str};
-use serde::Deserialize;
 
 #[test]
 fn block_sequence_of_scalars() {
@@ -34,7 +33,7 @@ fn nested_block_sequences() {
 
 #[test]
 fn sequence_in_block_sequence() {
-    #[derive(Debug, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Deserialize, PartialEq)]
     #[serde(untagged)]
     enum Item {
         Seq(Vec<String>),
@@ -52,7 +51,7 @@ fn sequence_in_block_sequence() {
 
 #[test]
 fn sequence_of_mappings() {
-    #[derive(Debug, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Deserialize, PartialEq)]
     struct Player {
         name: String,
         hr: i32,

@@ -205,9 +205,8 @@ pub fn try_load_all(input: &str) -> Result<DocumentIterator> {
 ///
 /// ```rust
 /// use noyalib::document::load_all_as;
-/// use serde::Deserialize;
 ///
-/// #[derive(Debug, Deserialize, PartialEq)]
+/// #[derive(Debug, serde::Deserialize, PartialEq)]
 /// struct Doc {
 ///     name: String,
 /// }
@@ -366,9 +365,8 @@ impl<T> ExactSizeIterator for DocumentReadIterator<T> where
 ///
 /// ```
 /// use std::io::Cursor;
-/// use serde::Deserialize;
 ///
-/// #[derive(Debug, Deserialize, PartialEq)]
+/// #[derive(Debug, serde::Deserialize, PartialEq)]
 /// struct Doc { id: u32 }
 ///
 /// let yaml = "id: 1\n---\nid: 2\n---\nid: 3\n";

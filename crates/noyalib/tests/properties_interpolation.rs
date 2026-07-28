@@ -103,8 +103,7 @@ fn strict_config_defaults_strict_properties_true() {
 
 #[test]
 fn typed_target_sees_substituted_value() {
-    use serde::Deserialize;
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     struct Cfg {
         url: String,
     }

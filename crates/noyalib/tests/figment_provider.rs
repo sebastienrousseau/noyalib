@@ -13,9 +13,8 @@
 use figment::Figment;
 use figment::providers::Format;
 use noyalib::figment::Yaml;
-use serde::Deserialize;
 
-#[derive(Debug, Deserialize, PartialEq)]
+#[derive(Debug, serde::Deserialize, PartialEq)]
 struct Cfg {
     name: String,
     port: u16,
@@ -104,12 +103,12 @@ fn missing_required_field_surfaces_clear_error() {
 
 #[test]
 fn nested_struct_round_trip() {
-    #[derive(Debug, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Deserialize, PartialEq)]
     struct Db {
         url: String,
         pool_size: u16,
     }
-    #[derive(Debug, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Deserialize, PartialEq)]
     struct App {
         name: String,
         db: Db,
@@ -138,7 +137,7 @@ db:
 fn anchor_and_alias_resolved_through_provider() {
     // The provider must honour YAML 1.2 anchor / alias semantics —
     // `<<: *anchor` should produce a merged mapping when extracted.
-    #[derive(Debug, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Deserialize, PartialEq)]
     struct Service {
         host: String,
         port: u16,

@@ -27,9 +27,8 @@
 mod support;
 
 use noyalib::robotics::{Degrees, Radians, StrictFloat};
-use serde::Deserialize;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, serde::Deserialize)]
 #[serde(tag = "action", rename_all = "snake_case")]
 #[allow(dead_code)]
 enum Step {
@@ -53,7 +52,7 @@ enum Step {
     },
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, serde::Deserialize)]
 #[allow(dead_code)]
 struct Mission {
     fleet: String,

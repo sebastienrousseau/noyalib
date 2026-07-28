@@ -19,7 +19,6 @@ mod support;
 
 use noyalib::fmt::Commented;
 use noyalib::{Value, from_str, to_string};
-use serde::Serialize;
 
 fn main() {
     support::header("noyalib -- comments");
@@ -51,7 +50,7 @@ pool_size: 10    # max connections
 
     // ── Commented<T>: attach comments during serialization ───────────
     support::task_with_output("Commented<T>: attach inline comments", || {
-        #[derive(Serialize)]
+        #[derive(serde::Serialize)]
         struct Config {
             host: Commented<String>,
             port: Commented<u16>,
@@ -74,7 +73,7 @@ pool_size: 10    # max connections
         let v: Value = from_str(yaml).unwrap();
 
         // Wrap values with Commented<T> for serialization
-        #[derive(Serialize)]
+        #[derive(serde::Serialize)]
         struct Annotated {
             host: Commented<String>,
             port: Commented<i64>,

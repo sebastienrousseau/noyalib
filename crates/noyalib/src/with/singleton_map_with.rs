@@ -15,7 +15,6 @@
 //!
 //! ```rust
 //! use noyalib::with::singleton_map_with;
-//! use serde::{Deserialize, Serialize};
 //!
 //! // Define custom serialize/deserialize functions
 //! mod snake_case {
@@ -73,14 +72,14 @@
 //!     }
 //! }
 //!
-//! #[derive(Debug, Serialize, Deserialize, PartialEq)]
+//! #[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
 //! enum HttpMethod {
 //!     GetRequest,
 //!     PostData,
 //!     DeleteItem,
 //! }
 //!
-//! #[derive(Debug, Serialize, Deserialize, PartialEq)]
+//! #[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
 //! struct ApiCall {
 //!     #[serde(with = "snake_case")]
 //!     method: HttpMethod,
@@ -453,9 +452,7 @@ mod tests {
 
     #[test]
     fn test_serialize_with_directly() {
-        use serde::Serialize;
-
-        #[derive(Serialize)]
+        #[derive(serde::Serialize)]
         struct TestStruct {
             name: String,
         }

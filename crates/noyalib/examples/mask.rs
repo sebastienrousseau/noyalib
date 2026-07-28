@@ -12,11 +12,10 @@
 mod support;
 
 use noyalib::{Value, from_str, to_string};
-use serde::{Deserialize, Serialize};
 use std::fmt;
 
 /// A value that serializes normally but redacts in Display/Debug.
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, serde::Serialize, serde::Deserialize)]
 #[serde(transparent)]
 struct Secret<T>(T);
 
@@ -32,7 +31,7 @@ impl<T> fmt::Display for Secret<T> {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
 struct DatabaseConfig {
     host: String,
     port: u16,

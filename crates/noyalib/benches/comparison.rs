@@ -9,7 +9,7 @@
 #![allow(missing_docs, unused_results)]
 
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use std::hint::black_box;
 
 // ── Test Data ────────────────────────────────────────────────────────
@@ -48,34 +48,34 @@ const LARGE_LIST: &str = include_str!("fixtures/large_list.yaml");
 const K8S_DEPLOYMENT: &str = include_str!("fixtures/k8s_deployment.yaml");
 const GITHUB_ACTIONS: &str = include_str!("fixtures/github_actions.yaml");
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
 struct Simple {
     name: String,
     version: u32,
     enabled: bool,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
 struct Nested {
     server: Server,
     database: Database,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
 struct Server {
     host: String,
     port: u16,
     ssl: Ssl,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
 struct Ssl {
     enabled: bool,
     cert: String,
     key: String,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
 struct Database {
     host: String,
     port: u16,

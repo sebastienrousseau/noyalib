@@ -13,7 +13,6 @@
 
 use noyalib::cst::parse_document;
 use noyalib::{Spanned, from_str};
-use serde::Deserialize;
 
 /// Parse `src`, resolve `path`, and return the raw source slice the
 /// span denotes.
@@ -147,7 +146,7 @@ fn remove_of_a_duplicated_key_targets_the_typed_view_occurrence() {
 
 #[test]
 fn spanned_fields_stay_aligned_after_duplicate_key() {
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     struct Config {
         k: Spanned<String>,
         z: Spanned<i64>,

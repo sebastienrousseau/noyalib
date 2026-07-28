@@ -11,23 +11,22 @@
 mod support;
 
 use noyalib::{from_str, to_string};
-use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
 enum Shape {
     Rectangle { width: u32, height: u32 },
     Circle { radius: f64 },
     Triangle { base: u32, height: u32 },
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
 enum Status {
     Active,
     Inactive,
     Pending,
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
 enum Message {
     Text(String),
     Number(i32),

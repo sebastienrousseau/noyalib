@@ -14,12 +14,11 @@ use noyalib::{
     from_str_with_config, to_string, to_string_with_config, to_value, to_writer_tracking_shared,
     to_writer_tracking_shared_with_config,
 };
-use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
 // ── de.rs AST paths (Spanned<T> forces AST) ─────────────────────────────
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, serde::Deserialize, serde::Serialize)]
 struct WithSpan {
     name: Spanned<String>,
 }
@@ -28,7 +27,7 @@ struct WithSpan {
 fn ast_deserialize_bytes_from_string() {
     // AST path handles deserialize_bytes by converting a String value
     // to byte slice.
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     struct Blob {
         #[serde(with = "serde_bytes")]
         data: Vec<u8>,
@@ -42,7 +41,7 @@ fn ast_deserialize_bytes_from_string() {
 #[test]
 fn ast_deserialize_tuple_via_spanned_force() {
     // Wrap in Spanned to force AST path, then read a tuple.
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     struct Doc {
         #[allow(dead_code)]
         pair: Spanned<(i32, String)>,
@@ -54,9 +53,9 @@ fn ast_deserialize_tuple_via_spanned_force() {
 
 #[test]
 fn ast_deserialize_unit_struct() {
-    #[derive(Debug, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Deserialize, PartialEq)]
     struct Marker;
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     struct Doc {
         #[allow(dead_code)]
         _force: Spanned<String>,
@@ -69,9 +68,9 @@ fn ast_deserialize_unit_struct() {
 
 #[test]
 fn ast_deserialize_newtype_struct_non_spanned() {
-    #[derive(Debug, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Deserialize, PartialEq)]
     struct Wrapper(String);
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     struct Doc {
         #[allow(dead_code)]
         _force: Spanned<String>,
@@ -84,7 +83,7 @@ fn ast_deserialize_newtype_struct_non_spanned() {
 
 #[test]
 fn ast_deserialize_option_some() {
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     struct Doc {
         #[allow(dead_code)]
         _force: Spanned<String>,
@@ -97,7 +96,7 @@ fn ast_deserialize_option_some() {
 
 #[test]
 fn ast_deserialize_option_none() {
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     struct Doc {
         #[allow(dead_code)]
         _force: Spanned<String>,
@@ -136,7 +135,7 @@ fn to_writer_tracking_shared_with_config_indent_four() {
 
 #[test]
 fn ser_flow_map_emits_inline() {
-    #[derive(Serialize)]
+    #[derive(serde::Serialize)]
     struct Doc {
         inner: FlowMap<BTreeMap<String, i32>>,
     }
@@ -150,7 +149,7 @@ fn ser_flow_map_emits_inline() {
 
 #[test]
 fn ser_flow_seq_emits_inline() {
-    #[derive(Serialize)]
+    #[derive(serde::Serialize)]
     struct Doc {
         items: FlowSeq<Vec<i32>>,
     }
@@ -164,7 +163,7 @@ fn ser_flow_seq_emits_inline() {
 
 #[test]
 fn ser_lit_str_emits_literal_block() {
-    #[derive(Serialize)]
+    #[derive(serde::Serialize)]
     struct Doc {
         desc: LitString,
     }
@@ -177,7 +176,7 @@ fn ser_lit_str_emits_literal_block() {
 
 #[test]
 fn ser_fold_str_emits_folded_block() {
-    #[derive(Serialize)]
+    #[derive(serde::Serialize)]
     struct Doc {
         desc: FoldString,
     }
@@ -190,7 +189,7 @@ fn ser_fold_str_emits_folded_block() {
 
 #[test]
 fn ser_commented_emits_inline_hash() {
-    #[derive(Serialize)]
+    #[derive(serde::Serialize)]
     struct Doc {
         value: Commented<i32>,
     }
@@ -203,7 +202,7 @@ fn ser_commented_emits_inline_hash() {
 
 #[test]
 fn ser_space_after_emits_blank_line() {
-    #[derive(Serialize)]
+    #[derive(serde::Serialize)]
     struct Doc {
         section: SpaceAfter<String>,
         next: String,
@@ -247,7 +246,7 @@ fn to_string_with_config_quote_all_forces_single_quotes() {
 
 #[test]
 fn to_string_with_config_indent_width() {
-    #[derive(Serialize)]
+    #[derive(serde::Serialize)]
     struct Doc {
         nested: BTreeMap<String, i32>,
     }
@@ -362,7 +361,7 @@ fn number_compares_float_to_int() {
 #[test]
 fn streaming_newtype_struct_custom_tag_wraps() {
     // A custom tag on a newtype struct routes through StreamingTagMapAccess.
-    #[derive(Debug, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Deserialize, PartialEq)]
     struct Custom {
         tag: String,
         value: String,
@@ -424,7 +423,7 @@ fn to_value_sequence_round_trip() {
 
 #[test]
 fn to_value_struct_round_trip() {
-    #[derive(Serialize)]
+    #[derive(serde::Serialize)]
     struct Doc {
         name: String,
         count: i32,
@@ -489,11 +488,11 @@ fn number_float_ordering_nan_handled() {
 #[test]
 fn spanned_reports_line_and_column_for_nested_field() {
     let yaml = "outer:\n  inner: value\n";
-    #[derive(Deserialize)]
+    #[derive(serde::Deserialize)]
     struct Inner {
         inner: Spanned<String>,
     }
-    #[derive(Deserialize)]
+    #[derive(serde::Deserialize)]
     struct Outer {
         outer: Inner,
     }

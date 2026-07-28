@@ -17,7 +17,6 @@ use std::collections::HashMap;
 use noyalib::{
     Mapping, MappingAny, Number, Tag, TaggedValue, Value, from_str, from_value, to_string,
 };
-use serde::{Deserialize, Serialize};
 
 // ============================================================================
 // Mapping — Display via multi-entry walk + comma branch (L790, L793, L795)
@@ -367,7 +366,7 @@ fn value_index_into_via_value_negative_int_returns_none() {
 // from_value (L4010-L4011, L4027-L4029, L4051-L4053)
 // ============================================================================
 
-#[derive(Debug, Deserialize, Serialize, PartialEq)]
+#[derive(Debug, serde::Deserialize, serde::Serialize, PartialEq)]
 struct Wrapper {
     data: Value,
 }
@@ -448,7 +447,7 @@ fn value_visit_map_tag_preserving_with_complex_inner() {
 // deserialize_enum string variant (L4282)
 // ============================================================================
 
-#[derive(Debug, Deserialize, PartialEq)]
+#[derive(Debug, serde::Deserialize, PartialEq)]
 enum E {
     A,
     B,

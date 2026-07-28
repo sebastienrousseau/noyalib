@@ -6,7 +6,6 @@
 use std::collections::HashMap;
 
 use noyalib::{Value, from_str};
-use serde::Deserialize;
 
 #[test]
 fn block_mapping_string_values() {
@@ -31,11 +30,11 @@ fn empty_mapping() {
 
 #[test]
 fn nested_mappings() {
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     struct Config {
         database: Database,
     }
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     struct Database {
         host: String,
         port: u16,
@@ -83,15 +82,15 @@ fn mapping_preserves_order() {
 
 #[test]
 fn deeply_nested_mapping() {
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     struct A {
         b: B,
     }
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     struct B {
         c: C,
     }
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     struct C {
         value: i64,
     }

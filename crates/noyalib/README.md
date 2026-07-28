@@ -77,9 +77,8 @@ typo-detection helpers are absent. Re-enable individually with
 
 ```rust
 use noyalib::{from_str, to_string};
-use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
 struct Config {
     host: String,
     port: u16,
@@ -232,9 +231,7 @@ let s: Server = from_str("host: api\nport: 8080\n")?;
 ### Strict deserialise (reject unknown keys)
 
 ```rust
-use serde::Deserialize;
-
-#[derive(Debug, Deserialize)]
+#[derive(Debug, serde::Deserialize)]
 struct Cfg { port: u16, host: String }
 
 let yaml = "port: 8080\nhost: api\nporrt: 9090\n";   // typo

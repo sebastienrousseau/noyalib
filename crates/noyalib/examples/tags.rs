@@ -9,9 +9,8 @@
 mod support;
 
 use noyalib::{from_str, to_string};
-use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
 enum Status {
     Pending,
     Active,
@@ -19,14 +18,14 @@ enum Status {
     Error(String),
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
 struct Task {
     name: String,
     #[serde(with = "noyalib::with::singleton_map")]
     status: Status,
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
 struct OptionalTask {
     name: String,
     #[serde(
@@ -37,13 +36,13 @@ struct OptionalTask {
     status: Option<Status>,
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
 enum Action {
     Simple,
     WithData { value: i32 },
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
 struct Workflow {
     name: String,
     #[serde(with = "noyalib::with::singleton_map_recursive")]

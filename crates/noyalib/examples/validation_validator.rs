@@ -16,10 +16,9 @@
 mod support;
 
 use noyalib::ValidatedValidator;
-use serde::Deserialize;
 use validator::Validate;
 
-#[derive(Debug, Deserialize, Validate)]
+#[derive(Debug, serde::Deserialize, Validate)]
 #[allow(dead_code)]
 struct UserAccount {
     #[validate(email)]
@@ -35,7 +34,7 @@ struct UserAccount {
     website: String,
 }
 
-#[derive(Debug, Deserialize, Validate)]
+#[derive(Debug, serde::Deserialize, Validate)]
 #[allow(dead_code)]
 struct ApiKey {
     #[validate(length(equal = 40))]

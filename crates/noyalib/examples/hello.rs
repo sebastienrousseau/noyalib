@@ -9,9 +9,8 @@
 mod support;
 
 use noyalib::{from_str, to_string};
-use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
 struct Person {
     name: String,
     age: u32,

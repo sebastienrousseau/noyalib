@@ -21,9 +21,8 @@
 use std::collections::BTreeMap;
 
 use noyalib::{Mapping, ParserConfig, Value, from_str, from_str_with_config, from_value};
-use serde::Deserialize;
 
-#[derive(Debug, Deserialize, PartialEq)]
+#[derive(Debug, serde::Deserialize, PartialEq)]
 struct Cfg {
     name: String,
     port: u16,
@@ -72,7 +71,7 @@ fn branch_de_float_to_u64_negative_errors() {
 
 // ── de.rs: enum from single-key mapping (struct variant) ───────────
 
-#[derive(Debug, Deserialize, PartialEq)]
+#[derive(Debug, serde::Deserialize, PartialEq)]
 enum Choice {
     Plain,
     Pair { a: i32, b: i32 },
@@ -223,7 +222,7 @@ combined:
 
 // ── streaming.rs: typed deserialise with anchor + alias ───────────
 
-#[derive(Debug, Deserialize, PartialEq)]
+#[derive(Debug, serde::Deserialize, PartialEq)]
 struct WithAnchor {
     base: String,
     alias_to_base: String,

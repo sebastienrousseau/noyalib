@@ -17,9 +17,7 @@
 
 #![allow(missing_docs)]
 
-use serde::{Deserialize, Serialize};
-
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
 struct Payload {
     name: String,
     #[serde(with = "serde_bytes")]
@@ -52,7 +50,7 @@ fn vec_u8_with_serde_bytes_roundtrips_via_binary() {
 fn byte_buf_roundtrips_via_binary() {
     use serde_bytes::ByteBuf;
 
-    #[derive(Debug, Serialize, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
     struct Wrapper {
         data: ByteBuf,
     }
@@ -77,7 +75,7 @@ fn byte_buf_roundtrips_via_binary() {
 fn empty_byte_buf_roundtrips() {
     use serde_bytes::ByteBuf;
 
-    #[derive(Debug, Serialize, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
     struct Wrapper {
         data: ByteBuf,
     }
@@ -146,7 +144,7 @@ body: !!binary \"this is not base64\"
 fn full_byte_range_roundtrips() {
     use serde_bytes::ByteBuf;
 
-    #[derive(Debug, Serialize, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
     struct Wrapper {
         data: ByteBuf,
     }
@@ -173,7 +171,7 @@ secret: !!binary SGVsbG8sIFdvcmxkIQ==
 ";
     let cfg = ParserConfig::strict();
 
-    #[derive(Debug, Serialize, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
     struct S {
         #[serde(with = "serde_bytes")]
         secret: Vec<u8>,

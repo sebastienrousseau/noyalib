@@ -87,10 +87,8 @@ fn max_document_length_exceeded() {
 
 #[test]
 fn missing_required_struct_field() {
-    use serde::Deserialize;
-
     #[allow(dead_code)]
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     struct Required {
         name: String,
         age: i64,

@@ -6,7 +6,6 @@
 //! work but weren't covered by the headline phases.
 
 use noyalib::{Spanned, Tag, TaggedValue, Value, from_str, from_value, to_string_value};
-use serde::Deserialize;
 
 // 1) Round-trip a Tagged scalar via to_string.
 #[test]
@@ -86,7 +85,7 @@ fn from_value_value_identity_with_tagged() {
 }
 
 // 5) Typed deserialise sees through tag (the contract for
-// `#[derive(Deserialize)]` targets).
+// `#[derive(serde::Deserialize)]` targets).
 #[test]
 fn typed_target_sees_through_tagged_collection() {
     use std::collections::HashMap;
@@ -116,7 +115,7 @@ fn typed_target_sees_through_tagged_collection() {
 // (and document the new contract in the migration guide).
 #[test]
 fn spanned_value_with_tagged_scalar_known_limitation() {
-    #[derive(Deserialize)]
+    #[derive(serde::Deserialize)]
     struct Cfg {
         value: Spanned<Value>,
     }

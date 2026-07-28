@@ -8,15 +8,14 @@
 //!
 //! ```rust
 //! use noyalib::with::singleton_map_optional;
-//! use serde::{Deserialize, Serialize};
 //!
-//! #[derive(Debug, Serialize, Deserialize, PartialEq)]
+//! #[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
 //! enum Status {
 //!     Active,
 //!     Pending { reason: String },
 //! }
 //!
-//! #[derive(Debug, Serialize, Deserialize, PartialEq)]
+//! #[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
 //! struct Task {
 //!     name: String,
 //!     #[serde(
@@ -54,15 +53,14 @@ use serde::{Deserializer, Serialize, Serializer};
 ///
 /// ```rust
 /// use noyalib::with::singleton_map_optional;
-/// use serde::{Deserialize, Serialize};
 ///
-/// #[derive(Debug, Serialize, Deserialize)]
+/// #[derive(Debug, serde::Serialize, serde::Deserialize)]
 /// enum Action {
 ///     Start,
 ///     Stop,
 /// }
 ///
-/// #[derive(Debug, Serialize, Deserialize)]
+/// #[derive(Debug, serde::Serialize, serde::Deserialize)]
 /// struct Command {
 ///     #[serde(
 ///         with = "singleton_map_optional",
@@ -118,12 +116,11 @@ where
 ///
 /// ```
 /// use noyalib::with::singleton_map_optional;
-/// use serde::{Deserialize, Serialize};
 ///
-/// #[derive(Deserialize, Serialize, PartialEq, Debug)]
+/// #[derive(serde::Deserialize, serde::Serialize, PartialEq, Debug)]
 /// enum Status { Active }
 ///
-/// #[derive(Deserialize, Debug)]
+/// #[derive(serde::Deserialize, Debug)]
 /// struct Doc {
 ///     #[serde(with = "singleton_map_optional", default)]
 ///     s: Option<Status>,
@@ -152,15 +149,14 @@ where
 
 #[cfg(test)]
 mod tests {
-    use serde::{Deserialize, Serialize};
 
-    #[derive(Debug, Serialize, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
     enum TestEnum {
         Unit,
         Struct { value: String },
     }
 
-    #[derive(Debug, Serialize, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
     struct Container {
         name: String,
         #[serde(
@@ -220,7 +216,7 @@ mod tests {
     #[test]
     fn test_singleton_map_optional_fallback() {
         // Test the fallback path when value is a Sequence
-        #[derive(Debug, Serialize)]
+        #[derive(Debug, serde::Serialize)]
         struct SeqContainer {
             #[serde(with = "crate::with::singleton_map_optional")]
             items: Option<Vec<i32>>,
@@ -237,7 +233,7 @@ mod tests {
     #[test]
     fn test_singleton_map_optional_serialize_none() {
         // Test serializing None without skip_serializing_if
-        #[derive(Debug, Serialize)]
+        #[derive(Debug, serde::Serialize)]
         struct NoneContainer {
             name: String,
             #[serde(with = "crate::with::singleton_map_optional")]
@@ -257,7 +253,7 @@ mod tests {
     #[test]
     fn test_singleton_map_optional_deserialize_none() {
         // Test deserializing null as None
-        #[derive(Debug, Deserialize, PartialEq)]
+        #[derive(Debug, serde::Deserialize, PartialEq)]
         struct NoneContainer {
             name: String,
             #[serde(with = "crate::with::singleton_map_optional", default)]

@@ -9,7 +9,6 @@
 mod support;
 
 use noyalib::{from_str, to_string};
-use serde::{Deserialize, Serialize};
 
 // ── Snake case ──────────────────────────────────────────────────────────
 
@@ -34,7 +33,7 @@ mod snake_case_keys {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
 enum HttpMethod {
     GetRequest,
     PostData,
@@ -42,7 +41,7 @@ enum HttpMethod {
     DeleteItem,
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
 struct ApiEndpoint {
     path: String,
     #[serde(with = "snake_case_keys")]
@@ -72,7 +71,7 @@ mod kebab_case_keys {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
 enum LogLevel {
     TraceVerbose,
     DebugInfo,
@@ -81,7 +80,7 @@ enum LogLevel {
     ErrorCritical,
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
 struct LogConfig {
     name: String,
     #[serde(with = "kebab_case_keys")]
@@ -111,7 +110,7 @@ mod lowercase_keys {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
 #[allow(clippy::upper_case_acronyms)]
 enum Environment {
     DEVELOPMENT,
@@ -119,7 +118,7 @@ enum Environment {
     PRODUCTION,
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
 struct DeployConfig {
     app_name: String,
     #[serde(with = "lowercase_keys")]
@@ -128,18 +127,18 @@ struct DeployConfig {
 
 // ── Comparison: default vs singleton_map vs singleton_map_with ────────
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
 enum Status {
     Active,
     Inactive,
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
 struct DefaultStyle {
     status: Status,
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
 struct SingletonStyle {
     #[serde(with = "noyalib::with::singleton_map")]
     status: Status,

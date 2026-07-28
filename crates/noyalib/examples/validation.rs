@@ -29,12 +29,11 @@ fn main() {
 #[cfg(feature = "miette")]
 fn run_miette_examples() {
     use noyalib::Spanned;
-    use serde::Deserialize;
 
     // ── Parse YAML with Spanned<T> fields ────────────────────────────
     support::task_with_output("Parse YAML with Spanned<T> fields", || {
         let yaml = "name: myapp\nport: 8080\n";
-        #[derive(Debug, Deserialize)]
+        #[derive(Debug, serde::Deserialize)]
         struct Config {
             name: Spanned<String>,
             port: Spanned<u16>,
@@ -59,7 +58,7 @@ fn run_miette_examples() {
     // ── Validate fields and generate diagnostics ─────────────────────
     support::task_with_output("Validate: port must be >= 1024", || {
         let yaml = "port: 80\n";
-        #[derive(Debug, Deserialize)]
+        #[derive(Debug, serde::Deserialize)]
         struct Cfg {
             port: Spanned<u16>,
         }
@@ -84,7 +83,7 @@ fn run_miette_examples() {
     // ── Validate: name must not be empty ─────────────────────────────
     support::task_with_output("Validate: name must not be empty", || {
         let yaml = "name: \"\"\nport: 8080\n";
-        #[derive(Debug, Deserialize)]
+        #[derive(Debug, serde::Deserialize)]
         struct Cfg {
             name: Spanned<String>,
             #[allow(dead_code)]
@@ -103,7 +102,7 @@ fn run_miette_examples() {
     // ── Multiple validation errors collected ─────────────────────────
     support::task_with_output("Collect multiple validation errors", || {
         let yaml = "host: \"\"\nport: 80\nmax_connections: -5\n";
-        #[derive(Debug, Deserialize)]
+        #[derive(Debug, serde::Deserialize)]
         struct ServerCfg {
             host: Spanned<String>,
             port: Spanned<u16>,
@@ -145,7 +144,7 @@ fn run_miette_examples() {
     // ── Show rendered diagnostic output ──────────────────────────────
     support::task_with_output("Rendered diagnostic with source highlighting", || {
         let yaml = "database:\n  host: db.local\n  port: 80\n  name: prod\n";
-        #[derive(Debug, Deserialize)]
+        #[derive(Debug, serde::Deserialize)]
         struct DbCfg {
             #[allow(dead_code)]
             host: String,
@@ -153,7 +152,7 @@ fn run_miette_examples() {
             #[allow(dead_code)]
             name: String,
         }
-        #[derive(Debug, Deserialize)]
+        #[derive(Debug, serde::Deserialize)]
         struct Root {
             database: DbCfg,
         }
@@ -180,7 +179,7 @@ fn run_miette_examples() {
         use miette::Diagnostic;
 
         let yaml = "value: 42\n";
-        #[derive(Debug, Deserialize)]
+        #[derive(Debug, serde::Deserialize)]
         struct Doc {
             value: Spanned<i32>,
         }

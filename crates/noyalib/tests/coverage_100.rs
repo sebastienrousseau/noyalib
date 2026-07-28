@@ -14,7 +14,7 @@
 use std::collections::HashMap;
 
 use noyalib::*;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 
 // ============================================================================
 // 1. value.rs — Mapping / MappingAny Visitor expecting
@@ -41,7 +41,7 @@ fn mapping_any_deserialize_from_yaml() {
 // 1. value.rs — TaggedValue Deserializer (lines 1440-1600)
 // ============================================================================
 
-#[derive(Debug, Deserialize, PartialEq)]
+#[derive(Debug, serde::Deserialize, PartialEq)]
 enum MyEnum {
     UnitVariant,
     NewtypeVariant(i64),
@@ -378,7 +378,7 @@ fn ref_value_deserialize_any_mapping() {
 #[test]
 fn ref_value_deserialize_enum_string() {
     // deserialize_enum with Value::String (line 2799-2800)
-    #[derive(Debug, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Deserialize, PartialEq)]
     enum Simple {
         Hello,
         World,
@@ -938,7 +938,7 @@ fn loader_value_to_key_types() {
 #[test]
 fn de_deserialize_identifier() {
     // deserialize_identifier (lines 648-652)
-    #[derive(Debug, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Deserialize, PartialEq)]
     struct Wrapper {
         field: String,
     }
@@ -950,7 +950,7 @@ fn de_deserialize_identifier() {
 #[test]
 fn de_spanned_map_access_all_fields() {
     // SpannedMapAccess states (lines 786-814)
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     struct Config {
         name: Spanned<String>,
         value: Spanned<i64>,
@@ -1046,7 +1046,7 @@ fn ser_literal_block() {
     // Literal block serialization (lines 707-713, 779-789)
     use noyalib::fmt::LitString;
 
-    #[derive(Serialize)]
+    #[derive(serde::Serialize)]
     struct Doc {
         script: LitString,
     }
@@ -1062,7 +1062,7 @@ fn ser_folded_block() {
     // Folded block serialization (lines 714-720)
     use noyalib::fmt::FoldString;
 
-    #[derive(Serialize)]
+    #[derive(serde::Serialize)]
     struct Doc {
         text: FoldString,
     }
@@ -1078,7 +1078,7 @@ fn ser_flow_sequence() {
     // Flow sequence serialization (lines 749-763)
     use noyalib::fmt::FlowSeq;
 
-    #[derive(Serialize)]
+    #[derive(serde::Serialize)]
     struct Doc {
         items: FlowSeq<Vec<i32>>,
     }
@@ -1095,7 +1095,7 @@ fn ser_flow_mapping() {
     // Flow mapping serialization (lines 765-777)
     use noyalib::fmt::FlowMap;
 
-    #[derive(Serialize)]
+    #[derive(serde::Serialize)]
     struct Doc {
         map: FlowMap<std::collections::BTreeMap<String, i32>>,
     }
@@ -1163,7 +1163,7 @@ fn path_seq_parent_and_depth() {
 fn fmt_commented_roundtrip() {
     use noyalib::fmt::Commented;
 
-    #[derive(Serialize)]
+    #[derive(serde::Serialize)]
     struct Doc {
         key: Commented<String>,
     }
@@ -1175,7 +1175,7 @@ fn fmt_commented_roundtrip() {
     assert!(s.contains("# my comment"));
 
     // Deserialize back (comment is lost, per design)
-    #[derive(Deserialize)]
+    #[derive(serde::Deserialize)]
     struct DocIn {
         key: Commented<String>,
     }
@@ -1191,13 +1191,13 @@ fn fmt_commented_roundtrip() {
 fn singleton_map_recursive_tagged_value() {
     use noyalib::with::singleton_map_recursive;
 
-    #[derive(Debug, Serialize, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
     enum Action {
         Start { delay: u32 },
         Stop,
     }
 
-    #[derive(Debug, Serialize, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
     struct Task {
         #[serde(with = "singleton_map_recursive")]
         action: Action,
@@ -1221,7 +1221,7 @@ fn singleton_map_with_deserialize_transform() {
     // Exercise transform_value_keys including Tagged branch (lines 214-217)
     use noyalib::with::singleton_map_with;
 
-    #[derive(Debug, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Deserialize, PartialEq)]
     enum MyAction {
         START,
         STOP,
@@ -1241,7 +1241,7 @@ fn singleton_map_with_serialize_branches() {
     // Exercise serialize_with String and Mapping branches (lines 125-143)
     use noyalib::with::singleton_map_with;
 
-    #[derive(Debug, Serialize, PartialEq)]
+    #[derive(Debug, serde::Serialize, PartialEq)]
     enum Status {
         Active,
         WithData { count: u32 },
@@ -1382,7 +1382,7 @@ fn ser_space_after() {
     // SpaceAfter serialization (lines 737-740)
     use noyalib::fmt::SpaceAfter;
 
-    #[derive(Serialize)]
+    #[derive(serde::Serialize)]
     struct Doc {
         section: SpaceAfter<String>,
     }
@@ -1412,7 +1412,7 @@ fn ref_value_deserialize_tagged_any() {
 #[test]
 fn ref_value_deserialize_enum_tagged() {
     // &Value deserialize_enum for Tagged (lines 2795-2798)
-    #[derive(Debug, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Deserialize, PartialEq)]
     enum Color {
         Red,
         Blue,
@@ -1426,7 +1426,7 @@ fn ref_value_deserialize_enum_tagged() {
 #[test]
 fn ref_value_deserialize_enum_non_tagged_non_string() {
     // &Value deserialize_enum fallthrough to deserialize_any (line 2801)
-    #[derive(Debug, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Deserialize, PartialEq)]
     enum Thing {
         Value(i64),
     }
@@ -1529,7 +1529,7 @@ fn scanner_block_scalar_folded_multiple_breaks() {
 fn ref_value_deserialize_struct_normal() {
     // deserialize_struct for non-spanned struct -> falls through to deserialize_map
     // (line 2844)
-    #[derive(Debug, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Deserialize, PartialEq)]
     struct Point {
         x: i64,
         y: i64,
@@ -1746,7 +1746,7 @@ fn ref_value_deserialize_enum_string_variant() {
     // Exercise deserialize_enum on string Value (line 2799-2801)
     use serde::Deserialize;
 
-    #[derive(Debug, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Deserialize, PartialEq)]
     enum Color {
         Red,
         Blue,
@@ -1774,9 +1774,8 @@ fn ref_value_deserialize_seq_fallback() {
 fn ref_value_deserialize_struct_spanned_via_ref() {
     // Exercise deserialize_struct with Spanned name (lines 2837-2844)
     // The &Value deserializer checks for SPANNED_TYPE_NAME
-    use serde::Deserialize;
 
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     struct Config {
         port: Spanned<u16>,
     }
@@ -1790,9 +1789,8 @@ fn ref_value_deserialize_struct_spanned_via_ref() {
 #[test]
 fn ref_value_deserialize_struct_spanned_from_value() {
     // Exercise the &Value path specifically via from_value
-    use serde::Deserialize;
 
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     struct Config {
         port: Spanned<u16>,
     }
@@ -2377,7 +2375,7 @@ fn loader_large_int_overflow_float() {
 
 #[test]
 fn de_spanned_all_field_states() {
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     struct S {
         name: Spanned<String>,
         count: Spanned<i64>,
@@ -2398,7 +2396,7 @@ fn de_spanned_all_field_states() {
 
 #[test]
 fn spanned_bool_from_yaml() {
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     struct S {
         flag: Spanned<bool>,
     }
@@ -2582,12 +2580,12 @@ fn ser_folded_block_strip_chomping() {
 fn singleton_map_recursive_with_tagged() {
     use noyalib::with::singleton_map_recursive;
 
-    #[derive(Debug, Serialize, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
     enum Action {
         Click { x: i32, y: i32 },
     }
 
-    #[derive(Debug, Serialize, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
     struct Config {
         #[serde(with = "singleton_map_recursive")]
         action: Action,
@@ -3157,7 +3155,7 @@ fn loader_merge_with_scalar_value() {
 fn de_deserialize_identifier_via_from_value_enum() {
     // from_value with an enum exercises deserialize_identifier on the Value
     // deserializer
-    #[derive(Debug, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Deserialize, PartialEq)]
     enum Direction {
         North,
         South,
@@ -3174,7 +3172,7 @@ fn de_deserialize_identifier_via_from_value_enum() {
 #[test]
 fn de_deserialize_identifier_via_from_value_struct_fields() {
     // Struct field names go through deserialize_identifier
-    #[derive(Debug, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Deserialize, PartialEq)]
     struct Point {
         x: i32,
         y: i32,
@@ -3209,7 +3207,7 @@ fn de_spanned_map_access_complete_lifecycle() {
 fn de_spanned_in_struct_from_str() {
     // Spanned within struct exercises SpannedMapAccess fully when deserializing
     // from YAML
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     struct Config {
         host: Spanned<String>,
         port: Spanned<u16>,
@@ -3779,7 +3777,7 @@ fn spanned_unknown_field_skipped() {
 #[test]
 fn value_map_access_next_value_via_ref_value() {
     // Deserialize a mapping via &Value to exercise ValueMapAccess (line 2755)
-    #[derive(Debug, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Deserialize, PartialEq)]
     struct Pair {
         key: String,
         val: i64,
@@ -3799,7 +3797,7 @@ fn value_map_access_next_value_via_ref_value() {
 fn ref_value_deserialize_enum_mapping() {
     // Mapping value as enum -> uses from_value which goes through de.rs
     // Deserializer
-    #[derive(Debug, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Deserialize, PartialEq)]
     enum Animal {
         Dog { name: String },
     }
@@ -3823,7 +3821,7 @@ fn ref_value_deserialize_enum_mapping() {
 fn ref_value_deserialize_struct_via_mapping() {
     // deserialize_struct on &Value with non-spanned name -> falls to
     // deserialize_map (line 2844)
-    #[derive(Debug, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Deserialize, PartialEq)]
     struct Rgb {
         r: u8,
         g: u8,
@@ -3858,7 +3856,7 @@ fn ref_value_deserialize_struct_spanned_via_value() {
 #[test]
 fn ref_value_deserialize_struct_spanned_nested_in_mapping() {
     // Exercise Spanned<T> in a struct deserialized from a Value mapping
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     struct Item {
         name: Spanned<String>,
         count: Spanned<i32>,
@@ -3880,13 +3878,13 @@ fn singleton_map_recursive_transform_tagged() {
 
     // Create a value that has Tagged variant to exercise lines 47-51
     // The transform_to_singleton_map function processes Tagged values recursively
-    #[derive(Debug, Serialize, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
     enum Op {
         Add(i32),
     }
 
     // First serialize to get a Value, then use singleton_map_recursive
-    #[derive(Debug, Serialize, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
     struct Ops {
         #[serde(with = "singleton_map_recursive")]
         ops: Vec<Op>,
@@ -3980,7 +3978,7 @@ fn events_flow_sequence_explicit_key_mapping() {
 #[test]
 fn spanned_mapping_value_from_str() {
     // Spanned<Mapping> via from_str exercises all SpannedFieldState transitions
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     struct Doc {
         data: Spanned<HashMap<String, i32>>,
     }

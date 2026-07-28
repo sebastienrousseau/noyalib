@@ -12,11 +12,10 @@
 mod support;
 
 use noyalib::{from_str, to_string};
-use serde::{Deserialize, Serialize};
 
 // ── K8s-style: infer resource type from fields ──────────────────────
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
 #[serde(untagged)]
 enum Resource {
     Service {
@@ -36,7 +35,7 @@ enum Resource {
 
 // ── CI/CD-style: step can be a string or a map ──────────────────────
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
 #[serde(untagged)]
 enum Step {
     Simple(String),
@@ -49,7 +48,7 @@ enum Step {
     },
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
 struct Pipeline {
     name: String,
     steps: Vec<Step>,
@@ -57,7 +56,7 @@ struct Pipeline {
 
 // ── Config value: string, number, or list ───────────────────────────
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
 #[serde(untagged)]
 enum ConfigValue {
     Text(String),

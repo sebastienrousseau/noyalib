@@ -13,13 +13,12 @@
 )]
 
 use noyalib::{Value, from_str};
-use serde::Deserialize;
 
 // ── streaming: deserialize_enum with a custom tag, newtype variant ──
 
 #[test]
 fn streaming_enum_custom_tag_newtype_variant() {
-    #[derive(Debug, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Deserialize, PartialEq)]
     enum Msg {
         #[serde(rename = "!bang")]
         Bang(i64),
@@ -37,7 +36,7 @@ fn streaming_enum_custom_tag_newtype_variant() {
 
 #[test]
 fn streaming_enum_custom_tag_unit_variant() {
-    #[derive(Debug, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Deserialize, PartialEq)]
     enum Msg {
         #[serde(rename = "!quiet")]
         Quiet,
@@ -86,7 +85,7 @@ fn streaming_seq_drop_with_short_read() {
     // Reading only the first element from a 5-element seq triggers
     // SeqAccess::drop to chew through remaining events, including the
     // inner mapping.
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     struct One(i32);
     let yaml = "- 1\n- {a: 1, b: [2, 3]}\n- 3\n";
     let _: One = from_str(yaml).unwrap_or(One(1));
@@ -96,7 +95,7 @@ fn streaming_seq_drop_with_short_read() {
 
 #[test]
 fn streaming_enum_custom_tag_struct_variant() {
-    #[derive(Debug, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Deserialize, PartialEq)]
     enum Event {
         #[serde(rename = "!log")]
         Log { level: String, msg: String },
@@ -113,7 +112,7 @@ fn streaming_enum_custom_tag_struct_variant() {
 
 #[test]
 fn streaming_enum_custom_tag_tuple_variant() {
-    #[derive(Debug, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Deserialize, PartialEq)]
     enum Pair {
         #[serde(rename = "!pair")]
         Pair(i32, i32),
@@ -129,7 +128,7 @@ fn streaming_enum_custom_tag_tuple_variant() {
 
 #[test]
 fn streaming_enum_custom_tag_bare_exclamation() {
-    #[derive(Debug, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Deserialize, PartialEq)]
     enum E {
         #[serde(rename = "!plain")]
         Plain(String),

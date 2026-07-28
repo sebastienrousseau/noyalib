@@ -173,7 +173,7 @@ fn test_mapping_inline() {
 // Struct Tests
 // ============================================================================
 
-#[derive(Debug, Deserialize, PartialEq)]
+#[derive(Debug, serde::Deserialize, PartialEq)]
 struct SimpleStruct {
     name: String,
     value: i32,
@@ -189,7 +189,7 @@ fn test_simple_struct() {
     test_de(yaml, &expected);
 }
 
-#[derive(Debug, Deserialize, PartialEq)]
+#[derive(Debug, serde::Deserialize, PartialEq)]
 struct NestedStruct {
     outer: String,
     inner: SimpleStruct,
@@ -208,7 +208,7 @@ fn test_nested_struct() {
     test_de(yaml, &expected);
 }
 
-#[derive(Debug, Deserialize, PartialEq)]
+#[derive(Debug, serde::Deserialize, PartialEq)]
 struct OptionalFields {
     required: String,
     optional: Option<String>,
@@ -248,7 +248,7 @@ fn test_optional_null() {
 // Enum Tests
 // ============================================================================
 
-#[derive(Debug, Deserialize, PartialEq)]
+#[derive(Debug, serde::Deserialize, PartialEq)]
 enum UnitEnum {
     A,
     B,
@@ -262,7 +262,7 @@ fn test_unit_enum() {
     test_de(yaml, &expected);
 }
 
-#[derive(Debug, Deserialize, PartialEq)]
+#[derive(Debug, serde::Deserialize, PartialEq)]
 enum NewtypeEnum {
     Text(String),
     Number(i32),
@@ -279,7 +279,7 @@ fn test_newtype_enum() {
     test_de(yaml, &expected);
 }
 
-#[derive(Debug, Deserialize, PartialEq)]
+#[derive(Debug, serde::Deserialize, PartialEq)]
 enum StructEnum {
     Point { x: i32, y: i32 },
     Named { name: String },
@@ -347,7 +347,7 @@ fn test_type_mismatch_error() {
 // Complex Structure Tests
 // ============================================================================
 
-#[derive(Debug, Deserialize, PartialEq)]
+#[derive(Debug, serde::Deserialize, PartialEq)]
 struct Config {
     name: String,
     version: u32,
@@ -420,7 +420,7 @@ fn test_empty_mapping() {
 #[test]
 fn test_multiline_literal() {
     let yaml = "text: |\n  line1\n  line2\n";
-    #[derive(Debug, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Deserialize, PartialEq)]
     struct Doc {
         text: String,
     }
@@ -436,7 +436,7 @@ fn test_multiline_literal() {
 #[test]
 fn test_unicode() {
     let yaml = "text: 日本語\n";
-    #[derive(Debug, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Deserialize, PartialEq)]
     struct Doc {
         text: String,
     }
@@ -447,7 +447,7 @@ fn test_unicode() {
 #[test]
 fn test_emoji() {
     let yaml = "emoji: 🎉\n";
-    #[derive(Debug, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Deserialize, PartialEq)]
     struct Doc {
         emoji: String,
     }
@@ -462,7 +462,7 @@ fn test_emoji() {
 #[test]
 fn test_from_slice() {
     let yaml = b"name: test\nvalue: 42\n";
-    #[derive(Debug, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Deserialize, PartialEq)]
     struct Doc {
         name: String,
         value: i32,
@@ -484,7 +484,7 @@ fn test_from_reader() {
     use std::io::Cursor;
     let yaml = "key: value\n";
     let reader = Cursor::new(yaml);
-    #[derive(Debug, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Deserialize, PartialEq)]
     struct Doc {
         key: String,
     }
@@ -502,7 +502,7 @@ fn test_empty_yaml() {
 #[test]
 fn test_char_deserialization() {
     let yaml = "c: a\n";
-    #[derive(Debug, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Deserialize, PartialEq)]
     struct Doc {
         c: char,
     }
@@ -518,7 +518,7 @@ fn test_unit_deserialization() {
 
 #[test]
 fn test_unit_struct_deserialization() {
-    #[derive(Debug, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Deserialize, PartialEq)]
     struct UnitStruct;
 
     let yaml = "null\n";
@@ -527,7 +527,7 @@ fn test_unit_struct_deserialization() {
 
 #[test]
 fn test_newtype_struct() {
-    #[derive(Debug, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Deserialize, PartialEq)]
     struct Wrapper(i32);
 
     let yaml = "42\n";
@@ -544,7 +544,7 @@ fn test_tuple_deserialization() {
 
 #[test]
 fn test_tuple_struct() {
-    #[derive(Debug, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Deserialize, PartialEq)]
     struct Point(i32, i32);
 
     let yaml = "- 10\n- 20\n";
@@ -554,7 +554,7 @@ fn test_tuple_struct() {
 
 #[test]
 fn test_ignored_any() {
-    #[derive(Debug, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Deserialize, PartialEq)]
     struct Partial {
         keep: String,
         #[serde(skip)]
@@ -569,7 +569,7 @@ fn test_ignored_any() {
 #[test]
 fn test_sequence_of_bytes() {
     let yaml = "data: [104, 101, 108, 108, 111]\n";
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     struct Doc {
         data: Vec<u8>,
     }
@@ -579,7 +579,7 @@ fn test_sequence_of_bytes() {
 
 #[test]
 fn test_enum_unit_variant() {
-    #[derive(Debug, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Deserialize, PartialEq)]
     enum Color {
         Red,
         Green,
@@ -593,7 +593,7 @@ fn test_enum_unit_variant() {
 
 #[test]
 fn test_enum_tuple_variant() {
-    #[derive(Debug, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Deserialize, PartialEq)]
     enum Message {
         Move { x: i32, y: i32 },
         Write(String),
@@ -607,7 +607,7 @@ fn test_enum_tuple_variant() {
 
 #[test]
 fn test_enum_struct_variant() {
-    #[derive(Debug, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Deserialize, PartialEq)]
     enum Shape {
         Rectangle { width: u32, height: u32 },
         Circle { radius: u32 },
@@ -713,7 +713,7 @@ fn test_deserialize_type_mismatch() {
 
 #[test]
 fn test_missing_field() {
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     #[allow(dead_code)]
     struct Required {
         name: String,
@@ -727,7 +727,7 @@ fn test_missing_field() {
 
 #[test]
 fn test_unknown_field_ignored() {
-    #[derive(Debug, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Deserialize, PartialEq)]
     struct Known {
         name: String,
     }
@@ -761,7 +761,7 @@ fn test_from_value_struct() {
     let _ = map.insert("value".to_string(), Value::Number(Number::Integer(42)));
     let value = Value::Mapping(map);
 
-    #[derive(Debug, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Deserialize, PartialEq)]
     struct Doc {
         name: String,
         value: i32,
@@ -872,7 +872,7 @@ fn test_deserialize_negative_float_to_u64_fails() {
 
 #[test]
 fn test_deserialize_identifier() {
-    #[derive(Debug, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Deserialize, PartialEq)]
     #[serde(rename_all = "lowercase")]
     enum Status {
         Active,
@@ -886,7 +886,7 @@ fn test_deserialize_identifier() {
 
 #[test]
 fn test_deserialize_enum_invalid_variant() {
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     enum Color {
         Red,
         Green,
@@ -900,7 +900,7 @@ fn test_deserialize_enum_invalid_variant() {
 
 #[test]
 fn test_deserialize_struct_with_extra_fields() {
-    #[derive(Debug, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Deserialize, PartialEq)]
     struct Simple {
         name: String,
     }
@@ -912,7 +912,7 @@ fn test_deserialize_struct_with_extra_fields() {
 
 #[test]
 fn test_deserialize_option_explicit_null() {
-    #[derive(Debug, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Deserialize, PartialEq)]
     struct Doc {
         value: Option<i32>,
     }
@@ -966,7 +966,7 @@ fn test_unit_type_mismatch() {
 #[test]
 fn test_enum_type_mismatch_on_sequence() {
     // Enum requires string or single-key map
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     enum Status {
         Active,
         Inactive,
@@ -1009,7 +1009,7 @@ fn test_deserialize_tagged_inner_value() {
 
 #[test]
 fn test_deserialize_enum_tuple_variant_from_map() {
-    #[derive(Debug, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Deserialize, PartialEq)]
     enum Data {
         Pair(i32, i32),
     }

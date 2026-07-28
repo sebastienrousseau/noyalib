@@ -20,9 +20,8 @@ mod support;
 use figment::Figment;
 use figment::providers::{Env, Format, Serialized};
 use noyalib::figment::Yaml;
-use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 struct AppConfig {
     name: String,
     port: u16,
@@ -101,7 +100,7 @@ fn main() {
         // the example still demonstrates Env wiring in real
         // pipelines; the synthetic overlay below stands in for the
         // OS env that those pipelines would carry.
-        #[derive(Serialize)]
+        #[derive(serde::Serialize)]
         struct EnvOverlay {
             port: u16,
             workers: u16,
