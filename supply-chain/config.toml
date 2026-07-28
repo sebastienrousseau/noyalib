@@ -25,6 +25,9 @@ url = "https://raw.githubusercontent.com/mozilla/supply-chain/main/audits.toml"
 [imports.zcash]
 url = "https://raw.githubusercontent.com/zcash/rust-ecosystem/main/supply-chain/audits.toml"
 
+[policy.noyalib]
+audit-as-crates-io = false
+
 [[exemptions.annotate-snippets]]
 version = "0.12.15"
 criteria = "safe-to-deploy"
@@ -37,11 +40,6 @@ suggest = false
 [[exemptions.bytes]]
 version = "1.12.0"
 criteria = "safe-to-deploy"
-
-[[exemptions.crossbeam-epoch]]
-version = "0.9.20"
-criteria = "safe-to-deploy"
-suggest = false
 
 [[exemptions.data-encoding]]
 version = "2.11.0"
@@ -56,11 +54,6 @@ suggest = false
 version = "0.0.7"
 criteria = "safe-to-deploy"
 
-[[exemptions.jsonschema]]
-version = "0.48.5"
-criteria = "safe-to-deploy"
-suggest = false
-
 [[exemptions.jsonschema-regex]]
 version = "0.48.5"
 criteria = "safe-to-deploy"
@@ -74,11 +67,6 @@ criteria = "safe-to-deploy"
 version = "0.3.0"
 criteria = "safe-to-deploy"
 
-[[exemptions.referencing]]
-version = "0.48.5"
-criteria = "safe-to-deploy"
-suggest = false
-
 [[exemptions.rust-yaml]]
 version = "1.1.0"
 criteria = "safe-to-run"
@@ -90,14 +78,6 @@ suggest = false
 
 [[exemptions.serde-saphyr]]
 version = "0.0.29"
-criteria = "safe-to-deploy"
-
-[[exemptions.strum]]
-version = "0.28.0"
-criteria = "safe-to-deploy"
-
-[[exemptions.strum_macros]]
-version = "0.28.0"
 criteria = "safe-to-deploy"
 
 [[exemptions.sval]]
@@ -130,8 +110,4 @@ criteria = "safe-to-run"
 
 [[exemptions.winapi-x86_64-pc-windows-gnu]]
 version = "0.4.0"
-criteria = "safe-to-run"
-
-[[exemptions.yaml-rust2]]
-version = "0.11.0"
 criteria = "safe-to-run"
