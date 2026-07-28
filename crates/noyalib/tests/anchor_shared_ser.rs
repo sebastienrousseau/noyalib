@@ -12,7 +12,6 @@ use std::rc::Rc;
 use std::sync::Arc;
 
 use noyalib::{ArcAnchor, RcAnchor, to_string, to_string_tracking_shared};
-use serde::{Deserialize, Serialize};
 
 // ── Basic emission ──────────────────────────────────────────────────────
 
@@ -84,7 +83,7 @@ fn tracking_opt_in_default_unchanged() {
 
 // ── Mapping / struct inner ──────────────────────────────────────────────
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
 struct Endpoint {
     host: String,
     port: u16,
@@ -111,7 +110,7 @@ fn mapping_inner_anchor_is_valid_yaml() {
 
 #[test]
 fn nested_struct_with_shared_leaf() {
-    #[derive(Serialize)]
+    #[derive(serde::Serialize)]
     struct Root {
         primary: RcAnchor<Endpoint>,
         replica: RcAnchor<Endpoint>,
@@ -129,7 +128,7 @@ fn nested_struct_with_shared_leaf() {
     assert_eq!(yaml.matches("*id001").count(), 1);
 
     // Both fields round-trip equivalently.
-    #[derive(Deserialize)]
+    #[derive(serde::Deserialize)]
     struct Parsed {
         primary: Endpoint,
         replica: Endpoint,
@@ -164,7 +163,7 @@ fn arc_two_clones_emit_anchor_and_alias() {
 
 #[test]
 fn arc_struct_shared() {
-    #[derive(Serialize)]
+    #[derive(serde::Serialize)]
     struct Root {
         a: ArcAnchor<Endpoint>,
         b: ArcAnchor<Endpoint>,

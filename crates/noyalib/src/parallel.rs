@@ -192,7 +192,6 @@ pub fn split(input: &str) -> Vec<&str> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use serde::Deserialize;
 
     #[test]
     fn split_separates_three_records() {
@@ -263,7 +262,7 @@ mod tests {
     )]
     #[test]
     fn parse_round_trips_typed_records() {
-        #[derive(Debug, Deserialize, PartialEq)]
+        #[derive(Debug, serde::Deserialize, PartialEq)]
         struct Record {
             id: u32,
         }
@@ -294,7 +293,7 @@ mod tests {
     )]
     #[test]
     fn parse_propagates_first_error() {
-        #[derive(Debug, Deserialize)]
+        #[derive(Debug, serde::Deserialize)]
         #[allow(dead_code)]
         struct Record {
             id: u32,
@@ -319,7 +318,7 @@ mod tests {
             yaml.push_str(&format!("---\nid: {i}\nname: record-{i}\n"));
         }
 
-        #[derive(Debug, Deserialize, PartialEq)]
+        #[derive(Debug, serde::Deserialize, PartialEq)]
         struct Record {
             id: u32,
             name: String,

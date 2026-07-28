@@ -12,9 +12,8 @@
 //! ```rust
 //! use noyalib::Validated;
 //! use garde::Validate;
-//! use serde::Deserialize;
 //!
-//! #[derive(Deserialize, Validate)]
+//! #[derive(serde::Deserialize, Validate)]
 //! struct Server {
 //!     #[garde(length(min = 1, max = 255))]
 //!     host: String,
@@ -40,9 +39,8 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 /// ```
 /// use noyalib::Validated;
 /// use garde::Validate;
-/// use serde::Deserialize;
 ///
-/// #[derive(Deserialize, Validate)]
+/// #[derive(serde::Deserialize, Validate)]
 /// struct Port {
 ///     #[garde(range(min = 1024))]
 ///     n: u16,
@@ -62,10 +60,9 @@ pub struct Validated<T>(pub T);
 ///
 /// ```
 /// use noyalib::ValidatedValidator;
-/// use serde::Deserialize;
 /// use validator::Validate;
 ///
-/// #[derive(Deserialize, Validate)]
+/// #[derive(serde::Deserialize, Validate)]
 /// struct Port {
 ///     #[validate(range(min = 1024))]
 ///     n: u16,

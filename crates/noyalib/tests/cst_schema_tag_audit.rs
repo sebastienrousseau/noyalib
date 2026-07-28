@@ -70,8 +70,8 @@ fn cst_coerce_to_schema_through_tagged_value() {
 #[test]
 fn schema_for_yaml_emits_tagged_value_correctly() {
     use noyalib::{JsonSchema, schema_for_yaml};
-    use serde::{Deserialize, Serialize};
-    #[derive(Serialize, Deserialize, JsonSchema)]
+
+    #[derive(serde::Serialize, serde::Deserialize, JsonSchema)]
     #[allow(dead_code)]
     struct Cfg {
         port: u16,

@@ -17,7 +17,7 @@ use noyalib::{
     DuplicateKeyPolicy, Mapping, MappingAny, ParserConfig, Spanned, Tag, TaggedValue, Value,
     from_str, from_str_with_config, from_value, to_string,
 };
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 
 // ═══════════════════════════════════════════════════════════════════════
 // value.rs — TaggedValue Deserialize/Deserializer (lines 1446–1591)
@@ -25,7 +25,7 @@ use serde::{Deserialize, Serialize};
 // TaggedValueMapAccess, EnumAccess, and VariantAccess impls.
 // ═══════════════════════════════════════════════════════════════════════
 
-#[derive(Debug, Deserialize, PartialEq)]
+#[derive(Debug, serde::Deserialize, PartialEq)]
 enum Variant {
     Unit,
     Newtype(i32),
@@ -71,13 +71,13 @@ fn tagged_value_map_access_via_from_value() {
     // value.rs:1471-1477 (deserialize_any → TaggedValueMapAccess)
     // value.rs:1508-1526 (next_key_seed, next_value_seed)
     // Use singleton_map which routes through TaggedValue deserialization
-    #[derive(Debug, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Deserialize, PartialEq)]
     enum Color {
         Red,
         Blue,
     }
 
-    #[derive(Debug, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Deserialize, PartialEq)]
     struct Palette {
         #[serde(with = "noyalib::with::singleton_map")]
         color: Color,
@@ -169,7 +169,7 @@ fn value_deserializer_any_tagged() {
 #[test]
 fn value_deserializer_enum_string() {
     // value.rs:2799-2800 — enum from string
-    #[derive(Debug, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Deserialize, PartialEq)]
     enum Color {
         Red,
         Blue,
@@ -191,7 +191,7 @@ fn value_deserializer_enum_tagged() {
 #[test]
 fn value_deserializer_struct() {
     // value.rs:2828-2844 — deserialize_struct dispatches to deserialize_map
-    #[derive(Debug, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Deserialize, PartialEq)]
     struct Foo {
         x: i32,
         y: String,
@@ -216,7 +216,7 @@ fn value_deserializer_spanned_struct() {
     // de.rs:786-814 — SpannedMapAccess state machine
     // spanned.rs:117-156 — SpannedVisitor
     let yaml = "name: hello\ncount: 42";
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     struct Cfg {
         name: Spanned<String>,
         count: Spanned<i64>,
@@ -803,7 +803,7 @@ fn loader_large_integer_overflow() {
 #[test]
 fn deserialize_identifier_for_enum() {
     // de.rs:648-652
-    #[derive(Debug, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Deserialize, PartialEq)]
     enum Dir {
         North,
         South,
@@ -887,7 +887,7 @@ fn serialize_number_like_strings() {
 #[test]
 fn singleton_map_with_serialize_deserialize() {
     // singleton_map_with.rs:113-143, 175-189
-    #[derive(Debug, Serialize, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
     enum Action {
         GetRequest,
         PostData,
@@ -905,7 +905,7 @@ fn singleton_map_with_serialize_deserialize() {
         })
     }
 
-    #[derive(Debug, Serialize, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
     struct Cmd {
         #[serde(serialize_with = "my_ser", deserialize_with = "my_de")]
         action: Action,
@@ -923,7 +923,7 @@ fn singleton_map_with_serialize_deserialize() {
 #[test]
 fn singleton_map_with_unit_variant() {
     // singleton_map_with.rs:134-139 — unit variant transform
-    #[derive(Debug, Serialize, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
     enum Flag {
         Active,
     }
@@ -943,7 +943,7 @@ fn singleton_map_with_unit_variant() {
         })
     }
 
-    #[derive(Debug, Serialize, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
     struct Config {
         #[serde(serialize_with = "my_ser", deserialize_with = "my_de")]
         flag: Flag,
@@ -972,13 +972,13 @@ fn from_kebab_case_edge_cases() {
 #[test]
 fn singleton_map_recursive_tagged_value() {
     // singleton_map_recursive.rs:47-51
-    #[derive(Debug, Serialize, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
     enum Op {
         Add(i32),
         Sub(i32),
     }
 
-    #[derive(Debug, Serialize, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
     struct Ops {
         #[serde(with = "noyalib::with::singleton_map_recursive")]
         ops: Vec<Op>,
@@ -1066,7 +1066,7 @@ fn merge_key_sequence_of_mappings() {
 #[test]
 fn spanned_nested_fields() {
     // spanned.rs:117-156, de.rs:786-814
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     struct Item {
         name: Spanned<String>,
         value: Spanned<i64>,
@@ -1082,7 +1082,7 @@ fn spanned_nested_fields() {
 #[test]
 fn load_all_as_with_spans() {
     // loader.rs (public) — load_all_as exercises span context per doc
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     #[allow(dead_code)]
     struct Doc {
         name: String,

@@ -6,7 +6,6 @@
 use std::collections::HashMap;
 
 use noyalib::{Value, from_str};
-use serde::Deserialize;
 
 #[test]
 fn mapping_of_sequences() {
@@ -21,7 +20,7 @@ fn mapping_of_sequences() {
 
 #[test]
 fn sequence_of_mappings_complex() {
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     struct Item {
         item: String,
         quantity: i64,
@@ -74,17 +73,17 @@ fn sequence_of_sequences_of_mappings() {
 
 #[test]
 fn real_world_config() {
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     struct Config {
         server: Server,
         database: Database,
     }
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     struct Server {
         host: String,
         port: u16,
     }
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     #[allow(dead_code)]
     struct Database {
         url: String,
@@ -102,7 +101,7 @@ fn real_world_config() {
 
 #[test]
 fn optional_nested_fields() {
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     struct Config {
         name: String,
         debug: Option<bool>,

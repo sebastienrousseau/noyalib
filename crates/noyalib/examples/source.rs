@@ -9,9 +9,8 @@
 mod support;
 
 use noyalib::{Spanned, from_str};
-use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
 struct Config {
     host: Spanned<String>,
     port: Spanned<u16>,

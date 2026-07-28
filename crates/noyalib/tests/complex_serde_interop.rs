@@ -15,17 +15,16 @@
 #![allow(missing_docs)]
 
 use noyalib::{Spanned, Value, from_str};
-use serde::{Deserialize, Serialize};
 
 // ── Flatten + anchors / aliases ─────────────────────────────────────
 
-#[derive(Debug, Deserialize, PartialEq)]
+#[derive(Debug, serde::Deserialize, PartialEq)]
 struct Common {
     image: String,
     version: String,
 }
 
-#[derive(Debug, Deserialize, PartialEq)]
+#[derive(Debug, serde::Deserialize, PartialEq)]
 struct Service {
     name: String,
     #[serde(flatten)]
@@ -51,7 +50,7 @@ services:
     <<: *defaults
     replicas: 5
 ";
-    #[derive(Debug, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Deserialize, PartialEq)]
     struct Doc {
         services: Vec<Service>,
         #[allow(dead_code)]
@@ -68,7 +67,7 @@ services:
 
 // ── Flatten + Spanned<T> ────────────────────────────────────────────
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, serde::Deserialize)]
 struct SpannedFlatten {
     #[allow(dead_code)]
     name: Spanned<String>,
@@ -94,13 +93,13 @@ version: 1.0.0
 
 #[test]
 fn multiple_flattened_fields_compose() {
-    #[derive(Debug, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Deserialize, PartialEq)]
     struct Resources {
         cpu: String,
         memory: String,
     }
 
-    #[derive(Debug, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Deserialize, PartialEq)]
     struct Combined {
         name: String,
         #[serde(flatten)]
@@ -123,7 +122,7 @@ memory: 256Mi
 
 // ── Untagged enum: parser must backtrack across variants ────────────
 
-#[derive(Debug, Deserialize, PartialEq)]
+#[derive(Debug, serde::Deserialize, PartialEq)]
 #[serde(untagged)]
 enum Resource {
     Pod {
@@ -154,7 +153,7 @@ fn untagged_enum_distinguishes_pod_from_service() {
 
 // ── Internally tagged ───────────────────────────────────────────────
 
-#[derive(Debug, Deserialize, PartialEq)]
+#[derive(Debug, serde::Deserialize, PartialEq)]
 #[serde(tag = "kind")]
 enum K8sResource {
     Pod { containers: u32 },
@@ -176,7 +175,7 @@ fn internally_tagged_enum_round_trips() {
 
 // ── Adjacently tagged ───────────────────────────────────────────────
 
-#[derive(Debug, Deserialize, Serialize, PartialEq)]
+#[derive(Debug, serde::Deserialize, serde::Serialize, PartialEq)]
 #[serde(tag = "kind", content = "spec")]
 enum AdjResource {
     Pod { containers: u32 },
@@ -197,7 +196,7 @@ fn adjacently_tagged_enum_round_trips() {
 /// must handle them all without cross-contamination.
 #[test]
 fn mixed_enum_strategies_in_one_document() {
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     struct MixedDoc {
         // Untagged inner — variant inferred from shape
         worker: Resource,
@@ -233,7 +232,7 @@ fn untagged_enum_picks_the_first_matching_variant() {
     // variants top-to-bottom and picks the first that matches
     // — the parser must not get stuck on the failed first
     // probe and abandon the second.
-    #[derive(Debug, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Deserialize, PartialEq)]
     #[serde(untagged)]
     enum Either {
         Left { x: i32, y: i32 },
@@ -261,7 +260,7 @@ fn flatten_with_value_residue_captures_unknown_keys() {
     // The `extras: Value` field captures any unknown keys, so
     // the parse never fails on the document carrying
     // application-specific metadata.
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     struct Envelope {
         name: String,
         version: String,
@@ -298,13 +297,13 @@ services:
     port: *port
 ";
     use std::collections::BTreeMap;
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     struct Doc {
         services: BTreeMap<String, Endpoint>,
         #[allow(dead_code)]
         default_port: u16,
     }
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     struct Endpoint {
         port: u16,
     }

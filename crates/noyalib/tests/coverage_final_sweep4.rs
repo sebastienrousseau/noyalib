@@ -12,7 +12,6 @@
 )]
 
 use noyalib::{Error, Value, from_str, to_string};
-use serde::{Deserialize, Serialize};
 
 // ── error.rs: Error::location for UnknownAnchorAt ────────────────────
 
@@ -31,7 +30,7 @@ fn error_location_for_unknown_anchor_at() {
 
 #[test]
 fn error_unknown_field_via_deny_unknown_fields() {
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     #[serde(deny_unknown_fields)]
     struct Strict {
         known: String,
@@ -51,7 +50,7 @@ fn error_miette_labels_for_deserialize_with_location() {
     use miette::Diagnostic;
     // Force a deserialize error with location by using a Spanned field
     // plus a type mismatch downstream.
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     struct Doc {
         #[allow(dead_code)]
         name: noyalib::Spanned<String>,
@@ -92,11 +91,11 @@ fn error_miette_labels_for_parse_with_location() {
 #[test]
 fn singleton_map_with_tagged_value() {
     // Force transform_value_keys to walk a Value::Tagged branch.
-    #[derive(Debug, Serialize, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
     enum Event {
         Log(String),
     }
-    #[derive(Debug, Serialize, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
     struct Doc {
         #[serde(with = "noyalib::with::singleton_map")]
         event: Event,
@@ -113,7 +112,7 @@ fn singleton_map_recursive_tagged_value_branch() {
     // Serializing a Value::Tagged via singleton_map_recursive exercises
     // the Tagged arm in `transform_to_singleton_map`.
     use noyalib::{Tag, TaggedValue};
-    #[derive(Serialize)]
+    #[derive(serde::Serialize)]
     struct Wrap<'a> {
         #[serde(with = "noyalib::with::singleton_map_recursive")]
         v: &'a Value,
@@ -158,7 +157,7 @@ fn singleton_map_with_tagged_value_branch() {
     // serialize_with walks transform_value_keys which has a Tagged arm.
     use noyalib::{Tag, TaggedValue};
 
-    #[derive(Serialize)]
+    #[derive(serde::Serialize)]
     struct Wrap<'a> {
         #[serde(with = "snake_with")]
         v: &'a Value,
@@ -177,12 +176,12 @@ fn singleton_map_with_tagged_value_branch() {
 #[test]
 fn singleton_map_recursive_deep() {
     use noyalib::with::singleton_map_recursive as smr;
-    #[derive(Debug, Serialize, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
     enum Node {
         Leaf(i32),
         Branch(Vec<Node>),
     }
-    #[derive(Debug, Serialize, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
     struct Tree {
         #[serde(with = "smr")]
         root: Node,
@@ -203,13 +202,13 @@ fn singleton_map_recursive_deep() {
 fn ast_deserialize_identifier_string_path() {
     // Spanned forces AST; serde uses deserialize_identifier to match
     // tagged-enum discriminator "type" against variants.
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     #[serde(tag = "type")]
     enum Item {
         Apple,
         Banana,
     }
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     struct Doc {
         #[allow(dead_code)]
         _force: noyalib::Spanned<String>,
@@ -226,7 +225,7 @@ fn ast_deserialize_identifier_string_path() {
 fn ast_deserialize_bytes_type_mismatch_on_sequence() {
     // AST deserialize_bytes does not accept sequences directly; the
     // type mismatch exercise reaches the `_ => TypeMismatch` arm.
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     struct Doc {
         #[allow(dead_code)]
         _force: noyalib::Spanned<String>,
@@ -260,14 +259,14 @@ fn ast_spanned_enum_hits_variant_access_with_span_context() {
     // path, and deserializing the enum inside Spanned context walks
     // VariantAccess::unit_variant / newtype_variant_seed with
     // span_ctx Some.
-    #[derive(Debug, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Deserialize, PartialEq)]
     enum Kind {
         One,
         Two(i64),
         Three(i64, i64),
         Four { n: i64 },
     }
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     #[allow(dead_code)]
     struct Doc {
         unit: noyalib::Spanned<Kind>,
@@ -294,7 +293,7 @@ strct:
 
 #[test]
 fn streaming_unknown_field_via_deny() {
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     #[serde(deny_unknown_fields)]
     struct Strict {
         k: i32,

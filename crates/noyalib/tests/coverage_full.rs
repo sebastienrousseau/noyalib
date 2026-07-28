@@ -20,7 +20,6 @@ use noyalib::{
     SerializerConfig, Spanned, Tag, TaggedValue, Value, from_str, from_str_with_config, from_value,
     to_string, to_string_with_config,
 };
-use serde::{Deserialize, Serialize};
 
 // ═══════════════════════════════════════════════════════════════════════
 // scanner.rs — Quoted scalar escape sequences (lines 938–1121)
@@ -698,7 +697,7 @@ fn large_integer_as_float() {
 #[test]
 fn deserialize_identifier_delegates_to_str() {
     // de.rs:648, 652 — deserialize_identifier
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     enum Color {
         Red,
         Blue,
@@ -723,7 +722,7 @@ fn spanned_deserialize_all_fields() {
 #[test]
 fn spanned_nested_value() {
     // de.rs:786-814 — Spanned with specific value
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     struct Config {
         name: Spanned<String>,
     }
@@ -896,7 +895,7 @@ fn tagged_value_enum_deserialization() {
 #[test]
 fn tagged_value_unit_variant() {
     // value.rs:1564-1566 — unit variant through tagged
-    #[derive(Debug, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Deserialize, PartialEq)]
     enum Flag {
         On,
         Off,
@@ -910,7 +909,7 @@ fn tagged_value_unit_variant() {
 #[test]
 fn tagged_value_tuple_variant() {
     // value.rs:1575-1580 — tuple variant through tagged
-    #[derive(Debug, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Deserialize, PartialEq)]
     enum Data {
         Pair(i32, i32),
     }
@@ -922,7 +921,7 @@ fn tagged_value_tuple_variant() {
 #[test]
 fn tagged_value_struct_variant() {
     // value.rs:1582-1591 — struct variant through tagged
-    #[derive(Debug, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Deserialize, PartialEq)]
     enum Shape {
         Circle { radius: f64 },
     }
@@ -986,7 +985,7 @@ fn value_deserialize_map() {
     m.insert("a", Value::from(1));
     m.insert("b", Value::from(2));
     let v = Value::Mapping(m);
-    #[derive(Deserialize)]
+    #[derive(serde::Deserialize)]
     struct Obj {
         a: i64,
         b: i64,
@@ -1190,12 +1189,12 @@ fn fold_str_as_str_and_into_inner() {
 #[test]
 fn singleton_map_recursive_with_tagged() {
     // singleton_map_recursive.rs:47-51 — tagged value transformation
-    #[derive(Debug, Serialize, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
     enum Action {
         Run(String),
         Stop,
     }
-    #[derive(Debug, Serialize, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
     struct Job {
         #[serde(with = "noyalib::with::singleton_map_recursive")]
         actions: Vec<Action>,
@@ -1252,7 +1251,7 @@ fn singleton_map_with_from_kebab_case() {
 
 #[test]
 fn load_all_as_typed_deserialization() {
-    #[derive(Debug, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Deserialize, PartialEq)]
     struct Doc {
         name: String,
     }

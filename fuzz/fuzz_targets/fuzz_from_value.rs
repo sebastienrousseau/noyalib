@@ -12,7 +12,7 @@ use noyalib::Value;
 use serde::Deserialize;
 use std::collections::HashMap;
 
-#[derive(Deserialize)]
+#[derive(serde::Deserialize)]
 #[allow(dead_code)]
 struct Config {
     name: Option<String>,

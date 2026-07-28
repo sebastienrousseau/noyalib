@@ -9,14 +9,13 @@
 #![allow(missing_docs)]
 
 use noyalib::{ParserConfig, from_str, from_str_with_config};
-use serde::Deserialize;
 
-#[derive(Debug, Deserialize, PartialEq)]
+#[derive(Debug, serde::Deserialize, PartialEq)]
 struct Doc {
     payload: String,
 }
 
-#[derive(Debug, Deserialize, PartialEq)]
+#[derive(Debug, serde::Deserialize, PartialEq)]
 struct DocBytes {
     payload: serde_bytes::ByteBuf,
 }

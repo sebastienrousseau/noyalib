@@ -8,7 +8,6 @@
 //! derived from the closest known anchor name.
 
 use noyalib::{Error, Value, from_str};
-use serde::Deserialize;
 
 // ── Loader path (AST deserialisation to `Value`) ─────────────────────────
 
@@ -88,7 +87,7 @@ fn loader_unknown_anchor_picks_closest_among_many() {
 
 #[test]
 fn streaming_unknown_anchor_with_similar_name_carries_suggestion() {
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     struct Doc {
         #[allow(dead_code)]
         db: String,
@@ -115,7 +114,7 @@ fn streaming_unknown_anchor_with_similar_name_carries_suggestion() {
 
 #[test]
 fn streaming_unknown_anchor_without_similar_name() {
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     struct Doc {
         #[allow(dead_code)]
         a: String,

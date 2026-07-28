@@ -32,9 +32,8 @@ The simplest case — read into a typed struct via `serde`:
 
 ```rust
 use noyalib::from_str;
-use serde::Deserialize;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, serde::Deserialize)]
 struct Server {
     host: String,
     port: u16,
@@ -69,7 +68,7 @@ Mirror surface for the write side:
 use noyalib::to_string;
 use serde::Serialize;
 
-#[derive(Serialize)]
+#[derive(serde::Serialize)]
 struct Server { host: String, port: u16 }
 
 let yaml = to_string(&Server {
@@ -329,9 +328,8 @@ Under `--features validate-schema`:
 
 ```rust
 use noyalib::{from_str, schema_for, validate_against_schema, JsonSchema};
-use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, JsonSchema)]
+#[derive(serde::Serialize, serde::Deserialize, JsonSchema)]
 struct ServerConfig {
     /// Port the server binds on.
     port: u16,

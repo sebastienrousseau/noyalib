@@ -7,6 +7,21 @@ criteria = "safe-to-deploy"
 version = "0.1.0"
 notes = "Reviewed: 697 lines src + 478 lines tests, zero unsafe blocks, no extern, no FFI. Pure trait-impl mathematical comparison crate (i32 vs u32 etc). Used by jsonschema for cross-type numeric bounds checking. No filesystem/network/process side effects."
 
+[[audits.serde]]
+who = "Sebastien Rousseau <sebastian.rousseau@gmail.com>"
+criteria = "safe-to-deploy"
+delta = "1.0.228 -> 1.0.229"
+
+[[audits.serde_core]]
+who = "Sebastien Rousseau <sebastian.rousseau@gmail.com>"
+criteria = "safe-to-deploy"
+delta = "1.0.228 -> 1.0.229"
+
+[[audits.serde_derive]]
+who = "Sebastien Rousseau <sebastian.rousseau@gmail.com>"
+criteria = "safe-to-deploy"
+delta = "1.0.228 -> 1.0.229"
+
 [[audits.strum]]
 who = "Sebastien Rousseau <sebastian.rousseau@gmail.com>"
 criteria = "safe-to-deploy"
@@ -16,16 +31,6 @@ delta = "0.27.2 -> 0.28.0"
 who = "Sebastien Rousseau <sebastian.rousseau@gmail.com>"
 criteria = "safe-to-deploy"
 delta = "0.27.2 -> 0.28.0"
-
-[[audits.tokio]]
-who = "Sebastien Rousseau <sebastian.rousseau@gmail.com>"
-criteria = "safe-to-deploy"
-delta = "1.52.3 -> 1.53.1"
-
-[[audits.tokio-util]]
-who = "Sebastien Rousseau <sebastian.rousseau@gmail.com>"
-criteria = "safe-to-deploy"
-delta = "0.7.18 -> 0.7.19"
 
 [[audits.yaml-rust2]]
 who = "Sebastien Rousseau <sebastian.rousseau@gmail.com>"

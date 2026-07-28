@@ -18,7 +18,6 @@ use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use noyalib::{ParserConfig, TagRegistry, from_str, from_str_with_config};
-use serde::Deserialize;
 use serde_bytes::ByteBuf;
 
 // ── L170-L182 — peek_parser_event / next_parser_event parser-error paths ───
@@ -167,7 +166,7 @@ target:
 
 #[test]
 fn coverage_stream_option_some_scalar() {
-    #[derive(Deserialize)]
+    #[derive(serde::Deserialize)]
     struct Doc {
         x: Option<i64>,
         y: Option<i64>,
@@ -186,7 +185,7 @@ fn coverage_stream_option_some_scalar() {
 
 #[test]
 fn coverage_stream_ignored_any_skips_complex_value() {
-    #[derive(Deserialize)]
+    #[derive(serde::Deserialize)]
     struct Small {
         keep: i64,
     }
@@ -215,7 +214,7 @@ extra:
 fn coverage_stream_tagged_str_restores_tag_for_fallback() {
     // A `!!str`-tagged scalar that targets a String field must restore
     // the tag so the AST path resolves it correctly.
-    #[derive(Deserialize)]
+    #[derive(serde::Deserialize)]
     struct Doc {
         value: String,
     }
@@ -314,7 +313,7 @@ fn coverage_stream_str_block_scalar_passes() {
 #[test]
 fn coverage_stream_unit_mismatch_errors() {
     // Plain non-null scalar can't deserialise as `()`.
-    #[derive(Deserialize)]
+    #[derive(serde::Deserialize)]
     #[allow(dead_code)]
     struct UnitField {
         u: (),
@@ -325,9 +324,9 @@ fn coverage_stream_unit_mismatch_errors() {
 
 #[test]
 fn coverage_stream_unit_struct_accepts_null() {
-    #[derive(Deserialize)]
+    #[derive(serde::Deserialize)]
     struct U;
-    #[derive(Deserialize)]
+    #[derive(serde::Deserialize)]
     #[allow(dead_code)]
     struct Doc {
         u: U,
@@ -342,7 +341,7 @@ fn coverage_stream_spanned_falls_back() {
     // `Spanned<T>` must bail to AST fallback. Verify via from_str_with_config
     // since Spanned support is in the loader path.
     use noyalib::Spanned;
-    #[derive(Deserialize)]
+    #[derive(serde::Deserialize)]
     struct Doc {
         inner: Spanned<String>,
     }
@@ -355,9 +354,9 @@ fn coverage_stream_spanned_falls_back() {
 
 #[test]
 fn coverage_stream_newtype_with_core_tag() {
-    #[derive(Deserialize, PartialEq, Debug)]
+    #[derive(serde::Deserialize, PartialEq, Debug)]
     struct Wrap(i64);
-    #[derive(Deserialize)]
+    #[derive(serde::Deserialize)]
     struct Doc {
         v: Wrap,
     }
@@ -386,7 +385,7 @@ fn coverage_stream_map_typemismatch() {
 // ── L960-L997 — deserialize_enum: unit variant from scalar, struct
 // variant from single-key mapping, error on non-scalar variant name.
 
-#[derive(Debug, Deserialize, PartialEq)]
+#[derive(Debug, serde::Deserialize, PartialEq)]
 enum E {
     Unit,
     Tup(i32, i32),
@@ -396,7 +395,7 @@ enum E {
 
 #[test]
 fn coverage_stream_enum_unit_from_scalar() {
-    #[derive(Deserialize)]
+    #[derive(serde::Deserialize)]
     struct Doc {
         e: E,
     }
@@ -406,7 +405,7 @@ fn coverage_stream_enum_unit_from_scalar() {
 
 #[test]
 fn coverage_stream_enum_newtype_variant() {
-    #[derive(Deserialize)]
+    #[derive(serde::Deserialize)]
     struct Doc {
         e: E,
     }
@@ -416,7 +415,7 @@ fn coverage_stream_enum_newtype_variant() {
 
 #[test]
 fn coverage_stream_enum_struct_variant() {
-    #[derive(Deserialize)]
+    #[derive(serde::Deserialize)]
     struct Doc {
         e: E,
     }
@@ -426,7 +425,7 @@ fn coverage_stream_enum_struct_variant() {
 
 #[test]
 fn coverage_stream_enum_tuple_variant() {
-    #[derive(Deserialize)]
+    #[derive(serde::Deserialize)]
     struct Doc {
         e: E,
     }
@@ -447,7 +446,7 @@ fn coverage_stream_ignored_any_at_top_level() {
 
 #[test]
 fn coverage_stream_bytes_from_plain_string() {
-    #[derive(Deserialize)]
+    #[derive(serde::Deserialize)]
     struct Doc {
         b: ByteBuf,
     }
@@ -457,7 +456,7 @@ fn coverage_stream_bytes_from_plain_string() {
 
 #[test]
 fn coverage_stream_bytes_rejects_null() {
-    #[derive(Deserialize)]
+    #[derive(serde::Deserialize)]
     #[allow(dead_code)]
     struct Doc {
         b: ByteBuf,
@@ -468,7 +467,7 @@ fn coverage_stream_bytes_rejects_null() {
 
 #[test]
 fn coverage_stream_bytes_rejects_bool() {
-    #[derive(Deserialize)]
+    #[derive(serde::Deserialize)]
     #[allow(dead_code)]
     struct Doc {
         b: ByteBuf,
@@ -479,7 +478,7 @@ fn coverage_stream_bytes_rejects_bool() {
 
 #[test]
 fn coverage_stream_bytes_rejects_int() {
-    #[derive(Deserialize)]
+    #[derive(serde::Deserialize)]
     #[allow(dead_code)]
     struct Doc {
         b: ByteBuf,
@@ -490,7 +489,7 @@ fn coverage_stream_bytes_rejects_int() {
 
 #[test]
 fn coverage_stream_bytes_rejects_float() {
-    #[derive(Deserialize)]
+    #[derive(serde::Deserialize)]
     #[allow(dead_code)]
     struct Doc {
         b: ByteBuf,
@@ -501,7 +500,7 @@ fn coverage_stream_bytes_rejects_float() {
 
 #[test]
 fn coverage_stream_bytes_binary_invalid() {
-    #[derive(Deserialize)]
+    #[derive(serde::Deserialize)]
     #[allow(dead_code)]
     struct Doc {
         b: ByteBuf,
@@ -565,7 +564,7 @@ fn coverage_stream_duplicate_error_returns_error() {
 
 #[test]
 fn coverage_stream_enum_with_struct_variant_mapping() {
-    #[derive(Debug, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Deserialize, PartialEq)]
     enum Choice {
         Pair { a: i32, b: i32 },
     }
@@ -579,9 +578,9 @@ fn coverage_stream_enum_with_struct_variant_mapping() {
 
 #[test]
 fn coverage_stream_tag_registry_strips_custom_tag() {
-    #[derive(Deserialize, PartialEq, Debug)]
+    #[derive(serde::Deserialize, PartialEq, Debug)]
     struct Celsius(f64);
-    #[derive(Deserialize)]
+    #[derive(serde::Deserialize)]
     struct Doc {
         t: Celsius,
     }
@@ -597,7 +596,7 @@ fn coverage_stream_tag_registry_strips_seq_tag() {
     let registry = Arc::new(TagRegistry::new().with("!Items"));
     let cfg = ParserConfig::new().tag_registry(Arc::clone(&registry));
     let yaml = "items: !Items [1, 2, 3]\n";
-    #[derive(Deserialize)]
+    #[derive(serde::Deserialize)]
     struct Doc {
         items: Vec<i64>,
     }
@@ -610,7 +609,7 @@ fn coverage_stream_tag_registry_strips_map_tag() {
     let registry = Arc::new(TagRegistry::new().with("!Cfg"));
     let cfg = ParserConfig::new().tag_registry(Arc::clone(&registry));
     let yaml = "cfg: !Cfg {a: 1, b: 2}\n";
-    #[derive(Deserialize)]
+    #[derive(serde::Deserialize)]
     struct Doc {
         cfg: BTreeMap<String, i64>,
     }
@@ -894,7 +893,7 @@ fn coverage_stream_core_tag_str_via_streaming_de() {
     let registry = Arc::new(TagRegistry::new().with("!!str"));
     let cfg = ParserConfig::new().tag_registry(Arc::clone(&registry));
     let yaml = "v: !!str 42\n";
-    #[derive(Deserialize)]
+    #[derive(serde::Deserialize)]
     struct Doc {
         v: String,
     }
@@ -912,7 +911,7 @@ fn coverage_stream_partial_consumption_drops_seq() {
     // contains an element of the wrong type (string in i64 seq), causing
     // mid-iteration failure that exercises the Drop drain loop.
     let yaml = "values:\n  - 1\n  - 2\n  - not_a_number\n";
-    #[derive(Deserialize)]
+    #[derive(serde::Deserialize)]
     #[allow(dead_code)]
     struct Doc {
         values: Vec<i64>,

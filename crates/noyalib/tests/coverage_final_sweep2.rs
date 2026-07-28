@@ -13,7 +13,7 @@
 )]
 
 use noyalib::{ParserConfig, RcAnchor, Spanned, Value, from_str, from_str_with_config};
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 
 // ── streaming: anchor whose body contains an alias (maybe_record Alias arm) ─
 
@@ -38,7 +38,7 @@ copy: *b
 #[test]
 fn streaming_merge_unknown_anchor_errors() {
     let yaml = "base:\n  k: 1\nderived:\n  <<: *missing\n  v: 2\n";
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     struct Doc {
         base: std::collections::BTreeMap<String, i64>,
         derived: std::collections::BTreeMap<String, i64>,
@@ -65,14 +65,14 @@ child:
   nested:
     inner: yes
 ";
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     #[allow(dead_code)]
     struct Child {
         shared: i64,
         items: Vec<i64>,
         nested: std::collections::BTreeMap<String, String>,
     }
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     #[allow(dead_code)]
     struct Doc {
         #[serde(skip)]
@@ -96,7 +96,7 @@ child:
 
 #[test]
 fn streaming_ignored_any_on_scalar() {
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     struct Doc {
         keep: String,
         #[serde(default, skip_deserializing)]
@@ -116,7 +116,7 @@ fn streaming_ignored_any_on_alias() {
     // An ignored field whose value is *an alias* hits the
     // `Event::Alias if balance == 0` arm inside `skip_value`.
     let yaml = "anchor: &a hello\n_skip: *a\nkeep: yes\n";
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     struct Doc {
         anchor: String,
         keep: String,
@@ -128,7 +128,7 @@ fn streaming_ignored_any_on_alias() {
 
 // ── streaming: deserialize_newtype_struct with a custom tag ─────────
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, serde::Serialize)]
 struct NewtypeWrapper(String);
 
 impl<'de> Deserialize<'de> for NewtypeWrapper {
@@ -137,7 +137,7 @@ impl<'de> Deserialize<'de> for NewtypeWrapper {
         D: serde::Deserializer<'de>,
     {
         // Access the {tag, value} map produced by StreamingTagMapAccess.
-        #[derive(Deserialize)]
+        #[derive(serde::Deserialize)]
         struct Inner {
             tag: String,
             value: String,
@@ -151,7 +151,7 @@ impl<'de> Deserialize<'de> for NewtypeWrapper {
 fn streaming_newtype_struct_with_custom_tag() {
     // Deserializing a struct that takes a NewtypeWrapper with a custom
     // tag routes through StreamingTagMapAccess.
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     struct Doc {
         field: std::collections::BTreeMap<String, String>,
     }
@@ -186,7 +186,7 @@ fn ast_wrap_err_emits_deserialize_with_location() {
     // A Spanned<T> deserialize error gets wrapped with location. Force
     // the AST path via Spanned<String>, then throw a Deserialize error
     // by expecting a non-existent variant.
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     #[allow(dead_code)]
     struct Doc {
         #[serde(rename = "kind")]
@@ -194,7 +194,7 @@ fn ast_wrap_err_emits_deserialize_with_location() {
         #[allow(dead_code)]
         value: Choice,
     }
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     enum Choice {
         A,
         B,
@@ -212,14 +212,14 @@ fn ast_identifier_path_via_tag_key() {
     // Serde uses deserialize_identifier for #[serde(tag = "type")]
     // struct matching. Forcing AST via Spanned<_> gets us into
     // de.rs deserialize_identifier.
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     #[serde(tag = "type")]
     #[allow(dead_code)]
     enum Shape {
         Square { side: i64 },
         Circle { radius: i64 },
     }
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     #[allow(dead_code)]
     struct Doc {
         #[allow(dead_code)]
@@ -239,7 +239,7 @@ fn ast_identifier_path_via_tag_key() {
 #[test]
 fn ast_deserialize_bytes_type_mismatch() {
     // bytes on a numeric Value should error with "bytes" expected.
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     #[allow(dead_code)]
     struct Doc {
         #[allow(dead_code)]
@@ -293,7 +293,7 @@ fn streaming_map_drop_on_partial_read() {
     // Deserialising an empty-field struct from a populated mapping
     // triggers StreamingMapAccess::drop to skip all keys+values.
     let yaml = "a: 1\nb: 2\nc: 3\n";
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     struct Empty {}
     let _: Empty = from_str(yaml).unwrap();
 }

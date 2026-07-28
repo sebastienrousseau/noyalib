@@ -12,15 +12,14 @@
 //!
 //! ```rust
 //! use noyalib::with::singleton_map;
-//! use serde::{Deserialize, Serialize};
 //!
-//! #[derive(Debug, Serialize, Deserialize, PartialEq)]
+//! #[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
 //! enum Action {
 //!     Start { delay: u32 },
 //!     Stop,
 //! }
 //!
-//! #[derive(Debug, Serialize, Deserialize, PartialEq)]
+//! #[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
 //! struct Task {
 //!     name: String,
 //!     #[serde(with = "singleton_map")]

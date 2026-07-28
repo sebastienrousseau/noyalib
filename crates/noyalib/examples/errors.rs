@@ -9,7 +9,6 @@
 mod support;
 
 use noyalib::{Error, Location, Value, from_str};
-use serde::Deserialize;
 
 fn main() {
     support::header("noyalib -- errors");
@@ -31,7 +30,7 @@ fn main() {
 
     // ── Type mismatch ────────────────────────────────────────────────
     support::task_with_output("Catch type mismatch (expected failure)", || {
-        #[derive(Deserialize)]
+        #[derive(serde::Deserialize)]
         #[allow(dead_code)]
         struct Typed {
             name: i32,
@@ -44,7 +43,7 @@ fn main() {
 
     // ── Missing field ────────────────────────────────────────────────
     support::task_with_output("Catch missing field (expected failure)", || {
-        #[derive(Deserialize)]
+        #[derive(serde::Deserialize)]
         #[allow(dead_code)]
         struct Required {
             name: String,

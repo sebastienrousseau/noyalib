@@ -23,7 +23,6 @@ use noyalib::{
     ParserConfig, Spanned, Tag, TagRegistry, TaggedValue, Value, from_str, from_str_with_config,
     from_value,
 };
-use serde::Deserialize;
 
 // ─────────────────────────────────────────────────────────────────
 // de.rs ▼
@@ -122,7 +121,7 @@ impl noyalib::policy::Policy for NoOpPolicy {}
 
 #[test]
 fn final_de_wrap_err_attaches_location_when_span_present() {
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     #[allow(dead_code)]
     struct Doc {
         b: serde_bytes::ByteBuf,
@@ -190,7 +189,7 @@ fn final_de_deserialize_any_preserve_tags_visits_map() {
 
 #[test]
 fn final_de_deserialize_str_binary_tag_non_string_errors() {
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     #[allow(dead_code)]
     struct S {
         s: String,
@@ -240,7 +239,7 @@ fn final_de_deserialize_bytes_invalid_base64() {
 
 #[test]
 fn final_de_spanned_through_ast_path() {
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     struct Doc {
         n: Spanned<i32>,
     }
@@ -269,7 +268,7 @@ fn final_de_spanned_through_ast_path() {
 
 #[test]
 fn final_de_variant_seed_unknown_variant_errors() {
-    #[derive(Debug, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Deserialize, PartialEq)]
     enum E {
         A,
         B,
@@ -287,7 +286,7 @@ fn final_de_variant_seed_unknown_variant_errors() {
 // span context (forced via the AST path) the `Some(ctx)` arm on
 // line 2021-2022 fires.
 
-#[derive(Debug, Deserialize, PartialEq)]
+#[derive(Debug, serde::Deserialize, PartialEq)]
 enum Choice {
     A,
     #[allow(dead_code)]
@@ -358,7 +357,7 @@ fn final_de_figment_provider_with_spanned_field_uses_ast_fallback() {
     use figment::Figment;
     use figment::providers::Format as _;
 
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     #[allow(dead_code)]
     struct Cfg {
         port: u16,
@@ -420,7 +419,7 @@ fn final_streaming_anchor_scalar_seq_map_typed_target() {
     // would short-circuit via the Value-fast-path). Hits the
     // depth==0 anchor-completion branches (Scalar, SeqEnd, MapEnd)
     // of `maybe_record` (lines 323-359).
-    #[derive(Deserialize)]
+    #[derive(serde::Deserialize)]
     struct Doc {
         a: i64,
         b: Vec<i64>,
@@ -449,7 +448,7 @@ e: *x2
 
 #[test]
 fn final_streaming_anchor_records_alias_typed_target() {
-    #[derive(Deserialize)]
+    #[derive(serde::Deserialize)]
     struct Doc {
         shared: i64,
         copy: BTreeMap<String, i64>,
@@ -550,7 +549,7 @@ fn final_streaming_skip_to_content_with_directives() {
 
 #[test]
 fn final_streaming_ignored_any_skips_tagged_seq_in_map() {
-    #[derive(Deserialize)]
+    #[derive(serde::Deserialize)]
     struct Small {
         keep: i64,
     }
@@ -624,7 +623,7 @@ fn final_streaming_f64_happy() {
 fn final_streaming_deserialize_str_mapping_event_errors() {
     // A mapping target where the field expects a string but the YAML
     // hands a mapping. Streaming yields a TypeMismatch.
-    #[derive(Deserialize)]
+    #[derive(serde::Deserialize)]
     #[allow(dead_code)]
     struct Doc {
         s: String,
@@ -640,7 +639,7 @@ fn final_streaming_deserialize_str_mapping_event_errors() {
 
 #[test]
 fn final_streaming_option_some_string() {
-    #[derive(Deserialize)]
+    #[derive(serde::Deserialize)]
     struct D {
         x: Option<String>,
     }
@@ -660,7 +659,7 @@ fn final_streaming_unit_rejects_non_null() {
 
 #[test]
 fn final_streaming_spanned_newtype_falls_back() {
-    #[derive(Deserialize)]
+    #[derive(serde::Deserialize)]
     struct D {
         v: Spanned<i32>,
     }
@@ -675,9 +674,9 @@ fn final_streaming_spanned_newtype_falls_back() {
 
 #[test]
 fn final_streaming_newtype_with_core_str_tag() {
-    #[derive(Deserialize, PartialEq, Debug)]
+    #[derive(serde::Deserialize, PartialEq, Debug)]
     struct Wrap(String);
-    #[derive(Deserialize)]
+    #[derive(serde::Deserialize)]
     struct D {
         v: Wrap,
     }
@@ -712,7 +711,7 @@ fn final_streaming_enum_via_unregistered_tag_dispatch() {
     // through `StreamingTagEnumAccess` (line 971) where the tag
     // itself names the variant. The tag-to-variant string is
     // `!Tagged`, so the variant must match exactly.
-    #[derive(Debug, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Deserialize, PartialEq)]
     enum E {
         #[serde(rename = "!Tagged")]
         Tagged(i32),
@@ -726,7 +725,7 @@ fn final_streaming_enum_via_unregistered_tag_dispatch() {
 
 #[test]
 fn final_streaming_enum_top_level_unit_scalar() {
-    #[derive(Debug, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Deserialize, PartialEq)]
     enum E {
         Unit,
         #[allow(dead_code)]
@@ -738,7 +737,7 @@ fn final_streaming_enum_top_level_unit_scalar() {
 
 #[test]
 fn final_streaming_enum_non_scalar_non_mapping_errors() {
-    #[derive(Debug, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Deserialize, PartialEq)]
     #[allow(dead_code)]
     enum E {
         Unit,
@@ -767,7 +766,7 @@ fn final_streaming_identifier_mapping_value_errors() {
 
 #[test]
 fn final_streaming_bytes_binary_decode_success() {
-    #[derive(Deserialize)]
+    #[derive(serde::Deserialize)]
     struct D {
         b: serde_bytes::ByteBuf,
     }
@@ -780,7 +779,7 @@ fn final_streaming_bytes_binary_decode_success() {
 
 #[test]
 fn final_streaming_bytes_from_quoted_string() {
-    #[derive(Deserialize)]
+    #[derive(serde::Deserialize)]
     struct D {
         b: serde_bytes::ByteBuf,
     }
@@ -841,7 +840,7 @@ fn final_streaming_duplicate_first_keeps_first_three_collisions() {
 
 #[test]
 fn final_streaming_tagged_enum_variant_access_unit() {
-    #[derive(Debug, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Deserialize, PartialEq)]
     enum E {
         Plain,
         #[allow(dead_code)]
@@ -998,7 +997,7 @@ target:
 
 #[test]
 fn final_streaming_spanned_recursive_into_seq() {
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     struct D {
         items: Spanned<Vec<i32>>,
     }
@@ -1011,7 +1010,7 @@ fn final_streaming_spanned_recursive_into_seq() {
 
 #[test]
 fn final_streaming_spanned_option_none() {
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     struct D {
         x: Spanned<Option<i32>>,
     }
@@ -1039,7 +1038,7 @@ fn final_streaming_hashmap_typed_target() {
 
 #[test]
 fn final_streaming_drop_drains_map_after_late_error() {
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     #[allow(dead_code)]
     struct D {
         a: i32,
@@ -1073,7 +1072,7 @@ fn final_de_from_value_spanned_default_location() {
 
 #[test]
 fn final_streaming_drop_drains_seq_after_error() {
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     #[allow(dead_code)]
     struct D {
         nums: Vec<i32>,

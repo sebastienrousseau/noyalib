@@ -103,9 +103,8 @@ fn comment_crossref_with_spanned_field() {
     // The primary use case: find the comment attached to a specific
     // Spanned<T> field by byte-position proximity.
     use noyalib::Spanned;
-    use serde::Deserialize;
 
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     struct Cfg {
         port: Spanned<u16>,
     }

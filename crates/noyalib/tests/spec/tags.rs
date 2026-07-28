@@ -4,7 +4,6 @@
 // YAML spec: Tags
 
 use noyalib::{Value, from_str};
-use serde::Deserialize;
 
 #[test]
 fn explicit_str_tag() {
@@ -53,7 +52,7 @@ fn explicit_map_tag() {
 
 #[test]
 fn tagged_sequence_with_scalar_tags() {
-    #[derive(Debug, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Deserialize, PartialEq)]
     struct TaggedSeq(String, String, i64, String);
 
     let v: TaggedSeq = from_str("- !!str a\n- b\n- !!int 42\n- d\n").unwrap();
@@ -79,7 +78,7 @@ fn unordered_set_as_map() {
 
 #[test]
 fn tags_for_block_objects() {
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     struct Doc {
         foo: Vec<Value>,
     }

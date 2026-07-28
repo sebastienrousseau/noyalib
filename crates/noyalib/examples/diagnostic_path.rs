@@ -21,16 +21,15 @@
 mod support;
 
 use noyalib::{Deserializer, Value, from_str};
-use serde::Deserialize;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, serde::Deserialize)]
 #[allow(dead_code)]
 struct App {
     name: String,
     server: Server,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, serde::Deserialize)]
 #[allow(dead_code)]
 struct Server {
     host: String,
@@ -40,14 +39,14 @@ struct Server {
     replicas: Vec<Replica>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, serde::Deserialize)]
 #[allow(dead_code)]
 struct Database {
     url: String,
     pool_size: u16,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, serde::Deserialize)]
 #[allow(dead_code)]
 struct Replica {
     region: String,

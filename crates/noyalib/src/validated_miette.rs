@@ -120,9 +120,8 @@ impl miette::Diagnostic for ValidationDiagnostic {
 /// use noyalib::Spanned;
 /// use noyalib::validated_miette::garde_errors_to_miette;
 /// use garde::Validate;
-/// use serde::Deserialize;
 ///
-/// #[derive(Debug, Deserialize, Validate)]
+/// #[derive(Debug, serde::Deserialize, Validate)]
 /// struct Cfg {
 ///     #[garde(range(min = 1024))]
 ///     port: u16,
@@ -160,10 +159,9 @@ pub fn garde_errors_to_miette<T>(
 /// ```ignore
 /// use noyalib::Spanned;
 /// use noyalib::validated_miette::validator_errors_to_miette;
-/// use serde::Deserialize;
 /// use validator::Validate;
 ///
-/// #[derive(Debug, Deserialize, Validate)]
+/// #[derive(Debug, serde::Deserialize, Validate)]
 /// struct Cfg {
 ///     #[validate(range(min = 1024))]
 ///     port: u16,

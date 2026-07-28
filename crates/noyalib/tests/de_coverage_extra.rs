@@ -34,7 +34,7 @@ use serde::de::Deserializer as _;
 // from_str_strict / from_slice_strict / from_reader_strict — happy + error
 // ============================================================================
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, serde::Deserialize)]
 struct StrictCfg {
     port: u16,
 }
@@ -168,7 +168,7 @@ fn deserializer_str_mismatch_errors() {
 // Deserializer for bytes / byte_buf — !!binary path & errors (L1692, L1694)
 // ============================================================================
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, serde::Deserialize)]
 struct Bin {
     #[serde(with = "serde_bytes")]
     data: Vec<u8>,
@@ -224,7 +224,7 @@ fn deserializer_bytes_other_value_errors() {
 fn deserialize_str_with_ignore_binary_tag_for_string_succeeds() {
     let yaml = "data: !!binary aGVsbG8=\n";
     let cfg = ParserConfig::default().ignore_binary_tag_for_string(true);
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     struct S {
         data: String,
     }
@@ -277,7 +277,7 @@ fn deserialize_map_mismatch_errors() {
 // deserialize_enum — fall-through / errors (L1851-L1854, L1864)
 // ============================================================================
 
-#[derive(Debug, Deserialize, PartialEq)]
+#[derive(Debug, serde::Deserialize, PartialEq)]
 enum E {
     A,
     B,
@@ -342,7 +342,7 @@ fn deserialize_ignored_any_consumes_anything() {
 #[test]
 fn deserialize_spanned_struct_path() {
     use noyalib::Spanned;
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     struct S {
         n: Spanned<i32>,
     }
@@ -366,7 +366,7 @@ fn preserve_tags_value_target_round_trip() {
 // VariantAccess — tuple/struct/newtype variants (L2003, L2021-L2022)
 // ============================================================================
 
-#[derive(Debug, Deserialize, PartialEq)]
+#[derive(Debug, serde::Deserialize, PartialEq)]
 enum Choice {
     Plain,
     NewType(i32),
@@ -435,7 +435,7 @@ fn binary_tag_all_forms_decode() {
 
 #[test]
 fn wrap_err_type_mismatch_in_struct_field_attaches_location() {
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     #[allow(dead_code)]
     struct S {
         n: i32,

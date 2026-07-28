@@ -41,14 +41,13 @@ use crate::value::Value;
 ///
 /// ```
 /// use noyalib::{from_str, Flattened, Value};
-/// use serde::Deserialize;
 ///
-/// #[derive(Debug, Deserialize)]
+/// #[derive(Debug, serde::Deserialize)]
 /// struct Inner {
 ///     port: u16,
 /// }
 ///
-/// #[derive(Debug, Deserialize)]
+/// #[derive(Debug, serde::Deserialize)]
 /// struct Config {
 ///     name: String,
 ///     // Capture both the typed view and the raw mapping so the

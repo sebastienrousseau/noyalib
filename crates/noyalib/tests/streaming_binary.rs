@@ -12,10 +12,10 @@
 #![allow(missing_docs)]
 
 use noyalib::StreamingDeserializer;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use serde_bytes::ByteBuf;
 
-#[derive(Debug, Deserialize, PartialEq)]
+#[derive(Debug, serde::Deserialize, PartialEq)]
 struct Payload {
     name: String,
     #[serde(with = "serde_bytes")]
@@ -50,7 +50,7 @@ body: !!binary |
 
 #[test]
 fn streaming_byte_buf_roundtrip() {
-    #[derive(Debug, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Deserialize, PartialEq)]
     struct Wrapper {
         data: ByteBuf,
     }
@@ -62,7 +62,7 @@ fn streaming_byte_buf_roundtrip() {
 
 #[test]
 fn streaming_full_byte_range() {
-    #[derive(Debug, Serialize, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
     struct Wrapper {
         data: ByteBuf,
     }
@@ -91,7 +91,7 @@ fn streaming_untagged_string_visits_raw_bytes() {
     // Without a `!!binary` tag, deserialising into a byte target
     // surfaces the underlying scalar bytes verbatim — base64-decoding
     // is opt-in via the tag.
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     struct Wrapper {
         data: ByteBuf,
     }

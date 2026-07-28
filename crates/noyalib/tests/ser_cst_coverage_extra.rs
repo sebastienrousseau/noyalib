@@ -26,7 +26,6 @@ use noyalib::{
     to_writer_tracking_shared_with_config, to_writer_value, to_writer_value_with_config,
     to_writer_with_config,
 };
-use serde::Serialize;
 
 // ============================================================================
 // ser.rs — `to_string_with_config` / `to_writer_*` thin wrappers
@@ -177,7 +176,7 @@ fn ser_ser_anchor_tagged_block_mapping_value() {
     // Drives 1117-1122 (mapping value with MAGIC_ANCHOR_DEF needing
     // space after `:`) and 1213-1219 (anchor wrapping a non-empty
     // mapping → newline + write_mapping with is_root=true).
-    #[derive(Clone, Serialize)]
+    #[derive(Clone, serde::Serialize)]
     struct Inner {
         a: i32,
         b: i32,
@@ -303,7 +302,7 @@ fn ser_ser_magic_commented_non_sequence_value_falls_through() {
 #[test]
 fn ser_ser_flow_seq_newtype() {
     // Drives 1523-1532: serialize_newtype_struct with MAGIC_FLOW_SEQ.
-    #[derive(Serialize)]
+    #[derive(serde::Serialize)]
     struct Doc {
         items: FlowSeq<Vec<i32>>,
     }
@@ -319,7 +318,7 @@ fn ser_ser_flow_map_newtype() {
     let mut m = BTreeMap::new();
     let _ = m.insert("a".to_string(), 1i32);
     let _ = m.insert("b".to_string(), 2);
-    #[derive(Serialize)]
+    #[derive(serde::Serialize)]
     struct Doc {
         flow: FlowMap<BTreeMap<String, i32>>,
     }
@@ -329,7 +328,7 @@ fn ser_ser_flow_map_newtype() {
 
 #[test]
 fn ser_ser_lit_string_newtype() {
-    #[derive(Serialize)]
+    #[derive(serde::Serialize)]
     struct Doc {
         body: LitString,
     }
@@ -342,7 +341,7 @@ fn ser_ser_lit_string_newtype() {
 
 #[test]
 fn ser_ser_fold_string_newtype() {
-    #[derive(Serialize)]
+    #[derive(serde::Serialize)]
     struct Doc {
         body: FoldString,
     }
@@ -363,7 +362,7 @@ fn ser_ser_commented_newtype() {
 
 #[test]
 fn ser_ser_space_after_newtype() {
-    #[derive(Serialize)]
+    #[derive(serde::Serialize)]
     struct Doc {
         a: SpaceAfter<i32>,
         b: i32,
@@ -383,7 +382,7 @@ fn ser_ser_space_after_newtype() {
 #[test]
 fn ser_ser_newtype_variant() {
     // Drives 1565-1567 (serialize_newtype_variant).
-    #[derive(Serialize)]
+    #[derive(serde::Serialize)]
     enum E {
         N(i32),
     }
@@ -395,7 +394,7 @@ fn ser_ser_newtype_variant() {
 #[test]
 fn ser_ser_tuple_variant() {
     // Drives 1696 (SerializeTupleVariant::serialize_field).
-    #[derive(Serialize)]
+    #[derive(serde::Serialize)]
     enum E {
         T(i32, i32, i32),
     }
@@ -406,7 +405,7 @@ fn ser_ser_tuple_variant() {
 #[test]
 fn ser_ser_struct_variant() {
     // Drives 1786 (SerializeStructVariant::serialize_field).
-    #[derive(Serialize)]
+    #[derive(serde::Serialize)]
     enum E {
         S { x: i32, y: i32 },
     }
@@ -465,7 +464,7 @@ fn ser_ser_flow_style_auto_threshold_below_uses_flow() {
 #[test]
 fn ser_ser_compact_list_indent_branch() {
     // Drives 1130-1135: compact_list_indent toggling sequence next_indent.
-    #[derive(Serialize)]
+    #[derive(serde::Serialize)]
     struct Doc {
         items: Vec<i32>,
     }
@@ -653,7 +652,7 @@ fn ser_ser_recursion_limit_triggers_error() {
 #[test]
 fn ser_ser_flow_sequence_two_elements_emits_comma() {
     // Drives the `i > 0` branch in write_flow_sequence.
-    #[derive(Serialize)]
+    #[derive(serde::Serialize)]
     struct Doc {
         items: FlowSeq<Vec<i32>>,
     }
@@ -669,7 +668,7 @@ fn ser_ser_flow_mapping_two_elements_emits_comma() {
     let mut m = BTreeMap::new();
     let _ = m.insert("a".to_string(), 1i32);
     let _ = m.insert("b".to_string(), 2);
-    #[derive(Serialize)]
+    #[derive(serde::Serialize)]
     struct Doc {
         flow: FlowMap<BTreeMap<String, i32>>,
     }

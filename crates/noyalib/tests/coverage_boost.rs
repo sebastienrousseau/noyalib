@@ -15,7 +15,6 @@ use noyalib::{
     DuplicateKeyPolicy, Error, Location, Mapping, MappingAny, Number, ParserConfig, Spanned, Value,
     from_slice, from_str, from_str_with_config, from_value, to_string,
 };
-use serde::{Deserialize, Serialize};
 
 // ============================================================================
 // 1. streaming.rs — typed deserialization through the streaming path
@@ -211,7 +210,7 @@ fn streaming_char_error_on_sequence() {
 #[test]
 fn streaming_bytes() {
     // serde_bytes provides a type that calls deserialize_bytes
-    #[derive(Deserialize)]
+    #[derive(serde::Deserialize)]
     struct ByteWrap {
         #[serde(with = "serde_bytes")]
         data: Vec<u8>,
@@ -222,7 +221,7 @@ fn streaming_bytes() {
 
 #[test]
 fn streaming_byte_buf() {
-    #[derive(Deserialize)]
+    #[derive(serde::Deserialize)]
     struct ByteBufWrap {
         #[serde(with = "serde_bytes")]
         data: serde_bytes::ByteBuf,
@@ -287,7 +286,7 @@ fn streaming_unit_error_on_mapping() {
 
 #[test]
 fn streaming_unit_struct() {
-    #[derive(Deserialize, PartialEq, Debug)]
+    #[derive(serde::Deserialize, PartialEq, Debug)]
     struct Marker;
     let v: Marker = from_str("~").unwrap();
     assert_eq!(v, Marker);
@@ -296,7 +295,7 @@ fn streaming_unit_struct() {
 // --- deserialize_newtype_struct ---
 #[test]
 fn streaming_newtype_struct() {
-    #[derive(Deserialize, PartialEq, Debug)]
+    #[derive(serde::Deserialize, PartialEq, Debug)]
     struct Wrapper(i32);
     let v: Wrapper = from_str("42").unwrap();
     assert_eq!(v, Wrapper(42));
@@ -304,7 +303,7 @@ fn streaming_newtype_struct() {
 
 #[test]
 fn streaming_newtype_struct_string() {
-    #[derive(Deserialize, PartialEq, Debug)]
+    #[derive(serde::Deserialize, PartialEq, Debug)]
     struct Name(String);
     let v: Name = from_str("hello").unwrap();
     assert_eq!(v, Name("hello".to_owned()));
@@ -319,14 +318,14 @@ fn streaming_tuple() {
 
 #[test]
 fn streaming_tuple_struct() {
-    #[derive(Deserialize, PartialEq, Debug)]
+    #[derive(serde::Deserialize, PartialEq, Debug)]
     struct Point(f64, f64);
     let v: Point = from_str("[1.0, 2.5]").unwrap();
     assert_eq!(v, Point(1.0, 2.5));
 }
 
 // --- deserialize_enum ---
-#[derive(Debug, Deserialize, Serialize, PartialEq)]
+#[derive(Debug, serde::Deserialize, serde::Serialize, PartialEq)]
 enum Color {
     Red,
     Blue,
@@ -376,7 +375,7 @@ fn streaming_enum_error_on_sequence() {
 #[test]
 fn streaming_ignored_any() {
     // Extra fields are silently ignored via deserialize_ignored_any
-    #[derive(Deserialize)]
+    #[derive(serde::Deserialize)]
     struct Partial {
         name: String,
     }
@@ -390,7 +389,7 @@ fn streaming_ignored_any() {
 fn streaming_seq_early_drop() {
     // A tuple takes fewer elements than the YAML sequence provides,
     // triggering the Drop draining logic
-    #[derive(Deserialize, Debug, PartialEq)]
+    #[derive(serde::Deserialize, Debug, PartialEq)]
     struct TwoOf {
         items: (i32, i32),
     }
@@ -403,7 +402,7 @@ fn streaming_seq_early_drop() {
 #[test]
 fn streaming_map_early_drop() {
     // Struct with fewer fields than the mapping, triggering Drop drain
-    #[derive(Deserialize, Debug)]
+    #[derive(serde::Deserialize, Debug)]
     #[allow(dead_code)]
     struct Small {
         a: i32,
@@ -416,7 +415,7 @@ fn streaming_map_early_drop() {
 // --- Fallback to Value-based path (anchors, aliases, tags) ---
 #[test]
 fn streaming_fallback_anchor_alias() {
-    #[derive(Deserialize, Debug, PartialEq)]
+    #[derive(serde::Deserialize, Debug, PartialEq)]
     struct Cfg {
         a: String,
         b: String,
@@ -700,7 +699,7 @@ fn de_char_single() {
 // bytes from value
 #[test]
 fn de_bytes_from_value() {
-    #[derive(Deserialize)]
+    #[derive(serde::Deserialize)]
     struct W {
         #[serde(with = "serde_bytes")]
         d: Vec<u8>,
@@ -713,7 +712,7 @@ fn de_bytes_from_value() {
 // unit_struct from value
 #[test]
 fn de_unit_struct() {
-    #[derive(Deserialize, Debug, PartialEq)]
+    #[derive(serde::Deserialize, Debug, PartialEq)]
     struct Empty;
     let v: Empty = from_str_with_config("~", &ParserConfig::new()).unwrap();
     assert_eq!(v, Empty);
@@ -722,7 +721,7 @@ fn de_unit_struct() {
 // tuple_struct from value
 #[test]
 fn de_tuple_struct() {
-    #[derive(Deserialize, Debug, PartialEq)]
+    #[derive(serde::Deserialize, Debug, PartialEq)]
     struct Pair(i32, i32);
     let v: Pair = from_str_with_config("[10, 20]", &ParserConfig::new()).unwrap();
     assert_eq!(v, Pair(10, 20));
@@ -731,7 +730,7 @@ fn de_tuple_struct() {
 // newtype_struct from value
 #[test]
 fn de_newtype_struct() {
-    #[derive(Deserialize, Debug, PartialEq)]
+    #[derive(serde::Deserialize, Debug, PartialEq)]
     struct W(String);
     let v: W = from_str_with_config("hello", &ParserConfig::new()).unwrap();
     assert_eq!(v, W("hello".to_owned()));
@@ -741,7 +740,7 @@ fn de_newtype_struct() {
 #[test]
 fn de_identifier() {
     // Field name deserialization uses deserialize_identifier
-    #[derive(Deserialize, Debug)]
+    #[derive(serde::Deserialize, Debug)]
     #[allow(dead_code)]
     struct Named {
         field_name: i32,
@@ -753,7 +752,7 @@ fn de_identifier() {
 // ignored_any from value
 #[test]
 fn de_ignored_any() {
-    #[derive(Deserialize, Debug)]
+    #[derive(serde::Deserialize, Debug)]
     #[allow(dead_code)]
     struct Pick {
         a: i32,
@@ -1300,7 +1299,7 @@ fn spanned_deserialization_from_value() {
 #[test]
 fn spanned_deserialization_from_str() {
     let yaml = "port: 8080";
-    #[derive(Deserialize)]
+    #[derive(serde::Deserialize)]
     struct Config {
         port: Spanned<u16>,
     }
@@ -1331,13 +1330,13 @@ fn spanned_deref() {
 
 #[test]
 fn singleton_map_recursive_roundtrip() {
-    #[derive(Debug, Serialize, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
     enum Inner {
         A,
         B { value: i32 },
     }
 
-    #[derive(Debug, Serialize, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
     struct Config {
         #[serde(with = "noyalib::with::singleton_map_recursive")]
         items: Vec<Inner>,
@@ -1364,7 +1363,7 @@ fn document_load_all() {
 
 #[test]
 fn document_load_all_as() {
-    #[derive(Deserialize, Debug)]
+    #[derive(serde::Deserialize, Debug)]
     #[allow(dead_code)]
     struct Doc {
         name: String,
@@ -1409,7 +1408,7 @@ fn streaming_quoted_number_not_resolved() {
 // Map with various value types
 #[test]
 fn streaming_map_mixed_values() {
-    #[derive(Deserialize, Debug)]
+    #[derive(serde::Deserialize, Debug)]
     #[allow(dead_code)]
     struct Mixed {
         name: String,
@@ -1700,7 +1699,7 @@ fn scanner_escape_sequences() {
 
 #[test]
 fn streaming_fallback_for_spanned() {
-    #[derive(Deserialize)]
+    #[derive(serde::Deserialize)]
     struct Cfg {
         port: Spanned<u16>,
     }
@@ -1863,7 +1862,7 @@ fn streaming_positive_float() {
 
 #[test]
 fn streaming_skip_nested_sequence() {
-    #[derive(Deserialize)]
+    #[derive(serde::Deserialize)]
     struct S {
         a: i32,
     }
@@ -1874,7 +1873,7 @@ fn streaming_skip_nested_sequence() {
 
 #[test]
 fn streaming_skip_nested_mapping() {
-    #[derive(Deserialize)]
+    #[derive(serde::Deserialize)]
     struct S {
         a: i32,
     }
@@ -2353,7 +2352,7 @@ fn scanner_block_sequence_of_mappings() {
 
 #[test]
 fn streaming_struct_with_optional_fields() {
-    #[derive(Deserialize, Debug)]
+    #[derive(serde::Deserialize, Debug)]
     #[allow(dead_code)]
     struct Config {
         name: String,
@@ -2370,7 +2369,7 @@ fn streaming_struct_with_optional_fields() {
 
 #[test]
 fn streaming_struct_with_all_fields() {
-    #[derive(Deserialize, Debug)]
+    #[derive(serde::Deserialize, Debug)]
     #[allow(dead_code)]
     struct Config {
         name: String,
@@ -2388,13 +2387,13 @@ fn streaming_struct_with_all_fields() {
 
 #[test]
 fn streaming_nested_struct() {
-    #[derive(Deserialize, Debug)]
+    #[derive(serde::Deserialize, Debug)]
     #[allow(dead_code)]
     struct Inner {
         x: i32,
         y: i32,
     }
-    #[derive(Deserialize, Debug)]
+    #[derive(serde::Deserialize, Debug)]
     #[allow(dead_code)]
     struct Outer {
         name: String,
@@ -2408,7 +2407,7 @@ fn streaming_nested_struct() {
 
 #[test]
 fn streaming_vec_of_structs() {
-    #[derive(Deserialize, Debug)]
+    #[derive(serde::Deserialize, Debug)]
     #[allow(dead_code)]
     struct Item {
         id: u32,
@@ -2662,7 +2661,7 @@ fn multi_doc_via_load_all_with_config() {
 
 #[test]
 fn multi_doc_typed() {
-    #[derive(Deserialize, Debug)]
+    #[derive(serde::Deserialize, Debug)]
     struct Simple {
         x: i32,
     }
@@ -2681,7 +2680,7 @@ fn multi_doc_typed() {
 fn from_reader_streaming_path() {
     let yaml = b"name: test\ncount: 42";
     let cursor = std::io::Cursor::new(&yaml[..]);
-    #[derive(Deserialize)]
+    #[derive(serde::Deserialize)]
     struct S {
         name: String,
         count: u32,
@@ -2697,7 +2696,7 @@ fn from_reader_streaming_path() {
 
 #[test]
 fn spanned_in_struct_with_config() {
-    #[derive(Deserialize)]
+    #[derive(serde::Deserialize)]
     struct Cfg {
         name: Spanned<String>,
         port: Spanned<u16>,
@@ -2715,7 +2714,7 @@ fn spanned_in_struct_with_config() {
 
 #[test]
 fn singleton_map_with_roundtrip() {
-    #[derive(Debug, Serialize, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
     enum Status {
         Active,
         Pending,
@@ -2732,7 +2731,7 @@ fn singleton_map_with_roundtrip() {
         }
     }
 
-    #[derive(Debug, Serialize, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
     struct Cfg {
         #[serde(serialize_with = "ser_status", deserialize_with = "de_status")]
         status: Status,
@@ -2814,7 +2813,7 @@ fn from_slice_fallback_path() {
 
 #[test]
 fn de_bytes_error_on_non_string() {
-    #[derive(Deserialize)]
+    #[derive(serde::Deserialize)]
     #[allow(dead_code)]
     struct W {
         #[serde(with = "serde_bytes")]
@@ -2850,13 +2849,13 @@ fn de_enum_non_string_key_in_mapping() {
 fn singleton_map_recursive_tagged() {
     use noyalib::with::singleton_map_recursive;
 
-    #[derive(Debug, Serialize, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
     enum Status {
         Active,
         Inactive,
     }
 
-    #[derive(Debug, Serialize, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
     struct Config {
         #[serde(with = "singleton_map_recursive")]
         status: Status,

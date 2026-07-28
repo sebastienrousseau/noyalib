@@ -15,14 +15,13 @@ mod support;
 
 use noyalib::fmt::{Commented, FlowMap, FlowSeq, LitString, SpaceAfter};
 use noyalib::{Value, from_str, to_string};
-use serde::Serialize;
 
 fn main() {
     support::header("noyalib -- preserve");
 
     // ── Current: Commented<T> for write-only comments ────────────────
     support::task_with_output("Commented<T>: attach comments during serialization", || {
-        #[derive(Serialize)]
+        #[derive(serde::Serialize)]
         struct Config {
             host: Commented<String>,
             port: Commented<u16>,
@@ -41,7 +40,7 @@ fn main() {
 
     // ── Current: SpaceAfter<T> for section spacing ───────────────────
     support::task_with_output("SpaceAfter<T>: blank lines between sections", || {
-        #[derive(Serialize)]
+        #[derive(serde::Serialize)]
         struct Doc {
             header: SpaceAfter<String>,
             body: String,
@@ -58,7 +57,7 @@ fn main() {
 
     // ── Current: FlowSeq/FlowMap for inline style preservation ───────
     support::task_with_output("FlowSeq/FlowMap: preserve inline style intent", || {
-        #[derive(Serialize)]
+        #[derive(serde::Serialize)]
         struct Manifest {
             tags: FlowSeq<Vec<String>>,
             metadata: FlowMap<std::collections::BTreeMap<String, String>>,

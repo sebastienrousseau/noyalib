@@ -28,7 +28,7 @@ use serde::Deserialize;
 use std::collections::BTreeMap;
 use std::hint::black_box;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, serde::Deserialize)]
 #[allow(dead_code)]
 struct Doc {
     name: String,
@@ -36,7 +36,7 @@ struct Doc {
     items: Vec<Item>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, serde::Deserialize)]
 #[allow(dead_code)]
 struct Item {
     id: u32,

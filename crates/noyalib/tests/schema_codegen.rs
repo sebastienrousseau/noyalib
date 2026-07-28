@@ -13,9 +13,8 @@
 #![allow(missing_docs)]
 
 use noyalib::{JsonSchema, Value, from_str, schema_for, schema_for_yaml};
-use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, JsonSchema)]
+#[derive(serde::Serialize, serde::Deserialize, JsonSchema)]
 #[allow(dead_code)]
 struct ServerConfig {
     /// Port the server binds on.
@@ -85,14 +84,14 @@ fn integer_bounds_are_emitted_for_fixed_width_ints() {
 
 // ── Nested types ────────────────────────────────────────────────────
 
-#[derive(Serialize, Deserialize, JsonSchema)]
+#[derive(serde::Serialize, serde::Deserialize, JsonSchema)]
 #[allow(dead_code)]
 struct Database {
     host: String,
     port: u16,
 }
 
-#[derive(Serialize, Deserialize, JsonSchema)]
+#[derive(serde::Serialize, serde::Deserialize, JsonSchema)]
 #[allow(dead_code)]
 struct App {
     name: String,
@@ -112,7 +111,7 @@ fn nested_types_are_emitted_via_definitions() {
 
 // ── Enums ────────────────────────────────────────────────────────────
 
-#[derive(Serialize, Deserialize, JsonSchema)]
+#[derive(serde::Serialize, serde::Deserialize, JsonSchema)]
 #[allow(dead_code)]
 #[serde(rename_all = "lowercase")]
 enum LogLevel {
@@ -129,7 +128,7 @@ enum LogLevel {
 fn json_schema_for_value_field() {
     use noyalib::Value;
 
-    #[derive(Deserialize, JsonSchema)]
+    #[derive(serde::Deserialize, JsonSchema)]
     #[allow(dead_code)]
     struct Envelope {
         id: String,

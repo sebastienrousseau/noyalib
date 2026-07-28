@@ -6,7 +6,6 @@
 use std::collections::BTreeMap;
 
 use noyalib::{Value, from_str, load_all, load_all_as, try_load_all};
-use serde::Deserialize;
 
 // ============================================================================
 // Anchor and Alias Tests
@@ -196,7 +195,7 @@ fn test_try_load_all() {
 
 #[test]
 fn test_load_all_as_typed() {
-    #[derive(Debug, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Deserialize, PartialEq)]
     struct Config {
         name: String,
         value: i32,

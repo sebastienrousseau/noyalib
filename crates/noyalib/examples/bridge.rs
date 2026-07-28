@@ -70,9 +70,7 @@ fn main() {
 
     // ── Shared struct between both formats ───────────────────────────
     support::task_with_output("Shared struct: serialize to both formats", || {
-        use serde::{Deserialize, Serialize};
-
-        #[derive(Debug, Serialize, Deserialize, PartialEq)]
+        #[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
         struct Config {
             name: String,
             port: u16,
