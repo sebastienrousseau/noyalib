@@ -314,6 +314,7 @@ The CST exposes:
 | `doc.set_value(path, &Value)` | Write any `Value` |
 | `doc.entry(path)` | Chainable mutable handle (12 methods, smart `items[0]` paths) |
 | `doc.remove(path)` | Delete a key or sequence item |
+| `doc.rename_key(path, new_key)` | Rename a mapping key, value untouched (new key spelled in the old key's style) |
 | `doc.push_back(path, fragment)` | Append to a sequence |
 | `doc.materialise_aliases_of(name)` | Inline every `*name` reference |
 | `doc.indent_unit()` | Detect 2- / 3- / 4-space conventions |
