@@ -33,6 +33,14 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   document must re-parse to the old value with exactly that one
   key renamed, or the edit is rolled back and the failure is
   reported in the operation's own terms.
+- **`Document::key_span(path)`** — read-only byte span of a
+  mapping entry's key token, the companion to `span_at` (which
+  returns the value span). Exposes, read-only, the same key site
+  `rename_key` rewrites, so tooling can report duplicate keys with
+  positions or drive a "rename key" code action without walking
+  the green tree by hand (#221). Returns `None` for sites that own
+  no simple scalar key — sequence indices, alias (`*name`) sites,
+  and keys provided by a `<<` merge.
 
 ## [v0.0.17] - 2026-07-25
 

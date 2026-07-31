@@ -213,6 +213,53 @@ impl Document {
         Some(trim_value_span(&self.source, s, e))
     }
 
+    /// Return the byte span of a mapping entry's **key** token, the
+    /// read-only companion to [`span_at`](Self::span_at) (which returns
+    /// the *value* span). `source()[start..end]` is the key exactly as
+    /// written — quotes included for a quoted key.
+    ///
+    /// This exposes, read-only, the same key site
+    /// [`rename_key`](Self::rename_key) rewrites; it is the span tooling
+    /// needs to report duplicate keys with positions or to drive a
+    /// "rename key" code action without walking the green tree by hand.
+    ///
+    /// Returns `None` when the path does not resolve to a block-mapping
+    /// entry with a simple scalar key — a sequence index, an alias
+    /// (`*name`) site (which owns no key bytes of its own), a key
+    /// produced by a `<<` merge, or a path that does not resolve at all.
+    ///
+    /// ```
+    /// use noyalib::cst::parse_document;
+    ///
+    /// let doc = parse_document("name: foo\n\"quoted key\": 1\n").unwrap();
+    /// let (s, e) = doc.key_span("name").unwrap();
+    /// assert_eq!(&doc.source()[s..e], "name");
+    /// let (s, e) = doc.key_span("quoted key").unwrap();
+    /// assert_eq!(&doc.source()[s..e], "\"quoted key\"");
+    /// assert_eq!(doc.key_span("missing"), None);
+    /// ```
+    #[must_use]
+    pub fn key_span(&self, path: &str) -> Option<(usize, usize)> {
+        // A sentinel `new_key` that cannot equal any real sibling, so
+        // `entry_key_site`'s duplicate-refusal branch is never taken and
+        // it behaves as a pure key-span resolver. Any resolution error
+        // (alias / merge-provided / not-a-mapping-entry / not found) and
+        // the zero-width span the loader records for a non-scalar key
+        // both map to `None`.
+        const KEY_SPAN_SENTINEL: &str = "\0\0noyalib::key_span sentinel\0\0";
+        let segments = parse_query_path(path);
+        if segments.is_empty() {
+            return None;
+        }
+        self.ensure_cache();
+        let cache = self.cache.borrow();
+        let (value, span_tree) = cache.as_ref().expect("ensure_cache populated");
+        match entry_key_site(value, span_tree, &segments, KEY_SPAN_SENTINEL) {
+            Ok((s, e)) if s != e => Some((s, e)),
+            _ => None,
+        }
+    }
+
     /// Populate the typed cache from `self.source` if it is empty.
     /// Panics if the source fails to re-parse — for the lazy path
     /// to be safe, every successful edit must leave the source in a
