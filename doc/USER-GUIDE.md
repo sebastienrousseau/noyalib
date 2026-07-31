@@ -320,6 +320,8 @@ The CST exposes:
 | `doc.move_item(path, from, to)` | Move a block-sequence item to a new index, atomic (built on `swap_items`) |
 | `doc.set_inline_comment(path, text)` | Set/replace the trailing `#` comment on a single-line node (guarded) |
 | `doc.remove_inline_comment(path)` | Remove the trailing `#` comment on a node (no-op if absent) |
+| `doc.set_leading_comment(path, text)` | Set/replace the leading `#` comment block above a single-line mapping key |
+| `doc.remove_leading_comment(path)` | Remove the leading comment block above a mapping key (no-op if absent) |
 | `doc.push_back(path, fragment)` | Append to a sequence |
 | `doc.materialise_aliases_of(name)` | Inline every `*name` reference |
 | `doc.indent_unit()` | Detect 2- / 3- / 4-space conventions |

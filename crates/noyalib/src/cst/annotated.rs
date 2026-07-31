@@ -331,6 +331,167 @@ impl Document {
         }
         Ok(())
     }
+
+    /// Set (or replace) the **leading** comment block above the
+    /// single-line mapping entry at `path` — the run of comment lines
+    /// that `comments_at(path).before` reports.
+    ///
+    /// `text` becomes one comment line per `\n`-separated segment, each
+    /// rendered at the key's indentation as `# <segment>` (a bare `#`
+    /// for an empty segment). An existing leading block is replaced in
+    /// place; otherwise the block is inserted immediately above the
+    /// entry's line.
+    ///
+    /// Scope: block **mapping keys** on a single line (where the key
+    /// token, and therefore the entry's own line and indent, are
+    /// unambiguous). Multi-line / nested entries and sequence items are
+    /// a follow-up — `comments_at` does not attribute a leading block to
+    /// them unambiguously. Guarded like the other mutators: the edit
+    /// must re-parse and leave the typed value unchanged, or it rolls
+    /// back.
+    ///
+    /// # Errors
+    ///
+    /// - `path` does not address a single-line block-mapping key.
+    /// - The splice would not re-parse or would change data (roll back).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use noyalib::cst::parse_document;
+    ///
+    /// let mut doc = parse_document("port: 8080\n").unwrap();
+    /// doc.set_leading_comment("port", "the listen port").unwrap();
+    /// assert_eq!(doc.source(), "# the listen port\nport: 8080\n");
+    /// doc.set_leading_comment("port", "line one\nline two").unwrap();
+    /// assert_eq!(doc.source(), "# line one\n# line two\nport: 8080\n");
+    /// ```
+    pub fn set_leading_comment(&mut self, path: &str, text: &str) -> Result<()> {
+        let (key_start, entry_line_start, indent) = self.leading_comment_site(path)?;
+        let _ = key_start;
+        let rendered: String = text
+            .split('\n')
+            .map(|line| {
+                if line.is_empty() {
+                    format!("{indent}#\n")
+                } else {
+                    format!("{indent}# {line}\n")
+                }
+            })
+            .collect();
+
+        let before = self.comments_at(path).before;
+        let snapshot = self.clone();
+        let expected = self.as_value().clone();
+
+        let splice = match (before.first(), before.last()) {
+            (Some(first), Some(last)) => {
+                let block_start = line_start(self.source(), first.start);
+                let block_end = line_end(self.source(), last.start) + 1;
+                self.replace_span(block_start, block_end, &rendered)
+            }
+            _ => self.replace_span(entry_line_start, entry_line_start, &rendered),
+        };
+        self.finish_comment_edit("set_leading_comment", path, splice, snapshot, &expected)
+    }
+
+    /// Remove the **leading** comment block above the mapping entry at
+    /// `path`, if any. A no-op returning `Ok(())` when there is none (or
+    /// the path does not address a single-line mapping key).
+    ///
+    /// Guarded and rolled back exactly like
+    /// [`set_leading_comment`](Self::set_leading_comment).
+    ///
+    /// # Errors
+    ///
+    /// - The removal would not re-parse or would change data (rolls
+    ///   back).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use noyalib::cst::parse_document;
+    ///
+    /// let mut doc = parse_document("# noise\n# more\nport: 8080\n").unwrap();
+    /// doc.remove_leading_comment("port").unwrap();
+    /// assert_eq!(doc.source(), "port: 8080\n");
+    /// ```
+    pub fn remove_leading_comment(&mut self, path: &str) -> Result<()> {
+        // A path that is not a single-line mapping key simply has no
+        // leading block this method owns — treat as a no-op.
+        if self.leading_comment_site(path).is_err() {
+            return Ok(());
+        }
+        let before = self.comments_at(path).before;
+        let (Some(first), Some(last)) = (before.first(), before.last()) else {
+            return Ok(());
+        };
+        let block_start = line_start(self.source(), first.start);
+        let block_end = line_end(self.source(), last.start) + 1;
+        let snapshot = self.clone();
+        let expected = self.as_value().clone();
+        let splice = self.replace_span(block_start, block_end, "");
+        self.finish_comment_edit("remove_leading_comment", path, splice, snapshot, &expected)
+    }
+
+    /// Resolve `path` to a single-line block-mapping key and return its
+    /// key-token start, its line start, and the indent (whitespace)
+    /// prefix of that line. `Err` for anything that is not such a key.
+    fn leading_comment_site(&self, path: &str) -> Result<(usize, usize, String)> {
+        let Some((key_start, _key_end)) = self.key_span(path) else {
+            return Err(Error::Parse(format!(
+                "leading comment: `{path}` does not address a block-mapping key"
+            )));
+        };
+        let Some((vstart, vend)) = self.span_at(path) else {
+            return Err(Error::Parse(format!(
+                "leading comment: `{path}` did not resolve to a value"
+            )));
+        };
+        if self.source()[vstart..vend].contains('\n') {
+            return Err(Error::Parse(format!(
+                "leading comment: `{path}` is a multi-line entry; leading-comment \
+                 mutation is limited to single-line mapping keys in this phase"
+            )));
+        }
+        let ls = line_start(self.source(), key_start);
+        let indent = self.source()[ls..key_start].to_string();
+        Ok((key_start, ls, indent))
+    }
+
+    /// Shared tail for the comment mutators: apply the re-parse and
+    /// value-unchanged guard, rolling back to `snapshot` on any failure.
+    fn finish_comment_edit(
+        &mut self,
+        op: &str,
+        path: &str,
+        splice: Result<()>,
+        snapshot: Document,
+        expected: &crate::Value,
+    ) -> Result<()> {
+        if let Err(e) = splice {
+            *self = snapshot;
+            return Err(Error::Parse(format!(
+                "{op}: editing the comment on `{path}` could not be spliced ({e}); \
+                 the document was left unchanged"
+            )));
+        }
+        if let Err(e) = self.validate() {
+            *self = snapshot;
+            return Err(Error::Parse(format!(
+                "{op}: editing the comment on `{path}` left the document unable to \
+                 re-parse ({e}); the document was left unchanged"
+            )));
+        }
+        if *self.as_value() != *expected {
+            *self = snapshot;
+            return Err(Error::Parse(format!(
+                "{op}: editing the comment on `{path}` changed the document's data; \
+                 the document was left unchanged"
+            )));
+        }
+        Ok(())
+    }
 }
 
 #[inline]

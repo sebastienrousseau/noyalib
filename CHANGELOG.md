@@ -64,8 +64,15 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   like the other mutators — the edit must re-parse and leave the
   typed value unchanged (a comment carries no data), or it rolls
   back. Multi-line nodes and newlines in the text are refused;
-  removing a comment that is not there is a no-op. (Leading-block
-  comment mutation is tracked for a follow-up.)
+  removing a comment that is not there is a no-op.
+- **`Document::set_leading_comment(path, text)`** and
+  **`Document::remove_leading_comment(path)`** — mutation of the
+  leading comment block above a single-line mapping key (#221, gap 1).
+  `set` renders `text` as one `#`-prefixed line per `\n` segment at the
+  key's indentation, replacing an existing block in place or inserting
+  one above the entry; `remove` deletes the block. Same re-parse +
+  value-unchanged guard with rollback. Multi-line / nested entries and
+  sequence-item leading blocks remain a follow-up.
 
 ### Changed
 
