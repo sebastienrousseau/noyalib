@@ -95,9 +95,13 @@ pub struct ParserConfig {
     /// [`crate::Error::Budget`] with
     /// [`crate::BudgetBreach::MaxEvents`].
     pub max_events: usize,
-    /// Maximum total `Value` nodes built into the AST
-    /// (default: 250 000). Trips
-    /// [`crate::BudgetBreach::MaxNodes`].
+    /// Maximum total `Value` nodes authored into the AST across the
+    /// input (default: 250 000). Each scalar, sequence, and mapping —
+    /// empty collections included — counts as one node, so this bounds
+    /// node-dense payloads (long runs of `[]`/`{}`) that stay under the
+    /// scalar-byte and event caps. Trips [`crate::Error::Budget`] with
+    /// [`crate::BudgetBreach::MaxNodes`]. Enforced on the AST-loader
+    /// path; raise it for deliberately large documents.
     pub max_nodes: usize,
     /// Maximum cumulative scalar-byte count across the document
     /// (default: 64 MB). Distinct from

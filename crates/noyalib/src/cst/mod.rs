@@ -29,12 +29,21 @@
 //!   the change if the spliced source is invalid YAML, leaving the
 //!   document untouched.
 //!
+//! - **Auto-formatting.** [`Emit`](crate::cst::Emit) turns a typed
+//!   value into the YAML spelling that re-parses to exactly that
+//!   value at a given site, so
+//!   [`Document::insert_entry_value`](crate::cst::Document::insert_entry_value),
+//!   [`Document::push_back_value`](crate::cst::Document::push_back_value)
+//!   and
+//!   [`Document::insert_after_value`](crate::cst::Document::insert_after_value)
+//!   quote and escape what the fragment-taking mutators splice
+//!   verbatim.
+//!
 //! The green tree itself is still a flat sequence of leaves under a
 //! single `Document` parent — sufficient for byte-faithful
 //! round-tripping and for the span-based edit primitive. Hierarchical
-//! nesting (per-mapping / per-sequence parent nodes) and an `Emit`
-//! trait that auto-formats replacement values are tracked as
-//! follow-ups in `docs/design/green-tree.md`.
+//! nesting (per-mapping / per-sequence parent nodes) is tracked as a
+//! follow-up in `docs/design/green-tree.md`.
 //!
 //! # Examples
 //!
@@ -72,6 +81,7 @@ mod builder;
 #[cfg(feature = "validate-schema")]
 mod coerce;
 mod document;
+mod emit;
 mod entry;
 mod format;
 mod green;
@@ -83,6 +93,7 @@ pub use annotated::CommentBundle;
 #[cfg_attr(docsrs, doc(cfg(feature = "validate-schema")))]
 pub use coerce::coerce_to_schema;
 pub use document::{Document, RepairScope, parse_document, parse_stream};
+pub use emit::{Emit, EmitCtx};
 pub use entry::Entry;
 pub use format::{FormatConfig, format, format_with_config};
 pub use green::{GreenChild, GreenNode};

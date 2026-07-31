@@ -155,11 +155,14 @@ fn pnpm_lockfile_with_deep_peer_suffixes() {
 fn pnpm_lockfile_50000_pkgs_does_not_recursion_limit() {
     let yaml = make_lockfile(50_000);
     // 50k packages is deliberately larger than any real pnpm-lock and exceeds
-    // the default `max_events` DoS budget (~1M events) — which the `Value`
-    // fast path now enforces in parity with the span-full loader (v0.0.15).
-    // Lift the event budget so the test exercises its actual concern (linear
-    // scaling / no recursion limit) rather than the DoS budget.
-    let cfg = noyalib::ParserConfig::new().max_events(usize::MAX);
+    // the default `max_events` (~1M events) and `max_nodes` (250k) DoS budgets.
+    // Lift both so the test exercises its actual concern (linear scaling / no
+    // recursion limit) rather than a DoS budget. Real-world lockfiles stay well
+    // under the defaults — see the 500/2000/5000-package tests above, which
+    // parse on the default config.
+    let cfg = noyalib::ParserConfig::new()
+        .max_events(usize::MAX)
+        .max_nodes(usize::MAX);
     let v: noyalib::Value =
         noyalib::from_str_with_config(&yaml, &cfg).expect("50k packages should parse cleanly");
     match v {

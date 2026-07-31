@@ -339,12 +339,13 @@ fn remove_rejects_only_entry_of_sequence() {
 }
 
 #[test]
-fn remove_rejects_multi_line_value() {
-    // Removing a key whose value is a block scalar is deferred —
-    // the entry's bytes span multiple lines.
+fn remove_multi_line_block_scalar() {
+    // Removing a key whose value is a block scalar now removes the
+    // whole entry — key through its last owned line — guarded by a
+    // re-parse and a typed-value oracle.
     let mut doc = parse_document("a: 1\ntext: |\n  hello\n  world\nb: 2\n").unwrap();
-    let err = doc.remove("text").unwrap_err();
-    assert!(err.to_string().contains("multi-line"));
+    doc.remove("text").unwrap();
+    assert_eq!(doc.source(), "a: 1\nb: 2\n");
 }
 
 #[test]

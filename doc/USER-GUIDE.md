@@ -238,6 +238,7 @@ preset; tweak from there if you need to relax specific dials.
 |---|---|---|---|
 | `max_depth` | 128 | 64 | Stack-blowing nested structures |
 | `max_document_length` | 64 MiB | 1 MiB | Oversized payloads |
+| `max_nodes` | 250 K | 25 K | AST node-count floods (empty-collection bombs) |
 | `max_alias_expansions` | 1024 | 100 | Billion-laughs amplification |
 | `max_mapping_keys` | 64 K | 1024 | Hash-collision DoS |
 | `max_sequence_length` | 64 K | 1024 | Memory-spike DoS |
@@ -312,9 +313,19 @@ The CST exposes:
 | `parse_document(s)` / `parse_stream(s)` | Read |
 | `doc.set(path, fragment)` | Write a literal scalar |
 | `doc.set_value(path, &Value)` | Write any `Value` |
-| `doc.entry(path)` | Chainable mutable handle (12 methods, smart `items[0]` paths) |
-| `doc.remove(path)` | Delete a key or sequence item |
+| `doc.entry(path)` | Chainable mutable handle (18 methods, smart `items[0]` paths) |
+| `doc.remove(path)` | Delete a key or sequence item, including multi-line / nested block values (guarded) |
+| `doc.rename_key(path, new_key)` | Rename a mapping key, value untouched (new key spelled in the old key's style) |
+| `doc.key_span(path)` | Read-only byte span of an entry's key token (companion to `span_at`; powers duplicate-key diagnostics) |
+| `doc.swap_items(path, i, j)` | Exchange two block-sequence items, structure preserved (guarded + rollback) |
+| `doc.move_item(path, from, to)` | Move a block-sequence item to a new index, atomic (built on `swap_items`) |
+| `doc.set_inline_comment(path, text)` | Set/replace the trailing `#` comment on a single-line node (guarded) |
+| `doc.remove_inline_comment(path)` | Remove the trailing `#` comment on a node (no-op if absent) |
+| `doc.set_leading_comment(path, text)` | Set/replace the leading `#` comment block above a single-line mapping key |
+| `doc.remove_leading_comment(path)` | Remove the leading comment block above a mapping key (no-op if absent) |
 | `doc.push_back(path, fragment)` | Append to a sequence |
+| `doc.insert_entry_value(map, key, &v)` / `push_back_value(path, &v)` / `insert_after_value(item, &v)` | Insert a typed value auto-formatted via `cst::Emit` — quoted so it re-parses as data, not YAML syntax (guarded + rollback) |
+| `doc.rename_anchor(old, new)` | Rename an `&anchor` and every `*alias` (incl. `<<` merges) in one atomic edit; refuses a name that collides with another anchor (guarded + rollback) |
 | `doc.materialise_aliases_of(name)` | Inline every `*name` reference |
 | `doc.indent_unit()` | Detect 2- / 3- / 4-space conventions |
 | `doc.dominant_quote_style()` | `"`, `'`, or plain |
@@ -493,7 +504,7 @@ diagnostics list and offer autocomplete on the recoverable
 subtrees.
 
 ```rust
-// Cargo.toml: noyalib = { version = "0.0.17", features = ["recovery"] }
+// Cargo.toml: noyalib = { version = "0.0.18", features = ["recovery"] }
 use noyalib::recovery::parse_lenient;
 
 let half_typed = "name: noyalib\nfeatures: [recovery, sval\n# ^ unclosed\n";
@@ -516,7 +527,7 @@ For high-concurrency services parsing YAML from network sources,
 the `tokio` feature lets you skip `spawn_blocking`:
 
 ```rust
-// Cargo.toml: noyalib = { version = "0.0.17", features = ["tokio"] }
+// Cargo.toml: noyalib = { version = "0.0.18", features = ["tokio"] }
 use noyalib::tokio_async::{from_async_reader_multi, YamlDecoder};
 
 // Pattern 1: drain-and-parse
@@ -540,7 +551,7 @@ cost of serde monomorphisation. The adapter implements
 `sval::Stream` consumer can read it:
 
 ```rust
-// Cargo.toml: noyalib = { version = "0.0.17", features = ["sval"] }
+// Cargo.toml: noyalib = { version = "0.0.18", features = ["sval"] }
 let value: noyalib::Value = noyalib::from_str("name: noyalib")?;
 sval::Value::stream(&value, &mut my_stream)?;
 ```

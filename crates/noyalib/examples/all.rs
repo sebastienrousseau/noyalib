@@ -16,6 +16,7 @@ const EXAMPLES: &[&str] = &[
     "deep",
     "dynamic",
     "modify",
+    "cst_surgical_edit",
     "tags", // Spec
     "alias",
     "smart",
@@ -27,6 +28,7 @@ const EXAMPLES: &[&str] = &[
     // Logic & Security
     "strict",
     "secure",
+    "harden_untrusted",
     "schema",
     "env", // DX
     "errors",

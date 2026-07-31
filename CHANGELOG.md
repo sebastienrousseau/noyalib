@@ -7,7 +7,160 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
-(Nothing yet — `[v0.0.17]` is the cut.)
+## [v0.0.18] - 2026-07-31
+
+### Added
+
+- **`Document::rename_key(path, new_key)`** — first-class,
+  re-parse-guarded mapping-key rename (#221, gap 2). The path
+  addresses the entry the same way `set` / `remove` do; only the
+  key token's bytes are rewritten — the `:`, the value,
+  whitespace, comments, and sibling entries survive verbatim.
+  The new key's spelling is style-matched to the key it replaces:
+  a plain key stays plain when the plain spelling re-parses to
+  exactly that string, a quoted key keeps its quote style, and
+  quoting is forced only when the plain spelling would re-parse
+  to something else (`a: b`, `-flag`, `8080`). Renaming a key to
+  its own name is a byte-preserving no-op, decided on the decoded
+  key so a plain `true:` is never requoted. Refuses:
+  sibling-duplicate renames (reported separately when the
+  colliding sibling comes from a `<<` merge), flow-mapping
+  entries, alias keys, keys produced by a `<<` merge, paths
+  reached through an alias, entries inside an anchored value that
+  has alias references, bracket path segments that are not
+  indices (`servers[web]`), `<<` as the new key, and new keys
+  carrying non-printable characters. After the splice the
+  document must re-parse to the old value with exactly that one
+  key renamed, or the edit is rolled back and the failure is
+  reported in the operation's own terms.
+- **`Document::key_span(path)`** — read-only byte span of a
+  mapping entry's key token, the companion to `span_at` (which
+  returns the value span). Exposes, read-only, the same key site
+  `rename_key` rewrites, so tooling can report duplicate keys with
+  positions or drive a "rename key" code action without walking
+  the green tree by hand (#221). Returns `None` for sites that own
+  no simple scalar key — sequence indices, alias (`*name`) sites,
+  and keys provided by a `<<` merge.
+- **`Document::swap_items(path, i, j)`** — exchange two items of a
+  block sequence, rewriting only the two items' value bytes; the
+  `- ` indicators, indentation and every other item stay
+  byte-identical (#221, gap 3). Guarded like the other mutators:
+  the result must re-parse and its typed value must equal the
+  original with exactly items `i` and `j` exchanged, or the edit
+  rolls back. Swapping an index with itself, or two equal values,
+  is a byte-preserving no-op.
+- **`Document::move_item(path, from, to)`** — move a block-sequence
+  item to a new index, shifting the items in between (#221, gap 3).
+  Applied as a run of adjacent `swap_items` steps, so it inherits
+  the structure-preservation and per-step guard, and the whole move
+  is atomic: a refused step rolls the document back to its state
+  before the call.
+- **`Document::set_inline_comment(path, text)`** and
+  **`Document::remove_inline_comment(path)`** — first-class mutation
+  of the trailing `#` comment on a single-line node (#221, gap 1).
+  `set` replaces an existing inline comment in place (keeping its
+  separating whitespace) or appends `  # <text>` after the value;
+  `remove` takes the separating whitespace with it. Both are guarded
+  like the other mutators — the edit must re-parse and leave the
+  typed value unchanged (a comment carries no data), or it rolls
+  back. Multi-line nodes and newlines in the text are refused;
+  removing a comment that is not there is a no-op.
+- **`Document::set_leading_comment(path, text)`** and
+  **`Document::remove_leading_comment(path)`** — mutation of the
+  leading comment block above a single-line mapping key (#221, gap 1).
+  `set` renders `text` as one `#`-prefixed line per `\n` segment at the
+  key's indentation, replacing an existing block in place or inserting
+  one above the entry; `remove` deletes the block. Same re-parse +
+  value-unchanged guard with rollback. Multi-line / nested entries and
+  sequence-item leading blocks remain a follow-up.
+- **The `Emit` auto-formatting tier** (#221, gap 5) — `cst::Emit` and
+  `cst::EmitCtx`, plus **`Document::insert_entry_value`**,
+  **`Document::push_back_value`** and
+  **`Document::insert_after_value`**, the typed counterparts of the
+  three fragment-taking insertion mutators. Where `insert_entry` /
+  `push_back` / `insert_after` splice their `&str` verbatim — so a
+  fragment holding `a: b`, a leading `-` or a `#` becomes YAML
+  *syntax*, which the existing guard cannot catch because the result
+  is still valid YAML — the `_value` methods emit the spelling that
+  re-parses to exactly the value given. Strings that would change type
+  or structure are quoted (`8080`, `true`, `- x`, `a: b`), keys are
+  quoted only when they must be, multi-line strings become block
+  scalars, nested collections are emitted at the file's detected
+  indent, and the file's dominant quote style is followed wherever it
+  faithfully represents the data. `Emit` pairs `emit` with
+  `expected_value`, and every splice must re-parse **and** load back
+  as the pre-edit value with exactly that one insertion applied, or it
+  rolls back. Refuses: `<<` and non-printable keys, tagged values,
+  growing an existing scalar entry into a collection, replacing a key
+  holding `.` or `[` (unaddressable by the path syntax — inserting one
+  is fine), insertions inside an aliased anchor (named, with the
+  `materialise_aliases_of` fix suggested), and empty mappings /
+  sequences that offer no indent anchor. `Entry::insert_value` and
+  `Entry::or_insert_value` now route through this tier — closing the
+  same hole on the `Entry` API, whose key was previously spliced
+  verbatim — and `Entry` gains `push_back_value` / `insert_after_value`.
+
+### Changed
+
+- **`Document::remove` now removes multi-line and nested block
+  values** (#221, gap 4) — a key whose value is a nested mapping,
+  block sequence, or block scalar deletes the whole entry (key/`-`
+  through its last owned line), where it was previously refused. The
+  multi-line splice is guarded by an eager re-parse and a typed-value
+  oracle (the document minus exactly that path) with rollback on any
+  mismatch; the single-line case keeps its original fast path.
+  Removing the sole entry of a block, and flow-collection entries,
+  remain refused.
+- **`BudgetBreach::MaxSequenceLength` and `BudgetBreach::MaxMappingKeys`**
+  — the sequence-width (`max_sequence_length`) and mapping-width
+  (`max_mapping_keys`) caps now trip these structured
+  [`Error::Budget`] variants instead of an opaque `Error::Serialize`
+  string, so a DoS-aware caller routing on `ErrorKind::Budget`
+  classifies width-based resource exhaustion alongside every other
+  budget breach. (Both `#[non_exhaustive]` additions.)
+
+### Fixed
+
+- **`Document::rename_anchor` now refuses a colliding target name.**
+  Renaming `&a` to a name another anchor already declares (e.g. `&b`)
+  used to succeed and leave two `&b` declarations, silently making every
+  `*b` alias resolve to the last one (YAML 1.2.2 §7.1) — a refactor that
+  changed the document's meaning. It now returns an error and leaves the
+  document byte-for-byte unchanged (a no-op `old == new` rename is still
+  allowed). The `# Errors` docs were corrected to describe the actual
+  single-splice, all-or-nothing behaviour, and `rename_anchor` is now
+  demonstrated in the `cst_surgical_edit` example and listed in the
+  User Guide's mutator table.
+- **`insert_entry` / `push_back` / `insert_after` no longer corrupt a
+  document whose last line has no terminator.** They splice at the end
+  of the anchor entry's line, which for a file not ending in `\n` is
+  the end of the source — so the new entry landed on the tail of the
+  old one (`a: 1  b: 2`) and the splice was rejected as a parse error.
+  The new text now opens with the line break the document lacks.
+
+### Security
+
+- **`ParserConfig::max_nodes` is now enforced.** The documented AST
+  node budget (default 250 000; 25 000 under `strict()`) was defined
+  and defaulted but never counted, so a node-dense payload — a long
+  run of empty collections (`[]`/`{}`) that minimises scalar bytes and
+  stays under `max_events` — was bounded four times looser than
+  documented. Both loaders now count each scalar/sequence/mapping node
+  and trip [`BudgetBreach::MaxNodes`] at the cap. Legitimate large
+  documents are unaffected (a 5 000-package `pnpm-lock.yaml` is ~70k
+  nodes); deliberately oversized inputs raise the budget as before.
+- Added the **`harden_untrusted`** example — a tour of hardening a
+  parser against hostile YAML (`DenyAnchors` / `DenyTags` /
+  `MaxScalarLength` policies plus the `max_depth`,
+  `max_alias_expansions`, and `max_nodes` budgets), each shown
+  refusing a matching attack (anchor injection, custom tags, oversized
+  scalars, a billion-laughs alias bomb, an empty-collection node bomb,
+  and deep nesting) while still accepting a real configuration.
+- Added adversarial DoS regression suites (`dos_hardening`,
+  `max_nodes_budget`) covering deep-**flow** rejection, the width-cap
+  budget variants, merge-key amplification, and the `max_nodes` cap;
+  and a `reject_node_bomb` case in the `architecture` security
+  benchmark.
 
 ## [v0.0.17] - 2026-07-25
 

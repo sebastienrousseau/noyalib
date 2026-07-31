@@ -177,6 +177,8 @@ override via `ParserConfig`.
 | `max_depth` | 128 | 64 | Stack-overflow guard on deeply-nested input | `ParserConfig::max_depth(N)` |
 | `max_alias_expansions` | 1024 | 100 | Billion-laughs amplification cap | `ParserConfig::max_alias_expansions(N)` |
 | `max_document_length` | 64 MiB | 1 MiB | Per-document size cap | `ParserConfig::max_document_length(N)` |
+| `max_nodes` | 250000 | 25000 | AST node-count flood cap (empty-collection bombs) | `ParserConfig::max_nodes(N)` |
+| `max_nodes` | 250000 | 25000 | AST node-count cap (empty-collection bombs) | `ParserConfig::max_nodes(N)` |
 | `max_sequence_length` | 65536 | 1024 | Per-sequence item count cap | `ParserConfig::max_sequence_length(N)` |
 | `max_mapping_keys` | 65536 | 1024 | Per-mapping key count cap | `ParserConfig::max_mapping_keys(N)` |
 
