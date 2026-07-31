@@ -717,3 +717,83 @@ fn integrity_mismatch_rolls_back_insert_after_value() {
     );
     assert_eq!(doc.to_string(), before, "must roll back byte-for-byte");
 }
+
+// ── Cover the full Emit surface: every primitive + the accessors ────
+
+#[test]
+fn emit_ctx_accessors_report_their_fields() {
+    let ctx = EmitCtx::new(ScalarStyle::SingleQuoted, FlowStyle::Flow, 4, 6);
+    assert_eq!(ctx.quote_style(), ScalarStyle::SingleQuoted);
+    assert_eq!(ctx.flow_style(), FlowStyle::Flow);
+    assert_eq!(ctx.indent_unit(), 4);
+    assert_eq!(ctx.column(), 6);
+}
+
+#[test]
+fn every_primitive_type_emits_and_reports_its_value() {
+    // Exercise `emit` + `expected_value` for each `impl Emit` — the
+    // macro-generated integer/float impls, bool, str/String, Value, and
+    // the `&T` blanket — so no per-type impl is left uncovered.
+    let ctx = EmitCtx::new(ScalarStyle::Plain, FlowStyle::Block, 2, 0);
+    macro_rules! check {
+        ($($v:expr),* $(,)?) => {$({
+            let v = $v;
+            assert!(!v.emit(&ctx).unwrap().is_empty(), "empty emit for {:?}", v.expected_value());
+            assert!(v.expected_value().is_ok());
+        })*};
+    }
+    check!(
+        0_i8, 1_i16, 2_i32, 3_i64, 4_isize, 5_u8, 6_u16, 7_u32, 8_u64, 9_usize, 1.5_f32, 2.5_f64,
+        true, false
+    );
+    // str / String / Value scalar impls.
+    assert_eq!("plain".emit(&ctx).unwrap(), "plain");
+    let owned = String::from("owned");
+    assert_eq!(owned.emit(&ctx).unwrap(), "owned");
+    assert_eq!(Value::from(7_i64).emit(&ctx).unwrap(), "7");
+    assert_eq!(Value::Null.emit(&ctx).unwrap(), "null");
+}
+
+#[test]
+fn or_insert_value_covers_success_noop_and_index_refusal() {
+    // Success: a fresh nested key routes through insert_value_at_path.
+    let mut doc = parse_document("cfg:\n  a: 1\n").unwrap();
+    assert!(
+        doc.entry("cfg.b")
+            .or_insert_value(&Value::from("8080"))
+            .unwrap(),
+        "a new key must be inserted"
+    );
+    assert_eq!(doc.as_value()["cfg"]["b"], Value::from("8080"));
+    // No-op: an existing key is left untouched and reports false.
+    assert!(
+        !doc.entry("cfg.a")
+            .or_insert_value(&Value::from("9"))
+            .unwrap(),
+        "an existing key must not be overwritten"
+    );
+    assert_eq!(doc.as_value()["cfg"]["a"], Value::from(1_i64));
+    // A sequence-index target is refused.
+    assert!(doc.entry("cfg[0]").or_insert_value(&Value::Null).is_err());
+}
+
+#[test]
+fn typed_inserts_of_collections_via_every_mutator() {
+    // insert_entry_value with a nested mapping and a sequence.
+    let mut doc = parse_document("root:\n  a: 1\n").unwrap();
+    doc.insert_entry_value("root", "m", &map(&[("k", Value::from("v"))]))
+        .unwrap();
+    doc.insert_entry_value("root", "s", &seq(&[Value::from(1_i64), Value::from(2_i64)]))
+        .unwrap();
+    assert_eq!(doc.as_value()["root"]["m"]["k"], Value::from("v"));
+    assert_eq!(doc.as_value()["root"]["s"][1], Value::from(2_i64));
+
+    // push_back_value and insert_after_value with collection items.
+    let mut doc2 = parse_document("list:\n  - 1\n").unwrap();
+    doc2.push_back_value("list", &map(&[("k", Value::from("v"))]))
+        .unwrap();
+    doc2.insert_after_value("list[0]", &seq(&[Value::from(9_i64)]))
+        .unwrap();
+    assert_eq!(doc2.as_value()["list"][1], seq(&[Value::from(9_i64)]));
+    assert_eq!(doc2.as_value()["list"][2]["k"], Value::from("v"));
+}
