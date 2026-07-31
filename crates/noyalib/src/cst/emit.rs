@@ -297,9 +297,14 @@ impl<T: Emit + ?Sized> Emit for &T {
 /// [`format_number`] is unreachable for a bare numeric scalar (the
 /// serializer cannot error on one) but keeps the function total.
 fn emit_number(n: &crate::value::Number) -> String {
-    crate::to_string_value_with_config(&Value::Number(*n), &crate::SerializerConfig::new())
-        .map(|s| s.trim_end_matches('\n').to_owned())
-        .unwrap_or_else(|_| format_number(n))
+    // A plain `match` (not `.unwrap_or_else`) so the defensive fallback
+    // is an inline branch, not a nested closure the coverage tools would
+    // count as its own perpetually-uncovered function. The serializer
+    // cannot fail on a bare numeric scalar, so `Err` is never taken.
+    match crate::to_string_value_with_config(&Value::Number(*n), &crate::SerializerConfig::new()) {
+        Ok(s) => s.trim_end_matches('\n').to_owned(),
+        Err(_) => format_number(n),
+    }
 }
 
 /// YAML spelling for a **string** at an insertion site.

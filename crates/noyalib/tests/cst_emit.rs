@@ -797,3 +797,79 @@ fn typed_inserts_of_collections_via_every_mutator() {
     assert_eq!(doc2.as_value()["list"][1], seq(&[Value::from(9_i64)]));
     assert_eq!(doc2.as_value()["list"][2]["k"], Value::from("v"));
 }
+
+// ── Cover the remaining untested forwarders / trait impls ───────────
+// These are the functions the coverage gate flagged as never entered:
+// `String::expected_value`, the `&T` blanket, `Entry::span_at` /
+// `Entry::set_value`, and the (dead) `Error::entry_not_found` helper.
+
+#[test]
+fn string_value_round_trips_through_emit_and_oracle() {
+    // Passing an owned `String` (not a `&str`) exercises `String`'s own
+    // `Emit::emit` + `Emit::expected_value`.
+    let mut doc = parse_document("m:\n  a: 1\n").unwrap();
+    doc.insert_entry_value("m", "k", &String::from("hello"))
+        .unwrap();
+    assert_eq!(doc.as_value()["m"]["k"], Value::from("hello"));
+    // And the oracle half directly.
+    assert_eq!(
+        String::from("x").expected_value().unwrap(),
+        Value::from("x")
+    );
+}
+
+#[test]
+fn reference_blanket_impl_forwards_both_halves() {
+    // `impl<T: Emit + ?Sized> Emit for &T` — reached by naming `&String`
+    // as the Emit type explicitly.
+    let ctx = EmitCtx::new(ScalarStyle::Plain, FlowStyle::Block, 2, 0);
+    let owned = String::from("val");
+    let by_ref: &String = &owned;
+    assert_eq!(<&String as Emit>::emit(&by_ref, &ctx).unwrap(), "val");
+    assert_eq!(
+        <&String as Emit>::expected_value(&by_ref).unwrap(),
+        Value::from("val")
+    );
+}
+
+#[test]
+fn entry_span_at_and_set_value_forward_to_document() {
+    let mut doc = parse_document("m:\n  a: hello\n").unwrap();
+    // Entry::span_at
+    let span = doc.entry("m.a").span_at().expect("path resolves");
+    assert_eq!(&doc.to_string()[span.0..span.1], "hello");
+    // Entry::set_value
+    doc.entry("m.a").set_value(&Value::from("world")).unwrap();
+    assert_eq!(doc.as_value()["m"]["a"], Value::from("world"));
+}
+
+#[test]
+fn error_entry_not_found_reports_the_path() {
+    // A public (doc-hidden) constructor with no internal caller — assert
+    // it renders the path so the helper is exercised, not dead-carried.
+    let err = noyalib::Error::entry_not_found("a.b.c");
+    assert!(err.to_string().contains("a.b.c"), "got {err}");
+}
+
+#[test]
+fn double_quoted_key_and_top_level_or_insert_refusal() {
+    // A key needing quotes in a non-single-quoted document forces
+    // emit_key's double-quote branch.
+    let mut doc = parse_document("plain: 1\n").unwrap();
+    doc.insert_entry_value("", "a: b", &Value::from("v"))
+        .unwrap();
+    assert!(
+        doc.to_string().contains("\"a: b\": v"),
+        "got {:?}",
+        doc.to_string()
+    );
+
+    // or_insert_value on a bare top-level key is refused (the None arm of
+    // insert_value_at_path).
+    let mut doc2 = parse_document("x: 1\n").unwrap();
+    let err = doc2
+        .entry("newtop")
+        .or_insert_value(&Value::from(1_i64))
+        .unwrap_err();
+    assert!(err.to_string().contains("top-level key"), "got {err}");
+}
