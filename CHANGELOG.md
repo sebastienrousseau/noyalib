@@ -7,7 +7,30 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
-(Nothing yet — `[v0.0.17]` is the cut.)
+### Added
+
+- **`Document::rename_key(path, new_key)`** — first-class,
+  re-parse-guarded mapping-key rename (#221, gap 2). The path
+  addresses the entry the same way `set` / `remove` do; only the
+  key token's bytes are rewritten — the `:`, the value,
+  whitespace, comments, and sibling entries survive verbatim.
+  The new key's spelling is style-matched to the key it replaces:
+  a plain key stays plain when the plain spelling re-parses to
+  exactly that string, a quoted key keeps its quote style, and
+  quoting is forced only when the plain spelling would re-parse
+  to something else (`a: b`, `-flag`, `8080`). Renaming a key to
+  its own name is a byte-preserving no-op, decided on the decoded
+  key so a plain `true:` is never requoted. Refuses:
+  sibling-duplicate renames (reported separately when the
+  colliding sibling comes from a `<<` merge), flow-mapping
+  entries, alias keys, keys produced by a `<<` merge, paths
+  reached through an alias, entries inside an anchored value that
+  has alias references, bracket path segments that are not
+  indices (`servers[web]`), `<<` as the new key, and new keys
+  carrying non-printable characters. After the splice the
+  document must re-parse to the old value with exactly that one
+  key renamed, or the edit is rolled back and the failure is
+  reported in the operation's own terms.
 
 ## [v0.0.17] - 2026-07-25
 

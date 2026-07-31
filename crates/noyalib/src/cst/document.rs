@@ -14,7 +14,7 @@ use crate::error::{Error, Result};
 use crate::path::{QuerySegment, parse_query_path};
 use crate::prelude::*;
 use crate::span_context::SpanTree;
-use crate::value::{Number, Value};
+use crate::value::{Mapping, Number, Value};
 
 /// A YAML document with byte-faithful source preservation, typed
 /// data access, and path-targeted edits.
@@ -607,6 +607,305 @@ impl Document {
             entry_line_span(value, span_tree, &self.source, &segments)?
         };
         self.replace_span(line_start, line_end, "")
+    }
+
+    /// Rename the key of the mapping entry at `path` to `new_key`,
+    /// leaving every other byte — the `:`, the value, whitespace,
+    /// comments, and sibling entries — untouched.
+    ///
+    /// `path` addresses the entry the same way [`Document::set`] and
+    /// [`Document::remove`] address it: the path points at the
+    /// entry's *value*; the operation rewrites that entry's *key*
+    /// token.
+    ///
+    /// `new_key`'s spelling is *style-matched to the key it
+    /// replaces*: a plain key stays plain when `new_key`'s plain
+    /// spelling re-parses to exactly that string, a single-quoted
+    /// key stays single-quoted, a double-quoted key stays
+    /// double-quoted. Quoting is forced only when the plain
+    /// spelling would not re-parse to `new_key` (`a: b`, `-flag`,
+    /// `8080`, `true`) — a plain site then falls back to double
+    /// quotes.
+    ///
+    /// Renaming a key to its current spelling is a no-op — `Ok(())`
+    /// with no bytes modified. "Current spelling" is decided on the
+    /// *decoded* key, so a plain `true:` renamed to `"true"` stays
+    /// plain rather than being requoted. The guarantee applies to
+    /// every path that resolves to a mapping entry; paths that fail
+    /// to resolve at all (alias-addressed content, keys produced by
+    /// a `<<` merge) report their resolution error instead.
+    ///
+    /// After the splice the document must re-parse cleanly **and**
+    /// its typed value must equal the old value with exactly that
+    /// one key renamed — same entry position, same value. If either
+    /// check fails, the document is rolled back to its previous
+    /// state and an error is returned.
+    ///
+    /// Restrictions in this phase:
+    /// - Block mappings only — flow-mapping entries (`{a: 1}`) are
+    ///   a follow-up, mirroring [`Document::remove`]'s block-only
+    ///   scope.
+    /// - The entry's key must be a simple scalar token (plain,
+    ///   single-quoted, or double-quoted). Alias keys (`*name :`)
+    ///   are rejected. Explicit complex keys (`? [a, b]`) are not
+    ///   addressable by the path syntax in the first place — their
+    ///   stringified form contains bracket segments, which the path
+    ///   parser reads as sequence indices — so they cannot be
+    ///   renamed; the surrounding mapping's other entries rename
+    ///   normally.
+    ///
+    /// # Errors
+    ///
+    /// - Path not found, or it does not address a mapping entry
+    ///   (e.g. it ends in a sequence index).
+    /// - `path` contains a bracket segment that is not a
+    ///   non-negative integer (`servers[web]`) — the shared path
+    ///   parser drops such a segment, which would rename the
+    ///   *parent* key, so `rename_key` refuses it outright.
+    /// - `new_key` is `<<`: the loader treats a `<<` key as a merge
+    ///   directive whatever its quote style, so the rename cannot
+    ///   round-trip.
+    /// - `new_key` contains a non-printable character (any control
+    ///   character other than tab, `U+007F`, or a `U+0080..=U+009F`
+    ///   C1 control) — YAML's printable set excludes them and no
+    ///   scalar style can spell them here.
+    /// - Restrictions above.
+    /// - The containing mapping already has a *different* entry
+    ///   whose key equals `new_key` — the rename would create a
+    ///   duplicate and silently change data. Reported separately
+    ///   when that sibling comes from a `<<` merge rather than from
+    ///   the mapping's own source entries.
+    /// - The addressed key has no entry of its own because a `<<`
+    ///   merge key produced it — the key lives in the merged
+    ///   mapping, so that is where it must be renamed.
+    /// - The path is reached *through* an alias (`*name`): the
+    ///   bytes at that site belong to the anchor, so the anchor's
+    ///   own entry must be renamed instead.
+    /// - The entry lies inside an anchored value that has alias
+    ///   references — the rename would propagate to every `*name`
+    ///   site. Call [`Document::materialise_aliases_of`] first.
+    /// - The re-parse / integrity guard above; the document is left
+    ///   unchanged.
+    /// - The document no longer parses (an earlier edit left it in
+    ///   the optimistically-committed broken state — see
+    ///   [`Document::validate`]).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use noyalib::cst::parse_document;
+    ///
+    /// let mut doc = parse_document("name: foo  # the project\nversion: 0.0.1\n").unwrap();
+    /// doc.rename_key("name", "title").unwrap();
+    /// assert_eq!(doc.to_string(), "title: foo  # the project\nversion: 0.0.1\n");
+    /// ```
+    ///
+    /// A new key that is not plain-safe is quoted automatically:
+    ///
+    /// ```
+    /// use noyalib::cst::parse_document;
+    ///
+    /// let mut doc = parse_document("name: foo\n").unwrap();
+    /// doc.rename_key("name", "a: b").unwrap();
+    /// assert_eq!(doc.to_string(), "\"a: b\": foo\n");
+    /// assert_eq!(doc.as_value()["a: b"].as_str(), Some("foo"));
+    /// ```
+    pub fn rename_key(&mut self, path: &str, new_key: &str) -> Result<()> {
+        // An earlier edit may have left the document in the
+        // optimistically-committed broken state (see `validate`), in
+        // which case `ensure_cache` would panic. Surface it as an
+        // error instead — `rename_key` returns `Result` and
+        // documents no panics.
+        self.validate().map_err(|e| {
+            Error::Parse(format!(
+                "rename_key: the document does not parse, so `{path}` cannot be resolved \
+                 ({e}); the document was left unchanged"
+            ))
+        })?;
+        let segments = parse_rename_path(path)?;
+
+        // Spelling refusals that no scalar style can work around,
+        // checked before any resolution so the diagnosis names the
+        // argument rather than whatever the splice happened to break.
+        if new_key == MERGE_KEY_SPELLING {
+            return Err(Error::Parse(format!(
+                "rename_key: `{MERGE_KEY_SPELLING}` cannot be used as a key name — the loader \
+                 treats any `{MERGE_KEY_SPELLING}` key as a merge directive whatever its quote \
+                 style, so the renamed entry would not round-trip as a key"
+            )));
+        }
+        if let Some(bad) = first_non_printable(new_key) {
+            return Err(Error::Parse(format!(
+                "rename_key: the new key contains the non-printable character U+{:04X}, which \
+                 is outside YAML's printable character set — mapping keys may not carry control \
+                 characters (tab excepted)",
+                bad as u32
+            )));
+        }
+
+        // Resolve the entry's key span via the typed cache — the
+        // same resolver family `remove` uses (`entry_line_span`
+        // computes this key span and discards its end; here it is
+        // the target). The sibling-duplicate refusal happens during
+        // resolution, where the containing mapping is at hand.
+        let (key_start, key_end) = {
+            let cache = self.cache.borrow();
+            let (value, span_tree) = cache.as_ref().expect("validate populated the cache");
+            entry_key_site(value, span_tree, &segments, new_key)?
+        };
+        if key_start == key_end {
+            // The loader records a zero-width key span for keys that
+            // are not a single scalar node — in practice alias keys
+            // (`*name :`); an explicit complex key (`? [a, b]`) has
+            // one too, but its stringified form is not addressable
+            // by the path syntax, so it never reaches here.
+            return Err(Error::Parse(format!(
+                "rename_key: the key at `{path}` is not a simple scalar token \
+                 (alias keys cannot be renamed)"
+            )));
+        }
+
+        // Green-tree guards: the addressed key must be a scalar
+        // token that belongs to a *block* mapping entry.
+        let (token_kind, (tok_start, tok_end), parent_kind) =
+            token_at_with_parent(&self.green, key_start, 0).ok_or_else(|| {
+                Error::Parse(format!(
+                    "rename_key: could not locate the key token for `{path}`"
+                ))
+            })?;
+
+        // The scanner captures a plain scalar at end-of-line with
+        // its trailing line break (see `anchored_scalar_text`) — an
+        // explicit key (`? foo`) ends its line, so keep separator
+        // whitespace out of the splice.
+        let (tok_start, tok_end) = trim_trailing_blank(&self.source, tok_start, tok_end);
+
+        // No-op check, decided on the *decoded* key rather than on
+        // the spelling `format_key_for_site` would produce: a plain
+        // `true:` renamed to `"true"` must stay plain, not be
+        // requoted into a different YAML type. It runs before the
+        // remaining refusals so a same-name rename is `Ok(())`
+        // wherever the entry resolves at all — including inside a
+        // flow mapping, whose renames are otherwise a follow-up.
+        if let Some(current) = decode_key_token(&self.source[tok_start..tok_end], token_kind) {
+            if current == new_key {
+                return Ok(());
+            }
+        }
+
+        if parent_kind == SyntaxKind::FlowMapping {
+            return Err(Error::Parse(format!(
+                "rename_key: `{path}` addresses a flow-mapping entry — only block \
+                 mappings are supported (flow-mapping renames are a follow-up)"
+            )));
+        }
+        if parent_kind != SyntaxKind::MappingEntry {
+            return Err(Error::Parse(format!(
+                "rename_key: `{path}` does not address a block-mapping entry key"
+            )));
+        }
+        if !matches!(
+            token_kind,
+            SyntaxKind::PlainScalar
+                | SyntaxKind::SingleQuotedScalar
+                | SyntaxKind::DoubleQuotedScalar
+        ) {
+            return Err(Error::Parse(format!(
+                "rename_key: the key at `{path}` is not a simple scalar token \
+                 (alias keys cannot be renamed)"
+            )));
+        }
+
+        // An entry inside an anchored value is shared with every
+        // `*name` site: renaming the key here renames it at all of
+        // them, which the integrity oracle would reject as an
+        // unrelated "duplicate key". Diagnose the real cause first.
+        if let Some((anchor, alias_count)) = self.aliased_anchor_covering(tok_start) {
+            return Err(Error::Parse(format!(
+                "rename_key: `{path}` is inside the value anchored by `&{anchor}`, which has \
+                 {alias_count} alias reference(s) — renaming the key here would rename it at \
+                 every `*{anchor}` site too; call `materialise_aliases_of(\"{anchor}\")` first \
+                 to give each site its own copy, then rename"
+            )));
+        }
+
+        // Spell the new key, style-matched to the token it replaces
+        // (plain stays plain when the plain spelling re-parses to
+        // `new_key`, quoted stays quoted in the same style).
+        let replacement = format_key_for_site(new_key, token_kind);
+        if replacement == self.source[tok_start..tok_end] {
+            // Spelling-identical after formatting — nothing to splice.
+            return Ok(());
+        }
+
+        // Snapshot for rollback, and the integrity oracle: the old
+        // typed value with exactly this one key renamed in place.
+        let snapshot = self.clone();
+        let expected = {
+            let cache = self.cache.borrow();
+            let (value, _) = cache.as_ref().expect("validate populated the cache");
+            expected_after_rename(value, &segments, new_key)?
+        };
+
+        // Post-splice guards. Every failure below is reported in
+        // `rename_key`'s own terms — a raw loader error would say
+        // nothing about the path, the new key, or the rollback.
+        if let Err(e) = self.replace_span(tok_start, tok_end, &replacement) {
+            *self = snapshot;
+            return Err(Error::Parse(format!(
+                "rename_key: renaming `{path}` to `{new_key}` could not be spliced ({e}); \
+                 the document was left unchanged"
+            )));
+        }
+
+        // Re-parse guard. `replace_span`'s local-repair fast path
+        // commits optimistically (see `validate`), so run the eager
+        // document-level check here and compare the typed view
+        // against the oracle. Roll back on any mismatch.
+        if let Err(e) = self.validate() {
+            *self = snapshot;
+            return Err(Error::Parse(format!(
+                "rename_key: renaming `{path}` to `{new_key}` left the document unable to \
+                 re-parse ({e}); the document was left unchanged"
+            )));
+        }
+        let matches_expected = *self.as_value() == expected;
+        if !matches_expected {
+            *self = snapshot;
+            return Err(Error::Parse(format!(
+                "rename_key: renaming `{path}` to `{new_key}` failed the integrity \
+                 check — the edit would change data beyond the single renamed key \
+                 (e.g. a duplicate of the old key elsewhere in the mapping); \
+                 the document was left unchanged"
+            )));
+        }
+        Ok(())
+    }
+
+    /// The anchor covering byte `pos` that has at least one `*name`
+    /// reference, with that reference count.
+    ///
+    /// `Document::rename_key` uses this to refuse a rename whose
+    /// bytes are shared with alias sites *before* splicing, so the
+    /// user gets the anchor's name instead of a downstream integrity
+    /// complaint. `None` when `pos` is outside every anchored value,
+    /// or the anchors covering it have no aliases (then the rename
+    /// is local and safe).
+    fn aliased_anchor_covering(&self, pos: usize) -> Option<(String, usize)> {
+        for anchor in self.anchors() {
+            let Some((start, end)) = anchored_content_span(&self.green, 0, anchor.mark_span.0)
+            else {
+                continue;
+            };
+            if pos < start || pos >= end {
+                continue;
+            }
+            let count = self.aliases_of(&anchor.name).len();
+            if count > 0 {
+                return Some((anchor.name, count));
+            }
+        }
+        None
     }
 
     /// Append a new item to the block sequence at `path`.
@@ -1788,6 +2087,342 @@ fn entry_line_span(
         }
         _ => Err(Error::Parse("path not found".into())),
     }
+}
+
+// ── Key-site resolution (used by `rename_key`) ──────────────────────
+
+/// The YAML merge key. Spelled out here because `rename_key` refuses
+/// it as a *new* key name: the loader matches the decoded string, so
+/// quoting cannot demote a `<<` key back to an ordinary one.
+const MERGE_KEY_SPELLING: &str = "<<";
+
+/// Parse `path` for [`Document::rename_key`] with a stricter bracket
+/// rule than the shared [`parse_query_path`].
+///
+/// `parse_query_path` *drops* a bracket segment whose content is not
+/// an index (`servers[web]` collapses to `servers`). For a read that
+/// is a harmless miss, but a rename would then rewrite the *parent*
+/// key — a silent, destructive edit the caller never asked for. Here
+/// the typo is an error naming the offending segment.
+fn parse_rename_path(path: &str) -> Result<Vec<QuerySegment>> {
+    let mut rest = path;
+    while let Some(open) = rest.find('[') {
+        let after = &rest[open + 1..];
+        let close = after.find(']').unwrap_or(after.len());
+        let content = &after[..close];
+        if content.parse::<usize>().is_err() {
+            return Err(Error::Parse(format!(
+                "rename_key: `{path}` contains the bracket segment `[{content}]`, which is not \
+                 a sequence index — a bracket segment must hold a non-negative integer, and a \
+                 mapping key is addressed with dot notation (`parent.child`)"
+            )));
+        }
+        rest = &after[close..];
+    }
+    Ok(parse_query_path(path))
+}
+
+/// The first character of `key` outside YAML's printable set
+/// (§5.1 `c-printable`): any control character other than tab,
+/// including `U+007F` and the `U+0080..=U+009F` C1 block.
+///
+/// [`Document::rename_key`] refuses such a key rather than trying to
+/// spell it: the double-quoted formatter escapes only `< U+0020`, so
+/// a `U+007F` would be spliced raw and the document would carry
+/// bytes the YAML spec does not admit.
+fn first_non_printable(key: &str) -> Option<char> {
+    key.chars().find(|&c| c != '\t' && c.is_control())
+}
+
+/// Decode a mapping-key token's source text to the string it
+/// denotes, per its quote style. `None` for token kinds that are not
+/// a simple scalar (alias marks and the like), which have no decoded
+/// spelling to compare against.
+///
+/// [`Document::rename_key`] compares this against `new_key` to
+/// decide the byte-preserving no-op. Comparing *formatted* spellings
+/// instead would requote a plain `true:` into `"true":` on a rename
+/// to its own name — a data change, since the key's YAML type
+/// switches from bool to string.
+fn decode_key_token(raw: &str, kind: SyntaxKind) -> Option<String> {
+    match kind {
+        // A plain scalar's source text is its content, and a key
+        // token never spans lines (implicit keys are single-line;
+        // an explicit `? foo` key's trailing break is trimmed off
+        // before this point).
+        SyntaxKind::PlainScalar => Some(raw.to_owned()),
+        SyntaxKind::SingleQuotedScalar => decode_single_quoted(raw).map(Cow::into_owned),
+        // Double-quoted escapes (`\t`, `é`, …) need the real
+        // scalar parser; the token is self-delimiting, so loading it
+        // as a bare scalar document yields exactly the decoded key.
+        SyntaxKind::DoubleQuotedScalar => {
+            let cfg = crate::parser::ParseConfig::default();
+            match crate::parser::parse_one_value(raw, &cfg).ok()? {
+                Value::String(s) => Some(s),
+                _ => None,
+            }
+        }
+        _ => None,
+    }
+}
+
+/// The byte span of the node an `&name` anchor decorates, given the
+/// anchor mark's start offset. The anchored node is the first
+/// non-trivia sibling that follows the mark inside the same green
+/// node — a scalar token, or a nested collection.
+///
+/// Returns `None` when the mark is unknown or decorates nothing
+/// (an anchored implicit null has no bytes of its own).
+fn anchored_content_span(
+    node: &GreenNode,
+    base: usize,
+    mark_start: usize,
+) -> Option<(usize, usize)> {
+    let mut pos = base;
+    let mut seen_mark = false;
+    for child in node.children() {
+        let len = child.text_len();
+        if seen_mark {
+            let trivia = matches!(
+                child,
+                GreenChild::Token { kind, .. }
+                    if matches!(
+                        kind,
+                        SyntaxKind::Whitespace
+                            | SyntaxKind::Newline
+                            | SyntaxKind::Comment
+                            | SyntaxKind::TagMark
+                    )
+            );
+            if !trivia {
+                return Some((pos, pos + len));
+            }
+        } else if pos == mark_start
+            && matches!(child, GreenChild::Token { kind, .. } if *kind == SyntaxKind::AnchorMark)
+        {
+            seen_mark = true;
+        }
+        pos += len;
+    }
+    if seen_mark {
+        // The mark was the last meaningful child — nothing anchored.
+        return None;
+    }
+    // Not at this level: descend into the child that contains it.
+    let mut pos = base;
+    for child in node.children() {
+        let len = child.text_len();
+        if let GreenChild::Node(inner) = child {
+            if pos <= mark_start && mark_start < pos + len {
+                return anchored_content_span(inner, pos, mark_start);
+            }
+        }
+        pos += len;
+    }
+    None
+}
+
+/// Resolve `segments` to the byte span of the *key* token of the
+/// mapping entry it addresses, refusing renames that would collide
+/// with an existing sibling key.
+///
+/// The path addresses the entry the same way `set` / `remove` do —
+/// it points at the entry's value; the returned span is the entry's
+/// key. Mirrors [`entry_line_span`]'s recursion but keeps the key
+/// span that resolver discards.
+fn entry_key_site(
+    value: &Value,
+    span_tree: &SpanTree,
+    segments: &[QuerySegment],
+    new_key: &str,
+) -> Result<(usize, usize)> {
+    // An alias site substitutes the anchor's (value, tree) — the
+    // same unwrapping `resolve_span` does for reads. A *write* here
+    // would splice the anchor's bytes, which belong to a different
+    // entry, so refuse with that diagnosis rather than letting the
+    // wrapper fall through to the catch-all "path not found".
+    if matches!(span_tree, SpanTree::Alias(_)) {
+        return Err(Error::Parse(
+            "rename_key: the path addresses alias-expanded content — an `*name` site reflects \
+             the anchor's entries and owns no key bytes of its own; rename the corresponding \
+             entry at the anchor's own definition instead"
+                .into(),
+        ));
+    }
+
+    let (head, tail) = segments.split_first().ok_or_else(|| {
+        Error::Parse("rename_key requires a non-empty path addressing a mapping entry".into())
+    })?;
+
+    // Recurse into nested mappings / sequences until the segment
+    // list identifies the entry whose key is being renamed.
+    if !tail.is_empty() {
+        let (child_value, child_tree) = match (head, value, span_tree) {
+            (QuerySegment::Key(k), Value::Mapping(m), SpanTree::Mapping { entries, .. }) => {
+                let pos = m
+                    .iter()
+                    .position(|(mk, _)| mk == k)
+                    .ok_or_else(|| Error::Parse(format!("path not found: missing key {k:?}")))?;
+                let (_, child_tree) = entries.get(pos).ok_or_else(|| {
+                    // Keys past the span-entry list were introduced
+                    // by a `<<` merge key — they have no source
+                    // entry of their own in this mapping. Spelled
+                    // exactly as the final-segment arm spells it: an
+                    // intermediate segment is the same condition.
+                    Error::Parse(format!(
+                        "rename_key: key {k:?} was produced by a `<<` merge key and has \
+                         no entry of its own to rename in this mapping"
+                    ))
+                })?;
+                (
+                    m.iter().nth(pos).map(|(_, v)| v).expect("pos in range"),
+                    child_tree,
+                )
+            }
+            (QuerySegment::Index(i), Value::Sequence(seq), SpanTree::Sequence { items, .. }) => (
+                seq.get(*i).ok_or_else(|| {
+                    Error::Parse(format!("path not found: index {i} out of bounds"))
+                })?,
+                items.get(*i).ok_or_else(|| {
+                    Error::Parse(format!("path not found: index {i} out of bounds"))
+                })?,
+            ),
+            _ => return Err(Error::Parse("path not found".into())),
+        };
+        return entry_key_site(child_value, child_tree, tail, new_key);
+    }
+
+    // Final segment — locate this entry's key span in the parent
+    // mapping and refuse a rename that would duplicate a sibling.
+    match (head, value, span_tree) {
+        (QuerySegment::Key(k), Value::Mapping(m), SpanTree::Mapping { entries, .. }) => {
+            let pos = m
+                .iter()
+                .position(|(mk, _)| mk == k)
+                .ok_or_else(|| Error::Parse(format!("path not found: missing key {k:?}")))?;
+            if k != new_key && m.contains_key(new_key) {
+                // A key beyond the span-entry list came from a `<<`
+                // merge: the mapping has no entry of its own by that
+                // name, so the result would not be a duplicate — it
+                // would be an explicit key *overriding* the merged
+                // value. Still refused, but not for that reason.
+                let merge_provided = m
+                    .get_index_of(new_key)
+                    .is_some_and(|idx| idx >= entries.len());
+                if merge_provided {
+                    return Err(Error::Parse(format!(
+                        "rename_key: {new_key:?} is provided by a `<<` merge key in this \
+                         mapping — renaming {k:?} to it would create an explicit entry that \
+                         overrides the merged value instead of renaming in place"
+                    )));
+                }
+                return Err(Error::Parse(format!(
+                    "rename_key: the mapping already has an entry named {new_key:?} — \
+                     renaming {k:?} would create a duplicate key"
+                )));
+            }
+            let (key_span, _) = entries.get(pos).ok_or_else(|| {
+                Error::Parse(format!(
+                    "rename_key: key {k:?} was produced by a `<<` merge key and has \
+                     no entry of its own to rename in this mapping"
+                ))
+            })?;
+            Ok(*key_span)
+        }
+        (QuerySegment::Index(_), _, _) => Err(Error::Parse(
+            "rename_key: path must address a mapping entry, not a sequence item".into(),
+        )),
+        _ => Err(Error::Parse("path not found".into())),
+    }
+}
+
+/// Locate the token leaf containing byte `target` and return its
+/// kind, byte range, and the [`SyntaxKind`] of its immediate green
+/// parent. The parent kind lets [`Document::rename_key`] tell a
+/// block-mapping key (parent `MappingEntry`) from a flow-mapping
+/// key (parent `FlowMapping` — flow content is kept flat, see
+/// [`SyntaxKind::FlowMapping`]).
+fn token_at_with_parent(
+    node: &GreenNode,
+    target: usize,
+    base: usize,
+) -> Option<(SyntaxKind, (usize, usize), SyntaxKind)> {
+    let mut pos = base;
+    for child in node.children() {
+        let len = child.text_len();
+        if pos <= target && target < pos + len {
+            return match child {
+                GreenChild::Token { kind, .. } => Some((*kind, (pos, pos + len), node.kind())),
+                GreenChild::Node(inner) => token_at_with_parent(inner, target, pos),
+            };
+        }
+        pos += len;
+    }
+    None
+}
+
+/// YAML spelling for a mapping key that replaces a key token of
+/// `kind`, style-matched to the site: a quoted site keeps its quote
+/// style, and a plain site stays plain when the plain spelling
+/// re-parses to exactly `key` (delegating to [`is_plain_safe`]),
+/// falling back to double quotes when it would not.
+fn format_key_for_site(key: &str, kind: SyntaxKind) -> String {
+    // Single-quoted YAML cannot represent control characters (and a
+    // line break inside single quotes folds — the decoded key would
+    // differ); fall back to double quotes for those.
+    let single_representable = !key.bytes().any(|b| b < 0x20 || b == 0x7F);
+    match kind {
+        SyntaxKind::SingleQuotedScalar if single_representable => format_single_quoted(key),
+        SyntaxKind::DoubleQuotedScalar => format_double_quoted(key),
+        _ => {
+            if is_plain_safe(key) {
+                key.to_owned()
+            } else {
+                format_double_quoted(key)
+            }
+        }
+    }
+}
+
+/// The typed value the document must load to after renaming the
+/// entry at `segments` to `new_key`: the pre-edit value with exactly
+/// that one key renamed — same entry position, same value. Used as
+/// the post-splice integrity oracle by [`Document::rename_key`].
+fn expected_after_rename(value: &Value, segments: &[QuerySegment], new_key: &str) -> Result<Value> {
+    let (last, parents) = segments.split_last().ok_or_else(|| {
+        Error::Parse("rename_key requires a non-empty path addressing a mapping entry".into())
+    })?;
+    let QuerySegment::Key(old_key) = last else {
+        return Err(Error::Parse(
+            "rename_key: path must address a mapping entry, not a sequence item".into(),
+        ));
+    };
+    let mut expected = value.clone();
+    let mut cur = &mut expected;
+    for seg in parents {
+        cur = match (seg, cur) {
+            (QuerySegment::Key(k), Value::Mapping(m)) => m
+                .get_mut(k)
+                .ok_or_else(|| Error::Parse(format!("path not found: missing key {k:?}")))?,
+            (QuerySegment::Index(i), Value::Sequence(seq)) => seq
+                .get_mut(*i)
+                .ok_or_else(|| Error::Parse(format!("path not found: index {i} out of bounds")))?,
+            _ => return Err(Error::Parse("path not found".into())),
+        };
+    }
+    let Value::Mapping(m) = cur else {
+        return Err(Error::Parse("path not found".into()));
+    };
+    let mut renamed = Mapping::with_capacity(m.len());
+    for (k, v) in m.iter() {
+        if k == old_key {
+            let _ = renamed.insert(new_key, v.clone());
+        } else {
+            let _ = renamed.insert(k.clone(), v.clone());
+        }
+    }
+    *m = renamed;
+    Ok(expected)
 }
 
 /// Walk backward from `value_start` past inline whitespace and find
