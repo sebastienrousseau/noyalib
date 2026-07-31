@@ -16,6 +16,7 @@ const EXAMPLES: &[&str] = &[
     "deep",
     "dynamic",
     "modify",
+    "cst_surgical_edit",
     "tags", // Spec
     "alias",
     "smart",

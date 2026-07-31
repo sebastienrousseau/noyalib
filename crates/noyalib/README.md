@@ -285,6 +285,7 @@ cargo run --example all                  # runs every default-feature example
 cargo run --example hello                # struct round-trip
 cargo run --example dynamic              # dynamic Value tree
 cargo run --example lossless_edit        # CST edits, comments preserved
+cargo run --example cst_surgical_edit    # full edit API: rename/reorder/comment mutators
 cargo run --example flatten              # serde flatten + untagged
 cargo run --example diagnostic   --features miette
 cargo run --example schema_validation --features validate-schema

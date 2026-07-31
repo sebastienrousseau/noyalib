@@ -199,6 +199,9 @@ path = "examples/all.rs"
 [[example]]
 name = "lossless_edit"
 path = "examples/lossless_edit.rs"
+[[example]]
+name = "cst_surgical_edit"
+path = "examples/cst_surgical_edit.rs"
 
 [[example]]
 name = "lossless_u64"

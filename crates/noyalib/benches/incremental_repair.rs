@@ -155,5 +155,77 @@ fn bench_phase_a(c: &mut Criterion) {
     bench_batch_edits(c, 500, 50);
 }
 
-criterion_group!(name = benches; config = Criterion::default(); targets = bench_phase_a);
+/// The re-parse-guarded mutators (`rename_key`, `remove`,
+/// `set_inline_comment`, `swap_items`, `move_item`) each snapshot,
+/// splice, re-parse, and check a typed oracle — a heavier profile than
+/// the localised `set` fast path above. `iter_batched` re-parses a
+/// fresh document per iteration so only the mutator itself is timed.
+fn bench_guarded_mutators(c: &mut Criterion) {
+    use criterion::BatchSize;
+
+    let map_src = synth_doc(500);
+    let seq_src: String = (0..100).map(|i| format!("- item_{i:03}\n")).collect();
+
+    let mut mg = c.benchmark_group("guarded_mutators_map_500");
+    mg.bench_function("rename_key", |b| {
+        b.iter_batched(
+            || parse_document(&map_src).unwrap(),
+            |mut doc| {
+                doc.rename_key(black_box("key_00250"), black_box("renamed_key"))
+                    .unwrap();
+                doc
+            },
+            BatchSize::SmallInput,
+        )
+    });
+    mg.bench_function("remove", |b| {
+        b.iter_batched(
+            || parse_document(&map_src).unwrap(),
+            |mut doc| {
+                doc.remove(black_box("key_00250")).unwrap();
+                doc
+            },
+            BatchSize::SmallInput,
+        )
+    });
+    mg.bench_function("set_inline_comment", |b| {
+        b.iter_batched(
+            || parse_document(&map_src).unwrap(),
+            |mut doc| {
+                doc.set_inline_comment(black_box("key_00250"), black_box("note"))
+                    .unwrap();
+                doc
+            },
+            BatchSize::SmallInput,
+        )
+    });
+    mg.finish();
+
+    let mut sg = c.benchmark_group("guarded_mutators_seq_100");
+    sg.bench_function("swap_items_ends", |b| {
+        b.iter_batched(
+            || parse_document(&seq_src).unwrap(),
+            |mut doc| {
+                doc.swap_items(black_box(""), black_box(0), black_box(99))
+                    .unwrap();
+                doc
+            },
+            BatchSize::SmallInput,
+        )
+    });
+    sg.bench_function("move_item_span_50", |b| {
+        b.iter_batched(
+            || parse_document(&seq_src).unwrap(),
+            |mut doc| {
+                doc.move_item(black_box(""), black_box(0), black_box(50))
+                    .unwrap();
+                doc
+            },
+            BatchSize::SmallInput,
+        )
+    });
+    sg.finish();
+}
+
+criterion_group!(name = benches; config = Criterion::default(); targets = bench_phase_a, bench_guarded_mutators);
 criterion_main!(benches);
