@@ -55,6 +55,17 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   the structure-preservation and per-step guard, and the whole move
   is atomic: a refused step rolls the document back to its state
   before the call.
+- **`Document::set_inline_comment(path, text)`** and
+  **`Document::remove_inline_comment(path)`** — first-class mutation
+  of the trailing `#` comment on a single-line node (#221, gap 1).
+  `set` replaces an existing inline comment in place (keeping its
+  separating whitespace) or appends `  # <text>` after the value;
+  `remove` takes the separating whitespace with it. Both are guarded
+  like the other mutators — the edit must re-parse and leave the
+  typed value unchanged (a comment carries no data), or it rolls
+  back. Multi-line nodes and newlines in the text are refused;
+  removing a comment that is not there is a no-op. (Leading-block
+  comment mutation is tracked for a follow-up.)
 
 ## [v0.0.17] - 2026-07-25
 

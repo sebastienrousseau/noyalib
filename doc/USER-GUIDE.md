@@ -318,6 +318,8 @@ The CST exposes:
 | `doc.key_span(path)` | Read-only byte span of an entry's key token (companion to `span_at`; powers duplicate-key diagnostics) |
 | `doc.swap_items(path, i, j)` | Exchange two block-sequence items, structure preserved (guarded + rollback) |
 | `doc.move_item(path, from, to)` | Move a block-sequence item to a new index, atomic (built on `swap_items`) |
+| `doc.set_inline_comment(path, text)` | Set/replace the trailing `#` comment on a single-line node (guarded) |
+| `doc.remove_inline_comment(path)` | Remove the trailing `#` comment on a node (no-op if absent) |
 | `doc.push_back(path, fragment)` | Append to a sequence |
 | `doc.materialise_aliases_of(name)` | Inline every `*name` reference |
 | `doc.indent_unit()` | Detect 2- / 3- / 4-space conventions |
