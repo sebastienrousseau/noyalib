@@ -332,6 +332,104 @@ service:
     assert_eq!(v["service"]["port"].as_i64(), Some(8080));
 }
 
+#[test]
+fn rename_anchor_onto_existing_anchor_is_refused() {
+    // Renaming `a` -> `b` when `&b` already exists would leave two
+    // `&b` declarations, so every `*b` alias would resolve to the
+    // last one (YAML 1.2.2 §7.1) — silently changing what the
+    // document means. The rename must be refused and the document
+    // left byte-for-byte unchanged.
+    let src = "x: &a 1\ny: &b 2\nz: *a\n";
+    let mut doc = parse_document(src).unwrap();
+    let err = doc.rename_anchor("a", "b").unwrap_err();
+    assert!(
+        err.to_string()
+            .contains("already declares a different anchor"),
+        "got {err}"
+    );
+    assert_eq!(doc.to_string(), src, "a refused rename must not mutate");
+}
+
+#[test]
+fn rename_anchor_to_same_name_is_a_byte_preserving_noop() {
+    // `old == new` is exempt from the collision guard: it reports the
+    // site count and leaves the document byte-identical.
+    let src = "x: &a 1\ny: *a\nz: *a\n";
+    let mut doc = parse_document(src).unwrap();
+    let n = doc.rename_anchor("a", "a").unwrap();
+    assert_eq!(n, 3, "1 anchor + 2 aliases counted");
+    assert_eq!(doc.to_string(), src, "no-op must be byte-preserving");
+}
+
+#[test]
+fn rename_anchor_leaves_substring_named_anchors_untouched() {
+    // `cfg` and `cfg2` are distinct names; renaming `cfg` must match
+    // exactly and never touch `cfg2` or its aliases.
+    let src = "p: &cfg 1\nq: &cfg2 2\nr: *cfg\ns: *cfg2\n";
+    let mut doc = parse_document(src).unwrap();
+    let n = doc.rename_anchor("cfg", "base").unwrap();
+    assert_eq!(n, 2);
+    assert_eq!(
+        doc.to_string(),
+        "p: &base 1\nq: &cfg2 2\nr: *base\ns: *cfg2\n"
+    );
+}
+
+#[test]
+fn rename_anchor_accepts_valid_special_characters() {
+    // Anything free of flow indicators and whitespace is a valid
+    // anchor name — hyphens, underscores, dots included.
+    let src = "x: &a 1\ny: *a\n";
+    let mut doc = parse_document(src).unwrap();
+    let n = doc.rename_anchor("a", "my-anchor_v2.3").unwrap();
+    assert_eq!(n, 2);
+    assert_eq!(
+        doc.to_string(),
+        "x: &my-anchor_v2.3 1\ny: *my-anchor_v2.3\n"
+    );
+}
+
+#[test]
+fn rename_anchor_byte_exact_with_multiple_aliases_and_merge() {
+    // Reverse-source-order splicing must land every one of a run of
+    // aliases (and a `<<` merge alias) exactly, with the byte-for-byte
+    // result asserted in full.
+    let src = "\
+base: &cfg
+  port: 8080
+a:
+  <<: *cfg
+b: *cfg
+c: *cfg
+";
+    let mut doc = parse_document(src).unwrap();
+    let n = doc.rename_anchor("cfg", "shared").unwrap();
+    assert_eq!(n, 4, "1 anchor + 3 aliases (one via `<<`)");
+    assert_eq!(
+        doc.to_string(),
+        "\
+base: &shared
+  port: 8080
+a:
+  <<: *shared
+b: *shared
+c: *shared
+"
+    );
+}
+
+#[test]
+fn rename_anchor_updates_accessor_views() {
+    // After the rename the typed anchor/alias accessors reflect the
+    // new name and no longer report the old one.
+    let mut doc = parse_document("x: &a 1\ny: *a\n").unwrap();
+    let _ = doc.rename_anchor("a", "z").unwrap();
+    let anchor_names: Vec<_> = doc.anchors().iter().map(|a| a.name.clone()).collect();
+    let alias_names: Vec<_> = doc.aliases().iter().map(|a| a.name.clone()).collect();
+    assert_eq!(anchor_names, vec!["z".to_string()]);
+    assert_eq!(alias_names, vec!["z".to_string()]);
+}
+
 // ── Edits over anchor-decorated regions stay byte-faithful ──────────
 
 #[test]

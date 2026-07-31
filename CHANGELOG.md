@@ -93,6 +93,19 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   classifies width-based resource exhaustion alongside every other
   budget breach. (Both `#[non_exhaustive]` additions.)
 
+### Fixed
+
+- **`Document::rename_anchor` now refuses a colliding target name.**
+  Renaming `&a` to a name another anchor already declares (e.g. `&b`)
+  used to succeed and leave two `&b` declarations, silently making every
+  `*b` alias resolve to the last one (YAML 1.2.2 §7.1) — a refactor that
+  changed the document's meaning. It now returns an error and leaves the
+  document byte-for-byte unchanged (a no-op `old == new` rename is still
+  allowed). The `# Errors` docs were corrected to describe the actual
+  single-splice, all-or-nothing behaviour, and `rename_anchor` is now
+  demonstrated in the `cst_surgical_edit` example and listed in the
+  User Guide's mutator table.
+
 ### Security
 
 - **`ParserConfig::max_nodes` is now enforced.** The documented AST

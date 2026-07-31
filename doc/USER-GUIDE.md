@@ -323,6 +323,7 @@ The CST exposes:
 | `doc.set_leading_comment(path, text)` | Set/replace the leading `#` comment block above a single-line mapping key |
 | `doc.remove_leading_comment(path)` | Remove the leading comment block above a mapping key (no-op if absent) |
 | `doc.push_back(path, fragment)` | Append to a sequence |
+| `doc.rename_anchor(old, new)` | Rename an `&anchor` and every `*alias` (incl. `<<` merges) in one atomic edit; refuses a name that collides with another anchor (guarded + rollback) |
 | `doc.materialise_aliases_of(name)` | Inline every `*name` reference |
 | `doc.indent_unit()` | Detect 2- / 3- / 4-space conventions |
 | `doc.dominant_quote_style()` | `"`, `'`, or plain |

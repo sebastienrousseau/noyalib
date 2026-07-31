@@ -7,9 +7,9 @@
 //! rewrites only the bytes it must and leaves comments, indentation,
 //! blank lines and sibling entries byte-for-byte intact. The
 //! re-parse-guarded mutators (`rename_key`, `swap_items`, `move_item`,
-//! the comment setters, and multi-line `remove`) additionally verify
-//! the edit against a typed oracle and roll back on any mismatch, so a
-//! bad edit can never corrupt the document.
+//! `rename_anchor`, the comment setters, and multi-line `remove`)
+//! additionally verify the edit against a typed oracle and roll back on
+//! any mismatch, so a bad edit can never corrupt the document.
 //!
 //! This example applies every mutator to a single realistic config and
 //! asserts the byte-exact result at each step, so it doubles as living
@@ -90,6 +90,23 @@ fn main() {
     doc.remove_leading_comment("port").unwrap();
     assert_eq!(doc.source(), "port: 8080\n");
     println!("comments       → set, read, removed cleanly");
+
+    // ── rename_anchor: rename a `&declaration` and every `*alias` ────
+    // (including one inside a `<<` merge) in one atomic edit ──────────
+    let mut doc =
+        parse_document("defaults: &cfg\n  port: 8080\nservice:\n  <<: *cfg\nbackup: *cfg\n")
+            .unwrap();
+    let renamed = doc.rename_anchor("cfg", "shared").unwrap();
+    assert_eq!(renamed, 3); // 1 anchor + 2 aliases (one via `<<`)
+    assert_eq!(
+        doc.source(),
+        "defaults: &shared\n  port: 8080\nservice:\n  <<: *shared\nbackup: *shared\n"
+    );
+    // Renaming onto a name another anchor already uses is refused — it
+    // would change which value the aliases resolve to.
+    let mut clash = parse_document("x: &a 1\ny: &b 2\nz: *a\n").unwrap();
+    assert!(clash.rename_anchor("a", "b").is_err());
+    println!("rename_anchor  → {:?}", doc.source());
 
     // ── the guard refuses a data-changing edit and rolls back ────────
     let mut doc = parse_document("a: 1\nb: 2\n").unwrap();

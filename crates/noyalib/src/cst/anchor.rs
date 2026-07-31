@@ -293,12 +293,15 @@ impl Document {
     ///   (so the call is a no-op the user probably did not
     ///   intend) — surfaced as an error rather than a silent
     ///   zero-count.
+    /// - `new` already names a *different* anchor in the document
+    ///   (unless `new == old`): merging the two would make every
+    ///   `*new` alias resolve to the last declaration, silently
+    ///   changing the document's meaning, so the rename is refused.
     /// - The same parse-after-edit errors as
-    ///   [`crate::cst::Document::replace_span`] for any individual
-    ///   splice. The first failing splice aborts the batch;
-    ///   already-renamed sites stay renamed, so callers should
-    ///   treat a partial-failure error as a recoverable state and
-    ///   inspect the document.
+    ///   [`crate::cst::Document::replace_span`]. The rename is a
+    ///   single atomic splice over the whole document, so it is
+    ///   all-or-nothing: on any error the document is left
+    ///   byte-for-byte unchanged.
     ///
     /// # Examples
     ///
@@ -329,6 +332,17 @@ impl Document {
 
         // Collect every site (anchor or alias) in source order.
         let anchors = self.anchors();
+        // Refuse renaming onto a name already used by a *different*
+        // anchor. Two `&new` declarations would make every `*new`
+        // alias resolve to the last one (YAML 1.2.2 §7.1), silently
+        // changing what the document means — the opposite of a safe
+        // refactor. A no-op rename (`old == new`) is exempt.
+        if new != old && anchors.iter().any(|a| a.name == new) {
+            return Err(Error::Parse(format!(
+                "rename_anchor: `&{new}` already declares a different anchor; \
+                 renaming `{old}` onto it would change alias resolution"
+            )));
+        }
         let aliases = self.aliases();
         let mut sites: Vec<(char, (usize, usize))> = anchors
             .iter()
