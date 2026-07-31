@@ -609,3 +609,111 @@ fn every_emitted_value_reloads_as_itself() {
         assert_eq!(doc.as_value()["items"][1], case, "round trip of {case:?}");
     }
 }
+
+// ── Floats: the spelling must stay a float, not collapse to an int ──
+
+#[test]
+fn whole_valued_float_round_trips_as_float_not_int() {
+    // `1.0` must emit as `1.0` (not `1`, which would load as an integer
+    // and fail the oracle). Regression for the `Display`-based number
+    // path that refused every whole-valued float.
+    let mut doc = parse_document("m:\n  a: 1\n").unwrap();
+    doc.insert_entry_value("m", "ratio", &1.0_f64).unwrap();
+    assert!(
+        doc.to_string().contains("ratio: 1.0"),
+        "got {:?}",
+        doc.to_string()
+    );
+    assert_eq!(doc.as_value()["m"]["ratio"], Value::from(1.0_f64));
+}
+
+#[test]
+fn special_floats_round_trip() {
+    for (v, spelling) in [(f64::INFINITY, ".inf"), (f64::NEG_INFINITY, "-.inf")] {
+        let mut doc = parse_document("m:\n  a: 1\n").unwrap();
+        doc.insert_entry_value("m", "x", &v).unwrap();
+        assert!(
+            doc.to_string().contains(spelling),
+            "want {spelling}, got {:?}",
+            doc.to_string()
+        );
+        assert_eq!(doc.as_value()["m"]["x"], Value::from(v));
+    }
+    // `Number` treats NaN == NaN, so `.nan` clears the oracle too.
+    let mut doc = parse_document("m:\n  a: 1\n").unwrap();
+    doc.insert_entry_value("m", "x", &f64::NAN).unwrap();
+    assert!(
+        doc.to_string().contains(".nan"),
+        "got {:?}",
+        doc.to_string()
+    );
+    assert_eq!(doc.as_value()["m"]["x"], Value::from(f64::NAN));
+}
+
+#[test]
+fn fractional_float_via_push_back_round_trips() {
+    let mut doc = parse_document("nums:\n  - 1\n").unwrap();
+    doc.push_back_value("nums", &2.5_f64).unwrap();
+    assert_eq!(
+        doc.as_value()["nums"],
+        seq(&[Value::from(1_i64), Value::from(2.5_f64)]),
+    );
+}
+
+// ── The post-splice integrity guard: exercise the rollback arm ──────
+
+/// A deliberately inconsistent `Emit`: `emit` splices the integer `1`
+/// while `expected_value` claims a string. The spliced fragment
+/// re-parses fine, so only the typed-value oracle can catch the
+/// disagreement — driving the integrity-check rollback that an honest
+/// value never reaches.
+struct Contradiction;
+
+impl Emit for Contradiction {
+    fn emit(&self, _ctx: &EmitCtx) -> noyalib::Result<String> {
+        Ok("1".to_owned())
+    }
+    fn expected_value(&self) -> noyalib::Result<Value> {
+        Ok(Value::from("sentinel"))
+    }
+}
+
+#[test]
+fn integrity_mismatch_rolls_back_insert_entry_value() {
+    let mut doc = parse_document("m:\n  a: 1\n").unwrap();
+    let before = doc.to_string();
+    let err = doc
+        .insert_entry_value("m", "k", &Contradiction)
+        .unwrap_err();
+    assert!(
+        err.to_string().contains("integrity check"),
+        "expected an integrity-check refusal, got {err}"
+    );
+    assert_eq!(doc.to_string(), before, "must roll back byte-for-byte");
+}
+
+#[test]
+fn integrity_mismatch_rolls_back_push_back_value() {
+    let mut doc = parse_document("items:\n  - one\n").unwrap();
+    let before = doc.to_string();
+    let err = doc.push_back_value("items", &Contradiction).unwrap_err();
+    assert!(
+        err.to_string().contains("integrity check"),
+        "expected an integrity-check refusal, got {err}"
+    );
+    assert_eq!(doc.to_string(), before, "must roll back byte-for-byte");
+}
+
+#[test]
+fn integrity_mismatch_rolls_back_insert_after_value() {
+    let mut doc = parse_document("items:\n  - one\n  - two\n").unwrap();
+    let before = doc.to_string();
+    let err = doc
+        .insert_after_value("items[0]", &Contradiction)
+        .unwrap_err();
+    assert!(
+        err.to_string().contains("integrity check"),
+        "expected an integrity-check refusal, got {err}"
+    );
+    assert_eq!(doc.to_string(), before, "must roll back byte-for-byte");
+}

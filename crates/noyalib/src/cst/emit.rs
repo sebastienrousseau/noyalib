@@ -250,7 +250,7 @@ impl Emit for Value {
         match self {
             Value::Null => Ok("null".to_owned()),
             Value::Bool(b) => b.emit(ctx),
-            Value::Number(n) => Ok(format_number(n)),
+            Value::Number(n) => Ok(emit_number(n)),
             Value::String(s) => Ok(emit_string(s, ctx)),
             Value::Sequence(_) | Value::Mapping(_) => emit_collection(self, ctx),
             Value::Tagged(_) => Err(Error::Parse(
@@ -283,6 +283,23 @@ impl<T: Emit + ?Sized> Emit for &T {
     fn expected_value(&self) -> Result<Value> {
         (**self).expected_value()
     }
+}
+
+/// YAML spelling for a numeric scalar.
+///
+/// Floats must not use `Display` (what [`format_number`] reaches for):
+/// it renders `1.0_f64` as `"1"`, which re-parses as an **integer** and
+/// fails the insertion oracle, and the special floats need `.inf` /
+/// `-.inf` / `.nan`. Routing the number through the serializer reuses
+/// its tested, canonical formatting (including the `fast-float` path),
+/// so `1.0`, `-0.0`, `±inf`, and `NaN` each re-parse back to the same
+/// `Number::Float`. Integers are unaffected. The fallback to
+/// [`format_number`] is unreachable for a bare numeric scalar (the
+/// serializer cannot error on one) but keeps the function total.
+fn emit_number(n: &crate::value::Number) -> String {
+    crate::to_string_value_with_config(&Value::Number(*n), &crate::SerializerConfig::new())
+        .map(|s| s.trim_end_matches('\n').to_owned())
+        .unwrap_or_else(|_| format_number(n))
 }
 
 /// YAML spelling for a **string** at an insertion site.
@@ -329,16 +346,17 @@ fn quote_for_site(s: &str, style: ScalarStyle) -> String {
 /// for top-level emission — the splice templates supply their own line
 /// break. The result may be multi-line; callers re-indent continuation
 /// lines to the site's column before splicing.
+///
+/// Nested scalars take the serializer's conservative `Auto` quoting,
+/// which always round-trips (the oracle would reject anything that did
+/// not) — so a plain-styled file may receive `cpu: "100m"` where it
+/// writes `cpu: 100m` elsewhere. Matching the file's dominant scalar
+/// style for *nested* scalars would need `SerializerConfig::scalar_style`
+/// to be honoured by the serializer, which it is not yet.
 fn emit_collection(value: &Value, ctx: &EmitCtx) -> Result<String> {
     let cfg = crate::SerializerConfig::new()
         .indent(ctx.indent_unit)
-        .flow_style(ctx.flow)
-        // Without this the serializer's `Auto` quotes conservatively,
-        // so a plain-styled file would receive `cpu: "100m"` where it
-        // writes `cpu: 100m` everywhere else. The dominant style is
-        // never `Auto` (it is detected from real scalars), so this
-        // hands the serializer the file's actual convention.
-        .scalar_style(ctx.quote);
+        .flow_style(ctx.flow);
     let emitted = crate::to_string_value_with_config(value, &cfg)?;
     Ok(emitted.trim_end_matches('\n').to_owned())
 }
