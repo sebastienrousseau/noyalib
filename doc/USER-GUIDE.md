@@ -313,7 +313,7 @@ The CST exposes:
 | `doc.set(path, fragment)` | Write a literal scalar |
 | `doc.set_value(path, &Value)` | Write any `Value` |
 | `doc.entry(path)` | Chainable mutable handle (12 methods, smart `items[0]` paths) |
-| `doc.remove(path)` | Delete a key or sequence item |
+| `doc.remove(path)` | Delete a key or sequence item, including multi-line / nested block values (guarded) |
 | `doc.rename_key(path, new_key)` | Rename a mapping key, value untouched (new key spelled in the old key's style) |
 | `doc.key_span(path)` | Read-only byte span of an entry's key token (companion to `span_at`; powers duplicate-key diagnostics) |
 | `doc.swap_items(path, i, j)` | Exchange two block-sequence items, structure preserved (guarded + rollback) |

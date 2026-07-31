@@ -619,10 +619,12 @@ impl Document {
     /// Restrictions in this phase:
     /// - Block context only — flow-collection entry removal (`[a, b, c]`
     ///   → `[a, c]`) is a follow-up.
-    /// - The value must end on the line where its key / `-` indicator
-    ///   appears (single-line scalars). Multi-line values and nested
-    ///   collections are deferred to the same follow-up that handles
-    ///   block-scalar replacement in `set_value`.
+    /// - Multi-line values and nested block collections **are** removed
+    ///   — the whole entry, from its key / `-` indicator through the
+    ///   last line the value owns. The multi-line splice is guarded by
+    ///   an eager re-parse and a typed-value oracle (the document minus
+    ///   this one path); a splice that would change anything else rolls
+    ///   back. The single-line case keeps its original fast path.
     /// - Removing the only entry of a block mapping or sequence is
     ///   rejected — the result would parse differently (an empty
     ///   block becomes `null`), and the caller needs to express that
@@ -648,12 +650,47 @@ impl Document {
     pub fn remove(&mut self, path: &str) -> Result<()> {
         self.ensure_cache();
         let segments = parse_query_path(path);
-        let (line_start, line_end) = {
+        let (line_start, line_end, multiline) = {
             let cache = self.cache.borrow();
             let (value, span_tree) = cache.as_ref().expect("ensure_cache populated");
             entry_line_span(value, span_tree, &self.source, &segments)?
         };
-        self.replace_span(line_start, line_end, "")
+        if !multiline {
+            // Single-line entry — original fast path, unchanged.
+            return self.replace_span(line_start, line_end, "");
+        }
+
+        // Multi-line / nested block value: the splice removes several
+        // lines, so guard it with a snapshot, an eager re-parse, and a
+        // typed oracle — the document with exactly this path removed.
+        let expected = {
+            let cache = self.cache.borrow();
+            let (value, _) = cache.as_ref().expect("ensure_cache populated");
+            expected_after_remove(value, &segments)?
+        };
+        let snapshot = self.clone();
+        if let Err(e) = self.replace_span(line_start, line_end, "") {
+            *self = snapshot;
+            return Err(Error::Parse(format!(
+                "remove: removing `{path}` could not be spliced ({e}); \
+                 the document was left unchanged"
+            )));
+        }
+        if let Err(e) = self.validate() {
+            *self = snapshot;
+            return Err(Error::Parse(format!(
+                "remove: removing `{path}` left the document unable to re-parse ({e}); \
+                 the document was left unchanged"
+            )));
+        }
+        if *self.as_value() != expected {
+            *self = snapshot;
+            return Err(Error::Parse(format!(
+                "remove: removing `{path}` failed the integrity check — the edit would \
+                 change data beyond the removed entry; the document was left unchanged"
+            )));
+        }
+        Ok(())
     }
 
     /// Rename the key of the mapping entry at `path` to `new_key`,
@@ -2232,7 +2269,7 @@ fn entry_line_span(
     span_tree: &SpanTree,
     source: &str,
     segments: &[QuerySegment],
-) -> Result<(usize, usize)> {
+) -> Result<(usize, usize, bool)> {
     if segments.is_empty() {
         return Err(Error::Parse(
             "remove requires a non-empty path (cannot remove the document root)".into(),
@@ -2285,8 +2322,9 @@ fn entry_line_span(
             let ((key_start, _key_end), child_tree) = &entries[pos];
             let raw_value_end = span_tree_end(child_tree);
             let (_, value_end) = trim_trailing_blank(source, *key_start, raw_value_end);
-            require_single_line(source, *key_start, value_end)?;
-            Ok(line_extent(source, *key_start, value_end))
+            let (ls, le) = line_extent(source, *key_start, value_end);
+            let multiline = source[*key_start..value_end].contains('\n');
+            Ok((ls, le, multiline))
         }
         (QuerySegment::Index(i), Value::Sequence(seq), SpanTree::Sequence { items, .. }) => {
             if seq.len() <= 1 {
@@ -2306,8 +2344,9 @@ fn entry_line_span(
                     "remove: could not locate '-' indicator preceding sequence item".into(),
                 )
             })?;
-            require_single_line(source, dash_pos, value_end)?;
-            Ok(line_extent(source, dash_pos, value_end))
+            let (ls, le) = line_extent(source, dash_pos, value_end);
+            let multiline = source[dash_pos..value_end].contains('\n');
+            Ok((ls, le, multiline))
         }
         _ => Err(Error::Parse("path not found".into())),
     }
@@ -2732,6 +2771,49 @@ fn expected_after_swap(
     Ok(expected)
 }
 
+/// The typed value with the entry at `segments` removed — the integrity
+/// oracle for the multi-line `remove` path.
+fn expected_after_remove(value: &Value, segments: &[QuerySegment]) -> Result<Value> {
+    let (last, parents) = segments
+        .split_last()
+        .ok_or_else(|| Error::Parse("remove requires a non-empty path".into()))?;
+    let mut expected = value.clone();
+    let mut cur = &mut expected;
+    for seg in parents {
+        cur = match (seg, cur) {
+            (QuerySegment::Key(k), Value::Mapping(m)) => m
+                .get_mut(k)
+                .ok_or_else(|| Error::Parse(format!("path not found: missing key {k:?}")))?,
+            (QuerySegment::Index(i), Value::Sequence(seq)) => seq
+                .get_mut(*i)
+                .ok_or_else(|| Error::Parse(format!("path not found: index {i} out of bounds")))?,
+            _ => return Err(Error::Parse("path not found".into())),
+        };
+    }
+    match (last, cur) {
+        (QuerySegment::Key(k), Value::Mapping(m)) => {
+            let mut rebuilt = Mapping::with_capacity(m.len().saturating_sub(1));
+            for (mk, mv) in m.iter() {
+                if mk != k {
+                    let _ = rebuilt.insert(mk.clone(), mv.clone());
+                }
+            }
+            *m = rebuilt;
+            Ok(expected)
+        }
+        (QuerySegment::Index(i), Value::Sequence(seq)) => {
+            if *i >= seq.len() {
+                return Err(Error::Parse(format!(
+                    "path not found: index {i} out of bounds"
+                )));
+            }
+            let _ = seq.remove(*i);
+            Ok(expected)
+        }
+        _ => Err(Error::Parse("path not found".into())),
+    }
+}
+
 /// Walk backward from `value_start` past inline whitespace and find
 /// the `-` indicator that opened this sequence entry. Returns its
 /// byte offset, or `None` if no dash is found on the same line.
@@ -2985,19 +3067,6 @@ fn locate_preceding_dash(source: &str, value_start: usize) -> Option<usize> {
         }
     }
     None
-}
-
-/// Reject ranges that span multiple lines — `remove` currently only
-/// handles entries whose value ends on the same line as the key /
-/// dash.
-fn require_single_line(source: &str, start: usize, end: usize) -> Result<()> {
-    let segment = &source.as_bytes()[start..end];
-    if segment.contains(&b'\n') {
-        return Err(Error::Parse(
-            "remove: multi-line / nested-value entries are not yet supported".into(),
-        ));
-    }
-    Ok(())
 }
 
 /// Extend `(start, end)` outward to a full-line byte range:

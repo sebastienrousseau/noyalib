@@ -67,6 +67,18 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   removing a comment that is not there is a no-op. (Leading-block
   comment mutation is tracked for a follow-up.)
 
+### Changed
+
+- **`Document::remove` now removes multi-line and nested block
+  values** (#221, gap 4) — a key whose value is a nested mapping,
+  block sequence, or block scalar deletes the whole entry (key/`-`
+  through its last owned line), where it was previously refused. The
+  multi-line splice is guarded by an eager re-parse and a typed-value
+  oracle (the document minus exactly that path) with rollback on any
+  mismatch; the single-line case keeps its original fast path.
+  Removing the sole entry of a block, and flow-collection entries,
+  remain refused.
+
 ## [v0.0.17] - 2026-07-25
 
 A **lockstep-only** cut. The core crate has **no code or behaviour change**
