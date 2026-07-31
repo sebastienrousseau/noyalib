@@ -73,6 +73,32 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   one above the entry; `remove` deletes the block. Same re-parse +
   value-unchanged guard with rollback. Multi-line / nested entries and
   sequence-item leading blocks remain a follow-up.
+- **The `Emit` auto-formatting tier** (#221, gap 5) — `cst::Emit` and
+  `cst::EmitCtx`, plus **`Document::insert_entry_value`**,
+  **`Document::push_back_value`** and
+  **`Document::insert_after_value`**, the typed counterparts of the
+  three fragment-taking insertion mutators. Where `insert_entry` /
+  `push_back` / `insert_after` splice their `&str` verbatim — so a
+  fragment holding `a: b`, a leading `-` or a `#` becomes YAML
+  *syntax*, which the existing guard cannot catch because the result
+  is still valid YAML — the `_value` methods emit the spelling that
+  re-parses to exactly the value given. Strings that would change type
+  or structure are quoted (`8080`, `true`, `- x`, `a: b`), keys are
+  quoted only when they must be, multi-line strings become block
+  scalars, nested collections are emitted at the file's detected
+  indent, and the file's dominant quote style is followed wherever it
+  faithfully represents the data. `Emit` pairs `emit` with
+  `expected_value`, and every splice must re-parse **and** load back
+  as the pre-edit value with exactly that one insertion applied, or it
+  rolls back. Refuses: `<<` and non-printable keys, tagged values,
+  growing an existing scalar entry into a collection, replacing a key
+  holding `.` or `[` (unaddressable by the path syntax — inserting one
+  is fine), insertions inside an aliased anchor (named, with the
+  `materialise_aliases_of` fix suggested), and empty mappings /
+  sequences that offer no indent anchor. `Entry::insert_value` and
+  `Entry::or_insert_value` now route through this tier — closing the
+  same hole on the `Entry` API, whose key was previously spliced
+  verbatim — and `Entry` gains `push_back_value` / `insert_after_value`.
 
 ### Changed
 
@@ -129,6 +155,15 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   budget variants, merge-key amplification, and the `max_nodes` cap;
   and a `reject_node_bomb` case in the `architecture` security
   benchmark.
+
+### Fixed
+
+- **`insert_entry` / `push_back` / `insert_after` no longer corrupt a
+  document whose last line has no terminator.** They splice at the end
+  of the anchor entry's line, which for a file not ending in `\n` is
+  the end of the source — so the new entry landed on the tail of the
+  old one (`a: 1  b: 2`) and the splice was rejected as a parse error.
+  The new text now opens with the line break the document lacks.
 
 ## [v0.0.17] - 2026-07-25
 
