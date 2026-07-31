@@ -439,7 +439,7 @@ table below groups the inventory by capability theme.
 | Migration from `serde_yaml` | `compat-serde-yaml` feature with name-for-name re-exports; `From`/`TryFrom` parity for `Value`/`Mapping`/`Number`; `Document::validate`; comment-aware reads via `load_comments` |
 | Binary scalars | First-class `!!binary` tag; RFC 4648 base64 round-trip with `serde_bytes::ByteBuf`/`Bytes`; non-UTF-8 payloads supported |
 | Flatten guard | `Spanned<Value>` in `#[serde(flatten)]` returns an actionable error pointing at the working alternative |
-| Lossless editing | Side-table CST with byte-faithful round-trip; `Document::entry(path)` chainable mutable handle (12 methods); automatic indent detection (2/3/4-space) |
+| Lossless editing | Side-table CST with byte-faithful round-trip; `Document::entry(path)` chainable mutable handle (19 methods); `rename_anchor` / `swap_items` / `move_item` and the auto-formatting `*_value` inserts; automatic indent detection (2/3/4-space) |
 | Anchor management | `Document::anchors()` / `aliases()` / `aliases_of(name)`; `materialise_alias_at(byte_pos)` and `materialise_aliases_of(name)` for breaking aliases |
 | Schema codegen | `schema` feature: `JsonSchema` derive re-export; `schema_for::<T>()` and `schema_for_yaml::<T>()`; honours `#[doc]`, `#[serde(default)]`, `#[serde(rename)]` |
 | Schema validation | `validate-schema` feature: `validate_against_schema(value, schema)`; aggregated violations with RFC 6901 paths |
@@ -581,7 +581,7 @@ stack, etc.) live in
 | **WASM** | Compiles to `wasm32-unknown-unknown`. wasm-bindgen bindings (camelCase per JS conventions): `parse()`, `stringify()`, `getPath()`, `validateJson()`, `merge()`, plus the `WasmDocument` class (`toString()`, `get()`, `getSource()`, `set()`, `setValue()`, `spanAt()`, `commentsAt()`, `replaceSpan()`). Browser demo included. |
 | **Errors** | Source locations on all parse errors. `format_with_source()` renders rustc-style diagnostics with `-->` pointer. `#[track_caller]` on all Index panics. `miette::Diagnostic` integration included (`--features miette`) for rich terminal reports with error codes, actionable help text, and source spans. |
 | **no\_std** | Full `#![no_std]` support with `alloc`. Use `default-features = false`. Core parsing (`from_str`, `to_string`, `Value`, schemas) works without `std`. I/O functions (`from_reader`, `to_writer`), `Spanned<T>` deserialization (TLS), and the CST module require the `std` feature. CI enforces `cargo check --no-default-features` on every push. |
-| **CST editing** | Side-table CST (`noyalib::cst`) for byte-faithful round-tripping. `Document::set("server.port", "9090")` rewrites only the touched bytes; comments, blank lines, and sibling formatting survive. `Document::entry(path)` is the chainable mutable handle (18 methods covering set / set_value / remove / insert / insert_value / push_back / push_back_value / insert_after / insert_after_value / and_modify / or_insert / or_insert_with / or_insert_value / get / span_at / comments / exists / nested entry, plus smart `items[0]` path composition). `Document::indent_unit()` detects 2-/3-/4-space conventions so inserts conform to the file's existing style. The `*_value` insertion mutators auto-format through the `cst::Emit` trait — a string that would re-parse as a number, a boolean, or a nested collection is quoted — and every splice is checked against a typed oracle, rolling back rather than restructuring the document. |
+| **CST editing** | Side-table CST (`noyalib::cst`) for byte-faithful round-tripping. `Document::set("server.port", "9090")` rewrites only the touched bytes; comments, blank lines, and sibling formatting survive. `Document::entry(path)` is the chainable mutable handle (19 methods covering path / set / set_value / remove / insert / insert_value / push_back / push_back_value / insert_after / insert_after_value / and_modify / or_insert / or_insert_with / or_insert_value / get / span_at / comments / exists / nested entry, plus smart `items[0]` path composition). `Document::indent_unit()` detects 2-/3-/4-space conventions so inserts conform to the file's existing style. The `*_value` insertion mutators auto-format through the `cst::Emit` trait — a string that would re-parse as a number, a boolean, or a nested collection is quoted — and every splice is checked against a typed oracle, rolling back rather than restructuring the document. |
 | **Anchors v2** | `Document::anchors()` / `aliases()` / `aliases_of(name)` enumerate every `&name` / `*name` lexeme in source order. `Document::materialise_alias_at(byte_pos)` and `materialise_aliases_of(name)` "break" an alias by inlining the anchored scalar's source bytes — leaves the alias site independent of future anchor edits. |
 | **Schema codegen** | `schema` feature: derive `JsonSchema` (re-exported from `schemars`), then `schema_for::<T>() -> Result<Value>` or `schema_for_yaml::<T>() -> Result<String>` to emit the JSON Schema 2020-12 document. Honours `#[doc]`, `#[serde(default)]`, `#[serde(rename)]`, integer bounds, nested types via `$defs`. |
 | **Schema validation** | `validate-schema` feature (implies `schema`): `validate_against_schema(value, schema) -> Result<()>` enforces a JSON Schema 2020-12 contract on parsed YAML. Multiple violations aggregated with RFC 6901 JSON-pointer paths. `validate_against_schema_str` is the raw-text convenience. |
@@ -1427,7 +1427,7 @@ chosen code. Period.
 
 ### Configurable resource budgets
 
-The `ParserConfig::strict()` preset enforces seven **resource
+The `ParserConfig::strict()` preset enforces eight **resource
 budgets** that cap every dimension of input size — designed to
 make billion-laughs and similar memory-amplification attacks
 mathematically impossible:
@@ -1436,6 +1436,7 @@ mathematically impossible:
 | :--- | ---: | ---: | :--- |
 | `max_depth` | 128 | 64 | Stack-blowing nested structures |
 | `max_document_length` | 64 MiB | 1 MiB | Oversized payloads |
+| `max_nodes` | 250 K | 25 K | AST node-count floods (empty-collection bombs) |
 | `max_alias_expansions` | 1024 | 100 | **Billion-laughs amplification** |
 | `max_mapping_keys` | 64 K | 1024 | Hash-collision DoS |
 | `max_sequence_length` | 64 K | 1024 | Memory-spike DoS |

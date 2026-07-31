@@ -227,5 +227,55 @@ fn bench_guarded_mutators(c: &mut Criterion) {
     sg.finish();
 }
 
-criterion_group!(name = benches; config = Criterion::default(); targets = bench_phase_a, bench_guarded_mutators);
+/// The auto-formatting insertion mutators (`insert_entry_value`,
+/// `push_back_value`, `insert_after_value`) run the full `Emit` pipeline:
+/// emit the value's YAML spelling for the site, splice, re-parse, and
+/// check the typed oracle. This captures the cost the verbatim
+/// `insert_entry` / `push_back` fast paths avoid.
+fn bench_emit_insertions(c: &mut Criterion) {
+    use criterion::BatchSize;
+    use noyalib::Value;
+
+    let map_src = synth_doc(500);
+    let seq_src: String = (0..100).map(|i| format!("- item_{i:03}\n")).collect();
+    let scalar = Value::from("new_value");
+
+    let mut g = c.benchmark_group("emit_insertions");
+    g.bench_function("insert_entry_value_scalar", |b| {
+        b.iter_batched(
+            || parse_document(&map_src).unwrap(),
+            |mut doc| {
+                doc.insert_entry_value(black_box(""), black_box("added"), black_box(&scalar))
+                    .unwrap();
+                doc
+            },
+            BatchSize::SmallInput,
+        )
+    });
+    g.bench_function("push_back_value_scalar", |b| {
+        b.iter_batched(
+            || parse_document(&seq_src).unwrap(),
+            |mut doc| {
+                doc.push_back_value(black_box(""), black_box(&scalar))
+                    .unwrap();
+                doc
+            },
+            BatchSize::SmallInput,
+        )
+    });
+    g.bench_function("insert_after_value_scalar", |b| {
+        b.iter_batched(
+            || parse_document(&seq_src).unwrap(),
+            |mut doc| {
+                doc.insert_after_value(black_box("[0]"), black_box(&scalar))
+                    .unwrap();
+                doc
+            },
+            BatchSize::SmallInput,
+        )
+    });
+    g.finish();
+}
+
+criterion_group!(name = benches; config = Criterion::default(); targets = bench_phase_a, bench_guarded_mutators, bench_emit_insertions);
 criterion_main!(benches);

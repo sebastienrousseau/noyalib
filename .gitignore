@@ -31,3 +31,4 @@ tarpaulin-report.html
 /scratch.*
 crates/noyalib-wasm/Cargo.lock
 .corral-state.json
+target-coverage/

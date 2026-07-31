@@ -150,7 +150,7 @@ and `thiserror` are all absent. `cargo audit`, `cargo deny`, and
 | [`from_str_strict`](https://docs.rs/noyalib/latest/noyalib/fn.from_str_strict.html) (+ `_slice`, `_reader`) | Strict deserialise — error on any key the target type does not declare. Closes the silent-data-loss gap on config-key typos. |
 | [`Value`](https://docs.rs/noyalib/latest/noyalib/enum.Value.html) | Dynamic tree (7 variants: `Null`, `Bool`, `Number`, `String`, `Sequence`, `Mapping`, `Tagged`). Path queries via `query("items[*].name")`. |
 | [`Spanned<T>`](https://docs.rs/noyalib/latest/noyalib/struct.Spanned.html) | Wraps any `T` with `(line, column, byte offset)`. Survives `#[serde(flatten)]`. |
-| [`cst::Document`](https://docs.rs/noyalib/latest/noyalib/cst/struct.Document.html) | Lossless CST. `doc.set("server.port", "9090")` rewrites only the touched span; comments + indentation preserved. |
+| [`cst::Document`](https://docs.rs/noyalib/latest/noyalib/cst/struct.Document.html) | Lossless CST. `doc.set("server.port", "9090")` rewrites only the touched span; comments + indentation preserved. Full guarded mutator family — `rename_key` / `rename_anchor` / `swap_items` / `move_item` and the auto-formatting `*_value` inserts via [`cst::Emit`](https://docs.rs/noyalib/latest/noyalib/cst/trait.Emit.html), each rolled back on any typed-value mismatch. |
 | [`policy::{DenyAnchors, DenyTags, MaxScalarLength}`](https://docs.rs/noyalib/latest/noyalib/policy/index.html) | Pluggable parser policies. Reject documents at parse time. |
 | [`schema_for`](https://docs.rs/noyalib/latest/noyalib/fn.schema_for.html), [`validate_against_schema`](https://docs.rs/noyalib/latest/noyalib/fn.validate_against_schema.html), [`coerce_to_schema`](https://docs.rs/noyalib/latest/noyalib/fn.coerce_to_schema.html) | JSON Schema 2020-12 codegen, validation, and schema-driven autofix. |
 | [`parallel::parse`](https://docs.rs/noyalib/latest/noyalib/parallel/fn.parse.html) | Multi-doc parse across the Rayon thread pool. Linear with cores. |
@@ -257,6 +257,14 @@ doc.set("server.port", "9090")?;
 assert!(doc.to_string().contains("# bind"));   // comment preserved
 # Ok::<_, noyalib::Error>(())
 ```
+
+The full editor also covers `rename_key` / `rename_anchor`,
+`swap_items` / `move_item`, and the auto-formatting
+`insert_entry_value` / `push_back_value` / `insert_after_value` inserts
+(typed values are quoted so they re-parse as data, not YAML syntax —
+guarded by a typed-value oracle that rolls back on any mismatch).
+Untrusted input is bounded by eight resource budgets, including
+`max_nodes` (AST node-count floods).
 
 ### Source spans
 

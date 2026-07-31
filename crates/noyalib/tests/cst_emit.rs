@@ -873,3 +873,61 @@ fn double_quoted_key_and_top_level_or_insert_refusal() {
         .unwrap_err();
     assert!(err.to_string().contains("top-level key"), "got {err}");
 }
+
+// ── Symmetric matrix: every Emit type through every mutator ─────────
+// insert_entry_value / push_back_value / insert_after_value are generic
+// over the Emit type; each concrete type is a separate monomorphization
+// (with its own guard closure). Driving all three with the same diverse
+// set exercises every instantiation and its rollback closure, and is a
+// thorough regression net for the typed-insert surface.
+
+#[test]
+fn every_emit_type_through_every_mutator() {
+    fn entry<E: Emit + ?Sized>(v: &E) {
+        let mut d = parse_document("m:\n  seed: 0\n").unwrap();
+        d.insert_entry_value("m", "k", v).unwrap();
+        assert!(d.to_string().contains("k:"));
+    }
+    fn push<E: Emit + ?Sized>(v: &E) {
+        let mut d = parse_document("s:\n  - 0\n").unwrap();
+        d.push_back_value("s", v).unwrap();
+        assert_eq!(d.as_value()["s"].as_sequence().unwrap().len(), 2);
+    }
+    fn after<E: Emit + ?Sized>(v: &E) {
+        let mut d = parse_document("s:\n  - 0\n  - 9\n").unwrap();
+        d.insert_after_value("s[0]", v).unwrap();
+        assert_eq!(d.as_value()["s"].as_sequence().unwrap().len(), 3);
+    }
+    // Drive each mutator's rejection arms too, so the per-type
+    // monomorphization's error diagnostics (not just its happy path)
+    // are exercised for every Emit type.
+    fn errors<E: Emit + ?Sized>(v: &E) {
+        let mut d = parse_document("m:\n  a: 1\nseq:\n  - x\n").unwrap();
+        let before = d.to_string();
+        assert!(d.insert_entry_value("nope", "k", v).is_err());
+        assert!(d.insert_entry_value("seq", "k", v).is_err());
+        assert!(d.push_back_value("nope", v).is_err());
+        assert!(d.push_back_value("m", v).is_err());
+        assert!(d.insert_after_value("m", v).is_err());
+        assert!(d.insert_after_value("seq[9]", v).is_err());
+        assert_eq!(d.to_string(), before, "refused edits must not mutate");
+    }
+    fn all<E: Emit + ?Sized>(v: &E) {
+        entry(v);
+        push(v);
+        after(v);
+        errors(v);
+    }
+
+    all(&true);
+    all(&7_i64);
+    all(&1.5_f64);
+    all(&8_u64);
+    all(&String::from("text"));
+    all("borrowed");
+    all(&Value::Null);
+    all(&Value::from(42_i64));
+    all(&Value::Bool(false));
+    all(&map(&[("nested", Value::from("v"))]));
+    all(&seq(&[Value::from(1_i64), Value::from(2_i64)]));
+}

@@ -131,6 +131,12 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   single-splice, all-or-nothing behaviour, and `rename_anchor` is now
   demonstrated in the `cst_surgical_edit` example and listed in the
   User Guide's mutator table.
+- **`insert_entry` / `push_back` / `insert_after` no longer corrupt a
+  document whose last line has no terminator.** They splice at the end
+  of the anchor entry's line, which for a file not ending in `\n` is
+  the end of the source — so the new entry landed on the tail of the
+  old one (`a: 1  b: 2`) and the splice was rejected as a parse error.
+  The new text now opens with the line break the document lacks.
 
 ### Security
 
@@ -155,15 +161,6 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   budget variants, merge-key amplification, and the `max_nodes` cap;
   and a `reject_node_bomb` case in the `architecture` security
   benchmark.
-
-### Fixed
-
-- **`insert_entry` / `push_back` / `insert_after` no longer corrupt a
-  document whose last line has no terminator.** They splice at the end
-  of the anchor entry's line, which for a file not ending in `\n` is
-  the end of the source — so the new entry landed on the tail of the
-  old one (`a: 1  b: 2`) and the splice was rejected as a parse error.
-  The new text now opens with the line break the document lacks.
 
 ## [v0.0.17] - 2026-07-25
 

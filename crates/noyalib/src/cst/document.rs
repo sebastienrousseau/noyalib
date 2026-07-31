@@ -1577,12 +1577,12 @@ impl Document {
         key: &str,
         value: &E,
     ) -> Result<()> {
-        self.validate().map_err(|e| {
-            Error::Parse(format!(
+        if let Err(e) = self.validate() {
+            return Err(Error::Parse(format!(
                 "insert_entry_value: the document does not parse, so `{mapping_path}` cannot \
                  be resolved ({e}); the document was left unchanged"
-            ))
-        })?;
+            )));
+        }
         if key == MERGE_KEY_SPELLING {
             return Err(Error::Parse(format!(
                 "insert_entry_value: `{MERGE_KEY_SPELLING}` cannot be used as a key name — the \
@@ -1759,12 +1759,12 @@ impl Document {
     /// assert_eq!(doc.to_string(), "items:\n  - one\n  - \"two: 2\"\n");
     /// ```
     pub fn push_back_value<E: Emit + ?Sized>(&mut self, path: &str, value: &E) -> Result<()> {
-        self.validate().map_err(|e| {
-            Error::Parse(format!(
+        if let Err(e) = self.validate() {
+            return Err(Error::Parse(format!(
                 "push_back_value: the document does not parse, so `{path}` cannot be resolved \
                  ({e}); the document was left unchanged"
-            ))
-        })?;
+            )));
+        }
         let expected_item = value.expected_value()?;
         let (expected, len) = {
             let cache = self.cache.borrow();
@@ -1824,12 +1824,12 @@ impl Document {
         item_path: &str,
         value: &E,
     ) -> Result<()> {
-        self.validate().map_err(|e| {
-            Error::Parse(format!(
+        if let Err(e) = self.validate() {
+            return Err(Error::Parse(format!(
                 "insert_after_value: the document does not parse, so `{item_path}` cannot be \
                  resolved ({e}); the document was left unchanged"
-            ))
-        })?;
+            )));
+        }
         let segments = parse_query_path(item_path);
         let Some(&QuerySegment::Index(index)) = segments.last() else {
             return Err(Error::Parse(

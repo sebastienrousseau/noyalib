@@ -238,6 +238,7 @@ preset; tweak from there if you need to relax specific dials.
 |---|---|---|---|
 | `max_depth` | 128 | 64 | Stack-blowing nested structures |
 | `max_document_length` | 64 MiB | 1 MiB | Oversized payloads |
+| `max_nodes` | 250 K | 25 K | AST node-count floods (empty-collection bombs) |
 | `max_alias_expansions` | 1024 | 100 | Billion-laughs amplification |
 | `max_mapping_keys` | 64 K | 1024 | Hash-collision DoS |
 | `max_sequence_length` | 64 K | 1024 | Memory-spike DoS |
