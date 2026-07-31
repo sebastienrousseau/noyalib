@@ -312,7 +312,7 @@ The CST exposes:
 | `parse_document(s)` / `parse_stream(s)` | Read |
 | `doc.set(path, fragment)` | Write a literal scalar |
 | `doc.set_value(path, &Value)` | Write any `Value` |
-| `doc.entry(path)` | Chainable mutable handle (12 methods, smart `items[0]` paths) |
+| `doc.entry(path)` | Chainable mutable handle (18 methods, smart `items[0]` paths) |
 | `doc.remove(path)` | Delete a key or sequence item, including multi-line / nested block values (guarded) |
 | `doc.rename_key(path, new_key)` | Rename a mapping key, value untouched (new key spelled in the old key's style) |
 | `doc.key_span(path)` | Read-only byte span of an entry's key token (companion to `span_at`; powers duplicate-key diagnostics) |
@@ -323,6 +323,7 @@ The CST exposes:
 | `doc.set_leading_comment(path, text)` | Set/replace the leading `#` comment block above a single-line mapping key |
 | `doc.remove_leading_comment(path)` | Remove the leading comment block above a mapping key (no-op if absent) |
 | `doc.push_back(path, fragment)` | Append to a sequence |
+| `doc.insert_entry_value(map, key, &v)` / `push_back_value(path, &v)` / `insert_after_value(item, &v)` | Insert a typed value auto-formatted via `cst::Emit` — quoted so it re-parses as data, not YAML syntax (guarded + rollback) |
 | `doc.rename_anchor(old, new)` | Rename an `&anchor` and every `*alias` (incl. `<<` merges) in one atomic edit; refuses a name that collides with another anchor (guarded + rollback) |
 | `doc.materialise_aliases_of(name)` | Inline every `*name` reference |
 | `doc.indent_unit()` | Detect 2- / 3- / 4-space conventions |
