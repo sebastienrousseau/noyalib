@@ -57,6 +57,28 @@ fn main() {
     assert!(doc.source().contains("enabled: true"));
     println!("push/insert    → {:?}", doc.source());
 
+    // ── the *_value tier: same growth, but the data stays data ───────
+    //
+    // The three mutators above splice their fragment verbatim, so a
+    // fragment that looks like YAML syntax *becomes* syntax. Their
+    // `_value` counterparts emit the spelling that re-parses to the
+    // value given — quoting when the plain form would not — and hold
+    // the splice to a typed-value check afterwards.
+    let mut doc = parse_document("features:\n  - auth\n").unwrap();
+    doc.push_back_value("features", "- not an item").unwrap();
+    assert_eq!(
+        doc.source(),
+        "features:\n  - auth\n  - \"- not an item\"\n",
+        "the dash is data, not a nested sequence",
+    );
+    doc.insert_entry_value("", "version", "8080").unwrap();
+    assert!(
+        doc.source().contains("version: \"8080\""),
+        "quoted, or it would load as the number 8080",
+    );
+    assert_eq!(doc.as_value()["version"], noyalib::Value::from("8080"));
+    println!("*_value        → {:?}", doc.source());
+
     // ── swap_items / move_item: reorder a block sequence ─────────────
     let mut doc = parse_document("order:\n  - first\n  - second\n  - third\n").unwrap();
     doc.swap_items("order", 0, 2).unwrap();

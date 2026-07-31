@@ -94,3 +94,27 @@ fn insert_after_rejects_non_index_path() {
     let err = doc.insert_after("a", "x").unwrap_err();
     assert!(format!("{err}").contains("must end with a sequence index"));
 }
+
+#[test]
+fn push_back_supplies_the_line_break_a_terminator_less_file_lacks() {
+    // `end_of_line` returns the end of the source when the last line
+    // has no `\n`; splicing there without a break of our own would
+    // produce `- one  - two` on one line.
+    let mut doc = parse_document("items:\n  - one").unwrap();
+    doc.push_back("items", "two").unwrap();
+    assert_eq!(doc.to_string(), "items:\n  - one\n  - two\n");
+}
+
+#[test]
+fn insert_after_supplies_the_line_break_too() {
+    let mut doc = parse_document("- a\n- c").unwrap();
+    doc.insert_after("[1]", "d").unwrap();
+    assert_eq!(doc.to_string(), "- a\n- c\n- d\n");
+}
+
+#[test]
+fn insert_entry_supplies_the_line_break_too() {
+    let mut doc = parse_document("m:\n  a: 1").unwrap();
+    doc.insert_entry("m", "b", "2").unwrap();
+    assert_eq!(doc.to_string(), "m:\n  a: 1\n  b: 2\n");
+}

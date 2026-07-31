@@ -1,0 +1,611 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
+// Copyright (c) 2026 Noyalib. All rights reserved.
+
+//! Auto-formatting insertion mutators: `insert_entry_value`,
+//! `push_back_value`, `insert_after_value`, and the `Emit` trait
+//! behind them.
+//!
+//! The property under test is the one the verbatim fragment mutators
+//! cannot offer: a value spliced by these methods **loads back as that
+//! value**. A fragment that would restructure the document is quoted,
+//! and anything the emitter cannot reproduce is refused with the
+//! document left byte-identical — never silently misinterpreted.
+
+use noyalib::cst::{Emit, EmitCtx, parse_document};
+use noyalib::{FlowStyle, Mapping, ScalarStyle, Value};
+
+fn seq(items: &[Value]) -> Value {
+    Value::Sequence(items.to_vec())
+}
+
+fn map(pairs: &[(&str, Value)]) -> Value {
+    let mut m = Mapping::new();
+    for (k, v) in pairs {
+        let _ = m.insert(*k, v.clone());
+    }
+    Value::Mapping(m)
+}
+
+// ── The gap this closes: syntax-shaped data stays data ──────────────
+
+#[test]
+fn sequence_item_that_looks_like_a_nested_item_is_quoted() {
+    let mut doc = parse_document("items:\n  - one\n").unwrap();
+    doc.push_back_value("items", "- two").unwrap();
+    assert_eq!(doc.to_string(), "items:\n  - one\n  - \"- two\"\n");
+    assert_eq!(
+        doc.as_value()["items"],
+        seq(&[Value::from("one"), Value::from("- two")]),
+    );
+}
+
+#[test]
+fn sequence_item_that_looks_like_a_mapping_is_quoted() {
+    let mut doc = parse_document("items:\n  - one\n").unwrap();
+    doc.push_back_value("items", "two: 2").unwrap();
+    assert_eq!(doc.to_string(), "items:\n  - one\n  - \"two: 2\"\n");
+    assert_eq!(doc.as_value()["items"][1], Value::from("two: 2"));
+}
+
+#[test]
+fn entry_value_that_looks_like_a_mapping_is_quoted() {
+    let mut doc = parse_document("labels:\n  app: noyalib\n").unwrap();
+    doc.insert_entry_value("labels", "spec", "a: b").unwrap();
+    assert_eq!(
+        doc.to_string(),
+        "labels:\n  app: noyalib\n  spec: \"a: b\"\n",
+    );
+    assert_eq!(doc.as_value()["labels"]["spec"], Value::from("a: b"));
+}
+
+#[test]
+fn type_changing_strings_are_quoted() {
+    for (input, want) in [
+        ("8080", "\"8080\""),
+        ("true", "\"true\""),
+        ("null", "\"null\""),
+        ("~", "\"~\""),
+        ("no", "\"no\""),
+        ("1.5", "\"1.5\""),
+        ("#comment", "\"#comment\""),
+        ("*alias", "\"*alias\""),
+        ("&anchor", "\"&anchor\""),
+        ("[flow]", "\"[flow]\""),
+    ] {
+        let mut doc = parse_document("m:\n  a: x\n").unwrap();
+        doc.insert_entry_value("m", "k", input).unwrap();
+        assert_eq!(
+            doc.to_string(),
+            format!("m:\n  a: x\n  k: {want}\n"),
+            "input {input:?}",
+        );
+        // The point of the quoting: it round-trips as a string.
+        assert_eq!(doc.as_value()["m"]["k"], Value::from(input));
+    }
+}
+
+#[test]
+fn keys_are_quoted_too() {
+    let mut doc = parse_document("m:\n  a: x\n").unwrap();
+    doc.insert_entry_value("m", "a: b", "v").unwrap();
+    assert_eq!(doc.to_string(), "m:\n  a: x\n  \"a: b\": v\n");
+    assert_eq!(doc.as_value()["m"]["a: b"], Value::from("v"));
+}
+
+#[test]
+fn numeric_looking_keys_are_quoted() {
+    let mut doc = parse_document("m:\n  a: x\n").unwrap();
+    doc.insert_entry_value("m", "8080", "http").unwrap();
+    assert_eq!(doc.to_string(), "m:\n  a: x\n  \"8080\": http\n");
+}
+
+// ── Typed values ───────────────────────────────────────────────────
+
+#[test]
+fn primitives_emit_plain() {
+    let mut doc = parse_document("m:\n  a: x\n").unwrap();
+    doc.insert_entry_value("m", "n", &7_i64).unwrap();
+    doc.insert_entry_value("m", "f", &1.5_f64).unwrap();
+    doc.insert_entry_value("m", "b", &true).unwrap();
+    doc.insert_entry_value("m", "z", &Value::Null).unwrap();
+    assert_eq!(
+        doc.to_string(),
+        "m:\n  a: x\n  n: 7\n  f: 1.5\n  b: true\n  z: null\n",
+    );
+    let m = &doc.as_value()["m"];
+    assert_eq!(m["n"], Value::from(7_i64));
+    assert_eq!(m["b"], Value::Bool(true));
+    assert_eq!(m["z"], Value::Null);
+}
+
+#[test]
+fn nested_mapping_is_emitted_as_a_block() {
+    let mut doc = parse_document("spec:\n  name: web\n").unwrap();
+    let limits = map(&[
+        ("image", Value::from("nginx")),
+        ("replicas", Value::from(3_i64)),
+    ]);
+    doc.insert_entry_value("spec", "resources", &limits)
+        .unwrap();
+    assert_eq!(
+        doc.to_string(),
+        "spec:\n  name: web\n  resources:\n    image: nginx\n    replicas: 3\n",
+    );
+    assert_eq!(doc.as_value()["spec"]["resources"], limits);
+}
+
+#[test]
+fn nested_mapping_respects_a_four_space_file() {
+    let mut doc = parse_document("spec:\n    name: web\n").unwrap();
+    let limits = map(&[("image", Value::from("nginx"))]);
+    doc.insert_entry_value("spec", "resources", &limits)
+        .unwrap();
+    assert_eq!(
+        doc.to_string(),
+        "spec:\n    name: web\n    resources:\n        image: nginx\n",
+    );
+    assert_eq!(doc.as_value()["spec"]["resources"], limits);
+}
+
+#[test]
+fn collection_scalars_round_trip_even_when_the_serializer_over_quotes() {
+    // The serializer quotes digit-leading strings conservatively
+    // (`100m` becomes `"100m"`), which is not minimal but is correct.
+    // The contract this tier owes is the round trip, not the spelling.
+    let mut doc = parse_document("spec:\n  name: web\n").unwrap();
+    let limits = map(&[("cpu", Value::from("100m")), ("memory", Value::from("1Gi"))]);
+    doc.insert_entry_value("spec", "resources", &limits)
+        .unwrap();
+    assert_eq!(doc.as_value()["spec"]["resources"], limits);
+}
+
+#[test]
+fn mapping_pushed_onto_a_sequence_aligns_under_the_dash() {
+    let mut doc = parse_document("containers:\n  - name: web\n").unwrap();
+    let item = map(&[
+        ("name", Value::from("sidecar")),
+        ("port", Value::from(8080_i64)),
+    ]);
+    doc.push_back_value("containers", &item).unwrap();
+    assert_eq!(
+        doc.to_string(),
+        "containers:\n  - name: web\n  - name: sidecar\n    port: 8080\n",
+    );
+    assert_eq!(doc.as_value()["containers"][1], item);
+}
+
+#[test]
+fn multiline_string_becomes_a_block_scalar() {
+    let mut doc = parse_document("m:\n  a: x\n").unwrap();
+    doc.insert_entry_value("m", "script", "one\ntwo\n").unwrap();
+    assert_eq!(
+        doc.to_string(),
+        "m:\n  a: x\n  script: |\n    one\n    two\n"
+    );
+    assert_eq!(doc.as_value()["m"]["script"], Value::from("one\ntwo\n"));
+}
+
+#[test]
+fn multiline_string_in_a_sequence_item() {
+    let mut doc = parse_document("items:\n  - one\n").unwrap();
+    doc.push_back_value("items", "a\nb\n").unwrap();
+    assert_eq!(doc.as_value()["items"][1], Value::from("a\nb\n"));
+    // Whatever the indent, the value must survive the round trip.
+    let reparsed = parse_document(&doc.to_string()).unwrap();
+    assert_eq!(*reparsed.as_value(), *doc.as_value());
+}
+
+// ── Style matching ─────────────────────────────────────────────────
+
+#[test]
+fn single_quoted_files_get_single_quoted_insertions() {
+    let mut doc = parse_document("m:\n  a: 'one'\n  b: 'two'\n").unwrap();
+    doc.insert_entry_value("m", "c", "three").unwrap();
+    assert_eq!(
+        doc.to_string(),
+        "m:\n  a: 'one'\n  b: 'two'\n  c: 'three'\n"
+    );
+}
+
+#[test]
+fn double_quoted_files_get_double_quoted_insertions() {
+    let mut doc = parse_document("m:\n  a: \"one\"\n  b: \"two\"\n").unwrap();
+    doc.insert_entry_value("m", "c", "three").unwrap();
+    assert_eq!(
+        doc.to_string(),
+        "m:\n  a: \"one\"\n  b: \"two\"\n  c: \"three\"\n",
+    );
+}
+
+#[test]
+fn single_quoting_gives_way_to_control_characters() {
+    let mut doc = parse_document("m:\n  a: 'one'\n  b: 'two'\n").unwrap();
+    doc.insert_entry_value("m", "c", "a\tb").unwrap();
+    assert_eq!(
+        doc.to_string(),
+        "m:\n  a: 'one'\n  b: 'two'\n  c: \"a\\tb\"\n",
+    );
+    assert_eq!(doc.as_value()["m"]["c"], Value::from("a\tb"));
+}
+
+#[test]
+fn embedded_quotes_are_escaped_for_their_style() {
+    let mut doc = parse_document("m:\n  a: 'one'\n").unwrap();
+    doc.insert_entry_value("m", "b", "it's").unwrap();
+    assert_eq!(doc.as_value()["m"]["b"], Value::from("it's"));
+
+    let mut doc = parse_document("m:\n  a: \"one\"\n").unwrap();
+    doc.insert_entry_value("m", "b", "say \"hi\"").unwrap();
+    assert_eq!(doc.as_value()["m"]["b"], Value::from("say \"hi\""));
+}
+
+// ── insert_after_value ─────────────────────────────────────────────
+
+#[test]
+fn insert_after_places_the_item_at_the_right_index() {
+    let mut doc = parse_document("items:\n  - one\n  - three\n").unwrap();
+    doc.insert_after_value("items[0]", "two").unwrap();
+    assert_eq!(doc.to_string(), "items:\n  - one\n  - two\n  - three\n");
+    assert_eq!(
+        doc.as_value()["items"],
+        seq(&[Value::from("one"), Value::from("two"), Value::from("three"),]),
+    );
+}
+
+#[test]
+fn insert_after_quotes_syntax_shaped_items() {
+    let mut doc = parse_document("items:\n  - one\n  - three\n").unwrap();
+    doc.insert_after_value("items[0]", "- two").unwrap();
+    assert_eq!(doc.as_value()["items"][1], Value::from("- two"));
+}
+
+#[test]
+fn insert_after_rejects_a_path_without_an_index() {
+    let mut doc = parse_document("items:\n  - one\n").unwrap();
+    let err = doc.insert_after_value("items", "two").unwrap_err();
+    assert!(
+        err.to_string().contains("sequence index"),
+        "unexpected error: {err}",
+    );
+    assert_eq!(doc.to_string(), "items:\n  - one\n");
+}
+
+#[test]
+fn root_sequence_is_addressable() {
+    let mut doc = parse_document("- one\n- two\n").unwrap();
+    doc.insert_after_value("[0]", "mid").unwrap();
+    assert_eq!(doc.to_string(), "- one\n- mid\n- two\n");
+    doc.push_back_value("", "last").unwrap();
+    assert_eq!(doc.to_string(), "- one\n- mid\n- two\n- last\n");
+}
+
+// ── Existing keys ──────────────────────────────────────────────────
+
+#[test]
+fn an_existing_key_is_replaced_in_place() {
+    let mut doc = parse_document("m:\n  a: x  # keep me\n  b: y\n").unwrap();
+    doc.insert_entry_value("m", "a", "z").unwrap();
+    assert_eq!(doc.to_string(), "m:\n  a: z  # keep me\n  b: y\n");
+    assert_eq!(doc.as_value()["m"]["a"], Value::from("z"));
+}
+
+#[test]
+fn replacing_an_existing_key_quotes_too() {
+    let mut doc = parse_document("m:\n  a: x\n").unwrap();
+    doc.insert_entry_value("m", "a", "true").unwrap();
+    assert_eq!(doc.to_string(), "m:\n  a: \"true\"\n");
+    assert_eq!(doc.as_value()["m"]["a"], Value::from("true"));
+}
+
+// ── Preservation ───────────────────────────────────────────────────
+
+#[test]
+fn untouched_bytes_survive_verbatim() {
+    let src = "# header\n\nspec:  # trailing\n  a: 1\n\n  # a note\n  b: 'two'\n\nother: keep\n";
+    let mut doc = parse_document(src).unwrap();
+    doc.insert_entry_value("spec", "c", "three").unwrap();
+    let out = doc.to_string();
+    assert!(out.starts_with("# header\n\nspec:  # trailing\n  a: 1\n"));
+    assert!(out.contains("  # a note\n  b: 'two'\n"));
+    assert!(out.ends_with("other: keep\n"));
+    assert!(out.contains("c: 'three'"));
+}
+
+#[test]
+fn crlf_documents_are_not_reflowed() {
+    let src = "m:\r\n  a: 1\r\n";
+    let mut doc = parse_document(src).unwrap();
+    doc.insert_entry_value("m", "b", &2_i64).unwrap();
+    assert!(
+        doc.to_string().starts_with("m:\r\n  a: 1\r\n"),
+        "existing CRLF lines must be untouched: {:?}",
+        doc.to_string(),
+    );
+    assert_eq!(doc.as_value()["m"]["b"], Value::from(2_i64));
+}
+
+// ── Refusals, each leaving the document unchanged ──────────────────
+
+#[test]
+fn merge_key_spelling_is_refused() {
+    let mut doc = parse_document("m:\n  a: 1\n").unwrap();
+    let before = doc.to_string();
+    let err = doc.insert_entry_value("m", "<<", "v").unwrap_err();
+    assert!(err.to_string().contains("merge directive"), "{err}");
+    assert_eq!(doc.to_string(), before);
+}
+
+#[test]
+fn non_printable_keys_are_refused() {
+    let mut doc = parse_document("m:\n  a: 1\n").unwrap();
+    let before = doc.to_string();
+    let err = doc.insert_entry_value("m", "a\u{7}b", "v").unwrap_err();
+    assert!(err.to_string().contains("non-printable"), "{err}");
+    assert_eq!(doc.to_string(), before);
+}
+
+#[test]
+fn inserting_inside_an_aliased_anchor_names_the_anchor() {
+    let src = "base: &base\n  a: 1\nuse: *base\n";
+    let mut doc = parse_document(src).unwrap();
+    let before = doc.to_string();
+    let err = doc.insert_entry_value("base", "b", &2_i64).unwrap_err();
+    let msg = err.to_string();
+    assert!(msg.contains("&base"), "must name the anchor: {msg}");
+    assert!(
+        msg.contains("materialise_aliases_of"),
+        "must suggest the fix: {msg}",
+    );
+    assert_eq!(doc.to_string(), before);
+}
+
+// ── Dotted keys (`app.kubernetes.io/name` and friends) ─────────────
+
+#[test]
+fn a_dotted_key_can_be_inserted() {
+    let mut doc = parse_document("labels:\n  app: web\n").unwrap();
+    doc.insert_entry_value("labels", "app.kubernetes.io/name", "web")
+        .unwrap();
+    assert_eq!(
+        doc.to_string(),
+        "labels:\n  app: web\n  app.kubernetes.io/name: web\n",
+    );
+    assert_eq!(
+        doc.as_value()["labels"]["app.kubernetes.io/name"],
+        Value::from("web"),
+    );
+}
+
+#[test]
+fn a_dotted_key_does_not_collide_with_the_path_it_looks_like() {
+    // `m.a.b` addresses the nested `b`; the key `a.b` is a different
+    // thing, and inserting it must not rewrite the nested value.
+    let mut doc = parse_document("m:\n  a:\n    b: 1\n").unwrap();
+    doc.insert_entry_value("m", "a.b", "v").unwrap();
+    assert_eq!(doc.to_string(), "m:\n  a:\n    b: 1\n  a.b: v\n");
+    assert_eq!(doc.as_value()["m"]["a"]["b"], Value::from(1_i64));
+    assert_eq!(doc.as_value()["m"]["a.b"], Value::from("v"));
+}
+
+#[test]
+fn replacing_an_existing_dotted_key_is_refused() {
+    let mut doc = parse_document("labels:\n  app.io/name: web\n").unwrap();
+    let before = doc.to_string();
+    let err = doc
+        .insert_entry_value("labels", "app.io/name", "api")
+        .unwrap_err();
+    assert!(err.to_string().contains("cannot be addressed"), "{err}");
+    assert_eq!(doc.to_string(), before);
+}
+
+// ── Documents whose last line has no terminator ────────────────────
+
+#[test]
+fn a_file_without_a_trailing_newline_still_takes_an_entry() {
+    let mut doc = parse_document("m:\n  a: 1").unwrap();
+    doc.insert_entry_value("m", "b", &2_i64).unwrap();
+    assert_eq!(doc.to_string(), "m:\n  a: 1\n  b: 2\n");
+    assert_eq!(doc.as_value()["m"]["b"], Value::from(2_i64));
+}
+
+#[test]
+fn a_file_without_a_trailing_newline_still_takes_an_item() {
+    let mut doc = parse_document("items:\n  - one").unwrap();
+    doc.push_back_value("items", "two").unwrap();
+    assert_eq!(doc.to_string(), "items:\n  - one\n  - two\n");
+    assert_eq!(doc.as_value()["items"][1], Value::from("two"));
+}
+
+#[test]
+fn tagged_values_are_refused() {
+    let mut doc = parse_document("m:\n  a: 1\n").unwrap();
+    let before = doc.to_string();
+    let tagged: Value = noyalib::from_str("!custom 1").unwrap();
+    let err = doc.insert_entry_value("m", "t", &tagged).unwrap_err();
+    assert!(err.to_string().contains("tagged"), "{err}");
+    assert_eq!(doc.to_string(), before);
+}
+
+#[test]
+fn an_empty_mapping_has_no_indent_anchor() {
+    let mut doc = parse_document("m: {}\n").unwrap();
+    let before = doc.to_string();
+    assert!(doc.insert_entry_value("m", "a", "1").is_err());
+    assert_eq!(doc.to_string(), before);
+}
+
+#[test]
+fn an_empty_sequence_has_no_indent_anchor() {
+    let mut doc = parse_document("items: []\n").unwrap();
+    let before = doc.to_string();
+    let err = doc.push_back_value("items", "one").unwrap_err();
+    assert!(err.to_string().contains("empty"), "{err}");
+    assert_eq!(doc.to_string(), before);
+}
+
+#[test]
+fn a_flow_sequence_is_refused() {
+    let mut doc = parse_document("items: [one, two]\n").unwrap();
+    let before = doc.to_string();
+    assert!(doc.push_back_value("items", "three").is_err());
+    assert_eq!(doc.to_string(), before);
+}
+
+#[test]
+fn a_non_sequence_path_is_refused() {
+    let mut doc = parse_document("m:\n  a: 1\n").unwrap();
+    let before = doc.to_string();
+    assert!(doc.push_back_value("m", "x").is_err());
+    assert_eq!(doc.to_string(), before);
+}
+
+#[test]
+fn a_missing_path_is_refused() {
+    let mut doc = parse_document("m:\n  a: 1\n").unwrap();
+    let before = doc.to_string();
+    assert!(doc.insert_entry_value("nope", "k", "v").is_err());
+    assert!(doc.push_back_value("nope", "v").is_err());
+    assert!(doc.insert_after_value("nope[0]", "v").is_err());
+    assert_eq!(doc.to_string(), before);
+}
+
+#[test]
+fn a_merge_inherited_key_can_be_overridden() {
+    // `<<: *base` puts `a` in the typed view with no entry of its own,
+    // and the loader orders it last — so the indent anchor has to
+    // ignore it and settle on `b`, the last key that owns bytes.
+    // Inserting `a` explicitly then overrides the inherited value,
+    // which is what YAML says an explicit key does.
+    let src = "base: &base\n  a: 1\nuse:\n  <<: *base\n  b: 2\n";
+    let mut doc = parse_document(src).unwrap();
+    doc.insert_entry_value("use", "a", &9_i64).unwrap();
+    assert_eq!(
+        doc.to_string(),
+        "base: &base\n  a: 1\nuse:\n  <<: *base\n  b: 2\n  a: 9\n",
+    );
+    assert_eq!(doc.as_value()["use"]["a"], Value::from(9_i64));
+    // The anchor definition is untouched.
+    assert_eq!(doc.as_value()["base"]["a"], Value::from(1_i64));
+}
+
+#[test]
+fn a_mapping_of_only_merged_keys_has_no_indent_anchor() {
+    let src = "base: &base\n  a: 1\nuse:\n  <<: *base\n";
+    let mut doc = parse_document(src).unwrap();
+    let before = doc.to_string();
+    let err = doc.insert_entry_value("use", "b", &2_i64).unwrap_err();
+    assert!(err.to_string().contains("merge"), "unexpected error: {err}");
+    assert_eq!(doc.to_string(), before, "refusal must not touch the source");
+}
+
+#[test]
+fn growing_an_existing_scalar_into_a_collection_is_refused() {
+    let mut doc = parse_document("m:\n  a: 1\n").unwrap();
+    let before = doc.to_string();
+    let nested = map(&[("x", Value::from(1_i64))]);
+    let err = doc.insert_entry_value("m", "a", &nested).unwrap_err();
+    assert!(err.to_string().contains("already exists"), "{err}");
+    assert_eq!(doc.to_string(), before);
+}
+
+// ── The same contract through `Entry` ──────────────────────────────
+
+#[test]
+fn entry_insert_value_quotes_its_key_and_value() {
+    let mut doc = parse_document("m:\n  a: x\n").unwrap();
+    doc.entry("m")
+        .insert_value("8080", &Value::from("true"))
+        .unwrap();
+    assert_eq!(doc.to_string(), "m:\n  a: x\n  \"8080\": \"true\"\n");
+    assert_eq!(doc.as_value()["m"]["8080"], Value::from("true"));
+}
+
+#[test]
+fn entry_push_back_value_quotes_syntax_shaped_items() {
+    let mut doc = parse_document("items:\n  - one\n").unwrap();
+    doc.entry("items")
+        .push_back_value(&Value::from("- two"))
+        .unwrap();
+    assert_eq!(doc.as_value()["items"][1], Value::from("- two"));
+}
+
+#[test]
+fn entry_insert_after_value_places_the_item() {
+    let mut doc = parse_document("items:\n  - one\n  - three\n").unwrap();
+    doc.entry("items[0]")
+        .insert_after_value(&Value::from("two"))
+        .unwrap();
+    assert_eq!(doc.to_string(), "items:\n  - one\n  - two\n  - three\n");
+}
+
+#[test]
+fn entry_or_insert_value_quotes_too() {
+    let mut doc = parse_document("m:\n  a: x\n").unwrap();
+    let inserted = doc
+        .entry("m.b")
+        .or_insert_value(&Value::from("1.5"))
+        .unwrap();
+    assert!(inserted);
+    assert_eq!(doc.to_string(), "m:\n  a: x\n  b: \"1.5\"\n");
+    assert_eq!(doc.as_value()["m"]["b"], Value::from("1.5"));
+
+    // Occupied entries are left alone.
+    let inserted = doc.entry("m.b").or_insert_value(&Value::from("9")).unwrap();
+    assert!(!inserted);
+    assert_eq!(doc.as_value()["m"]["b"], Value::from("1.5"));
+}
+
+// ── The trait itself ───────────────────────────────────────────────
+
+#[test]
+fn emit_and_expected_value_agree() {
+    let ctx = EmitCtx::new(ScalarStyle::Plain, FlowStyle::Block, 2, 0);
+    assert_eq!("plain".emit(&ctx).unwrap(), "plain");
+    assert_eq!("plain".expected_value().unwrap(), Value::from("plain"),);
+    assert_eq!(String::from("8080").emit(&ctx).unwrap(), "\"8080\"");
+    assert_eq!(false.emit(&ctx).unwrap(), "false");
+    assert_eq!(3_u32.emit(&ctx).unwrap(), "3");
+    assert_eq!(Value::Null.emit(&ctx).unwrap(), "null");
+}
+
+#[test]
+fn emit_ctx_reports_its_site() {
+    let ctx = EmitCtx::new(ScalarStyle::DoubleQuoted, FlowStyle::Auto, 4, 6);
+    assert_eq!(ctx.quote_style(), ScalarStyle::DoubleQuoted);
+    assert_eq!(ctx.flow_style(), FlowStyle::Auto);
+    assert_eq!(ctx.indent_unit(), 4);
+    assert_eq!(ctx.column(), 6);
+}
+
+#[test]
+fn every_emitted_value_reloads_as_itself() {
+    // The contract, swept over the shapes the emitter handles.
+    let cases: Vec<Value> = vec![
+        Value::from("plain"),
+        Value::from("8080"),
+        Value::from("true"),
+        Value::from("- dash"),
+        Value::from("key: value"),
+        Value::from("  padded  "),
+        Value::from("multi\nline\n"),
+        Value::from(""),
+        Value::from(0_i64),
+        Value::from(-12_i64),
+        Value::from(2.5_f64),
+        Value::Bool(false),
+        Value::Null,
+        seq(&[Value::from(1_i64), Value::from("two")]),
+        map(&[("k", Value::from("v"))]),
+    ];
+    for case in cases {
+        let mut doc = parse_document("m:\n  seed: 0\n").unwrap();
+        doc.insert_entry_value("m", "x", &case)
+            .unwrap_or_else(|e| panic!("insert of {case:?} failed: {e}"));
+        assert_eq!(doc.as_value()["m"]["x"], case, "round trip of {case:?}");
+
+        let mut doc = parse_document("items:\n  - seed\n").unwrap();
+        doc.push_back_value("items", &case)
+            .unwrap_or_else(|e| panic!("push of {case:?} failed: {e}"));
+        assert_eq!(doc.as_value()["items"][1], case, "round trip of {case:?}");
+    }
+}
