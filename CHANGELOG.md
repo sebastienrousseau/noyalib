@@ -85,6 +85,37 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   mismatch; the single-line case keeps its original fast path.
   Removing the sole entry of a block, and flow-collection entries,
   remain refused.
+- **`BudgetBreach::MaxSequenceLength` and `BudgetBreach::MaxMappingKeys`**
+  — the sequence-width (`max_sequence_length`) and mapping-width
+  (`max_mapping_keys`) caps now trip these structured
+  [`Error::Budget`] variants instead of an opaque `Error::Serialize`
+  string, so a DoS-aware caller routing on `ErrorKind::Budget`
+  classifies width-based resource exhaustion alongside every other
+  budget breach. (Both `#[non_exhaustive]` additions.)
+
+### Security
+
+- **`ParserConfig::max_nodes` is now enforced.** The documented AST
+  node budget (default 250 000; 25 000 under `strict()`) was defined
+  and defaulted but never counted, so a node-dense payload — a long
+  run of empty collections (`[]`/`{}`) that minimises scalar bytes and
+  stays under `max_events` — was bounded four times looser than
+  documented. Both loaders now count each scalar/sequence/mapping node
+  and trip [`BudgetBreach::MaxNodes`] at the cap. Legitimate large
+  documents are unaffected (a 5 000-package `pnpm-lock.yaml` is ~70k
+  nodes); deliberately oversized inputs raise the budget as before.
+- Added the **`harden_untrusted`** example — a tour of hardening a
+  parser against hostile YAML (`DenyAnchors` / `DenyTags` /
+  `MaxScalarLength` policies plus the `max_depth`,
+  `max_alias_expansions`, and `max_nodes` budgets), each shown
+  refusing a matching attack (anchor injection, custom tags, oversized
+  scalars, a billion-laughs alias bomb, an empty-collection node bomb,
+  and deep nesting) while still accepting a real configuration.
+- Added adversarial DoS regression suites (`dos_hardening`,
+  `max_nodes_budget`) covering deep-**flow** rejection, the width-cap
+  budget variants, merge-key amplification, and the `max_nodes` cap;
+  and a `reject_node_bomb` case in the `architecture` security
+  benchmark.
 
 ## [v0.0.17] - 2026-07-25
 

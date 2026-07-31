@@ -259,6 +259,8 @@ struct Loader<'a> {
     in_document: bool,
     /// Total parser events seen (for `max_events`).
     event_count: usize,
+    /// Total AST value nodes authored (for `max_nodes`).
+    node_count: usize,
     /// Cumulative scalar bytes seen (for `max_total_scalar_bytes`).
     scalar_bytes: usize,
     /// Anchor count (for `alias_anchor_ratio` denominator).
@@ -287,6 +289,7 @@ impl<'a> Loader<'a> {
             depth: 0,
             in_document: false,
             event_count: 0,
+            node_count: 0,
             scalar_bytes: 0,
             anchor_count: 0,
             merge_key_count: 0,
@@ -308,6 +311,24 @@ impl<'a> Loader<'a> {
                 limit: self.config.max_events,
                 observed: self.event_count,
             }));
+        }
+        // ── Budget: total AST nodes ─────────────────────────────
+        // Each scalar/sequence/mapping event authors exactly one
+        // `Value` node — empty collections (`[]`/`{}`) included — so a
+        // node-dense payload that stays under the byte and event caps
+        // is still bounded. Alias expansions are bounded separately by
+        // the alias budget and the cumulative scalar-byte cap.
+        if matches!(
+            &event,
+            Event::Scalar { .. } | Event::SequenceStart { .. } | Event::MappingStart { .. }
+        ) {
+            self.node_count += 1;
+            if self.node_count > self.config.max_nodes {
+                return Err(Error::Budget(crate::BudgetBreach::MaxNodes {
+                    limit: self.config.max_nodes,
+                    observed: self.node_count,
+                }));
+            }
         }
         // ── Budget: cumulative scalar bytes (per-Scalar event) ──
         if let Event::Scalar { value, .. } = &event {
@@ -575,9 +596,10 @@ impl<'a> Loader<'a> {
                 items, span_items, ..
             } => {
                 if items.len() >= self.config.max_sequence_length {
-                    return Err(Error::Serialize(
-                        "sequence length limit exceeded".to_owned(),
-                    ));
+                    return Err(Error::Budget(crate::BudgetBreach::MaxSequenceLength {
+                        limit: self.config.max_sequence_length,
+                        observed: items.len() + 1,
+                    }));
                 }
                 items.push(value);
                 span_items.push(span);
@@ -675,7 +697,10 @@ impl<'a> Loader<'a> {
                     merge_values.push(value);
                 } else {
                     if map.len() >= self.config.max_mapping_keys {
-                        return Err(Error::Serialize("mapping key limit exceeded".to_owned()));
+                        return Err(Error::Budget(crate::BudgetBreach::MaxMappingKeys {
+                            limit: self.config.max_mapping_keys,
+                            observed: map.len() + 1,
+                        }));
                     }
                     // Steal the owned key out of the frame instead of
                     // cloning it on every insert — the frame is replaced
@@ -878,6 +903,8 @@ struct NoSpanLoader<'a> {
     merge_key_count: usize,
     /// Total parser events seen (for `max_events`).
     event_count: usize,
+    /// Total AST value nodes authored (for `max_nodes`).
+    node_count: usize,
     /// Cumulative scalar bytes seen (for `max_total_scalar_bytes`).
     scalar_bytes: usize,
     /// Anchors defined (denominator for the `alias_anchor_ratio` heuristic).
@@ -898,6 +925,7 @@ impl<'a> NoSpanLoader<'a> {
             alias_bytes: 0,
             merge_key_count: 0,
             event_count: 0,
+            node_count: 0,
             scalar_bytes: 0,
             anchor_count: 0,
             config,
@@ -924,6 +952,19 @@ impl<'a> NoSpanLoader<'a> {
                 limit: self.config.max_events,
                 observed: self.event_count,
             }));
+        }
+        // Budget parity: total AST nodes (see the span-full Loader).
+        if matches!(
+            &event,
+            Event::Scalar { .. } | Event::SequenceStart { .. } | Event::MappingStart { .. }
+        ) {
+            self.node_count += 1;
+            if self.node_count > self.config.max_nodes {
+                return Err(Error::Budget(crate::BudgetBreach::MaxNodes {
+                    limit: self.config.max_nodes,
+                    observed: self.node_count,
+                }));
+            }
         }
         if let Event::Scalar { value, .. } = &event {
             self.scalar_bytes = self.scalar_bytes.saturating_add(value.len());
@@ -1131,9 +1172,10 @@ impl<'a> NoSpanLoader<'a> {
         match self.stack.last_mut().unwrap() {
             NoSpanFrame::Sequence { items, .. } => {
                 if items.len() >= self.config.max_sequence_length {
-                    return Err(Error::Serialize(
-                        "sequence length limit exceeded".to_owned(),
-                    ));
+                    return Err(Error::Budget(crate::BudgetBreach::MaxSequenceLength {
+                        limit: self.config.max_sequence_length,
+                        observed: items.len() + 1,
+                    }));
                 }
                 items.push(value);
             }
@@ -1203,7 +1245,10 @@ impl<'a> NoSpanLoader<'a> {
                     merge_values.push(value);
                 } else {
                     if map.len() >= self.config.max_mapping_keys {
-                        return Err(Error::Serialize("mapping key limit exceeded".to_owned()));
+                        return Err(Error::Budget(crate::BudgetBreach::MaxMappingKeys {
+                            limit: self.config.max_mapping_keys,
+                            observed: map.len() + 1,
+                        }));
                     }
                     // Steal the owned key out of the frame instead of
                     // cloning it — the frame is overwritten (without

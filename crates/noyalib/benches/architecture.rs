@@ -287,6 +287,30 @@ fn bench_security(c: &mut Criterion) {
         });
     });
 
+    // Node-bomb rejection: many tiny empty collections carry trivial
+    // bytes and few events but a huge node count — only `max_nodes`
+    // bounds it. The loader must refuse it in near-constant time,
+    // tripping as soon as the counter crosses the cap.
+    let node_bomb = {
+        let mut s = String::from("[");
+        for i in 0..5_000 {
+            if i > 0 {
+                s.push(',');
+            }
+            s.push_str("{}");
+        }
+        s.push(']');
+        s
+    };
+    let node_config = noyalib::ParserConfig::new().max_nodes(256);
+    group.bench_function("reject_node_bomb", |b| {
+        b.iter(|| {
+            let result: Result<noyalib::Value, _> =
+                noyalib::from_str_with_config(black_box(&node_bomb), &node_config);
+            let _ = black_box(result);
+        });
+    });
+
     group.finish();
 }
 

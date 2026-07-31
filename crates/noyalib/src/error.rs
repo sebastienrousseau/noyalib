@@ -209,6 +209,20 @@ pub enum BudgetBreach {
         /// Number of aliases observed at the moment the cap tripped.
         aliases: usize,
     },
+    /// A single sequence exceeded `ParserConfig::max_sequence_length`.
+    MaxSequenceLength {
+        /// The configured cap.
+        limit: usize,
+        /// The item count that would have overflowed the cap.
+        observed: usize,
+    },
+    /// A single mapping exceeded `ParserConfig::max_mapping_keys`.
+    MaxMappingKeys {
+        /// The configured cap.
+        limit: usize,
+        /// The key count that would have overflowed the cap.
+        observed: usize,
+    },
 }
 
 impl fmt::Display for BudgetBreach {
@@ -241,6 +255,14 @@ impl fmt::Display for BudgetBreach {
             } => write!(
                 f,
                 "alias_anchor_ratio heuristic tripped: {aliases} aliases / {anchors} anchors > {ratio}"
+            ),
+            BudgetBreach::MaxSequenceLength { limit, observed } => write!(
+                f,
+                "max_sequence_length budget exceeded: sequence length limit {limit}, observed {observed}"
+            ),
+            BudgetBreach::MaxMappingKeys { limit, observed } => write!(
+                f,
+                "max_mapping_keys budget exceeded: mapping key limit {limit}, observed {observed}"
             ),
         }
     }
