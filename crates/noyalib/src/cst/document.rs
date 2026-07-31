@@ -929,6 +929,110 @@ impl Document {
         Ok(())
     }
 
+    /// Swap two items of the block sequence at `path`, rewriting only
+    /// the two items' value bytes — every other item, and the `- `
+    /// indicators, indentation and surrounding structure, stay
+    /// byte-identical.
+    ///
+    /// Guarded like the other mutators: after the two splices the
+    /// document must re-parse **and** its typed value must equal the
+    /// original with exactly items `i` and `j` exchanged, or the edit
+    /// is rolled back and the document is left untouched. That guard is
+    /// what makes the byte swap safe — a case the raw swap cannot
+    /// preserve (for example two items at different indentation depths)
+    /// is refused rather than silently corrupting the document.
+    ///
+    /// Swapping an index with itself, or two items whose values are
+    /// already equal, is a no-op that returns `Ok(())`.
+    ///
+    /// # Errors
+    ///
+    /// - `path` does not resolve to a sequence.
+    /// - `i` or `j` is out of bounds for that sequence.
+    /// - The value bytes of an item could not be located (e.g. a flow
+    ///   sequence, whose items this phase does not address).
+    /// - The splice would not re-parse, or fails the integrity check
+    ///   above (both roll back).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use noyalib::cst::parse_document;
+    ///
+    /// let mut doc = parse_document("- a\n- b\n- c\n").unwrap();
+    /// doc.swap_items("", 0, 2).unwrap();
+    /// assert_eq!(doc.source(), "- c\n- b\n- a\n");
+    /// ```
+    pub fn swap_items(&mut self, path: &str, i: usize, j: usize) -> Result<()> {
+        let segments = parse_query_path(path);
+        self.ensure_cache();
+        let len = {
+            let cache = self.cache.borrow();
+            let (value, _) = cache.as_ref().expect("ensure_cache populated");
+            sequence_len_at(value, &segments, path)?
+        };
+        if i >= len || j >= len {
+            return Err(Error::Parse(format!(
+                "swap_items: index out of bounds for the sequence at `{path}` \
+                 (length {len}): requested {i} and {j}"
+            )));
+        }
+        if i == j {
+            return Ok(());
+        }
+
+        let (pi, pj) = (item_child_path(path, i), item_child_path(path, j));
+        let span_i = self.span_at(&pi).ok_or_else(|| {
+            Error::Parse(format!("swap_items: could not locate item {i} of `{path}`"))
+        })?;
+        let span_j = self.span_at(&pj).ok_or_else(|| {
+            Error::Parse(format!("swap_items: could not locate item {j} of `{path}`"))
+        })?;
+        let text_i = self.source()[span_i.0..span_i.1].to_string();
+        let text_j = self.source()[span_j.0..span_j.1].to_string();
+
+        // Integrity oracle: the old value with items i and j exchanged.
+        let expected = {
+            let cache = self.cache.borrow();
+            let (value, _) = cache.as_ref().expect("ensure_cache populated");
+            expected_after_swap(value, &segments, i, j, path)?
+        };
+
+        let snapshot = self.clone();
+        // Replace the *later* span first so the earlier span's byte
+        // offsets stay valid for the second splice.
+        let (lo, hi, lo_text, hi_text) = if span_i.0 < span_j.0 {
+            (span_i, span_j, &text_j, &text_i)
+        } else {
+            (span_j, span_i, &text_i, &text_j)
+        };
+        for (span, text) in [(hi, hi_text), (lo, lo_text)] {
+            if let Err(e) = self.replace_span(span.0, span.1, text) {
+                *self = snapshot;
+                return Err(Error::Parse(format!(
+                    "swap_items: swapping items {i} and {j} of `{path}` could not be \
+                     spliced ({e}); the document was left unchanged"
+                )));
+            }
+        }
+        if let Err(e) = self.validate() {
+            *self = snapshot;
+            return Err(Error::Parse(format!(
+                "swap_items: swapping items {i} and {j} of `{path}` left the document \
+                 unable to re-parse ({e}); the document was left unchanged"
+            )));
+        }
+        if *self.as_value() != expected {
+            *self = snapshot;
+            return Err(Error::Parse(format!(
+                "swap_items: swapping items {i} and {j} of `{path}` failed the integrity \
+                 check — the byte swap could not preserve the items (e.g. multi-line or \
+                 differently-indented values); the document was left unchanged"
+            )));
+        }
+        Ok(())
+    }
+
     /// The anchor covering byte `pos` that has at least one `*name`
     /// reference, with that reference count.
     ///
@@ -2469,6 +2573,89 @@ fn expected_after_rename(value: &Value, segments: &[QuerySegment], new_key: &str
         }
     }
     *m = renamed;
+    Ok(expected)
+}
+
+/// Build the `items[i]` path for `Document::span_at`, handling the
+/// root-sequence case where `path` is empty.
+fn item_child_path(path: &str, i: usize) -> String {
+    if path.is_empty() {
+        format!("[{i}]")
+    } else {
+        format!("{path}[{i}]")
+    }
+}
+
+/// Length of the sequence addressed by `segments`, or an error naming
+/// `path` if it does not resolve to a sequence.
+fn sequence_len_at(value: &Value, segments: &[QuerySegment], path: &str) -> Result<usize> {
+    let mut cur = value;
+    for seg in segments {
+        cur = match (seg, cur) {
+            (QuerySegment::Key(k), Value::Mapping(m)) => m
+                .get(k)
+                .ok_or_else(|| Error::Parse(format!("path not found: missing key {k:?}")))?,
+            (QuerySegment::Index(i), Value::Sequence(seq)) => seq
+                .get(*i)
+                .ok_or_else(|| Error::Parse(format!("path not found: index {i} out of bounds")))?,
+            _ => {
+                return Err(Error::Parse(format!(
+                    "swap_items: `{path}` does not resolve to a sequence"
+                )));
+            }
+        };
+    }
+    match cur {
+        Value::Sequence(seq) => Ok(seq.len()),
+        _ => Err(Error::Parse(format!(
+            "swap_items: `{path}` does not address a sequence"
+        ))),
+    }
+}
+
+/// The typed value with items `i` and `j` of the sequence at
+/// `segments` exchanged — the integrity oracle for `swap_items`.
+fn expected_after_swap(
+    value: &Value,
+    segments: &[QuerySegment],
+    i: usize,
+    j: usize,
+    path: &str,
+) -> Result<Value> {
+    let mut expected = value.clone();
+    let mut cur = &mut expected;
+    for seg in segments {
+        cur = match (seg, cur) {
+            (QuerySegment::Key(k), Value::Mapping(m)) => m
+                .get_mut(k)
+                .ok_or_else(|| Error::Parse(format!("path not found: missing key {k:?}")))?,
+            (QuerySegment::Index(idx), Value::Sequence(seq)) => {
+                seq.get_mut(*idx).ok_or_else(|| {
+                    Error::Parse(format!("path not found: index {idx} out of bounds"))
+                })?
+            }
+            _ => {
+                return Err(Error::Parse(format!(
+                    "swap_items: `{path}` does not resolve to a sequence"
+                )));
+            }
+        };
+    }
+    let Value::Sequence(seq) = cur else {
+        return Err(Error::Parse(format!(
+            "swap_items: `{path}` does not address a sequence"
+        )));
+    };
+    let vi = seq
+        .get(i)
+        .cloned()
+        .ok_or_else(|| Error::Parse(format!("swap_items: index {i} out of bounds")))?;
+    let vj = seq
+        .get(j)
+        .cloned()
+        .ok_or_else(|| Error::Parse(format!("swap_items: index {j} out of bounds")))?;
+    *seq.get_mut(i).expect("index i checked above") = vj;
+    *seq.get_mut(j).expect("index j checked above") = vi;
     Ok(expected)
 }
 

@@ -41,6 +41,14 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   the green tree by hand (#221). Returns `None` for sites that own
   no simple scalar key — sequence indices, alias (`*name`) sites,
   and keys provided by a `<<` merge.
+- **`Document::swap_items(path, i, j)`** — exchange two items of a
+  block sequence, rewriting only the two items' value bytes; the
+  `- ` indicators, indentation and every other item stay
+  byte-identical (#221, gap 3). Guarded like the other mutators:
+  the result must re-parse and its typed value must equal the
+  original with exactly items `i` and `j` exchanged, or the edit
+  rolls back. Swapping an index with itself, or two equal values,
+  is a byte-preserving no-op.
 
 ## [v0.0.17] - 2026-07-25
 

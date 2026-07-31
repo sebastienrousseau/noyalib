@@ -316,6 +316,7 @@ The CST exposes:
 | `doc.remove(path)` | Delete a key or sequence item |
 | `doc.rename_key(path, new_key)` | Rename a mapping key, value untouched (new key spelled in the old key's style) |
 | `doc.key_span(path)` | Read-only byte span of an entry's key token (companion to `span_at`; powers duplicate-key diagnostics) |
+| `doc.swap_items(path, i, j)` | Exchange two block-sequence items, structure preserved (guarded + rollback) |
 | `doc.push_back(path, fragment)` | Append to a sequence |
 | `doc.materialise_aliases_of(name)` | Inline every `*name` reference |
 | `doc.indent_unit()` | Detect 2- / 3- / 4-space conventions |
