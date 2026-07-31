@@ -251,28 +251,7 @@ impl Document {
             Some(c) => self.replace_span(c.start, c.end, &rendered),
             None => self.replace_span(end, end, &format!("  {rendered}")),
         };
-        if let Err(e) = splice {
-            *self = snapshot;
-            return Err(Error::Parse(format!(
-                "set_inline_comment: setting the comment on `{path}` could not be \
-                 spliced ({e}); the document was left unchanged"
-            )));
-        }
-        if let Err(e) = self.validate() {
-            *self = snapshot;
-            return Err(Error::Parse(format!(
-                "set_inline_comment: setting the comment on `{path}` left the document \
-                 unable to re-parse ({e}); the document was left unchanged"
-            )));
-        }
-        if *self.as_value() != expected {
-            *self = snapshot;
-            return Err(Error::Parse(format!(
-                "set_inline_comment: setting the comment on `{path}` changed the \
-                 document's data; the document was left unchanged"
-            )));
-        }
-        Ok(())
+        self.finish_comment_edit("set_inline_comment", path, splice, snapshot, &expected)
     }
 
     /// Remove the **inline** comment on the node at `path`, if any,
@@ -308,28 +287,8 @@ impl Document {
         let expected = self.as_value().clone();
         // The value ends at `end`; the bytes from there to `c.end` are
         // the separating whitespace plus the `# …` comment.
-        if let Err(e) = self.replace_span(end, c.end, "") {
-            *self = snapshot;
-            return Err(Error::Parse(format!(
-                "remove_inline_comment: removing the comment on `{path}` could not be \
-                 spliced ({e}); the document was left unchanged"
-            )));
-        }
-        if let Err(e) = self.validate() {
-            *self = snapshot;
-            return Err(Error::Parse(format!(
-                "remove_inline_comment: removing the comment on `{path}` left the \
-                 document unable to re-parse ({e}); the document was left unchanged"
-            )));
-        }
-        if *self.as_value() != expected {
-            *self = snapshot;
-            return Err(Error::Parse(format!(
-                "remove_inline_comment: removing the comment on `{path}` changed the \
-                 document's data; the document was left unchanged"
-            )));
-        }
-        Ok(())
+        let splice = self.replace_span(end, c.end, "");
+        self.finish_comment_edit("remove_inline_comment", path, splice, snapshot, &expected)
     }
 
     /// Set (or replace) the **leading** comment block above the

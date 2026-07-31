@@ -133,3 +133,15 @@ fn value_unchanged_by_leading_comment_edits() {
     let after: Value = from_str(doc.source()).unwrap();
     assert_eq!(before, after);
 }
+
+#[test]
+fn set_on_a_sequence_item_is_refused() {
+    // A sequence item is not a mapping key, so it owns no leading block
+    // this method addresses — `set` refuses, `remove` is a no-op.
+    let src = "- a\n- b\n";
+    let mut doc = parse_document(src).unwrap();
+    assert!(doc.set_leading_comment("[0]", "x").is_err());
+    assert_eq!(doc.source(), src);
+    doc.remove_leading_comment("[0]").unwrap();
+    assert_eq!(doc.source(), src);
+}
