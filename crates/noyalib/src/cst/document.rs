@@ -1033,6 +1033,79 @@ impl Document {
         Ok(())
     }
 
+    /// Move the item at `from` to index `to` in the block sequence at
+    /// `path`, shifting the items in between by one. The move is
+    /// applied as a run of adjacent [`swap_items`](Self::swap_items)
+    /// steps, so it inherits that method's guarantees — only item value
+    /// bytes move, structure is preserved, and each step is guarded —
+    /// and the whole move is **atomic**: if any step is refused, the
+    /// document is rolled back to its state before the call.
+    ///
+    /// Moving an index to itself is a no-op that returns `Ok(())`.
+    ///
+    /// # Errors
+    ///
+    /// - `path` does not resolve to a sequence.
+    /// - `from` or `to` is out of bounds for that sequence.
+    /// - Any underlying swap is refused (e.g. multi-line or
+    ///   differently-indented items); the document is left unchanged.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use noyalib::cst::parse_document;
+    ///
+    /// let mut doc = parse_document("- a\n- b\n- c\n- d\n").unwrap();
+    /// doc.move_item("", 0, 2).unwrap();
+    /// assert_eq!(doc.source(), "- b\n- c\n- a\n- d\n");
+    /// ```
+    pub fn move_item(&mut self, path: &str, from: usize, to: usize) -> Result<()> {
+        let segments = parse_query_path(path);
+        self.ensure_cache();
+        let len = {
+            let cache = self.cache.borrow();
+            let (value, _) = cache.as_ref().expect("ensure_cache populated");
+            sequence_len_at(value, &segments, path)?
+        };
+        if from >= len || to >= len {
+            return Err(Error::Parse(format!(
+                "move_item: index out of bounds for the sequence at `{path}` \
+                 (length {len}): from {from}, to {to}"
+            )));
+        }
+        if from == to {
+            return Ok(());
+        }
+
+        let snapshot = self.clone();
+        let mut failure = None;
+        if from < to {
+            for k in from..to {
+                if let Err(e) = self.swap_items(path, k, k + 1) {
+                    failure = Some(e);
+                    break;
+                }
+            }
+        } else {
+            let mut k = from;
+            while k > to {
+                if let Err(e) = self.swap_items(path, k, k - 1) {
+                    failure = Some(e);
+                    break;
+                }
+                k -= 1;
+            }
+        }
+        if let Some(e) = failure {
+            *self = snapshot;
+            return Err(Error::Parse(format!(
+                "move_item: moving item {from} to {to} in `{path}` failed ({e}); \
+                 the document was left unchanged"
+            )));
+        }
+        Ok(())
+    }
+
     /// The anchor covering byte `pos` that has at least one `*name`
     /// reference, with that reference count.
     ///

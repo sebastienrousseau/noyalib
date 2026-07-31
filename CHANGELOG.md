@@ -49,6 +49,12 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   original with exactly items `i` and `j` exchanged, or the edit
   rolls back. Swapping an index with itself, or two equal values,
   is a byte-preserving no-op.
+- **`Document::move_item(path, from, to)`** — move a block-sequence
+  item to a new index, shifting the items in between (#221, gap 3).
+  Applied as a run of adjacent `swap_items` steps, so it inherits
+  the structure-preservation and per-step guard, and the whole move
+  is atomic: a refused step rolls the document back to its state
+  before the call.
 
 ## [v0.0.17] - 2026-07-25
 
