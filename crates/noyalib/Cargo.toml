@@ -328,6 +328,7 @@ path = "examples/simd.rs"
 required-features = ["simd"]
 
 [dependencies]
+serde_core = { version = "1.0", default-features = false, features = ["alloc"] }
 serde = { version = "1.0", default-features = false, features = ["derive", "alloc"] }
 indexmap = { version = ">=2, <3", features = ["serde"] }
 rustc-hash = ">=2, <3"
