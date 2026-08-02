@@ -823,7 +823,7 @@ impl Serialize for Mapping {
     where
         S: serde::Serializer,
     {
-        use serde::ser::SerializeMap;
+        use serde_core::ser::SerializeMap as _;
         let mut map = serializer.serialize_map(Some(self.len()))?;
         for (k, v) in self {
             map.serialize_entry(k, v)?;
@@ -1303,7 +1303,7 @@ impl Serialize for MappingAny {
     where
         S: serde::Serializer,
     {
-        use serde::ser::SerializeMap;
+        use serde_core::ser::SerializeMap as _;
         let mut map = serializer.serialize_map(Some(self.len()))?;
         for (k, v) in self {
             map.serialize_entry(k, v)?;

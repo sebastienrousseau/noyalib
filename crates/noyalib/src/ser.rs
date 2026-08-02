@@ -1769,7 +1769,7 @@ pub struct SerializeMap {
     key: Option<String>,
 }
 
-impl ser::SerializeMap for SerializeMap {
+impl serde_core::ser::SerializeMap for SerializeMap {
     type Ok = Value;
     type Error = Error;
 

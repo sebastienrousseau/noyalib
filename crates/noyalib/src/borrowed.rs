@@ -393,7 +393,7 @@ impl Serialize for BorrowedValue<'_> {
             Self::String(s) => serializer.serialize_str(s),
             Self::Sequence(seq) => seq.serialize(serializer),
             Self::Mapping(map) => {
-                use serde::ser::SerializeMap;
+                use serde_core::ser::SerializeMap as _;
                 let mut m = serializer.serialize_map(Some(map.len()))?;
                 for (k, v) in map {
                     m.serialize_entry(k.as_ref(), v)?;

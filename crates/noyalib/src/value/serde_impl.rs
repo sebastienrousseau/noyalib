@@ -117,7 +117,7 @@ impl Serialize for Value {
             Value::String(s) => serializer.serialize_str(s),
             Value::Sequence(s) => s.serialize(serializer),
             Value::Mapping(m) => {
-                use serde::ser::SerializeMap;
+                use serde_core::ser::SerializeMap as _;
                 let mut map = serializer.serialize_map(Some(m.len()))?;
                 for (k, v) in m {
                     map.serialize_entry(k, v)?;
@@ -126,7 +126,7 @@ impl Serialize for Value {
             }
             Value::Tagged(tagged) => {
                 // Serialize as a single-entry map with tag as key
-                use serde::ser::SerializeMap;
+                use serde_core::ser::SerializeMap as _;
                 let mut map = serializer.serialize_map(Some(1))?;
                 map.serialize_entry(tagged.tag().as_str(), tagged.value())?;
                 map.end()

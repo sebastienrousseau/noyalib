@@ -323,7 +323,7 @@ impl Serialize for TaggedValue {
     where
         S: serde::Serializer,
     {
-        use serde::ser::SerializeMap;
+        use serde_core::ser::SerializeMap as _;
         let mut map = serializer.serialize_map(Some(1))?;
         map.serialize_entry(self.tag.as_str(), self.value())?;
         map.end()

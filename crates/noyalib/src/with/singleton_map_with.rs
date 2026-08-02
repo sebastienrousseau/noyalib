@@ -133,7 +133,7 @@ where
     S: Serializer,
     F: Fn(&str) -> String,
 {
-    use serde::ser::SerializeMap;
+    use serde_core::ser::SerializeMap as _;
 
     // Serialize to Value to inspect structure
     let yaml_value = crate::to_value(value).map_err(serde_core::ser::Error::custom)?;
