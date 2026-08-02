@@ -13,11 +13,11 @@ impl<'de> Deserialize<'de> for Value {
     where
         D: serde::Deserializer<'de>,
     {
-        use serde::de::{SeqAccess, Visitor};
+        use serde::de::SeqAccess;
 
         struct ValueVisitor;
 
-        impl<'de> Visitor<'de> for ValueVisitor {
+        impl<'de> serde_core::de::Visitor<'de> for ValueVisitor {
             type Value = Value;
 
             fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -205,7 +205,7 @@ impl<'de> serde::Deserializer<'de> for &'de Value {
 
     fn deserialize_any<V>(self, visitor: V) -> crate::Result<V::Value>
     where
-        V: serde::de::Visitor<'de>,
+        V: serde_core::de::Visitor<'de>,
     {
         match self {
             Value::Null => visitor.visit_unit(),
@@ -234,7 +234,7 @@ impl<'de> serde::Deserializer<'de> for &'de Value {
         visitor: V,
     ) -> crate::Result<V::Value>
     where
-        V: serde::de::Visitor<'de>,
+        V: serde_core::de::Visitor<'de>,
     {
         match self {
             Value::Tagged(tagged) => {
@@ -249,7 +249,7 @@ impl<'de> serde::Deserializer<'de> for &'de Value {
 
     fn deserialize_seq<V>(self, visitor: V) -> crate::Result<V::Value>
     where
-        V: serde::de::Visitor<'de>,
+        V: serde_core::de::Visitor<'de>,
     {
         match self {
             Value::Sequence(seq) => visitor.visit_seq(ValueSeqAccess { iter: seq.iter() }),
@@ -259,7 +259,7 @@ impl<'de> serde::Deserializer<'de> for &'de Value {
 
     fn deserialize_map<V>(self, visitor: V) -> crate::Result<V::Value>
     where
-        V: serde::de::Visitor<'de>,
+        V: serde_core::de::Visitor<'de>,
     {
         match self {
             Value::Mapping(map) => visitor.visit_map(ValueMapAccess {
@@ -277,7 +277,7 @@ impl<'de> serde::Deserializer<'de> for &'de Value {
         visitor: V,
     ) -> crate::Result<V::Value>
     where
-        V: serde::de::Visitor<'de>,
+        V: serde_core::de::Visitor<'de>,
     {
         if name == crate::spanned::SPANNED_TYPE_NAME {
             return visitor.visit_map(crate::de::SpannedMapAccess::new(self, None));

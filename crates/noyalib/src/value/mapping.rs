@@ -837,11 +837,9 @@ impl<'de> Deserialize<'de> for Mapping {
     where
         D: serde::Deserializer<'de>,
     {
-        use serde::de::Visitor;
-
         struct MappingVisitor;
 
-        impl<'de> Visitor<'de> for MappingVisitor {
+        impl<'de> serde_core::de::Visitor<'de> for MappingVisitor {
             type Value = Mapping;
 
             fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -1319,11 +1317,9 @@ impl<'de> Deserialize<'de> for MappingAny {
     where
         D: serde::Deserializer<'de>,
     {
-        use serde::de::Visitor;
-
         struct MappingAnyVisitor;
 
-        impl<'de> Visitor<'de> for MappingAnyVisitor {
+        impl<'de> serde_core::de::Visitor<'de> for MappingAnyVisitor {
             type Value = MappingAny;
 
             fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {

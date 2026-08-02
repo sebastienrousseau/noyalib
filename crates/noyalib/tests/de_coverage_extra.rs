@@ -299,9 +299,8 @@ fn deserialize_identifier_from_non_string_falls_through() {
     // serde will route through deserialize_identifier when
     // deserializing the field name on a `flatten` map etc.; a
     // direct call exercises the same arm.
-    use serde::de::Visitor;
     struct V;
-    impl Visitor<'_> for V {
+    impl serde_core::de::Visitor<'_> for V {
         type Value = i64;
         fn expecting(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             f.write_str("an i64")

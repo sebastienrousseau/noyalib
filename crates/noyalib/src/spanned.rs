@@ -217,7 +217,7 @@ impl<'de, T: Deserialize<'de>> Deserialize<'de> for Spanned<T> {
 
 struct SpannedVisitor<T>(core::marker::PhantomData<T>);
 
-impl<'de, T: Deserialize<'de>> serde::de::Visitor<'de> for SpannedVisitor<T> {
+impl<'de, T: Deserialize<'de>> serde_core::de::Visitor<'de> for SpannedVisitor<T> {
     type Value = Spanned<T>;
 
     fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {

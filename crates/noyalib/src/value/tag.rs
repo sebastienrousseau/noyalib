@@ -335,11 +335,9 @@ impl<'de> Deserialize<'de> for TaggedValue {
     where
         D: serde::Deserializer<'de>,
     {
-        use serde::de::Visitor;
-
         struct TaggedValueVisitor;
 
-        impl<'de> Visitor<'de> for TaggedValueVisitor {
+        impl<'de> serde_core::de::Visitor<'de> for TaggedValueVisitor {
             type Value = TaggedValue;
 
             fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -366,7 +364,7 @@ impl<'de> serde::Deserializer<'de> for &'de TaggedValue {
 
     fn deserialize_any<V>(self, visitor: V) -> crate::Result<V::Value>
     where
-        V: serde::de::Visitor<'de>,
+        V: serde_core::de::Visitor<'de>,
     {
         visitor.visit_map(TaggedValueMapAccess {
             tag: Some(self.tag.as_str()),
@@ -381,7 +379,7 @@ impl<'de> serde::Deserializer<'de> for &'de TaggedValue {
         visitor: V,
     ) -> crate::Result<V::Value>
     where
-        V: serde::de::Visitor<'de>,
+        V: serde_core::de::Visitor<'de>,
     {
         visitor.visit_enum(TaggedValueEnumAccess { tagged: self })
     }
@@ -469,7 +467,7 @@ impl<'de> serde::de::VariantAccess<'de> for TaggedValueVariantAccess<'de> {
 
     fn tuple_variant<V>(self, _len: usize, visitor: V) -> crate::Result<V::Value>
     where
-        V: serde::de::Visitor<'de>,
+        V: serde_core::de::Visitor<'de>,
     {
         serde::Deserializer::deserialize_seq(self.value, visitor)
     }
@@ -480,7 +478,7 @@ impl<'de> serde::de::VariantAccess<'de> for TaggedValueVariantAccess<'de> {
         visitor: V,
     ) -> crate::Result<V::Value>
     where
-        V: serde::de::Visitor<'de>,
+        V: serde_core::de::Visitor<'de>,
     {
         serde::Deserializer::deserialize_map(self.value, visitor)
     }
