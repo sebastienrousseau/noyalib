@@ -264,9 +264,9 @@ impl<'de, T: Deserialize<'de>> serde::de::Visitor<'de> for SpannedVisitor<T> {
 
         let value = value.ok_or_else(|| {
             if saw_any_key {
-                serde::de::Error::missing_field(SPANNED_FIELD_VALUE)
+                serde_core::de::Error::missing_field(SPANNED_FIELD_VALUE)
             } else {
-                serde::de::Error::custom(
+                serde_core::de::Error::custom(
                     "Spanned<T> can not be deserialized via `#[serde(flatten)]` — \
                      serde's FlatStructAccess filters residue entries by the field \
                      name list, and Spanned uses internal magic field names that \

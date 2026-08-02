@@ -203,7 +203,7 @@ where
     // Transform the keys in the value
     let transformed = transform_value_keys(value, &transform);
 
-    crate::from_value(&transformed).map_err(serde::de::Error::custom)
+    crate::from_value(&transformed).map_err(serde_core::de::Error::custom)
 }
 
 /// Transform all string keys in a Value according to the provided function.

@@ -139,7 +139,7 @@ where
 
     match opt_value {
         Some(value) => {
-            let inner: T = crate::from_value(&value).map_err(serde::de::Error::custom)?;
+            let inner: T = crate::from_value(&value).map_err(serde_core::de::Error::custom)?;
             Ok(Some(inner))
         }
         None => Ok(None),

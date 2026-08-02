@@ -125,7 +125,7 @@ where
     let value = crate::Value::deserialize(deserializer)?;
 
     // Convert to target type
-    crate::from_value(&value).map_err(serde::de::Error::custom)
+    crate::from_value(&value).map_err(serde_core::de::Error::custom)
 }
 
 #[cfg(test)]

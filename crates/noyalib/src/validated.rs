@@ -167,7 +167,7 @@ where
     where
         D: Deserializer<'de>,
     {
-        use serde::de::Error;
+        use serde_core::de::Error as _;
         let inner = T::deserialize(deserializer)?;
         match inner.validate_with(&()) {
             Ok(()) => Ok(Validated(inner)),
@@ -185,7 +185,7 @@ where
     where
         D: Deserializer<'de>,
     {
-        use serde::de::Error;
+        use serde_core::de::Error as _;
         let inner = T::deserialize(deserializer)?;
         match inner.validate() {
             Ok(()) => Ok(ValidatedValidator(inner)),

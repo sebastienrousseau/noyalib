@@ -522,7 +522,7 @@ strict-deserialise = ["dep:serde_ignored"]
 # explicit opt-in. Equivalent to
 # `default-features = false, features = ["std"]`.
 minimal = ["std"]
-# Synchronise serde's std mode with ours so the `serde::de::Error`
+# Synchronise serde's std mode with ours so the `serde_core::de::Error`
 # trait's `StdError` super-trait resolves consistently. With this
 # wired, `cargo build --no-default-features` truly compiles in
 # no_std and serde's de::Error does not require `std::error::Error`.

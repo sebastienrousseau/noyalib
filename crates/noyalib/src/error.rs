@@ -319,7 +319,7 @@ pub enum ErrorKind {
     /// serde-facing "shape doesn't match" family.
     Data,
     /// The error came in via [`Error::Custom`] or [`Error::Message`]
-    /// (usually from a `serde::de::Error` bridge) and doesn't map
+    /// (usually from a `serde_core::de::Error` bridge) and doesn't map
     /// cleanly to any of the other kinds.
     Other,
 }
@@ -1481,7 +1481,7 @@ impl serde::ser::Error for Error {
     }
 }
 
-impl serde::de::Error for Error {
+impl serde_core::de::Error for Error {
     fn custom<T: fmt::Display>(msg: T) -> Self {
         Error::Custom(msg.to_string())
     }

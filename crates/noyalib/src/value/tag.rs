@@ -352,7 +352,7 @@ impl<'de> Deserialize<'de> for TaggedValue {
             {
                 let (tag, value): (String, Value) = map
                     .next_entry()?
-                    .ok_or_else(|| serde::de::Error::custom("expected a single-entry map"))?;
+                    .ok_or_else(|| serde_core::de::Error::custom("expected a single-entry map"))?;
                 Ok(TaggedValue::new(Tag::new(tag), value))
             }
         }
@@ -419,7 +419,7 @@ impl<'de> serde::de::MapAccess<'de> for TaggedValueMapAccess<'de> {
     {
         match self.value.take() {
             Some(value) => seed.deserialize(value),
-            None => Err(serde::de::Error::custom("value is missing")),
+            None => Err(serde_core::de::Error::custom("value is missing")),
         }
     }
 }

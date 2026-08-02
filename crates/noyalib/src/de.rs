@@ -57,7 +57,7 @@ pub(crate) use deserializer::{SpannedMapAccess, is_binary_tag};
 /// - `Error::DuplicateKey` — only when `duplicate_key_policy`
 ///   has been switched to `Error`. The default policy is `Last`,
 ///   which deduplicates without erroring.
-/// - `Error::Custom` — surface for upstream `serde::de::Error`
+/// - `Error::Custom` — surface for upstream `serde_core::de::Error`
 ///   conversions; ordinarily the more specific variants above are
 ///   produced first.
 ///
@@ -828,7 +828,7 @@ where
 /// # Errors
 ///
 /// - `Error::Deserialize` — `value` does not match `T`'s shape.
-/// - `Error::Custom` — surfaces upstream `serde::de::Error`
+/// - `Error::Custom` — surfaces upstream `serde_core::de::Error`
 ///   conversions that don't fit the structured variants.
 ///
 /// # Examples

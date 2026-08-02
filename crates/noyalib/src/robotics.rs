@@ -87,7 +87,7 @@ impl<'de> Deserialize<'de> for StrictFloat {
         D: serde::Deserializer<'de>,
     {
         let v = f64::deserialize(deserializer)?;
-        StrictFloat::try_from(v).map_err(serde::de::Error::custom)
+        StrictFloat::try_from(v).map_err(serde_core::de::Error::custom)
     }
 }
 

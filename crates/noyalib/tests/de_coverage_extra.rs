@@ -306,7 +306,7 @@ fn deserialize_identifier_from_non_string_falls_through() {
         fn expecting(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             f.write_str("an i64")
         }
-        fn visit_i64<E: serde::de::Error>(self, n: i64) -> Result<i64, E> {
+        fn visit_i64<E: serde_core::de::Error>(self, n: i64) -> Result<i64, E> {
             Ok(n)
         }
     }

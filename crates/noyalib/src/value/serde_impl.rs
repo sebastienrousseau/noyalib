@@ -195,7 +195,7 @@ impl<'de> serde::de::MapAccess<'de> for ValueMapAccess<'de> {
     {
         match self.value.take() {
             Some(value) => seed.deserialize(value),
-            None => Err(serde::de::Error::custom("value is missing")),
+            None => Err(serde_core::de::Error::custom("value is missing")),
         }
     }
 }

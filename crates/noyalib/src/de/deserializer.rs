@@ -638,7 +638,7 @@ impl<'de> MapAccess<'de> for ValueMapAccess<'de> {
                 let res = seed.deserialize(de);
                 de.wrap_err(res)
             }
-            None => Err(de::Error::custom("value is missing")),
+            None => Err(serde_core::de::Error::custom("value is missing")),
         }
     }
 }

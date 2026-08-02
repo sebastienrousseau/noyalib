@@ -127,7 +127,7 @@ where
     use serde::Deserialize;
     // Deserialize as Value first
     let value = crate::Value::deserialize(deserializer)?;
-    crate::from_value(&value).map_err(serde::de::Error::custom)
+    crate::from_value(&value).map_err(serde_core::de::Error::custom)
 }
 
 #[cfg(test)]
