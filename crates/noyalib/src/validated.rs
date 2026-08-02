@@ -28,7 +28,7 @@
 
 use crate::prelude::*;
 use core::ops::{Deref, DerefMut};
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 
 /// A newtype that validates its inner value using the [`garde`] crate.
 ///
@@ -195,7 +195,7 @@ where
 }
 
 #[cfg(feature = "garde")]
-impl<T: Serialize> Serialize for Validated<T> {
+impl<T: serde_core::Serialize> serde_core::Serialize for Validated<T> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde_core::Serializer,
@@ -205,7 +205,7 @@ impl<T: Serialize> Serialize for Validated<T> {
 }
 
 #[cfg(feature = "validator")]
-impl<T: Serialize> Serialize for ValidatedValidator<T> {
+impl<T: serde_core::Serialize> serde_core::Serialize for ValidatedValidator<T> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde_core::Serializer,

@@ -6,7 +6,7 @@
 use super::{Mapping, Number, TaggedValue, Value};
 use crate::prelude::*;
 use indexmap::map::Iter;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 
 impl<'de> Deserialize<'de> for Value {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
@@ -102,7 +102,7 @@ impl<'de> Deserialize<'de> for Value {
     }
 }
 
-impl Serialize for Value {
+impl serde_core::Serialize for Value {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde_core::Serializer,

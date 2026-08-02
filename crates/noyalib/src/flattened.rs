@@ -151,10 +151,7 @@ where
     }
 }
 
-impl<T> serde::Serialize for Flattened<T>
-where
-    T: serde::Serialize,
-{
+impl<T: serde_core::Serialize> serde_core::Serialize for Flattened<T> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde_core::Serializer,

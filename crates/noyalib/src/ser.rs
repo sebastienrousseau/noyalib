@@ -6,8 +6,6 @@
 use crate::prelude::*;
 use core::fmt::Write as _;
 
-use serde::ser::Serialize;
-
 use crate::error::{Error, Result};
 use crate::value::{Mapping, Number, Sequence, Tag, TaggedValue, Value};
 
@@ -276,7 +274,7 @@ impl SerializerConfig {
 /// ```
 pub fn to_string<T>(value: &T) -> Result<String>
 where
-    T: ?Sized + Serialize,
+    T: ?Sized + serde_core::Serialize,
 {
     let v = to_value(value)?;
     value_to_string(&v, &SerializerConfig::default())
@@ -317,7 +315,7 @@ where
 /// ```
 pub fn to_string_with_config<T>(value: &T, config: &SerializerConfig) -> Result<String>
 where
-    T: ?Sized + Serialize,
+    T: ?Sized + serde_core::Serialize,
 {
     let v = to_value(value)?;
     value_to_string(&v, config)
@@ -337,7 +335,7 @@ where
 pub fn to_writer<W, T>(writer: W, value: &T) -> Result<()>
 where
     W: std::io::Write,
-    T: ?Sized + Serialize,
+    T: ?Sized + serde_core::Serialize,
 {
     to_writer_with_config(writer, value, &SerializerConfig::default())
 }
@@ -353,7 +351,7 @@ where
 pub fn to_writer_with_config<W, T>(writer: W, value: &T, config: &SerializerConfig) -> Result<()>
 where
     W: std::io::Write,
-    T: ?Sized + Serialize,
+    T: ?Sized + serde_core::Serialize,
 {
     let s = to_string_with_config(value, config)?;
     let mut writer = writer;
@@ -393,7 +391,7 @@ where
 #[cfg(feature = "std")]
 pub fn to_string_tracking_shared<T>(value: &T) -> Result<String>
 where
-    T: ?Sized + Serialize,
+    T: ?Sized + serde_core::Serialize,
 {
     to_string_tracking_shared_with_config(value, &SerializerConfig::default())
 }
@@ -411,7 +409,7 @@ pub fn to_string_tracking_shared_with_config<T>(
     config: &SerializerConfig,
 ) -> Result<String>
 where
-    T: ?Sized + Serialize,
+    T: ?Sized + serde_core::Serialize,
 {
     let _scope = crate::anchors::shared_tracking::AnchorScope::enter();
     to_string_with_config(value, config)
@@ -429,7 +427,7 @@ where
 pub fn to_writer_tracking_shared<W, T>(writer: W, value: &T) -> Result<()>
 where
     W: std::io::Write,
-    T: ?Sized + Serialize,
+    T: ?Sized + serde_core::Serialize,
 {
     to_writer_tracking_shared_with_config(writer, value, &SerializerConfig::default())
 }
@@ -450,7 +448,7 @@ pub fn to_writer_tracking_shared_with_config<W, T>(
 ) -> Result<()>
 where
     W: std::io::Write,
-    T: ?Sized + Serialize,
+    T: ?Sized + serde_core::Serialize,
 {
     let s = to_string_tracking_shared_with_config(value, config)?;
     let mut writer = writer;
@@ -469,7 +467,7 @@ where
 pub fn to_fmt_writer<W, T>(writer: &mut W, value: &T) -> Result<()>
 where
     W: fmt::Write,
-    T: ?Sized + Serialize,
+    T: ?Sized + serde_core::Serialize,
 {
     to_fmt_writer_with_config(writer, value, &SerializerConfig::default())
 }
@@ -489,7 +487,7 @@ pub fn to_fmt_writer_with_config<W, T>(
 ) -> Result<()>
 where
     W: fmt::Write,
-    T: ?Sized + Serialize,
+    T: ?Sized + serde_core::Serialize,
 {
     let s = to_string_with_config(value, config)?;
     writer
@@ -522,10 +520,10 @@ where
 ///   conversions that don't fit the structured variants.
 pub fn to_value<T>(value: &T) -> Result<Value>
 where
-    T: ?Sized + Serialize,
+    T: ?Sized + serde_core::Serialize,
 {
     // No tag-preserving fast-path here: the public `to_value` /
-    // `to_string` family keeps `T: ?Sized + Serialize` so callers
+    // `to_string` family keeps `T: ?Sized + serde_core::Serialize` so callers
     // can serialise structs holding borrowed references. Users
     // holding a [`Value`] who want lossless `Value::Tagged`
     // round-trip should call [`to_string_value`] /
@@ -537,7 +535,7 @@ where
 /// Serialize a [`Value`] directly to a YAML `String`, preserving
 /// [`Value::Tagged`] shape losslessly.
 ///
-/// Going through the generic `to_string<T: Serialize>` path
+/// Going through the generic `to_string<T: serde_core::Serialize>` path
 /// routes `Value::Tagged(...)` through `Serializer::serialize_map`
 /// (which emits a single-entry mapping for serde-bridge interop),
 /// which loses the YAML-tag wire form. This function bypasses the
@@ -1387,7 +1385,7 @@ fn write_folded_block(output: &mut String, s: &str, indent: usize, config: &Seri
 /// let yaml = noyalib::to_string_multi(&docs).unwrap();
 /// assert!(yaml.contains("---"));
 /// ```
-pub fn to_string_multi<T: Serialize>(values: &[T]) -> Result<String> {
+pub fn to_string_multi<T: serde_core::Serialize>(values: &[T]) -> Result<String> {
     to_string_multi_with_config(values, &SerializerConfig::default())
 }
 
@@ -1397,7 +1395,7 @@ pub fn to_string_multi<T: Serialize>(values: &[T]) -> Result<String> {
 /// # Errors
 ///
 /// All variants documented on [`to_string_with_config`].
-pub fn to_string_multi_with_config<T: Serialize>(
+pub fn to_string_multi_with_config<T: serde_core::Serialize>(
     values: &[T],
     config: &SerializerConfig,
 ) -> Result<String> {
@@ -1420,7 +1418,11 @@ pub fn to_string_multi_with_config<T: Serialize>(
 ///
 /// Returns an error if any value cannot be serialized or writing fails.
 #[cfg(feature = "std")]
-pub fn to_writer_multi<W: std::io::Write, T: Serialize>(writer: W, values: &[T]) -> Result<()> {
+pub fn to_writer_multi<W, T>(writer: W, values: &[T]) -> Result<()>
+where
+    W: std::io::Write,
+    T: serde_core::Serialize,
+{
     to_writer_multi_with_config(writer, values, &SerializerConfig::default())
 }
 
@@ -1431,11 +1433,15 @@ pub fn to_writer_multi<W: std::io::Write, T: Serialize>(writer: W, values: &[T])
 ///
 /// Returns an error if any value cannot be serialized or writing fails.
 #[cfg(feature = "std")]
-pub fn to_writer_multi_with_config<W: std::io::Write, T: Serialize>(
+pub fn to_writer_multi_with_config<W, T>(
     writer: W,
     values: &[T],
     config: &SerializerConfig,
-) -> Result<()> {
+) -> Result<()>
+where
+    W: std::io::Write,
+    T: serde_core::Serialize,
+{
     let s = to_string_multi_with_config(values, config)?;
     let mut writer = writer;
     writer.write_all(s.as_bytes())?;
@@ -1550,7 +1556,7 @@ impl serde_core::ser::Serializer for Serializer {
 
     fn serialize_some<T>(self, value: &T) -> Result<Value>
     where
-        T: ?Sized + Serialize,
+        T: ?Sized + serde_core::Serialize,
     {
         value.serialize(self)
     }
@@ -1574,7 +1580,7 @@ impl serde_core::ser::Serializer for Serializer {
 
     fn serialize_newtype_struct<T>(self, name: &'static str, value: &T) -> Result<Value>
     where
-        T: ?Sized + Serialize,
+        T: ?Sized + serde_core::Serialize,
     {
         // Intercept formatting hint magic names
         match name {
@@ -1618,7 +1624,7 @@ impl serde_core::ser::Serializer for Serializer {
         value: &T,
     ) -> Result<Value>
     where
-        T: ?Sized + Serialize,
+        T: ?Sized + serde_core::Serialize,
     {
         let mut map = Mapping::new();
         let _ = map.insert(variant.to_owned(), value.serialize(Serializer)?);
@@ -1693,7 +1699,7 @@ impl serde_core::ser::SerializeSeq for SerializeSeq {
 
     fn serialize_element<T>(&mut self, value: &T) -> Result<()>
     where
-        T: ?Sized + Serialize,
+        T: ?Sized + serde_core::Serialize,
     {
         self.vec.push(value.serialize(Serializer)?);
         Ok(())
@@ -1710,7 +1716,7 @@ impl serde_core::ser::SerializeTuple for SerializeSeq {
 
     fn serialize_element<T>(&mut self, value: &T) -> Result<()>
     where
-        T: ?Sized + Serialize,
+        T: ?Sized + serde_core::Serialize,
     {
         serde_core::ser::SerializeSeq::serialize_element(self, value)
     }
@@ -1726,7 +1732,7 @@ impl serde_core::ser::SerializeTupleStruct for SerializeSeq {
 
     fn serialize_field<T>(&mut self, value: &T) -> Result<()>
     where
-        T: ?Sized + Serialize,
+        T: ?Sized + serde_core::Serialize,
     {
         serde_core::ser::SerializeSeq::serialize_element(self, value)
     }
@@ -1749,7 +1755,7 @@ impl serde_core::ser::SerializeTupleVariant for SerializeTupleVariant {
 
     fn serialize_field<T>(&mut self, value: &T) -> Result<()>
     where
-        T: ?Sized + Serialize,
+        T: ?Sized + serde_core::Serialize,
     {
         self.vec.push(value.serialize(Serializer)?);
         Ok(())
@@ -1775,7 +1781,7 @@ impl serde_core::ser::SerializeMap for SerializeMap {
 
     fn serialize_key<T>(&mut self, key: &T) -> Result<()>
     where
-        T: ?Sized + Serialize,
+        T: ?Sized + serde_core::Serialize,
     {
         let key_value = key.serialize(Serializer)?;
         let key_str = match key_value {
@@ -1792,7 +1798,7 @@ impl serde_core::ser::SerializeMap for SerializeMap {
 
     fn serialize_value<T>(&mut self, value: &T) -> Result<()>
     where
-        T: ?Sized + Serialize,
+        T: ?Sized + serde_core::Serialize,
     {
         let key = self
             .key
@@ -1813,7 +1819,7 @@ impl serde_core::ser::SerializeStruct for SerializeMap {
 
     fn serialize_field<T>(&mut self, key: &'static str, value: &T) -> Result<()>
     where
-        T: ?Sized + Serialize,
+        T: ?Sized + serde_core::Serialize,
     {
         let _ = self
             .map
@@ -1839,7 +1845,7 @@ impl serde_core::ser::SerializeStructVariant for SerializeStructVariant {
 
     fn serialize_field<T>(&mut self, key: &'static str, value: &T) -> Result<()>
     where
-        T: ?Sized + Serialize,
+        T: ?Sized + serde_core::Serialize,
     {
         let _ = self
             .map

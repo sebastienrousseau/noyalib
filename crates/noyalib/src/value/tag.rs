@@ -7,7 +7,7 @@ use super::Value;
 use crate::prelude::*;
 use core::cmp::Ordering;
 use core::hash::{Hash, Hasher};
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 
 // ============================================================================
 // Tag utilities
@@ -318,7 +318,7 @@ impl fmt::Display for TaggedValue {
     }
 }
 
-impl Serialize for TaggedValue {
+impl serde_core::Serialize for TaggedValue {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde_core::Serializer,

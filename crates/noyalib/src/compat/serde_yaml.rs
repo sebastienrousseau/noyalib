@@ -175,7 +175,6 @@
 //! that flow through unchanged for the typed-deserialise path.
 
 use crate::prelude::*;
-use serde::Serialize;
 
 // ── Types — re-exported under the serde_yaml names ───────────────────
 
@@ -330,7 +329,7 @@ where
 /// ```
 pub fn to_string<T>(value: &T) -> Result<String>
 where
-    T: Serialize,
+    T: serde_core::Serialize,
 {
     crate::to_string(value)
 }
@@ -349,7 +348,7 @@ where
 pub fn to_writer<W, T>(writer: W, value: &T) -> Result<()>
 where
     W: std::io::Write,
-    T: Serialize,
+    T: serde_core::Serialize,
 {
     crate::to_writer(writer, value)
 }
@@ -368,7 +367,7 @@ where
 /// ```
 pub fn to_value<T>(value: T) -> Result<Value>
 where
-    T: Serialize,
+    T: serde_core::Serialize,
 {
     crate::to_value(&value)
 }

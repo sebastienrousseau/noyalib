@@ -66,7 +66,6 @@ Mirror surface for the write side:
 
 ```rust
 use noyalib::to_string;
-use serde::Serialize;
 
 #[derive(serde::Serialize)]
 struct Server { host: String, port: u16 }

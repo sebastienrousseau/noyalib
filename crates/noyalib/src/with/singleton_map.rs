@@ -41,8 +41,6 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 // Copyright (c) 2026 Noyalib. All rights reserved.
 
-use serde::Serialize;
-
 /// Serialize a value as a singleton map.
 ///
 /// For enums, this serializes the variant as a map where the key is the
@@ -67,7 +65,7 @@ use serde::Serialize;
 /// ```
 pub fn serialize<T, S>(value: &T, serializer: S) -> Result<S::Ok, S::Error>
 where
-    T: Serialize,
+    T: serde_core::Serialize,
     S: serde_core::Serializer,
 {
     use serde_core::ser::SerializeMap as _;
@@ -92,7 +90,7 @@ where
         }
         other => {
             // Fallback: serialize as-is
-            other.serialize(serializer)
+            serde_core::Serialize::serialize(&other, serializer)
         }
     }
 }

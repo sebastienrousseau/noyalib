@@ -11,7 +11,7 @@ use core::ops::{Index, IndexMut};
 use indexmap::IndexMap;
 use indexmap::map::{IntoIter, Iter, IterMut, Keys, Values, ValuesMut};
 use rustc_hash::FxBuildHasher;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 
 /// Fast IndexMap using FxBuildHasher.
 type FxIndexMap<K, V> = IndexMap<K, V, FxBuildHasher>;
@@ -818,7 +818,7 @@ impl fmt::Display for Mapping {
     }
 }
 
-impl Serialize for Mapping {
+impl serde_core::Serialize for Mapping {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde_core::Serializer,
@@ -1298,7 +1298,7 @@ impl fmt::Display for MappingAny {
     }
 }
 
-impl Serialize for MappingAny {
+impl serde_core::Serialize for MappingAny {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde_core::Serializer,

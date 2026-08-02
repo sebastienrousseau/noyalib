@@ -9,7 +9,7 @@
 use crate::prelude::*;
 use core::ops::Deref;
 
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 
 use crate::error::Location;
 
@@ -192,7 +192,7 @@ impl<T> From<T> for Spanned<T> {
     }
 }
 
-impl<T: Serialize> Serialize for Spanned<T> {
+impl<T: serde_core::Serialize> serde_core::Serialize for Spanned<T> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde_core::Serializer,

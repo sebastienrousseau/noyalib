@@ -16,7 +16,6 @@
 #![allow(clippy::unwrap_used)]
 
 use noyalib::{Tag, TaggedValue, Value, to_string};
-use serde::Serialize;
 
 /// A value tree containing a tagged node, used to assert that a custom
 /// tag survives the singleton-map serialize walks end-to-end.
@@ -30,7 +29,7 @@ fn tagged_seq() -> Value {
 
 #[test]
 fn recursive_serialize_transforms_tagged_node() {
-    #[derive(Serialize)]
+    #[derive(serde::Serialize)]
     struct W {
         #[serde(with = "noyalib::with::singleton_map_recursive")]
         v: Value,
@@ -46,7 +45,7 @@ fn with_serialize_transforms_tagged_node() {
     // `serialize_with` walks the value tree applying the key transform;
     // the walk must recurse through a `Value::Tagged` node too.
     struct KeyWrap;
-    impl Serialize for KeyWrap {
+    impl serde_core::Serialize for KeyWrap {
         fn serialize<S: serde_core::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
             noyalib::with::singleton_map_with::serialize_with(
                 &tagged_seq(),

@@ -19,7 +19,7 @@ use std::rc::{Rc, Weak as RcWeak};
 use std::sync::Weak as ArcWeak;
 
 use rustc_hash::FxHashMap;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 
 /// Thread-local identity tracking for automatic anchor/alias emission.
 ///
@@ -183,7 +183,7 @@ impl<T> RcAnchor<T> {
     }
 }
 
-impl<T: Serialize> Serialize for RcAnchor<T> {
+impl<T: serde_core::Serialize> serde_core::Serialize for RcAnchor<T> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde_core::Serializer,
@@ -276,7 +276,7 @@ impl<T> ArcAnchor<T> {
     }
 }
 
-impl<T: Serialize> Serialize for ArcAnchor<T> {
+impl<T: serde_core::Serialize> serde_core::Serialize for ArcAnchor<T> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde_core::Serializer,
@@ -385,7 +385,7 @@ impl<T> From<RcWeak<T>> for RcWeakAnchor<T> {
     }
 }
 
-impl<T: Serialize> Serialize for RcWeakAnchor<T> {
+impl<T: serde_core::Serialize> serde_core::Serialize for RcWeakAnchor<T> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde_core::Serializer,
@@ -495,7 +495,7 @@ impl<T> From<ArcWeak<T>> for ArcWeakAnchor<T> {
     }
 }
 
-impl<T: Serialize> Serialize for ArcWeakAnchor<T> {
+impl<T: serde_core::Serialize> serde_core::Serialize for ArcWeakAnchor<T> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde_core::Serializer,
@@ -914,7 +914,7 @@ impl<T> RcRecursive<T> {
 }
 
 #[cfg(feature = "std")]
-impl<T: Serialize> Serialize for RcRecursive<T> {
+impl<T: serde_core::Serialize> serde_core::Serialize for RcRecursive<T> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde_core::Serializer,
@@ -1070,7 +1070,7 @@ impl<T> ArcRecursive<T> {
 }
 
 #[cfg(feature = "std")]
-impl<T: Serialize> Serialize for ArcRecursive<T> {
+impl<T: serde_core::Serialize> serde_core::Serialize for ArcRecursive<T> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde_core::Serializer,

@@ -94,7 +94,6 @@
 // Copyright (c) 2026 Noyalib. All rights reserved.
 
 use crate::prelude::*;
-use serde::Serialize;
 
 /// Serialize a value as a singleton map with custom key transformation.
 ///
@@ -111,11 +110,9 @@ use serde::Serialize;
 /// # Examples
 ///
 /// ```rust
-/// use serde::Serialize;
-///
 /// fn my_serialize<T, S>(value: &T, serializer: S) -> Result<S::Ok, S::Error>
 /// where
-///     T: Serialize,
+///     T: serde_core::Serialize,
 ///     S: serde_core::Serializer,
 /// {
 ///     noyalib::with::singleton_map_with::serialize_with(
@@ -127,7 +124,7 @@ use serde::Serialize;
 /// ```
 pub fn serialize_with<T, S, F>(value: &T, serializer: S, transform: F) -> Result<S::Ok, S::Error>
 where
-    T: Serialize,
+    T: serde_core::Serialize,
     S: serde_core::Serializer,
     F: Fn(&str) -> String,
 {
@@ -155,7 +152,7 @@ where
         }
         other => {
             // Fallback: serialize as-is (no transformation possible)
-            other.serialize(serializer)
+            serde_core::Serialize::serialize(&other, serializer)
         }
     }
 }
