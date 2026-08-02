@@ -84,7 +84,7 @@ where
     S: Serializer,
 {
     // Serialize to Value first
-    let yaml_value = crate::to_value(value).map_err(serde::ser::Error::custom)?;
+    let yaml_value = crate::to_value(value).map_err(serde_core::ser::Error::custom)?;
 
     // Transform recursively
     let transformed = transform_to_singleton_map(yaml_value);

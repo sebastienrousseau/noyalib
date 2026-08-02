@@ -246,7 +246,7 @@ impl SerializerConfig {
 /// Returns [`Error`](crate::Error) when:
 ///
 /// - `Error::Serialize` — `T`'s `Serialize` impl returned an
-///   error (custom `serde::ser::Error`, non-string mapping key
+///   error (custom `serde_core::ser::Error`, non-string mapping key
 ///   that cannot be coerced, …).
 /// - `Error::DepthLimit` — the value graph exceeds
 ///   `SerializerConfig::max_depth` (default 128). Use
@@ -518,7 +518,7 @@ where
 ///
 /// - `Error::Serialize` — `T`'s `Serialize` impl returned an
 ///   error.
-/// - `Error::Custom` — surfaces upstream `serde::ser::Error`
+/// - `Error::Custom` — surfaces upstream `serde_core::ser::Error`
 ///   conversions that don't fit the structured variants.
 pub fn to_value<T>(value: &T) -> Result<Value>
 where

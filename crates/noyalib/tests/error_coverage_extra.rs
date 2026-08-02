@@ -591,12 +591,12 @@ fn budget_breach_display_all_variants() {
 }
 
 // ============================================================================
-// serde::ser::Error / serde_core::de::Error trait impls (L1305, L1322-L1326)
+// serde_core::ser::Error / serde_core::de::Error trait impls (L1305, L1322-L1326)
 // ============================================================================
 
 #[test]
 fn serde_ser_error_custom() {
-    let e: Error = <Error as serde::ser::Error>::custom("ser-msg");
+    let e: Error = <Error as serde_core::ser::Error>::custom("ser-msg");
     assert!(matches!(e, Error::Custom(_)));
 }
 

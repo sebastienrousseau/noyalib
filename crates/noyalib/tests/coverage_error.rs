@@ -410,7 +410,7 @@ fn serde_de_error_custom() {
 
 #[test]
 fn serde_ser_error_custom() {
-    use serde::ser::Error as _;
+    use serde_core::ser::Error as _;
     let e = Error::custom("custom ser error");
     assert_eq!(e.to_string(), "custom ser error");
 }

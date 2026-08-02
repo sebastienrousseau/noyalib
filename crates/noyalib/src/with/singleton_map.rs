@@ -73,7 +73,7 @@ where
     use serde::ser::SerializeMap;
 
     // Serialize to Value to inspect structure
-    let yaml_value = crate::to_value(value).map_err(serde::ser::Error::custom)?;
+    let yaml_value = crate::to_value(value).map_err(serde_core::ser::Error::custom)?;
 
     match yaml_value {
         crate::Value::Mapping(map) => {
