@@ -226,7 +226,7 @@ impl<'de, T: Deserialize<'de>> serde::de::Visitor<'de> for SpannedVisitor<T> {
 
     fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
     where
-        A: serde::de::MapAccess<'de>,
+        A: serde_core::de::MapAccess<'de>,
     {
         let mut start_line: Option<usize> = None;
         let mut start_column: Option<usize> = None;

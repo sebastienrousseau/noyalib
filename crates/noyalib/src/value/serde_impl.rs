@@ -13,7 +13,7 @@ impl<'de> Deserialize<'de> for Value {
     where
         D: serde::Deserializer<'de>,
     {
-        use serde::de::{MapAccess, SeqAccess, Visitor};
+        use serde::de::{SeqAccess, Visitor};
 
         struct ValueVisitor;
 
@@ -77,7 +77,7 @@ impl<'de> Deserialize<'de> for Value {
 
             fn visit_map<A>(self, mut map: A) -> Result<Value, A::Error>
             where
-                A: MapAccess<'de>,
+                A: serde_core::de::MapAccess<'de>,
             {
                 let first_key: Option<String> = map.next_key()?;
                 // Regular mapping path — collect every (k, v) pair
@@ -172,7 +172,7 @@ struct ValueMapAccess<'de> {
     value: Option<&'de Value>,
 }
 
-impl<'de> serde::de::MapAccess<'de> for ValueMapAccess<'de> {
+impl<'de> serde_core::de::MapAccess<'de> for ValueMapAccess<'de> {
     type Error = crate::Error;
 
     fn next_key_seed<K>(&mut self, seed: K) -> crate::Result<Option<K::Value>>

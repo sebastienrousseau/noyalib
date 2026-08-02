@@ -12,7 +12,7 @@ use crate::prelude::*;
 
 use rustc_hash::{FxHashMap, FxHashSet};
 use serde::Deserialize;
-use serde::de::{self, MapAccess, SeqAccess, Visitor};
+use serde::de::{self, SeqAccess, Visitor};
 use smallvec::SmallVec;
 
 use crate::error::{Error, Result, closest_name};
@@ -1242,7 +1242,7 @@ struct StreamingMapAccess<'a, 'de> {
     seen_typed: FxHashMap<String, Value>,
 }
 
-impl<'de> MapAccess<'de> for StreamingMapAccess<'_, 'de> {
+impl<'de> serde_core::de::MapAccess<'de> for StreamingMapAccess<'_, 'de> {
     type Error = Error;
     fn next_key_seed<K>(&mut self, seed: K) -> Result<Option<K::Value>>
     where
@@ -1502,7 +1502,7 @@ struct StreamingTagMapAccess<'a, 'de> {
     tag: (String, String),
     done: bool,
 }
-impl<'de> MapAccess<'de> for StreamingTagMapAccess<'_, 'de> {
+impl<'de> serde_core::de::MapAccess<'de> for StreamingTagMapAccess<'_, 'de> {
     type Error = Error;
     fn next_key_seed<K>(&mut self, seed: K) -> Result<Option<K::Value>>
     where

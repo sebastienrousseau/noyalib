@@ -335,7 +335,7 @@ impl<'de> Deserialize<'de> for TaggedValue {
     where
         D: serde::Deserializer<'de>,
     {
-        use serde::de::{MapAccess, Visitor};
+        use serde::de::Visitor;
 
         struct TaggedValueVisitor;
 
@@ -348,7 +348,7 @@ impl<'de> Deserialize<'de> for TaggedValue {
 
             fn visit_map<A>(self, mut map: A) -> Result<TaggedValue, A::Error>
             where
-                A: MapAccess<'de>,
+                A: serde_core::de::MapAccess<'de>,
             {
                 let (tag, value): (String, Value) = map
                     .next_entry()?
@@ -398,7 +398,7 @@ struct TaggedValueMapAccess<'de> {
     value: Option<&'de Value>,
 }
 
-impl<'de> serde::de::MapAccess<'de> for TaggedValueMapAccess<'de> {
+impl<'de> serde_core::de::MapAccess<'de> for TaggedValueMapAccess<'de> {
     type Error = crate::Error;
 
     fn next_key_seed<K>(&mut self, seed: K) -> crate::Result<Option<K::Value>>

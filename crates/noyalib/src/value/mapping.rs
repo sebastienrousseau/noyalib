@@ -837,7 +837,7 @@ impl<'de> Deserialize<'de> for Mapping {
     where
         D: serde::Deserializer<'de>,
     {
-        use serde::de::{MapAccess, Visitor};
+        use serde::de::Visitor;
 
         struct MappingVisitor;
 
@@ -850,7 +850,7 @@ impl<'de> Deserialize<'de> for Mapping {
 
             fn visit_map<A>(self, mut map: A) -> Result<Mapping, A::Error>
             where
-                A: MapAccess<'de>,
+                A: serde_core::de::MapAccess<'de>,
             {
                 let mut mapping = Mapping::with_capacity(map.size_hint().unwrap_or(0));
                 while let Some((key, value)) = map.next_entry::<String, Value>()? {
@@ -1319,7 +1319,7 @@ impl<'de> Deserialize<'de> for MappingAny {
     where
         D: serde::Deserializer<'de>,
     {
-        use serde::de::{MapAccess, Visitor};
+        use serde::de::Visitor;
 
         struct MappingAnyVisitor;
 
@@ -1332,7 +1332,7 @@ impl<'de> Deserialize<'de> for MappingAny {
 
             fn visit_map<A>(self, mut map: A) -> Result<MappingAny, A::Error>
             where
-                A: MapAccess<'de>,
+                A: serde_core::de::MapAccess<'de>,
             {
                 let mut mapping = MappingAny::with_capacity(map.size_hint().unwrap_or(0));
                 while let Some((key, value)) = map.next_entry::<Value, Value>()? {

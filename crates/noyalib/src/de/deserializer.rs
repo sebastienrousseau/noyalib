@@ -8,7 +8,7 @@ use crate::prelude::*;
 use crate::span_context;
 use crate::value::{Number, Value};
 use serde::Deserialize;
-use serde::de::{self, MapAccess, SeqAccess, Visitor};
+use serde::de::{self, SeqAccess, Visitor};
 
 /// A YAML deserializer.
 ///
@@ -609,7 +609,7 @@ impl<'de> ValueMapAccess<'de> {
     }
 }
 
-impl<'de> MapAccess<'de> for ValueMapAccess<'de> {
+impl<'de> serde_core::de::MapAccess<'de> for ValueMapAccess<'de> {
     type Error = Error;
 
     fn next_key_seed<K>(&mut self, seed: K) -> Result<Option<K::Value>>
@@ -737,7 +737,7 @@ impl<'de> SpannedMapAccess<'de> {
     }
 }
 
-impl<'de> MapAccess<'de> for SpannedMapAccess<'de> {
+impl<'de> serde_core::de::MapAccess<'de> for SpannedMapAccess<'de> {
     type Error = Error;
 
     fn next_key_seed<K>(&mut self, seed: K) -> Result<Option<K::Value>>
