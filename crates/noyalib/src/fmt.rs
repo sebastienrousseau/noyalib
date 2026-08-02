@@ -525,7 +525,8 @@ impl<T: Serialize> Serialize for Commented<T> {
     where
         S: serde::Serializer,
     {
-        use serde::ser::SerializeTuple;
+        use serde_core::ser::SerializeTuple as _;
+
         // Serialize as a tuple (value, comment) wrapped in the magic newtype
         struct Inner<'a, T>(&'a T, &'a str);
 

@@ -1704,7 +1704,7 @@ impl serde_core::ser::SerializeSeq for SerializeSeq {
     }
 }
 
-impl ser::SerializeTuple for SerializeSeq {
+impl serde_core::ser::SerializeTuple for SerializeSeq {
     type Ok = Value;
     type Error = Error;
 
