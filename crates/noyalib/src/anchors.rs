@@ -418,7 +418,7 @@ impl<'de, T> Deserialize<'de> for RcWeakAnchor<T> {
     {
         // Always deserialize as a dangling weak — there's no registry to look up.
         // We consume the value to avoid errors.
-        let _ = serde::de::IgnoredAny::deserialize(deserializer)?;
+        let _ = serde_core::de::IgnoredAny::deserialize(deserializer)?;
         Ok(RcWeakAnchor(RcWeak::new()))
     }
 }
@@ -523,7 +523,7 @@ impl<'de, T> Deserialize<'de> for ArcWeakAnchor<T> {
     where
         D: serde::Deserializer<'de>,
     {
-        let _ = serde::de::IgnoredAny::deserialize(deserializer)?;
+        let _ = serde_core::de::IgnoredAny::deserialize(deserializer)?;
         Ok(ArcWeakAnchor(ArcWeak::new()))
     }
 }

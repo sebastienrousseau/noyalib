@@ -830,8 +830,7 @@ fn explicit_document_markers() {
 
 #[test]
 fn ignored_any_top_level() {
-    use serde::de::IgnoredAny;
-    let _: IgnoredAny = from_str("a: 1\nb:\n  - 1\n  - 2\n").unwrap();
+    let _: serde_core::de::IgnoredAny = from_str("a: 1\nb:\n  - 1\n  - 2\n").unwrap();
 }
 
 // ── Round-trips (parse -> emit -> parse) ─────────────────────────────────

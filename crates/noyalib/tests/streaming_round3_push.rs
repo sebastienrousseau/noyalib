@@ -98,14 +98,12 @@ fn r3_streaming_de_with_explicit_doc_start() {
 
 #[test]
 fn r3_skip_value_top_level_scalar_balance_zero() {
-    use serde::de::IgnoredAny;
-    let _: IgnoredAny = from_str("42\n").unwrap();
+    let _: serde_core::de::IgnoredAny = from_str("42\n").unwrap();
 }
 
 #[test]
 fn r3_skip_value_top_level_alias_via_anchor() {
-    use serde::de::IgnoredAny;
-    let _: IgnoredAny = from_str("a: &a 1\nb: *a\n").unwrap();
+    let _: serde_core::de::IgnoredAny = from_str("a: &a 1\nb: *a\n").unwrap();
 }
 
 // ─────────────────────────────────────────────────────────────────
@@ -428,13 +426,12 @@ fn r3_identifier_via_struct_field_name() {
 
 #[test]
 fn r3_ignored_any_skips_seq_inside_map() {
-    use serde::de::IgnoredAny;
     #[derive(serde::Deserialize)]
     #[allow(dead_code)]
     struct D {
         keep: i32,
         #[serde(default)]
-        skip_me: IgnoredAny,
+        skip_me: serde_core::de::IgnoredAny,
     }
     let yaml = "keep: 1\nskip_me: [1, 2, 3, [4, [5, [6]]]]\n";
     let d: D = from_str(yaml).unwrap();

@@ -325,8 +325,7 @@ fn deserialize_identifier_from_non_string_falls_through() {
 fn deserialize_ignored_any_consumes_anything() {
     let v: Value = from_str("a: 1\nb:\n  c: 2\n").expect("parse");
     let de = Deserializer::new(&v);
-    use serde::de::IgnoredAny;
-    let _: IgnoredAny = IgnoredAny::deserialize(de).expect("ignored any");
+    let _ = serde_core::de::IgnoredAny::deserialize(de).expect("ignored any");
 }
 
 // ============================================================================

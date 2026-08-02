@@ -257,7 +257,7 @@ impl<'de, T: Deserialize<'de>> serde::de::Visitor<'de> for SpannedVisitor<T> {
                 SPANNED_FIELD_VALUE => value = Some(map.next_value()?),
                 _ => {
                     // Unknown field — skip
-                    let _ = map.next_value::<serde::de::IgnoredAny>()?;
+                    let _ = map.next_value::<serde_core::de::IgnoredAny>()?;
                 }
             }
         }
