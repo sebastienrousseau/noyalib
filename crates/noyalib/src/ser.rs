@@ -1833,7 +1833,7 @@ pub struct SerializeStructVariant {
     map: Mapping,
 }
 
-impl ser::SerializeStructVariant for SerializeStructVariant {
+impl serde_core::ser::SerializeStructVariant for SerializeStructVariant {
     type Ok = Value;
     type Error = Error;
 
