@@ -1743,7 +1743,7 @@ pub struct SerializeTupleVariant {
     vec: Vec<Value>,
 }
 
-impl ser::SerializeTupleVariant for SerializeTupleVariant {
+impl serde_core::ser::SerializeTupleVariant for SerializeTupleVariant {
     type Ok = Value;
     type Error = Error;
 
