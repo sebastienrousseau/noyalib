@@ -355,3 +355,96 @@ fn remove_preserves_surrounding_comments() {
     doc.remove("b").unwrap();
     assert_eq!(doc.to_string(), "# header\na: 1\nc: 3\n");
 }
+
+// ── remove: the trivia an entry owns ─────────────────────────────
+//
+// An entry is more than its key and value bytes. The comment above it
+// documents it, and a keep-chomped scalar's kept blank lines are its
+// content — both go when it goes. A comment *after* its last content
+// line documents whatever comes next, and stays.
+
+#[test]
+fn remove_takes_the_entrys_head_comment_with_it() {
+    // Left behind, `# database connection settings` would silently
+    // become documentation for `cache` — a plausible-looking document
+    // that says something the author never wrote.
+    let src = "# database connection settings\ndatabase:\n  host: localhost\ncache:\n  ttl: 60\n";
+    let mut doc = parse_document(src).unwrap();
+    doc.remove("database").unwrap();
+    assert_eq!(doc.to_string(), "cache:\n  ttl: 60\n");
+}
+
+#[test]
+fn remove_takes_a_multi_line_head_comment_with_it() {
+    let src = "keep: 0\n# line one\n# line two\nblock:\n  a: 1\ntail: 9\n";
+    let mut doc = parse_document(src).unwrap();
+    doc.remove("block").unwrap();
+    assert_eq!(doc.to_string(), "keep: 0\ntail: 9\n");
+}
+
+#[test]
+fn remove_takes_the_head_comment_of_a_sequence_item() {
+    let src = "items:\n  # the first one\n  - one\n  - two\n";
+    let mut doc = parse_document(src).unwrap();
+    doc.remove("items[0]").unwrap();
+    assert_eq!(doc.to_string(), "items:\n  - two\n");
+}
+
+#[test]
+fn remove_leaves_a_head_comment_detached_by_a_blank_line() {
+    // The blank line is the author's way of saying the comment heads the
+    // document rather than the entry, so it survives.
+    let src = "# detached\n\nblock:\n  a: 1\ntail: 9\n";
+    let mut doc = parse_document(src).unwrap();
+    doc.remove("block").unwrap();
+    assert_eq!(doc.to_string(), "# detached\n\ntail: 9\n");
+}
+
+#[test]
+fn remove_leaves_a_head_comment_at_a_different_indent() {
+    // `# outer note` is indented under `top`, not aligned with `b`, so it
+    // is not `b`'s head comment.
+    let src = "top:\n  a: 1\n    # deeper note\n  b: 2\n  c: 3\n";
+    let mut doc = parse_document(src).unwrap();
+    doc.remove("top.b").unwrap();
+    assert_eq!(doc.to_string(), "top:\n  a: 1\n    # deeper note\n  c: 3\n");
+}
+
+#[test]
+fn remove_takes_a_keep_chomped_scalars_kept_blank_lines_with_it() {
+    // `|+` keeps the trailing blank lines as part of the scalar, so they
+    // belong to `script` and go with it — no stray blank left behind.
+    let src = "a: 1\nscript: |+\n  x\n\nb: 2\n";
+    let mut doc = parse_document(src).unwrap();
+    doc.remove("script").unwrap();
+    assert_eq!(doc.to_string(), "a: 1\nb: 2\n");
+}
+
+#[test]
+fn remove_leaves_a_trailing_comment_that_documents_the_next_entry() {
+    // `# note for next` follows `outer`'s last content line and sits
+    // outside its value span (`span_at("outer")` stops at `  a: 1`), so
+    // removing `outer` must not take it.
+    let src = "outer:\n  a: 1\n  # note for next\nnext: 2\n";
+    let mut doc = parse_document(src).unwrap();
+    doc.remove("outer").unwrap();
+    assert_eq!(doc.to_string(), "  # note for next\nnext: 2\n");
+}
+
+#[test]
+fn remove_takes_a_comment_interleaved_inside_the_value() {
+    // The counterpart to the test above: `# inner note` lies *within*
+    // `outer`'s value span, so it is part of the entry and goes with it.
+    let src = "outer:\n  a: 1\n  # inner note\n  b: 2\nother: 3\n";
+    let mut doc = parse_document(src).unwrap();
+    doc.remove("outer").unwrap();
+    assert_eq!(doc.to_string(), "other: 3\n");
+}
+
+#[test]
+fn remove_head_comment_rules_hold_for_crlf_input() {
+    let src = "keep: 0\r\n# doc for block\r\nblock:\r\n  a: 1\r\ntail: 9\r\n";
+    let mut doc = parse_document(src).unwrap();
+    doc.remove("block").unwrap();
+    assert_eq!(doc.to_string(), "keep: 0\r\ntail: 9\r\n");
+}
