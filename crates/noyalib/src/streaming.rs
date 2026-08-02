@@ -11,7 +11,6 @@
 use crate::prelude::*;
 
 use rustc_hash::{FxHashMap, FxHashSet};
-use serde::Deserialize;
 use smallvec::SmallVec;
 
 use crate::error::{Error, Result, closest_name};
@@ -59,7 +58,7 @@ pub(crate) enum Scalar<'a> {
 ///
 /// ```
 /// use noyalib::StreamingDeserializer;
-/// use serde::Deserialize;
+/// use serde_core::Deserialize as _;
 ///
 /// #[derive(serde::Deserialize)]
 /// struct Doc { k: i32 }
@@ -146,7 +145,7 @@ impl<'a> StreamingDeserializer<'a> {
     ///
     /// ```
     /// use noyalib::{StreamingDeserializer, TagRegistry};
-    /// use serde::Deserialize;
+    /// use serde_core::Deserialize as _;
     /// use std::sync::Arc;
     ///
     /// #[derive(serde::Deserialize)]
@@ -1582,7 +1581,7 @@ impl<'de> serde_core::de::VariantAccess<'de> for StreamingTagVariantAccess<'_, '
 
 pub(crate) fn from_str_streaming<T>(s: &str, config: &crate::de::ParserConfig) -> Option<Result<T>>
 where
-    T: for<'de> Deserialize<'de>,
+    T: for<'de> serde_core::Deserialize<'de>,
 {
     let parse_config = ParseConfig::from(config);
     if s.len() > parse_config.max_document_length {

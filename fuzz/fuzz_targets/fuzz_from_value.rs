@@ -9,7 +9,7 @@
 
 use libfuzzer_sys::fuzz_target;
 use noyalib::Value;
-use serde::Deserialize;
+use serde_core::Deserialize as _;
 use std::collections::HashMap;
 
 #[derive(serde::Deserialize)]

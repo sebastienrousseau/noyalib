@@ -18,8 +18,6 @@
 
 use core::fmt;
 
-use serde::Deserialize;
-
 /// A float that rejects values outside f64's precise representation range.
 ///
 /// The round-trip invariant is: if a value loses precision when converted
@@ -81,7 +79,7 @@ impl TryFrom<f64> for StrictFloat {
     }
 }
 
-impl<'de> Deserialize<'de> for StrictFloat {
+impl<'de> serde_core::Deserialize<'de> for StrictFloat {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde_core::Deserializer<'de>,
@@ -123,7 +121,7 @@ impl StrictFloat {
 #[serde(transparent)]
 pub struct Radians(pub f64);
 
-impl<'de> Deserialize<'de> for Radians {
+impl<'de> serde_core::Deserialize<'de> for Radians {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde_core::Deserializer<'de>,

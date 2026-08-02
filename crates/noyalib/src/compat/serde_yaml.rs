@@ -401,7 +401,6 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use serde::Deserialize;
 
     #[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
     struct Config {
@@ -530,7 +529,7 @@ mod tests {
         // that explicitly name the type compile unchanged.
         let v = Value::from(7_i64);
         let de = Deserializer::new(&v);
-        let n: i32 = Deserialize::deserialize(de).unwrap();
+        let n: i32 = serde_core::Deserialize::deserialize(de).unwrap();
         assert_eq!(n, 7);
     }
 

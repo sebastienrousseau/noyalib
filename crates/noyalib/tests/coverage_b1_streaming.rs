@@ -27,15 +27,15 @@ use noyalib::{
     DuplicateKeyPolicy, ParserConfig, StreamingDeserializer, TagRegistry, Value, from_str,
     from_str_with_config,
 };
-use serde::Deserialize;
 use serde_bytes::ByteBuf;
+use serde_core::Deserialize as _;
 
 // ── Construction & basic driving ─────────────────────────────────────────
 
 #[test]
 fn new_over_borrowed_str() {
     let mut de = StreamingDeserializer::new("k: 1\n");
-    let m: BTreeMap<String, i64> = Deserialize::deserialize(&mut de).unwrap();
+    let m: BTreeMap<String, i64> = serde_core::Deserialize::deserialize(&mut de).unwrap();
     assert_eq!(m["k"], 1);
 }
 
@@ -43,7 +43,7 @@ fn new_over_borrowed_str() {
 fn with_config_strict() {
     let cfg = ParserConfig::strict();
     let mut de = StreamingDeserializer::with_config("k: 1\n", &cfg);
-    let m: BTreeMap<String, i64> = Deserialize::deserialize(&mut de).unwrap();
+    let m: BTreeMap<String, i64> = serde_core::Deserialize::deserialize(&mut de).unwrap();
     assert_eq!(m["k"], 1);
 }
 

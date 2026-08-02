@@ -19,7 +19,6 @@ use std::rc::{Rc, Weak as RcWeak};
 use std::sync::Weak as ArcWeak;
 
 use rustc_hash::FxHashMap;
-use serde::Deserialize;
 
 /// Thread-local identity tracking for automatic anchor/alias emission.
 ///
@@ -211,7 +210,7 @@ impl<T: serde_core::Serialize> serde_core::Serialize for RcAnchor<T> {
     }
 }
 
-impl<'de, T: Deserialize<'de>> Deserialize<'de> for RcAnchor<T> {
+impl<'de, T: serde_core::Deserialize<'de>> serde_core::Deserialize<'de> for RcAnchor<T> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde_core::Deserializer<'de>,
@@ -304,7 +303,7 @@ impl<T: serde_core::Serialize> serde_core::Serialize for ArcAnchor<T> {
     }
 }
 
-impl<'de, T: Deserialize<'de>> Deserialize<'de> for ArcAnchor<T> {
+impl<'de, T: serde_core::Deserialize<'de>> serde_core::Deserialize<'de> for ArcAnchor<T> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde_core::Deserializer<'de>,
@@ -411,7 +410,7 @@ impl<T: serde_core::Serialize> serde_core::Serialize for RcWeakAnchor<T> {
     }
 }
 
-impl<'de, T> Deserialize<'de> for RcWeakAnchor<T> {
+impl<'de, T> serde_core::Deserialize<'de> for RcWeakAnchor<T> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde_core::Deserializer<'de>,
@@ -518,7 +517,7 @@ impl<T: serde_core::Serialize> serde_core::Serialize for ArcWeakAnchor<T> {
     }
 }
 
-impl<'de, T> Deserialize<'de> for ArcWeakAnchor<T> {
+impl<'de, T> serde_core::Deserialize<'de> for ArcWeakAnchor<T> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde_core::Deserializer<'de>,
@@ -927,7 +926,7 @@ impl<T: serde_core::Serialize> serde_core::Serialize for RcRecursive<T> {
 }
 
 #[cfg(feature = "std")]
-impl<'de, T: Deserialize<'de>> Deserialize<'de> for RcRecursive<T> {
+impl<'de, T: serde_core::Deserialize<'de>> serde_core::Deserialize<'de> for RcRecursive<T> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde_core::Deserializer<'de>,
@@ -1083,7 +1082,7 @@ impl<T: serde_core::Serialize> serde_core::Serialize for ArcRecursive<T> {
 }
 
 #[cfg(feature = "std")]
-impl<'de, T: Deserialize<'de>> Deserialize<'de> for ArcRecursive<T> {
+impl<'de, T: serde_core::Deserialize<'de>> serde_core::Deserialize<'de> for ArcRecursive<T> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde_core::Deserializer<'de>,

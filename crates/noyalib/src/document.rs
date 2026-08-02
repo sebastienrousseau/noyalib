@@ -229,7 +229,7 @@ pub fn try_load_all(input: &str) -> Result<DocumentIterator> {
 /// deserialized into the target type.
 pub fn load_all_as<T>(input: &str) -> Result<Vec<T>>
 where
-    T: for<'de> serde::Deserialize<'de> + 'static,
+    T: for<'de> serde_core::Deserialize<'de> + 'static,
 {
     let parse_config = parser::ParseConfig::from(&ParserConfig::default());
 
@@ -325,7 +325,7 @@ impl<T> DocumentReadIterator<T> {
 #[cfg(feature = "std")]
 impl<T> Iterator for DocumentReadIterator<T>
 where
-    T: for<'de> serde::Deserialize<'de> + 'static,
+    T: for<'de> serde_core::Deserialize<'de> + 'static,
 {
     type Item = Result<T>;
     fn next(&mut self) -> Option<Self::Item> {
@@ -339,7 +339,7 @@ where
 
 #[cfg(feature = "std")]
 impl<T> ExactSizeIterator for DocumentReadIterator<T> where
-    T: for<'de> serde::Deserialize<'de> + 'static
+    T: for<'de> serde_core::Deserialize<'de> + 'static
 {
 }
 
@@ -380,7 +380,7 @@ impl<T> ExactSizeIterator for DocumentReadIterator<T> where
 pub fn read<R, T>(reader: R) -> Result<DocumentReadIterator<T>>
 where
     R: std::io::Read,
-    T: for<'de> serde::Deserialize<'de> + 'static,
+    T: for<'de> serde_core::Deserialize<'de> + 'static,
 {
     read_with_config(reader, &ParserConfig::default())
 }
@@ -412,7 +412,7 @@ pub fn read_with_config<R, T>(
 ) -> Result<DocumentReadIterator<T>>
 where
     R: std::io::Read,
-    T: for<'de> serde::Deserialize<'de> + 'static,
+    T: for<'de> serde_core::Deserialize<'de> + 'static,
 {
     let mut buf = String::new();
     let _read_bytes = reader

@@ -10,12 +10,15 @@ use std::collections::BTreeMap;
 #[cfg(feature = "lossless-u64")]
 use noyalib::{ParserConfig, from_str_with_config};
 use noyalib::{from_str, to_string};
-use serde::Deserialize;
 
 /// Helper for round-trip testing
 fn test_serde<T>(value: &T, expected_yaml_contains: &[&str])
 where
-    T: serde_core::Serialize + for<'de> Deserialize<'de> + PartialEq + std::fmt::Debug + 'static,
+    T: serde_core::Serialize
+        + for<'de> serde_core::Deserialize<'de>
+        + PartialEq
+        + std::fmt::Debug
+        + 'static,
 {
     let yaml = to_string(value).unwrap();
     for expected in expected_yaml_contains {

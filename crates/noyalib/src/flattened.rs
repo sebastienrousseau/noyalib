@@ -132,9 +132,9 @@ impl<T> core::ops::Deref for Flattened<T> {
     }
 }
 
-impl<'de, T> serde::Deserialize<'de> for Flattened<T>
+impl<'de, T> serde_core::Deserialize<'de> for Flattened<T>
 where
-    T: for<'a> serde::Deserialize<'a> + 'static,
+    T: for<'a> serde_core::Deserialize<'a> + 'static,
 {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where

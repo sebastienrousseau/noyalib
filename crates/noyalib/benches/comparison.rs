@@ -9,7 +9,6 @@
 #![allow(missing_docs, unused_results)]
 
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
-use serde::Deserialize;
 use std::hint::black_box;
 
 // ── Test Data ────────────────────────────────────────────────────────
@@ -138,7 +137,7 @@ fn bench_deserialize(c: &mut Criterion) {
     // Multi-document load — represents real-world Kubernetes /
     // Helm / Compose workflows where one file holds 3-30 manifests.
     // serde_yaml_ng exposes this via `Deserializer::from_str` +
-    // `serde::de::Deserialize::deserialize` per document; yaml-rust2
+    // `serde_core::Deserialize::deserialize` per document; yaml-rust2
     // returns `Vec<Yaml>` from one call.
     group.bench_with_input(
         BenchmarkId::new("noyalib", "k8s_multidoc"),
@@ -156,7 +155,7 @@ fn bench_deserialize(c: &mut Criterion) {
             b.iter(|| {
                 let docs: Vec<serde_yaml_ng::Value> =
                     serde_yaml_ng::Deserializer::from_str(black_box(input))
-                        .map(|de| Deserialize::deserialize(de).unwrap())
+                        .map(|de| serde_core::Deserialize::deserialize(de).unwrap())
                         .collect();
                 let _ = docs;
             });

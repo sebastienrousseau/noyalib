@@ -122,7 +122,7 @@ where
     T: serde_core::de::DeserializeOwned + 'static,
     D: serde_core::Deserializer<'de>,
 {
-    use serde::Deserialize;
+    use serde_core::Deserialize as _;
     // Deserialize as Value first
     let value = crate::Value::deserialize(deserializer)?;
     crate::from_value(&value).map_err(serde_core::de::Error::custom)

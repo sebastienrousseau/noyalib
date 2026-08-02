@@ -172,8 +172,6 @@ where
 /// # Examples
 ///
 /// ```rust
-/// use serde::Deserialize;
-///
 /// fn my_deserialize<'de, T, D>(deserializer: D) -> Result<T, D::Error>
 /// where
 ///     T: serde_core::de::DeserializeOwned + 'static,
@@ -190,7 +188,7 @@ where
     D: serde_core::Deserializer<'de>,
     F: Fn(&str) -> String,
 {
-    use serde::Deserialize;
+    use serde_core::Deserialize as _;
 
     // Deserialize as Value first
     let value = crate::Value::deserialize(deserializer)?;

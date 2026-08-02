@@ -18,7 +18,6 @@ use crate::prelude::*;
 #[cfg(feature = "std")]
 use crate::span_context;
 use crate::value::Value;
-use serde::Deserialize;
 #[cfg(feature = "std")]
 use std::io;
 
@@ -69,7 +68,7 @@ pub(crate) use deserializer::{SpannedMapAccess, is_binary_tag};
 /// ```
 pub fn from_str<T>(s: &str) -> Result<T>
 where
-    T: for<'de> Deserialize<'de> + 'static,
+    T: for<'de> serde_core::Deserialize<'de> + 'static,
 {
     from_str_with_config(s, &ParserConfig::default())
 }
@@ -113,9 +112,9 @@ where
 /// assert_eq!(p.name, "noyalib");
 /// assert_eq!(p.role, "parser");
 /// ```
-pub fn from_str_borrowing<'a, T>(s: &'a str) -> Result<T>
+pub fn from_str_borrowing<'de, T>(s: &'de str) -> Result<T>
 where
-    T: Deserialize<'a>,
+    T: serde_core::Deserialize<'de>,
 {
     from_str_borrowing_with_config(s, &ParserConfig::default())
 }
@@ -136,9 +135,9 @@ where
 /// let s: &str = from_str_borrowing_with_config("hello\n", &cfg).unwrap();
 /// assert_eq!(s, "hello");
 /// ```
-pub fn from_str_borrowing_with_config<'a, T>(s: &'a str, config: &ParserConfig) -> Result<T>
+pub fn from_str_borrowing_with_config<'de, T>(s: &'de str, config: &ParserConfig) -> Result<T>
 where
-    T: Deserialize<'a>,
+    T: serde_core::Deserialize<'de>,
 {
     let parse_config = parser::ParseConfig::from(config);
     if s.len() > parse_config.max_document_length {
@@ -175,7 +174,7 @@ fn is_value_target<T: 'static + ?Sized>() -> bool {
 /// `T: 'static` and never engages the tag-preserving fast-path.
 ///
 /// Used by integrations whose external trait signatures expose
-/// `T: for<'de> Deserialize<'de>` without a `'static` bound (e.g.
+/// `T: for<'de> serde_core::Deserialize<'de>` without a `'static` bound (e.g.
 /// the [`figment`] crate's [`figment::Format::from_str`]
 /// signature). In those contexts the caller has already
 /// type-erased through `T = ProfileFigure` etc., and a tag-
@@ -187,7 +186,7 @@ fn is_value_target<T: 'static + ?Sized>() -> bool {
 #[cfg(all(feature = "std", feature = "figment"))]
 pub(crate) fn from_str_typed_no_tag_preserve<T>(s: &str, config: &ParserConfig) -> Result<T>
 where
-    T: for<'de> Deserialize<'de>,
+    T: for<'de> serde_core::Deserialize<'de>,
 {
     let stream_eligible = config.merge_key_policy == MergeKeyPolicy::Auto
         && !config.ignore_binary_tag_for_string
@@ -249,7 +248,7 @@ where
 #[cfg(all(feature = "std", feature = "strict-deserialise"))]
 pub fn from_str_strict<T>(s: &str) -> Result<T>
 where
-    T: for<'de> Deserialize<'de> + 'static,
+    T: for<'de> serde_core::Deserialize<'de> + 'static,
 {
     let unknown = std::sync::Mutex::new(Vec::<String>::new());
     let value: Value = from_str_with_config(s, &ParserConfig::default())?;
@@ -309,7 +308,7 @@ where
 #[cfg(all(feature = "std", feature = "strict-deserialise"))]
 pub fn from_slice_strict<T>(b: &[u8]) -> Result<T>
 where
-    T: for<'de> Deserialize<'de> + 'static,
+    T: for<'de> serde_core::Deserialize<'de> + 'static,
 {
     let s = core::str::from_utf8(b).map_err(|e| Error::Deserialize(e.to_string()))?;
     from_str_strict(s)
@@ -344,7 +343,7 @@ where
 pub fn from_reader_strict<R, T>(mut reader: R) -> Result<T>
 where
     R: io::Read,
-    T: for<'de> Deserialize<'de> + 'static,
+    T: for<'de> serde_core::Deserialize<'de> + 'static,
 {
     let mut s = String::new();
     let _ = reader.read_to_string(&mut s).map_err(Error::Io)?;
@@ -384,7 +383,7 @@ where
 /// ```
 pub fn from_str_with_config<T>(s: &str, config: &ParserConfig) -> Result<T>
 where
-    T: for<'de> Deserialize<'de> + 'static,
+    T: for<'de> serde_core::Deserialize<'de> + 'static,
 {
     // Try streaming path first (faster, no intermediate Value AST).
     // The streaming path bakes in YAML 1.2 semantics:
@@ -728,7 +727,7 @@ fn resolve_includes_recursive(
 /// ```
 pub fn from_slice<T>(b: &[u8]) -> Result<T>
 where
-    T: for<'de> Deserialize<'de> + 'static,
+    T: for<'de> serde_core::Deserialize<'de> + 'static,
 {
     let s = core::str::from_utf8(b).map_err(|e| Error::Deserialize(e.to_string()))?;
     from_str(s)
@@ -751,7 +750,7 @@ where
 /// ```
 pub fn from_slice_with_config<T>(b: &[u8], config: &ParserConfig) -> Result<T>
 where
-    T: for<'de> Deserialize<'de> + 'static,
+    T: for<'de> serde_core::Deserialize<'de> + 'static,
 {
     let s = core::str::from_utf8(b).map_err(|e| Error::Deserialize(e.to_string()))?;
     from_str_with_config(s, config)
@@ -785,7 +784,7 @@ where
 pub fn from_reader<R, T>(reader: R) -> Result<T>
 where
     R: io::Read,
-    T: for<'de> Deserialize<'de> + 'static,
+    T: for<'de> serde_core::Deserialize<'de> + 'static,
 {
     from_reader_with_config(reader, &ParserConfig::default())
 }
@@ -812,7 +811,7 @@ where
 pub fn from_reader_with_config<R, T>(mut reader: R, config: &ParserConfig) -> Result<T>
 where
     R: io::Read,
-    T: for<'de> Deserialize<'de> + 'static,
+    T: for<'de> serde_core::Deserialize<'de> + 'static,
 {
     let mut s = String::new();
     let _ = reader.read_to_string(&mut s).map_err(Error::Io)?;
@@ -841,7 +840,7 @@ where
 /// ```
 pub fn from_value<T>(value: &Value) -> Result<T>
 where
-    T: for<'de> Deserialize<'de> + 'static,
+    T: for<'de> serde_core::Deserialize<'de> + 'static,
 {
     // Zero-rewalk fast path: when T == Value, the answer is just
     // `value.clone()`. The default `T::deserialize(de)` route

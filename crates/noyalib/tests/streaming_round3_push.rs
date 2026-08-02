@@ -20,7 +20,6 @@ use noyalib::{
     ParserConfig, Spanned, StreamingDeserializer, TagRegistry, Value, from_str,
     from_str_with_config,
 };
-use serde::Deserialize;
 use serde_bytes::ByteBuf;
 
 // ─────────────────────────────────────────────────────────────────
@@ -80,7 +79,7 @@ target:
 #[test]
 fn r3_streaming_de_unit_top_level_null() {
     let mut de = StreamingDeserializer::new("~\n");
-    let _: () = Deserialize::deserialize(&mut de).unwrap();
+    let _: () = serde_core::Deserialize::deserialize(&mut de).unwrap();
 }
 
 // ── L500 — skip_to_content drains StreamStart + DocumentStart ────────────
@@ -88,7 +87,7 @@ fn r3_streaming_de_unit_top_level_null() {
 #[test]
 fn r3_streaming_de_with_explicit_doc_start() {
     let mut de = StreamingDeserializer::new("---\n42\n");
-    let n: i64 = Deserialize::deserialize(&mut de).unwrap();
+    let n: i64 = serde_core::Deserialize::deserialize(&mut de).unwrap();
     assert_eq!(n, 42);
 }
 
@@ -275,7 +274,7 @@ fn r3_option_top_level_none_via_quoted_null_string() {
 #[test]
 fn r3_unit_top_level_via_streaming_de() {
     let mut de = StreamingDeserializer::new("null\n");
-    let _: () = Deserialize::deserialize(&mut de).unwrap();
+    let _: () = serde_core::Deserialize::deserialize(&mut de).unwrap();
 }
 
 #[test]
@@ -818,14 +817,14 @@ fn r3_streaming_de_direct_seq_consumption() {
     // path (no dispatcher) hits SeqAccess::next_element_seed multiple
     // times and the SequenceEnd peek arm.
     let mut de = StreamingDeserializer::new("[1, 2, 3]\n");
-    let v: Vec<i64> = Deserialize::deserialize(&mut de).unwrap();
+    let v: Vec<i64> = serde_core::Deserialize::deserialize(&mut de).unwrap();
     assert_eq!(v, vec![1, 2, 3]);
 }
 
 #[test]
 fn r3_streaming_de_direct_map_consumption() {
     let mut de = StreamingDeserializer::new("a: 1\nb: 2\n");
-    let m: HashMap<String, i64> = Deserialize::deserialize(&mut de).unwrap();
+    let m: HashMap<String, i64> = serde_core::Deserialize::deserialize(&mut de).unwrap();
     assert_eq!(m["a"], 1);
     assert_eq!(m["b"], 2);
 }
@@ -836,7 +835,7 @@ fn r3_streaming_de_direct_map_consumption() {
 fn r3_streaming_de_with_config_tight_limits() {
     let cfg = ParserConfig::new().max_alias_expansions(10);
     let mut de = StreamingDeserializer::with_config("k: 1\n", &cfg);
-    let m: BTreeMap<String, i64> = Deserialize::deserialize(&mut de).unwrap();
+    let m: BTreeMap<String, i64> = serde_core::Deserialize::deserialize(&mut de).unwrap();
     assert_eq!(m["k"], 1);
 }
 
@@ -846,7 +845,7 @@ fn r3_streaming_de_with_config_tight_limits() {
 fn r3_streaming_de_with_registry_strips_custom_tag() {
     let registry = Arc::new(TagRegistry::new().with("!Custom"));
     let mut de = StreamingDeserializer::new("!Custom 42\n").with_tag_registry(registry);
-    let n: i64 = Deserialize::deserialize(&mut de).unwrap();
+    let n: i64 = serde_core::Deserialize::deserialize(&mut de).unwrap();
     assert_eq!(n, 42);
 }
 

@@ -7,7 +7,6 @@ use super::Value;
 use crate::prelude::*;
 use core::cmp::Ordering;
 use core::hash::{Hash, Hasher};
-use serde::Deserialize;
 
 // ============================================================================
 // Tag utilities
@@ -330,7 +329,7 @@ impl serde_core::Serialize for TaggedValue {
     }
 }
 
-impl<'de> Deserialize<'de> for TaggedValue {
+impl<'de> serde_core::Deserialize<'de> for TaggedValue {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde_core::Deserializer<'de>,

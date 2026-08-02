@@ -9,8 +9,6 @@
 use crate::prelude::*;
 use core::ops::Deref;
 
-use serde::Deserialize;
-
 use crate::error::Location;
 
 /// Sentinel struct name used by the deserializer to detect `Spanned<T>`.
@@ -202,7 +200,7 @@ impl<T: serde_core::Serialize> serde_core::Serialize for Spanned<T> {
     }
 }
 
-impl<'de, T: Deserialize<'de>> Deserialize<'de> for Spanned<T> {
+impl<'de, T: serde_core::Deserialize<'de>> serde_core::Deserialize<'de> for Spanned<T> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde_core::Deserializer<'de>,
@@ -217,7 +215,7 @@ impl<'de, T: Deserialize<'de>> Deserialize<'de> for Spanned<T> {
 
 struct SpannedVisitor<T>(core::marker::PhantomData<T>);
 
-impl<'de, T: Deserialize<'de>> serde_core::de::Visitor<'de> for SpannedVisitor<T> {
+impl<'de, T: serde_core::Deserialize<'de>> serde_core::de::Visitor<'de> for SpannedVisitor<T> {
     type Value = Spanned<T>;
 
     fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {

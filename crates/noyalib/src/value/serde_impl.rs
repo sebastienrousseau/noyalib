@@ -6,9 +6,8 @@
 use super::{Mapping, Number, TaggedValue, Value};
 use crate::prelude::*;
 use indexmap::map::Iter;
-use serde::Deserialize;
 
-impl<'de> Deserialize<'de> for Value {
+impl<'de> serde_core::Deserialize<'de> for Value {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde_core::Deserializer<'de>,

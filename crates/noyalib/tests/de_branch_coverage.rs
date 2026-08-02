@@ -203,7 +203,7 @@ fn from_str_typed_into_wrong_shape_errors() {
 
 #[test]
 fn deserializer_new_then_deserialize_value() {
-    use serde::Deserialize;
+    use serde_core::Deserialize as _;
     let v = Value::from(42_i64);
     let de = noyalib::Deserializer::new(&v);
     let out: i64 = i64::deserialize(de).expect("deserialise i64");

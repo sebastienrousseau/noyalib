@@ -7,7 +7,6 @@ use crate::error::{Error, Result};
 use crate::prelude::*;
 use crate::span_context;
 use crate::value::{Number, Value};
-use serde::Deserialize;
 
 /// A YAML deserializer.
 ///
@@ -15,10 +14,9 @@ use serde::Deserialize;
 ///
 /// ```
 /// use noyalib::{Deserializer, Value};
-/// use serde::Deserialize;
 /// let v = Value::from(42_i64);
 /// let de = Deserializer::new(&v);
-/// let n: i32 = Deserialize::deserialize(de).unwrap();
+/// let n: i32 = serde_core::Deserialize::deserialize(de).unwrap();
 /// assert_eq!(n, 42);
 /// ```
 #[derive(Debug, Clone, Copy)]
@@ -680,7 +678,7 @@ impl<'de> serde_core::de::VariantAccess<'de> for VariantAccess<'de> {
         } else {
             Deserializer::new(self.value)
         };
-        Deserialize::deserialize(de)
+        serde_core::Deserialize::deserialize(de)
     }
 
     fn newtype_variant_seed<T>(self, seed: T) -> Result<T::Value>

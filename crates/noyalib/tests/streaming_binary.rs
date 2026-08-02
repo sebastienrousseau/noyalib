@@ -12,8 +12,8 @@
 #![allow(missing_docs)]
 
 use noyalib::StreamingDeserializer;
-use serde::Deserialize;
 use serde_bytes::ByteBuf;
+use serde_core::Deserialize as _;
 
 #[derive(Debug, serde::Deserialize, PartialEq)]
 struct Payload {

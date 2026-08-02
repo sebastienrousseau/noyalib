@@ -10,7 +10,7 @@
 //! constructs.
 
 use noyalib::{ParserConfig, StreamingDeserializer, Value};
-use serde::Deserialize;
+use serde_core::Deserialize as _;
 use std::collections::BTreeMap;
 
 // ── Construction ─────────────────────────────────────────────────────────
@@ -19,7 +19,7 @@ use std::collections::BTreeMap;
 fn new_constructs_from_borrowed_str() {
     let yaml = "key: value\n";
     let mut de = StreamingDeserializer::new(yaml);
-    let m: BTreeMap<String, String> = Deserialize::deserialize(&mut de).unwrap();
+    let m: BTreeMap<String, String> = serde_core::Deserialize::deserialize(&mut de).unwrap();
     assert_eq!(m["key"], "value");
 }
 
@@ -28,7 +28,7 @@ fn with_config_accepts_custom_parser_settings() {
     let yaml = "k: 1\n";
     let config = ParserConfig::strict();
     let mut de = StreamingDeserializer::with_config(yaml, &config);
-    let m: BTreeMap<String, i32> = Deserialize::deserialize(&mut de).unwrap();
+    let m: BTreeMap<String, i32> = serde_core::Deserialize::deserialize(&mut de).unwrap();
     assert_eq!(m["k"], 1);
 }
 
@@ -55,7 +55,7 @@ fn nested_collections_work() {
     let yaml = "a:\n  b:\n    c: 42\n";
     let mut de = StreamingDeserializer::new(yaml);
     let m: BTreeMap<String, BTreeMap<String, BTreeMap<String, i32>>> =
-        Deserialize::deserialize(&mut de).unwrap();
+        serde_core::Deserialize::deserialize(&mut de).unwrap();
     assert_eq!(m["a"]["b"]["c"], 42);
 }
 
@@ -97,7 +97,8 @@ target:
   c: 3
 "#;
     let mut de = StreamingDeserializer::new(yaml);
-    let outer: BTreeMap<String, BTreeMap<String, i64>> = Deserialize::deserialize(&mut de).unwrap();
+    let outer: BTreeMap<String, BTreeMap<String, i64>> =
+        serde_core::Deserialize::deserialize(&mut de).unwrap();
     let target = &outer["target"];
     assert_eq!(target["a"], 1);
     assert_eq!(target["b"], 2);
@@ -119,7 +120,7 @@ target:
 "#;
     let mut de = StreamingDeserializer::new(yaml);
     let outer: BTreeMap<String, BTreeMap<String, Value>> =
-        Deserialize::deserialize(&mut de).unwrap();
+        serde_core::Deserialize::deserialize(&mut de).unwrap();
     let target = &outer["target"];
     // overrides (*o) comes FIRST in sequence, so it takes precedence for `port`.
     assert_eq!(target["host"].as_str().unwrap(), "localhost");
@@ -158,7 +159,7 @@ fn config_is_plumbed_through_with_config_constructor() {
     let yaml = "val: True\n";
     let config = ParserConfig::strict();
     let mut de = StreamingDeserializer::with_config(yaml, &config);
-    let m: BTreeMap<String, String> = Deserialize::deserialize(&mut de).unwrap();
+    let m: BTreeMap<String, String> = serde_core::Deserialize::deserialize(&mut de).unwrap();
     assert_eq!(m["val"], "True", "strict mode must pass `True` as string");
 }
 

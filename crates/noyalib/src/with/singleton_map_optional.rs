@@ -131,7 +131,7 @@ where
     T: serde_core::de::DeserializeOwned + 'static,
     D: serde_core::Deserializer<'de>,
 {
-    use serde::Deserialize;
+    use serde_core::Deserialize as _;
     // Deserialize as Option<Value> first
     let opt_value: Option<crate::Value> = Option::deserialize(deserializer)?;
 

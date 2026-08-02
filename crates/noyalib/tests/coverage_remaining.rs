@@ -17,7 +17,6 @@ use noyalib::{
     DuplicateKeyPolicy, Mapping, MappingAny, ParserConfig, Spanned, Tag, TaggedValue, Value,
     from_str, from_str_with_config, from_value, to_string,
 };
-use serde::Deserialize;
 
 // ═══════════════════════════════════════════════════════════════════════
 // value.rs — TaggedValue Deserialize/Deserializer (lines 1446–1591)
@@ -236,7 +235,7 @@ fn value_deserializer_spanned_struct() {
 fn value_into_deserializer() {
     let val = Value::from("test");
     let deser: &Value = serde_core::de::IntoDeserializer::into_deserializer(&val);
-    let result: String = Deserialize::deserialize(deser).unwrap();
+    let result: String = serde_core::Deserialize::deserialize(deser).unwrap();
     assert_eq!(result, "test");
 }
 

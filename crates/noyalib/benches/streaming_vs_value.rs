@@ -24,7 +24,6 @@
 
 use criterion::{BenchmarkId, Criterion, Throughput, criterion_group, criterion_main};
 use noyalib::{StreamingDeserializer, from_str};
-use serde::Deserialize;
 use std::collections::BTreeMap;
 use std::hint::black_box;
 
@@ -70,7 +69,7 @@ fn bench_streaming_vs_value(c: &mut Criterion) {
         group.bench_with_input(BenchmarkId::new("streaming", label), &yaml, |b, yaml| {
             b.iter(|| {
                 let mut de = StreamingDeserializer::new(black_box(yaml.as_str()));
-                let doc: Doc = Deserialize::deserialize(&mut de).unwrap();
+                let doc: Doc = serde_core::Deserialize::deserialize(&mut de).unwrap();
                 black_box(doc);
             });
         });
@@ -103,7 +102,8 @@ fn bench_dyn_mapping(c: &mut Criterion) {
     group.bench_function("streaming", |b| {
         b.iter(|| {
             let mut de = StreamingDeserializer::new(black_box(yaml.as_str()));
-            let m: BTreeMap<String, String> = Deserialize::deserialize(&mut de).unwrap();
+            let m: BTreeMap<String, String> =
+                serde_core::Deserialize::deserialize(&mut de).unwrap();
             black_box(m);
         });
     });

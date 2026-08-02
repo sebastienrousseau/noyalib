@@ -23,8 +23,6 @@
 use crate::prelude::*;
 use core::ops::Deref;
 
-use serde::Deserialize;
-
 // Magic names used as newtype struct sentinels.
 // The serializer intercepts these to apply formatting hints.
 pub(crate) const MAGIC_FLOW_SEQ: &str = "__noya_flow_seq";
@@ -93,7 +91,7 @@ impl<T: serde_core::Serialize> serde_core::Serialize for FlowSeq<T> {
     }
 }
 
-impl<'de, T: Deserialize<'de>> Deserialize<'de> for FlowSeq<T> {
+impl<'de, T: serde_core::Deserialize<'de>> serde_core::Deserialize<'de> for FlowSeq<T> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde_core::Deserializer<'de>,
@@ -165,7 +163,7 @@ impl<T: serde_core::Serialize> serde_core::Serialize for FlowMap<T> {
     }
 }
 
-impl<'de, T: Deserialize<'de>> Deserialize<'de> for FlowMap<T> {
+impl<'de, T: serde_core::Deserialize<'de>> serde_core::Deserialize<'de> for FlowMap<T> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde_core::Deserializer<'de>,
@@ -303,7 +301,7 @@ impl serde_core::Serialize for LitString {
     }
 }
 
-impl<'de> Deserialize<'de> for LitString {
+impl<'de> serde_core::Deserialize<'de> for LitString {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde_core::Deserializer<'de>,
@@ -438,7 +436,7 @@ impl serde_core::Serialize for FoldString {
     }
 }
 
-impl<'de> Deserialize<'de> for FoldString {
+impl<'de> serde_core::Deserialize<'de> for FoldString {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde_core::Deserializer<'de>,
@@ -546,7 +544,7 @@ impl<T: serde_core::Serialize> serde_core::Serialize for Commented<T> {
     }
 }
 
-impl<'de, T: Deserialize<'de>> Deserialize<'de> for Commented<T> {
+impl<'de, T: serde_core::Deserialize<'de>> serde_core::Deserialize<'de> for Commented<T> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde_core::Deserializer<'de>,
@@ -614,7 +612,7 @@ impl<T: serde_core::Serialize> serde_core::Serialize for SpaceAfter<T> {
     }
 }
 
-impl<'de, T: Deserialize<'de>> Deserialize<'de> for SpaceAfter<T> {
+impl<'de, T: serde_core::Deserialize<'de>> serde_core::Deserialize<'de> for SpaceAfter<T> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde_core::Deserializer<'de>,

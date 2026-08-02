@@ -14,7 +14,6 @@
 use std::collections::HashMap;
 
 use noyalib::*;
-use serde::Deserialize;
 
 // ============================================================================
 // 1. value.rs — Mapping / MappingAny Visitor expecting
@@ -57,7 +56,7 @@ fn tagged_value_deserialize_unit_variant() {
         Tag::new("!UnitVariant"),
         Value::Null,
     )));
-    let e: MyEnum = Deserialize::deserialize(&v).unwrap();
+    let e: MyEnum = serde_core::Deserialize::deserialize(&v).unwrap();
     assert_eq!(e, MyEnum::UnitVariant);
 }
 
@@ -68,7 +67,7 @@ fn tagged_value_deserialize_newtype_variant() {
         Tag::new("!NewtypeVariant"),
         Value::from(42),
     )));
-    let e: MyEnum = Deserialize::deserialize(&v).unwrap();
+    let e: MyEnum = serde_core::Deserialize::deserialize(&v).unwrap();
     assert_eq!(e, MyEnum::NewtypeVariant(42));
 }
 
@@ -79,7 +78,7 @@ fn tagged_value_deserialize_tuple_variant() {
         Tag::new("!TupleVariant"),
         Value::Sequence(vec![Value::from(42), Value::from("hello")]),
     )));
-    let e: MyEnum = Deserialize::deserialize(&v).unwrap();
+    let e: MyEnum = serde_core::Deserialize::deserialize(&v).unwrap();
     assert_eq!(e, MyEnum::TupleVariant(42, "hello".to_string()));
 }
 
@@ -95,7 +94,7 @@ fn tagged_value_deserialize_struct_variant() {
             m
         }),
     )));
-    let e: MyEnum = Deserialize::deserialize(&v).unwrap();
+    let e: MyEnum = serde_core::Deserialize::deserialize(&v).unwrap();
     assert_eq!(
         e,
         MyEnum::StructVariant {
@@ -113,7 +112,7 @@ fn tagged_value_deserialize_any_as_map() {
         Tag::new("!mytag"),
         Value::from("hello"),
     )));
-    let map: HashMap<String, Value> = Deserialize::deserialize(&v).unwrap();
+    let map: HashMap<String, Value> = serde_core::Deserialize::deserialize(&v).unwrap();
     assert!(map.contains_key("!mytag"));
 }
 
@@ -1405,7 +1404,7 @@ fn ref_value_deserialize_tagged_any() {
         Value::from("inner"),
     )));
     // Deserializing tagged as HashMap exercises TaggedValueMapAccess via &Value
-    let result: HashMap<String, Value> = Deserialize::deserialize(&tagged).unwrap();
+    let result: HashMap<String, Value> = serde_core::Deserialize::deserialize(&tagged).unwrap();
     assert!(result.contains_key("!mytag"));
 }
 
@@ -1419,7 +1418,7 @@ fn ref_value_deserialize_enum_tagged() {
     }
     let v = Value::Tagged(Box::new(TaggedValue::new(Tag::new("!Red"), Value::Null)));
     // Use &Value deserializer directly
-    let c: Color = Deserialize::deserialize(&v).unwrap();
+    let c: Color = serde_core::Deserialize::deserialize(&v).unwrap();
     assert_eq!(c, Color::Red);
 }
 
@@ -1705,7 +1704,7 @@ fn value_deserialize_from_json_various() {
 #[test]
 fn ref_value_deserialize_any_all_types() {
     // Exercise <&Value as serde_core::Deserializer>::deserialize_any for each variant
-    use serde::Deserialize;
+    use serde_core::Deserialize as _;
 
     let v = Value::Null;
     let result: Value = Value::deserialize(&v).unwrap();
@@ -1741,7 +1740,7 @@ fn ref_value_deserialize_any_all_types() {
 #[test]
 fn ref_value_deserialize_enum_string_variant() {
     // Exercise deserialize_enum on string Value (line 2799-2801)
-    use serde::Deserialize;
+    use serde_core::Deserialize as _;
 
     #[derive(Debug, serde::Deserialize, PartialEq)]
     enum Color {
@@ -1758,7 +1757,7 @@ fn ref_value_deserialize_enum_string_variant() {
 fn ref_value_deserialize_seq_fallback() {
     // Exercise deserialize_seq on non-sequence (line 2811)
     // When the value is not a sequence, it falls through to deserialize_any
-    use serde::Deserialize;
+    use serde_core::Deserialize as _;
 
     // A number going through deserialize_seq should fall through to deserialize_any
     // This should fail since i64 is not a sequence
@@ -1804,7 +1803,7 @@ fn ref_value_deserialize_struct_spanned_from_value() {
 #[test]
 fn value_seq_access_empty() {
     // Exercise ValueSeqAccess with empty sequence
-    use serde::Deserialize;
+    use serde_core::Deserialize as _;
 
     let v = Value::Sequence(vec![]);
     let result: Vec<i64> = Vec::<i64>::deserialize(&v).unwrap();
@@ -1814,7 +1813,7 @@ fn value_seq_access_empty() {
 #[test]
 fn value_map_access_through_tagged() {
     // Exercise ValueMapAccess via TaggedValue deserialization
-    use serde::Deserialize;
+    use serde_core::Deserialize as _;
 
     let mut m = Mapping::new();
     let _ = m.insert("x".to_string(), Value::from(10));
@@ -3783,7 +3782,7 @@ fn value_map_access_next_value_via_ref_value() {
     m.insert("key", Value::from("hello"));
     m.insert("val", Value::from(42));
     let v = Value::Mapping(m);
-    let p: Pair = Deserialize::deserialize(&v).unwrap();
+    let p: Pair = serde_core::Deserialize::deserialize(&v).unwrap();
     assert_eq!(p.key, "hello");
     assert_eq!(p.val, 42);
 }
@@ -3829,7 +3828,7 @@ fn ref_value_deserialize_struct_via_mapping() {
     m.insert("g", Value::from(128));
     m.insert("b", Value::from(0));
     let v = Value::Mapping(m);
-    let c: Rgb = Deserialize::deserialize(&v).unwrap();
+    let c: Rgb = serde_core::Deserialize::deserialize(&v).unwrap();
     assert_eq!(
         c,
         Rgb {
@@ -3846,7 +3845,7 @@ fn ref_value_deserialize_struct_via_mapping() {
 fn ref_value_deserialize_struct_spanned_via_value() {
     // Exercise &Value::deserialize_struct with SPANNED_TYPE_NAME (line 2837-2842)
     let v = Value::from("spanned_value");
-    let result: Spanned<String> = Deserialize::deserialize(&v).unwrap();
+    let result: Spanned<String> = serde_core::Deserialize::deserialize(&v).unwrap();
     assert_eq!(*result, "spanned_value");
 }
 
@@ -3862,7 +3861,7 @@ fn ref_value_deserialize_struct_spanned_nested_in_mapping() {
     m.insert("name", Value::from("widget"));
     m.insert("count", Value::from(5));
     let v = Value::Mapping(m);
-    let item: Item = Deserialize::deserialize(&v).unwrap();
+    let item: Item = serde_core::Deserialize::deserialize(&v).unwrap();
     assert_eq!(*item.name, "widget");
     assert_eq!(*item.count, 5);
 }
