@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 impl<'de> Deserialize<'de> for Value {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
-        D: serde::Deserializer<'de>,
+        D: serde_core::Deserializer<'de>,
     {
         struct ValueVisitor;
 
@@ -198,7 +198,7 @@ impl<'de> serde_core::de::MapAccess<'de> for ValueMapAccess<'de> {
     }
 }
 
-impl<'de> serde::Deserializer<'de> for &'de Value {
+impl<'de> serde_core::Deserializer<'de> for &'de Value {
     type Error = crate::Error;
 
     fn deserialize_any<V>(self, visitor: V) -> crate::Result<V::Value>
@@ -220,7 +220,7 @@ impl<'de> serde::Deserializer<'de> for &'de Value {
             }),
             Value::Tagged(tagged) => {
                 let tagged_ref: &'de TaggedValue = tagged;
-                serde::Deserializer::deserialize_any(tagged_ref, visitor)
+                serde_core::Deserializer::deserialize_any(tagged_ref, visitor)
             }
         }
     }
@@ -237,11 +237,11 @@ impl<'de> serde::Deserializer<'de> for &'de Value {
         match self {
             Value::Tagged(tagged) => {
                 let tagged_ref: &'de TaggedValue = tagged;
-                serde::Deserializer::deserialize_enum(tagged_ref, name, variants, visitor)
+                serde_core::Deserializer::deserialize_enum(tagged_ref, name, variants, visitor)
             }
             Value::String(s) => visitor
                 .visit_enum(serde_core::de::value::BorrowedStrDeserializer::<crate::Error>::new(s)),
-            _ => serde::Deserializer::deserialize_any(self, visitor),
+            _ => serde_core::Deserializer::deserialize_any(self, visitor),
         }
     }
 
@@ -251,7 +251,7 @@ impl<'de> serde::Deserializer<'de> for &'de Value {
     {
         match self {
             Value::Sequence(seq) => visitor.visit_seq(ValueSeqAccess { iter: seq.iter() }),
-            _ => serde::Deserializer::deserialize_any(self, visitor),
+            _ => serde_core::Deserializer::deserialize_any(self, visitor),
         }
     }
 
@@ -264,7 +264,7 @@ impl<'de> serde::Deserializer<'de> for &'de Value {
                 iter: map.iter(),
                 value: None,
             }),
-            _ => serde::Deserializer::deserialize_any(self, visitor),
+            _ => serde_core::Deserializer::deserialize_any(self, visitor),
         }
     }
 
@@ -280,7 +280,7 @@ impl<'de> serde::Deserializer<'de> for &'de Value {
         if name == crate::spanned::SPANNED_TYPE_NAME {
             return visitor.visit_map(crate::de::SpannedMapAccess::new(self, None));
         }
-        serde::Deserializer::deserialize_map(self, visitor)
+        serde_core::Deserializer::deserialize_map(self, visitor)
     }
 
     serde::forward_to_deserialize_any! {

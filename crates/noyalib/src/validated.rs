@@ -28,7 +28,7 @@
 
 use crate::prelude::*;
 use core::ops::{Deref, DerefMut};
-use serde::{Deserialize, Deserializer, Serialize};
+use serde::{Deserialize, Serialize};
 
 /// A newtype that validates its inner value using the [`garde`] crate.
 ///
@@ -165,7 +165,7 @@ where
 {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
-        D: Deserializer<'de>,
+        D: serde_core::Deserializer<'de>,
     {
         use serde_core::de::Error as _;
         let inner = T::deserialize(deserializer)?;
@@ -183,7 +183,7 @@ where
 {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
-        D: Deserializer<'de>,
+        D: serde_core::Deserializer<'de>,
     {
         use serde_core::de::Error as _;
         let inner = T::deserialize(deserializer)?;

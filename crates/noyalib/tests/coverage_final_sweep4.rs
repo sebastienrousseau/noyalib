@@ -126,8 +126,6 @@ fn singleton_map_recursive_tagged_value_branch() {
 }
 
 mod snake_with {
-    use serde::Deserializer;
-
     pub(crate) fn serialize<T, S>(v: &T, s: S) -> std::result::Result<S::Ok, S::Error>
     where
         T: serde::Serialize,
@@ -143,7 +141,7 @@ mod snake_with {
     pub(crate) fn deserialize<'de, T, D>(d: D) -> std::result::Result<T, D::Error>
     where
         T: serde_core::de::DeserializeOwned + 'static,
-        D: Deserializer<'de>,
+        D: serde_core::Deserializer<'de>,
     {
         noyalib::with::singleton_map_with::deserialize_with(
             d,

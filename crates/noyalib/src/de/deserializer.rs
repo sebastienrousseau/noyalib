@@ -8,7 +8,6 @@ use crate::prelude::*;
 use crate::span_context;
 use crate::value::{Number, Value};
 use serde::Deserialize;
-use serde::de::{self};
 
 /// A YAML deserializer.
 ///
@@ -123,7 +122,7 @@ impl<'de> Deserializer<'de> {
     }
 }
 
-impl<'de> de::Deserializer<'de> for Deserializer<'de> {
+impl<'de> serde_core::Deserializer<'de> for Deserializer<'de> {
     type Error = Error;
 
     fn deserialize_any<V>(self, visitor: V) -> Result<V::Value>
@@ -705,7 +704,7 @@ impl<'de> serde_core::de::VariantAccess<'de> for VariantAccess<'de> {
         } else {
             Deserializer::new(self.value)
         };
-        de::Deserializer::deserialize_seq(de, visitor)
+        serde_core::Deserializer::deserialize_seq(de, visitor)
     }
 
     fn struct_variant<V>(self, _fields: &'static [&'static str], visitor: V) -> Result<V::Value>
@@ -717,7 +716,7 @@ impl<'de> serde_core::de::VariantAccess<'de> for VariantAccess<'de> {
         } else {
             Deserializer::new(self.value)
         };
-        de::Deserializer::deserialize_map(de, visitor)
+        serde_core::Deserializer::deserialize_map(de, visitor)
     }
 }
 

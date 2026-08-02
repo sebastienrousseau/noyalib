@@ -530,7 +530,7 @@ mod tests {
         // noyalib's own `Deserializer<'_>` so existing call sites
         // that explicitly name the type compile unchanged.
         let v = Value::from(7_i64);
-        let de: Deserializer<'_> = Deserializer::new(&v);
+        let de = Deserializer::new(&v);
         let n: i32 = Deserialize::deserialize(de).unwrap();
         assert_eq!(n, 7);
     }

@@ -28,7 +28,6 @@ use noyalib::{
     from_value,
 };
 use serde::Deserialize;
-use serde::de::Deserializer as _;
 
 // ============================================================================
 // from_str_strict / from_slice_strict / from_reader_strict — happy + error
@@ -293,6 +292,8 @@ fn deserialize_enum_invalid_shape_errors() {
 
 #[test]
 fn deserialize_identifier_from_non_string_falls_through() {
+    use serde_core::Deserializer as _;
+
     // `deserialize_identifier` falls through to `deserialize_any`
     // when the value is not a string.
     let v = Value::from(42_i64);

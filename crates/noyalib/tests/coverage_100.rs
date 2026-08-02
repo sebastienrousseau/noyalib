@@ -1704,7 +1704,7 @@ fn value_deserialize_from_json_various() {
 
 #[test]
 fn ref_value_deserialize_any_all_types() {
-    // Exercise <&Value as serde::Deserializer>::deserialize_any for each variant
+    // Exercise <&Value as serde_core::Deserializer>::deserialize_any for each variant
     use serde::Deserialize;
 
     let v = Value::Null;

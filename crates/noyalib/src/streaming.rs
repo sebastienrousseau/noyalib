@@ -12,7 +12,6 @@ use crate::prelude::*;
 
 use rustc_hash::{FxHashMap, FxHashSet};
 use serde::Deserialize;
-use serde::de::{self};
 use smallvec::SmallVec;
 
 use crate::error::{Error, Result, closest_name};
@@ -593,7 +592,7 @@ impl<'a> StreamingDeserializer<'a> {
     }
 }
 
-impl<'de> de::Deserializer<'de> for &mut StreamingDeserializer<'de> {
+impl<'de> serde_core::Deserializer<'de> for &mut StreamingDeserializer<'de> {
     type Error = Error;
 
     fn deserialize_any<V>(self, visitor: V) -> Result<V::Value>
@@ -1478,7 +1477,7 @@ impl<'de> serde_core::de::VariantAccess<'de> for StreamingVariantAccess<'_, 'de>
     where
         V: serde_core::de::Visitor<'de>,
     {
-        let res = de::Deserializer::deserialize_seq(&mut *self.de, visitor)?;
+        let res = serde_core::Deserializer::deserialize_seq(&mut *self.de, visitor)?;
         if !matches!(self.de.next_event()?, Event::MappingEnd { .. }) {
             return Err(Error::Invalid("expected mapping end".into()));
         }
@@ -1488,7 +1487,7 @@ impl<'de> serde_core::de::VariantAccess<'de> for StreamingVariantAccess<'_, 'de>
     where
         V: serde_core::de::Visitor<'de>,
     {
-        let res = de::Deserializer::deserialize_map(&mut *self.de, visitor)?;
+        let res = serde_core::Deserializer::deserialize_map(&mut *self.de, visitor)?;
         if !matches!(self.de.next_event()?, Event::MappingEnd { .. }) {
             return Err(Error::Invalid("expected mapping end".into()));
         }
@@ -1571,13 +1570,13 @@ impl<'de> serde_core::de::VariantAccess<'de> for StreamingTagVariantAccess<'_, '
     where
         V: serde_core::de::Visitor<'de>,
     {
-        de::Deserializer::deserialize_seq(self.de, visitor)
+        serde_core::Deserializer::deserialize_seq(self.de, visitor)
     }
     fn struct_variant<V>(self, _fields: &'static [&'static str], visitor: V) -> Result<V::Value>
     where
         V: serde_core::de::Visitor<'de>,
     {
-        de::Deserializer::deserialize_map(self.de, visitor)
+        serde_core::Deserializer::deserialize_map(self.de, visitor)
     }
 }
 

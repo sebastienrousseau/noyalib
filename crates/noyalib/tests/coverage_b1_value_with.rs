@@ -471,8 +471,6 @@ fn singleton_map_recursive_map_of_enums() {
 /// PascalCase variant names are emitted as snake_case and read back via
 /// `to_pascal_case`.
 mod snake_case {
-    use serde::Deserializer;
-
     pub(crate) fn serialize<T, S>(value: &T, serializer: S) -> Result<S::Ok, S::Error>
     where
         T: serde::Serialize,
@@ -488,7 +486,7 @@ mod snake_case {
     pub(crate) fn deserialize<'de, T, D>(deserializer: D) -> Result<T, D::Error>
     where
         T: serde_core::de::DeserializeOwned + 'static,
-        D: Deserializer<'de>,
+        D: serde_core::Deserializer<'de>,
     {
         noyalib::with::singleton_map_with::deserialize_with(
             deserializer,

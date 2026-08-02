@@ -84,7 +84,7 @@ impl TryFrom<f64> for StrictFloat {
 impl<'de> Deserialize<'de> for StrictFloat {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
-        D: serde::Deserializer<'de>,
+        D: serde_core::Deserializer<'de>,
     {
         let v = f64::deserialize(deserializer)?;
         StrictFloat::try_from(v).map_err(serde_core::de::Error::custom)
@@ -126,7 +126,7 @@ pub struct Radians(pub f64);
 impl<'de> Deserialize<'de> for Radians {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
-        D: serde::Deserializer<'de>,
+        D: serde_core::Deserializer<'de>,
     {
         let degrees = f64::deserialize(deserializer)?;
         Ok(Radians(degrees.to_radians()))

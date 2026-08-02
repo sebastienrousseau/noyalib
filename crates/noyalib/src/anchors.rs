@@ -214,7 +214,7 @@ impl<T: Serialize> Serialize for RcAnchor<T> {
 impl<'de, T: Deserialize<'de>> Deserialize<'de> for RcAnchor<T> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
-        D: serde::Deserializer<'de>,
+        D: serde_core::Deserializer<'de>,
     {
         T::deserialize(deserializer).map(|v| RcAnchor(Rc::new(v)))
     }
@@ -307,7 +307,7 @@ impl<T: Serialize> Serialize for ArcAnchor<T> {
 impl<'de, T: Deserialize<'de>> Deserialize<'de> for ArcAnchor<T> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
-        D: serde::Deserializer<'de>,
+        D: serde_core::Deserializer<'de>,
     {
         T::deserialize(deserializer).map(|v| ArcAnchor(Arc::new(v)))
     }
@@ -414,7 +414,7 @@ impl<T: Serialize> Serialize for RcWeakAnchor<T> {
 impl<'de, T> Deserialize<'de> for RcWeakAnchor<T> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
-        D: serde::Deserializer<'de>,
+        D: serde_core::Deserializer<'de>,
     {
         // Always deserialize as a dangling weak — there's no registry to look up.
         // We consume the value to avoid errors.
@@ -521,7 +521,7 @@ impl<T: Serialize> Serialize for ArcWeakAnchor<T> {
 impl<'de, T> Deserialize<'de> for ArcWeakAnchor<T> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
-        D: serde::Deserializer<'de>,
+        D: serde_core::Deserializer<'de>,
     {
         let _ = serde_core::de::IgnoredAny::deserialize(deserializer)?;
         Ok(ArcWeakAnchor(ArcWeak::new()))
@@ -930,7 +930,7 @@ impl<T: Serialize> Serialize for RcRecursive<T> {
 impl<'de, T: Deserialize<'de>> Deserialize<'de> for RcRecursive<T> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
-        D: serde::Deserializer<'de>,
+        D: serde_core::Deserializer<'de>,
     {
         T::deserialize(deserializer).map(RcRecursive::new)
     }
@@ -1086,7 +1086,7 @@ impl<T: Serialize> Serialize for ArcRecursive<T> {
 impl<'de, T: Deserialize<'de>> Deserialize<'de> for ArcRecursive<T> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
-        D: serde::Deserializer<'de>,
+        D: serde_core::Deserializer<'de>,
     {
         T::deserialize(deserializer).map(ArcRecursive::new)
     }

@@ -205,7 +205,7 @@ impl<T: Serialize> Serialize for Spanned<T> {
 impl<'de, T: Deserialize<'de>> Deserialize<'de> for Spanned<T> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
-        D: serde::Deserializer<'de>,
+        D: serde_core::Deserializer<'de>,
     {
         deserializer.deserialize_struct(
             SPANNED_TYPE_NAME,

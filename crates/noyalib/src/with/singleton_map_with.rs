@@ -18,8 +18,6 @@
 //!
 //! // Define custom serialize/deserialize functions
 //! mod snake_case {
-//!     use serde::Deserializer;
-//!
 //!     pub fn serialize<T, S>(
 //!         value: &T,
 //!         serializer: S,
@@ -38,7 +36,7 @@
 //!     pub fn deserialize<'de, T, D>(deserializer: D) -> Result<T, D::Error>
 //!     where
 //!         T: serde_core::de::DeserializeOwned + 'static,
-//!         D: Deserializer<'de>,
+//!         D: serde_core::Deserializer<'de>,
 //!     {
 //!         noyalib::with::singleton_map_with::deserialize_with(
 //!             deserializer,
@@ -96,7 +94,7 @@
 // Copyright (c) 2026 Noyalib. All rights reserved.
 
 use crate::prelude::*;
-use serde::{Deserializer, Serialize};
+use serde::Serialize;
 
 /// Serialize a value as a singleton map with custom key transformation.
 ///
@@ -177,12 +175,12 @@ where
 /// # Examples
 ///
 /// ```rust
-/// use serde::{Deserialize, Deserializer};
+/// use serde::Deserialize;
 ///
 /// fn my_deserialize<'de, T, D>(deserializer: D) -> Result<T, D::Error>
 /// where
 ///     T: serde_core::de::DeserializeOwned + 'static,
-///     D: Deserializer<'de>,
+///     D: serde_core::Deserializer<'de>,
 /// {
 ///     noyalib::with::singleton_map_with::deserialize_with(deserializer, |s| {
 ///         s.to_uppercase()
@@ -192,7 +190,7 @@ where
 pub fn deserialize_with<'de, T, D, F>(deserializer: D, transform: F) -> Result<T, D::Error>
 where
     T: serde_core::de::DeserializeOwned + 'static,
-    D: Deserializer<'de>,
+    D: serde_core::Deserializer<'de>,
     F: Fn(&str) -> String,
 {
     use serde::Deserialize;

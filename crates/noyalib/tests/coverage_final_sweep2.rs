@@ -134,7 +134,7 @@ struct NewtypeWrapper(String);
 impl<'de> Deserialize<'de> for NewtypeWrapper {
     fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error>
     where
-        D: serde::Deserializer<'de>,
+        D: serde_core::Deserializer<'de>,
     {
         // Access the {tag, value} map produced by StreamingTagMapAccess.
         #[derive(serde::Deserialize)]

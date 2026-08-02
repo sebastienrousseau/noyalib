@@ -41,7 +41,7 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 // Copyright (c) 2026 Noyalib. All rights reserved.
 
-use serde::{Deserializer, Serialize};
+use serde::Serialize;
 
 /// Serialize a value as a singleton map.
 ///
@@ -122,7 +122,7 @@ where
 pub fn deserialize<'de, T, D>(deserializer: D) -> Result<T, D::Error>
 where
     T: serde_core::de::DeserializeOwned + 'static,
-    D: Deserializer<'de>,
+    D: serde_core::Deserializer<'de>,
 {
     use serde::Deserialize;
     // Deserialize as Value first

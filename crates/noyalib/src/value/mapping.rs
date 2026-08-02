@@ -835,7 +835,7 @@ impl Serialize for Mapping {
 impl<'de> Deserialize<'de> for Mapping {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
-        D: serde::Deserializer<'de>,
+        D: serde_core::Deserializer<'de>,
     {
         struct MappingVisitor;
 
@@ -1315,7 +1315,7 @@ impl Serialize for MappingAny {
 impl<'de> Deserialize<'de> for MappingAny {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
-        D: serde::Deserializer<'de>,
+        D: serde_core::Deserializer<'de>,
     {
         struct MappingAnyVisitor;
 

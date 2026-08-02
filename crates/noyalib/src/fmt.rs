@@ -96,7 +96,7 @@ impl<T: Serialize> Serialize for FlowSeq<T> {
 impl<'de, T: Deserialize<'de>> Deserialize<'de> for FlowSeq<T> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
-        D: serde::Deserializer<'de>,
+        D: serde_core::Deserializer<'de>,
     {
         T::deserialize(deserializer).map(FlowSeq)
     }
@@ -168,7 +168,7 @@ impl<T: Serialize> Serialize for FlowMap<T> {
 impl<'de, T: Deserialize<'de>> Deserialize<'de> for FlowMap<T> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
-        D: serde::Deserializer<'de>,
+        D: serde_core::Deserializer<'de>,
     {
         T::deserialize(deserializer).map(FlowMap)
     }
@@ -306,7 +306,7 @@ impl Serialize for LitString {
 impl<'de> Deserialize<'de> for LitString {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
-        D: serde::Deserializer<'de>,
+        D: serde_core::Deserializer<'de>,
     {
         String::deserialize(deserializer).map(LitString)
     }
@@ -441,7 +441,7 @@ impl Serialize for FoldString {
 impl<'de> Deserialize<'de> for FoldString {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
-        D: serde::Deserializer<'de>,
+        D: serde_core::Deserializer<'de>,
     {
         String::deserialize(deserializer).map(FoldString)
     }
@@ -549,7 +549,7 @@ impl<T: Serialize> Serialize for Commented<T> {
 impl<'de, T: Deserialize<'de>> Deserialize<'de> for Commented<T> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
-        D: serde::Deserializer<'de>,
+        D: serde_core::Deserializer<'de>,
     {
         // Note: comments are serialization-only metadata and cannot survive a
         // roundtrip through YAML. Deserializing always produces an empty comment.
@@ -617,7 +617,7 @@ impl<T: Serialize> Serialize for SpaceAfter<T> {
 impl<'de, T: Deserialize<'de>> Deserialize<'de> for SpaceAfter<T> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
-        D: serde::Deserializer<'de>,
+        D: serde_core::Deserializer<'de>,
     {
         T::deserialize(deserializer).map(SpaceAfter)
     }

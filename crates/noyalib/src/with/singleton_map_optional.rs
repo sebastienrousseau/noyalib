@@ -41,7 +41,7 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 // Copyright (c) 2026 Noyalib. All rights reserved.
 
-use serde::{Deserializer, Serialize};
+use serde::Serialize;
 
 /// Serialize an optional value as a singleton map.
 ///
@@ -131,7 +131,7 @@ where
 pub fn deserialize<'de, T, D>(deserializer: D) -> Result<Option<T>, D::Error>
 where
     T: serde_core::de::DeserializeOwned + 'static,
-    D: Deserializer<'de>,
+    D: serde_core::Deserializer<'de>,
 {
     use serde::Deserialize;
     // Deserialize as Option<Value> first

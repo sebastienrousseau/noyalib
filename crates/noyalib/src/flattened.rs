@@ -138,7 +138,7 @@ where
 {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
-        D: serde::Deserializer<'de>,
+        D: serde_core::Deserializer<'de>,
     {
         // Step 1: capture the source as a typed `Value` tree —
         // every key the source supplied is preserved.

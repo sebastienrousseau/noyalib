@@ -14,7 +14,6 @@ use noyalib::{from_str, to_string};
 
 mod snake_case_keys {
     use noyalib::with::singleton_map_with;
-    use serde::Deserializer;
 
     pub(super) fn serialize<T, S>(value: &T, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -27,7 +26,7 @@ mod snake_case_keys {
     pub(super) fn deserialize<'de, T, D>(deserializer: D) -> Result<T, D::Error>
     where
         T: serde_core::de::DeserializeOwned + 'static,
-        D: Deserializer<'de>,
+        D: serde_core::Deserializer<'de>,
     {
         singleton_map_with::deserialize_with(deserializer, singleton_map_with::to_pascal_case)
     }
@@ -52,7 +51,6 @@ struct ApiEndpoint {
 
 mod kebab_case_keys {
     use noyalib::with::singleton_map_with;
-    use serde::Deserializer;
 
     pub(super) fn serialize<T, S>(value: &T, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -65,7 +63,7 @@ mod kebab_case_keys {
     pub(super) fn deserialize<'de, T, D>(deserializer: D) -> Result<T, D::Error>
     where
         T: serde_core::de::DeserializeOwned + 'static,
-        D: Deserializer<'de>,
+        D: serde_core::Deserializer<'de>,
     {
         singleton_map_with::deserialize_with(deserializer, singleton_map_with::from_kebab_case)
     }
@@ -91,7 +89,6 @@ struct LogConfig {
 
 mod lowercase_keys {
     use noyalib::with::singleton_map_with;
-    use serde::Deserializer;
 
     pub(super) fn serialize<T, S>(value: &T, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -104,7 +101,7 @@ mod lowercase_keys {
     pub(super) fn deserialize<'de, T, D>(deserializer: D) -> Result<T, D::Error>
     where
         T: serde_core::de::DeserializeOwned + 'static,
-        D: Deserializer<'de>,
+        D: serde_core::Deserializer<'de>,
     {
         singleton_map_with::deserialize_with(deserializer, singleton_map_with::to_uppercase)
     }

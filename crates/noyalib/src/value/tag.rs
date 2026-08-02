@@ -333,7 +333,7 @@ impl Serialize for TaggedValue {
 impl<'de> Deserialize<'de> for TaggedValue {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
-        D: serde::Deserializer<'de>,
+        D: serde_core::Deserializer<'de>,
     {
         struct TaggedValueVisitor;
 
@@ -359,7 +359,7 @@ impl<'de> Deserialize<'de> for TaggedValue {
     }
 }
 
-impl<'de> serde::Deserializer<'de> for &'de TaggedValue {
+impl<'de> serde_core::Deserializer<'de> for &'de TaggedValue {
     type Error = crate::Error;
 
     fn deserialize_any<V>(self, visitor: V) -> crate::Result<V::Value>
@@ -469,7 +469,7 @@ impl<'de> serde_core::de::VariantAccess<'de> for TaggedValueVariantAccess<'de> {
     where
         V: serde_core::de::Visitor<'de>,
     {
-        serde::Deserializer::deserialize_seq(self.value, visitor)
+        serde_core::Deserializer::deserialize_seq(self.value, visitor)
     }
 
     fn struct_variant<V>(
@@ -480,6 +480,6 @@ impl<'de> serde_core::de::VariantAccess<'de> for TaggedValueVariantAccess<'de> {
     where
         V: serde_core::de::Visitor<'de>,
     {
-        serde::Deserializer::deserialize_map(self.value, visitor)
+        serde_core::Deserializer::deserialize_map(self.value, visitor)
     }
 }

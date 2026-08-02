@@ -897,7 +897,7 @@ fn singleton_map_with_serialize_deserialize() {
         })
     }
 
-    fn my_de<'de, D: serde::Deserializer<'de>>(d: D) -> Result<Action, D::Error> {
+    fn my_de<'de, D: serde_core::Deserializer<'de>>(d: D) -> Result<Action, D::Error> {
         noyalib::with::singleton_map_with::deserialize_with(d, |k| {
             noyalib::with::singleton_map_with::to_pascal_case(k)
         })
@@ -930,7 +930,7 @@ fn singleton_map_with_unit_variant() {
         noyalib::with::singleton_map_with::serialize_with(v, s, |k| k.to_lowercase())
     }
 
-    fn my_de<'de, D: serde::Deserializer<'de>>(d: D) -> Result<Flag, D::Error> {
+    fn my_de<'de, D: serde_core::Deserializer<'de>>(d: D) -> Result<Flag, D::Error> {
         noyalib::with::singleton_map_with::deserialize_with(d, |k| {
             // Capitalize first letter
             let mut c = k.chars();
