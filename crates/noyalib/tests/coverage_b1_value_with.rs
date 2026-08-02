@@ -487,7 +487,7 @@ mod snake_case {
 
     pub(crate) fn deserialize<'de, T, D>(deserializer: D) -> Result<T, D::Error>
     where
-        T: serde::de::DeserializeOwned + 'static,
+        T: serde_core::de::DeserializeOwned + 'static,
         D: Deserializer<'de>,
     {
         noyalib::with::singleton_map_with::deserialize_with(

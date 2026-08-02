@@ -66,7 +66,7 @@ impl Format for Yaml {
 
     const NAME: &'static str = "YAML";
 
-    fn from_str<T: serde::de::DeserializeOwned>(s: &str) -> Result<T, Self::Error> {
+    fn from_str<T: serde_core::de::DeserializeOwned>(s: &str) -> Result<T, Self::Error> {
         // figment's `Format::from_str` constrains `T:
         // DeserializeOwned` only — no `'static`. Bypass noyalib's
         // public `from_str` (which adds `'static` to enable the

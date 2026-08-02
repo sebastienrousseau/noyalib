@@ -66,7 +66,6 @@
 
 use crate::error::Result;
 use rayon::prelude::*;
-use serde::de::DeserializeOwned;
 
 /// Deserialise every YAML document in `input` into `T`, parsing
 /// in parallel via Rayon's global thread pool.
@@ -96,7 +95,7 @@ use serde::de::DeserializeOwned;
 /// ```
 pub fn parse<T>(input: &str) -> Result<Vec<T>>
 where
-    T: DeserializeOwned + Send + 'static,
+    T: serde_core::de::DeserializeOwned + Send + 'static,
 {
     let chunks = split(input);
     chunks

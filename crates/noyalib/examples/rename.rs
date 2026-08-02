@@ -26,7 +26,7 @@ mod snake_case_keys {
 
     pub(super) fn deserialize<'de, T, D>(deserializer: D) -> Result<T, D::Error>
     where
-        T: serde::de::DeserializeOwned + 'static,
+        T: serde_core::de::DeserializeOwned + 'static,
         D: Deserializer<'de>,
     {
         singleton_map_with::deserialize_with(deserializer, singleton_map_with::to_pascal_case)
@@ -64,7 +64,7 @@ mod kebab_case_keys {
 
     pub(super) fn deserialize<'de, T, D>(deserializer: D) -> Result<T, D::Error>
     where
-        T: serde::de::DeserializeOwned + 'static,
+        T: serde_core::de::DeserializeOwned + 'static,
         D: Deserializer<'de>,
     {
         singleton_map_with::deserialize_with(deserializer, singleton_map_with::from_kebab_case)
@@ -103,7 +103,7 @@ mod lowercase_keys {
 
     pub(super) fn deserialize<'de, T, D>(deserializer: D) -> Result<T, D::Error>
     where
-        T: serde::de::DeserializeOwned + 'static,
+        T: serde_core::de::DeserializeOwned + 'static,
         D: Deserializer<'de>,
     {
         singleton_map_with::deserialize_with(deserializer, singleton_map_with::to_uppercase)

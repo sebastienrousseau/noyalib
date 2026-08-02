@@ -142,7 +142,7 @@ mod snake_with {
 
     pub(crate) fn deserialize<'de, T, D>(d: D) -> std::result::Result<T, D::Error>
     where
-        T: serde::de::DeserializeOwned + 'static,
+        T: serde_core::de::DeserializeOwned + 'static,
         D: Deserializer<'de>,
     {
         noyalib::with::singleton_map_with::deserialize_with(

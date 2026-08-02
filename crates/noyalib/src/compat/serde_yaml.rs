@@ -176,7 +176,6 @@
 
 use crate::prelude::*;
 use serde::Serialize;
-use serde::de::DeserializeOwned;
 
 // ── Types — re-exported under the serde_yaml names ───────────────────
 
@@ -252,7 +251,7 @@ pub mod with {
 /// ```
 pub fn from_str<T>(s: &str) -> Result<T>
 where
-    T: DeserializeOwned + 'static,
+    T: serde_core::de::DeserializeOwned + 'static,
 {
     crate::from_str(s)
 }
@@ -268,7 +267,7 @@ where
 /// ```
 pub fn from_slice<T>(bytes: &[u8]) -> Result<T>
 where
-    T: DeserializeOwned + 'static,
+    T: serde_core::de::DeserializeOwned + 'static,
 {
     crate::from_slice(bytes)
 }
@@ -291,7 +290,7 @@ where
 pub fn from_reader<R, T>(reader: R) -> Result<T>
 where
     R: std::io::Read,
-    T: DeserializeOwned + 'static,
+    T: serde_core::de::DeserializeOwned + 'static,
 {
     crate::from_reader(reader)
 }
@@ -313,7 +312,7 @@ where
 /// ```
 pub fn from_value<T>(value: Value) -> Result<T>
 where
-    T: DeserializeOwned + 'static,
+    T: serde_core::de::DeserializeOwned + 'static,
 {
     crate::from_value(&value)
 }
@@ -395,7 +394,7 @@ where
 /// ```
 pub fn from_str_multi<T>(s: &str) -> Result<Vec<T>>
 where
-    T: DeserializeOwned + 'static,
+    T: serde_core::de::DeserializeOwned + 'static,
 {
     crate::load_all_as::<T>(s)
 }

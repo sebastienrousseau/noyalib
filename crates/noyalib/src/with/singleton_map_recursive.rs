@@ -31,7 +31,6 @@
 // Copyright (c) 2026 Noyalib. All rights reserved.
 
 use crate::prelude::*;
-use serde::de::DeserializeOwned;
 use serde::{Deserializer, Serialize, Serializer};
 
 /// Recursively transform a Value to use singleton map representation for enums.
@@ -118,7 +117,7 @@ where
 /// ```
 pub fn deserialize<'de, T, D>(deserializer: D) -> Result<T, D::Error>
 where
-    T: DeserializeOwned + 'static,
+    T: serde_core::de::DeserializeOwned + 'static,
     D: Deserializer<'de>,
 {
     use serde::Deserialize;
