@@ -8,7 +8,7 @@ use crate::prelude::*;
 use crate::span_context;
 use crate::value::{Number, Value};
 use serde::Deserialize;
-use serde::de::{self, DeserializeSeed, IntoDeserializer, MapAccess, SeqAccess, Visitor};
+use serde::de::{self, IntoDeserializer, MapAccess, SeqAccess, Visitor};
 
 /// A YAML deserializer.
 ///
@@ -565,7 +565,7 @@ impl<'de> SeqAccess<'de> for ValueSeqAccess<'de> {
 
     fn next_element_seed<T>(&mut self, seed: T) -> Result<Option<T::Value>>
     where
-        T: DeserializeSeed<'de>,
+        T: serde_core::de::DeserializeSeed<'de>,
     {
         match self.iter.next() {
             Some(value) => {
@@ -614,7 +614,7 @@ impl<'de> MapAccess<'de> for ValueMapAccess<'de> {
 
     fn next_key_seed<K>(&mut self, seed: K) -> Result<Option<K::Value>>
     where
-        K: DeserializeSeed<'de>,
+        K: serde_core::de::DeserializeSeed<'de>,
     {
         match self.iter.next() {
             Some((key, value)) => {
@@ -630,7 +630,7 @@ impl<'de> MapAccess<'de> for ValueMapAccess<'de> {
 
     fn next_value_seed<V>(&mut self, seed: V) -> Result<V::Value>
     where
-        V: DeserializeSeed<'de>,
+        V: serde_core::de::DeserializeSeed<'de>,
     {
         match self.value.take() {
             Some(value) => {
@@ -655,7 +655,7 @@ impl<'de> de::EnumAccess<'de> for EnumAccess<'de> {
 
     fn variant_seed<V>(self, seed: V) -> Result<(V::Value, Self::Variant)>
     where
-        V: DeserializeSeed<'de>,
+        V: serde_core::de::DeserializeSeed<'de>,
     {
         let de = serde_core::de::value::StrDeserializer::<'de, Error>::new(self.variant);
         let variant = seed.deserialize(de)?;
@@ -686,7 +686,7 @@ impl<'de> de::VariantAccess<'de> for VariantAccess<'de> {
 
     fn newtype_variant_seed<T>(self, seed: T) -> Result<T::Value>
     where
-        T: DeserializeSeed<'de>,
+        T: serde_core::de::DeserializeSeed<'de>,
     {
         let de = if let Some(ctx) = self.span_ctx {
             Deserializer::with_span_context(self.value, ctx)
@@ -742,7 +742,7 @@ impl<'de> MapAccess<'de> for SpannedMapAccess<'de> {
 
     fn next_key_seed<K>(&mut self, seed: K) -> Result<Option<K::Value>>
     where
-        K: DeserializeSeed<'de>,
+        K: serde_core::de::DeserializeSeed<'de>,
     {
         match self.fields.next() {
             Some(field) => {
@@ -755,7 +755,7 @@ impl<'de> MapAccess<'de> for SpannedMapAccess<'de> {
 
     fn next_value_seed<V>(&mut self, seed: V) -> Result<V::Value>
     where
-        V: DeserializeSeed<'de>,
+        V: serde_core::de::DeserializeSeed<'de>,
     {
         use crate::spanned::*;
         let last_field = SPANNED_FIELDS[SPANNED_FIELDS.len() - 1 - (self.fields.len())];

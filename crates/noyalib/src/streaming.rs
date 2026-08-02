@@ -12,7 +12,7 @@ use crate::prelude::*;
 
 use rustc_hash::{FxHashMap, FxHashSet};
 use serde::Deserialize;
-use serde::de::{self, DeserializeSeed, IntoDeserializer, MapAccess, SeqAccess, Visitor};
+use serde::de::{self, IntoDeserializer, MapAccess, SeqAccess, Visitor};
 use smallvec::SmallVec;
 
 use crate::error::{Error, Result, closest_name};
@@ -1164,7 +1164,7 @@ impl<'de> SeqAccess<'de> for StreamingSeqAccess<'_, 'de> {
     type Error = Error;
     fn next_element_seed<T>(&mut self, seed: T) -> Result<Option<T::Value>>
     where
-        T: DeserializeSeed<'de>,
+        T: serde_core::de::DeserializeSeed<'de>,
     {
         // Symmetric guard with `StreamingMapAccess::next_key_seed`
         // — callers that re-invoke `next_element` after the
@@ -1246,7 +1246,7 @@ impl<'de> MapAccess<'de> for StreamingMapAccess<'_, 'de> {
     type Error = Error;
     fn next_key_seed<K>(&mut self, seed: K) -> Result<Option<K::Value>>
     where
-        K: DeserializeSeed<'de>,
+        K: serde_core::de::DeserializeSeed<'de>,
     {
         // Guard against serde visitors (e.g. `noyalib::Value`'s
         // `ValueVisitor::visit_map`) that call `next_key` again
@@ -1391,7 +1391,7 @@ impl<'de> MapAccess<'de> for StreamingMapAccess<'_, 'de> {
     }
     fn next_value_seed<V>(&mut self, seed: V) -> Result<V::Value>
     where
-        V: DeserializeSeed<'de>,
+        V: serde_core::de::DeserializeSeed<'de>,
     {
         // Symmetric guard with `next_key_seed`. Callers that
         // misuse the MapAccess contract (e.g. invoking
@@ -1440,7 +1440,7 @@ impl<'a, 'de> de::EnumAccess<'de> for StreamingEnumAccess<'a, 'de> {
     type Variant = StreamingVariantAccess<'a, 'de>;
     fn variant_seed<V>(self, seed: V) -> Result<(V::Value, Self::Variant)>
     where
-        V: DeserializeSeed<'de>,
+        V: serde_core::de::DeserializeSeed<'de>,
     {
         let de = serde_core::de::value::StringDeserializer::<Error>::new(self.variant);
         let variant = seed.deserialize(de)?;
@@ -1466,7 +1466,7 @@ impl<'de> de::VariantAccess<'de> for StreamingVariantAccess<'_, 'de> {
     }
     fn newtype_variant_seed<T>(self, seed: T) -> Result<T::Value>
     where
-        T: DeserializeSeed<'de>,
+        T: serde_core::de::DeserializeSeed<'de>,
     {
         let res = seed.deserialize(&mut *self.de)?;
         if !matches!(self.de.next_event()?, Event::MappingEnd { .. }) {
@@ -1506,7 +1506,7 @@ impl<'de> MapAccess<'de> for StreamingTagMapAccess<'_, 'de> {
     type Error = Error;
     fn next_key_seed<K>(&mut self, seed: K) -> Result<Option<K::Value>>
     where
-        K: DeserializeSeed<'de>,
+        K: serde_core::de::DeserializeSeed<'de>,
     {
         if self.done {
             Ok(None)
@@ -1522,7 +1522,7 @@ impl<'de> MapAccess<'de> for StreamingTagMapAccess<'_, 'de> {
     }
     fn next_value_seed<V>(&mut self, seed: V) -> Result<V::Value>
     where
-        V: DeserializeSeed<'de>,
+        V: serde_core::de::DeserializeSeed<'de>,
     {
         self.done = true;
         seed.deserialize(&mut *self.de)
@@ -1539,7 +1539,7 @@ impl<'a, 'de> de::EnumAccess<'de> for StreamingTagEnumAccess<'a, 'de> {
     type Variant = StreamingTagVariantAccess<'a, 'de>;
     fn variant_seed<V>(self, seed: V) -> Result<(V::Value, Self::Variant)>
     where
-        V: DeserializeSeed<'de>,
+        V: serde_core::de::DeserializeSeed<'de>,
     {
         let full = if self.tag.0 == "!" {
             format!("!{}", self.tag.1)
@@ -1563,7 +1563,7 @@ impl<'de> de::VariantAccess<'de> for StreamingTagVariantAccess<'_, 'de> {
     }
     fn newtype_variant_seed<T>(self, seed: T) -> Result<T::Value>
     where
-        T: DeserializeSeed<'de>,
+        T: serde_core::de::DeserializeSeed<'de>,
     {
         seed.deserialize(self.de)
     }

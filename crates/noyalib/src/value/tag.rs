@@ -403,7 +403,7 @@ impl<'de> serde::de::MapAccess<'de> for TaggedValueMapAccess<'de> {
 
     fn next_key_seed<K>(&mut self, seed: K) -> crate::Result<Option<K::Value>>
     where
-        K: serde::de::DeserializeSeed<'de>,
+        K: serde_core::de::DeserializeSeed<'de>,
     {
         match self.tag.take() {
             Some(tag) => seed
@@ -415,7 +415,7 @@ impl<'de> serde::de::MapAccess<'de> for TaggedValueMapAccess<'de> {
 
     fn next_value_seed<V>(&mut self, seed: V) -> crate::Result<V::Value>
     where
-        V: serde::de::DeserializeSeed<'de>,
+        V: serde_core::de::DeserializeSeed<'de>,
     {
         match self.value.take() {
             Some(value) => seed.deserialize(value),
@@ -434,7 +434,7 @@ impl<'de> serde::de::EnumAccess<'de> for TaggedValueEnumAccess<'de> {
 
     fn variant_seed<V>(self, seed: V) -> crate::Result<(V::Value, Self::Variant)>
     where
-        V: serde::de::DeserializeSeed<'de>,
+        V: serde_core::de::DeserializeSeed<'de>,
     {
         let deserializer = serde_core::de::value::BorrowedStrDeserializer::<crate::Error>::new(
             self.tagged.tag.nobang(),
@@ -462,7 +462,7 @@ impl<'de> serde::de::VariantAccess<'de> for TaggedValueVariantAccess<'de> {
 
     fn newtype_variant_seed<T>(self, seed: T) -> crate::Result<T::Value>
     where
-        T: serde::de::DeserializeSeed<'de>,
+        T: serde_core::de::DeserializeSeed<'de>,
     {
         seed.deserialize(self.value)
     }

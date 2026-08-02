@@ -158,7 +158,7 @@ impl<'de> serde::de::SeqAccess<'de> for ValueSeqAccess<'de> {
 
     fn next_element_seed<T>(&mut self, seed: T) -> crate::Result<Option<T::Value>>
     where
-        T: serde::de::DeserializeSeed<'de>,
+        T: serde_core::de::DeserializeSeed<'de>,
     {
         match self.iter.next() {
             Some(value) => seed.deserialize(value).map(Some),
@@ -177,7 +177,7 @@ impl<'de> serde::de::MapAccess<'de> for ValueMapAccess<'de> {
 
     fn next_key_seed<K>(&mut self, seed: K) -> crate::Result<Option<K::Value>>
     where
-        K: serde::de::DeserializeSeed<'de>,
+        K: serde_core::de::DeserializeSeed<'de>,
     {
         match self.iter.next() {
             Some((key, value)) => {
@@ -191,7 +191,7 @@ impl<'de> serde::de::MapAccess<'de> for ValueMapAccess<'de> {
 
     fn next_value_seed<V>(&mut self, seed: V) -> crate::Result<V::Value>
     where
-        V: serde::de::DeserializeSeed<'de>,
+        V: serde_core::de::DeserializeSeed<'de>,
     {
         match self.value.take() {
             Some(value) => seed.deserialize(value),
