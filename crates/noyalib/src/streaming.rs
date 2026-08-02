@@ -1451,7 +1451,7 @@ impl<'a, 'de> serde_core::de::EnumAccess<'de> for StreamingEnumAccess<'a, 'de> {
 struct StreamingVariantAccess<'a, 'de> {
     de: &'a mut StreamingDeserializer<'de>,
 }
-impl<'de> de::VariantAccess<'de> for StreamingVariantAccess<'_, 'de> {
+impl<'de> serde_core::de::VariantAccess<'de> for StreamingVariantAccess<'_, 'de> {
     type Error = Error;
     fn unit_variant(self) -> Result<()> {
         let ev = self.de.next_event()?;
@@ -1556,7 +1556,7 @@ impl<'a, 'de> serde_core::de::EnumAccess<'de> for StreamingTagEnumAccess<'a, 'de
 struct StreamingTagVariantAccess<'a, 'de> {
     de: &'a mut StreamingDeserializer<'de>,
 }
-impl<'de> de::VariantAccess<'de> for StreamingTagVariantAccess<'_, 'de> {
+impl<'de> serde_core::de::VariantAccess<'de> for StreamingTagVariantAccess<'_, 'de> {
     type Error = Error;
     fn unit_variant(self) -> Result<()> {
         self.de.skip_value()

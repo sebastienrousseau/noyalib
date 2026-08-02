@@ -672,7 +672,7 @@ struct VariantAccess<'de> {
     span_ctx: Option<&'de span_context::SpanContext>,
 }
 
-impl<'de> de::VariantAccess<'de> for VariantAccess<'de> {
+impl<'de> serde_core::de::VariantAccess<'de> for VariantAccess<'de> {
     type Error = Error;
 
     fn unit_variant(self) -> Result<()> {

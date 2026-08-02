@@ -451,7 +451,7 @@ struct TaggedValueVariantAccess<'de> {
     value: &'de Value,
 }
 
-impl<'de> serde::de::VariantAccess<'de> for TaggedValueVariantAccess<'de> {
+impl<'de> serde_core::de::VariantAccess<'de> for TaggedValueVariantAccess<'de> {
     type Error = crate::Error;
 
     fn unit_variant(self) -> crate::Result<()> {
