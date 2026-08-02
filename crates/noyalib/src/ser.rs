@@ -1687,7 +1687,7 @@ pub struct SerializeSeq {
     vec: Vec<Value>,
 }
 
-impl ser::SerializeSeq for SerializeSeq {
+impl serde_core::ser::SerializeSeq for SerializeSeq {
     type Ok = Value;
     type Error = Error;
 
@@ -1712,11 +1712,11 @@ impl ser::SerializeTuple for SerializeSeq {
     where
         T: ?Sized + Serialize,
     {
-        ser::SerializeSeq::serialize_element(self, value)
+        serde_core::ser::SerializeSeq::serialize_element(self, value)
     }
 
     fn end(self) -> Result<Value> {
-        ser::SerializeSeq::end(self)
+        serde_core::ser::SerializeSeq::end(self)
     }
 }
 
@@ -1728,11 +1728,11 @@ impl ser::SerializeTupleStruct for SerializeSeq {
     where
         T: ?Sized + Serialize,
     {
-        ser::SerializeSeq::serialize_element(self, value)
+        serde_core::ser::SerializeSeq::serialize_element(self, value)
     }
 
     fn end(self) -> Result<Value> {
-        ser::SerializeSeq::end(self)
+        serde_core::ser::SerializeSeq::end(self)
     }
 }
 
