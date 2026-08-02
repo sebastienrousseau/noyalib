@@ -282,7 +282,7 @@ impl<'de> serde_core::Deserializer<'de> for &'de Value {
         serde_core::Deserializer::deserialize_map(self, visitor)
     }
 
-    serde::forward_to_deserialize_any! {
+    serde_core::forward_to_deserialize_any! {
         bool i8 i16 i32 i64 u8 u16 u32 u64 f32 f64 char str string bytes
         byte_buf option unit unit_struct newtype_struct tuple
         tuple_struct identifier ignored_any

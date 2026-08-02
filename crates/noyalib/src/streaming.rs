@@ -1146,7 +1146,7 @@ impl<'de> serde_core::Deserializer<'de> for &mut StreamingDeserializer<'de> {
         self.deserialize_bytes(visitor)
     }
 
-    serde::forward_to_deserialize_any! {
+    serde_core::forward_to_deserialize_any! {
         i8 i16 i32 u8 u16 u32 f32 char
         tuple tuple_struct
     }
