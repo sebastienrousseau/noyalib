@@ -1720,7 +1720,7 @@ impl ser::SerializeTuple for SerializeSeq {
     }
 }
 
-impl ser::SerializeTupleStruct for SerializeSeq {
+impl serde_core::ser::SerializeTupleStruct for SerializeSeq {
     type Ok = Value;
     type Error = Error;
 
