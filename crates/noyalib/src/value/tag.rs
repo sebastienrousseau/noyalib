@@ -407,7 +407,7 @@ impl<'de> serde::de::MapAccess<'de> for TaggedValueMapAccess<'de> {
     {
         match self.tag.take() {
             Some(tag) => seed
-                .deserialize(serde::de::value::BorrowedStrDeserializer::new(tag))
+                .deserialize(serde_core::de::value::BorrowedStrDeserializer::new(tag))
                 .map(Some),
             None => Ok(None),
         }
@@ -436,11 +436,10 @@ impl<'de> serde::de::EnumAccess<'de> for TaggedValueEnumAccess<'de> {
     where
         V: serde::de::DeserializeSeed<'de>,
     {
-        let variant = seed.deserialize(
-            serde::de::value::BorrowedStrDeserializer::<crate::Error>::new(
-                self.tagged.tag.nobang(),
-            ),
-        )?;
+        let deserializer = serde_core::de::value::BorrowedStrDeserializer::<crate::Error>::new(
+            self.tagged.tag.nobang(),
+        );
+        let variant = seed.deserialize(deserializer)?;
         Ok((
             variant,
             TaggedValueVariantAccess {

@@ -182,7 +182,7 @@ impl<'de> serde::de::MapAccess<'de> for ValueMapAccess<'de> {
         match self.iter.next() {
             Some((key, value)) => {
                 self.value = Some(value);
-                seed.deserialize(serde::de::value::BorrowedStrDeserializer::new(key))
+                seed.deserialize(serde_core::de::value::BorrowedStrDeserializer::new(key))
                     .map(Some)
             }
             None => Ok(None),
@@ -242,7 +242,7 @@ impl<'de> serde::Deserializer<'de> for &'de Value {
                 serde::Deserializer::deserialize_enum(tagged_ref, name, variants, visitor)
             }
             Value::String(s) => visitor
-                .visit_enum(serde::de::value::BorrowedStrDeserializer::<crate::Error>::new(s)),
+                .visit_enum(serde_core::de::value::BorrowedStrDeserializer::<crate::Error>::new(s)),
             _ => serde::Deserializer::deserialize_any(self, visitor),
         }
     }

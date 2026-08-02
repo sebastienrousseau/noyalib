@@ -507,8 +507,8 @@ impl<'de> de::Deserializer<'de> for Deserializer<'de> {
     {
         match self.value {
             Value::String(variant) => {
-                let de: de::value::StrDeserializer<'de, Error> =
-                    variant.as_str().into_deserializer();
+                let de =
+                    serde_core::de::value::StrDeserializer::<'de, Error>::new(variant.as_str());
                 self.wrap_err(visitor.visit_enum(de))
             }
             Value::Mapping(map) if map.len() == 1 => {
@@ -620,8 +620,8 @@ impl<'de> MapAccess<'de> for ValueMapAccess<'de> {
             Some((key, value)) => {
                 self.value = Some(value);
                 let de = self.child_de(value);
-                let key_de: de::value::StrDeserializer<'de, Error> =
-                    key.as_str().into_deserializer();
+                let key_de =
+                    serde_core::de::value::StrDeserializer::<'de, Error>::new(key.as_str());
                 de.wrap_err(seed.deserialize(key_de).map(Some))
             }
             None => Ok(None),
@@ -657,7 +657,7 @@ impl<'de> de::EnumAccess<'de> for EnumAccess<'de> {
     where
         V: DeserializeSeed<'de>,
     {
-        let de: de::value::StrDeserializer<'de, Error> = self.variant.into_deserializer();
+        let de = serde_core::de::value::StrDeserializer::<'de, Error>::new(self.variant);
         let variant = seed.deserialize(de)?;
         let visitor = VariantAccess {
             value: self.value,
@@ -746,8 +746,7 @@ impl<'de> MapAccess<'de> for SpannedMapAccess<'de> {
     {
         match self.fields.next() {
             Some(field) => {
-                use serde::de::value::BorrowedStrDeserializer;
-                let de: BorrowedStrDeserializer<'_, Error> = BorrowedStrDeserializer::new(field);
+                let de = serde_core::de::value::BorrowedStrDeserializer::<'_, Error>::new(field);
                 seed.deserialize(de).map(Some)
             }
             None => Ok(None),

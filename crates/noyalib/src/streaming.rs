@@ -1442,7 +1442,7 @@ impl<'a, 'de> de::EnumAccess<'de> for StreamingEnumAccess<'a, 'de> {
     where
         V: DeserializeSeed<'de>,
     {
-        let de = de::value::StringDeserializer::<Error>::new(self.variant);
+        let de = serde_core::de::value::StringDeserializer::<Error>::new(self.variant);
         let variant = seed.deserialize(de)?;
         Ok((variant, StreamingVariantAccess { de: self.de }))
     }
@@ -1516,7 +1516,7 @@ impl<'de> MapAccess<'de> for StreamingTagMapAccess<'_, 'de> {
             } else {
                 format!("{}{}", self.tag.0, self.tag.1)
             };
-            let de = de::value::StringDeserializer::<Error>::new(full);
+            let de = serde_core::de::value::StringDeserializer::<Error>::new(full);
             seed.deserialize(de).map(Some)
         }
     }
@@ -1546,7 +1546,7 @@ impl<'a, 'de> de::EnumAccess<'de> for StreamingTagEnumAccess<'a, 'de> {
         } else {
             format!("{}{}", self.tag.0, self.tag.1)
         };
-        let de = de::value::StringDeserializer::<Error>::new(full);
+        let de = serde_core::de::value::StringDeserializer::<Error>::new(full);
         let variant = seed.deserialize(de)?;
         Ok((variant, StreamingTagVariantAccess { de: self.de }))
     }
