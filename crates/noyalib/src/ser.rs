@@ -1807,7 +1807,7 @@ impl serde_core::ser::SerializeMap for SerializeMap {
     }
 }
 
-impl ser::SerializeStruct for SerializeMap {
+impl serde_core::ser::SerializeStruct for SerializeMap {
     type Ok = Value;
     type Error = Error;
 
