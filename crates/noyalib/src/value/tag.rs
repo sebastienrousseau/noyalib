@@ -426,7 +426,7 @@ struct TaggedValueEnumAccess<'de> {
     tagged: &'de TaggedValue,
 }
 
-impl<'de> serde::de::EnumAccess<'de> for TaggedValueEnumAccess<'de> {
+impl<'de> serde_core::de::EnumAccess<'de> for TaggedValueEnumAccess<'de> {
     type Error = crate::Error;
     type Variant = TaggedValueVariantAccess<'de>;
 

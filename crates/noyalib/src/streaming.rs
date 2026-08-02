@@ -1435,7 +1435,7 @@ struct StreamingEnumAccess<'a, 'de> {
     de: &'a mut StreamingDeserializer<'de>,
     variant: String,
 }
-impl<'a, 'de> de::EnumAccess<'de> for StreamingEnumAccess<'a, 'de> {
+impl<'a, 'de> serde_core::de::EnumAccess<'de> for StreamingEnumAccess<'a, 'de> {
     type Error = Error;
     type Variant = StreamingVariantAccess<'a, 'de>;
     fn variant_seed<V>(self, seed: V) -> Result<(V::Value, Self::Variant)>
@@ -1534,7 +1534,7 @@ struct StreamingTagEnumAccess<'a, 'de> {
     de: &'a mut StreamingDeserializer<'de>,
     tag: (String, String),
 }
-impl<'a, 'de> de::EnumAccess<'de> for StreamingTagEnumAccess<'a, 'de> {
+impl<'a, 'de> serde_core::de::EnumAccess<'de> for StreamingTagEnumAccess<'a, 'de> {
     type Error = Error;
     type Variant = StreamingTagVariantAccess<'a, 'de>;
     fn variant_seed<V>(self, seed: V) -> Result<(V::Value, Self::Variant)>

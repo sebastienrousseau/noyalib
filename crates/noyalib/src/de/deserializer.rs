@@ -649,7 +649,7 @@ struct EnumAccess<'de> {
     span_ctx: Option<&'de span_context::SpanContext>,
 }
 
-impl<'de> de::EnumAccess<'de> for EnumAccess<'de> {
+impl<'de> serde_core::de::EnumAccess<'de> for EnumAccess<'de> {
     type Error = Error;
     type Variant = VariantAccess<'de>;
 
