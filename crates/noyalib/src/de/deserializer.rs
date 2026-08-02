@@ -141,7 +141,7 @@ impl<'de> serde_core::Deserializer<'de> for Deserializer<'de> {
             Value::Mapping(_) => self.deserialize_map(visitor),
             Value::Tagged(tagged) => {
                 // Typed targets see through the tag transparently —
-                // `#[derive(Deserialize)] struct Foo { x: i32 }` against
+                // `#[derive(serde::Deserialize)] struct Foo { x: i32 }` against
                 // `!Foo {x: 1}` yields `Foo { x: 1 }`. (Tag *preservation* for
                 // a `Value` target happens in the AST loader / `from_value`'s
                 // clone fast path, not here.)

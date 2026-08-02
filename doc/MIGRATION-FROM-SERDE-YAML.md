@@ -151,7 +151,7 @@ migrate by either:
   borrow-friendly reads) before any `as_str` / `as_i64` /
   type-cast you used to do directly. This is the smallest diff.
 - Switching to a typed deserialise. Typed targets
-  (`#[derive(Deserialize)] struct Foo { ... }`) see through tags
+  (`#[derive(serde::Deserialize)] struct Foo { ... }`) see through tags
   transparently — `from_str::<Foo>("!Foo {x: 1}")` yields
   `Foo { x: 1 }` regardless of the tag.
 - Registering the tag with [`TagRegistry::with`] for inline

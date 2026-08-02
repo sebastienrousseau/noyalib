@@ -26,7 +26,6 @@ use noyalib::{
     Mapping, MaybeTag, Number, Tag, TaggedValue, Value, check_for_tag, from_str, from_value,
     nobang, to_string,
 };
-use serde::{Deserialize, Serialize};
 
 // ---------------------------------------------------------------------------
 // Value: YAML round-trips for every variant
@@ -136,7 +135,7 @@ fn from_value_sequence_into_vec() {
 
 #[test]
 fn from_value_mapping_into_struct() {
-    #[derive(Debug, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Deserialize, PartialEq)]
     struct Point {
         x: i64,
         y: i64,
@@ -157,7 +156,7 @@ fn from_value_type_mismatch_errors() {
 }
 
 // A shared enum exercised through every deserialize entry point below.
-#[derive(Debug, Deserialize, Serialize, PartialEq)]
+#[derive(Debug, serde::Deserialize, serde::Serialize, PartialEq)]
 enum Shape {
     Circle,
     Named(String),
@@ -295,7 +294,7 @@ fn check_for_tag_classifies_values() {
 // with::singleton_map
 // ---------------------------------------------------------------------------
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
 enum Status {
     Active,
     Named(String),
@@ -303,7 +302,7 @@ enum Status {
     Error { code: i32, message: String },
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
 struct SingletonHolder {
     name: String,
     #[serde(with = "noyalib::with::singleton_map")]
@@ -358,7 +357,7 @@ fn singleton_map_deserialize_unknown_variant_errors() {
 // with::singleton_map_optional
 // ---------------------------------------------------------------------------
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
 struct OptionalHolder {
     name: String,
     #[serde(
@@ -416,19 +415,19 @@ fn singleton_map_optional_explicit_null_deserializes_none() {
 // with::singleton_map_recursive
 // ---------------------------------------------------------------------------
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
 enum Inner {
     A,
     B { value: i32 },
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
 enum Outer {
     Single(Inner),
     Multiple(Vec<Inner>),
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
 struct RecursiveHolder {
     #[serde(with = "noyalib::with::singleton_map_recursive")]
     items: Vec<Outer>,
@@ -449,7 +448,7 @@ fn singleton_map_recursive_nested_enums() {
 
 #[test]
 fn singleton_map_recursive_map_of_enums() {
-    #[derive(Debug, Serialize, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
     struct MapHolder {
         #[serde(with = "noyalib::with::singleton_map_recursive")]
         data: std::collections::BTreeMap<String, Inner>,
@@ -495,13 +494,13 @@ mod snake_case {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
 enum HttpMethod {
     GetRequest,
     PostData { body: String },
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
 struct ApiCall {
     #[serde(with = "snake_case")]
     method: HttpMethod,

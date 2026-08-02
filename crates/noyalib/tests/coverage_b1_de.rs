@@ -26,13 +26,12 @@ use noyalib::{
     ParserConfig, Spanned, Value, from_slice, from_slice_with_config, from_str, from_str_borrowing,
     from_str_borrowing_with_config, from_str_strict, from_str_with_config, from_value,
 };
-use serde::Deserialize;
 
 // ============================================================================
 // Concrete-type happy paths (typed Deserializer walk).
 // ============================================================================
 
-#[derive(Debug, Deserialize, PartialEq)]
+#[derive(Debug, serde::Deserialize, PartialEq)]
 struct Simple {
     name: String,
     port: u16,
@@ -55,7 +54,7 @@ fn struct_all_fields() {
 
 #[test]
 fn nested_struct_and_vec() {
-    #[derive(Debug, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Deserialize, PartialEq)]
     struct Outer {
         inner: Simple,
         tags: Vec<String>,
@@ -76,7 +75,7 @@ tags:
 
 #[test]
 fn every_integer_width() {
-    #[derive(Debug, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Deserialize, PartialEq)]
     struct Ints {
         a: i8,
         b: i16,
@@ -95,7 +94,7 @@ fn every_integer_width() {
 
 #[test]
 fn floats_from_int_and_float() {
-    #[derive(Debug, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Deserialize, PartialEq)]
     struct Floats {
         x: f32,
         y: f64,
@@ -109,7 +108,7 @@ fn floats_from_int_and_float() {
 
 #[test]
 fn char_bool_unit_newtype() {
-    #[derive(Debug, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Deserialize, PartialEq)]
     struct NewType(u32);
 
     let c: char = from_str("x\n").unwrap();
@@ -128,7 +127,7 @@ fn char_bool_unit_newtype() {
 
 #[test]
 fn option_some_and_none() {
-    #[derive(Debug, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Deserialize, PartialEq)]
     struct Opt {
         present: Option<i32>,
         absent: Option<i32>,
@@ -144,7 +143,7 @@ fn tuple_and_tuple_struct() {
     let t: (i32, String, bool) = from_str("- 1\n- two\n- true\n").unwrap();
     assert_eq!(t, (1, "two".to_string(), true));
 
-    #[derive(Debug, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Deserialize, PartialEq)]
     struct Pair(i32, i32);
     let p: Pair = from_str("- 3\n- 4\n").unwrap();
     assert_eq!(p, Pair(3, 4));
@@ -163,7 +162,7 @@ fn hashmap_and_btreemap() {
 // Enums (unit / newtype / tuple / struct variants).
 // ============================================================================
 
-#[derive(Debug, Deserialize, PartialEq)]
+#[derive(Debug, serde::Deserialize, PartialEq)]
 enum Shape {
     Point,
     Circle(f64),
@@ -245,7 +244,7 @@ fn from_value_into_typed_struct() {
 
 #[test]
 fn borrowed_str_field() {
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     struct Person<'a> {
         name: &'a str,
         role: &'a str,
@@ -271,7 +270,7 @@ fn borrowed_with_config() {
 
 #[test]
 fn borrowed_cow_falls_back_to_owned_on_escape() {
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     struct Doc<'a> {
         #[serde(borrow)]
         plain: Cow<'a, str>,
@@ -304,7 +303,7 @@ fn spanned_scalar() {
 
 #[test]
 fn spanned_struct_field() {
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     struct Cfg {
         port: Spanned<u16>,
     }
@@ -353,7 +352,7 @@ fn from_str_with_config_value_target() {
 
 #[test]
 fn strict_accepts_declared_fields() {
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     struct C {
         port: u16,
     }
@@ -363,7 +362,7 @@ fn strict_accepts_declared_fields() {
 
 #[test]
 fn strict_rejects_unknown_field() {
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     struct C {
         port: u16,
     }
@@ -393,7 +392,7 @@ fn err_string_into_integer() {
 fn err_u8_overflow() {
     // Value fits i64 but overflows u8 → serde custom error →
     // Error::Deserialize, routed through wrap_err with span context.
-    #[derive(Debug, Deserialize)]
+    #[derive(Debug, serde::Deserialize)]
     struct S {
         x: u8,
     }

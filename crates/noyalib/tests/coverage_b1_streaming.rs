@@ -244,7 +244,7 @@ fn seq_of_mixed_value() {
 
 #[test]
 fn struct_full() {
-    #[derive(Deserialize, PartialEq, Debug)]
+    #[derive(serde::Deserialize, PartialEq, Debug)]
     struct Server {
         host: String,
         port: u16,
@@ -285,7 +285,7 @@ fn map_deeply_nested() {
 
 #[test]
 fn map_struct_with_optional_and_default() {
-    #[derive(Deserialize)]
+    #[derive(serde::Deserialize)]
     struct Doc {
         req: i64,
         #[serde(default)]
@@ -298,7 +298,7 @@ fn map_struct_with_optional_and_default() {
 
 #[test]
 fn struct_ignores_extra_field() {
-    #[derive(Deserialize)]
+    #[derive(serde::Deserialize)]
     struct Small {
         keep: i64,
     }
@@ -329,12 +329,12 @@ fn anchor_map_alias() {
 
 #[test]
 fn anchor_reused_struct() {
-    #[derive(Deserialize, PartialEq, Debug)]
+    #[derive(serde::Deserialize, PartialEq, Debug)]
     struct Ep {
         host: String,
         port: u16,
     }
-    #[derive(Deserialize)]
+    #[derive(serde::Deserialize)]
     struct Doc {
         primary: Ep,
         replica: Ep,
@@ -421,7 +421,7 @@ target:
 
 #[test]
 fn core_tag_str_forces_string() {
-    #[derive(Deserialize)]
+    #[derive(serde::Deserialize)]
     struct Doc {
         v: String,
     }
@@ -431,9 +431,9 @@ fn core_tag_str_forces_string() {
 
 #[test]
 fn core_tag_int_newtype() {
-    #[derive(Deserialize, PartialEq, Debug)]
+    #[derive(serde::Deserialize, PartialEq, Debug)]
     struct Wrap(i64);
-    #[derive(Deserialize)]
+    #[derive(serde::Deserialize)]
     struct Doc {
         v: Wrap,
     }
@@ -443,9 +443,9 @@ fn core_tag_int_newtype() {
 
 #[test]
 fn registry_strips_custom_scalar_tag() {
-    #[derive(Deserialize, PartialEq, Debug)]
+    #[derive(serde::Deserialize, PartialEq, Debug)]
     struct Celsius(f64);
-    #[derive(Deserialize)]
+    #[derive(serde::Deserialize)]
     struct Doc {
         t: Celsius,
     }
@@ -457,7 +457,7 @@ fn registry_strips_custom_scalar_tag() {
 
 #[test]
 fn registry_strips_custom_seq_tag() {
-    #[derive(Deserialize)]
+    #[derive(serde::Deserialize)]
     struct Doc {
         items: Vec<i64>,
     }
@@ -469,7 +469,7 @@ fn registry_strips_custom_seq_tag() {
 
 #[test]
 fn registry_strips_custom_map_tag() {
-    #[derive(Deserialize)]
+    #[derive(serde::Deserialize)]
     struct Doc {
         cfg: BTreeMap<String, i64>,
     }
@@ -482,7 +482,7 @@ fn registry_strips_custom_map_tag() {
 
 #[test]
 fn with_tag_registry_builder_on_deserializer() {
-    #[derive(Deserialize, PartialEq, Debug)]
+    #[derive(serde::Deserialize, PartialEq, Debug)]
     struct Temp(f64);
     let reg = Arc::new(TagRegistry::new().with("!Celsius"));
     let mut de = StreamingDeserializer::new("!Celsius 42.0").with_tag_registry(reg);
@@ -498,7 +498,7 @@ fn unregistered_tag_falls_back_to_value() {
 
 // ── Enums ────────────────────────────────────────────────────────────────
 
-#[derive(Debug, Deserialize, PartialEq)]
+#[derive(Debug, serde::Deserialize, PartialEq)]
 enum E {
     Unit,
     Tup(i32, i32),
@@ -508,7 +508,7 @@ enum E {
 
 #[test]
 fn enum_unit_variant() {
-    #[derive(Deserialize)]
+    #[derive(serde::Deserialize)]
     struct Doc {
         e: E,
     }
@@ -518,7 +518,7 @@ fn enum_unit_variant() {
 
 #[test]
 fn enum_newtype_variant() {
-    #[derive(Deserialize)]
+    #[derive(serde::Deserialize)]
     struct Doc {
         e: E,
     }
@@ -528,7 +528,7 @@ fn enum_newtype_variant() {
 
 #[test]
 fn enum_tuple_variant() {
-    #[derive(Deserialize)]
+    #[derive(serde::Deserialize)]
     struct Doc {
         e: E,
     }
@@ -538,7 +538,7 @@ fn enum_tuple_variant() {
 
 #[test]
 fn enum_struct_variant() {
-    #[derive(Deserialize)]
+    #[derive(serde::Deserialize)]
     struct Doc {
         e: E,
     }
@@ -548,7 +548,7 @@ fn enum_struct_variant() {
 
 #[test]
 fn enum_top_level_struct_variant() {
-    #[derive(Debug, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Deserialize, PartialEq)]
     enum Choice {
         Pair { a: i32, b: i32 },
     }
@@ -560,7 +560,7 @@ fn enum_top_level_struct_variant() {
 
 #[test]
 fn bytes_from_plain_string() {
-    #[derive(Deserialize)]
+    #[derive(serde::Deserialize)]
     struct Doc {
         b: ByteBuf,
     }
@@ -570,7 +570,7 @@ fn bytes_from_plain_string() {
 
 #[test]
 fn bytes_binary_tag_decodes() {
-    #[derive(Deserialize)]
+    #[derive(serde::Deserialize)]
     struct Doc {
         b: ByteBuf,
     }
@@ -581,7 +581,7 @@ fn bytes_binary_tag_decodes() {
 
 #[test]
 fn bytes_reject_int() {
-    #[derive(Deserialize)]
+    #[derive(serde::Deserialize)]
     #[allow(dead_code)]
     struct Doc {
         b: ByteBuf,
@@ -592,7 +592,7 @@ fn bytes_reject_int() {
 
 #[test]
 fn bytes_reject_null() {
-    #[derive(Deserialize)]
+    #[derive(serde::Deserialize)]
     #[allow(dead_code)]
     struct Doc {
         b: ByteBuf,
@@ -837,7 +837,7 @@ fn ignored_any_top_level() {
 
 #[test]
 fn roundtrip_struct_via_streaming() {
-    #[derive(Deserialize, serde::Serialize, PartialEq, Debug)]
+    #[derive(serde::Deserialize, serde::Serialize, PartialEq, Debug)]
     struct Cfg {
         name: String,
         count: u32,
@@ -856,7 +856,7 @@ fn roundtrip_struct_via_streaming() {
 
 #[test]
 fn streaming_equivalent_to_from_str() {
-    #[derive(Deserialize, PartialEq, Debug)]
+    #[derive(serde::Deserialize, PartialEq, Debug)]
     struct Cfg {
         name: String,
         nums: Vec<i64>,
@@ -872,7 +872,7 @@ fn streaming_equivalent_to_from_str() {
 
 #[test]
 fn partial_seq_consumption_error_drops_cleanly() {
-    #[derive(Deserialize)]
+    #[derive(serde::Deserialize)]
     #[allow(dead_code)]
     struct Doc {
         values: Vec<i64>,

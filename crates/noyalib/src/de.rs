@@ -158,7 +158,7 @@ where
 /// [`Value`]? Used by [`from_str_with_config`] / [`from_value`]
 /// to enable the tag-preserving fast-path on
 /// [`Deserializer::deserialize_any`] only when the caller wants a
-/// `Value`. For typed targets (`#[derive(Deserialize)] struct`,
+/// `Value`. For typed targets (`#[derive(serde::Deserialize)] struct`,
 /// scalars, enums, …) the standard transparent-tag behaviour
 /// stays in place.
 ///
@@ -868,9 +868,8 @@ where
 #[cfg(all(test, feature = "std", feature = "figment"))]
 mod figment_entry_tests {
     use super::*;
-    use serde::Deserialize;
 
-    #[derive(Debug, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Deserialize, PartialEq)]
     struct Endpoint {
         name: String,
         port: u16,

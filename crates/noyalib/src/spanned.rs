@@ -151,7 +151,7 @@ impl<T> Spanned<T> {
     /// [`Spanned<T>`] without owning a parser context; it is
     /// distinguishable from a parsed location because parsed
     /// locations always have `line >= 1` and `column >= 1`. Use
-    /// the deserialisation path (`#[derive(Deserialize)]` with a
+    /// the deserialisation path (`#[derive(serde::Deserialize)]` with a
     /// `Spanned<T>` field) when authentic source positions are
     /// required.
     ///

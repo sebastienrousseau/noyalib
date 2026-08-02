@@ -92,9 +92,8 @@ layer:
 
 ```rust
 use noyalib::Spanned;
-use serde::Deserialize;
 
-#[derive(Deserialize)]
+#[derive(serde::Deserialize)]
 struct ServerConfig {
     host: Spanned<String>,
     port: Spanned<u16>,
@@ -178,7 +177,7 @@ programmatic `Builder` shape doesn't track source bytes.
    keys (`<<`) — all of which `yaml-spanned` either inherits
    from `libyaml-safer` or doesn't expose.
 3. **Spans on the typed path.** `Spanned<T>` is a serde
-   wrapper, so it composes with any `#[derive(Deserialize)]`
+   wrapper, so it composes with any `#[derive(serde::Deserialize)]`
    target — not just the dynamic `Value`.
 4. **Comments preserved at the CST layer.**
    `noyalib::cst::Document::comments_at(path)` returns the

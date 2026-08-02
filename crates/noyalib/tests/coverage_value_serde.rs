@@ -18,13 +18,12 @@ use noyalib::{Value, from_value};
 // same cfg so the default-feature build does not trip `-D unused-imports`.
 #[cfg(feature = "lossless-u64")]
 use noyalib::to_value;
-use serde::Deserialize;
 
 #[test]
 fn enum_deserializes_from_bare_string() {
     // A unit enum variant deserialized from a bare `Value::String`
     // exercises the string-enum deserializer arm.
-    #[derive(Debug, Deserialize, PartialEq)]
+    #[derive(Debug, serde::Deserialize, PartialEq)]
     enum Level {
         Info,
         Warn,

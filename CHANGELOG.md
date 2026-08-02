@@ -1714,7 +1714,7 @@ non-breaking for typed deserialise; they affect only the
    `Value::Tagged(Tag("!Custom"), Value::String("hi"))`. Code
    that read tagged scalars via `as_str` / `as_i64` / etc. needs
    either a wrapper unwrap (`value.untag_ref().as_str()`), a
-   typed deserialise (`#[derive(Deserialize)] struct Foo`), or a
+   typed deserialise (`#[derive(serde::Deserialize)] struct Foo`), or a
    tag-aware `match`. See the migration recipe in
    [`doc/MIGRATION-FROM-SERDE-YAML.md`](doc/MIGRATION-FROM-SERDE-YAML.md#1-valuetagged-is-a-7th-variant--and-noyalib-preserves-scalar-tags-too).
 2. **`T: 'static` bound** on the public `from_str` /
@@ -1739,7 +1739,7 @@ non-breaking for typed deserialise; they affect only the
   can dispatch on it. Tagged sequences and tagged mappings
   already worked via the AST loader; this closes the gap for
   scalars.
-- **Typed targets are unchanged.** A `#[derive(Deserialize)]
+- **Typed targets are unchanged.** A `#[derive(serde::Deserialize)]
   struct Foo { x: u8 }` against `!Foo {x: 1}` still sees through
   the tag — that's the correct behaviour for the typed path and
   the only one that lets schema-tagged inputs deserialise into
