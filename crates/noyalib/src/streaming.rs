@@ -12,7 +12,7 @@ use crate::prelude::*;
 
 use rustc_hash::{FxHashMap, FxHashSet};
 use serde::Deserialize;
-use serde::de::{self, SeqAccess};
+use serde::de::{self};
 use smallvec::SmallVec;
 
 use crate::error::{Error, Result, closest_name};
@@ -1160,7 +1160,7 @@ struct StreamingSeqAccess<'a, 'de> {
     count: usize,
 }
 
-impl<'de> SeqAccess<'de> for StreamingSeqAccess<'_, 'de> {
+impl<'de> serde_core::de::SeqAccess<'de> for StreamingSeqAccess<'_, 'de> {
     type Error = Error;
     fn next_element_seed<T>(&mut self, seed: T) -> Result<Option<T::Value>>
     where

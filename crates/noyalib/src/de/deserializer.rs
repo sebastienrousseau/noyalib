@@ -8,7 +8,7 @@ use crate::prelude::*;
 use crate::span_context;
 use crate::value::{Number, Value};
 use serde::Deserialize;
-use serde::de::{self, SeqAccess};
+use serde::de::{self};
 
 /// A YAML deserializer.
 ///
@@ -560,7 +560,7 @@ impl<'de> ValueSeqAccess<'de> {
     }
 }
 
-impl<'de> SeqAccess<'de> for ValueSeqAccess<'de> {
+impl<'de> serde_core::de::SeqAccess<'de> for ValueSeqAccess<'de> {
     type Error = Error;
 
     fn next_element_seed<T>(&mut self, seed: T) -> Result<Option<T::Value>>

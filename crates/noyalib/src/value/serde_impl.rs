@@ -13,8 +13,6 @@ impl<'de> Deserialize<'de> for Value {
     where
         D: serde::Deserializer<'de>,
     {
-        use serde::de::SeqAccess;
-
         struct ValueVisitor;
 
         impl<'de> serde_core::de::Visitor<'de> for ValueVisitor {
@@ -58,7 +56,7 @@ impl<'de> Deserialize<'de> for Value {
 
             fn visit_seq<A>(self, mut seq: A) -> Result<Value, A::Error>
             where
-                A: SeqAccess<'de>,
+                A: serde_core::de::SeqAccess<'de>,
             {
                 // Pre-size from the SeqAccess size_hint when
                 // available — saves up to ~11 reallocations on a
@@ -153,7 +151,7 @@ struct ValueSeqAccess<'de> {
     iter: core::slice::Iter<'de, Value>,
 }
 
-impl<'de> serde::de::SeqAccess<'de> for ValueSeqAccess<'de> {
+impl<'de> serde_core::de::SeqAccess<'de> for ValueSeqAccess<'de> {
     type Error = crate::Error;
 
     fn next_element_seed<T>(&mut self, seed: T) -> crate::Result<Option<T::Value>>
