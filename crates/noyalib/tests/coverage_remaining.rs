@@ -234,10 +234,8 @@ fn value_deserializer_spanned_struct() {
 
 #[test]
 fn value_into_deserializer() {
-    // value.rs:2704-2705 — IntoDeserializer impl
-    use serde::de::IntoDeserializer;
     let val = Value::from("test");
-    let deser: &Value = (&val).into_deserializer();
+    let deser: &Value = serde_core::de::IntoDeserializer::into_deserializer(&val);
     let result: String = Deserialize::deserialize(deser).unwrap();
     assert_eq!(result, "test");
 }

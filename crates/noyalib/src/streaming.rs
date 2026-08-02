@@ -12,7 +12,7 @@ use crate::prelude::*;
 
 use rustc_hash::{FxHashMap, FxHashSet};
 use serde::Deserialize;
-use serde::de::{self, IntoDeserializer, MapAccess, SeqAccess, Visitor};
+use serde::de::{self, MapAccess, SeqAccess, Visitor};
 use smallvec::SmallVec;
 
 use crate::error::{Error, Result, closest_name};
@@ -1001,9 +1001,9 @@ impl<'de> de::Deserializer<'de> for &mut StreamingDeserializer<'de> {
             }
         }
         match self.next_event()? {
-            Event::Scalar { value, .. } => {
-                visitor.visit_enum(value.into_owned().into_deserializer())
-            }
+            Event::Scalar { value, .. } => visitor.visit_enum(
+                serde_core::de::IntoDeserializer::into_deserializer(value.into_owned()),
+            ),
             Event::MappingStart { .. } => {
                 if let Event::Scalar { value, .. } = self.next_event()? {
                     visitor.visit_enum(StreamingEnumAccess {

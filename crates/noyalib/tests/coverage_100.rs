@@ -1546,11 +1546,8 @@ fn ref_value_deserialize_struct_normal() {
 
 #[test]
 fn ref_value_into_deserializer() {
-    // IntoDeserializer impl for &Value (lines 2701-2707)
-    use serde::de::IntoDeserializer;
-
     let v = Value::from(42);
-    let de: &Value = (&v).into_deserializer();
+    let de: &Value = serde_core::de::IntoDeserializer::into_deserializer(&v);
     let result: i64 = from_value(de).unwrap();
     assert_eq!(result, 42);
 }

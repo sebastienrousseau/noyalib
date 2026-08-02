@@ -8,7 +8,7 @@ use crate::prelude::*;
 use crate::span_context;
 use crate::value::{Number, Value};
 use serde::Deserialize;
-use serde::de::{self, IntoDeserializer, MapAccess, SeqAccess, Visitor};
+use serde::de::{self, MapAccess, SeqAccess, Visitor};
 
 /// A YAML deserializer.
 ///
@@ -795,7 +795,7 @@ impl<'de> MapAccess<'de> for SpannedMapAccess<'de> {
             ),
         };
 
-        seed.deserialize(val.into_deserializer())
+        seed.deserialize(serde_core::de::IntoDeserializer::into_deserializer(val))
     }
 }
 

@@ -141,7 +141,7 @@ impl Serialize for Value {
 // Deserializer implementation for &Value
 // ============================================================================
 
-impl<'de> serde::de::IntoDeserializer<'de, crate::Error> for &'de Value {
+impl<'de> serde_core::de::IntoDeserializer<'de, crate::Error> for &'de Value {
     type Deserializer = Self;
 
     fn into_deserializer(self) -> Self::Deserializer {
