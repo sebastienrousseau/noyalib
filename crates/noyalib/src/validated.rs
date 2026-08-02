@@ -28,7 +28,7 @@
 
 use crate::prelude::*;
 use core::ops::{Deref, DerefMut};
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use serde::{Deserialize, Deserializer, Serialize};
 
 /// A newtype that validates its inner value using the [`garde`] crate.
 ///
@@ -198,7 +198,7 @@ where
 impl<T: Serialize> Serialize for Validated<T> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
-        S: Serializer,
+        S: serde_core::Serializer,
     {
         self.0.serialize(serializer)
     }
@@ -208,7 +208,7 @@ impl<T: Serialize> Serialize for Validated<T> {
 impl<T: Serialize> Serialize for ValidatedValidator<T> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
-        S: Serializer,
+        S: serde_core::Serializer,
     {
         self.0.serialize(serializer)
     }

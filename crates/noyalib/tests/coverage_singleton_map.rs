@@ -47,7 +47,7 @@ fn with_serialize_transforms_tagged_node() {
     // the walk must recurse through a `Value::Tagged` node too.
     struct KeyWrap;
     impl Serialize for KeyWrap {
-        fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        fn serialize<S: serde_core::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
             noyalib::with::singleton_map_with::serialize_with(
                 &tagged_seq(),
                 s,

@@ -6,7 +6,7 @@
 use crate::prelude::*;
 use core::fmt::Write as _;
 
-use serde::ser::{self, Serialize};
+use serde::ser::Serialize;
 
 use crate::error::{Error, Result};
 use crate::value::{Mapping, Number, Sequence, Tag, TaggedValue, Value};
@@ -1446,7 +1446,7 @@ pub fn to_writer_multi_with_config<W: std::io::Write, T: Serialize>(
 #[derive(Debug, Copy, Clone)]
 pub struct Serializer;
 
-impl ser::Serializer for Serializer {
+impl serde_core::ser::Serializer for Serializer {
     type Ok = Value;
     type Error = Error;
 

@@ -87,7 +87,7 @@ impl<T> FlowSeq<T> {
 impl<T: Serialize> Serialize for FlowSeq<T> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
-        S: serde::Serializer,
+        S: serde_core::Serializer,
     {
         serializer.serialize_newtype_struct(MAGIC_FLOW_SEQ, &self.0)
     }
@@ -159,7 +159,7 @@ impl<T> FlowMap<T> {
 impl<T: Serialize> Serialize for FlowMap<T> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
-        S: serde::Serializer,
+        S: serde_core::Serializer,
     {
         serializer.serialize_newtype_struct(MAGIC_FLOW_MAP, &self.0)
     }
@@ -236,7 +236,7 @@ impl<'a> LitStr<'a> {
 impl Serialize for LitStr<'_> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
-        S: serde::Serializer,
+        S: serde_core::Serializer,
     {
         serializer.serialize_newtype_struct(MAGIC_LIT_STR, self.0)
     }
@@ -297,7 +297,7 @@ impl LitString {
 impl Serialize for LitString {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
-        S: serde::Serializer,
+        S: serde_core::Serializer,
     {
         serializer.serialize_newtype_struct(MAGIC_LIT_STR, &self.0)
     }
@@ -372,7 +372,7 @@ impl<'a> FoldStr<'a> {
 impl Serialize for FoldStr<'_> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
-        S: serde::Serializer,
+        S: serde_core::Serializer,
     {
         serializer.serialize_newtype_struct(MAGIC_FOLD_STR, self.0)
     }
@@ -432,7 +432,7 @@ impl FoldString {
 impl Serialize for FoldString {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
-        S: serde::Serializer,
+        S: serde_core::Serializer,
     {
         serializer.serialize_newtype_struct(MAGIC_FOLD_STR, &self.0)
     }
@@ -523,7 +523,7 @@ impl<T> Deref for Commented<T> {
 impl<T: Serialize> Serialize for Commented<T> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
-        S: serde::Serializer,
+        S: serde_core::Serializer,
     {
         use serde_core::ser::SerializeTuple as _;
 
@@ -533,7 +533,7 @@ impl<T: Serialize> Serialize for Commented<T> {
         impl<T: Serialize> Serialize for Inner<'_, T> {
             fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
             where
-                S: serde::Serializer,
+                S: serde_core::Serializer,
             {
                 let mut tup = serializer.serialize_tuple(2)?;
                 tup.serialize_element(self.0)?;
@@ -608,7 +608,7 @@ impl<T> SpaceAfter<T> {
 impl<T: Serialize> Serialize for SpaceAfter<T> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
-        S: serde::Serializer,
+        S: serde_core::Serializer,
     {
         serializer.serialize_newtype_struct(MAGIC_SPACE_AFTER, &self.0)
     }

@@ -321,7 +321,7 @@ impl fmt::Display for TaggedValue {
 impl Serialize for TaggedValue {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
-        S: serde::Serializer,
+        S: serde_core::Serializer,
     {
         use serde_core::ser::SerializeMap as _;
         let mut map = serializer.serialize_map(Some(1))?;

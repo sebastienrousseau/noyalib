@@ -379,7 +379,7 @@ impl Hash for BorrowedValue<'_> {
 impl Serialize for BorrowedValue<'_> {
     fn serialize<S>(&self, serializer: S) -> core::result::Result<S::Ok, S::Error>
     where
-        S: serde::Serializer,
+        S: serde_core::Serializer,
     {
         match self {
             Self::Null => serializer.serialize_none(),

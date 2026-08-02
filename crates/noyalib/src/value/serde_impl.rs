@@ -105,7 +105,7 @@ impl<'de> Deserialize<'de> for Value {
 impl Serialize for Value {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
-        S: serde::Serializer,
+        S: serde_core::Serializer,
     {
         match self {
             Value::Null => serializer.serialize_none(),

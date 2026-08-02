@@ -246,7 +246,7 @@ feature — `no_std` builds use the regular `T` directly.
 
 ## Serialiser
 
-`crates/noyalib/src/ser.rs`. Single-pass `serde::Serializer`
+`crates/noyalib/src/ser.rs`. Single-pass `serde_core::Serializer`
 that emits canonical YAML 1.2 output:
 
 - Plain scalars when safe (no leading `-` / `?` / `:` / `,` /

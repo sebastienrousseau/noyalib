@@ -821,7 +821,7 @@ impl fmt::Display for Mapping {
 impl Serialize for Mapping {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
-        S: serde::Serializer,
+        S: serde_core::Serializer,
     {
         use serde_core::ser::SerializeMap as _;
         let mut map = serializer.serialize_map(Some(self.len()))?;
@@ -1301,7 +1301,7 @@ impl fmt::Display for MappingAny {
 impl Serialize for MappingAny {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
-        S: serde::Serializer,
+        S: serde_core::Serializer,
     {
         use serde_core::ser::SerializeMap as _;
         let mut map = serializer.serialize_map(Some(self.len()))?;

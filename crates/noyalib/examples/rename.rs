@@ -14,12 +14,12 @@ use noyalib::{from_str, to_string};
 
 mod snake_case_keys {
     use noyalib::with::singleton_map_with;
-    use serde::{Deserializer, Serializer};
+    use serde::Deserializer;
 
     pub(super) fn serialize<T, S>(value: &T, serializer: S) -> Result<S::Ok, S::Error>
     where
         T: serde::Serialize,
-        S: Serializer,
+        S: serde_core::Serializer,
     {
         singleton_map_with::serialize_with(value, serializer, singleton_map_with::to_snake_case)
     }
@@ -52,12 +52,12 @@ struct ApiEndpoint {
 
 mod kebab_case_keys {
     use noyalib::with::singleton_map_with;
-    use serde::{Deserializer, Serializer};
+    use serde::Deserializer;
 
     pub(super) fn serialize<T, S>(value: &T, serializer: S) -> Result<S::Ok, S::Error>
     where
         T: serde::Serialize,
-        S: Serializer,
+        S: serde_core::Serializer,
     {
         singleton_map_with::serialize_with(value, serializer, singleton_map_with::to_kebab_case)
     }
@@ -91,12 +91,12 @@ struct LogConfig {
 
 mod lowercase_keys {
     use noyalib::with::singleton_map_with;
-    use serde::{Deserializer, Serializer};
+    use serde::Deserializer;
 
     pub(super) fn serialize<T, S>(value: &T, serializer: S) -> Result<S::Ok, S::Error>
     where
         T: serde::Serialize,
-        S: Serializer,
+        S: serde_core::Serializer,
     {
         singleton_map_with::serialize_with(value, serializer, singleton_map_with::to_lowercase)
     }

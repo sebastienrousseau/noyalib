@@ -891,7 +891,7 @@ fn singleton_map_with_serialize_deserialize() {
         PostData,
     }
 
-    fn my_ser<S: serde::Serializer>(v: &Action, s: S) -> Result<S::Ok, S::Error> {
+    fn my_ser<S: serde_core::Serializer>(v: &Action, s: S) -> Result<S::Ok, S::Error> {
         noyalib::with::singleton_map_with::serialize_with(v, s, |k| {
             noyalib::with::singleton_map_with::to_snake_case(k)
         })
@@ -926,7 +926,7 @@ fn singleton_map_with_unit_variant() {
         Active,
     }
 
-    fn my_ser<S: serde::Serializer>(v: &Flag, s: S) -> Result<S::Ok, S::Error> {
+    fn my_ser<S: serde_core::Serializer>(v: &Flag, s: S) -> Result<S::Ok, S::Error> {
         noyalib::with::singleton_map_with::serialize_with(v, s, |k| k.to_lowercase())
     }
 

@@ -31,7 +31,7 @@
 // Copyright (c) 2026 Noyalib. All rights reserved.
 
 use crate::prelude::*;
-use serde::{Deserializer, Serialize, Serializer};
+use serde::{Deserializer, Serialize};
 
 /// Recursively transform a Value to use singleton map representation for enums.
 fn transform_to_singleton_map(value: crate::Value) -> crate::Value {
@@ -81,7 +81,7 @@ fn transform_to_singleton_map(value: crate::Value) -> crate::Value {
 pub fn serialize<T, S>(value: &T, serializer: S) -> Result<S::Ok, S::Error>
 where
     T: Serialize,
-    S: Serializer,
+    S: serde_core::Serializer,
 {
     // Serialize to Value first
     let yaml_value = crate::to_value(value).map_err(serde_core::ser::Error::custom)?;

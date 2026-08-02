@@ -195,7 +195,7 @@ impl<T> From<T> for Spanned<T> {
 impl<T: Serialize> Serialize for Spanned<T> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
-        S: serde::Serializer,
+        S: serde_core::Serializer,
     {
         // Transparent: just serialize the inner value
         self.value.serialize(serializer)

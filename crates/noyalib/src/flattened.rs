@@ -157,7 +157,7 @@ where
 {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
-        S: serde::Serializer,
+        S: serde_core::Serializer,
     {
         // Round-trip transparency: serializing a `Flattened<T>`
         // is equivalent to serializing the typed view alone. This

@@ -41,7 +41,7 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 // Copyright (c) 2026 Noyalib. All rights reserved.
 
-use serde::{Deserializer, Serialize, Serializer};
+use serde::{Deserializer, Serialize};
 
 /// Serialize an optional value as a singleton map.
 ///
@@ -72,7 +72,7 @@ use serde::{Deserializer, Serialize, Serializer};
 pub fn serialize<T, S>(value: &Option<T>, serializer: S) -> Result<S::Ok, S::Error>
 where
     T: Serialize,
-    S: Serializer,
+    S: serde_core::Serializer,
 {
     match value {
         Some(inner) => {

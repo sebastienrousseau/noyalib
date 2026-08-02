@@ -186,7 +186,7 @@ impl<T> RcAnchor<T> {
 impl<T: Serialize> Serialize for RcAnchor<T> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
-        S: serde::Serializer,
+        S: serde_core::Serializer,
     {
         #[cfg(feature = "std")]
         {
@@ -279,7 +279,7 @@ impl<T> ArcAnchor<T> {
 impl<T: Serialize> Serialize for ArcAnchor<T> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
-        S: serde::Serializer,
+        S: serde_core::Serializer,
     {
         #[cfg(feature = "std")]
         {
@@ -388,7 +388,7 @@ impl<T> From<RcWeak<T>> for RcWeakAnchor<T> {
 impl<T: Serialize> Serialize for RcWeakAnchor<T> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
-        S: serde::Serializer,
+        S: serde_core::Serializer,
     {
         match self.0.upgrade() {
             Some(v) => {
@@ -498,7 +498,7 @@ impl<T> From<ArcWeak<T>> for ArcWeakAnchor<T> {
 impl<T: Serialize> Serialize for ArcWeakAnchor<T> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
-        S: serde::Serializer,
+        S: serde_core::Serializer,
     {
         match self.0.upgrade() {
             Some(v) => {
@@ -917,7 +917,7 @@ impl<T> RcRecursive<T> {
 impl<T: Serialize> Serialize for RcRecursive<T> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
-        S: serde::Serializer,
+        S: serde_core::Serializer,
     {
         match &*self.borrow() {
             Some(v) => v.serialize(serializer),
@@ -1073,7 +1073,7 @@ impl<T> ArcRecursive<T> {
 impl<T: Serialize> Serialize for ArcRecursive<T> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
-        S: serde::Serializer,
+        S: serde_core::Serializer,
     {
         match &*self.lock() {
             Some(v) => v.serialize(serializer),

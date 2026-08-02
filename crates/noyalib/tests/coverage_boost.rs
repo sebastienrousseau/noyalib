@@ -2737,7 +2737,7 @@ fn singleton_map_with_roundtrip() {
         status: Status,
     }
 
-    fn ser_status<S: serde::Serializer>(val: &Status, s: S) -> Result<S::Ok, S::Error> {
+    fn ser_status<S: serde_core::Serializer>(val: &Status, s: S) -> Result<S::Ok, S::Error> {
         noyalib::with::singleton_map_with::serialize_with(val, s, to_lower)
     }
     fn de_status<'de, D: serde::Deserializer<'de>>(d: D) -> Result<Status, D::Error> {
