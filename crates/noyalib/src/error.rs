@@ -45,6 +45,7 @@ impl Location {
     /// let loc = Location::from_index("hello\nworld", 6);
     /// assert_eq!(loc.line(), 2);
     /// ```
+    #[must_use]
     pub fn from_index(input: &str, index: usize) -> Self {
         let mut line = 1;
         let mut column = 1;
@@ -75,6 +76,7 @@ impl Location {
     /// let loc = Location::new(1, 1, 0);
     /// assert_eq!(loc.line(), 1);
     /// ```
+    #[must_use]
     pub fn new(line: usize, col: usize, index: usize) -> Self {
         Location {
             index,
@@ -92,6 +94,7 @@ impl Location {
     /// let loc = Location::from_index("abc", 2);
     /// assert_eq!(loc.index(), 2);
     /// ```
+    #[must_use]
     pub fn index(&self) -> usize {
         self.index
     }
@@ -110,6 +113,7 @@ impl Location {
     /// let loc = Location::from_index("a\nb", 2);
     /// assert_eq!(loc.line(), 2);
     /// ```
+    #[must_use]
     pub fn line(&self) -> usize {
         self.line
     }
@@ -128,6 +132,7 @@ impl Location {
     /// let loc = Location::from_index("abcd", 3);
     /// assert_eq!(loc.column(), 4);
     /// ```
+    #[must_use]
     pub fn column(&self) -> usize {
         self.column
     }
@@ -886,6 +891,7 @@ impl Error {
     /// let err = from_str::<Value>("a: [unclosed").unwrap_err();
     /// let _ = err.location();
     /// ```
+    #[must_use]
     pub fn location(&self) -> Option<Location> {
         match self {
             Error::ParseWithLocation { location, .. } => Some(*location),
@@ -916,6 +922,7 @@ impl Error {
     /// let collision = from_str::<Value>("1: a\n\"1\": b\n").unwrap_err();
     /// assert_eq!(collision.kind(), ErrorKind::KeyCollision);
     /// ```
+    #[must_use]
     pub fn kind(&self) -> ErrorKind {
         match self {
             Error::Parse(_) | Error::ParseWithLocation { .. } => ErrorKind::Syntax,
@@ -964,6 +971,7 @@ impl Error {
     /// let formatted = err.format_with_source(source);
     /// assert!(formatted.contains("error"));
     /// ```
+    #[must_use]
     pub fn format_with_source(&self, source: &str) -> String {
         let loc = match self.location() {
             Some(l) => l,
@@ -1014,6 +1022,7 @@ impl Error {
     /// assert!(formatted.contains("|"));
     /// assert!(formatted.contains("bad: y"));
     /// ```
+    #[must_use]
     pub fn format_with_source_radius(&self, source: &str, radius: usize) -> String {
         let loc = match self.location() {
             Some(l) => l,
@@ -1143,6 +1152,7 @@ impl Error {
     /// let shared = noyalib::Error::EndOfStream.into_shared();
     /// assert!(matches!(&*shared, noyalib::Error::EndOfStream));
     /// ```
+    #[must_use]
     pub fn into_shared(self) -> Arc<Self> {
         match self {
             Error::Shared(arc) => arc,
@@ -1159,6 +1169,7 @@ impl Error {
     /// let e = noyalib::Error::Shared(Arc::new(noyalib::Error::EndOfStream));
     /// assert!(e.is_shared());
     /// ```
+    #[must_use]
     pub fn is_shared(&self) -> bool {
         matches!(self, Error::Shared(_))
     }
@@ -1172,6 +1183,7 @@ impl Error {
     /// let e = noyalib::Error::Shared(Arc::new(noyalib::Error::EndOfStream));
     /// assert!(e.as_inner().is_some());
     /// ```
+    #[must_use]
     pub fn as_inner(&self) -> Option<&Self> {
         match self {
             Error::Shared(arc) => Some(&**arc),
@@ -1218,6 +1230,7 @@ impl Error {
     /// let e = noyalib::Error::from_shared(Arc::new(noyalib::Error::EndOfStream));
     /// assert!(e.is_shared());
     /// ```
+    #[must_use]
     pub fn from_shared(arc: Arc<Error>) -> Error {
         Error::Shared(arc)
     }
@@ -1240,6 +1253,7 @@ impl Error {
     /// let rendered = err.render(source);
     /// assert!(rendered.contains("error"));
     /// ```
+    #[must_use]
     pub fn render(&self, source: &str) -> String {
         self.render_with_options(source, &RenderOptions::default())
     }
@@ -1262,6 +1276,7 @@ impl Error {
     /// let rendered = err.render_with_options(source, &opts);
     /// assert!(rendered.contains("error"));
     /// ```
+    #[must_use]
     pub fn render_with_options(&self, source: &str, opts: &RenderOptions) -> String {
         let plain = if opts.crop_radius == 0 {
             self.format_with_source(source)
@@ -1413,6 +1428,7 @@ impl<'a> CroppedRegion<'a> {
     /// assert_eq!(r.focus_index, 1);
     /// assert_eq!(r.focus_line, 3);
     /// ```
+    #[must_use]
     pub fn extract(source: &'a str, target_line: usize, radius: usize) -> CroppedRegion<'a> {
         let all: Vec<&str> = source.lines().collect();
         if all.is_empty() {

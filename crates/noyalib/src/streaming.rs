@@ -105,6 +105,7 @@ impl fmt::Debug for StreamingDeserializer<'_> {
 impl<'a> StreamingDeserializer<'a> {
     /// Create a streaming deserializer over the given YAML input using
     /// default parser settings.
+    #[must_use]
     pub fn new(input: &'a str) -> Self {
         Self::with_config(input, ParseConfig::default())
     }

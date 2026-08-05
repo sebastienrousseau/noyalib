@@ -177,6 +177,7 @@ impl<T> RcAnchor<T> {
     /// let inner = a.into_inner();
     /// assert_eq!(*inner, 7);
     /// ```
+    #[must_use]
     pub fn into_inner(self) -> Rc<T> {
         self.0
     }
@@ -270,6 +271,7 @@ impl<T> ArcAnchor<T> {
     /// let inner = a.into_inner();
     /// assert_eq!(*inner, 7);
     /// ```
+    #[must_use]
     pub fn into_inner(self) -> Arc<T> {
         self.0
     }
@@ -346,6 +348,7 @@ impl<T> RcWeakAnchor<T> {
     /// let w: RcWeakAnchor<String> = RcWeakAnchor::dangling();
     /// assert!(w.upgrade().is_none());
     /// ```
+    #[must_use]
     pub fn dangling() -> Self {
         Self(RcWeak::new())
     }
@@ -360,6 +363,7 @@ impl<T> RcWeakAnchor<T> {
     /// let inner = w.into_inner();
     /// assert!(inner.upgrade().is_none());
     /// ```
+    #[must_use]
     pub fn into_inner(self) -> RcWeak<T> {
         self.0
     }
@@ -373,6 +377,7 @@ impl<T> RcWeakAnchor<T> {
     /// let w: RcWeakAnchor<i32> = RcWeakAnchor::dangling();
     /// assert!(w.upgrade().is_none());
     /// ```
+    #[must_use]
     pub fn upgrade(&self) -> Option<Rc<T>> {
         self.0.upgrade()
     }
@@ -456,6 +461,7 @@ impl<T> ArcWeakAnchor<T> {
     /// let w: ArcWeakAnchor<String> = ArcWeakAnchor::dangling();
     /// assert!(w.upgrade().is_none());
     /// ```
+    #[must_use]
     pub fn dangling() -> Self {
         Self(ArcWeak::new())
     }
@@ -470,6 +476,7 @@ impl<T> ArcWeakAnchor<T> {
     /// let inner = w.into_inner();
     /// assert!(inner.upgrade().is_none());
     /// ```
+    #[must_use]
     pub fn into_inner(self) -> ArcWeak<T> {
         self.0
     }
@@ -483,6 +490,7 @@ impl<T> ArcWeakAnchor<T> {
     /// let w: ArcWeakAnchor<i32> = ArcWeakAnchor::dangling();
     /// assert!(w.upgrade().is_none());
     /// ```
+    #[must_use]
     pub fn upgrade(&self) -> Option<Arc<T>> {
         self.0.upgrade()
     }
@@ -574,6 +582,7 @@ impl<T> AnchorRegistry<T> {
     /// let reg = AnchorRegistry::<String>::new();
     /// assert!(reg.is_empty());
     /// ```
+    #[must_use]
     pub fn new() -> Self {
         Self {
             anchors: FxHashMap::default(),
@@ -610,6 +619,7 @@ impl<T> AnchorRegistry<T> {
     /// assert_eq!(*reg.resolve("a").unwrap(), 1);
     /// assert!(reg.resolve("missing").is_none());
     /// ```
+    #[must_use]
     pub fn resolve(&self, name: &str) -> Option<Rc<T>> {
         self.anchors.get(name).cloned()
     }
@@ -624,6 +634,7 @@ impl<T> AnchorRegistry<T> {
     /// let _ = reg.register("a".into(), 1);
     /// assert_eq!(reg.len(), 1);
     /// ```
+    #[must_use]
     pub fn len(&self) -> usize {
         self.anchors.len()
     }
@@ -637,6 +648,7 @@ impl<T> AnchorRegistry<T> {
     /// let reg = AnchorRegistry::<i32>::new();
     /// assert!(reg.is_empty());
     /// ```
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.anchors.is_empty()
     }
@@ -701,6 +713,7 @@ impl<T> ArcAnchorRegistry<T> {
     /// let reg = ArcAnchorRegistry::<String>::new();
     /// assert!(reg.is_empty());
     /// ```
+    #[must_use]
     pub fn new() -> Self {
         Self {
             anchors: FxHashMap::default(),
@@ -735,6 +748,7 @@ impl<T> ArcAnchorRegistry<T> {
     /// let _ = reg.register("a".into(), 1);
     /// assert_eq!(*reg.resolve("a").unwrap(), 1);
     /// ```
+    #[must_use]
     pub fn resolve(&self, name: &str) -> Option<Arc<T>> {
         self.anchors.get(name).cloned()
     }
@@ -748,6 +762,7 @@ impl<T> ArcAnchorRegistry<T> {
     /// let reg = ArcAnchorRegistry::<i32>::new();
     /// assert_eq!(reg.len(), 0);
     /// ```
+    #[must_use]
     pub fn len(&self) -> usize {
         self.anchors.len()
     }
@@ -761,6 +776,7 @@ impl<T> ArcAnchorRegistry<T> {
     /// let reg = ArcAnchorRegistry::<i32>::new();
     /// assert!(reg.is_empty());
     /// ```
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.anchors.is_empty()
     }
@@ -869,11 +885,13 @@ impl<T> RcRecursive<T> {
     }
 
     /// Borrow the inner value immutably (runtime-checked).
+    #[must_use]
     pub fn borrow(&self) -> core::cell::Ref<'_, Option<T>> {
         self.0.borrow()
     }
 
     /// Borrow the inner value mutably (runtime-checked).
+    #[must_use]
     pub fn borrow_mut(&self) -> core::cell::RefMut<'_, Option<T>> {
         self.0.borrow_mut()
     }
@@ -893,11 +911,13 @@ impl<T> RcRecursive<T> {
     }
 
     /// Drop the inner value, returning it if any.
+    #[must_use]
     pub fn take(&self) -> Option<T> {
         self.borrow_mut().take()
     }
 
     /// Number of strong `Rc` references to this recursive cell.
+    #[must_use]
     pub fn strong_count(&self) -> usize {
         Rc::strong_count(&self.0)
     }
@@ -907,6 +927,7 @@ impl<T> RcRecursive<T> {
     /// referenced from multiple places — the weak reference does
     /// not count towards the strong-count, so cycle storage is
     /// released as soon as the last strong [`RcRecursive`] drops.
+    #[must_use]
     pub fn downgrade(&self) -> RcRecursion<T> {
         RcRecursion(Rc::downgrade(&self.0))
     }
@@ -1053,16 +1074,19 @@ impl<T> ArcRecursive<T> {
     }
 
     /// Drop the inner value, returning it if any.
+    #[must_use]
     pub fn take(&self) -> Option<T> {
         self.lock().take()
     }
 
     /// Number of strong `Arc` references to this recursive cell.
+    #[must_use]
     pub fn strong_count(&self) -> usize {
         Arc::strong_count(&self.0)
     }
 
     /// Downgrade to an [`ArcRecursion`] weak reference.
+    #[must_use]
     pub fn downgrade(&self) -> ArcRecursion<T> {
         ArcRecursion(Arc::downgrade(&self.0))
     }
