@@ -39,7 +39,7 @@ fn describe(value: &Value, prefix: &str, lines: &mut Vec<String>) {
         Value::Mapping(map) => {
             for (key, val) in map {
                 let path = if prefix.is_empty() {
-                    key.to_string()
+                    key.clone()
                 } else {
                     format!("{prefix}.{key}")
                 };
