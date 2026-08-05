@@ -1686,7 +1686,7 @@ impl<'a> Scanner<'a> {
                     while e > sk.index
                         && matches!(
                             self.input.get(e - 1).copied(),
-                            Some(b' ') | Some(b'\t') | Some(b'\n') | Some(b'\r')
+                            Some(b' ' | b'\t' | b'\n' | b'\r')
                         )
                     {
                         e -= 1;

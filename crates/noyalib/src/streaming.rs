@@ -538,9 +538,11 @@ impl<'a> StreamingDeserializer<'a> {
     fn take_tag_from_current(&mut self) -> Option<(String, String)> {
         let _ = self.peek_event().ok()?;
         match self.current.as_mut() {
-            Some(Event::Scalar { tag, .. })
-            | Some(Event::SequenceStart { tag, .. })
-            | Some(Event::MappingStart { tag, .. }) => tag.take(),
+            Some(
+                Event::Scalar { tag, .. }
+                | Event::SequenceStart { tag, .. }
+                | Event::MappingStart { tag, .. },
+            ) => tag.take(),
             _ => None,
         }
     }
@@ -876,27 +878,21 @@ impl<'de> serde_core::Deserializer<'de> for &mut StreamingDeserializer<'de> {
         }
         self.skip_to_content()?;
         if let Some(t) = self.take_tag_from_current() {
-            match (t.0.as_str(), t.1.as_str()) {
-                ("!!", "int")
-                | ("!!", "float")
-                | ("!!", "str")
-                | ("!!", "bool")
-                | ("!!", "null")
-                | ("!!", "seq")
-                | ("!!", "map") => {}
-                _ => {
-                    // TagRegistry opt-in: drop the tag and let the
-                    // inner value deserialize straight into the
-                    // newtype's target type.
-                    if self.tag_in_registry(&t) {
-                        return visitor.visit_newtype_struct(self);
-                    }
-                    return visitor.visit_map(StreamingTagMapAccess {
-                        de: self,
-                        tag: t,
-                        done: false,
-                    });
+            if let ("!!", "int" | "float" | "str" | "bool" | "null" | "seq" | "map") =
+                (t.0.as_str(), t.1.as_str())
+            {
+            } else {
+                // TagRegistry opt-in: drop the tag and let the
+                // inner value deserialize straight into the
+                // newtype's target type.
+                if self.tag_in_registry(&t) {
+                    return visitor.visit_newtype_struct(self);
                 }
+                return visitor.visit_map(StreamingTagMapAccess {
+                    de: self,
+                    tag: t,
+                    done: false,
+                });
             }
         }
         visitor.visit_newtype_struct(self)
@@ -987,13 +983,7 @@ impl<'de> serde_core::Deserializer<'de> for &mut StreamingDeserializer<'de> {
         self.skip_to_content()?;
         if let Some(t) = self.take_tag_from_current() {
             match (t.0.as_str(), t.1.as_str()) {
-                ("!!", "int")
-                | ("!!", "float")
-                | ("!!", "str")
-                | ("!!", "bool")
-                | ("!!", "null")
-                | ("!!", "seq")
-                | ("!!", "map") => {}
+                ("!!", "int" | "float" | "str" | "bool" | "null" | "seq" | "map") => {}
                 _ => {
                     return visitor.visit_enum(StreamingTagEnumAccess { de: self, tag: t });
                 }
@@ -1649,13 +1639,10 @@ pub(crate) fn tag_is_registry_stripped(
 ) -> bool {
     if matches!(
         (handle, suffix),
-        ("!!", "int")
-            | ("!!", "float")
-            | ("!!", "str")
-            | ("!!", "bool")
-            | ("!!", "null")
-            | ("!!", "seq")
-            | ("!!", "map")
+        (
+            "!!",
+            "int" | "float" | "str" | "bool" | "null" | "seq" | "map"
+        )
     ) {
         return false;
     }
