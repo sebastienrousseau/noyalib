@@ -1511,19 +1511,11 @@ fn truncate_with_ellipsis(s: String, max_chars: usize) -> String {
     if max_chars < 3 {
         // No room for `...` — return the longest character-aligned
         // prefix that fits.
-        let end = s
-            .char_indices()
-            .nth(max_chars)
-            .map(|(i, _)| i)
-            .unwrap_or(s.len());
+        let end = s.char_indices().nth(max_chars).map_or(s.len(), |(i, _)| i);
         return s[..end].to_owned();
     }
     let keep_chars = max_chars - 3;
-    let end = s
-        .char_indices()
-        .nth(keep_chars)
-        .map(|(i, _)| i)
-        .unwrap_or(s.len());
+    let end = s.char_indices().nth(keep_chars).map_or(s.len(), |(i, _)| i);
     let mut out = String::with_capacity(end + 3);
     out.push_str(&s[..end]);
     out.push_str("...");

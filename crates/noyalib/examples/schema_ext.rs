@@ -49,7 +49,7 @@ fn describe(value: &Value, prefix: &str, lines: &mut Vec<String>) {
                         describe(val, &path, lines);
                     }
                     Value::Sequence(seq) => {
-                        let item_type = seq.first().map(type_name).unwrap_or("any");
+                        let item_type = seq.first().map_or("any", type_name);
                         lines.push(format!("{path:<30} list<{item_type}>"));
                     }
                     _ => {

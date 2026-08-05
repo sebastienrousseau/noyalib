@@ -1679,8 +1679,7 @@ impl<'a> Scanner<'a> {
                 let key_end = self
                     .tokens
                     .last()
-                    .map(|t| t.span.end)
-                    .unwrap_or(sk.index)
+                    .map_or(sk.index, |t| t.span.end)
                     .max(sk.index);
                 let key_end_trimmed = {
                     let mut e = key_end;

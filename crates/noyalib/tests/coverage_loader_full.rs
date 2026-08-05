@@ -455,5 +455,5 @@ fn alias_to_null_anchor_size_estimated() {
     // estimate_value_size for Value::Null is the uncovered line.
     let yaml = "a: &n null\nb: *n\nc: *n\n";
     let v: Value = from_str(yaml).unwrap();
-    assert!(v.get("b").map(|v| v.is_null()).unwrap_or(false));
+    assert!(v.get("b").is_some_and(|v| v.is_null()));
 }

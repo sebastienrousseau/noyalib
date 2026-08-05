@@ -15,9 +15,10 @@ use noyalib::{Value, from_str};
 
 /// Extract a scalar value at a dotted path, formatted for display.
 fn val(v: &Value, path: &str) -> String {
-    v.get_path(path)
-        .map(|v| v.to_string().trim_matches('"').to_string())
-        .unwrap_or_else(|| "?".to_string())
+    v.get_path(path).map_or_else(
+        || "?".to_string(),
+        |v| v.to_string().trim_matches('"').to_string(),
+    )
 }
 
 fn main() {

@@ -33,8 +33,7 @@ fn main() {
                 "features = {} items",
                 v.get("features")
                     .and_then(|v| v.as_sequence())
-                    .map(|s| s.len())
-                    .unwrap_or(0)
+                    .map_or(0, |s| s.len())
             ),
         ]
     });
