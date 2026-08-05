@@ -1813,7 +1813,7 @@ fn parse_sexagesimal_float(s: &str) -> Option<f64> {
         if idx > 0 && n >= 60.0 {
             return None;
         }
-        total = total * 60.0 + n;
+        total = total.mul_add(60.0, n);
     }
     Some(sign * total)
 }
