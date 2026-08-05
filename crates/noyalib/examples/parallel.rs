@@ -36,7 +36,7 @@ fn build_stream(document_count: usize) -> String {
     // shape is representative of structured-audit records.
     let mut s = String::with_capacity(document_count * 320);
     for i in 0..document_count {
-        s.push_str(&format!("---\nid: {i}\nkind: audit\npayload: entry-{i}-",));
+        s.push_str(&format!("---\nid: {i}\nkind: audit\npayload: entry-{i}-"));
         for j in 0..12 {
             s.push_str(&format!("field{j}-value-{i}-{j} "));
         }
