@@ -2489,7 +2489,7 @@ fn ser_commented_wrong_length() {
         Value::Sequence(vec![Value::from(1)]),
     )));
     let yaml = to_string(&v).unwrap();
-    assert!(yaml.contains("1"));
+    assert!(yaml.contains('1'));
 }
 
 #[test]
@@ -2521,9 +2521,9 @@ fn ser_multi_doc() {
     let docs = vec![1, 2, 3];
     let yaml = to_string_multi(&docs).unwrap();
     assert!(yaml.contains("---"));
-    assert!(yaml.contains("1"));
-    assert!(yaml.contains("2"));
-    assert!(yaml.contains("3"));
+    assert!(yaml.contains('1'));
+    assert!(yaml.contains('2'));
+    assert!(yaml.contains('3'));
 }
 
 // --- ser.rs: write_literal_block and write_folded_block via fmt types ---
@@ -2532,14 +2532,14 @@ fn ser_multi_doc() {
 fn ser_literal_block_via_lit_str() {
     let v = LitStr("hello\nworld\n");
     let yaml = to_string(&v).unwrap();
-    assert!(yaml.contains("|"));
+    assert!(yaml.contains('|'));
 }
 
 #[test]
 fn ser_folded_block_via_fold_str() {
     let v = FoldStr("hello\nworld\n");
     let yaml = to_string(&v).unwrap();
-    assert!(yaml.contains(">"));
+    assert!(yaml.contains('>'));
 }
 
 #[test]
@@ -2626,8 +2626,8 @@ fn scanner_single_quoted_break_followed_by_break() {
     let yaml = "'a\n\nb'\n";
     let v: Value = from_str(yaml).unwrap();
     let s = v.as_str().unwrap();
-    assert!(s.contains("a"));
-    assert!(s.contains("b"));
+    assert!(s.contains('a'));
+    assert!(s.contains('b'));
 }
 
 #[test]
@@ -3027,8 +3027,8 @@ fn scanner_single_quoted_multi_crlf_breaks() {
     let yaml = "'a\r\n\r\nb'\n";
     let v: Value = from_str(yaml).unwrap();
     let s = v.as_str().unwrap();
-    assert!(s.contains("a"));
-    assert!(s.contains("b"));
+    assert!(s.contains('a'));
+    assert!(s.contains('b'));
 }
 
 // --- scanner.rs: double-quoted with CRLF breaks (lines 1191-1192) ---
@@ -3038,8 +3038,8 @@ fn scanner_double_quoted_multi_crlf_breaks() {
     let yaml = "\"a\r\n\r\nb\"\n";
     let v: Value = from_str(yaml).unwrap();
     let s = v.as_str().unwrap();
-    assert!(s.contains("a"));
-    assert!(s.contains("b"));
+    assert!(s.contains('a'));
+    assert!(s.contains('b'));
 }
 
 // --- scanner.rs: plain scalar with CRLF (lines 903-905, 914-916) ---

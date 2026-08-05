@@ -171,7 +171,7 @@ fn duplicate_policy_last_keeps_last_value() {
 fn duplicate_policy_error_rejects_duplicates() {
     let config = ParserConfig::new().duplicate_key_policy(DuplicateKeyPolicy::Error);
     let err = from_str_with_config::<BTreeMap<String, i32>>("a: 1\na: 2\n", &config).unwrap_err();
-    assert!(err.to_string().contains("duplicate") || err.to_string().contains("a"));
+    assert!(err.to_string().contains("duplicate") || err.to_string().contains('a'));
 }
 
 // ── Merge-key edge cases (streaming) ─────────────────────────────────────

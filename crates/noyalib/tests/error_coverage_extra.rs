@@ -213,7 +213,7 @@ fn format_with_source_with_valid_location() {
     let s = e.format_with_source(source);
     assert!(s.contains("error"));
     assert!(s.contains("line 2"));
-    assert!(s.contains("^"));
+    assert!(s.contains('^'));
 }
 
 #[test]
@@ -235,7 +235,7 @@ fn format_with_source_radius_empty_source() {
     };
     let s = e.format_with_source_radius("", 2);
     // Empty source → plain Display fallback.
-    assert!(s.contains("x"));
+    assert!(s.contains('x'));
 }
 
 #[test]
@@ -246,7 +246,7 @@ fn format_with_source_radius_out_of_range_line() {
     };
     let s = e.format_with_source_radius("only line", 2);
     // Out-of-range → falls back to plain Display.
-    assert!(s.contains("x"));
+    assert!(s.contains('x'));
 }
 
 #[test]
@@ -278,7 +278,7 @@ fn format_with_source_radius_with_valid_location_renders_window() {
     assert!(s.contains("l3"));
     assert!(s.contains("l4"));
     // Caret line.
-    assert!(s.contains("^"));
+    assert!(s.contains('^'));
 }
 
 // ============================================================================

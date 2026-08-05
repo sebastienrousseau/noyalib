@@ -34,7 +34,7 @@ fn radius_zero_renders_only_the_offending_line() {
     assert!(formatted.contains("error: "));
     assert!(formatted.contains("line 4"));
     assert!(formatted.contains("bad: y"));
-    assert!(formatted.contains("^"));
+    assert!(formatted.contains('^'));
     // Radius 0 must NOT include lines 3 or 5.
     assert!(!formatted.contains("nested: x"));
     assert!(!formatted.contains("trailer: ok"));
@@ -49,7 +49,7 @@ fn radius_one_includes_one_line_above_and_below() {
     assert!(formatted.contains("nested: x"));
     assert!(formatted.contains("trailer: ok"));
     assert!(formatted.contains("bad: y"));
-    assert!(formatted.contains("^"));
+    assert!(formatted.contains('^'));
 }
 
 #[test]
@@ -78,7 +78,7 @@ fn gutter_alignment_uses_widest_line_number() {
     let err = force_parse_error(&source);
     let formatted = err.format_with_source_radius(&source, 2);
 
-    assert!(formatted.contains("|"));
+    assert!(formatted.contains('|'));
     assert!(formatted.contains("bad: y"));
 }
 
@@ -86,8 +86,8 @@ fn gutter_alignment_uses_widest_line_number() {
 fn caret_aligns_to_offending_column() {
     let err = force_parse_error(INDENT_ERROR_SOURCE);
     let formatted = err.format_with_source_radius(INDENT_ERROR_SOURCE, 0);
-    assert!(formatted.contains("|"));
-    assert!(formatted.contains("^"));
+    assert!(formatted.contains('|'));
+    assert!(formatted.contains('^'));
 }
 
 #[test]

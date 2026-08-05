@@ -184,7 +184,7 @@ backslash: "path\\to\\file"
     assert!(double.contains("\"escaped\""));
 
     let backslash = value.get("backslash").unwrap().as_str().unwrap();
-    assert!(backslash.contains("\\"));
+    assert!(backslash.contains('\\'));
 }
 
 #[test]

@@ -327,7 +327,7 @@ fn format_with_source_with_location() {
     assert!(formatted.contains("error:"));
     assert!(formatted.contains("-->"));
     assert!(formatted.contains("hello world"));
-    assert!(formatted.contains("^"));
+    assert!(formatted.contains('^'));
 }
 
 #[test]
@@ -351,7 +351,7 @@ fn format_with_source_column_zero() {
     let source = "hello";
     let formatted = e.format_with_source(source);
     // Should handle column 0 via saturating_sub(1) = 0
-    assert!(formatted.contains("^"));
+    assert!(formatted.contains('^'));
 }
 
 // ============================================================================

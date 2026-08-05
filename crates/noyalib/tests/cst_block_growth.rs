@@ -65,7 +65,7 @@ fn line_starting_with_space_falls_back_to_double_quoted() {
     let src = "note: short\n";
     let out = round_trip_value(src, "note", "first\n  indented\n");
     // Should *not* be a block literal.
-    assert!(!out.contains("|"), "fell back to block literal: {out}");
+    assert!(!out.contains('|'), "fell back to block literal: {out}");
     // Should be a double-quoted form with `\\n`.
     assert!(out.contains("\\n"), "expected \\n escape: {out}");
 

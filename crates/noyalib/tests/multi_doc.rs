@@ -16,9 +16,9 @@ fn test_to_string_multi() {
         doc_count, 3,
         "expected 3 document markers, got {doc_count} in:\n{yaml}"
     );
-    assert!(yaml.contains("1"), "missing value 1 in:\n{yaml}");
-    assert!(yaml.contains("2"), "missing value 2 in:\n{yaml}");
-    assert!(yaml.contains("3"), "missing value 3 in:\n{yaml}");
+    assert!(yaml.contains('1'), "missing value 1 in:\n{yaml}");
+    assert!(yaml.contains('2'), "missing value 2 in:\n{yaml}");
+    assert!(yaml.contains('3'), "missing value 3 in:\n{yaml}");
 }
 
 #[test]

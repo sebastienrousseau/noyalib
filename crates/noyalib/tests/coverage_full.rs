@@ -1115,7 +1115,7 @@ fn path_display_and_parent() {
 
     let idx = root.index(0);
     let idx_display = format!("{idx}");
-    assert!(idx_display.contains("0"), "got: {idx_display}");
+    assert!(idx_display.contains('0'), "got: {idx_display}");
 
     // Alias and unknown from a non-root parent so display is non-empty
     let nested_alias = key.alias();
@@ -1125,7 +1125,7 @@ fn path_display_and_parent() {
 
     let nested_unknown = key.unknown();
     let unknown_display = format!("{nested_unknown}");
-    assert!(unknown_display.contains("?"), "unknown: {unknown_display}");
+    assert!(unknown_display.contains('?'), "unknown: {unknown_display}");
 
     // Test parent
     assert!(key.parent().is_some());

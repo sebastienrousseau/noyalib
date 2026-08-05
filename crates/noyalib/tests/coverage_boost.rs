@@ -1044,7 +1044,7 @@ fn error_format_with_source_with_location() {
     let formatted = err.format_with_source("key: value");
     assert!(formatted.contains("unexpected token"));
     assert!(formatted.contains("line 1:5"));
-    assert!(formatted.contains("^"));
+    assert!(formatted.contains('^'));
 }
 
 #[test]

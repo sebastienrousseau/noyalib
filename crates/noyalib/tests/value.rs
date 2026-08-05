@@ -1301,9 +1301,9 @@ fn test_value_display_mapping_multiple() {
 fn test_value_display_sequence_multiple() {
     let seq = Value::Sequence(vec![Value::from(1), Value::from(2), Value::from(3)]);
     let display = format!("{}", seq);
-    assert!(display.contains("1"));
-    assert!(display.contains("2"));
-    assert!(display.contains("3"));
+    assert!(display.contains('1'));
+    assert!(display.contains('2'));
+    assert!(display.contains('3'));
     assert!(display.contains(", "));
 }
 

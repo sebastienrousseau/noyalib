@@ -246,7 +246,7 @@ fn test_error_format_with_source() {
     assert!(formatted.contains("error:"));
     assert!(formatted.contains("line 2"));
     assert!(formatted.contains("port: invalid"));
-    assert!(formatted.contains("^"));
+    assert!(formatted.contains('^'));
 }
 
 #[test]
@@ -257,7 +257,7 @@ fn test_error_format_without_location() {
 
     // Should just return the error message without source context
     assert!(formatted.contains("generic error"));
-    assert!(!formatted.contains("^"));
+    assert!(!formatted.contains('^'));
 }
 
 #[test]
@@ -425,7 +425,7 @@ fn test_error_format_with_source_multiline() {
     let err = Error::parse_at("test error", source, 12);
     let formatted = err.format_with_source(source);
     assert!(formatted.contains("test error"));
-    assert!(formatted.contains("^"));
+    assert!(formatted.contains('^'));
 }
 
 #[test]

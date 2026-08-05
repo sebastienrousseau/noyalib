@@ -22,7 +22,7 @@ fn final_value_mapping_display_format() {
     let _ = m.insert("b", Value::from("two"));
     let s = format!("{m}");
     assert!(s.contains("a:") || s.contains("a "));
-    assert!(s.contains("1"));
+    assert!(s.contains('1'));
     assert!(s.contains("two"));
     assert!(s.starts_with('{') && s.ends_with('}'));
 }
@@ -156,13 +156,13 @@ fn final_value_display_all_variants() {
     let _ = m.insert("k", Value::from("v"));
     let map = Value::Mapping(m);
     let s = format!("{map}");
-    assert!(s.contains("k"));
+    assert!(s.contains('k'));
     let tagged = Value::Tagged(Box::new(TaggedValue::new(
         Tag::new("!T"),
         Value::from(7_i64),
     )));
     let s = format!("{tagged}");
-    assert!(s.contains("!T") || s.contains("7"));
+    assert!(s.contains("!T") || s.contains('7'));
 }
 
 // ── Value Serialize / Deserialize round-trips by shape ─────────────
@@ -175,7 +175,7 @@ fn final_value_serialize_sequence() {
         Value::from(3_i64),
     ]);
     let s = noyalib::to_string(&v).expect("ser seq");
-    assert!(s.contains("1") && s.contains("2") && s.contains("3"));
+    assert!(s.contains('1') && s.contains('2') && s.contains('3'));
 }
 
 #[test]
@@ -187,7 +187,7 @@ fn final_value_serialize_tagged_collection() {
         Value::Sequence(vec![Value::from(1_i64)]),
     )));
     let s = noyalib::to_string(&tagged).expect("ser tagged");
-    assert!(s.contains("Custom") || s.contains("!"));
+    assert!(s.contains("Custom") || s.contains('!'));
 }
 
 #[test]
@@ -198,7 +198,7 @@ fn final_value_serialize_mapping_with_nested() {
     let _ = outer.insert("inner", Value::Mapping(inner));
     let v = Value::Mapping(outer);
     let s = noyalib::to_string(&v).expect("ser nested");
-    assert!(s.contains("inner") && s.contains("x"));
+    assert!(s.contains("inner") && s.contains('x'));
 }
 
 // ── &'de Value Deserializer enum/seq dispatch ──────────────────────

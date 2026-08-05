@@ -108,7 +108,7 @@ fn test_flow_map_in_struct() {
 
     let yaml = to_string(&config).unwrap();
     assert!(yaml.contains("HOME:"), "got: {yaml}");
-    assert!(yaml.contains("{"), "got: {yaml}");
+    assert!(yaml.contains('{'), "got: {yaml}");
 
     let parsed: Config = from_str(&yaml).unwrap();
     assert_eq!(parsed.env.0["HOME"], "/home/user");

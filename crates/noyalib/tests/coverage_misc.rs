@@ -197,8 +197,8 @@ fn error_as_inner_returns_none_for_non_shared() {
 fn location_display_includes_line_column() {
     let loc = Location::new(7, 3, 20);
     let s = format!("{loc}");
-    assert!(s.contains("7"));
-    assert!(s.contains("3"));
+    assert!(s.contains('7'));
+    assert!(s.contains('3'));
 }
 
 #[test]

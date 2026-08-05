@@ -96,7 +96,7 @@ fn ast_duplicate_policy_error_rejects() {
     let config = ParserConfig::new().duplicate_key_policy(DuplicateKeyPolicy::Error);
     let yaml = "a: first\na: second\n";
     let err = from_str_with_config::<Doc>(yaml, &config).unwrap_err();
-    assert!(err.to_string().contains("duplicate") || err.to_string().contains("a"));
+    assert!(err.to_string().contains("duplicate") || err.to_string().contains('a'));
 }
 
 // ── Alias outside document (stream-level alias without DocumentStart) ───

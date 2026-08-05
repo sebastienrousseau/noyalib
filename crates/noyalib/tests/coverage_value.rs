@@ -689,7 +689,7 @@ fn mapping_any_display() {
     let mut m = MappingAny::new();
     let _ = m.insert(Value::from("a"), Value::from(1));
     let s = format!("{m}");
-    assert!(s.contains("a"));
+    assert!(s.contains('a'));
 }
 
 #[test]
@@ -779,7 +779,7 @@ fn number_display_float() {
 fn number_display_negative_zero() {
     let s = Number::Float(-0.0).to_string();
     // -0.0 displays as "-0" or "0" depending on platform
-    assert!(s.contains("0"));
+    assert!(s.contains('0'));
 }
 
 #[test]

@@ -89,8 +89,8 @@ fn mapping_any_serialize_roundtrip() {
     // Mapping with string keys can serialize to YAML; this hits the
     // MappingAny Serialize impl.
     let yaml = to_string(&m).expect("serialize MappingAny");
-    assert!(yaml.contains("a"));
-    assert!(yaml.contains("b"));
+    assert!(yaml.contains('a'));
+    assert!(yaml.contains('b'));
 }
 
 #[test]

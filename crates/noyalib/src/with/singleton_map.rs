@@ -190,9 +190,9 @@ mod tests {
         };
 
         let yaml = crate::to_string(&container).unwrap();
-        assert!(yaml.contains("1"));
-        assert!(yaml.contains("2"));
-        assert!(yaml.contains("3"));
+        assert!(yaml.contains('1'));
+        assert!(yaml.contains('2'));
+        assert!(yaml.contains('3'));
     }
 
     #[test]
