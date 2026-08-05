@@ -1136,7 +1136,7 @@ fn query_recursive<'a>(
                 }
             }
             Value::Mapping(map) => {
-                for (_, v) in map.iter() {
+                for (_, v) in map {
                     query_recursive(v, segments, depth + 1, results);
                 }
             }
@@ -1156,7 +1156,7 @@ fn query_recursive<'a>(
                         }
                     }
                     Value::Mapping(map) => {
-                        for (_, v) in map.iter() {
+                        for (_, v) in map {
                             query_recursive(v, segments, depth, results);
                         }
                     }

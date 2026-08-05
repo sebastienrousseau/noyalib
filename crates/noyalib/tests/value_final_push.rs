@@ -304,7 +304,7 @@ fn final_value_mapping_first_last_populated() {
 fn final_value_mapping_iter_mut_modifies() {
     let mut m = Mapping::new();
     let _ = m.insert("a", Value::from(1_i64));
-    for (_, v) in m.iter_mut() {
+    for (_, v) in &mut m {
         if let Some(n) = v.as_i64() {
             *v = Value::from(n + 100);
         }

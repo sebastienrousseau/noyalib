@@ -391,7 +391,7 @@ proptest! {
         let mut base = Value::Mapping(Mapping::new());
 
         let mut other = Mapping::new();
-        for (k, v) in pairs.iter() {
+        for (k, v) in &pairs {
             let _ = other.insert(k.clone(), v.clone());
         }
 
@@ -399,7 +399,7 @@ proptest! {
         base.merge(Value::Mapping(other));
 
         // Base should now contain all keys from other with their final values
-        for (k, v) in other_clone.iter() {
+        for (k, v) in &other_clone {
             prop_assert_eq!(base.get(k.as_str()), Some(v));
         }
     }

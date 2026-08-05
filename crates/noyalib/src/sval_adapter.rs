@@ -94,7 +94,7 @@ impl sval::Value for Number {
 impl sval::Value for Mapping {
     fn stream<'sval, S: sval::Stream<'sval> + ?Sized>(&'sval self, stream: &mut S) -> sval::Result {
         stream.map_begin(Some(self.len()))?;
-        for (k, v) in self.iter() {
+        for (k, v) in self {
             stream.map_key_begin()?;
             stream.value(k.as_str())?;
             stream.map_key_end()?;
@@ -109,7 +109,7 @@ impl sval::Value for Mapping {
 impl sval::Value for MappingAny {
     fn stream<'sval, S: sval::Stream<'sval> + ?Sized>(&'sval self, stream: &mut S) -> sval::Result {
         stream.map_begin(Some(self.len()))?;
-        for (k, v) in self.iter() {
+        for (k, v) in self {
             stream.map_key_begin()?;
             stream.value(k)?;
             stream.map_key_end()?;

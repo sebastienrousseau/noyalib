@@ -244,7 +244,7 @@ fn mapping_iterators() {
     assert_eq!(m.keys().count(), 2);
     assert_eq!(m.values().count(), 2);
 
-    for (_, v) in m.iter_mut() {
+    for (_, v) in &mut m {
         *v = Value::from(0);
     }
     assert_eq!(m.get("a").unwrap().as_i64(), Some(0));
@@ -559,7 +559,7 @@ fn mapping_any_iterators() {
     assert_eq!(m.iter().count(), 1);
     assert_eq!(m.keys().count(), 1);
     assert_eq!(m.values().count(), 1);
-    for (_, v) in m.iter_mut() {
+    for (_, v) in &mut m {
         *v = Value::from(0);
     }
     for v in m.values_mut() {

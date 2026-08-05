@@ -1658,7 +1658,7 @@ fn test_mapping_iter_mut() {
     let _ = map.insert("a", Value::from(1));
     let _ = map.insert("b", Value::from(2));
 
-    for (_, v) in map.iter_mut() {
+    for (_, v) in &mut map {
         if let Some(n) = v.as_i64() {
             *v = Value::from(n * 10);
         }

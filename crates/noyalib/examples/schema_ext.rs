@@ -37,7 +37,7 @@ fn type_name(v: &Value) -> &'static str {
 fn describe(value: &Value, prefix: &str, lines: &mut Vec<String>) {
     match value {
         Value::Mapping(map) => {
-            for (key, val) in map.iter() {
+            for (key, val) in map {
                 let path = if prefix.is_empty() {
                     key.to_string()
                 } else {
@@ -151,7 +151,7 @@ features:
         for doc in &docs {
             let v: Value = from_str(doc).unwrap();
             if let Some(map) = v.as_mapping() {
-                for (key, val) in map.iter() {
+                for (key, val) in map {
                     types.entry(key.clone()).or_default().push(type_name(val));
                 }
             }

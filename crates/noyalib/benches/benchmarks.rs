@@ -1292,7 +1292,7 @@ fn bench_mapping(c: &mut Criterion) {
     // iter
     let _ = group.bench_function("iter", |b| {
         b.iter(|| {
-            for entry in black_box(&map).iter() {
+            for entry in black_box(&map) {
                 black_box(entry);
             }
         });
@@ -1553,7 +1553,7 @@ fn bench_mapping_any(c: &mut Criterion) {
     // iter
     let _ = group.bench_function("iter", |b| {
         b.iter(|| {
-            for entry in black_box(&any_map).iter() {
+            for entry in black_box(&any_map) {
                 black_box(entry);
             }
         });
