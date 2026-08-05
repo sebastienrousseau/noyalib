@@ -151,7 +151,7 @@ analytics_replica: *db
                 "primary  = {}:{}/{}",
                 t.database.host, t.database.port, t.database.name
             ),
-            format!("replicas share the same config via anchor replay"),
+            "replicas share the same config via anchor replay".to_string(),
         ]
     });
 
@@ -177,7 +177,7 @@ analytics_replica: *db
                 "100 entries (50 anchors + 50 aliases) parsed in {:?}",
                 elapsed
             ),
-            format!("Streaming path -- no intermediate Value allocation"),
+            "Streaming path -- no intermediate Value allocation".to_string(),
         ]
     });
 

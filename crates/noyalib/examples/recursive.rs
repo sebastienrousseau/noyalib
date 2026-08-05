@@ -96,7 +96,7 @@ fn main() {
 
         vec![
             format!("entries   = {}", count_entries(&tree)),
-            format!("depth     = 3 (src/parser/scanner.rs)"),
+            "depth     = 3 (src/parser/scanner.rs)".to_string(),
             format!("roundtrip = {}", tree == rt),
         ]
     });
