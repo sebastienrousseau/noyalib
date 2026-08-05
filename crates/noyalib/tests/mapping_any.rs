@@ -4,7 +4,7 @@
 // Copyright (c) 2026 Noyalib. All rights reserved.
 
 use std::collections::hash_map::DefaultHasher;
-use std::hash::{Hash, Hasher};
+use std::hash::{Hash, Hasher as _};
 
 use noyalib::{Mapping, MappingAny, Value, from_str, to_string};
 

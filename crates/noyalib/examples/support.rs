@@ -8,7 +8,7 @@
 
 #![allow(dead_code)]
 
-use std::io::{self, Write};
+use std::io::{self, Write as _};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread;

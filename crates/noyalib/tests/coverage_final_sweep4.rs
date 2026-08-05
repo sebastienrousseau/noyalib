@@ -47,7 +47,7 @@ fn error_unknown_field_via_deny_unknown_fields() {
 #[cfg(feature = "miette")]
 #[test]
 fn error_miette_labels_for_deserialize_with_location() {
-    use miette::Diagnostic;
+    use miette::Diagnostic as _;
     // Force a deserialize error with location by using a Spanned field
     // plus a type mismatch downstream.
     #[derive(Debug, serde::Deserialize)]
@@ -68,7 +68,7 @@ fn error_miette_labels_for_deserialize_with_location() {
 #[cfg(feature = "miette")]
 #[test]
 fn error_miette_labels_for_unknown_anchor_at() {
-    use miette::Diagnostic;
+    use miette::Diagnostic as _;
     let yaml = "a: &anchor 1\nb: *anchr\n";
     let err = from_str::<Value>(yaml).unwrap_err();
     // Exercise labels() which walks UnknownAnchorAt branch.
@@ -80,7 +80,7 @@ fn error_miette_labels_for_unknown_anchor_at() {
 #[cfg(feature = "miette")]
 #[test]
 fn error_miette_labels_for_parse_with_location() {
-    use miette::Diagnostic;
+    use miette::Diagnostic as _;
     let yaml = "k: [unclosed\n";
     let err = from_str::<Value>(yaml).unwrap_err();
     let _ = err.labels();

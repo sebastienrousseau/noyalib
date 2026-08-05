@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 // Copyright (c) 2026 Noyalib. All rights reserved.
 
-use std::str::FromStr;
+use std::str::FromStr as _;
 
 use noyalib::{
     Mapping, MappingAny, MaybeTag, Number, Tag, TaggedValue, Value, check_for_tag, from_str, nobang,

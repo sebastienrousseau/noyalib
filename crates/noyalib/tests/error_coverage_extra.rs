@@ -116,7 +116,7 @@ fn kind_classifier_covers_every_variant() {
 #[cfg(feature = "miette")]
 #[test]
 fn miette_code_help_labels_cover_every_variant() {
-    use miette::Diagnostic;
+    use miette::Diagnostic as _;
     for e in variant_gallery() {
         let _ = e.code().map(|c| c.to_string());
         let _ = e.help().map(|h| h.to_string());
@@ -145,7 +145,7 @@ fn miette_code_help_labels_cover_every_variant() {
 
 #[test]
 fn error_source_io_some() {
-    use std::error::Error as StdError;
+    use std::error::Error as _;
     let ioe = std::io::Error::other("nope");
     let e = Error::Io(ioe);
     assert!(e.source().is_some());
@@ -153,7 +153,7 @@ fn error_source_io_some() {
 
 #[test]
 fn error_source_shared_some() {
-    use std::error::Error as StdError;
+    use std::error::Error as _;
     let inner = Error::EndOfStream;
     let e = Error::Shared(Arc::new(inner));
     assert!(e.source().is_some());
@@ -161,7 +161,7 @@ fn error_source_shared_some() {
 
 #[test]
 fn error_source_other_none() {
-    use std::error::Error as StdError;
+    use std::error::Error as _;
     let e = Error::EndOfStream;
     assert!(e.source().is_none());
 }

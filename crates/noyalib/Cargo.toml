@@ -694,3 +694,4 @@ warn-lints = [
 
 [lints.clippy]
 checked_conversions = "warn" # Part of clippy::pedantic
+unused_trait_names = "warn"  # Part of clippy::pedantic
