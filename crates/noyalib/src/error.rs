@@ -1686,7 +1686,7 @@ fn edit_distance(a: &str, b: &str) -> usize {
     for (i, ca) in a.chars().enumerate() {
         let mut prev = i + 1;
         for (j, cb) in b.chars().enumerate() {
-            let mut next = row[j] + (if ca == cb { 0 } else { 1 });
+            let mut next = row[j] + usize::from(ca != cb);
             if i + 1 < row[j + 1] + 1 && i + 1 < next {
                 next = i + 1;
             }

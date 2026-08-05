@@ -1748,7 +1748,7 @@ fn looks_like_integer_literal(s: &str, legacy_octal: bool) -> bool {
     if legacy_octal && b.len() >= 2 && b[0] == b'0' {
         return b[1..].iter().all(|c| (b'0'..=b'7').contains(c));
     }
-    let start = if b[0] == b'+' || b[0] == b'-' { 1 } else { 0 };
+    let start = usize::from(b[0] == b'+' || b[0] == b'-');
     start < b.len() && b[start..].iter().all(u8::is_ascii_digit)
 }
 
@@ -1852,7 +1852,7 @@ fn parse_integer(s: &str, legacy_octal: bool, lossless_u64: bool) -> Option<Pars
     {
         return parse_radix_integer(&s[1..], 8, lossless_u64);
     }
-    let start = if b[0] == b'+' || b[0] == b'-' { 1 } else { 0 };
+    let start = usize::from(b[0] == b'+' || b[0] == b'-');
     if start >= b.len() {
         return None;
     }
