@@ -59,7 +59,7 @@ fn decode_test_suite_markers(input: &str) -> String {
                         break;
                     }
                 }
-                if let Some(&'»') = chars.peek() {
+                if chars.peek() == Some(&'»') {
                     let _ = chars.next();
                     out.push('\t');
                 } else {

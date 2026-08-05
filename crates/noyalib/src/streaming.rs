@@ -859,7 +859,7 @@ impl<'de> serde_core::Deserializer<'de> for &mut StreamingDeserializer<'de> {
     {
         self.skip_to_content()?;
         if let Event::Scalar { value, style, .. } = self.next_event()? {
-            if let Scalar::Null = self.resolve_scalar(&value, style) {
+            if matches!(self.resolve_scalar(&value, style), Scalar::Null) {
                 return visitor.visit_unit();
             }
         }

@@ -1447,7 +1447,7 @@ impl ValueIndex for &str {
     #[track_caller]
     fn index_or_insert(self, value: &mut Value) -> &mut Value {
         // If the value is null, convert it to an empty mapping
-        if let Value::Null = value {
+        if matches!(value, Value::Null) {
             *value = Value::Mapping(Mapping::new());
         }
 

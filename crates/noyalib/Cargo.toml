@@ -729,7 +729,6 @@ zero_sized_map_values = "allow"
 # TODO fix or expect nursery
 branches_sharing_code = "allow"
 doc_link_code = "allow"
-equatable_if_let = "allow"
 literal_string_with_formatting_args = "allow"
 missing_const_for_fn = "allow"
 needless_collect = "allow"
