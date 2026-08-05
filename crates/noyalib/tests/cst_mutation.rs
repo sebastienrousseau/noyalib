@@ -254,8 +254,7 @@ fn set_value_at_block_scalar_target_collapses_to_plain_for_single_line() {
         .unwrap();
     assert!(
         doc.to_string().contains("text: hello"),
-        "expected plain replacement, got: {}",
-        doc
+        "expected plain replacement, got: {doc}"
     );
 }
 

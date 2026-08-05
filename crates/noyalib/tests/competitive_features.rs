@@ -266,14 +266,14 @@ mod anchor_registry {
     #[test]
     fn rc_debug() {
         let reg = AnchorRegistry::<String>::new();
-        let debug = format!("{:?}", reg);
+        let debug = format!("{reg:?}");
         assert!(debug.contains("AnchorRegistry"));
     }
 
     #[test]
     fn arc_debug() {
         let reg = ArcAnchorRegistry::<String>::new();
-        let debug = format!("{:?}", reg);
+        let debug = format!("{reg:?}");
         assert!(debug.contains("ArcAnchorRegistry"));
     }
 }

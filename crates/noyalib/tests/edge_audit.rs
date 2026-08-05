@@ -17,8 +17,7 @@ fn round_trip_tagged_scalar() {
     let v2: Value = from_str(&emitted).unwrap();
     assert!(
         matches!(v2, Value::Tagged(_)),
-        "re-parse should also be Tagged, got {:?}",
-        v2
+        "re-parse should also be Tagged, got {v2:?}"
     );
     let (Value::Tagged(t1), Value::Tagged(t2)) = (&v, &v2) else {
         panic!()
@@ -171,7 +170,7 @@ fn interpolate_into_tagged_inner() {
 
     let server = v.get("server").unwrap();
     let Value::Tagged(t) = server else {
-        panic!("expected Tagged after interpolate, got {:?}", server);
+        panic!("expected Tagged after interpolate, got {server:?}");
     };
     assert_eq!(t.tag().as_str(), "!Custom");
     assert_eq!(
@@ -191,8 +190,7 @@ fn tag_registry_strips_registered_tag() {
     // Registered tag → stripped → bare String.
     assert!(
         matches!(v, Value::String(_)),
-        "registered tag should strip through, got {:?}",
-        v
+        "registered tag should strip through, got {v:?}"
     );
     assert_eq!(v.as_str(), Some("#ff8800"));
 }
@@ -208,7 +206,7 @@ fn borrowed_value_tagged_scalar() {
     let v = from_str_borrowed(yaml).unwrap();
     let owned = v.into_owned();
     // After conversion to owned, what shape is it?
-    eprintln!("BorrowedValue -> Value: {:?}", owned);
+    eprintln!("BorrowedValue -> Value: {owned:?}");
     // No assertion — the goal is to surface the actual behaviour
     // for tracking.
     let _ = owned;
@@ -222,7 +220,7 @@ fn compat_shim_preserves_old_behaviour() {
     use noyalib::compat::serde_yaml::{Value as CompatValue, from_str as compat_from_str};
     let yaml = "!Custom 'hello'\n";
     let v: CompatValue = compat_from_str(yaml).unwrap();
-    eprintln!("compat shim sees: {:?}", v);
+    eprintln!("compat shim sees: {v:?}");
     // The shim is meant to be a name-for-name drop-in; either
     // path could be the right contract. Pin the actual behaviour.
     let _ = v;
@@ -259,11 +257,10 @@ fn tagged_display() {
         Tag::new("!Custom"),
         Value::String("hello".to_string()),
     )));
-    let s = format!("{}", v);
+    let s = format!("{v}");
     assert!(
         s.contains("Custom") || s.contains("hello"),
-        "Display should mention the tag or inner: {}",
-        s
+        "Display should mention the tag or inner: {s}"
     );
 }
 
@@ -292,7 +289,7 @@ fn nested_tags_survive_outer_tag_c4hz_regression() {
     let yaml = "!shape\n- !circle 1\n- !line 2\n";
     let v: Value = from_str(yaml).unwrap();
     let Value::Tagged(outer) = &v else {
-        panic!("expected outer Tagged, got {:?}", v);
+        panic!("expected outer Tagged, got {v:?}");
     };
     assert_eq!(outer.tag().as_str(), "!shape");
     let Value::Sequence(seq) = outer.value() else {
@@ -341,8 +338,8 @@ fn to_string_value_with_config_emits_tag() {
     )));
     let cfg = SerializerConfig::default();
     let s = noyalib::to_string_value_with_config(&v, &cfg).unwrap();
-    assert!(s.contains("!Custom"), "tag survived: {}", s);
-    assert!(s.contains("hello"), "inner survived: {}", s);
+    assert!(s.contains("!Custom"), "tag survived: {s}");
+    assert!(s.contains("hello"), "inner survived: {s}");
 }
 
 // 19) `to_writer_value` / `to_writer_value_with_config` round-trip.
@@ -356,7 +353,7 @@ fn to_writer_value_round_trip() {
     let mut buf: Vec<u8> = Vec::new();
     noyalib::to_writer_value(&mut buf, &v).unwrap();
     let s = String::from_utf8(buf).unwrap();
-    assert!(s.contains("!Color"), "tag emitted: {}", s);
+    assert!(s.contains("!Color"), "tag emitted: {s}");
 
     let mut buf2: Vec<u8> = Vec::new();
     let cfg = SerializerConfig::default();

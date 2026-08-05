@@ -24,9 +24,7 @@ where
     for expected in expected_yaml_contains {
         assert!(
             yaml.contains(expected),
-            "Expected YAML to contain '{}', but got:\n{}",
-            expected,
-            yaml
+            "Expected YAML to contain '{expected}', but got:\n{yaml}"
         );
     }
     let parsed: T = from_str(&yaml).unwrap();

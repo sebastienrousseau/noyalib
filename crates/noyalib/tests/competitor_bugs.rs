@@ -255,7 +255,7 @@ fn yr2_34_standard_tags() {
     // !!int should resolve to integer
     match &v {
         Value::Number(_) | Value::Tagged(_) => {} // either is acceptable
-        other => panic!("expected number or tagged, got {:?}", other),
+        other => panic!("expected number or tagged, got {other:?}"),
     }
 }
 

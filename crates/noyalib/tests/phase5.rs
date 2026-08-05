@@ -363,50 +363,50 @@ fn test_location_from_index_at_newline() {
 #[test]
 fn test_error_display() {
     let err = Error::Parse("test error".to_string());
-    let display = format!("{}", err);
+    let display = format!("{err}");
     assert!(display.contains("test error"));
 
     let err = Error::Serialize("serialize error".to_string());
-    let display = format!("{}", err);
+    let display = format!("{err}");
     assert!(display.contains("serialize error"));
 
     let err = Error::Deserialize("deserialize error".to_string());
-    let display = format!("{}", err);
+    let display = format!("{err}");
     assert!(display.contains("deserialize error"));
 
     let err = Error::Invalid("invalid error".to_string());
-    let display = format!("{}", err);
+    let display = format!("{err}");
     assert!(display.contains("invalid error"));
 
     let err = Error::TypeMismatch {
         expected: "string",
         found: "integer".to_string(),
     };
-    let display = format!("{}", err);
+    let display = format!("{err}");
     assert!(display.contains("string"));
     assert!(display.contains("integer"));
 
     let err = Error::MissingField("name".to_string());
-    let display = format!("{}", err);
+    let display = format!("{err}");
     assert!(display.contains("name"));
 
     let err = Error::UnknownField("extra".to_string());
-    let display = format!("{}", err);
+    let display = format!("{err}");
     assert!(display.contains("extra"));
 
     let err = Error::RecursionLimitExceeded { depth: 100 };
-    let display = format!("{}", err);
+    let display = format!("{err}");
     assert!(display.contains("100"));
 
     let err = Error::Custom("custom error".to_string());
-    let display = format!("{}", err);
+    let display = format!("{err}");
     assert!(display.contains("custom error"));
 }
 
 #[test]
 fn test_error_parse_at_multiline() {
     let err = Error::parse_at("error msg", "hello\nworld\nthird", 12);
-    let display = format!("{}", err);
+    let display = format!("{err}");
     assert!(display.contains("error msg"));
     assert!(display.contains("line 3"));
 }
@@ -414,7 +414,7 @@ fn test_error_parse_at_multiline() {
 #[test]
 fn test_error_deserialize_at_with_column() {
     let err = Error::deserialize_at("deser error", "hello world", 6);
-    let display = format!("{}", err);
+    let display = format!("{err}");
     assert!(display.contains("deser error"));
     assert!(display.contains("column 7"));
 }

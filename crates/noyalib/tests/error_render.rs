@@ -138,7 +138,7 @@ fn cropped_region_clone_debug_eq() {
     let r1 = CroppedRegion::extract(src, 2, 1);
     let r2 = r1.clone();
     assert_eq!(r1, r2);
-    let s = format!("{:?}", r1);
+    let s = format!("{r1:?}");
     assert!(s.contains("CroppedRegion"));
 }
 

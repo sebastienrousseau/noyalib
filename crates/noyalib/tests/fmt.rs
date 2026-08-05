@@ -58,7 +58,7 @@ fn test_space_after_serialize() {
     let val = SpaceAfter(42i64);
     let yaml = to_string(&val).unwrap();
     // Should end with extra newline (blank line after value)
-    assert!(yaml.ends_with('\n'), "got: {:?}", yaml);
+    assert!(yaml.ends_with('\n'), "got: {yaml:?}");
     assert_eq!(yaml, "42\n");
 }
 

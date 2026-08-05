@@ -1414,10 +1414,7 @@ impl ValueIndex for usize {
             Value::Sequence(s) => {
                 let len = s.len();
                 s.get_mut(self).unwrap_or_else(|| {
-                    panic!(
-                        "cannot access index {} of YAML sequence of length {}",
-                        self, len
-                    )
+                    panic!("cannot access index {self} of YAML sequence of length {len}")
                 })
             }
             Value::Tagged(t) => self.index_or_insert(t.value_mut()),
@@ -1526,10 +1523,10 @@ impl ValueIndex for &Value {
             Value::String(s) => s.as_str().index_or_insert(value),
             Value::Number(Number::Integer(n)) if *n >= 0 => {
                 let idx =
-                    usize::try_from(*n).unwrap_or_else(|_| panic!("index {} overflows usize", n));
+                    usize::try_from(*n).unwrap_or_else(|_| panic!("index {n} overflows usize"));
                 idx.index_or_insert(value)
             }
-            _ => panic!("cannot index with {:?}", self),
+            _ => panic!("cannot index with {self:?}"),
         }
     }
 }

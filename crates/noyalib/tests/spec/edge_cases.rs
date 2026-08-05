@@ -22,7 +22,7 @@ fn unicode_key() {
 #[test]
 fn very_long_string() {
     let long = "a".repeat(10000);
-    let yaml = format!("\"{}\"", long);
+    let yaml = format!("\"{long}\"");
     let v: String = from_str(&yaml).unwrap();
     assert_eq!(v.len(), 10000);
 }

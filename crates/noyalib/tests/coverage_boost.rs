@@ -2527,8 +2527,7 @@ fn error_all_variants_display() {
         let msg = err.to_string();
         assert!(
             !msg.is_empty(),
-            "Error {:?} should have non-empty display",
-            err
+            "Error {err:?} should have non-empty display"
         );
     }
 }

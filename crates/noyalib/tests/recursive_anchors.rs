@@ -187,14 +187,14 @@ fn arc_recursion_default_is_empty_weak() {
 #[test]
 fn rc_recursive_debug_impl() {
     let r = RcRecursive::new(7_i32);
-    let s = format!("{:?}", r);
+    let s = format!("{r:?}");
     assert!(s.contains("RcRecursive"));
 }
 
 #[test]
 fn arc_recursive_debug_impl() {
     let r = ArcRecursive::new(7_i32);
-    let s = format!("{:?}", r);
+    let s = format!("{r:?}");
     assert!(s.contains("ArcRecursive"));
 }
 
@@ -202,7 +202,7 @@ fn arc_recursive_debug_impl() {
 fn rc_recursion_debug_impl() {
     let r = RcRecursive::new(1_i32);
     let w = r.downgrade();
-    let s = format!("{:?}", w);
+    let s = format!("{w:?}");
     assert!(s.contains("RcRecursion"));
 }
 
@@ -210,7 +210,7 @@ fn rc_recursion_debug_impl() {
 fn arc_recursion_debug_impl() {
     let r = ArcRecursive::new(1_i32);
     let w = r.downgrade();
-    let s = format!("{:?}", w);
+    let s = format!("{w:?}");
     assert!(s.contains("ArcRecursion"));
 }
 

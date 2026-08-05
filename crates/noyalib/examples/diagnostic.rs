@@ -36,7 +36,7 @@ fn main() {
             lines.push(format!(
                 "labels:   {:?}",
                 err.labels()
-                    .map(|l| l.map(|s| format!("{:?}", s)).collect::<Vec<_>>())
+                    .map(|l| l.map(|s| format!("{s:?}")).collect::<Vec<_>>())
             ));
         }
 

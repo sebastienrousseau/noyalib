@@ -43,7 +43,7 @@ dependencies:
         .expect("`version` exists at the document root");
 
     println!("=== before ===\n{input}");
-    println!("=== after ===\n{}", doc);
+    println!("=== after ===\n{doc}");
 
     // Round-trip property: the only diff is the bumped value.
     let after = doc.to_string();

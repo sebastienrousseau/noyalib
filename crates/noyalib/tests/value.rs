@@ -882,7 +882,7 @@ fn test_tag_creation() {
     assert_eq!(tag3.as_str(), "!third");
 
     assert_eq!(tag.as_ref(), "!custom");
-    assert_eq!(format!("{}", tag), "!custom");
+    assert_eq!(format!("{tag}"), "!custom");
 
     let owned = tag.into_string();
     assert_eq!(owned, "!custom");
@@ -903,7 +903,7 @@ fn test_tagged_value() {
     assert_eq!(tagged.value().as_str(), Some("2024-12-31"));
 
     // Display
-    let display = format!("{}", tagged);
+    let display = format!("{tagged}");
     assert!(display.contains("!timestamp"));
 
     // Into parts
@@ -922,7 +922,7 @@ fn test_parse_number_error() {
     use std::str::FromStr;
 
     let err = Number::from_str("invalid").unwrap_err();
-    assert_eq!(format!("{}", err), "invalid number");
+    assert_eq!(format!("{err}"), "invalid number");
 
     // Test that it implements Error trait
     let _: &dyn Error = &err;
@@ -951,18 +951,18 @@ fn test_value_display() {
     assert_eq!(format!("{}", Value::String("hello".to_string())), "hello");
 
     let seq = Value::Sequence(vec![Value::from(1), Value::from(2)]);
-    assert_eq!(format!("{}", seq), "[1, 2]");
+    assert_eq!(format!("{seq}"), "[1, 2]");
 
     let mut map = Mapping::new();
     let _ = map.insert("a".to_string(), Value::from(1));
     let map_val = Value::Mapping(map);
-    assert_eq!(format!("{}", map_val), "{a: 1}");
+    assert_eq!(format!("{map_val}"), "{a: 1}");
 
     let tagged = Value::Tagged(Box::new(TaggedValue::new(
         Tag::new("!test"),
         Value::from(42),
     )));
-    let display = format!("{}", tagged);
+    let display = format!("{tagged}");
     assert!(display.contains("!test"));
 }
 
@@ -1291,7 +1291,7 @@ fn test_value_display_mapping_multiple() {
     let _ = map.insert("a".to_string(), Value::from(1));
     let _ = map.insert("b".to_string(), Value::from(2));
     let value = Value::Mapping(map);
-    let display = format!("{}", value);
+    let display = format!("{value}");
     assert!(display.contains("a: 1"));
     assert!(display.contains("b: 2"));
     assert!(display.contains(", "));
@@ -1300,7 +1300,7 @@ fn test_value_display_mapping_multiple() {
 #[test]
 fn test_value_display_sequence_multiple() {
     let seq = Value::Sequence(vec![Value::from(1), Value::from(2), Value::from(3)]);
-    let display = format!("{}", seq);
+    let display = format!("{seq}");
     assert!(display.contains('1'));
     assert!(display.contains('2'));
     assert!(display.contains('3'));
@@ -1801,7 +1801,7 @@ fn test_mapping_display() {
     let _ = map.insert("a", Value::from(1));
     let _ = map.insert("b", Value::from(2));
 
-    let s = format!("{}", map);
+    let s = format!("{map}");
     assert!(s.contains("a: 1"));
     assert!(s.contains("b: 2"));
 }

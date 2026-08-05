@@ -297,7 +297,7 @@ mod validated_extra {
     #[test]
     fn debug_format_works() {
         let v: Validated<Plain> = from_str("x: 5\n").unwrap();
-        let s = format!("{:?}", v);
+        let s = format!("{v:?}");
         assert!(s.contains("Validated"));
     }
 }

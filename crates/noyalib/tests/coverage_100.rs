@@ -1924,7 +1924,7 @@ fn scanner_complex_key_value() {
 fn scanner_anchor_name_limit() {
     // Very long anchor name exceeding 1024 bytes
     let long_name = "a".repeat(1030);
-    let yaml = format!("&{} val\n", long_name);
+    let yaml = format!("&{long_name} val\n");
     let result: Result<Value> = from_str(&yaml);
     assert!(result.is_err());
 }
@@ -3460,7 +3460,7 @@ fn loader_alias_large_string() {
     // String value aliased multiple times - exercises estimate_value_size (line
     // 690)
     let long_str = "x".repeat(100);
-    let yaml = format!("big: &big {}\nref1: *big\nref2: *big\n", long_str);
+    let yaml = format!("big: &big {long_str}\nref1: *big\nref2: *big\n");
     let v: Value = from_str(&yaml).unwrap();
     assert_eq!(v["ref1"].as_str().unwrap().len(), 100);
     assert_eq!(v["ref2"].as_str().unwrap().len(), 100);
@@ -3670,9 +3670,7 @@ fn ser_reserved_words_comprehensive() {
         let yaml = to_string(&v).unwrap();
         assert!(
             yaml.contains('\'') || yaml.contains('"'),
-            "Expected '{}' to be quoted, got: {}",
-            word,
-            yaml
+            "Expected '{word}' to be quoted, got: {yaml}"
         );
     }
 }

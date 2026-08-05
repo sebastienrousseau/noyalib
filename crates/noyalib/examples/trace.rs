@@ -127,10 +127,7 @@ fn main() {
 
     support::task_with_output("Formatted error messages", || {
         fn format_error(path: &Path<'_>, expected: &str, found: &str) -> String {
-            format!(
-                "Type mismatch at `{}`:\n  expected: {}\n  found: {}",
-                path, expected, found
-            )
+            format!("Type mismatch at `{path}`:\n  expected: {expected}\n  found: {found}")
         }
 
         let services = Path::Root.key("services");

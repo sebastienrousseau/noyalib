@@ -1050,23 +1050,14 @@ impl Error {
         let caret_col = col.saturating_sub(1);
 
         let mut out = format!("error: {self}\n");
-        out.push_str(&format!(
-            "  --> line {line_no}:{col}\n",
-            line_no = line_no,
-            col = col,
-        ));
+        out.push_str(&format!("  --> line {line_no}:{col}\n",));
 
         // Top spacer
         out.push_str(&format!("{:>w$} |\n", "", w = gutter_w));
         for (i, idx) in (lo..=hi).enumerate() {
             let n = idx + 1;
             let line_text = lines[idx];
-            out.push_str(&format!(
-                "{n:>w$} | {line_text}\n",
-                n = n,
-                w = gutter_w,
-                line_text = line_text,
-            ));
+            out.push_str(&format!("{n:>gutter_w$} | {line_text}\n",));
             if idx == target {
                 // Caret line — gutter is blank, then `|`, then
                 // spaces up to the column, then `^`.

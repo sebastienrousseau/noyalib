@@ -739,15 +739,14 @@ fn test_serialize_string_escape_chars() {
     // Debug: println!("Backslash yaml: {:?}", yaml);
     assert!(
         yaml.contains("\\\\"),
-        "Expected escaped backslash in: {}",
-        yaml
+        "Expected escaped backslash in: {yaml}"
     );
 
     // String with carriage return (needs quoting due to control char)
     let value = Value::String("-with\rreturn".to_string());
     let yaml = to_string(&value).unwrap();
     // Debug: println!("CR yaml: {:?}", yaml);
-    assert!(yaml.contains("\\r"), "Expected escaped CR in: {}", yaml);
+    assert!(yaml.contains("\\r"), "Expected escaped CR in: {yaml}");
 
     // String with tab (needs quoting due to tab character)
     let value = Value::String("-with\ttab".to_string());

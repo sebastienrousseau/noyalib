@@ -268,7 +268,7 @@ impl Display for Path<'_> {
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
                 match self.0 {
                     Path::Root => Ok(()),
-                    path => write!(f, "{}.", path),
+                    path => write!(f, "{path}."),
                 }
             }
         }
@@ -281,7 +281,7 @@ impl Display for Path<'_> {
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
                 match self.0 {
                     Path::Root => Ok(()),
-                    path => write!(f, "{}", path),
+                    path => write!(f, "{path}"),
                 }
             }
         }

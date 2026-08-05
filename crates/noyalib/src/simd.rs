@@ -1019,8 +1019,7 @@ mod tests {
                     assert_eq!(
                         find_any_of(&buf, needles),
                         scalar(&buf, needles),
-                        "mismatch needles={:?} length={length} pos={pos}",
-                        needles,
+                        "mismatch needles={needles:?} length={length} pos={pos}",
                     );
                     buf[pos] = saved;
                 }

@@ -32,7 +32,7 @@ fn cst_set_tagged_collection_replacing_tag_only() {
     // Replace the entire tagged seq with a different tagged seq.
     doc.entry("list").set("!OtherList [10, 20]").unwrap();
     let after = doc.to_string();
-    eprintln!("after = {:?}", after);
+    eprintln!("after = {after:?}");
     assert!(after.contains("!OtherList"));
     assert!(after.contains("[10, 20]"));
 }

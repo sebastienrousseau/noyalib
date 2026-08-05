@@ -1877,7 +1877,7 @@ mod tests {
 
         match result {
             Err(Error::RecursionLimitExceeded { depth }) => assert!(depth > 128),
-            _ => panic!("Expected RecursionLimitExceeded error, got {:?}", result),
+            _ => panic!("Expected RecursionLimitExceeded error, got {result:?}"),
         }
     }
 
