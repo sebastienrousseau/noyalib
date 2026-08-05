@@ -1,6 +1,6 @@
 [package]
 name = "noyalib"
-version = "0.0.18"
+version = "0.0.19"
 edition = "2024"
 rust-version = "1.86.0"
 license = "MIT OR Apache-2.0"
@@ -339,7 +339,7 @@ smallvec = { version = "1.13", default-features = false }
 miette = { version = "7", optional = true }
 ariadne = { version = "0.5", optional = true, default-features = false }
 garde = { version = "0.22", optional = true, default-features = false, features = ["derive"] }
-validator = { version = "0.19", optional = true, features = ["derive"] }
+validator = { version = "0.21", optional = true, features = ["derive"] }
 # NOTE: `serde_yaml` 0.9 is intentionally NOT a noyalib dependency.
 # The upstream crate is unmaintained; the `compat-serde-yaml` shim
 # exposes a name-for-name surface backed entirely by noyalib's own
