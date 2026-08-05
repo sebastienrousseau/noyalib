@@ -266,7 +266,9 @@ fn official_suite() {
                             .map(|v| v.unwrap_or(serde_json::Value::Null))
                             .collect();
 
-                    if !json_values_equal(&expected_vals, &actual_vals) {
+                    if json_values_equal(&expected_vals, &actual_vals) {
+                        pass += 1;
+                    } else {
                         eprintln!("FAIL {}: value mismatch", case.id);
                         eprintln!("  Expected: {expected_json}");
                         eprintln!(
@@ -274,8 +276,6 @@ fn official_suite() {
                             serde_json::to_string(&actual_vals).unwrap()
                         );
                         fail += 1;
-                    } else {
-                        pass += 1;
                     }
                 } else {
                     pass += 1;
