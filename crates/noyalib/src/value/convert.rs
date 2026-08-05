@@ -8,7 +8,7 @@ use crate::prelude::*;
 use core::ops::{Index, IndexMut};
 
 impl From<()> for Value {
-    fn from(_: ()) -> Self {
+    fn from((): ()) -> Self {
         Value::Null
     }
 }
