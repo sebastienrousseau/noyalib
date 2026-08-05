@@ -724,7 +724,6 @@ unnecessary_wraps = "allow"
 unreadable_literal = "allow"
 unused_self = "allow"
 used_underscore_binding = "allow"
-wildcard_imports = "allow"
 zero_sized_map_values = "allow"
 
 # TODO fix or expect nursery
