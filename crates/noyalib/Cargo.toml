@@ -691,3 +691,6 @@ warn-lints = [
     "clippy::cargo",
     "clippy::nursery",
 ]
+
+[lints.clippy]
+checked_conversions = "warn" # Part of clippy::pedantic

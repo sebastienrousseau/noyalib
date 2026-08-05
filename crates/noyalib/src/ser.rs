@@ -1497,8 +1497,8 @@ impl serde_core::ser::Serializer for Serializer {
     }
 
     fn serialize_u64(self, v: u64) -> Result<Value> {
-        if v <= i64::MAX as u64 {
-            return Ok(Value::Number(Number::Integer(v as i64)));
+        if let Ok(v) = i64::try_from(v) {
+            return Ok(Value::Number(Number::Integer(v)));
         }
         // Values above `i64::MAX` require the `lossless-u64` feature.
         // Without it the `Number::Unsigned` variant does not exist and
