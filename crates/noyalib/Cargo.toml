@@ -691,3 +691,6 @@ warn-lints = [
     "clippy::cargo",
     "clippy::nursery",
 ]
+
+[lints.clippy]
+unused_trait_names = "warn"

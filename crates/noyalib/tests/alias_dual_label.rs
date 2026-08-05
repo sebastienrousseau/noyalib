@@ -144,7 +144,7 @@ fn legacy_unknown_anchor_variant_still_constructible() {
 #[cfg(feature = "miette")]
 mod miette_render {
     use super::*;
-    use miette::{Diagnostic, NamedSource, Report};
+    use miette::{Diagnostic as _, NamedSource, Report};
 
     #[test]
     fn dual_label_diagnostic_has_two_labels_when_suggestion_present() {

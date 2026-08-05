@@ -1771,7 +1771,7 @@ fn bench_number(c: &mut Criterion) {
     // Hash
     let _ = group.bench_function("hash", |b| {
         use std::collections::hash_map::DefaultHasher;
-        use std::hash::{Hash, Hasher};
+        use std::hash::{Hash as _, Hasher as _};
         b.iter(|| {
             let mut hasher = DefaultHasher::new();
             black_box(&int).hash(&mut hasher);
@@ -2701,7 +2701,7 @@ fn bench_value_serde(c: &mut Criterion) {
     // Value Hash
     let _ = group.bench_function("hash", |b| {
         use std::collections::hash_map::DefaultHasher;
-        use std::hash::{Hash, Hasher};
+        use std::hash::{Hash as _, Hasher as _};
         b.iter(|| {
             let mut hasher = DefaultHasher::new();
             black_box(&a).hash(&mut hasher);

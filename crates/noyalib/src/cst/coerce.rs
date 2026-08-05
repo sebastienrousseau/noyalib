@@ -165,7 +165,7 @@ fn value_path_from_pointer(root: &Value, pointer: &str) -> Option<String> {
             }
             Value::Sequence(s) => {
                 let idx: usize = seg.parse().ok()?;
-                use core::fmt::Write;
+                use core::fmt::Write as _;
                 let _ = write!(out, "[{idx}]");
                 cursor = s.get(idx)?;
             }

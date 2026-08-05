@@ -7,7 +7,7 @@
 
 use std::borrow::Cow;
 use std::collections::hash_map::DefaultHasher;
-use std::hash::{Hash, Hasher};
+use std::hash::{Hash, Hasher as _};
 
 use noyalib::{
     Mapping, MaybeTag, Number, Sequence, Tag, TaggedValue, Value, check_for_tag, from_str, nobang,
@@ -449,7 +449,7 @@ fn test_number_nan_infinite_finite() {
 
 #[test]
 fn test_number_from_str() {
-    use std::str::FromStr;
+    use std::str::FromStr as _;
 
     // Integer
     assert_eq!(Number::from_str("42").unwrap(), Number::Integer(42));
@@ -919,7 +919,7 @@ fn test_tagged_value() {
 #[test]
 fn test_parse_number_error() {
     use std::error::Error;
-    use std::str::FromStr;
+    use std::str::FromStr as _;
 
     let err = Number::from_str("invalid").unwrap_err();
     assert_eq!(format!("{}", err), "invalid number");
@@ -972,7 +972,7 @@ fn test_value_display() {
 
 #[test]
 fn test_number_from_str_edge_cases() {
-    use std::str::FromStr;
+    use std::str::FromStr as _;
 
     // Whitespace trimming
     assert_eq!(Number::from_str("  42  ").unwrap(), Number::Integer(42));
@@ -1953,7 +1953,7 @@ fn test_mapping_into_iter_mut() {
 #[test]
 fn test_mapping_hash() {
     use std::collections::hash_map::DefaultHasher;
-    use std::hash::{Hash, Hasher};
+    use std::hash::{Hash as _, Hasher as _};
 
     let mut map1 = Mapping::new();
     let _ = map1.insert("a", Value::from(1));
@@ -2039,7 +2039,7 @@ fn test_mapping_in_hashset() {
 #[test]
 fn test_value_hash_null_consistency() {
     use std::collections::hash_map::DefaultHasher;
-    use std::hash::{Hash, Hasher};
+    use std::hash::{Hash as _, Hasher as _};
 
     let null1 = Value::Null;
     let null2 = Value::Null;
@@ -2375,7 +2375,7 @@ fn test_value_index_tagged_value() {
 
 #[test]
 fn test_value_index_or_insert_creates_key() {
-    use noyalib::ValueIndex;
+    use noyalib::ValueIndex as _;
 
     let mut value = Value::Mapping(Mapping::new());
 
@@ -2390,7 +2390,7 @@ fn test_value_index_or_insert_creates_key() {
 
 #[test]
 fn test_value_index_or_insert_existing_key() {
-    use noyalib::ValueIndex;
+    use noyalib::ValueIndex as _;
 
     let mut mapping = Mapping::new();
     let _ = mapping.insert("existing", Value::from(10));
@@ -2408,7 +2408,7 @@ fn test_value_index_or_insert_existing_key() {
 
 #[test]
 fn test_value_index_or_insert_null_to_mapping() {
-    use noyalib::ValueIndex;
+    use noyalib::ValueIndex as _;
 
     let mut value = Value::Null;
 
@@ -2424,7 +2424,7 @@ fn test_value_index_or_insert_null_to_mapping() {
 
 #[test]
 fn test_value_index_or_insert_chained() {
-    use noyalib::ValueIndex;
+    use noyalib::ValueIndex as _;
 
     let mut value = Value::Null;
 
@@ -2452,7 +2452,7 @@ fn test_value_index_or_insert_chained() {
 #[test]
 #[should_panic(expected = "cannot access index")]
 fn test_value_index_or_insert_sequence_out_of_bounds() {
-    use noyalib::ValueIndex;
+    use noyalib::ValueIndex as _;
 
     let mut value = Value::Sequence(vec![Value::from(1), Value::from(2)]);
 
@@ -2463,7 +2463,7 @@ fn test_value_index_or_insert_sequence_out_of_bounds() {
 #[test]
 #[should_panic(expected = "cannot access index")]
 fn test_value_index_or_insert_wrong_type_for_usize() {
-    use noyalib::ValueIndex;
+    use noyalib::ValueIndex as _;
 
     let mut value = Value::from("not a sequence");
 
@@ -2474,7 +2474,7 @@ fn test_value_index_or_insert_wrong_type_for_usize() {
 #[test]
 #[should_panic(expected = "cannot access key")]
 fn test_value_index_or_insert_wrong_type_for_str() {
-    use noyalib::ValueIndex;
+    use noyalib::ValueIndex as _;
 
     let mut value = Value::Sequence(vec![Value::from(1)]);
 
@@ -2484,7 +2484,7 @@ fn test_value_index_or_insert_wrong_type_for_str() {
 
 #[test]
 fn test_value_index_sequence_usize() {
-    use noyalib::ValueIndex;
+    use noyalib::ValueIndex as _;
 
     let value = Value::Sequence(vec![
         Value::from("first"),
@@ -2500,7 +2500,7 @@ fn test_value_index_sequence_usize() {
 
 #[test]
 fn test_value_index_sequence_tagged() {
-    use noyalib::ValueIndex;
+    use noyalib::ValueIndex as _;
 
     let seq = Value::Sequence(vec![Value::from("item")]);
     let tagged = Value::Tagged(Box::new(TaggedValue::new(Tag::new("!list"), seq)));

@@ -49,7 +49,7 @@
 
 use bytes::BytesMut;
 use core::marker::PhantomData;
-use tokio::io::{AsyncRead, AsyncReadExt};
+use tokio::io::{AsyncRead, AsyncReadExt as _};
 use tokio_util::codec::Decoder;
 
 use crate::de::{ParserConfig, from_slice, from_slice_with_config};

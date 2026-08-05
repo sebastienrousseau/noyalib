@@ -51,7 +51,7 @@ fn test_nan_serialization() {
 #[test]
 fn test_nan_parsing() {
     // NaN can be parsed when in a typed context
-    use std::str::FromStr;
+    use std::str::FromStr as _;
 
     use noyalib::Number;
 
@@ -80,7 +80,7 @@ fn test_infinity_serialization() {
 #[test]
 fn test_infinity_parsing() {
     // Infinity can be parsed when in a typed context
-    use std::str::FromStr;
+    use std::str::FromStr as _;
 
     use noyalib::Number;
 
@@ -100,7 +100,7 @@ fn test_infinity_parsing() {
 
 #[test]
 fn test_octal_integer_parsing() {
-    use std::str::FromStr;
+    use std::str::FromStr as _;
 
     use noyalib::Number;
 
@@ -111,7 +111,7 @@ fn test_octal_integer_parsing() {
 
 #[test]
 fn test_hex_integer_parsing() {
-    use std::str::FromStr;
+    use std::str::FromStr as _;
 
     use noyalib::Number;
 
@@ -125,7 +125,7 @@ fn test_hex_integer_parsing() {
 
 #[test]
 fn test_binary_integer_parsing() {
-    use std::str::FromStr;
+    use std::str::FromStr as _;
 
     use noyalib::Number;
 
@@ -664,7 +664,7 @@ fn test_value_ordering_edge_cases() {
 #[test]
 fn test_value_hash_consistency() {
     use std::collections::HashSet;
-    use std::hash::{Hash, Hasher};
+    use std::hash::{Hash as _, Hasher as _};
 
     fn hash_value(v: &Value) -> u64 {
         let mut hasher = std::collections::hash_map::DefaultHasher::new();
