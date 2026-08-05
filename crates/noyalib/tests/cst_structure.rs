@@ -91,7 +91,7 @@ fn block_sequence_produces_sequence_items() {
         let first = item.children().next().expect("at least one child");
         match first {
             GreenChild::Token { kind, .. } => {
-                assert_eq!(*kind, SyntaxKind::DashIndicator)
+                assert_eq!(*kind, SyntaxKind::DashIndicator);
             }
             GreenChild::Node(_) => panic!("first child of SequenceItem must be `-`"),
         }
