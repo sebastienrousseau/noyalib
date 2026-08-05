@@ -60,7 +60,7 @@ impl Location {
                 column += 1;
             }
         }
-        Location {
+        Self {
             index,
             line,
             column,
@@ -78,7 +78,7 @@ impl Location {
     /// ```
     #[must_use]
     pub fn new(line: usize, col: usize, index: usize) -> Self {
-        Location {
+        Self {
             index,
             line,
             column: col,
@@ -233,27 +233,27 @@ pub enum BudgetBreach {
 impl fmt::Display for BudgetBreach {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            BudgetBreach::MaxEvents { limit, observed } => write!(
+            Self::MaxEvents { limit, observed } => write!(
                 f,
                 "max_events budget exceeded: observed {observed} > limit {limit}"
             ),
-            BudgetBreach::MaxNodes { limit, observed } => write!(
+            Self::MaxNodes { limit, observed } => write!(
                 f,
                 "max_nodes budget exceeded: observed {observed} > limit {limit}"
             ),
-            BudgetBreach::MaxTotalScalarBytes { limit, observed } => write!(
+            Self::MaxTotalScalarBytes { limit, observed } => write!(
                 f,
                 "max_total_scalar_bytes budget exceeded: observed {observed} > limit {limit}"
             ),
-            BudgetBreach::MaxDocuments { limit, observed } => write!(
+            Self::MaxDocuments { limit, observed } => write!(
                 f,
                 "max_documents budget exceeded: observed {observed} > limit {limit}"
             ),
-            BudgetBreach::MaxMergeKeys { limit, observed } => write!(
+            Self::MaxMergeKeys { limit, observed } => write!(
                 f,
                 "max_merge_keys budget exceeded: observed {observed} > limit {limit}"
             ),
-            BudgetBreach::AliasAnchorRatio {
+            Self::AliasAnchorRatio {
                 ratio,
                 anchors,
                 aliases,
@@ -261,11 +261,11 @@ impl fmt::Display for BudgetBreach {
                 f,
                 "alias_anchor_ratio heuristic tripped: {aliases} aliases / {anchors} anchors > {ratio}"
             ),
-            BudgetBreach::MaxSequenceLength { limit, observed } => write!(
+            Self::MaxSequenceLength { limit, observed } => write!(
                 f,
                 "max_sequence_length budget exceeded: sequence length limit {limit}, observed {observed}"
             ),
-            BudgetBreach::MaxMappingKeys { limit, observed } => write!(
+            Self::MaxMappingKeys { limit, observed } => write!(
                 f,
                 "max_mapping_keys budget exceeded: mapping key limit {limit}, observed {observed}"
             ),
@@ -739,7 +739,7 @@ pub enum Error {
     /// use std::sync::Arc;
     /// let _e = noyalib::Error::Shared(Arc::new(noyalib::Error::EndOfStream));
     /// ```
-    Shared(Arc<Error>),
+    Shared(Arc<Self>),
 
     /// End of stream reached unexpectedly.
     ///
@@ -807,51 +807,51 @@ pub enum Error {
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Error::Parse(msg) => write!(f, "YAML parse error: {msg}"),
-            Error::ParseWithLocation { message, location } => {
+            Self::Parse(msg) => write!(f, "YAML parse error: {msg}"),
+            Self::ParseWithLocation { message, location } => {
                 write!(f, "YAML parse error at {location}: {message}")
             }
-            Error::Serialize(msg) => write!(f, "serialization error: {msg}"),
-            Error::Deserialize(msg) => write!(f, "deserialization error: {msg}"),
-            Error::DeserializeWithLocation { message, location } => {
+            Self::Serialize(msg) => write!(f, "serialization error: {msg}"),
+            Self::Deserialize(msg) => write!(f, "deserialization error: {msg}"),
+            Self::DeserializeWithLocation { message, location } => {
                 write!(f, "deserialization error at {location}: {message}")
             }
             #[cfg(feature = "std")]
-            Error::Io(e) => write!(f, "I/O error: {e}"),
-            Error::Custom(msg) => f.write_str(msg),
-            Error::RecursionLimitExceeded { depth } => {
+            Self::Io(e) => write!(f, "I/O error: {e}"),
+            Self::Custom(msg) => f.write_str(msg),
+            Self::RecursionLimitExceeded { depth } => {
                 write!(f, "recursion depth limit exceeded: {depth}")
             }
-            Error::DuplicateKey(name) => write!(f, "duplicate key: {name}"),
-            Error::KeyCollision(name) => write!(
+            Self::DuplicateKey(name) => write!(f, "duplicate key: {name}"),
+            Self::KeyCollision(name) => write!(
                 f,
                 "distinct mapping keys collide after string conversion: {name} \
                  (e.g. `1` and `\"1\"`, or `true` and `\"true\"`)"
             ),
-            Error::RepetitionLimitExceeded => f.write_str("alias expansion limit exceeded"),
-            Error::Budget(breach) => write!(f, "{breach}"),
-            Error::UnknownAnchor(name) => write!(f, "unknown anchor: {name}"),
-            Error::UnknownAnchorAt { name, location, .. } => {
+            Self::RepetitionLimitExceeded => f.write_str("alias expansion limit exceeded"),
+            Self::Budget(breach) => write!(f, "{breach}"),
+            Self::UnknownAnchor(name) => write!(f, "unknown anchor: {name}"),
+            Self::UnknownAnchorAt { name, location, .. } => {
                 write!(f, "unknown anchor: {name} at {location}")
             }
-            Error::MissingField(name) => write!(f, "missing field: {name}"),
-            Error::UnknownField(name) => write!(f, "unknown field: {name}"),
-            Error::ScalarInMergeElement => f.write_str("scalar in merge element"),
-            Error::SequenceInMergeElement => f.write_str("sequence in merge element"),
-            Error::TaggedInMerge => f.write_str("tagged value in merge"),
-            Error::Invalid(msg) => write!(f, "invalid YAML: {msg}"),
-            Error::TypeMismatch { expected, found } => {
+            Self::MissingField(name) => write!(f, "missing field: {name}"),
+            Self::UnknownField(name) => write!(f, "unknown field: {name}"),
+            Self::ScalarInMergeElement => f.write_str("scalar in merge element"),
+            Self::SequenceInMergeElement => f.write_str("sequence in merge element"),
+            Self::TaggedInMerge => f.write_str("tagged value in merge"),
+            Self::Invalid(msg) => write!(f, "invalid YAML: {msg}"),
+            Self::TypeMismatch { expected, found } => {
                 write!(f, "type mismatch: expected {expected}, found {found}")
             }
-            Error::Shared(arc) => fmt::Display::fmt(arc.as_ref(), f),
-            Error::EndOfStream => f.write_str("unexpected end of stream"),
-            Error::MoreThanOneDocument => {
+            Self::Shared(arc) => fmt::Display::fmt(arc.as_ref(), f),
+            Self::EndOfStream => f.write_str("unexpected end of stream"),
+            Self::MoreThanOneDocument => {
                 f.write_str("multiple documents in stream; expected exactly one")
             }
-            Error::ScalarInMerge => f.write_str("scalar in merge"),
-            Error::EmptyTag => f.write_str("empty tag"),
-            Error::FailedToParseNumber(msg) => write!(f, "failed to parse number: {msg}"),
-            Error::Message(msg, _) => write!(f, "serde error: {msg}"),
+            Self::ScalarInMerge => f.write_str("scalar in merge"),
+            Self::EmptyTag => f.write_str("empty tag"),
+            Self::FailedToParseNumber(msg) => write!(f, "failed to parse number: {msg}"),
+            Self::Message(msg, _) => write!(f, "serde error: {msg}"),
         }
     }
 }
@@ -867,8 +867,8 @@ impl core::error::Error for Error {
     fn source(&self) -> Option<&(dyn core::error::Error + 'static)> {
         match self {
             #[cfg(feature = "std")]
-            Error::Io(e) => Some(e),
-            Error::Shared(arc) => Some(arc.as_ref()),
+            Self::Io(e) => Some(e),
+            Self::Shared(arc) => Some(arc.as_ref()),
             _ => None,
         }
     }
@@ -877,7 +877,7 @@ impl core::error::Error for Error {
 #[cfg(feature = "std")]
 impl From<std::io::Error> for Error {
     fn from(e: std::io::Error) -> Self {
-        Error::Io(e)
+        Self::Io(e)
     }
 }
 
@@ -894,10 +894,10 @@ impl Error {
     #[must_use]
     pub fn location(&self) -> Option<Location> {
         match self {
-            Error::ParseWithLocation { location, .. } => Some(*location),
-            Error::DeserializeWithLocation { location, .. } => Some(*location),
-            Error::UnknownAnchorAt { location, .. } => Some(*location),
-            Error::Shared(arc) => arc.location(),
+            Self::ParseWithLocation { location, .. } => Some(*location),
+            Self::DeserializeWithLocation { location, .. } => Some(*location),
+            Self::UnknownAnchorAt { location, .. } => Some(*location),
+            Self::Shared(arc) => arc.location(),
             _ => None,
         }
     }
@@ -925,31 +925,31 @@ impl Error {
     #[must_use]
     pub fn kind(&self) -> ErrorKind {
         match self {
-            Error::Parse(_) | Error::ParseWithLocation { .. } => ErrorKind::Syntax,
-            Error::Serialize(_) => ErrorKind::Data,
-            Error::Deserialize(_) | Error::DeserializeWithLocation { .. } => ErrorKind::Data,
+            Self::Parse(_) | Self::ParseWithLocation { .. } => ErrorKind::Syntax,
+            Self::Serialize(_) => ErrorKind::Data,
+            Self::Deserialize(_) | Self::DeserializeWithLocation { .. } => ErrorKind::Data,
             #[cfg(feature = "std")]
-            Error::Io(_) => ErrorKind::Io,
-            Error::Custom(_) => ErrorKind::Other,
-            Error::RecursionLimitExceeded { .. } => ErrorKind::Budget,
-            Error::DuplicateKey(_) => ErrorKind::DuplicateKey,
-            Error::KeyCollision(_) => ErrorKind::KeyCollision,
-            Error::RepetitionLimitExceeded => ErrorKind::Budget,
-            Error::Budget(_) => ErrorKind::Budget,
-            Error::UnknownAnchor(_) | Error::UnknownAnchorAt { .. } => ErrorKind::Data,
-            Error::MissingField(_) | Error::UnknownField(_) => ErrorKind::Data,
-            Error::ScalarInMergeElement
-            | Error::SequenceInMergeElement
-            | Error::TaggedInMerge
-            | Error::ScalarInMerge => ErrorKind::Policy,
-            Error::Invalid(_) => ErrorKind::Data,
-            Error::TypeMismatch { .. } => ErrorKind::Data,
-            Error::Shared(arc) => arc.kind(),
-            Error::EndOfStream => ErrorKind::EndOfStream,
-            Error::MoreThanOneDocument => ErrorKind::Data,
-            Error::EmptyTag => ErrorKind::Syntax,
-            Error::FailedToParseNumber(_) => ErrorKind::Syntax,
-            Error::Message(_, _) => ErrorKind::Other,
+            Self::Io(_) => ErrorKind::Io,
+            Self::Custom(_) => ErrorKind::Other,
+            Self::RecursionLimitExceeded { .. } => ErrorKind::Budget,
+            Self::DuplicateKey(_) => ErrorKind::DuplicateKey,
+            Self::KeyCollision(_) => ErrorKind::KeyCollision,
+            Self::RepetitionLimitExceeded => ErrorKind::Budget,
+            Self::Budget(_) => ErrorKind::Budget,
+            Self::UnknownAnchor(_) | Self::UnknownAnchorAt { .. } => ErrorKind::Data,
+            Self::MissingField(_) | Self::UnknownField(_) => ErrorKind::Data,
+            Self::ScalarInMergeElement
+            | Self::SequenceInMergeElement
+            | Self::TaggedInMerge
+            | Self::ScalarInMerge => ErrorKind::Policy,
+            Self::Invalid(_) => ErrorKind::Data,
+            Self::TypeMismatch { .. } => ErrorKind::Data,
+            Self::Shared(arc) => arc.kind(),
+            Self::EndOfStream => ErrorKind::EndOfStream,
+            Self::MoreThanOneDocument => ErrorKind::Data,
+            Self::EmptyTag => ErrorKind::Syntax,
+            Self::FailedToParseNumber(_) => ErrorKind::Syntax,
+            Self::Message(_, _) => ErrorKind::Other,
         }
     }
 
@@ -1146,7 +1146,7 @@ impl Error {
     #[must_use]
     pub fn into_shared(self) -> Arc<Self> {
         match self {
-            Error::Shared(arc) => arc,
+            Self::Shared(arc) => arc,
             other => Arc::new(other),
         }
     }
@@ -1162,7 +1162,7 @@ impl Error {
     /// ```
     #[must_use]
     pub fn is_shared(&self) -> bool {
-        matches!(self, Error::Shared(_))
+        matches!(self, Self::Shared(_))
     }
 
     /// Access the inner error if this is a shared error.
@@ -1177,7 +1177,7 @@ impl Error {
     #[must_use]
     pub fn as_inner(&self) -> Option<&Self> {
         match self {
-            Error::Shared(arc) => Some(&**arc),
+            Self::Shared(arc) => Some(&**arc),
             _ => None,
         }
     }
@@ -1191,7 +1191,7 @@ impl Error {
     /// assert!(matches!(e, noyalib::Error::ParseWithLocation { .. }));
     /// ```
     pub fn parse_at(message: impl Into<String>, source: &str, index: usize) -> Self {
-        Error::ParseWithLocation {
+        Self::ParseWithLocation {
             message: message.into(),
             location: Location::from_index(source, index),
         }
@@ -1206,7 +1206,7 @@ impl Error {
     /// assert!(matches!(e, noyalib::Error::DeserializeWithLocation { .. }));
     /// ```
     pub fn deserialize_at(message: impl Into<String>, source: &str, index: usize) -> Self {
-        Error::DeserializeWithLocation {
+        Self::DeserializeWithLocation {
             message: message.into(),
             location: Location::from_index(source, index),
         }
@@ -1222,8 +1222,8 @@ impl Error {
     /// assert!(e.is_shared());
     /// ```
     #[must_use]
-    pub fn from_shared(arc: Arc<Error>) -> Error {
-        Error::Shared(arc)
+    pub fn from_shared(arc: Arc<Self>) -> Self {
+        Self::Shared(arc)
     }
 
     /// Render the error in rustc-style with default options.
@@ -1318,7 +1318,7 @@ pub struct RenderOptions {
 
 impl Default for RenderOptions {
     fn default() -> Self {
-        RenderOptions {
+        Self {
             crop_radius: 2,
             color: false,
         }
@@ -1420,7 +1420,7 @@ impl<'a> CroppedRegion<'a> {
     /// assert_eq!(r.focus_line, 3);
     /// ```
     #[must_use]
-    pub fn extract(source: &'a str, target_line: usize, radius: usize) -> CroppedRegion<'a> {
+    pub fn extract(source: &'a str, target_line: usize, radius: usize) -> Self {
         let all: Vec<&str> = source.lines().collect();
         if all.is_empty() {
             return CroppedRegion {
@@ -1484,21 +1484,21 @@ fn colorize_render(plain: &str) -> String {
 
 impl serde_core::ser::Error for Error {
     fn custom<T: fmt::Display>(msg: T) -> Self {
-        Error::Custom(msg.to_string())
+        Self::Custom(msg.to_string())
     }
 }
 
 impl serde_core::de::Error for Error {
     fn custom<T: fmt::Display>(msg: T) -> Self {
-        Error::Custom(msg.to_string())
+        Self::Custom(msg.to_string())
     }
 
     fn missing_field(field: &'static str) -> Self {
-        Error::MissingField(field.to_string())
+        Self::MissingField(field.to_string())
     }
 
     fn unknown_field(field: &str, _expected: &'static [&'static str]) -> Self {
-        Error::UnknownField(field.to_string())
+        Self::UnknownField(field.to_string())
     }
 }
 
@@ -1545,25 +1545,25 @@ pub type Result<T> = core::result::Result<T, Error>;
 #[cfg(feature = "miette")]
 impl miette::Diagnostic for Error {
     fn code<'a>(&'a self) -> Option<Box<dyn fmt::Display + 'a>> {
-        if let Error::Shared(arc) = self {
+        if let Self::Shared(arc) = self {
             return arc.code();
         }
         let code = match self {
-            Error::Parse(_) | Error::ParseWithLocation { .. } => "noyalib::parse",
-            Error::Serialize(_) => "noyalib::serialize",
-            Error::Deserialize(_) | Error::DeserializeWithLocation { .. } => "noyalib::deserialize",
-            Error::TypeMismatch { .. } => "noyalib::type_mismatch",
-            Error::MissingField(_) => "noyalib::missing_field",
-            Error::UnknownField(_) => "noyalib::unknown_field",
-            Error::RecursionLimitExceeded { .. } => "noyalib::recursion_limit",
-            Error::RepetitionLimitExceeded => "noyalib::repetition_limit",
-            Error::Budget(_) => "noyalib::budget",
-            Error::UnknownAnchor(_) | Error::UnknownAnchorAt { .. } => "noyalib::unknown_anchor",
-            Error::DuplicateKey(_) => "noyalib::duplicate_key",
-            Error::KeyCollision(_) => "noyalib::key_collision",
-            Error::EndOfStream => "noyalib::eof",
-            Error::MoreThanOneDocument => "noyalib::multi_document",
-            Error::Io(_) => "noyalib::io",
+            Self::Parse(_) | Self::ParseWithLocation { .. } => "noyalib::parse",
+            Self::Serialize(_) => "noyalib::serialize",
+            Self::Deserialize(_) | Self::DeserializeWithLocation { .. } => "noyalib::deserialize",
+            Self::TypeMismatch { .. } => "noyalib::type_mismatch",
+            Self::MissingField(_) => "noyalib::missing_field",
+            Self::UnknownField(_) => "noyalib::unknown_field",
+            Self::RecursionLimitExceeded { .. } => "noyalib::recursion_limit",
+            Self::RepetitionLimitExceeded => "noyalib::repetition_limit",
+            Self::Budget(_) => "noyalib::budget",
+            Self::UnknownAnchor(_) | Self::UnknownAnchorAt { .. } => "noyalib::unknown_anchor",
+            Self::DuplicateKey(_) => "noyalib::duplicate_key",
+            Self::KeyCollision(_) => "noyalib::key_collision",
+            Self::EndOfStream => "noyalib::eof",
+            Self::MoreThanOneDocument => "noyalib::multi_document",
+            Self::Io(_) => "noyalib::io",
             _ => "noyalib::error",
         };
         Some(Box::new(code))
@@ -1571,32 +1571,32 @@ impl miette::Diagnostic for Error {
 
     fn help<'a>(&'a self) -> Option<Box<dyn fmt::Display + 'a>> {
         let help: Option<String> = match self {
-            Error::UnknownAnchorAt {
+            Self::UnknownAnchorAt {
                 suggestion: Some((name, _)),
                 ..
             } => Some(format!("did you mean '&{name}'?")),
             // `UnknownAnchor` (legacy, no location) gets a generic hint;
             // `UnknownAnchorAt` without a similar-name suggestion stays
             // `None` so the dual-label diagnostic speaks for itself.
-            Error::UnknownAnchor(_) => {
+            Self::UnknownAnchor(_) => {
                 Some("define the anchor (&name) before referencing it".into())
             }
-            Error::RecursionLimitExceeded { .. } => {
+            Self::RecursionLimitExceeded { .. } => {
                 Some("increase ParserConfig::max_depth or simplify nesting".into())
             }
-            Error::RepetitionLimitExceeded => {
+            Self::RepetitionLimitExceeded => {
                 Some("increase ParserConfig::max_alias_expansions or reduce alias usage".into())
             }
-            Error::Budget(_) => {
+            Self::Budget(_) => {
                 Some("raise the matching ParserConfig::max_* limit or simplify the input".into())
             }
-            Error::DuplicateKey(_) => {
+            Self::DuplicateKey(_) => {
                 Some("use DuplicateKeyPolicy::Last or ::Error to control behaviour".into())
             }
-            Error::KeyCollision(_) => Some(
+            Self::KeyCollision(_) => Some(
                 "give the colliding keys distinct spellings, or quote them consistently".into(),
             ),
-            Error::MoreThanOneDocument => {
+            Self::MoreThanOneDocument => {
                 Some("use noyalib::load_all() to parse multi-document streams".into())
             }
             _ => None,
@@ -1605,7 +1605,7 @@ impl miette::Diagnostic for Error {
     }
 
     fn source_code(&self) -> Option<&dyn miette::SourceCode> {
-        if let Error::Shared(arc) = self {
+        if let Self::Shared(arc) = self {
             return arc.source_code();
         }
         None
@@ -1613,21 +1613,21 @@ impl miette::Diagnostic for Error {
 
     fn labels(&self) -> Option<Box<dyn Iterator<Item = miette::LabeledSpan> + '_>> {
         match self {
-            Error::ParseWithLocation { message, location } => Some(Box::new(core::iter::once(
+            Self::ParseWithLocation { message, location } => Some(Box::new(core::iter::once(
                 miette::LabeledSpan::new(Some(message.clone()), location.index(), 1),
             ))),
-            Error::DeserializeWithLocation { message, location } => {
+            Self::DeserializeWithLocation { message, location } => {
                 Some(Box::new(core::iter::once(miette::LabeledSpan::new(
                     Some(message.clone()),
                     location.index(),
                     1,
                 ))))
             }
-            Error::TypeMismatch {
+            Self::TypeMismatch {
                 expected: _,
                 found: _,
             } => None,
-            Error::UnknownAnchorAt {
+            Self::UnknownAnchorAt {
                 name,
                 location,
                 suggestion,
@@ -1647,8 +1647,8 @@ impl miette::Diagnostic for Error {
                 }
                 Some(Box::new(labels.into_iter()))
             }
-            Error::Shared(arc) => arc.labels(),
-            Error::Message(msg, Some(offset)) => Some(Box::new(core::iter::once(
+            Self::Shared(arc) => arc.labels(),
+            Self::Message(msg, Some(offset)) => Some(Box::new(core::iter::once(
                 miette::LabeledSpan::new(Some(msg.clone()), *offset, 1),
             ))),
             _ => None,

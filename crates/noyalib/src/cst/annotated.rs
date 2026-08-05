@@ -425,7 +425,7 @@ impl Document {
         op: &str,
         path: &str,
         splice: Result<()>,
-        snapshot: Document,
+        snapshot: Self,
         expected: &crate::Value,
     ) -> Result<()> {
         if let Err(e) = splice {

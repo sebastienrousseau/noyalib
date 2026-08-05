@@ -77,7 +77,7 @@ pub(crate) mod shared_tracking {
                     false
                 }
             });
-            AnchorScope { owns }
+            Self { owns }
         }
     }
 
@@ -216,7 +216,7 @@ impl<'de, T: serde_core::Deserialize<'de>> serde_core::Deserialize<'de> for RcAn
     where
         D: serde_core::Deserializer<'de>,
     {
-        T::deserialize(deserializer).map(|v| RcAnchor(Rc::new(v)))
+        T::deserialize(deserializer).map(|v| Self(Rc::new(v)))
     }
 }
 
@@ -310,7 +310,7 @@ impl<'de, T: serde_core::Deserialize<'de>> serde_core::Deserialize<'de> for ArcA
     where
         D: serde_core::Deserializer<'de>,
     {
-        T::deserialize(deserializer).map(|v| ArcAnchor(Arc::new(v)))
+        T::deserialize(deserializer).map(|v| Self(Arc::new(v)))
     }
 }
 
@@ -423,7 +423,7 @@ impl<'de, T> serde_core::Deserialize<'de> for RcWeakAnchor<T> {
         // Always deserialize as a dangling weak — there's no registry to look up.
         // We consume the value to avoid errors.
         let _ = serde_core::de::IgnoredAny::deserialize(deserializer)?;
-        Ok(RcWeakAnchor(RcWeak::new()))
+        Ok(Self(RcWeak::new()))
     }
 }
 
@@ -531,7 +531,7 @@ impl<'de, T> serde_core::Deserialize<'de> for ArcWeakAnchor<T> {
         D: serde_core::Deserializer<'de>,
     {
         let _ = serde_core::de::IgnoredAny::deserialize(deserializer)?;
-        Ok(ArcWeakAnchor(ArcWeak::new()))
+        Ok(Self(ArcWeak::new()))
     }
 }
 
@@ -836,7 +836,7 @@ pub struct RcRecursive<T>(pub Rc<RefCell<Option<T>>>);
 #[cfg(feature = "std")]
 impl<T> Clone for RcRecursive<T> {
     fn clone(&self) -> Self {
-        RcRecursive(self.0.clone())
+        Self(self.0.clone())
     }
 }
 
@@ -867,7 +867,7 @@ impl<T> RcRecursive<T> {
     /// ```
     #[must_use]
     pub fn empty() -> Self {
-        RcRecursive(Rc::new(RefCell::new(None)))
+        Self(Rc::new(RefCell::new(None)))
     }
 
     /// Construct a recursive anchor pre-populated with `value`.
@@ -881,7 +881,7 @@ impl<T> RcRecursive<T> {
     /// ```
     #[must_use]
     pub fn new(value: T) -> Self {
-        RcRecursive(Rc::new(RefCell::new(Some(value))))
+        Self(Rc::new(RefCell::new(Some(value))))
     }
 
     /// Borrow the inner value immutably (runtime-checked).
@@ -952,7 +952,7 @@ impl<'de, T: serde_core::Deserialize<'de>> serde_core::Deserialize<'de> for RcRe
     where
         D: serde_core::Deserializer<'de>,
     {
-        T::deserialize(deserializer).map(RcRecursive::new)
+        T::deserialize(deserializer).map(Self::new)
     }
 }
 
@@ -967,7 +967,7 @@ pub struct RcRecursion<T>(pub RcWeak<RefCell<Option<T>>>);
 #[cfg(feature = "std")]
 impl<T> Clone for RcRecursion<T> {
     fn clone(&self) -> Self {
-        RcRecursion(self.0.clone())
+        Self(self.0.clone())
     }
 }
 
@@ -981,7 +981,7 @@ impl<T: fmt::Debug> fmt::Debug for RcRecursion<T> {
 #[cfg(feature = "std")]
 impl<T> Default for RcRecursion<T> {
     fn default() -> Self {
-        RcRecursion(RcWeak::new())
+        Self(RcWeak::new())
     }
 }
 
@@ -1014,7 +1014,7 @@ pub struct ArcRecursive<T>(pub Arc<Mutex<Option<T>>>);
 #[cfg(feature = "std")]
 impl<T> Clone for ArcRecursive<T> {
     fn clone(&self) -> Self {
-        ArcRecursive(self.0.clone())
+        Self(self.0.clone())
     }
 }
 
@@ -1038,14 +1038,14 @@ impl<T> ArcRecursive<T> {
     /// anchor.
     #[must_use]
     pub fn empty() -> Self {
-        ArcRecursive(Arc::new(Mutex::new(None)))
+        Self(Arc::new(Mutex::new(None)))
     }
 
     /// Construct a thread-safe recursive anchor pre-populated
     /// with `value`.
     #[must_use]
     pub fn new(value: T) -> Self {
-        ArcRecursive(Arc::new(Mutex::new(Some(value))))
+        Self(Arc::new(Mutex::new(Some(value))))
     }
 
     /// Lock the inner cell. Recovers from poisoning rather than
@@ -1111,7 +1111,7 @@ impl<'de, T: serde_core::Deserialize<'de>> serde_core::Deserialize<'de> for ArcR
     where
         D: serde_core::Deserializer<'de>,
     {
-        T::deserialize(deserializer).map(ArcRecursive::new)
+        T::deserialize(deserializer).map(Self::new)
     }
 }
 
@@ -1123,7 +1123,7 @@ pub struct ArcRecursion<T>(pub ArcWeak<Mutex<Option<T>>>);
 #[cfg(feature = "std")]
 impl<T> Clone for ArcRecursion<T> {
     fn clone(&self) -> Self {
-        ArcRecursion(self.0.clone())
+        Self(self.0.clone())
     }
 }
 
@@ -1137,7 +1137,7 @@ impl<T: fmt::Debug> fmt::Debug for ArcRecursion<T> {
 #[cfg(feature = "std")]
 impl<T> Default for ArcRecursion<T> {
     fn default() -> Self {
-        ArcRecursion(ArcWeak::new())
+        Self(ArcWeak::new())
     }
 }
 

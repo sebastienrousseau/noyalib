@@ -74,7 +74,7 @@ fn main() {
         #[allow(dead_code)]
         struct Node {
             name: String,
-            children: Vec<Rc<Node>>,
+            children: Vec<Rc<Self>>,
         }
 
         let mut reg = AnchorRegistry::<Node>::new();

@@ -52,7 +52,7 @@ impl Value {
     /// ```
     #[must_use]
     pub fn is_null(&self) -> bool {
-        matches!(self, Value::Null)
+        matches!(self, Self::Null)
     }
 
     /// Returns `true` if the value is a boolean.
@@ -66,7 +66,7 @@ impl Value {
     /// ```
     #[must_use]
     pub fn is_bool(&self) -> bool {
-        matches!(self, Value::Bool(_))
+        matches!(self, Self::Bool(_))
     }
 
     /// Returns `true` if the value is a number (integer or float).
@@ -81,7 +81,7 @@ impl Value {
     /// ```
     #[must_use]
     pub fn is_number(&self) -> bool {
-        matches!(self, Value::Number(_))
+        matches!(self, Self::Number(_))
     }
 
     /// Returns `true` if the value is a string.
@@ -95,7 +95,7 @@ impl Value {
     /// ```
     #[must_use]
     pub fn is_string(&self) -> bool {
-        matches!(self, Value::String(_))
+        matches!(self, Self::String(_))
     }
 
     /// Returns `true` if the value is a sequence (YAML list).
@@ -109,7 +109,7 @@ impl Value {
     /// ```
     #[must_use]
     pub fn is_sequence(&self) -> bool {
-        matches!(self, Value::Sequence(_))
+        matches!(self, Self::Sequence(_))
     }
 
     /// Returns `true` if the value is a mapping (YAML map).
@@ -123,7 +123,7 @@ impl Value {
     /// ```
     #[must_use]
     pub fn is_mapping(&self) -> bool {
-        matches!(self, Value::Mapping(_))
+        matches!(self, Self::Mapping(_))
     }
 
     /// Returns `true` if the value is tagged (custom YAML tag).
@@ -137,7 +137,7 @@ impl Value {
     /// ```
     #[must_use]
     pub fn is_tagged(&self) -> bool {
-        matches!(self, Value::Tagged(_))
+        matches!(self, Self::Tagged(_))
     }
 
     /// Returns the value as a boolean if it is one.
@@ -152,7 +152,7 @@ impl Value {
     #[must_use]
     pub fn as_bool(&self) -> Option<bool> {
         match self {
-            Value::Bool(b) => Some(*b),
+            Self::Bool(b) => Some(*b),
             _ => None,
         }
     }
@@ -169,7 +169,7 @@ impl Value {
     #[must_use]
     pub fn as_null(&self) -> Option<()> {
         match self {
-            Value::Null => Some(()),
+            Self::Null => Some(()),
             _ => None,
         }
     }
@@ -189,7 +189,7 @@ impl Value {
     #[must_use]
     pub fn as_i64(&self) -> Option<i64> {
         match self {
-            Value::Number(n) => n.as_i64(),
+            Self::Number(n) => n.as_i64(),
             _ => None,
         }
     }
@@ -208,7 +208,7 @@ impl Value {
     #[must_use]
     pub fn as_u64(&self) -> Option<u64> {
         match self {
-            Value::Number(n) => n.as_u64(),
+            Self::Number(n) => n.as_u64(),
             _ => None,
         }
     }
@@ -229,7 +229,7 @@ impl Value {
     #[must_use]
     pub fn as_f64(&self) -> Option<f64> {
         match self {
-            Value::Number(n) => Some(n.as_f64()),
+            Self::Number(n) => Some(n.as_f64()),
             _ => None,
         }
     }
@@ -246,7 +246,7 @@ impl Value {
     #[must_use]
     pub fn is_i64(&self) -> bool {
         match self {
-            Value::Number(n) => n.is_i64(),
+            Self::Number(n) => n.is_i64(),
             _ => false,
         }
     }
@@ -263,7 +263,7 @@ impl Value {
     #[must_use]
     pub fn is_u64(&self) -> bool {
         match self {
-            Value::Number(n) => n.is_u64(),
+            Self::Number(n) => n.is_u64(),
             _ => false,
         }
     }
@@ -279,7 +279,7 @@ impl Value {
     /// ```
     #[must_use]
     pub fn is_f64(&self) -> bool {
-        matches!(self, Value::Number(_))
+        matches!(self, Self::Number(_))
     }
 
     /// Returns the value as a string slice if it is a string.
@@ -294,7 +294,7 @@ impl Value {
     #[must_use]
     pub fn as_str(&self) -> Option<&str> {
         match self {
-            Value::String(s) => Some(s),
+            Self::String(s) => Some(s),
             _ => None,
         }
     }
@@ -311,7 +311,7 @@ impl Value {
     #[must_use]
     pub fn as_sequence(&self) -> Option<&Sequence> {
         match self {
-            Value::Sequence(s) => Some(s),
+            Self::Sequence(s) => Some(s),
             _ => None,
         }
     }
@@ -331,7 +331,7 @@ impl Value {
     #[must_use]
     pub fn as_sequence_mut(&mut self) -> Option<&mut Sequence> {
         match self {
-            Value::Sequence(s) => Some(s),
+            Self::Sequence(s) => Some(s),
             _ => None,
         }
     }
@@ -349,7 +349,7 @@ impl Value {
     #[must_use]
     pub fn as_mapping(&self) -> Option<&Mapping> {
         match self {
-            Value::Mapping(m) => Some(m),
+            Self::Mapping(m) => Some(m),
             _ => None,
         }
     }
@@ -369,7 +369,7 @@ impl Value {
     #[must_use]
     pub fn as_mapping_mut(&mut self) -> Option<&mut Mapping> {
         match self {
-            Value::Mapping(m) => Some(m),
+            Self::Mapping(m) => Some(m),
             _ => None,
         }
     }
@@ -387,7 +387,7 @@ impl Value {
     #[must_use]
     pub fn as_tagged(&self) -> Option<&TaggedValue> {
         match self {
-            Value::Tagged(t) => Some(t),
+            Self::Tagged(t) => Some(t),
             _ => None,
         }
     }
@@ -409,7 +409,7 @@ impl Value {
     #[must_use]
     pub fn as_tagged_mut(&mut self) -> Option<&mut TaggedValue> {
         match self {
-            Value::Tagged(t) => Some(t),
+            Self::Tagged(t) => Some(t),
             _ => None,
         }
     }
@@ -427,7 +427,7 @@ impl Value {
     /// assert_eq!(v.get("a").unwrap().get(0).and_then(Value::as_i64), Some(1));
     /// ```
     #[must_use]
-    pub fn get<I: ValueIndex>(&self, index: I) -> Option<&Value> {
+    pub fn get<I: ValueIndex>(&self, index: I) -> Option<&Self> {
         index.index_into(self)
     }
 
@@ -444,7 +444,7 @@ impl Value {
     /// assert_eq!(v.get("a").and_then(Value::as_i64), Some(2));
     /// ```
     #[must_use]
-    pub fn get_mut<I: ValueIndex>(&mut self, index: I) -> Option<&mut Value> {
+    pub fn get_mut<I: ValueIndex>(&mut self, index: I) -> Option<&mut Self> {
         index.index_into_mut(self)
     }
 
@@ -487,7 +487,7 @@ impl Value {
     /// );
     /// ```
     #[must_use]
-    pub fn get_path(&self, path: &str) -> Option<&Value> {
+    pub fn get_path(&self, path: &str) -> Option<&Self> {
         let segments = parse_path(path);
         let mut current = self;
 
@@ -530,7 +530,7 @@ impl Value {
     /// assert_eq!(names.len(), 2);
     /// ```
     #[must_use]
-    pub fn query(&self, path: &str) -> Vec<&Value> {
+    pub fn query(&self, path: &str) -> Vec<&Self> {
         let segments = parse_path(path);
         let mut results = Vec::new();
         query_recursive(self, &segments, 0, &mut results);
@@ -556,7 +556,7 @@ impl Value {
     /// assert_eq!(value.get_path("server.port").unwrap().as_i64(), Some(9090));
     /// ```
     #[must_use]
-    pub fn get_path_mut(&mut self, path: &str) -> Option<&mut Value> {
+    pub fn get_path_mut(&mut self, path: &str) -> Option<&mut Self> {
         let segments = parse_path(path);
         let mut current = self;
 
@@ -613,9 +613,9 @@ impl Value {
     /// assert_eq!(base.get_path("server.port").unwrap().as_i64(), Some(9090));
     /// assert_eq!(base.get_path("server.ssl").unwrap().as_bool(), Some(true));
     /// ```
-    pub fn merge(&mut self, other: Value) {
+    pub fn merge(&mut self, other: Self) {
         match (self, other) {
-            (Value::Mapping(base), Value::Mapping(other)) => {
+            (Self::Mapping(base), Self::Mapping(other)) => {
                 for (key, other_value) in other {
                     match base.get_mut(&key) {
                         Some(base_value) => {
@@ -651,9 +651,9 @@ impl Value {
     /// let items = base.get("items").unwrap().as_sequence().unwrap();
     /// assert_eq!(items.len(), 4);
     /// ```
-    pub fn merge_concat(&mut self, other: Value) {
+    pub fn merge_concat(&mut self, other: Self) {
         match (self, other) {
-            (Value::Mapping(base), Value::Mapping(other)) => {
+            (Self::Mapping(base), Self::Mapping(other)) => {
                 for (key, other_value) in other {
                     match base.get_mut(&key) {
                         Some(base_value) => {
@@ -665,7 +665,7 @@ impl Value {
                     }
                 }
             }
-            (Value::Sequence(base), Value::Sequence(other)) => {
+            (Self::Sequence(base), Self::Sequence(other)) => {
                 base.extend(other);
             }
             (this, other) => {
@@ -689,9 +689,9 @@ impl Value {
     /// assert_eq!(removed.unwrap().as_i64(), Some(1));
     /// assert!(value.get("a").is_none());
     /// ```
-    pub fn remove(&mut self, key: &str) -> Option<Value> {
+    pub fn remove(&mut self, key: &str) -> Option<Self> {
         match self {
-            Value::Mapping(map) => map.shift_remove(key),
+            Self::Mapping(map) => map.shift_remove(key),
             _ => None,
         }
     }
@@ -711,9 +711,9 @@ impl Value {
     ///
     /// assert_eq!(value.get("b").unwrap().as_i64(), Some(2));
     /// ```
-    pub fn insert(&mut self, key: impl Into<String>, value: Value) -> Option<Value> {
+    pub fn insert(&mut self, key: impl Into<String>, value: Self) -> Option<Self> {
         match self {
-            Value::Mapping(map) => map.insert(key.into(), value),
+            Self::Mapping(map) => map.insert(key.into(), value),
             _ => None,
         }
     }
@@ -788,7 +788,7 @@ impl Value {
     /// - A sequence in a merge key contains non-mapping values
     pub fn apply_merge(&mut self) -> crate::Result<()> {
         match self {
-            Value::Mapping(mapping) => {
+            Self::Mapping(mapping) => {
                 // First, recursively apply merge to all values
                 for value in mapping.values_mut() {
                     value.apply_merge()?;
@@ -797,7 +797,7 @@ impl Value {
                 // Then process the << key if present
                 let merge_value = mapping.remove("<<");
                 let merge_sequence = match merge_value {
-                    Some(Value::Sequence(seq)) => seq,
+                    Some(Self::Sequence(seq)) => seq,
                     Some(value) => vec![value],
                     None => vec![],
                 };
@@ -805,16 +805,16 @@ impl Value {
                 // Process each merge source
                 for value in merge_sequence {
                     match value {
-                        Value::Mapping(merge_map) => {
+                        Self::Mapping(merge_map) => {
                             // Merge keys from source, but don't override existing keys
                             for (k, v) in merge_map {
                                 let _ = mapping.entry(k).or_insert(v);
                             }
                         }
-                        Value::Sequence(_) => {
+                        Self::Sequence(_) => {
                             return Err(crate::Error::SequenceInMergeElement);
                         }
-                        Value::Tagged(_) => {
+                        Self::Tagged(_) => {
                             return Err(crate::Error::TaggedInMerge);
                         }
                         _ => {
@@ -823,13 +823,13 @@ impl Value {
                     }
                 }
             }
-            Value::Sequence(seq) => {
+            Self::Sequence(seq) => {
                 // Recursively apply merge to sequence elements
                 for value in seq {
                     value.apply_merge()?;
                 }
             }
-            Value::Tagged(tagged) => {
+            Self::Tagged(tagged) => {
                 // Recursively apply merge to tagged value
                 tagged.value_mut().apply_merge()?;
             }
@@ -1000,28 +1000,28 @@ impl Value {
         missing_action: MissingAction,
     ) -> crate::Result<()> {
         match self {
-            Value::String(s) => {
+            Self::String(s) => {
                 if let Some(updated) = expand_placeholders(s, resolve, missing_action)? {
                     *s = updated;
                 }
             }
-            Value::Sequence(seq) => {
+            Self::Sequence(seq) => {
                 for v in seq {
                     v.interpolate_inner(resolve, missing_action)?;
                 }
             }
-            Value::Mapping(map) => {
+            Self::Mapping(map) => {
                 for v in map.values_mut() {
                     v.interpolate_inner(resolve, missing_action)?;
                 }
             }
-            Value::Tagged(tagged) => {
+            Self::Tagged(tagged) => {
                 tagged
                     .value_mut()
                     .interpolate_inner(resolve, missing_action)?;
             }
             // Null / Bool / Number have no string content; nothing to do.
-            Value::Null | Value::Bool(_) | Value::Number(_) => {}
+            Self::Null | Self::Bool(_) | Self::Number(_) => {}
         }
         Ok(())
     }
@@ -1044,11 +1044,11 @@ impl Value {
     #[must_use]
     pub fn untag(self) -> Self {
         match self {
-            Value::Tagged(tagged) => tagged.value.untag(),
-            Value::Sequence(seq) => Value::Sequence(seq.into_iter().map(Value::untag).collect()),
-            Value::Mapping(map) => {
+            Self::Tagged(tagged) => tagged.value.untag(),
+            Self::Sequence(seq) => Self::Sequence(seq.into_iter().map(Self::untag).collect()),
+            Self::Mapping(map) => {
                 let untagged: Mapping = map.into_iter().map(|(k, v)| (k, v.untag())).collect();
-                Value::Mapping(untagged)
+                Self::Mapping(untagged)
             }
             other => other,
         }
@@ -1070,7 +1070,7 @@ impl Value {
     #[must_use]
     pub fn untag_ref(&self) -> &Self {
         match self {
-            Value::Tagged(tagged) => tagged.value.untag_ref(),
+            Self::Tagged(tagged) => tagged.value.untag_ref(),
             other => other,
         }
     }
@@ -1092,7 +1092,7 @@ impl Value {
     #[must_use]
     pub fn untag_mut(&mut self) -> &mut Self {
         match self {
-            Value::Tagged(tagged) => tagged.value.untag_mut(),
+            Self::Tagged(tagged) => tagged.value.untag_mut(),
             other => other,
         }
     }
@@ -1173,13 +1173,13 @@ fn query_recursive<'a>(
 impl PartialEq for Value {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (Value::Null, Value::Null) => true,
-            (Value::Bool(a), Value::Bool(b)) => a == b,
-            (Value::Number(a), Value::Number(b)) => a == b,
-            (Value::String(a), Value::String(b)) => a == b,
-            (Value::Sequence(a), Value::Sequence(b)) => a == b,
-            (Value::Mapping(a), Value::Mapping(b)) => a == b,
-            (Value::Tagged(a), Value::Tagged(b)) => a == b,
+            (Self::Null, Self::Null) => true,
+            (Self::Bool(a), Self::Bool(b)) => a == b,
+            (Self::Number(a), Self::Number(b)) => a == b,
+            (Self::String(a), Self::String(b)) => a == b,
+            (Self::Sequence(a), Self::Sequence(b)) => a == b,
+            (Self::Mapping(a), Self::Mapping(b)) => a == b,
+            (Self::Tagged(a), Self::Tagged(b)) => a == b,
             _ => false,
         }
     }
@@ -1192,24 +1192,24 @@ impl Hash for Value {
         // Discriminant for variant type
         core::mem::discriminant(self).hash(state);
         match self {
-            Value::Null => {}
-            Value::Bool(b) => b.hash(state),
-            Value::Number(n) => n.hash(state),
-            Value::String(s) => s.hash(state),
-            Value::Sequence(seq) => {
+            Self::Null => {}
+            Self::Bool(b) => b.hash(state),
+            Self::Number(n) => n.hash(state),
+            Self::String(s) => s.hash(state),
+            Self::Sequence(seq) => {
                 seq.len().hash(state);
                 for v in seq {
                     v.hash(state);
                 }
             }
-            Value::Mapping(map) => {
+            Self::Mapping(map) => {
                 map.len().hash(state);
                 for (k, v) in map {
                     k.hash(state);
                     v.hash(state);
                 }
             }
-            Value::Tagged(tagged) => {
+            Self::Tagged(tagged) => {
                 tagged.tag().hash(state);
                 tagged.value().hash(state);
             }
@@ -1244,11 +1244,11 @@ impl Ord for Value {
         }
 
         match (self, other) {
-            (Value::Null, Value::Null) => Ordering::Equal,
-            (Value::Bool(a), Value::Bool(b)) => a.cmp(b),
-            (Value::Number(a), Value::Number(b)) => a.cmp(b),
-            (Value::String(a), Value::String(b)) => a.cmp(b),
-            (Value::Sequence(a), Value::Sequence(b)) => a.len().cmp(&b.len()).then_with(|| {
+            (Self::Null, Self::Null) => Ordering::Equal,
+            (Self::Bool(a), Self::Bool(b)) => a.cmp(b),
+            (Self::Number(a), Self::Number(b)) => a.cmp(b),
+            (Self::String(a), Self::String(b)) => a.cmp(b),
+            (Self::Sequence(a), Self::Sequence(b)) => a.len().cmp(&b.len()).then_with(|| {
                 for (av, bv) in a.iter().zip(b.iter()) {
                     match av.cmp(bv) {
                         Ordering::Equal => continue,
@@ -1257,7 +1257,7 @@ impl Ord for Value {
                 }
                 Ordering::Equal
             }),
-            (Value::Mapping(a), Value::Mapping(b)) => a.len().cmp(&b.len()).then_with(|| {
+            (Self::Mapping(a), Self::Mapping(b)) => a.len().cmp(&b.len()).then_with(|| {
                 for ((ak, av), (bk, bv)) in a.iter().zip(b.iter()) {
                     match ak.cmp(bk) {
                         Ordering::Equal => {}
@@ -1270,7 +1270,7 @@ impl Ord for Value {
                 }
                 Ordering::Equal
             }),
-            (Value::Tagged(a), Value::Tagged(b)) => a
+            (Self::Tagged(a), Self::Tagged(b)) => a
                 .tag()
                 .as_str()
                 .cmp(b.tag().as_str())
@@ -1283,11 +1283,11 @@ impl Ord for Value {
 impl fmt::Display for Value {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Value::Null => write!(f, "null"),
-            Value::Bool(b) => write!(f, "{b}"),
-            Value::Number(n) => write!(f, "{n}"),
-            Value::String(s) => write!(f, "{s}"),
-            Value::Sequence(s) => {
+            Self::Null => write!(f, "null"),
+            Self::Bool(b) => write!(f, "{b}"),
+            Self::Number(n) => write!(f, "{n}"),
+            Self::String(s) => write!(f, "{s}"),
+            Self::Sequence(s) => {
                 write!(f, "[")?;
                 for (i, v) in s.iter().enumerate() {
                     if i > 0 {
@@ -1297,7 +1297,7 @@ impl fmt::Display for Value {
                 }
                 write!(f, "]")
             }
-            Value::Mapping(m) => {
+            Self::Mapping(m) => {
                 write!(f, "{{")?;
                 for (i, (k, v)) in m.iter().enumerate() {
                     if i > 0 {
@@ -1307,7 +1307,7 @@ impl fmt::Display for Value {
                 }
                 write!(f, "}}")
             }
-            Value::Tagged(t) => write!(f, "{t}"),
+            Self::Tagged(t) => write!(f, "{t}"),
         }
     }
 }

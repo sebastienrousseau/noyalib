@@ -557,7 +557,7 @@ impl<'de, T: serde_core::Deserialize<'de>> serde_core::Deserialize<'de> for Comm
     {
         // Note: comments are serialization-only metadata and cannot survive a
         // roundtrip through YAML. Deserializing always produces an empty comment.
-        T::deserialize(deserializer).map(|v| Commented {
+        T::deserialize(deserializer).map(|v| Self {
             value: v,
             comment: String::new(),
         })

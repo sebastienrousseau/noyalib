@@ -246,7 +246,7 @@ impl<'a> Entry<'a> {
     /// assert!(doc.to_string().contains("c: 2"));
     /// ```
     #[must_use]
-    pub fn entry(self, child: &str) -> Entry<'a> {
+    pub fn entry(self, child: &str) -> Self {
         let combined = compose_path(&self.path, child);
         Entry::new(self.doc, combined)
     }
@@ -526,7 +526,7 @@ impl Error {
     #[doc(hidden)]
     #[must_use]
     pub fn entry_not_found(path: &str) -> Self {
-        Error::Parse(format!("entry not found at path: {path}"))
+        Self::Parse(format!("entry not found at path: {path}"))
     }
 }
 

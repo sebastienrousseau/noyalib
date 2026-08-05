@@ -96,7 +96,7 @@ impl KeyInterner {
     /// ```
     #[must_use]
     pub fn new() -> Self {
-        KeyInterner {
+        Self {
             table: FxHashMap::default(),
         }
     }
@@ -114,7 +114,7 @@ impl KeyInterner {
     /// ```
     #[must_use]
     pub fn with_capacity(capacity: usize) -> Self {
-        KeyInterner {
+        Self {
             table: FxHashMap::with_capacity_and_hasher(capacity, rustc_hash::FxBuildHasher),
         }
     }

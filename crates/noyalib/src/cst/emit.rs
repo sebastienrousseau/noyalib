@@ -248,12 +248,12 @@ impl_emit_via_value!(i8, i16, i32, i64, isize, u8, u16, u32, u64, usize, f32, f6
 impl Emit for Value {
     fn emit(&self, ctx: &EmitCtx) -> Result<String> {
         match self {
-            Value::Null => Ok("null".to_owned()),
-            Value::Bool(b) => b.emit(ctx),
-            Value::Number(n) => Ok(emit_number(n)),
-            Value::String(s) => Ok(emit_string(s, ctx)),
-            Value::Sequence(_) | Value::Mapping(_) => emit_collection(self, ctx),
-            Value::Tagged(_) => Err(Error::Parse(
+            Self::Null => Ok("null".to_owned()),
+            Self::Bool(b) => b.emit(ctx),
+            Self::Number(n) => Ok(emit_number(n)),
+            Self::String(s) => Ok(emit_string(s, ctx)),
+            Self::Sequence(_) | Self::Mapping(_) => emit_collection(self, ctx),
+            Self::Tagged(_) => Err(Error::Parse(
                 "emit: tagged values are not auto-formatted yet — the scalar emitter would \
                  drop the tag; splice the `!tag value` spelling with `set` / `insert_entry` \
                  instead"
@@ -263,7 +263,7 @@ impl Emit for Value {
     }
 
     fn expected_value(&self) -> Result<Value> {
-        if matches!(self, Value::Tagged(_)) {
+        if matches!(self, Self::Tagged(_)) {
             return Err(Error::Parse(
                 "emit: tagged values are not auto-formatted yet — the scalar emitter would \
                  drop the tag; splice the `!tag value` spelling with `set` / `insert_entry` \

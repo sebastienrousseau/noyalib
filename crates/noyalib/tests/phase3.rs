@@ -190,7 +190,7 @@ fn test_nested_singleton_map_alias() {
 enum Command {
     Run { script: String },
     Wait { seconds: u32 },
-    Parallel(Vec<Command>),
+    Parallel(Vec<Self>),
 }
 
 #[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
@@ -245,7 +245,7 @@ fn test_empty_collections() {
 enum Mixed {
     StringVal(String),
     IntVal(i32),
-    Nested { inner: Box<Mixed> },
+    Nested { inner: Box<Self> },
 }
 
 #[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]

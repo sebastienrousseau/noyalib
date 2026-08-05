@@ -202,7 +202,7 @@ impl TryFrom<&[u8]> for Tag {
     type Error = core::str::Utf8Error;
 
     fn try_from(bytes: &[u8]) -> Result<Self, Self::Error> {
-        core::str::from_utf8(bytes).map(Tag::new)
+        core::str::from_utf8(bytes).map(Self::new)
     }
 }
 

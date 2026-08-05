@@ -107,15 +107,15 @@ impl serde_core::Serialize for Value {
         S: serde_core::Serializer,
     {
         match self {
-            Value::Null => serializer.serialize_none(),
-            Value::Bool(b) => serializer.serialize_bool(*b),
-            Value::Number(Number::Integer(n)) => serializer.serialize_i64(*n),
+            Self::Null => serializer.serialize_none(),
+            Self::Bool(b) => serializer.serialize_bool(*b),
+            Self::Number(Number::Integer(n)) => serializer.serialize_i64(*n),
             #[cfg(feature = "lossless-u64")]
-            Value::Number(Number::Unsigned(n)) => serializer.serialize_u64(*n),
-            Value::Number(Number::Float(n)) => serializer.serialize_f64(*n),
-            Value::String(s) => serializer.serialize_str(s),
-            Value::Sequence(s) => s.serialize(serializer),
-            Value::Mapping(m) => {
+            Self::Number(Number::Unsigned(n)) => serializer.serialize_u64(*n),
+            Self::Number(Number::Float(n)) => serializer.serialize_f64(*n),
+            Self::String(s) => serializer.serialize_str(s),
+            Self::Sequence(s) => s.serialize(serializer),
+            Self::Mapping(m) => {
                 use serde_core::ser::SerializeMap as _;
                 let mut map = serializer.serialize_map(Some(m.len()))?;
                 for (k, v) in m {
@@ -123,7 +123,7 @@ impl serde_core::Serialize for Value {
                 }
                 map.end()
             }
-            Value::Tagged(tagged) => {
+            Self::Tagged(tagged) => {
                 // Serialize as a single-entry map with tag as key
                 use serde_core::ser::SerializeMap as _;
                 let mut map = serializer.serialize_map(Some(1))?;

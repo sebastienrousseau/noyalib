@@ -173,22 +173,22 @@ enum Outcome {
 impl Outcome {
     fn label(self) -> &'static str {
         match self {
-            Outcome::Pass => "pass",
-            Outcome::Skip => "skip",
-            Outcome::FailParseError => "fail-parse-error",
-            Outcome::FailValueMismatch => "fail-value-mismatch",
-            Outcome::FailLenient => "fail-lenient",
-            Outcome::FailNonScalarKey => "fail-non-scalar-key",
+            Self::Pass => "pass",
+            Self::Skip => "skip",
+            Self::FailParseError => "fail-parse-error",
+            Self::FailValueMismatch => "fail-value-mismatch",
+            Self::FailLenient => "fail-lenient",
+            Self::FailNonScalarKey => "fail-non-scalar-key",
         }
     }
 
     fn is_fail(self) -> bool {
         matches!(
             self,
-            Outcome::FailParseError
-                | Outcome::FailValueMismatch
-                | Outcome::FailLenient
-                | Outcome::FailNonScalarKey
+            Self::FailParseError
+                | Self::FailValueMismatch
+                | Self::FailLenient
+                | Self::FailNonScalarKey
         )
     }
 }

@@ -142,7 +142,7 @@ impl<'de> serde_core::Deserialize<'de> for NewtypeWrapper {
             value: String,
         }
         let inner = Inner::deserialize(deserializer)?;
-        Ok(NewtypeWrapper(format!("{}={}", inner.tag, inner.value)))
+        Ok(Self(format!("{}={}", inner.tag, inner.value)))
     }
 }
 

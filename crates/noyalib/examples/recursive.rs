@@ -18,14 +18,8 @@ use noyalib::{from_str, to_string};
 #[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
 #[serde(untagged)]
 enum FsEntry {
-    File {
-        name: String,
-        size: u64,
-    },
-    Dir {
-        name: String,
-        children: Vec<FsEntry>,
-    },
+    File { name: String, size: u64 },
+    Dir { name: String, children: Vec<Self> },
 }
 
 // ── Org chart ────────────────────────────────────────────────────────
@@ -35,7 +29,7 @@ struct Person {
     name: String,
     title: String,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    reports: Vec<Person>,
+    reports: Vec<Self>,
 }
 
 // ── Generic tree (Box<T> recursion) ──────────────────────────────────
@@ -44,7 +38,7 @@ struct Person {
 struct TreeNode {
     label: String,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    children: Vec<TreeNode>,
+    children: Vec<Self>,
 }
 
 fn count_tree(n: &TreeNode) -> usize {

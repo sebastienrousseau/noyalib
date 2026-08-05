@@ -387,7 +387,7 @@ impl SimdScanner {
                 count += 1;
             }
         }
-        SimdScanner {
+        Self {
             bitmap,
             needles: compact,
             needle_count: count,

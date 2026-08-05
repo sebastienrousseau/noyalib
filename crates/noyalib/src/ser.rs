@@ -1589,7 +1589,7 @@ impl serde_core::ser::Serializer for Serializer {
             | crate::fmt::MAGIC_LIT_STR
             | crate::fmt::MAGIC_FOLD_STR
             | crate::fmt::MAGIC_SPACE_AFTER => {
-                let inner = value.serialize(Serializer)?;
+                let inner = value.serialize(Self)?;
                 Ok(Value::Tagged(Box::new(TaggedValue::new(
                     Tag::new(name),
                     inner,
@@ -1597,7 +1597,7 @@ impl serde_core::ser::Serializer for Serializer {
             }
             crate::fmt::MAGIC_COMMENTED => {
                 // value is a tuple (inner_value, comment_string)
-                let inner = value.serialize(Serializer)?;
+                let inner = value.serialize(Self)?;
                 Ok(Value::Tagged(Box::new(TaggedValue::new(
                     Tag::new(name),
                     inner,
@@ -1606,7 +1606,7 @@ impl serde_core::ser::Serializer for Serializer {
             crate::fmt::MAGIC_ANCHOR_DEF | crate::fmt::MAGIC_ANCHOR_REF => {
                 // ANCHOR_DEF: value serializes as Sequence([String(id), inner]).
                 // ANCHOR_REF: value serializes as String(id).
-                let inner = value.serialize(Serializer)?;
+                let inner = value.serialize(Self)?;
                 Ok(Value::Tagged(Box::new(TaggedValue::new(
                     Tag::new(name),
                     inner,
@@ -1627,7 +1627,7 @@ impl serde_core::ser::Serializer for Serializer {
         T: ?Sized + serde_core::Serialize,
     {
         let mut map = Mapping::new();
-        let _ = map.insert(variant.to_owned(), value.serialize(Serializer)?);
+        let _ = map.insert(variant.to_owned(), value.serialize(Self)?);
         Ok(Value::Mapping(map))
     }
 

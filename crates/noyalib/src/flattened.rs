@@ -147,7 +147,7 @@ where
         // value via `from_value`. The HRTB on `T` lets the
         // returned `T` outlive the temporary `&raw` borrow.
         let value = crate::from_value::<T>(&raw).map_err(serde_core::de::Error::custom)?;
-        Ok(Flattened { value, raw })
+        Ok(Self { value, raw })
     }
 }
 

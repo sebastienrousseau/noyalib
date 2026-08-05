@@ -26,20 +26,20 @@ pub(crate) enum SpanTree {
     Sequence {
         start: usize,
         end: usize,
-        items: Vec<SpanTree>,
+        items: Vec<Self>,
     },
     /// A mapping with its own span and per-entry (key-span, value-tree) pairs.
     Mapping {
         start: usize,
         end: usize,
-        entries: Vec<((usize, usize), SpanTree)>,
+        entries: Vec<((usize, usize), Self)>,
     },
     /// An alias reference (`*name`) resolved *through* to its anchor's
     /// definition tree (issue #149): the wrapped tree is the anchor's, so a
     /// read here yields the anchor's value span. The wrapper records that the
     /// resolution passed through an alias — a *write* would splice the
     /// anchor's bytes (a different key), which `Document::set` must refuse.
-    Alias(Box<SpanTree>),
+    Alias(Box<Self>),
 }
 
 /// Holds the span map and source string for the current deserialization.

@@ -88,7 +88,7 @@ pub enum Path<'a> {
     /// - `index`: The zero-based index into the sequence
     Seq {
         /// The parent path (the sequence itself).
-        parent: &'a Path<'a>,
+        parent: &'a Self,
         /// The index within the sequence (zero-based).
         index: usize,
     },
@@ -101,7 +101,7 @@ pub enum Path<'a> {
     /// - `key`: The key name
     Map {
         /// The parent path (the mapping itself).
-        parent: &'a Path<'a>,
+        parent: &'a Self,
         /// The key within the mapping.
         key: &'a str,
     },
@@ -112,7 +112,7 @@ pub enum Path<'a> {
     /// to indicate the path continues through an alias.
     Alias {
         /// The parent path before the alias.
-        parent: &'a Path<'a>,
+        parent: &'a Self,
     },
 
     /// Unknown or unspecified location.
@@ -121,7 +121,7 @@ pub enum Path<'a> {
     /// but we still want to track that we're somewhere nested.
     Unknown {
         /// The parent path.
-        parent: &'a Path<'a>,
+        parent: &'a Self,
     },
 }
 
@@ -143,7 +143,7 @@ impl<'a> Path<'a> {
     /// assert_eq!(first.to_string(), "items[0]");
     /// ```
     #[must_use]
-    pub fn index(&'a self, index: usize) -> Path<'a> {
+    pub fn index(&'a self, index: usize) -> Self {
         Path::Seq {
             parent: self,
             index,
@@ -164,7 +164,7 @@ impl<'a> Path<'a> {
     /// assert_eq!(host.to_string(), "config.host");
     /// ```
     #[must_use]
-    pub fn key(&'a self, key: &'a str) -> Path<'a> {
+    pub fn key(&'a self, key: &'a str) -> Self {
         Path::Map { parent: self, key }
     }
 
@@ -179,13 +179,13 @@ impl<'a> Path<'a> {
     /// let alias_path = root.alias();
     /// ```
     #[must_use]
-    pub fn alias(&'a self) -> Path<'a> {
+    pub fn alias(&'a self) -> Self {
         Path::Alias { parent: self }
     }
 
     /// Creates a new unknown path.
     #[must_use]
-    pub fn unknown(&'a self) -> Path<'a> {
+    pub fn unknown(&'a self) -> Self {
         Path::Unknown { parent: self }
     }
 
@@ -223,7 +223,7 @@ impl<'a> Path<'a> {
     /// assert!(child.parent().is_some());
     /// ```
     #[must_use]
-    pub fn parent(&self) -> Option<&Path<'a>> {
+    pub fn parent(&self) -> Option<&Self> {
         match self {
             Path::Root => None,
             Path::Seq { parent, .. }

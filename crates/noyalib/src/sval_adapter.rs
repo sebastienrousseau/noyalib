@@ -69,13 +69,13 @@ use crate::value::{Mapping, MappingAny, Number, Tag, TaggedValue, Value};
 impl sval::Value for Value {
     fn stream<'sval, S: sval::Stream<'sval> + ?Sized>(&'sval self, stream: &mut S) -> sval::Result {
         match self {
-            Value::Null => stream.null(),
-            Value::Bool(b) => stream.bool(*b),
-            Value::Number(n) => n.stream(stream),
-            Value::String(s) => stream.value(s.as_str()),
-            Value::Sequence(items) => stream_seq(items, stream),
-            Value::Mapping(m) => m.stream(stream),
-            Value::Tagged(t) => t.stream(stream),
+            Self::Null => stream.null(),
+            Self::Bool(b) => stream.bool(*b),
+            Self::Number(n) => n.stream(stream),
+            Self::String(s) => stream.value(s.as_str()),
+            Self::Sequence(items) => stream_seq(items, stream),
+            Self::Mapping(m) => m.stream(stream),
+            Self::Tagged(t) => t.stream(stream),
         }
     }
 }
@@ -83,10 +83,10 @@ impl sval::Value for Value {
 impl sval::Value for Number {
     fn stream<'sval, S: sval::Stream<'sval> + ?Sized>(&'sval self, stream: &mut S) -> sval::Result {
         match self {
-            Number::Integer(i) => stream.i64(*i),
+            Self::Integer(i) => stream.i64(*i),
             #[cfg(feature = "lossless-u64")]
-            Number::Unsigned(u) => stream.u64(*u),
-            Number::Float(f) => stream.f64(*f),
+            Self::Unsigned(u) => stream.u64(*u),
+            Self::Float(f) => stream.f64(*f),
         }
     }
 }
