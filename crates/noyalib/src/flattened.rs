@@ -71,7 +71,7 @@ use crate::value::Value;
 ///     other => panic!("expected mapping, got {other:?}"),
 /// }
 /// ```
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Flattened<T> {
     /// The typed deserialization of the underlying value.
     pub value: T,
