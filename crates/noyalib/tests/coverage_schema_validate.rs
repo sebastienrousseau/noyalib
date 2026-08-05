@@ -73,7 +73,7 @@ fn coerce_declines_non_string_node() {
     let schema = parse("type: object\nproperties:\n  name:\n    type: string\n");
     let mut data = parse("name: 42\n");
     assert_eq!(coerce_to_schema(&mut data, &schema).unwrap(), 0);
-    assert!(data["name"].as_i64() == Some(42));
+    assert_eq!(data["name"].as_i64(), Some(42));
 }
 
 #[test]

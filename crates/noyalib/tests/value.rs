@@ -708,7 +708,7 @@ fn test_number_ord() {
     // Integer ordering
     assert!(Number::Integer(1) < Number::Integer(2));
     assert!(Number::Integer(2) > Number::Integer(1));
-    assert!(Number::Integer(1) == Number::Integer(1));
+    assert_eq!(Number::Integer(1), Number::Integer(1));
 
     // Float ordering
     assert!(Number::Float(1.0) < Number::Float(2.0));
@@ -2020,7 +2020,7 @@ fn test_mapping_partial_ord() {
     let mut map2 = Mapping::new();
     let _ = map2.insert("a", Value::from(2));
 
-    assert!(map1.partial_cmp(&map2) == Some(std::cmp::Ordering::Less));
+    assert_eq!(map1.partial_cmp(&map2), Some(std::cmp::Ordering::Less));
 }
 
 #[test]

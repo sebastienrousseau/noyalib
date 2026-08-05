@@ -226,7 +226,7 @@ fn value_sequence_exercises_deserialize_any() {
     assert!(v[0].is_null());
     assert_eq!(v[1].as_bool(), Some(true));
     assert_eq!(v[2].as_i64(), Some(7));
-    assert!(v[4].as_str() == Some("hello"));
+    assert_eq!(v[4].as_str(), Some("hello"));
     assert!(v[5].as_sequence().is_some());
     assert!(v[6].as_mapping().is_some());
 }
