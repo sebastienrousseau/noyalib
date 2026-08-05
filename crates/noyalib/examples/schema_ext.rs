@@ -35,37 +35,34 @@ fn type_name(v: &Value) -> &'static str {
 
 /// Generate a schema description from a Value tree.
 fn describe(value: &Value, prefix: &str, lines: &mut Vec<String>) {
-    match value {
-        Value::Mapping(map) => {
-            for (key, val) in map {
-                let path = if prefix.is_empty() {
-                    key.clone()
-                } else {
-                    format!("{prefix}.{key}")
-                };
-                match val {
-                    Value::Mapping(_) => {
-                        lines.push(format!("{path:<30} map"));
-                        describe(val, &path, lines);
-                    }
-                    Value::Sequence(seq) => {
-                        let item_type = seq.first().map_or("any", type_name);
-                        lines.push(format!("{path:<30} list<{item_type}>"));
-                    }
-                    _ => {
-                        let example = match val {
-                            Value::String(s) => format!("\"{}\"", truncate(s, 20)),
-                            other => other.to_string(),
-                        };
-                        lines.push(format!("{path:<30} {:<8} (e.g. {example})", type_name(val)));
-                    }
+    if let Value::Mapping(map) = value {
+        for (key, val) in map {
+            let path = if prefix.is_empty() {
+                key.clone()
+            } else {
+                format!("{prefix}.{key}")
+            };
+            match val {
+                Value::Mapping(_) => {
+                    lines.push(format!("{path:<30} map"));
+                    describe(val, &path, lines);
+                }
+                Value::Sequence(seq) => {
+                    let item_type = seq.first().map_or("any", type_name);
+                    lines.push(format!("{path:<30} list<{item_type}>"));
+                }
+                _ => {
+                    let example = match val {
+                        Value::String(s) => format!("\"{}\"", truncate(s, 20)),
+                        other => other.to_string(),
+                    };
+                    lines.push(format!("{path:<30} {:<8} (e.g. {example})", type_name(val)));
                 }
             }
         }
-        _ => {
-            let path = if prefix.is_empty() { "root" } else { prefix };
-            lines.push(format!("{path:<30} {}", type_name(value)));
-        }
+    } else {
+        let path = if prefix.is_empty() { "root" } else { prefix };
+        lines.push(format!("{path:<30} {}", type_name(value)));
     }
 }
 
