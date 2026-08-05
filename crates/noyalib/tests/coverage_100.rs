@@ -220,7 +220,7 @@ fn value_index_string_type() {
 
     let key = String::from("hello");
     // index_into
-    assert_eq!(key.clone().index_into(&v).unwrap().as_i64(), Some(42));
+    assert_eq!(key.index_into(&v).unwrap().as_i64(), Some(42));
 
     // index_into_mut
     let key2 = String::from("hello");

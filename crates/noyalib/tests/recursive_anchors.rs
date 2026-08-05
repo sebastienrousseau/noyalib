@@ -234,7 +234,7 @@ fn arc_recursive_clone_shares_storage() {
 fn rc_recursion_clone() {
     let r = RcRecursive::new(1_i32);
     let w1 = r.downgrade();
-    let w2 = w1.clone();
+    let w2 = w1;
     assert!(w2.upgrade().is_some());
 }
 
@@ -242,7 +242,7 @@ fn rc_recursion_clone() {
 fn arc_recursion_clone() {
     let r = ArcRecursive::new(1_i32);
     let w1 = r.downgrade();
-    let w2 = w1.clone();
+    let w2 = w1;
     assert!(w2.upgrade().is_some());
 }
 
