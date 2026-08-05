@@ -137,13 +137,13 @@ fn parser_config_strict_rejects_deep() {
 #[test]
 fn parser_config_alias_expansion_limit() {
     let config = ParserConfig::new().max_alias_expansions(2);
-    let yaml = r#"
+    let yaml = r"
 anchor: &a
   x: 1
 ref1: *a
 ref2: *a
 ref3: *a
-"#;
+";
     let result: Result<Value, _> = from_str_with_config(yaml, &config);
     assert!(result.is_err());
 }

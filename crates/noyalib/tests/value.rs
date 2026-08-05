@@ -115,11 +115,11 @@ fn test_value_index_mapping() {
 
 #[test]
 fn test_value_index_nested() {
-    let yaml = r#"
+    let yaml = r"
 outer:
   inner:
     value: 42
-"#;
+";
     let value: Value = from_str(yaml).unwrap();
 
     let outer = value.get("outer").unwrap();
@@ -309,7 +309,7 @@ fn test_value_deserialize_mapping() {
 
 #[test]
 fn test_value_roundtrip() {
-    let yaml = r#"
+    let yaml = r"
 name: test
 version: 1
 enabled: true
@@ -320,7 +320,7 @@ tags:
 config:
   key1: value1
   key2: value2
-"#;
+";
 
     let value: Value = from_str(yaml).unwrap();
     let output = to_string(&value).unwrap();
@@ -573,13 +573,13 @@ fn test_value_bracket_index_mapping() {
 
 #[test]
 fn test_value_bracket_index_nested() {
-    let yaml = r#"
+    let yaml = r"
 users:
   - name: alice
     age: 30
   - name: bob
     age: 25
-"#;
+";
     let value: Value = from_str(yaml).unwrap();
 
     // Nested bracket indexing (Index trait)
@@ -2071,11 +2071,11 @@ fn test_mapping_deserialize_from_yaml() {
 fn test_mapping_deserialize_nested() {
     use noyalib::from_str;
 
-    let yaml = r#"
+    let yaml = r"
 outer:
   inner: value
   number: 42
-"#;
+";
     let map: Mapping = from_str(yaml).unwrap();
 
     assert!(map.contains_key("outer"));
@@ -2091,7 +2091,7 @@ outer:
 fn test_apply_merge_basic() {
     use noyalib::from_str;
 
-    let yaml = r#"
+    let yaml = r"
 defaults: &defaults
   timeout: 30
   retries: 3
@@ -2099,7 +2099,7 @@ defaults: &defaults
 server:
   <<: *defaults
   host: localhost
-"#;
+";
 
     let mut value: Value = from_str(yaml).unwrap();
     value.apply_merge().unwrap();
@@ -2117,7 +2117,7 @@ server:
 fn test_apply_merge_no_override() {
     use noyalib::from_str;
 
-    let yaml = r#"
+    let yaml = r"
 defaults: &defaults
   timeout: 30
   retries: 3
@@ -2126,7 +2126,7 @@ server:
   <<: *defaults
   host: localhost
   timeout: 60
-"#;
+";
 
     let mut value: Value = from_str(yaml).unwrap();
     value.apply_merge().unwrap();
@@ -2141,7 +2141,7 @@ server:
 fn test_apply_merge_multiple_sources() {
     use noyalib::from_str;
 
-    let yaml = r#"
+    let yaml = r"
 a: &a
   x: 1
   common: from_a
@@ -2153,7 +2153,7 @@ b: &b
 merged:
   <<: [*a, *b]
   z: 3
-"#;
+";
 
     let mut value: Value = from_str(yaml).unwrap();
     value.apply_merge().unwrap();
@@ -2172,7 +2172,7 @@ merged:
 fn test_apply_merge_nested() {
     use noyalib::from_str;
 
-    let yaml = r#"
+    let yaml = r"
 base: &base
   nested:
     a: 1
@@ -2180,7 +2180,7 @@ base: &base
 level1:
   <<: *base
   extra: value
-"#;
+";
 
     let mut value: Value = from_str(yaml).unwrap();
     value.apply_merge().unwrap();
@@ -2193,7 +2193,7 @@ level1:
 fn test_apply_merge_recursive() {
     use noyalib::from_str;
 
-    let yaml = r#"
+    let yaml = r"
 base1: &base1
   a: 1
 
@@ -2204,7 +2204,7 @@ base2: &base2
 final:
   <<: *base2
   c: 3
-"#;
+";
 
     let mut value: Value = from_str(yaml).unwrap();
     value.apply_merge().unwrap();
@@ -2219,7 +2219,7 @@ final:
 fn test_apply_merge_in_sequence() {
     use noyalib::from_str;
 
-    let yaml = r#"
+    let yaml = r"
 defaults: &defaults
   timeout: 30
 
@@ -2229,7 +2229,7 @@ servers:
   - <<: *defaults
     name: server2
     timeout: 60
-"#;
+";
 
     let mut value: Value = from_str(yaml).unwrap();
     value.apply_merge().unwrap();
@@ -2280,11 +2280,11 @@ fn test_apply_merge_error_sequence_in_merge_element() {
 fn test_apply_merge_no_merge_key() {
     use noyalib::from_str;
 
-    let yaml = r#"
+    let yaml = r"
 simple:
   a: 1
   b: 2
-"#;
+";
 
     let mut value: Value = from_str(yaml).unwrap();
     let original = value.clone();
@@ -2298,13 +2298,13 @@ simple:
 fn test_apply_merge_empty_merge_source() {
     use noyalib::from_str;
 
-    let yaml = r#"
+    let yaml = r"
 empty: &empty {}
 
 test:
   <<: *empty
   value: 1
-"#;
+";
 
     let mut value: Value = from_str(yaml).unwrap();
     value.apply_merge().unwrap();
@@ -2317,14 +2317,14 @@ test:
 fn test_apply_merge_idempotent() {
     use noyalib::from_str;
 
-    let yaml = r#"
+    let yaml = r"
 defaults: &defaults
   timeout: 30
 
 server:
   <<: *defaults
   host: localhost
-"#;
+";
 
     let mut value: Value = from_str(yaml).unwrap();
     value.apply_merge().unwrap();

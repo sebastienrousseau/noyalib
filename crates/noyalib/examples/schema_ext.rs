@@ -76,7 +76,7 @@ fn truncate(s: &str, max: usize) -> &str {
 fn main() {
     support::header("noyalib -- schema_ext");
 
-    let yaml = r#"
+    let yaml = r"
 server:
   host: localhost
   port: 8080
@@ -96,7 +96,7 @@ features:
   - authentication
   - rate_limiting
   - caching
-"#;
+";
 
     let value: Value = from_str(yaml).unwrap();
 

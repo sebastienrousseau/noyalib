@@ -21,7 +21,7 @@ fn test_simple_anchor_alias() {
 
 #[test]
 fn test_anchor_alias_with_mapping() {
-    let yaml = r#"
+    let yaml = r"
 defaults: &defaults
   timeout: 30
   retries: 3
@@ -33,7 +33,7 @@ production:
 development:
   <<: *defaults
   host: localhost
-"#;
+";
     let value: Value = from_str(yaml).unwrap();
 
     let prod = value.get("production").unwrap();
@@ -48,13 +48,13 @@ development:
 
 #[test]
 fn test_anchor_alias_sequence() {
-    let yaml = r#"
+    let yaml = r"
 items: &items
   - one
   - two
   - three
 copy: *items
-"#;
+";
     let value: Value = from_str(yaml).unwrap();
 
     let items = value.get("items").unwrap().as_sequence().unwrap();
@@ -72,7 +72,7 @@ copy: *items
 
 #[test]
 fn test_merge_key_basic() {
-    let yaml = r#"
+    let yaml = r"
 base: &base
   key1: value1
   key2: value2
@@ -80,7 +80,7 @@ base: &base
 derived:
   <<: *base
   key3: value3
-"#;
+";
     let value: Value = from_str(yaml).unwrap();
     let derived = value.get("derived").unwrap();
 
@@ -91,7 +91,7 @@ derived:
 
 #[test]
 fn test_merge_key_override() {
-    let yaml = r#"
+    let yaml = r"
 base: &base
   key1: original
   key2: value2
@@ -99,7 +99,7 @@ base: &base
 derived:
   <<: *base
   key1: overridden
-"#;
+";
     let value: Value = from_str(yaml).unwrap();
     let derived = value.get("derived").unwrap();
 
@@ -110,7 +110,7 @@ derived:
 
 #[test]
 fn test_merge_key_multiple_sources() {
-    let yaml = r#"
+    let yaml = r"
 source1: &s1
   a: 1
   b: 2
@@ -122,7 +122,7 @@ source2: &s2
 combined:
   <<: [*s1, *s2]
   e: 5
-"#;
+";
     let value: Value = from_str(yaml).unwrap();
     let combined = value.get("combined").unwrap();
 
@@ -135,7 +135,7 @@ combined:
 
 #[test]
 fn test_merge_key_precedence() {
-    let yaml = r#"
+    let yaml = r"
 first: &first
   key: from_first
 
@@ -144,7 +144,7 @@ second: &second
 
 merged:
   <<: [*first, *second]
-"#;
+";
     let value: Value = from_str(yaml).unwrap();
     let merged = value.get("merged").unwrap();
 
@@ -236,7 +236,7 @@ fn test_load_all_with_explicit_end() {
 
 #[test]
 fn test_multi_doc_with_anchors() {
-    let yaml = r#"---
+    let yaml = r"---
 common: &common
   timeout: 30
 
@@ -250,7 +250,7 @@ common: &common
 service2:
   <<: *common
   name: svc2
-"#;
+";
     let docs: Vec<Value> = load_all(yaml).unwrap().filter_map(Result::ok).collect();
 
     assert_eq!(docs.len(), 2);
@@ -270,7 +270,7 @@ service2:
 
 #[test]
 fn test_nested_merge() {
-    let yaml = r#"
+    let yaml = r"
 base1: &base1
   level1:
     a: 1
@@ -283,7 +283,7 @@ base2: &base2
 final:
   <<: *base2
   level3: more
-"#;
+";
     let value: Value = from_str(yaml).unwrap();
     let final_val = value.get("final").unwrap();
 
@@ -332,7 +332,7 @@ fn test_load_all_with_parse_error() {
 
 #[test]
 fn test_merge_key_with_array_of_maps() {
-    let yaml = r#"
+    let yaml = r"
 base1: &base1
   key1: value1
 
@@ -342,7 +342,7 @@ base2: &base2
 merged:
   <<: [*base1, *base2]
   key3: value3
-"#;
+";
     let value: Value = from_str(yaml).unwrap();
     let merged = value.get("merged").unwrap();
 
@@ -353,11 +353,11 @@ merged:
 
 #[test]
 fn test_mapping_with_integer_keys() {
-    let yaml = r#"
+    let yaml = r"
 1: one
 2: two
 3: three
-"#;
+";
     let value: Value = from_str(yaml).unwrap();
     assert_eq!(value.get("1").unwrap().as_str(), Some("one"));
     assert_eq!(value.get("2").unwrap().as_str(), Some("two"));
@@ -365,10 +365,10 @@ fn test_mapping_with_integer_keys() {
 
 #[test]
 fn test_mapping_with_boolean_keys() {
-    let yaml = r#"
+    let yaml = r"
 true: yes_value
 false: no_value
-"#;
+";
     let value: Value = from_str(yaml).unwrap();
     assert_eq!(value.get("true").unwrap().as_str(), Some("yes_value"));
     assert_eq!(value.get("false").unwrap().as_str(), Some("no_value"));

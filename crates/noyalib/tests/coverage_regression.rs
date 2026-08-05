@@ -179,7 +179,7 @@ fn duplicate_policy_error_rejects_duplicates() {
 #[test]
 fn merge_key_multi_anchor_sequence_precedence() {
     // Left source wins in a sequence merge: `<<: [*first, *second]`.
-    let yaml = r#"
+    let yaml = r"
 first: &f
   a: 1
   b: 2
@@ -188,7 +188,7 @@ second: &s
   c: 30
 target:
   <<: [*f, *s]
-"#;
+";
     #[derive(serde::Deserialize)]
     struct Doc {
         target: BTreeMap<String, i64>,

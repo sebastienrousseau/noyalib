@@ -37,12 +37,12 @@ mod anchor_replay {
 
     #[test]
     fn mapping_anchor_alias() {
-        let yaml = r#"
+        let yaml = r"
 base: &base
   host: localhost
   port: 8080
 dev: *base
-"#;
+";
         #[derive(Debug, serde::Deserialize, PartialEq)]
         struct Server {
             host: String,

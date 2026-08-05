@@ -64,7 +64,7 @@ fn main() {
 
     // ── File system tree ─────────────────────────────────────────────
     support::task_with_output("File system tree (recursive Vec)", || {
-        let yaml = r#"
+        let yaml = r"
 - name: src
   children:
     - name: lib.rs
@@ -79,7 +79,7 @@ fn main() {
           size: 12288
 - name: Cargo.toml
   size: 1024
-"#;
+";
         let tree: Vec<FsEntry> = from_str(yaml).unwrap();
         let yaml_out = to_string(&tree).unwrap();
         let rt: Vec<FsEntry> = from_str(&yaml_out).unwrap();
@@ -103,7 +103,7 @@ fn main() {
 
     // ── Org chart ────────────────────────────────────────────────────
     support::task_with_output("Org chart (recursive struct)", || {
-        let yaml = r#"
+        let yaml = r"
 name: Alice
 title: CEO
 reports:
@@ -119,7 +119,7 @@ reports:
         title: Engineer
   - name: Frank
     title: CFO
-"#;
+";
         let org: Person = from_str(yaml).unwrap();
         let yaml_out = to_string(&org).unwrap();
         let rt: Person = from_str(&yaml_out).unwrap();
@@ -146,7 +146,7 @@ reports:
 
     // ── Generic tree (recursive children) ──────────────────────────────
     support::task_with_output("Generic tree (recursive Vec<TreeNode>)", || {
-        let yaml = r#"
+        let yaml = r"
 label: root
 children:
   - label: A
@@ -159,7 +159,7 @@ children:
   - label: C
     children:
       - label: C1
-"#;
+";
         let tree: TreeNode = from_str(yaml).unwrap();
         let yaml_out = to_string(&tree).unwrap();
         let rt: TreeNode = from_str(&yaml_out).unwrap();

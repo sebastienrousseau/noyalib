@@ -24,20 +24,20 @@ fn test_merge_simple_mappings() {
 #[test]
 fn test_merge_nested_mappings() {
     let mut base: Value = from_str(
-        r#"
+        r"
 server:
   host: localhost
   port: 8080
-"#,
+",
     )
     .unwrap();
 
     let other: Value = from_str(
-        r#"
+        r"
 server:
   port: 9090
   ssl: true
-"#,
+",
     )
     .unwrap();
 
@@ -103,24 +103,24 @@ fn test_merge_null_replaces() {
 #[test]
 fn test_merge_deep_nesting() {
     let mut base: Value = from_str(
-        r#"
+        r"
 level1:
   level2:
     level3:
       a: 1
       b: 2
-"#,
+",
     )
     .unwrap();
 
     let other: Value = from_str(
-        r#"
+        r"
 level1:
   level2:
     level3:
       b: 3
       c: 4
-"#,
+",
     )
     .unwrap();
 
@@ -430,13 +430,13 @@ fn test_error_format_with_source_multiline() {
 
 #[test]
 fn test_value_get_path_deep() {
-    let yaml = r#"
+    let yaml = r"
 level1:
   level2:
     level3:
       level4:
         value: deep
-"#;
+";
     let value: Value = from_str(yaml).unwrap();
     assert_eq!(
         value

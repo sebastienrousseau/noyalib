@@ -142,12 +142,12 @@ fn test_binary_integer_parsing() {
 
 #[test]
 fn test_multiline_literal_string() {
-    let yaml = r#"
+    let yaml = r"
 description: |
   This is a multi-line
   literal string that
   preserves newlines.
-"#;
+";
     let value: Value = from_str(yaml).unwrap();
     let desc = value.get("description").unwrap().as_str().unwrap();
     assert!(desc.contains("This is a multi-line"));
@@ -156,12 +156,12 @@ description: |
 
 #[test]
 fn test_multiline_folded_string() {
-    let yaml = r#"
+    let yaml = r"
 description: >
   This is a folded
   string that becomes
   a single line.
-"#;
+";
     let value: Value = from_str(yaml).unwrap();
     let desc = value.get("description").unwrap().as_str().unwrap();
     // Folded strings join lines with spaces
@@ -310,11 +310,11 @@ fn test_large_mapping() {
 #[test]
 fn test_duplicate_keys_in_mapping() {
     // Default policy is Last: last occurrence wins.
-    let yaml = r#"
+    let yaml = r"
 name: first
 value: 1
 name: second
-"#;
+";
     let result: Value = from_str(yaml).unwrap();
     assert_eq!(result.get("name").unwrap().as_str(), Some("second"));
     assert_eq!(result.get("value").unwrap().as_i64(), Some(1));
@@ -361,11 +361,11 @@ items:
 
 #[test]
 fn test_null_representations() {
-    let yaml = r#"
+    let yaml = r"
 null1: null
 null2: ~
 null3:
-"#;
+";
     let value: Value = from_str(yaml).unwrap();
     assert!(value.get("null1").unwrap().is_null());
     assert!(value.get("null2").unwrap().is_null());
@@ -375,21 +375,21 @@ null3:
 #[test]
 fn test_boolean_variations() {
     // yaml-rust2 uses YAML 1.1 which recognizes true/false (lowercase)
-    let yaml = r#"
+    let yaml = r"
 true1: true
 false1: false
-"#;
+";
     let value: Value = from_str(yaml).unwrap();
     assert_eq!(value.get("true1").unwrap().as_bool(), Some(true));
     assert_eq!(value.get("false1").unwrap().as_bool(), Some(false));
 
     // Capitalized variants may be parsed as strings depending on the YAML version
-    let yaml_caps = r#"
+    let yaml_caps = r"
 true2: True
 true3: TRUE
 false2: False
 false3: FALSE
-"#;
+";
     let value: Value = from_str(yaml_caps).unwrap();
     // Test that parsing doesn't fail - the values may be bool or string
     assert!(value.get("true2").is_some());
@@ -401,12 +401,12 @@ false3: FALSE
 #[test]
 fn test_yes_no_on_off_booleans() {
     // YAML 1.1 style (may be treated as strings in YAML 1.2)
-    let yaml = r#"
+    let yaml = r"
 yes_val: yes
 no_val: no
 on_val: on
 off_val: off
-"#;
+";
     let value: Value = from_str(yaml).unwrap();
     // yaml-rust2 uses YAML 1.1 which recognizes yes/no/on/off as booleans
     let yes = value.get("yes_val").unwrap();
@@ -423,13 +423,13 @@ fn test_flow_vs_block_style() {
     let flow: Value = from_str(flow_yaml).unwrap();
 
     // Block style (indented)
-    let block_yaml = r#"
+    let block_yaml = r"
 name: test
 items:
   - 1
   - 2
   - 3
-"#;
+";
     let block: Value = from_str(block_yaml).unwrap();
 
     // Should produce equivalent values
@@ -456,10 +456,10 @@ fn test_malformed_yaml_unclosed_bracket() {
 
 #[test]
 fn test_malformed_yaml_bad_indentation() {
-    let yaml = r#"
+    let yaml = r"
 name: test
   badly: indented
-"#;
+";
     let result: Result<Value, _> = from_str(yaml);
     // This may succeed with yaml-rust2 by treating it as a multi-line string
     // or may fail depending on strictness
@@ -692,10 +692,10 @@ fn test_value_hash_consistency() {
 
 #[test]
 fn test_anchor_with_scalar() {
-    let yaml = r#"
+    let yaml = r"
 value: &anchor 42
 copy: *anchor
-"#;
+";
     let value: Value = from_str(yaml).unwrap();
     assert_eq!(value.get("value").unwrap().as_i64(), Some(42));
     assert_eq!(value.get("copy").unwrap().as_i64(), Some(42));
@@ -703,13 +703,13 @@ copy: *anchor
 
 #[test]
 fn test_anchor_with_sequence() {
-    let yaml = r#"
+    let yaml = r"
 items: &items
   - a
   - b
   - c
 copy: *items
-"#;
+";
     let value: Value = from_str(yaml).unwrap();
     let items = value.get("items").unwrap().as_sequence().unwrap();
     let copy = value.get("copy").unwrap().as_sequence().unwrap();
@@ -719,7 +719,7 @@ copy: *items
 
 #[test]
 fn test_merge_key_basic() {
-    let yaml = r#"
+    let yaml = r"
 defaults: &defaults
   timeout: 30
   retries: 3
@@ -727,7 +727,7 @@ defaults: &defaults
 server:
   <<: *defaults
   host: localhost
-"#;
+";
     let value: Value = from_str(yaml).unwrap();
     let server = value.get("server").unwrap();
     assert_eq!(server.get("host").unwrap().as_str(), Some("localhost"));
@@ -737,7 +737,7 @@ server:
 
 #[test]
 fn test_merge_key_override() {
-    let yaml = r#"
+    let yaml = r"
 defaults: &defaults
   timeout: 30
   retries: 3
@@ -745,7 +745,7 @@ defaults: &defaults
 server:
   <<: *defaults
   timeout: 60
-"#;
+";
     let value: Value = from_str(yaml).unwrap();
     let server = value.get("server").unwrap();
     // Local value should override merged value
@@ -780,14 +780,14 @@ fn test_load_all_single_document() {
 fn test_load_all_multiple_documents() {
     use noyalib::load_all;
 
-    let yaml = r#"
+    let yaml = r"
 ---
 name: doc1
 ---
 name: doc2
 ---
 name: doc3
-"#;
+";
     let docs: Vec<_> = load_all(yaml).unwrap().filter_map(Result::ok).collect();
     assert_eq!(docs.len(), 3);
     assert_eq!(docs[0].get("name").unwrap().as_str(), Some("doc1"));
@@ -801,12 +801,12 @@ name: doc3
 
 #[test]
 fn test_path_with_array_index() {
-    let yaml = r#"
+    let yaml = r"
 items:
   - name: first
   - name: second
   - name: third
-"#;
+";
     let value: Value = from_str(yaml).unwrap();
     assert_eq!(
         value.get_path("items[0].name").unwrap().as_str(),

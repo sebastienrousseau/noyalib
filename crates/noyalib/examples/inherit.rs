@@ -26,7 +26,7 @@ fn main() {
 
     // ── Basic: overrides and inheritance ──────────────────────────────
     support::task_with_output("Basic merge (overrides and inheritance)", || {
-        let yaml = r#"
+        let yaml = r"
 defaults: &defaults
   timeout: 30
   retries: 3
@@ -41,7 +41,7 @@ production:
   <<: *defaults
   debug: false
   replicas: 5
-"#;
+";
         let v: Value = from_str(yaml).unwrap();
         vec![
             format!(
@@ -66,7 +66,7 @@ production:
 
     // ── Multiple merge sources ───────────────────────────────────────
     support::task_with_output("Multiple merge sources", || {
-        let yaml = r#"
+        let yaml = r"
 base: &base
   adapter: postgres
 
@@ -81,7 +81,7 @@ credentials: &credentials
 database:
   <<: [*base, *connection, *credentials]
   database: myapp
-"#;
+";
         let v: Value = from_str(yaml).unwrap();
         vec![
             format!(
@@ -105,7 +105,7 @@ database:
 
     // ── Precedence ───────────────────────────────────────────────────
     support::task_with_output("Merge precedence (first source wins)", || {
-        let yaml = r#"
+        let yaml = r"
 first: &first
   a: 1
   b: 2
@@ -117,7 +117,7 @@ second: &second
 result:
   <<: [*first, *second]
   c: 300
-"#;
+";
         let v: Value = from_str(yaml).unwrap();
         vec![
             format!("a = {:>3} (from &first)", val(&v, "result.a")),
@@ -128,7 +128,7 @@ result:
 
     // ── Merge within sequences ───────────────────────────────────────
     support::task_with_output("Merge within sequences", || {
-        let yaml = r#"
+        let yaml = r"
 defaults: &defaults
   type: worker
   replicas: 1
@@ -143,7 +143,7 @@ services:
   - name: worker-2
     <<: *defaults
     replicas: 2
-"#;
+";
         let v: Value = from_str(yaml).unwrap();
         vec![
             format!(
@@ -166,7 +166,7 @@ services:
 
     // ── Nested structure merge ───────────────────────────────────────
     support::task_with_output("Nested structure merge", || {
-        let yaml = r#"
+        let yaml = r"
 shared: &shared
   logging:
     level: info
@@ -179,7 +179,7 @@ service_a:
 service_b:
   <<: *shared
   name: service-b
-"#;
+";
         let v: Value = from_str(yaml).unwrap();
         vec![
             format!("service_a.name           = {}", val(&v, "service_a.name")),

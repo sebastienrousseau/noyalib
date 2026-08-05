@@ -30,7 +30,7 @@ fn main() {
 
     // Merge key with mapping
     support::task_with_output("Merge key with mapping", || {
-        let yaml = r#"
+        let yaml = r"
 defaults: &defaults
   timeout: 30
   retries: 3
@@ -43,7 +43,7 @@ server2:
   <<: *defaults
   host: s2.example.com
   timeout: 60
-"#;
+";
         let v: Value = from_str(yaml).unwrap();
         let s1 = v.get("server1").unwrap();
         let s2 = v.get("server2").unwrap();

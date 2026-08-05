@@ -48,12 +48,12 @@ fn main() {
 
     // ── Compound anchor (mapping with anchor, aliased elsewhere) ────
     support::task_with_output("Compound anchor (mapping)", || {
-        let yaml = r#"
+        let yaml = r"
 defaults: &cfg
   host: localhost
   port: 8080
 staging: *cfg
-"#;
+";
         #[derive(Debug, serde::Deserialize, PartialEq)]
         struct Endpoint {
             host: String,
@@ -77,7 +77,7 @@ staging: *cfg
 
     // ── Nested anchors (anchor inside a sequence) ────────────────────
     support::task_with_output("Nested anchor inside a sequence", || {
-        let yaml = r#"
+        let yaml = r"
 items:
   - &first alpha
   - &second beta
@@ -85,7 +85,7 @@ items:
 copies:
   - *second
   - *first
-"#;
+";
         #[derive(Debug, serde::Deserialize)]
         struct Doc {
             items: Vec<String>,
@@ -123,14 +123,14 @@ copies:
 
     // ── Typed deserialization with shared values ─────────────────────
     support::task_with_output("Typed struct with shared values", || {
-        let yaml = r#"
+        let yaml = r"
 database: &db
   host: db.internal
   port: 5432
   name: myapp
 read_replica: *db
 analytics_replica: *db
-"#;
+";
         #[derive(Debug, serde::Deserialize, PartialEq)]
         struct DbConfig {
             host: String,
@@ -183,14 +183,14 @@ analytics_replica: *db
 
     // ── Anchor replay with Value (merge key triggers fallback) ──────
     support::task_with_output("Merge key still works via Value fallback", || {
-        let yaml = r#"
+        let yaml = r"
 base: &base
   timeout: 30
   retries: 3
 server:
   <<: *base
   host: example.com
-"#;
+";
         let v: Value = from_str(yaml).unwrap();
         let server = v.get("server").unwrap();
         assert_eq!(server.get("timeout").unwrap(), &Value::from(30));

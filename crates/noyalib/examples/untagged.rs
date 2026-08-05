@@ -100,7 +100,7 @@ fn main() {
 
     // ── CI/CD pipeline ───────────────────────────────────────────────
     support::task_with_output("CI/CD pipeline: string or detailed step", || {
-        let yaml = r#"
+        let yaml = r"
 name: build
 steps:
   - cargo check
@@ -110,7 +110,7 @@ steps:
   - run: cargo publish
     env:
       CARGO_TOKEN: secret
-"#;
+";
         let pipeline: Pipeline = from_str(yaml).unwrap();
         pipeline
             .steps
