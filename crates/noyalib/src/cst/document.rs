@@ -617,6 +617,41 @@ impl Document {
     /// Trailing whitespace and the line break are removed too so the
     /// surrounding entries close up with no orphan blank line.
     ///
+    /// # What counts as part of the entry
+    ///
+    /// An entry owns the trivia a reader would say belongs to it, so a
+    /// removal leaves no orphan and steals nothing from its neighbours:
+    ///
+    /// - **Head comment.** A contiguous run of full-line comments
+    ///   directly above the entry, at its own indentation, is removed
+    ///   with it. Left behind, such a comment does not merely litter —
+    ///   it silently becomes documentation for the *next* entry. A blank
+    ///   line detaches the run, so a document header set off by one
+    ///   survives the removal of the first entry.
+    /// - **Kept blank lines.** A keep-chomped (`|+` / `>+`) block
+    ///   scalar's trailing blank lines are content, not separation, and
+    ///   go with the entry rather than being stranded after it.
+    /// - **Trailing comments stay.** A comment *after* the entry's last
+    ///   content line lies outside its value span (see
+    ///   [`Document::span_at`]) and conventionally documents whatever
+    ///   comes next, so it is left in place. A comment *interleaved*
+    ///   inside a multi-line value is inside the span and goes with the
+    ///   entry.
+    ///
+    /// ```
+    /// use noyalib::cst::parse_document;
+    ///
+    /// // The comment documenting `database` goes with it …
+    /// let mut doc = parse_document("# connection settings\ndatabase:\n  host: x\ncache: 1\n").unwrap();
+    /// doc.remove("database").unwrap();
+    /// assert_eq!(doc.to_string(), "cache: 1\n");
+    ///
+    /// // … but one that documents the following entry does not.
+    /// let mut doc = parse_document("outer:\n  a: 1\n  # note for next\nnext: 2\n").unwrap();
+    /// doc.remove("outer").unwrap();
+    /// assert_eq!(doc.to_string(), "  # note for next\nnext: 2\n");
+    /// ```
+    ///
     /// Restrictions in this phase:
     /// - Block context only — flow-collection entry removal (`[a, b, c]`
     ///   → `[a, c]`) is a follow-up.
@@ -2677,15 +2712,6 @@ fn skip_value_property_prefix(bytes: &[u8], mut start: usize, end: usize) -> usi
     }
 }
 
-/// The end byte of a span tree, transparently unwrapping alias indirection.
-fn span_tree_end(t: &SpanTree) -> usize {
-    match t {
-        SpanTree::Leaf(_, e) => *e,
-        SpanTree::Sequence { end, .. } | SpanTree::Mapping { end, .. } => *end,
-        SpanTree::Alias(inner) => span_tree_end(inner),
-    }
-}
-
 /// The `(start, end)` bounds of a span tree, transparently unwrapping alias
 /// indirection.
 fn span_tree_bounds(t: &SpanTree) -> (usize, usize) {
@@ -2812,11 +2838,13 @@ fn entry_line_span(
                 .position(|(mk, _)| mk == k)
                 .ok_or_else(|| Error::Parse(format!("path not found: missing key {k:?}")))?;
             let ((key_start, _key_end), child_tree) = &entries[pos];
-            let raw_value_end = span_tree_end(child_tree);
-            let (_, value_end) = trim_trailing_blank(source, *key_start, raw_value_end);
-            let (ls, le) = line_extent(source, *key_start, value_end);
-            let multiline = source[*key_start..value_end].contains('\n');
-            Ok((ls, le, multiline))
+            let (value_start, raw_value_end) = span_tree_bounds(child_tree);
+            Ok(owned_entry_range(
+                source,
+                *key_start,
+                value_start,
+                raw_value_end,
+            ))
         }
         (QuerySegment::Index(i), Value::Sequence(seq), SpanTree::Sequence { items, .. }) => {
             if seq.len() <= 1 {
@@ -2828,7 +2856,6 @@ fn entry_line_span(
                 .get(*i)
                 .ok_or_else(|| Error::Parse(format!("path not found: index {i} out of bounds")))?;
             let (value_start, raw_value_end) = span_tree_bounds(item_tree);
-            let (_, value_end) = trim_trailing_blank(source, value_start, raw_value_end);
             // The `-` indicator sits before the value on the same line,
             // separated by inline whitespace. Walk backward to find it.
             let dash_pos = locate_preceding_dash(source, value_start).ok_or_else(|| {
@@ -2836,12 +2863,123 @@ fn entry_line_span(
                     "remove: could not locate '-' indicator preceding sequence item".into(),
                 )
             })?;
-            let (ls, le) = line_extent(source, dash_pos, value_end);
-            let multiline = source[dash_pos..value_end].contains('\n');
-            Ok((ls, le, multiline))
+            Ok(owned_entry_range(
+                source,
+                dash_pos,
+                value_start,
+                raw_value_end,
+            ))
         }
         _ => Err(Error::Parse("path not found".into())),
     }
+}
+
+/// The whole-line source range an entry owns, plus whether that range
+/// spans more than one line (which selects `remove`'s guarded path).
+///
+/// `entry_start` points at the entry's key (mapping) or `-` indicator
+/// (sequence); `value_start..raw_value_end` is its value's span as the
+/// span tree reports it.
+///
+/// An entry owns more than the bytes of its key and value:
+///
+/// - the contiguous run of full-line comments directly above it, at its
+///   own indentation — its *head comment*. Leaving those behind does not
+///   merely litter: the comment silently becomes documentation for the
+///   *next* entry. A blank line detaches the run, so a document header
+///   set off by one is not swept up with the first entry.
+/// - a keep-chomped (`|+` / `>+`) block scalar's kept trailing blank
+///   lines, which are value content rather than separation. Leaving them
+///   behind strands blank lines the removed entry brought with it.
+///
+/// It does **not** own comment lines that follow its last content line.
+/// Those lie outside the value span — [`Document::span_at`] already
+/// excludes them — and conventionally document whatever comes next, so
+/// removing them would delete something the caller did not address. A
+/// comment *interleaved* inside a multi-line value is inside the span and
+/// goes with the entry.
+fn owned_entry_range(
+    source: &str,
+    entry_start: usize,
+    value_start: usize,
+    raw_value_end: usize,
+) -> (usize, usize, bool) {
+    let bytes = source.as_bytes();
+    let value_end = owned_value_end(source, value_start, raw_value_end);
+
+    // Extend through the line break holding the value's last content byte
+    // — unless `value_end` already sits on a line boundary, which happens
+    // only for a keep-chomped scalar whose kept blank lines end there.
+    // Extending then would swallow the following entry's first line.
+    let end = if value_end > 0 && bytes[value_end - 1] == b'\n' {
+        value_end
+    } else {
+        end_of_line(source, value_end)
+    };
+
+    let first_line_start = start_of_line(source, entry_start);
+    let indent = entry_indent_column(source, entry_start);
+    let start = absorb_head_comments(source, first_line_start, indent);
+
+    // The single-line fast path in `remove` stays available only for a
+    // range that really is one line: an absorbed head comment or a kept
+    // blank line makes the splice multi-line and sends it through the
+    // re-parse guard.
+    let body = &source[start..end];
+    let multiline = body.strip_suffix('\n').unwrap_or(body).contains('\n');
+    (start, end, multiline)
+}
+
+/// Where an entry's value ends for the purposes of
+/// [`owned_entry_range`]: the span tree's raw end walked back over
+/// separator whitespace and over any comment-only lines beyond the
+/// value's last content line.
+///
+/// A keep-chomped block scalar is returned untouched — its trailing line
+/// breaks are content, and trimming them would strand them in the
+/// document after the entry is removed.
+fn owned_value_end(source: &str, value_start: usize, raw_value_end: usize) -> usize {
+    if is_keep_chomped_block_scalar(source, value_start, raw_value_end) {
+        return raw_value_end;
+    }
+    let bytes = source.as_bytes();
+    let mut end = raw_value_end;
+    loop {
+        while end > value_start && matches!(bytes[end - 1], b' ' | b'\t' | b'\n' | b'\r') {
+            end -= 1;
+        }
+        // `end` now sits just past a line's last content byte. If that
+        // line holds nothing but a comment, it is trailing trivia rather
+        // than value content; drop it and look at the line above. The
+        // `line_start > value_start` guard keeps the walk from reaching
+        // into the entry's own first line.
+        let line_start = start_of_line(source, end);
+        if line_start <= value_start || !source[line_start..end].trim_start().starts_with('#') {
+            return end;
+        }
+        end = line_start;
+    }
+}
+
+/// Walk `start` up over the contiguous run of full-line comments directly
+/// above an entry, each beginning at column `indent`.
+///
+/// Stops at a blank line, a non-comment line, or a comment at a different
+/// column — so a comment detached by a blank line stays put, and so does
+/// one belonging to an enclosing or nested level.
+fn absorb_head_comments(source: &str, mut start: usize, indent: usize) -> usize {
+    while start > 0 {
+        // `start` is always 0 or one past a `\n`, so the preceding line is
+        // `[prev_line_start, start - 1)` with the break excluded.
+        let prev_line_start = start_of_line(source, start - 1);
+        let line = source[prev_line_start..start - 1].trim_end_matches('\r');
+        let content = line.trim_start_matches([' ', '\t']);
+        if !content.starts_with('#') || line.len() - content.len() != indent {
+            break;
+        }
+        start = prev_line_start;
+    }
+    start
 }
 
 // ── Key-site resolution (used by `rename_key`) ──────────────────────
@@ -3659,6 +3797,17 @@ fn leading_break_for_splice(source: &str, pos: usize) -> &'static str {
     }
 }
 
+/// Position of the first byte of the line containing `pos`: `0`, or the
+/// byte just past the preceding `\n`. The mirror of [`end_of_line`].
+fn start_of_line(source: &str, pos: usize) -> usize {
+    let bytes = source.as_bytes();
+    let mut i = pos.min(bytes.len());
+    while i > 0 && bytes[i - 1] != b'\n' {
+        i -= 1;
+    }
+    i
+}
+
 fn end_of_line(source: &str, pos: usize) -> usize {
     let bytes = source.as_bytes();
     let mut i = pos;
@@ -3681,25 +3830,6 @@ fn locate_preceding_dash(source: &str, value_start: usize) -> Option<usize> {
         }
     }
     None
-}
-
-/// Extend `(start, end)` outward to a full-line byte range:
-/// - leftward to the byte after the previous `\n` (or 0).
-/// - rightward through the trailing `\n` (or to EOF).
-fn line_extent(source: &str, start: usize, end: usize) -> (usize, usize) {
-    let bytes = source.as_bytes();
-    let mut s = start;
-    while s > 0 && bytes[s - 1] != b'\n' {
-        s -= 1;
-    }
-    let mut e = end;
-    while e < bytes.len() && bytes[e] != b'\n' {
-        e += 1;
-    }
-    if e < bytes.len() {
-        e += 1;
-    }
-    (s, e)
 }
 
 // ── Green-tree leaf lookup ──────────────────────────────────────────

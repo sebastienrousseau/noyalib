@@ -7,6 +7,33 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Fixed
+
+- **`Document::remove` now takes the trivia the entry owns, and only
+  that** (#225). Three cases produced a silently wrong document rather
+  than a refusal:
+  - a contiguous run of full-line comments directly above the entry — its
+    head comment — survived the removal and silently became documentation
+    for the *following* entry. It is now removed with the entry. A blank
+    line still detaches the run, so a document header set off by one
+    survives the removal of the first entry, and a comment at a different
+    indentation is left alone.
+  - a keep-chomped (`|+` / `>+`) block scalar's kept trailing blank lines
+    are content rather than separation, and were stranded in the document
+    after the entry was removed. They now go with it.
+  - a comment *after* the entry's last content line was swallowed. Such a
+    comment lies outside the value span (`span_at` already excludes it)
+    and conventionally documents whatever comes next, so it is now left
+    in place. A comment *interleaved* inside a multi-line value is inside
+    the span and continues to go with the entry.
+
+  The entry range is now derived from the same value-span boundary
+  `span_at` reports, so `remove` and `span_at` no longer disagree about
+  where an entry ends. A removal whose range covers more than one line —
+  which now includes a single-line entry with a head comment — goes
+  through the existing re-parse and typed-value guard; the single-line
+  fast path is unchanged.
+
 ## [v0.0.18] - 2026-07-31
 
 ### Added
