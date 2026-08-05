@@ -736,8 +736,8 @@ fn test_value_ord() {
     // Type ordering: Null < Bool < Number < String < Sequence < Mapping < Tagged
     assert!(Value::Null < Value::Bool(false));
     assert!(Value::Bool(true) < Value::Number(Number::Integer(0)));
-    assert!(Value::Number(Number::Integer(0)) < Value::String("".to_string()));
-    assert!(Value::String("".to_string()) < Value::Sequence(vec![]));
+    assert!(Value::Number(Number::Integer(0)) < Value::String(String::new()));
+    assert!(Value::String(String::new()) < Value::Sequence(vec![]));
     assert!(Value::Sequence(vec![]) < Value::Mapping(Mapping::new()));
 
     // Same type ordering

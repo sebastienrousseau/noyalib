@@ -139,7 +139,7 @@ fn from_impl_wraps_without_validating() {
     // only Deserialize does. This avoids surprising API: you opt into
     // validation via deserialisation.
     let s = Server {
-        host: "".to_string(),
+        host: String::new(),
         port: 1,
     };
     let wrapped: Validated<Server> = s.into();

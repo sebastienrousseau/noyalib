@@ -682,7 +682,7 @@ fn test_serialize_string_needs_quoting() {
     assert!(yaml.contains('"') || yaml.contains('\''));
 
     // Empty string
-    let value = Value::String("".to_string());
+    let value = Value::String(String::new());
     let yaml = to_string(&value).unwrap();
     assert!(yaml.contains("\"\"") || yaml.contains("''"));
 }

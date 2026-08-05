@@ -330,7 +330,7 @@ fn test_serde_complex_config() {
 
 #[test]
 fn test_serde_empty_string() {
-    test_serde(&"".to_string(), &[]);
+    test_serde(&String::new(), &[]);
 }
 
 #[test]
