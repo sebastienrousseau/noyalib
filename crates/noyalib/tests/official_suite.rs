@@ -294,7 +294,7 @@ fn official_suite() {
 
     let total = pass + fail + skip;
     let compliance = if total > skip {
-        (pass as f64 / (total - skip) as f64) * 100.0
+        (f64::from(pass) / f64::from(total - skip)) * 100.0
     } else {
         100.0
     };

@@ -104,7 +104,7 @@ pub(crate) fn encode(input: &[u8]) -> String {
     let remainder = chunks.remainder();
 
     for chunk in chunks {
-        let n = ((chunk[0] as u32) << 16) | ((chunk[1] as u32) << 8) | (chunk[2] as u32);
+        let n = (u32::from(chunk[0]) << 16) | (u32::from(chunk[1]) << 8) | u32::from(chunk[2]);
         out.push(ALPHABET[((n >> 18) & 0x3f) as usize] as char);
         out.push(ALPHABET[((n >> 12) & 0x3f) as usize] as char);
         out.push(ALPHABET[((n >> 6) & 0x3f) as usize] as char);
@@ -114,14 +114,14 @@ pub(crate) fn encode(input: &[u8]) -> String {
     match remainder {
         [] => {}
         [a] => {
-            let n = (*a as u32) << 16;
+            let n = u32::from(*a) << 16;
             out.push(ALPHABET[((n >> 18) & 0x3f) as usize] as char);
             out.push(ALPHABET[((n >> 12) & 0x3f) as usize] as char);
             out.push('=');
             out.push('=');
         }
         [a, b] => {
-            let n = ((*a as u32) << 16) | ((*b as u32) << 8);
+            let n = (u32::from(*a) << 16) | (u32::from(*b) << 8);
             out.push(ALPHABET[((n >> 18) & 0x3f) as usize] as char);
             out.push(ALPHABET[((n >> 12) & 0x3f) as usize] as char);
             out.push(ALPHABET[((n >> 6) & 0x3f) as usize] as char);

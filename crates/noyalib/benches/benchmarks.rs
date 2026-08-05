@@ -1481,7 +1481,7 @@ fn bench_mapping_any(c: &mut Criterion) {
         b.iter(|| {
             let mut m = MappingAny::new();
             for i in 0..10 {
-                let _ = m.insert(Value::from(i as i64), Value::from(format!("val{i}")));
+                let _ = m.insert(Value::from(i64::from(i)), Value::from(format!("val{i}")));
             }
             black_box(m)
         });
