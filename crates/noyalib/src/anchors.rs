@@ -190,7 +190,7 @@ impl<T: serde_core::Serialize> serde_core::Serialize for RcAnchor<T> {
     {
         #[cfg(feature = "std")]
         {
-            let ptr = Rc::as_ptr(&self.0) as *const () as usize;
+            let ptr = Rc::as_ptr(&self.0).cast::<()>() as usize;
             match shared_tracking::track(ptr) {
                 shared_tracking::TrackOutcome::NotActive => self.0.serialize(serializer),
                 shared_tracking::TrackOutcome::New(id) => {
@@ -284,7 +284,7 @@ impl<T: serde_core::Serialize> serde_core::Serialize for ArcAnchor<T> {
     {
         #[cfg(feature = "std")]
         {
-            let ptr = Arc::as_ptr(&self.0) as *const () as usize;
+            let ptr = Arc::as_ptr(&self.0).cast::<()>() as usize;
             match shared_tracking::track(ptr) {
                 shared_tracking::TrackOutcome::NotActive => self.0.serialize(serializer),
                 shared_tracking::TrackOutcome::New(id) => {
@@ -401,7 +401,7 @@ impl<T: serde_core::Serialize> serde_core::Serialize for RcWeakAnchor<T> {
                     // Weak refs never define a new anchor. If tracking is active
                     // and the target was already anchored by a strong reference,
                     // emit an alias; otherwise fall back to inline value.
-                    let ptr = Rc::as_ptr(&v) as *const () as usize;
+                    let ptr = Rc::as_ptr(&v).cast::<()>() as usize;
                     if let Some(id) = shared_tracking::peek(ptr) {
                         let id_str = shared_tracking::format_id(id);
                         return serializer
@@ -511,7 +511,7 @@ impl<T: serde_core::Serialize> serde_core::Serialize for ArcWeakAnchor<T> {
             Some(v) => {
                 #[cfg(feature = "std")]
                 {
-                    let ptr = Arc::as_ptr(&v) as *const () as usize;
+                    let ptr = Arc::as_ptr(&v).cast::<()>() as usize;
                     if let Some(id) = shared_tracking::peek(ptr) {
                         let id_str = shared_tracking::format_id(id);
                         return serializer
