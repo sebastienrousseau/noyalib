@@ -6,7 +6,7 @@
 //! Two of the most-used serde companion crates are
 //! `serde_path_to_error` (path-aware error reporting) and
 //! `serde_ignored` (unknown-field detection). Both wrap any
-//! `serde::Deserializer` impl and compose without crate-specific
+//! `serde_core::Deserializer` impl and compose without crate-specific
 //! support. These tests assert that `noyalib::Deserializer<'de>`
 //! plugs in correctly, so users picking either tool from their
 //! existing toolbox don't need a noyalib-specific integration.

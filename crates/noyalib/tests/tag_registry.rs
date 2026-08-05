@@ -9,7 +9,7 @@
 use std::sync::Arc;
 
 use noyalib::{Error, ParserConfig, TagRegistry, Value, from_str_with_config};
-use serde::Deserialize;
+use serde_core::Deserialize as _;
 
 fn cfg(tags: &[&str]) -> ParserConfig {
     let mut reg = TagRegistry::new();

@@ -13,7 +13,6 @@
 )]
 
 use noyalib::{ParserConfig, RcAnchor, Spanned, Value, from_str, from_str_with_config};
-use serde::Deserialize;
 
 // ── streaming: anchor whose body contains an alias (maybe_record Alias arm) ─
 
@@ -131,10 +130,10 @@ fn streaming_ignored_any_on_alias() {
 #[derive(Debug, serde::Serialize)]
 struct NewtypeWrapper(String);
 
-impl<'de> Deserialize<'de> for NewtypeWrapper {
+impl<'de> serde_core::Deserialize<'de> for NewtypeWrapper {
     fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error>
     where
-        D: serde::Deserializer<'de>,
+        D: serde_core::Deserializer<'de>,
     {
         // Access the {tag, value} map produced by StreamingTagMapAccess.
         #[derive(serde::Deserialize)]

@@ -132,13 +132,13 @@ impl<T> core::ops::Deref for Flattened<T> {
     }
 }
 
-impl<'de, T> serde::Deserialize<'de> for Flattened<T>
+impl<'de, T> serde_core::Deserialize<'de> for Flattened<T>
 where
-    T: for<'a> serde::Deserialize<'a> + 'static,
+    T: for<'a> serde_core::Deserialize<'a> + 'static,
 {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
-        D: serde::Deserializer<'de>,
+        D: serde_core::Deserializer<'de>,
     {
         // Step 1: capture the source as a typed `Value` tree —
         // every key the source supplied is preserved.
@@ -146,18 +146,15 @@ where
         // Step 2: re-run `T::deserialize` against the captured
         // value via `from_value`. The HRTB on `T` lets the
         // returned `T` outlive the temporary `&raw` borrow.
-        let value = crate::from_value::<T>(&raw).map_err(serde::de::Error::custom)?;
+        let value = crate::from_value::<T>(&raw).map_err(serde_core::de::Error::custom)?;
         Ok(Flattened { value, raw })
     }
 }
 
-impl<T> serde::Serialize for Flattened<T>
-where
-    T: serde::Serialize,
-{
+impl<T: serde_core::Serialize> serde_core::Serialize for Flattened<T> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
-        S: serde::Serializer,
+        S: serde_core::Serializer,
     {
         // Round-trip transparency: serializing a `Flattened<T>`
         // is equivalent to serializing the typed view alone. This

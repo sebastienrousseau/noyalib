@@ -20,7 +20,7 @@ public API and follow semver.
 | `Deserialize(String)` | `deserialization error: …` | Generic deserialise failure with no location | Inspect the message; often a type-shape mismatch the resolver couldn't pinpoint |
 | `DeserializeWithLocation { message, location }` | `deserialization error at L:C: …` | Deserialise failure with span attached (loader path) | Use `format_with_source` to point at the offending value |
 | `Io(std::io::Error)` (std-feature only) | `I/O error: …` | `from_reader` / `to_writer` underlying I/O failed | Check the inner `io::Error::kind()` |
-| `Custom(String)` | message verbatim | User-supplied error text via `serde::de::Error::custom` | Inspect message |
+| `Custom(String)` | message verbatim | User-supplied error text via `serde_core::de::Error::custom` | Inspect message |
 | `RecursionLimitExceeded { depth }` | `recursion depth limit exceeded: <n>` | Document nesting beyond `ParserConfig::max_depth` (default 128) | Increase `max_depth` if input is trusted; otherwise reject the input |
 | `DuplicateKey(String)` | `duplicate key: <name>` | Mapping has the same key twice and `DuplicateKeyPolicy::Error` is set | Switch to `Last` or `First` policy, or fix the source |
 | `RepetitionLimitExceeded` | `alias expansion limit exceeded` | Alias-expansion total exceeded `max_alias_expansions` (billion-laughs defence) | Increase the limit if input is trusted; otherwise reject |
@@ -39,7 +39,7 @@ public API and follow semver.
 | `ScalarInMerge` (legacy) | `scalar in merge` | Legacy variant kept for back-compat; superseded by `ScalarInMergeElement` | Same recovery as `ScalarInMergeElement` |
 | `EmptyTag` | `empty tag` | A `!` was followed by no tag handle or suffix | Provide a tag (`!shopping`) or remove the indicator |
 | `FailedToParseNumber(String)` | `failed to parse number: …` | A scalar tagged `!!int` or `!!float` couldn't be parsed | Check the literal syntax; for hex/oct, use `0x` / `0o` prefixes (or enable `legacy_octal_numbers` for bare `0644`) |
-| `Message(String, Option<usize>)` | `serde error: …` | `serde::de::Error::custom` adapter with optional byte offset | Inspect message |
+| `Message(String, Option<usize>)` | `serde error: …` | `serde_core::de::Error::custom` adapter with optional byte offset | Inspect message |
 
 ## Working with errors
 

@@ -175,8 +175,6 @@
 //! that flow through unchanged for the typed-deserialise path.
 
 use crate::prelude::*;
-use serde::Serialize;
-use serde::de::DeserializeOwned;
 
 // ── Types — re-exported under the serde_yaml names ───────────────────
 
@@ -252,7 +250,7 @@ pub mod with {
 /// ```
 pub fn from_str<T>(s: &str) -> Result<T>
 where
-    T: DeserializeOwned + 'static,
+    T: serde_core::de::DeserializeOwned + 'static,
 {
     crate::from_str(s)
 }
@@ -268,7 +266,7 @@ where
 /// ```
 pub fn from_slice<T>(bytes: &[u8]) -> Result<T>
 where
-    T: DeserializeOwned + 'static,
+    T: serde_core::de::DeserializeOwned + 'static,
 {
     crate::from_slice(bytes)
 }
@@ -291,7 +289,7 @@ where
 pub fn from_reader<R, T>(reader: R) -> Result<T>
 where
     R: std::io::Read,
-    T: DeserializeOwned + 'static,
+    T: serde_core::de::DeserializeOwned + 'static,
 {
     crate::from_reader(reader)
 }
@@ -313,7 +311,7 @@ where
 /// ```
 pub fn from_value<T>(value: Value) -> Result<T>
 where
-    T: DeserializeOwned + 'static,
+    T: serde_core::de::DeserializeOwned + 'static,
 {
     crate::from_value(&value)
 }
@@ -331,7 +329,7 @@ where
 /// ```
 pub fn to_string<T>(value: &T) -> Result<String>
 where
-    T: Serialize,
+    T: serde_core::Serialize,
 {
     crate::to_string(value)
 }
@@ -350,7 +348,7 @@ where
 pub fn to_writer<W, T>(writer: W, value: &T) -> Result<()>
 where
     W: std::io::Write,
-    T: Serialize,
+    T: serde_core::Serialize,
 {
     crate::to_writer(writer, value)
 }
@@ -369,7 +367,7 @@ where
 /// ```
 pub fn to_value<T>(value: T) -> Result<Value>
 where
-    T: Serialize,
+    T: serde_core::Serialize,
 {
     crate::to_value(&value)
 }
@@ -395,7 +393,7 @@ where
 /// ```
 pub fn from_str_multi<T>(s: &str) -> Result<Vec<T>>
 where
-    T: DeserializeOwned + 'static,
+    T: serde_core::de::DeserializeOwned + 'static,
 {
     crate::load_all_as::<T>(s)
 }
@@ -403,7 +401,6 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use serde::Deserialize;
 
     #[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
     struct Config {
@@ -531,8 +528,8 @@ mod tests {
         // noyalib's own `Deserializer<'_>` so existing call sites
         // that explicitly name the type compile unchanged.
         let v = Value::from(7_i64);
-        let de: Deserializer<'_> = Deserializer::new(&v);
-        let n: i32 = Deserialize::deserialize(de).unwrap();
+        let de = Deserializer::new(&v);
+        let n: i32 = serde_core::Deserialize::deserialize(de).unwrap();
         assert_eq!(n, 7);
     }
 

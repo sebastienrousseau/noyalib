@@ -26,7 +26,6 @@
 
 use criterion::{BenchmarkId, Criterion, Throughput, criterion_group, criterion_main};
 use noyalib::{ParserConfig, StreamingDeserializer, Value, from_str_with_config};
-use serde::Deserialize;
 
 /// Budgets sized for the soak fixtures. The default `ParserConfig` DoS
 /// guards (max_events 1M, max_nodes 250k, etc.) legitimately reject a
@@ -120,7 +119,7 @@ fn bench_soak(c: &mut Criterion) {
             |b, yaml| {
                 b.iter(|| {
                     let mut de = StreamingDeserializer::with_config(black_box(yaml.as_str()), &cfg);
-                    let doc: Doc = Deserialize::deserialize(&mut de).unwrap();
+                    let doc: Doc = serde_core::Deserialize::deserialize(&mut de).unwrap();
                     black_box(doc);
                 });
             },

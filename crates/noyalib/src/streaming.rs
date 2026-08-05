@@ -11,8 +11,6 @@
 use crate::prelude::*;
 
 use rustc_hash::{FxHashMap, FxHashSet};
-use serde::Deserialize;
-use serde::de::{self, DeserializeSeed, IntoDeserializer, MapAccess, SeqAccess, Visitor};
 use smallvec::SmallVec;
 
 use crate::error::{Error, Result, closest_name};
@@ -60,7 +58,7 @@ pub(crate) enum Scalar<'a> {
 ///
 /// ```
 /// use noyalib::StreamingDeserializer;
-/// use serde::Deserialize;
+/// use serde_core::Deserialize as _;
 ///
 /// #[derive(serde::Deserialize)]
 /// struct Doc { k: i32 }
@@ -147,7 +145,7 @@ impl<'a> StreamingDeserializer<'a> {
     ///
     /// ```
     /// use noyalib::{StreamingDeserializer, TagRegistry};
-    /// use serde::Deserialize;
+    /// use serde_core::Deserialize as _;
     /// use std::sync::Arc;
     ///
     /// #[derive(serde::Deserialize)]
@@ -593,12 +591,12 @@ impl<'a> StreamingDeserializer<'a> {
     }
 }
 
-impl<'de> de::Deserializer<'de> for &mut StreamingDeserializer<'de> {
+impl<'de> serde_core::Deserializer<'de> for &mut StreamingDeserializer<'de> {
     type Error = Error;
 
     fn deserialize_any<V>(self, visitor: V) -> Result<V::Value>
     where
-        V: Visitor<'de>,
+        V: serde_core::de::Visitor<'de>,
     {
         self.skip_to_content()?;
         // `deserialize_any` is used by `Value` and other type-erased
@@ -676,7 +674,7 @@ impl<'de> de::Deserializer<'de> for &mut StreamingDeserializer<'de> {
 
     fn deserialize_bool<V>(self, visitor: V) -> Result<V::Value>
     where
-        V: Visitor<'de>,
+        V: serde_core::de::Visitor<'de>,
     {
         self.skip_to_content()?;
         if let Event::Scalar { value, style, .. } = self.next_event()? {
@@ -692,7 +690,7 @@ impl<'de> de::Deserializer<'de> for &mut StreamingDeserializer<'de> {
 
     fn deserialize_i64<V>(self, visitor: V) -> Result<V::Value>
     where
-        V: Visitor<'de>,
+        V: serde_core::de::Visitor<'de>,
     {
         self.skip_to_content()?;
         if let Event::Scalar { value, style, .. } = self.next_event()? {
@@ -719,7 +717,7 @@ impl<'de> de::Deserializer<'de> for &mut StreamingDeserializer<'de> {
 
     fn deserialize_u64<V>(self, visitor: V) -> Result<V::Value>
     where
-        V: Visitor<'de>,
+        V: serde_core::de::Visitor<'de>,
     {
         self.skip_to_content()?;
         if let Event::Scalar { value, style, .. } = self.next_event()? {
@@ -743,7 +741,7 @@ impl<'de> de::Deserializer<'de> for &mut StreamingDeserializer<'de> {
 
     fn deserialize_f64<V>(self, visitor: V) -> Result<V::Value>
     where
-        V: Visitor<'de>,
+        V: serde_core::de::Visitor<'de>,
     {
         self.skip_to_content()?;
         if let Event::Scalar { value, style, .. } = self.next_event()? {
@@ -763,7 +761,7 @@ impl<'de> de::Deserializer<'de> for &mut StreamingDeserializer<'de> {
 
     fn deserialize_str<V>(self, visitor: V) -> Result<V::Value>
     where
-        V: Visitor<'de>,
+        V: serde_core::de::Visitor<'de>,
     {
         self.skip_to_content()?;
         // A tag (`!!str`, `!custom`, …) routes through the AST so the
@@ -828,14 +826,14 @@ impl<'de> de::Deserializer<'de> for &mut StreamingDeserializer<'de> {
 
     fn deserialize_string<V>(self, visitor: V) -> Result<V::Value>
     where
-        V: Visitor<'de>,
+        V: serde_core::de::Visitor<'de>,
     {
         self.deserialize_str(visitor)
     }
 
     fn deserialize_option<V>(self, visitor: V) -> Result<V::Value>
     where
-        V: Visitor<'de>,
+        V: serde_core::de::Visitor<'de>,
     {
         self.skip_to_content()?;
         if let Event::Scalar { value, style, .. } = self.peek_event()? {
@@ -854,7 +852,7 @@ impl<'de> de::Deserializer<'de> for &mut StreamingDeserializer<'de> {
 
     fn deserialize_unit<V>(self, visitor: V) -> Result<V::Value>
     where
-        V: Visitor<'de>,
+        V: serde_core::de::Visitor<'de>,
     {
         self.skip_to_content()?;
         if let Event::Scalar { value, style, .. } = self.next_event()? {
@@ -870,7 +868,7 @@ impl<'de> de::Deserializer<'de> for &mut StreamingDeserializer<'de> {
 
     fn deserialize_newtype_struct<V>(self, name: &'static str, visitor: V) -> Result<V::Value>
     where
-        V: Visitor<'de>,
+        V: serde_core::de::Visitor<'de>,
     {
         if name == crate::spanned::SPANNED_TYPE_NAME {
             return Err(self.fallback());
@@ -905,7 +903,7 @@ impl<'de> de::Deserializer<'de> for &mut StreamingDeserializer<'de> {
 
     fn deserialize_seq<V>(self, visitor: V) -> Result<V::Value>
     where
-        V: Visitor<'de>,
+        V: serde_core::de::Visitor<'de>,
     {
         self.skip_to_content()?;
         // Tagged sequences route through the AST fallback so the tag is
@@ -940,7 +938,7 @@ impl<'de> de::Deserializer<'de> for &mut StreamingDeserializer<'de> {
 
     fn deserialize_map<V>(self, visitor: V) -> Result<V::Value>
     where
-        V: Visitor<'de>,
+        V: serde_core::de::Visitor<'de>,
     {
         self.skip_to_content()?;
         // Tagged mappings route through the AST fallback so the tag is
@@ -983,7 +981,7 @@ impl<'de> de::Deserializer<'de> for &mut StreamingDeserializer<'de> {
         visitor: V,
     ) -> Result<V::Value>
     where
-        V: Visitor<'de>,
+        V: serde_core::de::Visitor<'de>,
     {
         self.skip_to_content()?;
         if let Some(t) = self.take_tag_from_current() {
@@ -1001,9 +999,9 @@ impl<'de> de::Deserializer<'de> for &mut StreamingDeserializer<'de> {
             }
         }
         match self.next_event()? {
-            Event::Scalar { value, .. } => {
-                visitor.visit_enum(value.into_owned().into_deserializer())
-            }
+            Event::Scalar { value, .. } => visitor.visit_enum(
+                serde_core::de::IntoDeserializer::into_deserializer(value.into_owned()),
+            ),
             Event::MappingStart { .. } => {
                 if let Event::Scalar { value, .. } = self.next_event()? {
                     visitor.visit_enum(StreamingEnumAccess {
@@ -1026,7 +1024,7 @@ impl<'de> de::Deserializer<'de> for &mut StreamingDeserializer<'de> {
 
     fn deserialize_identifier<V>(self, visitor: V) -> Result<V::Value>
     where
-        V: Visitor<'de>,
+        V: serde_core::de::Visitor<'de>,
     {
         self.skip_to_content()?;
         if let Event::Scalar { value, .. } = self.next_event()? {
@@ -1043,7 +1041,7 @@ impl<'de> de::Deserializer<'de> for &mut StreamingDeserializer<'de> {
 
     fn deserialize_ignored_any<V>(self, visitor: V) -> Result<V::Value>
     where
-        V: Visitor<'de>,
+        V: serde_core::de::Visitor<'de>,
     {
         self.skip_value()?;
         visitor.visit_unit()
@@ -1051,7 +1049,7 @@ impl<'de> de::Deserializer<'de> for &mut StreamingDeserializer<'de> {
 
     fn deserialize_unit_struct<V>(self, _name: &'static str, visitor: V) -> Result<V::Value>
     where
-        V: Visitor<'de>,
+        V: serde_core::de::Visitor<'de>,
     {
         self.skip_to_content()?;
         // Accept `null` / `~` / empty scalar — delegate to deserialize_unit.
@@ -1065,7 +1063,7 @@ impl<'de> de::Deserializer<'de> for &mut StreamingDeserializer<'de> {
         visitor: V,
     ) -> Result<V::Value>
     where
-        V: Visitor<'de>,
+        V: serde_core::de::Visitor<'de>,
     {
         // `Spanned<T>` is routed through this method by its Deserialize
         // impl. The streaming path does not carry source-span context,
@@ -1078,7 +1076,7 @@ impl<'de> de::Deserializer<'de> for &mut StreamingDeserializer<'de> {
 
     fn deserialize_bytes<V>(self, visitor: V) -> Result<V::Value>
     where
-        V: Visitor<'de>,
+        V: serde_core::de::Visitor<'de>,
     {
         self.skip_to_content()?;
         // YAML 1.2.2 §10.4: a `!!binary`-tagged scalar carries an
@@ -1143,12 +1141,12 @@ impl<'de> de::Deserializer<'de> for &mut StreamingDeserializer<'de> {
 
     fn deserialize_byte_buf<V>(self, visitor: V) -> Result<V::Value>
     where
-        V: Visitor<'de>,
+        V: serde_core::de::Visitor<'de>,
     {
         self.deserialize_bytes(visitor)
     }
 
-    serde::forward_to_deserialize_any! {
+    serde_core::forward_to_deserialize_any! {
         i8 i16 i32 u8 u16 u32 f32 char
         tuple tuple_struct
     }
@@ -1160,11 +1158,11 @@ struct StreamingSeqAccess<'a, 'de> {
     count: usize,
 }
 
-impl<'de> SeqAccess<'de> for StreamingSeqAccess<'_, 'de> {
+impl<'de> serde_core::de::SeqAccess<'de> for StreamingSeqAccess<'_, 'de> {
     type Error = Error;
     fn next_element_seed<T>(&mut self, seed: T) -> Result<Option<T::Value>>
     where
-        T: DeserializeSeed<'de>,
+        T: serde_core::de::DeserializeSeed<'de>,
     {
         // Symmetric guard with `StreamingMapAccess::next_key_seed`
         // — callers that re-invoke `next_element` after the
@@ -1242,11 +1240,11 @@ struct StreamingMapAccess<'a, 'de> {
     seen_typed: FxHashMap<String, Value>,
 }
 
-impl<'de> MapAccess<'de> for StreamingMapAccess<'_, 'de> {
+impl<'de> serde_core::de::MapAccess<'de> for StreamingMapAccess<'_, 'de> {
     type Error = Error;
     fn next_key_seed<K>(&mut self, seed: K) -> Result<Option<K::Value>>
     where
-        K: DeserializeSeed<'de>,
+        K: serde_core::de::DeserializeSeed<'de>,
     {
         // Guard against serde visitors (e.g. `noyalib::Value`'s
         // `ValueVisitor::visit_map`) that call `next_key` again
@@ -1391,7 +1389,7 @@ impl<'de> MapAccess<'de> for StreamingMapAccess<'_, 'de> {
     }
     fn next_value_seed<V>(&mut self, seed: V) -> Result<V::Value>
     where
-        V: DeserializeSeed<'de>,
+        V: serde_core::de::DeserializeSeed<'de>,
     {
         // Symmetric guard with `next_key_seed`. Callers that
         // misuse the MapAccess contract (e.g. invoking
@@ -1435,14 +1433,14 @@ struct StreamingEnumAccess<'a, 'de> {
     de: &'a mut StreamingDeserializer<'de>,
     variant: String,
 }
-impl<'a, 'de> de::EnumAccess<'de> for StreamingEnumAccess<'a, 'de> {
+impl<'a, 'de> serde_core::de::EnumAccess<'de> for StreamingEnumAccess<'a, 'de> {
     type Error = Error;
     type Variant = StreamingVariantAccess<'a, 'de>;
     fn variant_seed<V>(self, seed: V) -> Result<(V::Value, Self::Variant)>
     where
-        V: DeserializeSeed<'de>,
+        V: serde_core::de::DeserializeSeed<'de>,
     {
-        let de = de::value::StringDeserializer::<Error>::new(self.variant);
+        let de = serde_core::de::value::StringDeserializer::<Error>::new(self.variant);
         let variant = seed.deserialize(de)?;
         Ok((variant, StreamingVariantAccess { de: self.de }))
     }
@@ -1451,7 +1449,7 @@ impl<'a, 'de> de::EnumAccess<'de> for StreamingEnumAccess<'a, 'de> {
 struct StreamingVariantAccess<'a, 'de> {
     de: &'a mut StreamingDeserializer<'de>,
 }
-impl<'de> de::VariantAccess<'de> for StreamingVariantAccess<'_, 'de> {
+impl<'de> serde_core::de::VariantAccess<'de> for StreamingVariantAccess<'_, 'de> {
     type Error = Error;
     fn unit_variant(self) -> Result<()> {
         let ev = self.de.next_event()?;
@@ -1466,7 +1464,7 @@ impl<'de> de::VariantAccess<'de> for StreamingVariantAccess<'_, 'de> {
     }
     fn newtype_variant_seed<T>(self, seed: T) -> Result<T::Value>
     where
-        T: DeserializeSeed<'de>,
+        T: serde_core::de::DeserializeSeed<'de>,
     {
         let res = seed.deserialize(&mut *self.de)?;
         if !matches!(self.de.next_event()?, Event::MappingEnd { .. }) {
@@ -1476,9 +1474,9 @@ impl<'de> de::VariantAccess<'de> for StreamingVariantAccess<'_, 'de> {
     }
     fn tuple_variant<V>(self, _len: usize, visitor: V) -> Result<V::Value>
     where
-        V: Visitor<'de>,
+        V: serde_core::de::Visitor<'de>,
     {
-        let res = de::Deserializer::deserialize_seq(&mut *self.de, visitor)?;
+        let res = serde_core::Deserializer::deserialize_seq(&mut *self.de, visitor)?;
         if !matches!(self.de.next_event()?, Event::MappingEnd { .. }) {
             return Err(Error::Invalid("expected mapping end".into()));
         }
@@ -1486,9 +1484,9 @@ impl<'de> de::VariantAccess<'de> for StreamingVariantAccess<'_, 'de> {
     }
     fn struct_variant<V>(self, _fields: &'static [&'static str], visitor: V) -> Result<V::Value>
     where
-        V: Visitor<'de>,
+        V: serde_core::de::Visitor<'de>,
     {
-        let res = de::Deserializer::deserialize_map(&mut *self.de, visitor)?;
+        let res = serde_core::Deserializer::deserialize_map(&mut *self.de, visitor)?;
         if !matches!(self.de.next_event()?, Event::MappingEnd { .. }) {
             return Err(Error::Invalid("expected mapping end".into()));
         }
@@ -1502,11 +1500,11 @@ struct StreamingTagMapAccess<'a, 'de> {
     tag: (String, String),
     done: bool,
 }
-impl<'de> MapAccess<'de> for StreamingTagMapAccess<'_, 'de> {
+impl<'de> serde_core::de::MapAccess<'de> for StreamingTagMapAccess<'_, 'de> {
     type Error = Error;
     fn next_key_seed<K>(&mut self, seed: K) -> Result<Option<K::Value>>
     where
-        K: DeserializeSeed<'de>,
+        K: serde_core::de::DeserializeSeed<'de>,
     {
         if self.done {
             Ok(None)
@@ -1516,13 +1514,13 @@ impl<'de> MapAccess<'de> for StreamingTagMapAccess<'_, 'de> {
             } else {
                 format!("{}{}", self.tag.0, self.tag.1)
             };
-            let de = de::value::StringDeserializer::<Error>::new(full);
+            let de = serde_core::de::value::StringDeserializer::<Error>::new(full);
             seed.deserialize(de).map(Some)
         }
     }
     fn next_value_seed<V>(&mut self, seed: V) -> Result<V::Value>
     where
-        V: DeserializeSeed<'de>,
+        V: serde_core::de::DeserializeSeed<'de>,
     {
         self.done = true;
         seed.deserialize(&mut *self.de)
@@ -1534,19 +1532,19 @@ struct StreamingTagEnumAccess<'a, 'de> {
     de: &'a mut StreamingDeserializer<'de>,
     tag: (String, String),
 }
-impl<'a, 'de> de::EnumAccess<'de> for StreamingTagEnumAccess<'a, 'de> {
+impl<'a, 'de> serde_core::de::EnumAccess<'de> for StreamingTagEnumAccess<'a, 'de> {
     type Error = Error;
     type Variant = StreamingTagVariantAccess<'a, 'de>;
     fn variant_seed<V>(self, seed: V) -> Result<(V::Value, Self::Variant)>
     where
-        V: DeserializeSeed<'de>,
+        V: serde_core::de::DeserializeSeed<'de>,
     {
         let full = if self.tag.0 == "!" {
             format!("!{}", self.tag.1)
         } else {
             format!("{}{}", self.tag.0, self.tag.1)
         };
-        let de = de::value::StringDeserializer::<Error>::new(full);
+        let de = serde_core::de::value::StringDeserializer::<Error>::new(full);
         let variant = seed.deserialize(de)?;
         Ok((variant, StreamingTagVariantAccess { de: self.de }))
     }
@@ -1556,34 +1554,34 @@ impl<'a, 'de> de::EnumAccess<'de> for StreamingTagEnumAccess<'a, 'de> {
 struct StreamingTagVariantAccess<'a, 'de> {
     de: &'a mut StreamingDeserializer<'de>,
 }
-impl<'de> de::VariantAccess<'de> for StreamingTagVariantAccess<'_, 'de> {
+impl<'de> serde_core::de::VariantAccess<'de> for StreamingTagVariantAccess<'_, 'de> {
     type Error = Error;
     fn unit_variant(self) -> Result<()> {
         self.de.skip_value()
     }
     fn newtype_variant_seed<T>(self, seed: T) -> Result<T::Value>
     where
-        T: DeserializeSeed<'de>,
+        T: serde_core::de::DeserializeSeed<'de>,
     {
         seed.deserialize(self.de)
     }
     fn tuple_variant<V>(self, _len: usize, visitor: V) -> Result<V::Value>
     where
-        V: Visitor<'de>,
+        V: serde_core::de::Visitor<'de>,
     {
-        de::Deserializer::deserialize_seq(self.de, visitor)
+        serde_core::Deserializer::deserialize_seq(self.de, visitor)
     }
     fn struct_variant<V>(self, _fields: &'static [&'static str], visitor: V) -> Result<V::Value>
     where
-        V: Visitor<'de>,
+        V: serde_core::de::Visitor<'de>,
     {
-        de::Deserializer::deserialize_map(self.de, visitor)
+        serde_core::Deserializer::deserialize_map(self.de, visitor)
     }
 }
 
 pub(crate) fn from_str_streaming<T>(s: &str, config: &crate::de::ParserConfig) -> Option<Result<T>>
 where
-    T: for<'de> Deserialize<'de>,
+    T: for<'de> serde_core::Deserialize<'de>,
 {
     let parse_config = ParseConfig::from(config);
     if s.len() > parse_config.max_document_length {

@@ -28,7 +28,6 @@
 
 use crate::prelude::*;
 use core::ops::{Deref, DerefMut};
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 /// A newtype that validates its inner value using the [`garde`] crate.
 ///
@@ -159,15 +158,15 @@ impl<T> From<T> for ValidatedValidator<T> {
 }
 
 #[cfg(feature = "garde")]
-impl<'de, T> Deserialize<'de> for Validated<T>
+impl<'de, T> serde_core::Deserialize<'de> for Validated<T>
 where
-    T: Deserialize<'de> + garde::Validate<Context = ()>,
+    T: serde_core::Deserialize<'de> + garde::Validate<Context = ()>,
 {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
-        D: Deserializer<'de>,
+        D: serde_core::Deserializer<'de>,
     {
-        use serde::de::Error;
+        use serde_core::de::Error as _;
         let inner = T::deserialize(deserializer)?;
         match inner.validate_with(&()) {
             Ok(()) => Ok(Validated(inner)),
@@ -177,15 +176,15 @@ where
 }
 
 #[cfg(feature = "validator")]
-impl<'de, T> Deserialize<'de> for ValidatedValidator<T>
+impl<'de, T> serde_core::Deserialize<'de> for ValidatedValidator<T>
 where
-    T: Deserialize<'de> + validator::Validate,
+    T: serde_core::Deserialize<'de> + validator::Validate,
 {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
-        D: Deserializer<'de>,
+        D: serde_core::Deserializer<'de>,
     {
-        use serde::de::Error;
+        use serde_core::de::Error as _;
         let inner = T::deserialize(deserializer)?;
         match inner.validate() {
             Ok(()) => Ok(ValidatedValidator(inner)),
@@ -195,20 +194,20 @@ where
 }
 
 #[cfg(feature = "garde")]
-impl<T: Serialize> Serialize for Validated<T> {
+impl<T: serde_core::Serialize> serde_core::Serialize for Validated<T> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
-        S: Serializer,
+        S: serde_core::Serializer,
     {
         self.0.serialize(serializer)
     }
 }
 
 #[cfg(feature = "validator")]
-impl<T: Serialize> Serialize for ValidatedValidator<T> {
+impl<T: serde_core::Serialize> serde_core::Serialize for ValidatedValidator<T> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
-        S: Serializer,
+        S: serde_core::Serializer,
     {
         self.0.serialize(serializer)
     }

@@ -219,9 +219,8 @@ the application needs.
 
 ```rust
 use noyalib::from_str;
-use serde::Deserialize;
 
-#[derive(Deserialize)]
+#[derive(serde::Deserialize)]
 struct Server { host: String, port: u16 }
 
 let s: Server = from_str("host: api\nport: 8080\n")?;
@@ -270,9 +269,8 @@ Untrusted input is bounded by eight resource budgets, including
 
 ```rust
 use noyalib::{from_str, Spanned};
-use serde::Deserialize;
 
-#[derive(Deserialize)]
+#[derive(serde::Deserialize)]
 struct Cfg { port: Spanned<u16> }
 
 let cfg: Cfg = from_str("port: 8080\n")?;

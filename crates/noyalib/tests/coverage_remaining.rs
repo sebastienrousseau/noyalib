@@ -17,7 +17,6 @@ use noyalib::{
     DuplicateKeyPolicy, Mapping, MappingAny, ParserConfig, Spanned, Tag, TaggedValue, Value,
     from_str, from_str_with_config, from_value, to_string,
 };
-use serde::Deserialize;
 
 // ═══════════════════════════════════════════════════════════════════════
 // value.rs — TaggedValue Deserialize/Deserializer (lines 1446–1591)
@@ -234,11 +233,9 @@ fn value_deserializer_spanned_struct() {
 
 #[test]
 fn value_into_deserializer() {
-    // value.rs:2704-2705 — IntoDeserializer impl
-    use serde::de::IntoDeserializer;
     let val = Value::from("test");
-    let deser: &Value = (&val).into_deserializer();
-    let result: String = Deserialize::deserialize(deser).unwrap();
+    let deser: &Value = serde_core::de::IntoDeserializer::into_deserializer(&val);
+    let result: String = serde_core::Deserialize::deserialize(deser).unwrap();
     assert_eq!(result, "test");
 }
 
@@ -893,13 +890,13 @@ fn singleton_map_with_serialize_deserialize() {
         PostData,
     }
 
-    fn my_ser<S: serde::Serializer>(v: &Action, s: S) -> Result<S::Ok, S::Error> {
+    fn my_ser<S: serde_core::Serializer>(v: &Action, s: S) -> Result<S::Ok, S::Error> {
         noyalib::with::singleton_map_with::serialize_with(v, s, |k| {
             noyalib::with::singleton_map_with::to_snake_case(k)
         })
     }
 
-    fn my_de<'de, D: serde::Deserializer<'de>>(d: D) -> Result<Action, D::Error> {
+    fn my_de<'de, D: serde_core::Deserializer<'de>>(d: D) -> Result<Action, D::Error> {
         noyalib::with::singleton_map_with::deserialize_with(d, |k| {
             noyalib::with::singleton_map_with::to_pascal_case(k)
         })
@@ -928,11 +925,11 @@ fn singleton_map_with_unit_variant() {
         Active,
     }
 
-    fn my_ser<S: serde::Serializer>(v: &Flag, s: S) -> Result<S::Ok, S::Error> {
+    fn my_ser<S: serde_core::Serializer>(v: &Flag, s: S) -> Result<S::Ok, S::Error> {
         noyalib::with::singleton_map_with::serialize_with(v, s, |k| k.to_lowercase())
     }
 
-    fn my_de<'de, D: serde::Deserializer<'de>>(d: D) -> Result<Flag, D::Error> {
+    fn my_de<'de, D: serde_core::Deserializer<'de>>(d: D) -> Result<Flag, D::Error> {
         noyalib::with::singleton_map_with::deserialize_with(d, |k| {
             // Capitalize first letter
             let mut c = k.chars();

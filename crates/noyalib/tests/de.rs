@@ -10,12 +10,11 @@ use std::collections::BTreeMap;
 use noyalib::{Number, Value, from_str, from_value};
 #[cfg(feature = "lossless-u64")]
 use noyalib::{ParserConfig, from_str_with_config};
-use serde::Deserialize;
 
 /// Helper function to test deserialization
 fn test_de<T>(yaml: &str, expected: &T)
 where
-    T: for<'de> Deserialize<'de> + PartialEq + std::fmt::Debug + 'static,
+    T: for<'de> serde_core::Deserialize<'de> + PartialEq + std::fmt::Debug + 'static,
 {
     let deserialized: T = from_str(yaml).unwrap();
     assert_eq!(*expected, deserialized);

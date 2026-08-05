@@ -18,7 +18,7 @@
 //!   (L1248-L1268).
 //! - `colorize_render` arms for the `error:` / gutter / caret /
 //!   plain branches (L1296-L1308).
-//! - `serde::ser::Error` / `serde::de::Error` impls (L1305).
+//! - `serde_core::ser::Error` / `serde_core::de::Error` impls (L1305).
 //! - `closest_name` + `edit_distance` low-level helpers (L1495+,
 //!   L1508, L1511).
 //! - miette integration when the `miette` feature is on
@@ -591,30 +591,30 @@ fn budget_breach_display_all_variants() {
 }
 
 // ============================================================================
-// serde::ser::Error / serde::de::Error trait impls (L1305, L1322-L1326)
+// serde_core::ser::Error / serde_core::de::Error trait impls (L1305, L1322-L1326)
 // ============================================================================
 
 #[test]
 fn serde_ser_error_custom() {
-    let e: Error = <Error as serde::ser::Error>::custom("ser-msg");
+    let e: Error = <Error as serde_core::ser::Error>::custom("ser-msg");
     assert!(matches!(e, Error::Custom(_)));
 }
 
 #[test]
 fn serde_de_error_custom() {
-    let e: Error = <Error as serde::de::Error>::custom("de-msg");
+    let e: Error = <Error as serde_core::de::Error>::custom("de-msg");
     assert!(matches!(e, Error::Custom(_)));
 }
 
 #[test]
 fn serde_de_error_missing_field() {
-    let e: Error = <Error as serde::de::Error>::missing_field("foo");
+    let e: Error = <Error as serde_core::de::Error>::missing_field("foo");
     assert!(matches!(e, Error::MissingField(_)));
 }
 
 #[test]
 fn serde_de_error_unknown_field() {
-    let e: Error = <Error as serde::de::Error>::unknown_field("bad", &["good"]);
+    let e: Error = <Error as serde_core::de::Error>::unknown_field("bad", &["good"]);
     assert!(matches!(e, Error::UnknownField(_)));
 }
 

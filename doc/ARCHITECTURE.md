@@ -127,7 +127,7 @@ limit cleanly (no integer-wrap escape).
 
 `crates/noyalib/src/streaming.rs`. The default `from_str::<T>`
 path. Walks parser events directly into the typed target's
-`serde::de::Visitor` interface — **no intermediate `Value` AST
+`serde_core::de::Visitor` interface — **no intermediate `Value` AST
 is ever materialised**.
 
 This is the architectural difference from `serde_yaml`-shaped
@@ -246,7 +246,7 @@ feature — `no_std` builds use the regular `T` directly.
 
 ## Serialiser
 
-`crates/noyalib/src/ser.rs`. Single-pass `serde::Serializer`
+`crates/noyalib/src/ser.rs`. Single-pass `serde_core::Serializer`
 that emits canonical YAML 1.2 output:
 
 - Plain scalars when safe (no leading `-` / `?` / `:` / `,` /

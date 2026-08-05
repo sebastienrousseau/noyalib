@@ -231,7 +231,7 @@ fn flattened_deserialize_error_propagates_from_inner_type() {
     // The two-phase deserialize first captures the Value tree,
     // then re-runs T::deserialize. When T can't accept the raw
     // shape (e.g. negative number into u16) the second phase
-    // surfaces the error through `serde::de::Error::custom`.
+    // surfaces the error through `serde_core::de::Error::custom`.
     let res: Result<Flattened<u16>, _> = from_str("-1");
     assert!(
         res.is_err(),

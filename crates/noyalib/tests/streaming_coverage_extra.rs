@@ -437,8 +437,7 @@ fn coverage_stream_enum_tuple_variant() {
 
 #[test]
 fn coverage_stream_ignored_any_at_top_level() {
-    use serde::de::IgnoredAny;
-    let _: IgnoredAny = from_str("a: 1\nb: 2\n").unwrap();
+    let _: serde_core::de::IgnoredAny = from_str("a: 1\nb: 2\n").unwrap();
 }
 
 // ── L1052-L1101 — deserialize_bytes branches: !!binary, plain str,

@@ -7,8 +7,6 @@ use crate::error::{Error, Result};
 use crate::prelude::*;
 use crate::span_context;
 use crate::value::{Number, Value};
-use serde::Deserialize;
-use serde::de::{self, DeserializeSeed, IntoDeserializer, MapAccess, SeqAccess, Visitor};
 
 /// A YAML deserializer.
 ///
@@ -16,10 +14,9 @@ use serde::de::{self, DeserializeSeed, IntoDeserializer, MapAccess, SeqAccess, V
 ///
 /// ```
 /// use noyalib::{Deserializer, Value};
-/// use serde::Deserialize;
 /// let v = Value::from(42_i64);
 /// let de = Deserializer::new(&v);
-/// let n: i32 = Deserialize::deserialize(de).unwrap();
+/// let n: i32 = serde_core::Deserialize::deserialize(de).unwrap();
 /// assert_eq!(n, 42);
 /// ```
 #[derive(Debug, Clone, Copy)]
@@ -123,12 +120,12 @@ impl<'de> Deserializer<'de> {
     }
 }
 
-impl<'de> de::Deserializer<'de> for Deserializer<'de> {
+impl<'de> serde_core::Deserializer<'de> for Deserializer<'de> {
     type Error = Error;
 
     fn deserialize_any<V>(self, visitor: V) -> Result<V::Value>
     where
-        V: Visitor<'de>,
+        V: serde_core::de::Visitor<'de>,
     {
         match self.value {
             Value::Null => self.wrap_err(visitor.visit_none()),
@@ -142,7 +139,7 @@ impl<'de> de::Deserializer<'de> for Deserializer<'de> {
             Value::Mapping(_) => self.deserialize_map(visitor),
             Value::Tagged(tagged) => {
                 // Typed targets see through the tag transparently —
-                // `#[derive(Deserialize)] struct Foo { x: i32 }` against
+                // `#[derive(serde::Deserialize)] struct Foo { x: i32 }` against
                 // `!Foo {x: 1}` yields `Foo { x: 1 }`. (Tag *preservation* for
                 // a `Value` target happens in the AST loader / `from_value`'s
                 // clone fast path, not here.)
@@ -154,7 +151,7 @@ impl<'de> de::Deserializer<'de> for Deserializer<'de> {
 
     fn deserialize_bool<V>(self, visitor: V) -> Result<V::Value>
     where
-        V: Visitor<'de>,
+        V: serde_core::de::Visitor<'de>,
     {
         match self.value {
             Value::Bool(b) => self.wrap_err(visitor.visit_bool(*b)),
@@ -167,28 +164,28 @@ impl<'de> de::Deserializer<'de> for Deserializer<'de> {
 
     fn deserialize_i8<V>(self, visitor: V) -> Result<V::Value>
     where
-        V: Visitor<'de>,
+        V: serde_core::de::Visitor<'de>,
     {
         self.deserialize_i64(visitor)
     }
 
     fn deserialize_i16<V>(self, visitor: V) -> Result<V::Value>
     where
-        V: Visitor<'de>,
+        V: serde_core::de::Visitor<'de>,
     {
         self.deserialize_i64(visitor)
     }
 
     fn deserialize_i32<V>(self, visitor: V) -> Result<V::Value>
     where
-        V: Visitor<'de>,
+        V: serde_core::de::Visitor<'de>,
     {
         self.deserialize_i64(visitor)
     }
 
     fn deserialize_i64<V>(self, visitor: V) -> Result<V::Value>
     where
-        V: Visitor<'de>,
+        V: serde_core::de::Visitor<'de>,
     {
         match self.value {
             Value::Number(Number::Integer(n)) => self.wrap_err(visitor.visit_i64(*n)),
@@ -222,28 +219,28 @@ impl<'de> de::Deserializer<'de> for Deserializer<'de> {
 
     fn deserialize_u8<V>(self, visitor: V) -> Result<V::Value>
     where
-        V: Visitor<'de>,
+        V: serde_core::de::Visitor<'de>,
     {
         self.deserialize_u64(visitor)
     }
 
     fn deserialize_u16<V>(self, visitor: V) -> Result<V::Value>
     where
-        V: Visitor<'de>,
+        V: serde_core::de::Visitor<'de>,
     {
         self.deserialize_u64(visitor)
     }
 
     fn deserialize_u32<V>(self, visitor: V) -> Result<V::Value>
     where
-        V: Visitor<'de>,
+        V: serde_core::de::Visitor<'de>,
     {
         self.deserialize_u64(visitor)
     }
 
     fn deserialize_u64<V>(self, visitor: V) -> Result<V::Value>
     where
-        V: Visitor<'de>,
+        V: serde_core::de::Visitor<'de>,
     {
         match self.value {
             Value::Number(Number::Integer(n)) if *n >= 0 => {
@@ -273,14 +270,14 @@ impl<'de> de::Deserializer<'de> for Deserializer<'de> {
 
     fn deserialize_f32<V>(self, visitor: V) -> Result<V::Value>
     where
-        V: Visitor<'de>,
+        V: serde_core::de::Visitor<'de>,
     {
         self.deserialize_f64(visitor)
     }
 
     fn deserialize_f64<V>(self, visitor: V) -> Result<V::Value>
     where
-        V: Visitor<'de>,
+        V: serde_core::de::Visitor<'de>,
     {
         match self.value {
             Value::Number(Number::Float(n)) => self.wrap_err(visitor.visit_f64(*n)),
@@ -296,7 +293,7 @@ impl<'de> de::Deserializer<'de> for Deserializer<'de> {
 
     fn deserialize_char<V>(self, visitor: V) -> Result<V::Value>
     where
-        V: Visitor<'de>,
+        V: serde_core::de::Visitor<'de>,
     {
         match self.value {
             Value::String(s) if s.chars().count() == 1 => {
@@ -311,7 +308,7 @@ impl<'de> de::Deserializer<'de> for Deserializer<'de> {
 
     fn deserialize_str<V>(self, visitor: V) -> Result<V::Value>
     where
-        V: Visitor<'de>,
+        V: serde_core::de::Visitor<'de>,
     {
         match self.value {
             Value::String(s) => self.wrap_err(visitor.visit_str(s)),
@@ -342,14 +339,14 @@ impl<'de> de::Deserializer<'de> for Deserializer<'de> {
 
     fn deserialize_string<V>(self, visitor: V) -> Result<V::Value>
     where
-        V: Visitor<'de>,
+        V: serde_core::de::Visitor<'de>,
     {
         self.deserialize_str(visitor)
     }
 
     fn deserialize_bytes<V>(self, visitor: V) -> Result<V::Value>
     where
-        V: Visitor<'de>,
+        V: serde_core::de::Visitor<'de>,
     {
         match self.value {
             Value::String(s) => self.wrap_err(visitor.visit_bytes(s.as_bytes())),
@@ -376,14 +373,14 @@ impl<'de> de::Deserializer<'de> for Deserializer<'de> {
 
     fn deserialize_byte_buf<V>(self, visitor: V) -> Result<V::Value>
     where
-        V: Visitor<'de>,
+        V: serde_core::de::Visitor<'de>,
     {
         self.deserialize_bytes(visitor)
     }
 
     fn deserialize_option<V>(self, visitor: V) -> Result<V::Value>
     where
-        V: Visitor<'de>,
+        V: serde_core::de::Visitor<'de>,
     {
         match self.value {
             Value::Null => self.wrap_err(visitor.visit_none()),
@@ -393,7 +390,7 @@ impl<'de> de::Deserializer<'de> for Deserializer<'de> {
 
     fn deserialize_unit<V>(self, visitor: V) -> Result<V::Value>
     where
-        V: Visitor<'de>,
+        V: serde_core::de::Visitor<'de>,
     {
         match self.value {
             Value::Null => self.wrap_err(visitor.visit_unit()),
@@ -406,14 +403,14 @@ impl<'de> de::Deserializer<'de> for Deserializer<'de> {
 
     fn deserialize_unit_struct<V>(self, _name: &'static str, visitor: V) -> Result<V::Value>
     where
-        V: Visitor<'de>,
+        V: serde_core::de::Visitor<'de>,
     {
         self.deserialize_unit(visitor)
     }
 
     fn deserialize_newtype_struct<V>(self, name: &'static str, visitor: V) -> Result<V::Value>
     where
-        V: Visitor<'de>,
+        V: serde_core::de::Visitor<'de>,
     {
         if name == crate::spanned::SPANNED_TYPE_NAME {
             return visitor.visit_map(SpannedMapAccess::new(self.value, self.span_ctx));
@@ -423,7 +420,7 @@ impl<'de> de::Deserializer<'de> for Deserializer<'de> {
 
     fn deserialize_seq<V>(self, visitor: V) -> Result<V::Value>
     where
-        V: Visitor<'de>,
+        V: serde_core::de::Visitor<'de>,
     {
         match self.value {
             Value::Sequence(seq) => {
@@ -443,7 +440,7 @@ impl<'de> de::Deserializer<'de> for Deserializer<'de> {
 
     fn deserialize_tuple<V>(self, _len: usize, visitor: V) -> Result<V::Value>
     where
-        V: Visitor<'de>,
+        V: serde_core::de::Visitor<'de>,
     {
         self.deserialize_seq(visitor)
     }
@@ -455,14 +452,14 @@ impl<'de> de::Deserializer<'de> for Deserializer<'de> {
         visitor: V,
     ) -> Result<V::Value>
     where
-        V: Visitor<'de>,
+        V: serde_core::de::Visitor<'de>,
     {
         self.deserialize_seq(visitor)
     }
 
     fn deserialize_map<V>(self, visitor: V) -> Result<V::Value>
     where
-        V: Visitor<'de>,
+        V: serde_core::de::Visitor<'de>,
     {
         match self.value {
             Value::Mapping(map) => {
@@ -488,7 +485,7 @@ impl<'de> de::Deserializer<'de> for Deserializer<'de> {
         visitor: V,
     ) -> Result<V::Value>
     where
-        V: Visitor<'de>,
+        V: serde_core::de::Visitor<'de>,
     {
         if name == crate::spanned::SPANNED_TYPE_NAME {
             return visitor.visit_map(SpannedMapAccess::new(self.value, self.span_ctx));
@@ -503,12 +500,12 @@ impl<'de> de::Deserializer<'de> for Deserializer<'de> {
         visitor: V,
     ) -> Result<V::Value>
     where
-        V: Visitor<'de>,
+        V: serde_core::de::Visitor<'de>,
     {
         match self.value {
             Value::String(variant) => {
-                let de: de::value::StrDeserializer<'de, Error> =
-                    variant.as_str().into_deserializer();
+                let de =
+                    serde_core::de::value::StrDeserializer::<'de, Error>::new(variant.as_str());
                 self.wrap_err(visitor.visit_enum(de))
             }
             Value::Mapping(map) if map.len() == 1 => {
@@ -528,7 +525,7 @@ impl<'de> de::Deserializer<'de> for Deserializer<'de> {
 
     fn deserialize_identifier<V>(self, visitor: V) -> Result<V::Value>
     where
-        V: Visitor<'de>,
+        V: serde_core::de::Visitor<'de>,
     {
         match self.value {
             Value::String(s) => self.wrap_err(visitor.visit_str(s)),
@@ -538,7 +535,7 @@ impl<'de> de::Deserializer<'de> for Deserializer<'de> {
 
     fn deserialize_ignored_any<V>(self, visitor: V) -> Result<V::Value>
     where
-        V: Visitor<'de>,
+        V: serde_core::de::Visitor<'de>,
     {
         self.wrap_err(visitor.visit_unit())
     }
@@ -560,12 +557,12 @@ impl<'de> ValueSeqAccess<'de> {
     }
 }
 
-impl<'de> SeqAccess<'de> for ValueSeqAccess<'de> {
+impl<'de> serde_core::de::SeqAccess<'de> for ValueSeqAccess<'de> {
     type Error = Error;
 
     fn next_element_seed<T>(&mut self, seed: T) -> Result<Option<T::Value>>
     where
-        T: DeserializeSeed<'de>,
+        T: serde_core::de::DeserializeSeed<'de>,
     {
         match self.iter.next() {
             Some(value) => {
@@ -609,19 +606,19 @@ impl<'de> ValueMapAccess<'de> {
     }
 }
 
-impl<'de> MapAccess<'de> for ValueMapAccess<'de> {
+impl<'de> serde_core::de::MapAccess<'de> for ValueMapAccess<'de> {
     type Error = Error;
 
     fn next_key_seed<K>(&mut self, seed: K) -> Result<Option<K::Value>>
     where
-        K: DeserializeSeed<'de>,
+        K: serde_core::de::DeserializeSeed<'de>,
     {
         match self.iter.next() {
             Some((key, value)) => {
                 self.value = Some(value);
                 let de = self.child_de(value);
-                let key_de: de::value::StrDeserializer<'de, Error> =
-                    key.as_str().into_deserializer();
+                let key_de =
+                    serde_core::de::value::StrDeserializer::<'de, Error>::new(key.as_str());
                 de.wrap_err(seed.deserialize(key_de).map(Some))
             }
             None => Ok(None),
@@ -630,7 +627,7 @@ impl<'de> MapAccess<'de> for ValueMapAccess<'de> {
 
     fn next_value_seed<V>(&mut self, seed: V) -> Result<V::Value>
     where
-        V: DeserializeSeed<'de>,
+        V: serde_core::de::DeserializeSeed<'de>,
     {
         match self.value.take() {
             Some(value) => {
@@ -638,7 +635,7 @@ impl<'de> MapAccess<'de> for ValueMapAccess<'de> {
                 let res = seed.deserialize(de);
                 de.wrap_err(res)
             }
-            None => Err(de::Error::custom("value is missing")),
+            None => Err(serde_core::de::Error::custom("value is missing")),
         }
     }
 }
@@ -649,15 +646,15 @@ struct EnumAccess<'de> {
     span_ctx: Option<&'de span_context::SpanContext>,
 }
 
-impl<'de> de::EnumAccess<'de> for EnumAccess<'de> {
+impl<'de> serde_core::de::EnumAccess<'de> for EnumAccess<'de> {
     type Error = Error;
     type Variant = VariantAccess<'de>;
 
     fn variant_seed<V>(self, seed: V) -> Result<(V::Value, Self::Variant)>
     where
-        V: DeserializeSeed<'de>,
+        V: serde_core::de::DeserializeSeed<'de>,
     {
-        let de: de::value::StrDeserializer<'de, Error> = self.variant.into_deserializer();
+        let de = serde_core::de::value::StrDeserializer::<'de, Error>::new(self.variant);
         let variant = seed.deserialize(de)?;
         let visitor = VariantAccess {
             value: self.value,
@@ -672,7 +669,7 @@ struct VariantAccess<'de> {
     span_ctx: Option<&'de span_context::SpanContext>,
 }
 
-impl<'de> de::VariantAccess<'de> for VariantAccess<'de> {
+impl<'de> serde_core::de::VariantAccess<'de> for VariantAccess<'de> {
     type Error = Error;
 
     fn unit_variant(self) -> Result<()> {
@@ -681,12 +678,12 @@ impl<'de> de::VariantAccess<'de> for VariantAccess<'de> {
         } else {
             Deserializer::new(self.value)
         };
-        Deserialize::deserialize(de)
+        serde_core::Deserialize::deserialize(de)
     }
 
     fn newtype_variant_seed<T>(self, seed: T) -> Result<T::Value>
     where
-        T: DeserializeSeed<'de>,
+        T: serde_core::de::DeserializeSeed<'de>,
     {
         let de = if let Some(ctx) = self.span_ctx {
             Deserializer::with_span_context(self.value, ctx)
@@ -698,26 +695,26 @@ impl<'de> de::VariantAccess<'de> for VariantAccess<'de> {
 
     fn tuple_variant<V>(self, _len: usize, visitor: V) -> Result<V::Value>
     where
-        V: Visitor<'de>,
+        V: serde_core::de::Visitor<'de>,
     {
         let de = if let Some(ctx) = self.span_ctx {
             Deserializer::with_span_context(self.value, ctx)
         } else {
             Deserializer::new(self.value)
         };
-        de::Deserializer::deserialize_seq(de, visitor)
+        serde_core::Deserializer::deserialize_seq(de, visitor)
     }
 
     fn struct_variant<V>(self, _fields: &'static [&'static str], visitor: V) -> Result<V::Value>
     where
-        V: Visitor<'de>,
+        V: serde_core::de::Visitor<'de>,
     {
         let de = if let Some(ctx) = self.span_ctx {
             Deserializer::with_span_context(self.value, ctx)
         } else {
             Deserializer::new(self.value)
         };
-        de::Deserializer::deserialize_map(de, visitor)
+        serde_core::Deserializer::deserialize_map(de, visitor)
     }
 }
 
@@ -737,17 +734,16 @@ impl<'de> SpannedMapAccess<'de> {
     }
 }
 
-impl<'de> MapAccess<'de> for SpannedMapAccess<'de> {
+impl<'de> serde_core::de::MapAccess<'de> for SpannedMapAccess<'de> {
     type Error = Error;
 
     fn next_key_seed<K>(&mut self, seed: K) -> Result<Option<K::Value>>
     where
-        K: DeserializeSeed<'de>,
+        K: serde_core::de::DeserializeSeed<'de>,
     {
         match self.fields.next() {
             Some(field) => {
-                use serde::de::value::BorrowedStrDeserializer;
-                let de: BorrowedStrDeserializer<'_, Error> = BorrowedStrDeserializer::new(field);
+                let de = serde_core::de::value::BorrowedStrDeserializer::<'_, Error>::new(field);
                 seed.deserialize(de).map(Some)
             }
             None => Ok(None),
@@ -756,7 +752,7 @@ impl<'de> MapAccess<'de> for SpannedMapAccess<'de> {
 
     fn next_value_seed<V>(&mut self, seed: V) -> Result<V::Value>
     where
-        V: DeserializeSeed<'de>,
+        V: serde_core::de::DeserializeSeed<'de>,
     {
         use crate::spanned::*;
         let last_field = SPANNED_FIELDS[SPANNED_FIELDS.len() - 1 - (self.fields.len())];
@@ -796,7 +792,7 @@ impl<'de> MapAccess<'de> for SpannedMapAccess<'de> {
             ),
         };
 
-        seed.deserialize(val.into_deserializer())
+        seed.deserialize(serde_core::de::IntoDeserializer::into_deserializer(val))
     }
 }
 

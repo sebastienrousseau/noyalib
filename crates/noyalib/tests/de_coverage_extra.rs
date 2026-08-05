@@ -27,8 +27,7 @@ use noyalib::{
     from_reader_with_config, from_slice_strict, from_str, from_str_strict, from_str_with_config,
     from_value,
 };
-use serde::Deserialize;
-use serde::de::Deserializer as _;
+use serde_core::Deserialize as _;
 
 // ============================================================================
 // from_str_strict / from_slice_strict / from_reader_strict — happy + error
@@ -293,20 +292,21 @@ fn deserialize_enum_invalid_shape_errors() {
 
 #[test]
 fn deserialize_identifier_from_non_string_falls_through() {
+    use serde_core::Deserializer as _;
+
     // `deserialize_identifier` falls through to `deserialize_any`
     // when the value is not a string.
     let v = Value::from(42_i64);
     // serde will route through deserialize_identifier when
     // deserializing the field name on a `flatten` map etc.; a
     // direct call exercises the same arm.
-    use serde::de::Visitor;
     struct V;
-    impl Visitor<'_> for V {
+    impl serde_core::de::Visitor<'_> for V {
         type Value = i64;
         fn expecting(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             f.write_str("an i64")
         }
-        fn visit_i64<E: serde::de::Error>(self, n: i64) -> Result<i64, E> {
+        fn visit_i64<E: serde_core::de::Error>(self, n: i64) -> Result<i64, E> {
             Ok(n)
         }
     }
@@ -325,8 +325,7 @@ fn deserialize_identifier_from_non_string_falls_through() {
 fn deserialize_ignored_any_consumes_anything() {
     let v: Value = from_str("a: 1\nb:\n  c: 2\n").expect("parse");
     let de = Deserializer::new(&v);
-    use serde::de::IgnoredAny;
-    let _: IgnoredAny = IgnoredAny::deserialize(de).expect("ignored any");
+    let _ = serde_core::de::IgnoredAny::deserialize(de).expect("ignored any");
 }
 
 // ============================================================================

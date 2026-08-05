@@ -403,14 +403,14 @@ fn is_shared_and_as_inner() {
 
 #[test]
 fn serde_de_error_custom() {
-    use serde::de::Error as _;
+    use serde_core::de::Error as _;
     let e = Error::custom("custom de error");
     assert_eq!(e.to_string(), "custom de error");
 }
 
 #[test]
 fn serde_ser_error_custom() {
-    use serde::ser::Error as _;
+    use serde_core::ser::Error as _;
     let e = Error::custom("custom ser error");
     assert_eq!(e.to_string(), "custom ser error");
 }

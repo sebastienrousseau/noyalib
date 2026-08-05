@@ -66,7 +66,6 @@ Mirror surface for the write side:
 
 ```rust
 use noyalib::to_string;
-use serde::Serialize;
 
 #[derive(serde::Serialize)]
 struct Server { host: String, port: u16 }
@@ -141,9 +140,8 @@ the input it came from:
 
 ```rust
 use noyalib::{from_str, Spanned};
-use serde::Deserialize;
 
-#[derive(Deserialize)]
+#[derive(serde::Deserialize)]
 struct Cfg {
     port: Spanned<u16>,
     host: Spanned<String>,
@@ -408,7 +406,7 @@ let owned = v.untag();                                  // consumes
 ```
 
 **Typed targets see through tags transparently.** A
-`#[derive(Deserialize)] struct Foo { ... }` against
+`#[derive(serde::Deserialize)] struct Foo { ... }` against
 `!Foo {x: 1}` yields `Foo { x: 1 }` — the typed visitor never
 observes the tag string. This is what lets schema-tagged YAML
 inputs deserialise into bare structs.

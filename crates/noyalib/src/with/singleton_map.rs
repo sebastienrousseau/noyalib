@@ -41,9 +41,6 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 // Copyright (c) 2026 Noyalib. All rights reserved.
 
-use serde::de::DeserializeOwned;
-use serde::{Deserializer, Serialize, Serializer};
-
 /// Serialize a value as a singleton map.
 ///
 /// For enums, this serializes the variant as a map where the key is the
@@ -68,13 +65,13 @@ use serde::{Deserializer, Serialize, Serializer};
 /// ```
 pub fn serialize<T, S>(value: &T, serializer: S) -> Result<S::Ok, S::Error>
 where
-    T: Serialize,
-    S: Serializer,
+    T: serde_core::Serialize,
+    S: serde_core::Serializer,
 {
-    use serde::ser::SerializeMap;
+    use serde_core::ser::SerializeMap as _;
 
     // Serialize to Value to inspect structure
-    let yaml_value = crate::to_value(value).map_err(serde::ser::Error::custom)?;
+    let yaml_value = crate::to_value(value).map_err(serde_core::ser::Error::custom)?;
 
     match yaml_value {
         crate::Value::Mapping(map) => {
@@ -93,7 +90,7 @@ where
         }
         other => {
             // Fallback: serialize as-is
-            other.serialize(serializer)
+            serde_core::Serialize::serialize(&other, serializer)
         }
     }
 }
@@ -122,13 +119,13 @@ where
 /// ```
 pub fn deserialize<'de, T, D>(deserializer: D) -> Result<T, D::Error>
 where
-    T: DeserializeOwned + 'static,
-    D: Deserializer<'de>,
+    T: serde_core::de::DeserializeOwned + 'static,
+    D: serde_core::Deserializer<'de>,
 {
-    use serde::Deserialize;
+    use serde_core::Deserialize as _;
     // Deserialize as Value first
     let value = crate::Value::deserialize(deserializer)?;
-    crate::from_value(&value).map_err(serde::de::Error::custom)
+    crate::from_value(&value).map_err(serde_core::de::Error::custom)
 }
 
 #[cfg(test)]

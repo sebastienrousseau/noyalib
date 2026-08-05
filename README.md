@@ -818,7 +818,7 @@ serde-bridge interop with `serde_json` etc., which is lossy on
 the YAML-tag wire form. The dedicated `*_value` variants short-
 circuit the `Serialize` pipeline.
 
-Typed targets (`#[derive(Deserialize)] struct Foo { ... }`) see
+Typed targets (`#[derive(serde::Deserialize)] struct Foo { ... }`) see
 through tags transparently — `from_str::<Foo>("!Foo {x: 1}")`
 yields `Foo { x: 1 }` regardless of the tag. The tag wrapper is
 only surfaced when the deserialise target is `Value` itself,
@@ -1046,9 +1046,8 @@ let owned = value.into_owned();
 
 ```rust
 use noyalib::{from_str, Spanned};
-use serde::Deserialize;
 
-#[derive(Deserialize)]
+#[derive(serde::Deserialize)]
 struct Config {
     port: Spanned<u16>,
 }
@@ -1389,7 +1388,7 @@ posture is built around closing each of those vectors at the
 custom-tag mechanism (`!Foo`, `!!python/object`) is the historical
 RCE vector — a malicious tag can load arbitrary code in legacy
 parsers. noyalib only deserialises into Rust types you've defined
-at compile time, with `#[derive(Deserialize)]`.
+at compile time, with `#[derive(serde::Deserialize)]`.
 
 Custom tags surface as **pure data** through the [`Value`] tree,
 never as code paths. Three options, in order of decreasing
@@ -1406,7 +1405,7 @@ strictness:
   global type registry, no runtime code lookup, no
   attacker-controlled instantiation — just data.
 - **Typed targets see through tags.** A
-  `#[derive(Deserialize)] struct Foo { x: u8 }` against
+  `#[derive(serde::Deserialize)] struct Foo { x: u8 }` against
   `!Foo {x: 1}` yields `Foo { x: 1 }`. The typed visitor never
   observes the tag string, so an attacker forging a tag to
   trigger a different `Deserialize` impl is impossible.

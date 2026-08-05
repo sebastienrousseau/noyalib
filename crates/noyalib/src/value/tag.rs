@@ -7,7 +7,6 @@ use super::Value;
 use crate::prelude::*;
 use core::cmp::Ordering;
 use core::hash::{Hash, Hasher};
-use serde::{Deserialize, Serialize};
 
 // ============================================================================
 // Tag utilities
@@ -318,28 +317,26 @@ impl fmt::Display for TaggedValue {
     }
 }
 
-impl Serialize for TaggedValue {
+impl serde_core::Serialize for TaggedValue {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
-        S: serde::Serializer,
+        S: serde_core::Serializer,
     {
-        use serde::ser::SerializeMap;
+        use serde_core::ser::SerializeMap as _;
         let mut map = serializer.serialize_map(Some(1))?;
         map.serialize_entry(self.tag.as_str(), self.value())?;
         map.end()
     }
 }
 
-impl<'de> Deserialize<'de> for TaggedValue {
+impl<'de> serde_core::Deserialize<'de> for TaggedValue {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
-        D: serde::Deserializer<'de>,
+        D: serde_core::Deserializer<'de>,
     {
-        use serde::de::{MapAccess, Visitor};
-
         struct TaggedValueVisitor;
 
-        impl<'de> Visitor<'de> for TaggedValueVisitor {
+        impl<'de> serde_core::de::Visitor<'de> for TaggedValueVisitor {
             type Value = TaggedValue;
 
             fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -348,11 +345,11 @@ impl<'de> Deserialize<'de> for TaggedValue {
 
             fn visit_map<A>(self, mut map: A) -> Result<TaggedValue, A::Error>
             where
-                A: MapAccess<'de>,
+                A: serde_core::de::MapAccess<'de>,
             {
                 let (tag, value): (String, Value) = map
                     .next_entry()?
-                    .ok_or_else(|| serde::de::Error::custom("expected a single-entry map"))?;
+                    .ok_or_else(|| serde_core::de::Error::custom("expected a single-entry map"))?;
                 Ok(TaggedValue::new(Tag::new(tag), value))
             }
         }
@@ -361,12 +358,12 @@ impl<'de> Deserialize<'de> for TaggedValue {
     }
 }
 
-impl<'de> serde::Deserializer<'de> for &'de TaggedValue {
+impl<'de> serde_core::Deserializer<'de> for &'de TaggedValue {
     type Error = crate::Error;
 
     fn deserialize_any<V>(self, visitor: V) -> crate::Result<V::Value>
     where
-        V: serde::de::Visitor<'de>,
+        V: serde_core::de::Visitor<'de>,
     {
         visitor.visit_map(TaggedValueMapAccess {
             tag: Some(self.tag.as_str()),
@@ -381,12 +378,12 @@ impl<'de> serde::Deserializer<'de> for &'de TaggedValue {
         visitor: V,
     ) -> crate::Result<V::Value>
     where
-        V: serde::de::Visitor<'de>,
+        V: serde_core::de::Visitor<'de>,
     {
         visitor.visit_enum(TaggedValueEnumAccess { tagged: self })
     }
 
-    serde::forward_to_deserialize_any! {
+    serde_core::forward_to_deserialize_any! {
         bool i8 i16 i32 i64 u8 u16 u32 u64 f32 f64 char str string bytes
         byte_buf option unit unit_struct newtype_struct seq tuple
         tuple_struct map struct identifier ignored_any
@@ -398,16 +395,16 @@ struct TaggedValueMapAccess<'de> {
     value: Option<&'de Value>,
 }
 
-impl<'de> serde::de::MapAccess<'de> for TaggedValueMapAccess<'de> {
+impl<'de> serde_core::de::MapAccess<'de> for TaggedValueMapAccess<'de> {
     type Error = crate::Error;
 
     fn next_key_seed<K>(&mut self, seed: K) -> crate::Result<Option<K::Value>>
     where
-        K: serde::de::DeserializeSeed<'de>,
+        K: serde_core::de::DeserializeSeed<'de>,
     {
         match self.tag.take() {
             Some(tag) => seed
-                .deserialize(serde::de::value::BorrowedStrDeserializer::new(tag))
+                .deserialize(serde_core::de::value::BorrowedStrDeserializer::new(tag))
                 .map(Some),
             None => Ok(None),
         }
@@ -415,11 +412,11 @@ impl<'de> serde::de::MapAccess<'de> for TaggedValueMapAccess<'de> {
 
     fn next_value_seed<V>(&mut self, seed: V) -> crate::Result<V::Value>
     where
-        V: serde::de::DeserializeSeed<'de>,
+        V: serde_core::de::DeserializeSeed<'de>,
     {
         match self.value.take() {
             Some(value) => seed.deserialize(value),
-            None => Err(serde::de::Error::custom("value is missing")),
+            None => Err(serde_core::de::Error::custom("value is missing")),
         }
     }
 }
@@ -428,19 +425,18 @@ struct TaggedValueEnumAccess<'de> {
     tagged: &'de TaggedValue,
 }
 
-impl<'de> serde::de::EnumAccess<'de> for TaggedValueEnumAccess<'de> {
+impl<'de> serde_core::de::EnumAccess<'de> for TaggedValueEnumAccess<'de> {
     type Error = crate::Error;
     type Variant = TaggedValueVariantAccess<'de>;
 
     fn variant_seed<V>(self, seed: V) -> crate::Result<(V::Value, Self::Variant)>
     where
-        V: serde::de::DeserializeSeed<'de>,
+        V: serde_core::de::DeserializeSeed<'de>,
     {
-        let variant = seed.deserialize(
-            serde::de::value::BorrowedStrDeserializer::<crate::Error>::new(
-                self.tagged.tag.nobang(),
-            ),
-        )?;
+        let deserializer = serde_core::de::value::BorrowedStrDeserializer::<crate::Error>::new(
+            self.tagged.tag.nobang(),
+        );
+        let variant = seed.deserialize(deserializer)?;
         Ok((
             variant,
             TaggedValueVariantAccess {
@@ -454,7 +450,7 @@ struct TaggedValueVariantAccess<'de> {
     value: &'de Value,
 }
 
-impl<'de> serde::de::VariantAccess<'de> for TaggedValueVariantAccess<'de> {
+impl<'de> serde_core::de::VariantAccess<'de> for TaggedValueVariantAccess<'de> {
     type Error = crate::Error;
 
     fn unit_variant(self) -> crate::Result<()> {
@@ -463,16 +459,16 @@ impl<'de> serde::de::VariantAccess<'de> for TaggedValueVariantAccess<'de> {
 
     fn newtype_variant_seed<T>(self, seed: T) -> crate::Result<T::Value>
     where
-        T: serde::de::DeserializeSeed<'de>,
+        T: serde_core::de::DeserializeSeed<'de>,
     {
         seed.deserialize(self.value)
     }
 
     fn tuple_variant<V>(self, _len: usize, visitor: V) -> crate::Result<V::Value>
     where
-        V: serde::de::Visitor<'de>,
+        V: serde_core::de::Visitor<'de>,
     {
-        serde::Deserializer::deserialize_seq(self.value, visitor)
+        serde_core::Deserializer::deserialize_seq(self.value, visitor)
     }
 
     fn struct_variant<V>(
@@ -481,8 +477,8 @@ impl<'de> serde::de::VariantAccess<'de> for TaggedValueVariantAccess<'de> {
         visitor: V,
     ) -> crate::Result<V::Value>
     where
-        V: serde::de::Visitor<'de>,
+        V: serde_core::de::Visitor<'de>,
     {
-        serde::Deserializer::deserialize_map(self.value, visitor)
+        serde_core::Deserializer::deserialize_map(self.value, visitor)
     }
 }

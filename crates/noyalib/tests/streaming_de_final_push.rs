@@ -263,7 +263,7 @@ fn final_de_spanned_through_ast_path() {
 // ── L2003 — VariantAccess::variant_seed → seed.deserialize errors ─
 //
 // Hit when the variant identifier deserialise fails (e.g. variant
-// name is not a recognised variant). `serde::de::value::StrDeserializer`
+// name is not a recognised variant). `serde_core::de::value::StrDeserializer`
 // returns `unknown variant` errors for invalid names.
 
 #[test]

@@ -11,7 +11,6 @@ use core::ops::{Index, IndexMut};
 use indexmap::IndexMap;
 use indexmap::map::{IntoIter, Iter, IterMut, Keys, Values, ValuesMut};
 use rustc_hash::FxBuildHasher;
-use serde::{Deserialize, Serialize};
 
 /// Fast IndexMap using FxBuildHasher.
 type FxIndexMap<K, V> = IndexMap<K, V, FxBuildHasher>;
@@ -818,12 +817,12 @@ impl fmt::Display for Mapping {
     }
 }
 
-impl Serialize for Mapping {
+impl serde_core::Serialize for Mapping {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
-        S: serde::Serializer,
+        S: serde_core::Serializer,
     {
-        use serde::ser::SerializeMap;
+        use serde_core::ser::SerializeMap as _;
         let mut map = serializer.serialize_map(Some(self.len()))?;
         for (k, v) in self {
             map.serialize_entry(k, v)?;
@@ -832,16 +831,14 @@ impl Serialize for Mapping {
     }
 }
 
-impl<'de> Deserialize<'de> for Mapping {
+impl<'de> serde_core::Deserialize<'de> for Mapping {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
-        D: serde::Deserializer<'de>,
+        D: serde_core::Deserializer<'de>,
     {
-        use serde::de::{MapAccess, Visitor};
-
         struct MappingVisitor;
 
-        impl<'de> Visitor<'de> for MappingVisitor {
+        impl<'de> serde_core::de::Visitor<'de> for MappingVisitor {
             type Value = Mapping;
 
             fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -850,7 +847,7 @@ impl<'de> Deserialize<'de> for Mapping {
 
             fn visit_map<A>(self, mut map: A) -> Result<Mapping, A::Error>
             where
-                A: MapAccess<'de>,
+                A: serde_core::de::MapAccess<'de>,
             {
                 let mut mapping = Mapping::with_capacity(map.size_hint().unwrap_or(0));
                 while let Some((key, value)) = map.next_entry::<String, Value>()? {
@@ -1300,12 +1297,12 @@ impl fmt::Display for MappingAny {
     }
 }
 
-impl Serialize for MappingAny {
+impl serde_core::Serialize for MappingAny {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
-        S: serde::Serializer,
+        S: serde_core::Serializer,
     {
-        use serde::ser::SerializeMap;
+        use serde_core::ser::SerializeMap as _;
         let mut map = serializer.serialize_map(Some(self.len()))?;
         for (k, v) in self {
             map.serialize_entry(k, v)?;
@@ -1314,16 +1311,14 @@ impl Serialize for MappingAny {
     }
 }
 
-impl<'de> Deserialize<'de> for MappingAny {
+impl<'de> serde_core::Deserialize<'de> for MappingAny {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
-        D: serde::Deserializer<'de>,
+        D: serde_core::Deserializer<'de>,
     {
-        use serde::de::{MapAccess, Visitor};
-
         struct MappingAnyVisitor;
 
-        impl<'de> Visitor<'de> for MappingAnyVisitor {
+        impl<'de> serde_core::de::Visitor<'de> for MappingAnyVisitor {
             type Value = MappingAny;
 
             fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -1332,7 +1327,7 @@ impl<'de> Deserialize<'de> for MappingAny {
 
             fn visit_map<A>(self, mut map: A) -> Result<MappingAny, A::Error>
             where
-                A: MapAccess<'de>,
+                A: serde_core::de::MapAccess<'de>,
             {
                 let mut mapping = MappingAny::with_capacity(map.size_hint().unwrap_or(0));
                 while let Some((key, value)) = map.next_entry::<Value, Value>()? {

@@ -8,7 +8,7 @@
 #![allow(unused_imports)]
 
 use noyalib::{Error, Location, Value, from_str, to_string};
-use serde::Deserialize;
+use serde_core::Deserialize as _;
 
 // ── diagnostic.rs (miette bridge) ────────────────────────────────────────
 

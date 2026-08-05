@@ -10,7 +10,7 @@
 //! less helpful than knowing the field is
 //! `spec.template.spec.containers[0].image`.
 //!
-//! [`serde_path_to_error`] composes with any `serde::Deserializer`
+//! [`serde_path_to_error`] composes with any [`serde_core::Deserializer`]
 //! and emits the JSON-Pointer-style path to the offending node.
 //! noyalib's [`Deserializer`](noyalib::Deserializer) plugs in directly — no
 //! noyalib-specific glue.

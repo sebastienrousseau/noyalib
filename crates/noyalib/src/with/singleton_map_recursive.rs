@@ -31,8 +31,6 @@
 // Copyright (c) 2026 Noyalib. All rights reserved.
 
 use crate::prelude::*;
-use serde::de::DeserializeOwned;
-use serde::{Deserializer, Serialize, Serializer};
 
 /// Recursively transform a Value to use singleton map representation for enums.
 fn transform_to_singleton_map(value: crate::Value) -> crate::Value {
@@ -81,17 +79,17 @@ fn transform_to_singleton_map(value: crate::Value) -> crate::Value {
 /// ```
 pub fn serialize<T, S>(value: &T, serializer: S) -> Result<S::Ok, S::Error>
 where
-    T: Serialize,
-    S: Serializer,
+    T: serde_core::Serialize,
+    S: serde_core::Serializer,
 {
     // Serialize to Value first
-    let yaml_value = crate::to_value(value).map_err(serde::ser::Error::custom)?;
+    let yaml_value = crate::to_value(value).map_err(serde_core::ser::Error::custom)?;
 
     // Transform recursively
     let transformed = transform_to_singleton_map(yaml_value);
 
     // Serialize the transformed value
-    transformed.serialize(serializer)
+    serde_core::Serialize::serialize(&transformed, serializer)
 }
 
 /// Deserialize a value from recursive singleton map format.
@@ -118,15 +116,15 @@ where
 /// ```
 pub fn deserialize<'de, T, D>(deserializer: D) -> Result<T, D::Error>
 where
-    T: DeserializeOwned + 'static,
-    D: Deserializer<'de>,
+    T: serde_core::de::DeserializeOwned + 'static,
+    D: serde_core::Deserializer<'de>,
 {
-    use serde::Deserialize;
+    use serde_core::Deserialize as _;
     // Deserialize as Value first
     let value = crate::Value::deserialize(deserializer)?;
 
     // Convert to target type
-    crate::from_value(&value).map_err(serde::de::Error::custom)
+    crate::from_value(&value).map_err(serde_core::de::Error::custom)
 }
 
 #[cfg(test)]

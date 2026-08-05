@@ -6,18 +6,15 @@
 use super::{Mapping, Number, TaggedValue, Value};
 use crate::prelude::*;
 use indexmap::map::Iter;
-use serde::{Deserialize, Serialize};
 
-impl<'de> Deserialize<'de> for Value {
+impl<'de> serde_core::Deserialize<'de> for Value {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
-        D: serde::Deserializer<'de>,
+        D: serde_core::Deserializer<'de>,
     {
-        use serde::de::{MapAccess, SeqAccess, Visitor};
-
         struct ValueVisitor;
 
-        impl<'de> Visitor<'de> for ValueVisitor {
+        impl<'de> serde_core::de::Visitor<'de> for ValueVisitor {
             type Value = Value;
 
             fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -58,7 +55,7 @@ impl<'de> Deserialize<'de> for Value {
 
             fn visit_seq<A>(self, mut seq: A) -> Result<Value, A::Error>
             where
-                A: SeqAccess<'de>,
+                A: serde_core::de::SeqAccess<'de>,
             {
                 // Pre-size from the SeqAccess size_hint when
                 // available — saves up to ~11 reallocations on a
@@ -77,7 +74,7 @@ impl<'de> Deserialize<'de> for Value {
 
             fn visit_map<A>(self, mut map: A) -> Result<Value, A::Error>
             where
-                A: MapAccess<'de>,
+                A: serde_core::de::MapAccess<'de>,
             {
                 let first_key: Option<String> = map.next_key()?;
                 // Regular mapping path — collect every (k, v) pair
@@ -104,10 +101,10 @@ impl<'de> Deserialize<'de> for Value {
     }
 }
 
-impl Serialize for Value {
+impl serde_core::Serialize for Value {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
-        S: serde::Serializer,
+        S: serde_core::Serializer,
     {
         match self {
             Value::Null => serializer.serialize_none(),
@@ -119,7 +116,7 @@ impl Serialize for Value {
             Value::String(s) => serializer.serialize_str(s),
             Value::Sequence(s) => s.serialize(serializer),
             Value::Mapping(m) => {
-                use serde::ser::SerializeMap;
+                use serde_core::ser::SerializeMap as _;
                 let mut map = serializer.serialize_map(Some(m.len()))?;
                 for (k, v) in m {
                     map.serialize_entry(k, v)?;
@@ -128,7 +125,7 @@ impl Serialize for Value {
             }
             Value::Tagged(tagged) => {
                 // Serialize as a single-entry map with tag as key
-                use serde::ser::SerializeMap;
+                use serde_core::ser::SerializeMap as _;
                 let mut map = serializer.serialize_map(Some(1))?;
                 map.serialize_entry(tagged.tag().as_str(), tagged.value())?;
                 map.end()
@@ -141,7 +138,7 @@ impl Serialize for Value {
 // Deserializer implementation for &Value
 // ============================================================================
 
-impl<'de> serde::de::IntoDeserializer<'de, crate::Error> for &'de Value {
+impl<'de> serde_core::de::IntoDeserializer<'de, crate::Error> for &'de Value {
     type Deserializer = Self;
 
     fn into_deserializer(self) -> Self::Deserializer {
@@ -153,12 +150,12 @@ struct ValueSeqAccess<'de> {
     iter: core::slice::Iter<'de, Value>,
 }
 
-impl<'de> serde::de::SeqAccess<'de> for ValueSeqAccess<'de> {
+impl<'de> serde_core::de::SeqAccess<'de> for ValueSeqAccess<'de> {
     type Error = crate::Error;
 
     fn next_element_seed<T>(&mut self, seed: T) -> crate::Result<Option<T::Value>>
     where
-        T: serde::de::DeserializeSeed<'de>,
+        T: serde_core::de::DeserializeSeed<'de>,
     {
         match self.iter.next() {
             Some(value) => seed.deserialize(value).map(Some),
@@ -172,17 +169,17 @@ struct ValueMapAccess<'de> {
     value: Option<&'de Value>,
 }
 
-impl<'de> serde::de::MapAccess<'de> for ValueMapAccess<'de> {
+impl<'de> serde_core::de::MapAccess<'de> for ValueMapAccess<'de> {
     type Error = crate::Error;
 
     fn next_key_seed<K>(&mut self, seed: K) -> crate::Result<Option<K::Value>>
     where
-        K: serde::de::DeserializeSeed<'de>,
+        K: serde_core::de::DeserializeSeed<'de>,
     {
         match self.iter.next() {
             Some((key, value)) => {
                 self.value = Some(value);
-                seed.deserialize(serde::de::value::BorrowedStrDeserializer::new(key))
+                seed.deserialize(serde_core::de::value::BorrowedStrDeserializer::new(key))
                     .map(Some)
             }
             None => Ok(None),
@@ -191,21 +188,21 @@ impl<'de> serde::de::MapAccess<'de> for ValueMapAccess<'de> {
 
     fn next_value_seed<V>(&mut self, seed: V) -> crate::Result<V::Value>
     where
-        V: serde::de::DeserializeSeed<'de>,
+        V: serde_core::de::DeserializeSeed<'de>,
     {
         match self.value.take() {
             Some(value) => seed.deserialize(value),
-            None => Err(serde::de::Error::custom("value is missing")),
+            None => Err(serde_core::de::Error::custom("value is missing")),
         }
     }
 }
 
-impl<'de> serde::Deserializer<'de> for &'de Value {
+impl<'de> serde_core::Deserializer<'de> for &'de Value {
     type Error = crate::Error;
 
     fn deserialize_any<V>(self, visitor: V) -> crate::Result<V::Value>
     where
-        V: serde::de::Visitor<'de>,
+        V: serde_core::de::Visitor<'de>,
     {
         match self {
             Value::Null => visitor.visit_unit(),
@@ -222,7 +219,7 @@ impl<'de> serde::Deserializer<'de> for &'de Value {
             }),
             Value::Tagged(tagged) => {
                 let tagged_ref: &'de TaggedValue = tagged;
-                serde::Deserializer::deserialize_any(tagged_ref, visitor)
+                serde_core::Deserializer::deserialize_any(tagged_ref, visitor)
             }
         }
     }
@@ -234,39 +231,39 @@ impl<'de> serde::Deserializer<'de> for &'de Value {
         visitor: V,
     ) -> crate::Result<V::Value>
     where
-        V: serde::de::Visitor<'de>,
+        V: serde_core::de::Visitor<'de>,
     {
         match self {
             Value::Tagged(tagged) => {
                 let tagged_ref: &'de TaggedValue = tagged;
-                serde::Deserializer::deserialize_enum(tagged_ref, name, variants, visitor)
+                serde_core::Deserializer::deserialize_enum(tagged_ref, name, variants, visitor)
             }
             Value::String(s) => visitor
-                .visit_enum(serde::de::value::BorrowedStrDeserializer::<crate::Error>::new(s)),
-            _ => serde::Deserializer::deserialize_any(self, visitor),
+                .visit_enum(serde_core::de::value::BorrowedStrDeserializer::<crate::Error>::new(s)),
+            _ => serde_core::Deserializer::deserialize_any(self, visitor),
         }
     }
 
     fn deserialize_seq<V>(self, visitor: V) -> crate::Result<V::Value>
     where
-        V: serde::de::Visitor<'de>,
+        V: serde_core::de::Visitor<'de>,
     {
         match self {
             Value::Sequence(seq) => visitor.visit_seq(ValueSeqAccess { iter: seq.iter() }),
-            _ => serde::Deserializer::deserialize_any(self, visitor),
+            _ => serde_core::Deserializer::deserialize_any(self, visitor),
         }
     }
 
     fn deserialize_map<V>(self, visitor: V) -> crate::Result<V::Value>
     where
-        V: serde::de::Visitor<'de>,
+        V: serde_core::de::Visitor<'de>,
     {
         match self {
             Value::Mapping(map) => visitor.visit_map(ValueMapAccess {
                 iter: map.iter(),
                 value: None,
             }),
-            _ => serde::Deserializer::deserialize_any(self, visitor),
+            _ => serde_core::Deserializer::deserialize_any(self, visitor),
         }
     }
 
@@ -277,15 +274,15 @@ impl<'de> serde::Deserializer<'de> for &'de Value {
         visitor: V,
     ) -> crate::Result<V::Value>
     where
-        V: serde::de::Visitor<'de>,
+        V: serde_core::de::Visitor<'de>,
     {
         if name == crate::spanned::SPANNED_TYPE_NAME {
             return visitor.visit_map(crate::de::SpannedMapAccess::new(self, None));
         }
-        serde::Deserializer::deserialize_map(self, visitor)
+        serde_core::Deserializer::deserialize_map(self, visitor)
     }
 
-    serde::forward_to_deserialize_any! {
+    serde_core::forward_to_deserialize_any! {
         bool i8 i16 i32 i64 u8 u16 u32 u64 f32 f64 char str string bytes
         byte_buf option unit unit_struct newtype_struct tuple
         tuple_struct identifier ignored_any

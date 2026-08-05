@@ -35,7 +35,7 @@ its forks; opt-outs are documented per guide.
 1. **`Value::Tagged` is preserved through the `Value` data path.**
    `from_str::<Value>("!Custom 'hi'\n")` returns
    `Value::Tagged(t)` (`t.tag() == "!Custom"`, `t.value() == Value::String("hi")`). Typed
-   targets (`#[derive(Deserialize)] struct Foo { … }`) still
+   targets (`#[derive(serde::Deserialize)] struct Foo { … }`) still
    see through the tag transparently — the preservation only
    affects the dynamic `Value` path.
 2. **YAML 1.2 strict booleans by default.** `country: NO` parses
