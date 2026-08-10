@@ -20,7 +20,7 @@ fn main() {
         "Validate against core schema",
         || match validate_yaml_core_schema(&value) {
             Ok(()) => vec!["Result: valid".to_string()],
-            Err(e) => vec![format!("Result: rejected"), format!("Reason: {e}")],
+            Err(e) => vec!["Result: rejected".to_string(), format!("Reason: {e}")],
         },
     );
 
@@ -28,7 +28,7 @@ fn main() {
         "Validate against JSON schema",
         || match validate_yaml_json_schema(&value) {
             Ok(()) => vec!["Result: valid".to_string()],
-            Err(e) => vec![format!("Result: rejected"), format!("Reason: {e}")],
+            Err(e) => vec!["Result: rejected".to_string(), format!("Reason: {e}")],
         },
     );
 

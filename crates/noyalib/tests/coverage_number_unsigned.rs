@@ -12,7 +12,7 @@
 #![allow(clippy::unwrap_used)]
 
 use core::cmp::Ordering;
-use core::str::FromStr;
+use core::str::FromStr as _;
 
 use noyalib::Number;
 

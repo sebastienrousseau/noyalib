@@ -18,7 +18,7 @@
 mod support;
 
 use figment::Figment;
-use figment::providers::{Env, Format, Serialized};
+use figment::providers::{Env, Format as _, Serialized};
 use noyalib::figment::Yaml;
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]

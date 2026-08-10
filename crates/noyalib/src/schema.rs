@@ -67,7 +67,7 @@ pub fn validate_yaml_failsafe_schema(value: &Value) -> Result<()> {
 }
 
 fn validate_failsafe_recursive(value: &Value, path: &mut String) -> Result<()> {
-    use core::fmt::Write;
+    use core::fmt::Write as _;
     match value {
         Value::String(_) => Ok(()),
         Value::Sequence(seq) => {
@@ -142,7 +142,7 @@ pub fn validate_yaml_json_schema(value: &Value) -> Result<()> {
 }
 
 fn validate_json_recursive(value: &Value, path: &mut String) -> Result<()> {
-    use core::fmt::Write;
+    use core::fmt::Write as _;
     match value {
         Value::Null | Value::Bool(_) | Value::String(_) => Ok(()),
         Value::Number(n) => {
@@ -208,7 +208,7 @@ pub fn validate_yaml_core_schema(value: &Value) -> Result<()> {
 }
 
 fn validate_core_recursive(value: &Value, path: &mut String) -> Result<()> {
-    use core::fmt::Write;
+    use core::fmt::Write as _;
     match value {
         Value::Null | Value::Bool(_) | Value::String(_) | Value::Number(_) => Ok(()),
         Value::Sequence(seq) => {

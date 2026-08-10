@@ -163,7 +163,7 @@ fn main() {
         let parsed: Task = from_str(yaml).unwrap();
         vec![
             format!("Task   = {}", parsed.name),
-            format!("Status = Completed (at: 2024-12-01)"),
+            "Status = Completed (at: 2024-12-01)".to_string(),
         ]
     });
 

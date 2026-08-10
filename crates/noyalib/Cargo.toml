@@ -1,6 +1,6 @@
 [package]
 name = "noyalib"
-version = "0.0.19"
+version = "0.0.20"
 edition = "2024"
 rust-version = "1.86.0"
 license = "MIT OR Apache-2.0"
@@ -691,3 +691,7 @@ warn-lints = [
     "clippy::cargo",
     "clippy::nursery",
 ]
+
+[lints.clippy]
+checked_conversions = "warn" # Part of clippy::pedantic
+unused_trait_names = "warn"  # Part of clippy::pedantic

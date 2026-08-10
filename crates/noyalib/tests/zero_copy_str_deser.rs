@@ -125,7 +125,7 @@ fn transform_reason_messages_are_stable() {
 
 #[test]
 fn transform_reason_implements_display() {
-    use core::fmt::Write;
+    use core::fmt::Write as _;
     let mut s = String::new();
     write!(&mut s, "{}", TransformReason::LineFold).unwrap();
     assert!(s.contains("line"));
@@ -137,8 +137,8 @@ fn transform_reason_traits() {
     let b = a;
     assert_eq!(a, b);
     let mut hasher = std::collections::hash_map::DefaultHasher::new();
-    use core::hash::Hasher;
-    use std::hash::Hash;
+    use core::hash::Hasher as _;
+    use std::hash::Hash as _;
     a.hash(&mut hasher);
     let _ = hasher.finish();
     let dbg = format!("{a:?}");

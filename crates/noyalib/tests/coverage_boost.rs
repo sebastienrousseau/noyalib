@@ -1096,7 +1096,7 @@ fn error_shared_location_delegation() {
 #[cfg(feature = "miette")]
 mod miette_tests {
     use super::*;
-    use miette::Diagnostic;
+    use miette::Diagnostic as _;
 
     #[test]
     fn miette_parse_code() {
@@ -3331,7 +3331,7 @@ fn mapping_any_ord() {
 #[test]
 fn mapping_hash_consistency() {
     use std::collections::hash_map::DefaultHasher;
-    use std::hash::{Hash, Hasher};
+    use std::hash::{Hash as _, Hasher as _};
 
     let mut m1 = Mapping::new();
     m1.insert("a", Value::from(1));

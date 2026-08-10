@@ -562,9 +562,9 @@ impl From<u32> for Number {
 
 impl From<u64> for Number {
     fn from(v: u64) -> Self {
-        if v <= i64::MAX as u64 {
-            Number::Integer(v as i64)
-        } else if cfg!(feature = "lossless-u64") {
+        if let Ok(v) = i64::try_from(v) {
+            Number::Integer(v)
+        } else {
             #[cfg(feature = "lossless-u64")]
             {
                 Number::Unsigned(v)
@@ -573,8 +573,6 @@ impl From<u64> for Number {
             {
                 Number::Float(v as f64)
             }
-        } else {
-            Number::Float(v as f64)
         }
     }
 }

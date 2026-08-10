@@ -14,7 +14,7 @@ async fn main() {
     use noyalib::tokio_async::{YamlDecoder, from_async_reader_multi};
 
     use tokio::io::BufReader;
-    use tokio_util::codec::Decoder;
+    use tokio_util::codec::Decoder as _;
 
     #[derive(Debug, serde::Deserialize)]
     struct Pkg {
