@@ -684,14 +684,59 @@ unused_macro_rules = "deny"
 unused_qualifications = "deny"
 variant_size_differences = "deny"
 
-[package.metadata.clippy]
-warn-lints = [
-    "clippy::all",
-    "clippy::pedantic",
-    "clippy::cargo",
-    "clippy::nursery",
-]
-
 [lints.clippy]
-checked_conversions = "warn" # Part of clippy::pedantic
-unused_trait_names = "warn"  # Part of clippy::pedantic
+cargo = { level = "warn", priority = -1 }
+multiple_crate_versions = "allow"
+
+pedantic = { level = "warn", priority = -1 }
+nursery = { level = "warn", priority = -1 }
+
+# TODO fix or expect pedantic
+cast_possible_truncation = "allow"
+cast_possible_wrap = "allow"
+cast_precision_loss = "allow"
+cast_sign_loss = "allow"
+checked_conversions = "warn"  # fixed in #240, keep it enforcing
+default_trait_access = "allow"
+doc_markdown = "allow"
+float_cmp = "allow"
+fn_params_excessive_bools = "allow"
+format_collect = "allow"
+format_push_string = "allow"
+items_after_statements = "allow"
+manual_let_else = "allow"
+many_single_char_names = "allow"
+match_same_arms = "allow"
+match_wildcard_for_single_variants = "allow"
+missing_errors_doc = "allow"
+missing_panics_doc = "allow"
+naive_bytecount = "allow"
+needless_continue = "allow"
+needless_pass_by_value = "allow"
+redundant_closure_for_method_calls = "allow"
+redundant_else = "allow"
+return_self_not_must_use = "allow"
+similar_names = "allow"
+struct_excessive_bools = "allow"
+struct_field_names = "allow"
+too_many_lines = "allow"
+unnecessary_wraps = "allow"
+unreadable_literal = "allow"
+unused_self = "allow"
+used_underscore_binding = "allow"
+zero_sized_map_values = "allow"
+
+# TODO fix or expect nursery
+branches_sharing_code = "allow"
+doc_link_code = "allow"
+literal_string_with_formatting_args = "allow"
+missing_const_for_fn = "allow"
+needless_collect = "allow"
+needless_pass_by_ref_mut = "allow"
+option_if_let_else = "allow"
+or_fun_call = "allow"
+redundant_pub_crate = "allow"
+significant_drop_tightening = "allow"
+single_option_map = "allow"
+too_long_first_doc_paragraph = "allow"
+useless_let_if_seq = "allow"

@@ -220,7 +220,7 @@ fn value_index_string_type() {
 
     let key = String::from("hello");
     // index_into
-    assert_eq!(key.clone().index_into(&v).unwrap().as_i64(), Some(42));
+    assert_eq!(key.index_into(&v).unwrap().as_i64(), Some(42));
 
     // index_into_mut
     let key2 = String::from("hello");
@@ -1924,7 +1924,7 @@ fn scanner_complex_key_value() {
 fn scanner_anchor_name_limit() {
     // Very long anchor name exceeding 1024 bytes
     let long_name = "a".repeat(1030);
-    let yaml = format!("&{} val\n", long_name);
+    let yaml = format!("&{long_name} val\n");
     let result: Result<Value> = from_str(&yaml);
     assert!(result.is_err());
 }
@@ -2489,7 +2489,7 @@ fn ser_commented_wrong_length() {
         Value::Sequence(vec![Value::from(1)]),
     )));
     let yaml = to_string(&v).unwrap();
-    assert!(yaml.contains("1"));
+    assert!(yaml.contains('1'));
 }
 
 #[test]
@@ -2521,9 +2521,9 @@ fn ser_multi_doc() {
     let docs = vec![1, 2, 3];
     let yaml = to_string_multi(&docs).unwrap();
     assert!(yaml.contains("---"));
-    assert!(yaml.contains("1"));
-    assert!(yaml.contains("2"));
-    assert!(yaml.contains("3"));
+    assert!(yaml.contains('1'));
+    assert!(yaml.contains('2'));
+    assert!(yaml.contains('3'));
 }
 
 // --- ser.rs: write_literal_block and write_folded_block via fmt types ---
@@ -2532,14 +2532,14 @@ fn ser_multi_doc() {
 fn ser_literal_block_via_lit_str() {
     let v = LitStr("hello\nworld\n");
     let yaml = to_string(&v).unwrap();
-    assert!(yaml.contains("|"));
+    assert!(yaml.contains('|'));
 }
 
 #[test]
 fn ser_folded_block_via_fold_str() {
     let v = FoldStr("hello\nworld\n");
     let yaml = to_string(&v).unwrap();
-    assert!(yaml.contains(">"));
+    assert!(yaml.contains('>'));
 }
 
 #[test]
@@ -2626,8 +2626,8 @@ fn scanner_single_quoted_break_followed_by_break() {
     let yaml = "'a\n\nb'\n";
     let v: Value = from_str(yaml).unwrap();
     let s = v.as_str().unwrap();
-    assert!(s.contains("a"));
-    assert!(s.contains("b"));
+    assert!(s.contains('a'));
+    assert!(s.contains('b'));
 }
 
 #[test]
@@ -3027,8 +3027,8 @@ fn scanner_single_quoted_multi_crlf_breaks() {
     let yaml = "'a\r\n\r\nb'\n";
     let v: Value = from_str(yaml).unwrap();
     let s = v.as_str().unwrap();
-    assert!(s.contains("a"));
-    assert!(s.contains("b"));
+    assert!(s.contains('a'));
+    assert!(s.contains('b'));
 }
 
 // --- scanner.rs: double-quoted with CRLF breaks (lines 1191-1192) ---
@@ -3038,8 +3038,8 @@ fn scanner_double_quoted_multi_crlf_breaks() {
     let yaml = "\"a\r\n\r\nb\"\n";
     let v: Value = from_str(yaml).unwrap();
     let s = v.as_str().unwrap();
-    assert!(s.contains("a"));
-    assert!(s.contains("b"));
+    assert!(s.contains('a'));
+    assert!(s.contains('b'));
 }
 
 // --- scanner.rs: plain scalar with CRLF (lines 903-905, 914-916) ---
@@ -3460,7 +3460,7 @@ fn loader_alias_large_string() {
     // String value aliased multiple times - exercises estimate_value_size (line
     // 690)
     let long_str = "x".repeat(100);
-    let yaml = format!("big: &big {}\nref1: *big\nref2: *big\n", long_str);
+    let yaml = format!("big: &big {long_str}\nref1: *big\nref2: *big\n");
     let v: Value = from_str(&yaml).unwrap();
     assert_eq!(v["ref1"].as_str().unwrap().len(), 100);
     assert_eq!(v["ref2"].as_str().unwrap().len(), 100);
@@ -3670,9 +3670,7 @@ fn ser_reserved_words_comprehensive() {
         let yaml = to_string(&v).unwrap();
         assert!(
             yaml.contains('\'') || yaml.contains('"'),
-            "Expected '{}' to be quoted, got: {}",
-            word,
-            yaml
+            "Expected '{word}' to be quoted, got: {yaml}"
         );
     }
 }

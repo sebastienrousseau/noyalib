@@ -81,7 +81,7 @@ fn validate_failsafe_recursive(value: &Value, path: &mut String) -> Result<()> {
         }
         Value::Mapping(map) => {
             let base_len = path.len();
-            for (key, val) in map.iter() {
+            for (key, val) in map {
                 let _ = write!(path, ".{key}");
                 validate_failsafe_recursive(val, path)?;
                 path.truncate(base_len);
@@ -167,7 +167,7 @@ fn validate_json_recursive(value: &Value, path: &mut String) -> Result<()> {
         }
         Value::Mapping(map) => {
             let base_len = path.len();
-            for (key, val) in map.iter() {
+            for (key, val) in map {
                 let _ = write!(path, ".{key}");
                 validate_json_recursive(val, path)?;
                 path.truncate(base_len);
@@ -222,7 +222,7 @@ fn validate_core_recursive(value: &Value, path: &mut String) -> Result<()> {
         }
         Value::Mapping(map) => {
             let base_len = path.len();
-            for (key, val) in map.iter() {
+            for (key, val) in map {
                 let _ = write!(path, ".{key}");
                 validate_core_recursive(val, path)?;
                 path.truncate(base_len);

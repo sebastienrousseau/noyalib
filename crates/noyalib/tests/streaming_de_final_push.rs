@@ -961,11 +961,7 @@ target:
 ";
     let v: Value = from_str(yaml).expect("nested-seq body");
     let t = v.get_path("target").unwrap();
-    assert!(
-        t.get_path("k_outer")
-            .map(|x| x.is_sequence())
-            .unwrap_or(false)
-    );
+    assert!(t.get_path("k_outer").is_some_and(|x| x.is_sequence()));
 }
 
 // ── L1787, L1811-L1820 — extract_local_keys Alias arm + filter override

@@ -59,7 +59,7 @@ fn decode_test_suite_markers(input: &str) -> String {
                         break;
                     }
                 }
-                if let Some(&'»') = chars.peek() {
+                if chars.peek() == Some(&'»') {
                     let _ = chars.next();
                     out.push('\t');
                 } else {
@@ -266,7 +266,9 @@ fn official_suite() {
                             .map(|v| v.unwrap_or(serde_json::Value::Null))
                             .collect();
 
-                    if !json_values_equal(&expected_vals, &actual_vals) {
+                    if json_values_equal(&expected_vals, &actual_vals) {
+                        pass += 1;
+                    } else {
                         eprintln!("FAIL {}: value mismatch", case.id);
                         eprintln!("  Expected: {expected_json}");
                         eprintln!(
@@ -274,8 +276,6 @@ fn official_suite() {
                             serde_json::to_string(&actual_vals).unwrap()
                         );
                         fail += 1;
-                    } else {
-                        pass += 1;
                     }
                 } else {
                     pass += 1;
@@ -294,7 +294,7 @@ fn official_suite() {
 
     let total = pass + fail + skip;
     let compliance = if total > skip {
-        (pass as f64 / (total - skip) as f64) * 100.0
+        (f64::from(pass) / f64::from(total - skip)) * 100.0
     } else {
         100.0
     };

@@ -754,7 +754,11 @@ impl<'de> serde_core::de::MapAccess<'de> for SpannedMapAccess<'de> {
     where
         V: serde_core::de::DeserializeSeed<'de>,
     {
-        use crate::spanned::*;
+        use crate::spanned::{
+            SPANNED_FIELD_END_COLUMN, SPANNED_FIELD_END_INDEX, SPANNED_FIELD_END_LINE,
+            SPANNED_FIELD_START_COLUMN, SPANNED_FIELD_START_INDEX, SPANNED_FIELD_START_LINE,
+            SPANNED_FIELD_VALUE, SPANNED_FIELDS,
+        };
         let last_field = SPANNED_FIELDS[SPANNED_FIELDS.len() - 1 - (self.fields.len())];
 
         if last_field == SPANNED_FIELD_VALUE {

@@ -292,7 +292,7 @@ fn ser_map_integer_and_bool_keys_coerced() {
     let mut bools: BTreeMap<bool, i32> = BTreeMap::new();
     bools.insert(true, 1);
     let out = to_string(&bools).unwrap();
-    assert!(out.contains("true") && out.contains("1"), "got {out:?}");
+    assert!(out.contains("true") && out.contains('1'), "got {out:?}");
 }
 
 #[test]

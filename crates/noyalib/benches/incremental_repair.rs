@@ -176,7 +176,7 @@ fn bench_guarded_mutators(c: &mut Criterion) {
                 doc
             },
             BatchSize::SmallInput,
-        )
+        );
     });
     mg.bench_function("remove", |b| {
         b.iter_batched(
@@ -186,7 +186,7 @@ fn bench_guarded_mutators(c: &mut Criterion) {
                 doc
             },
             BatchSize::SmallInput,
-        )
+        );
     });
     mg.bench_function("set_inline_comment", |b| {
         b.iter_batched(
@@ -197,7 +197,7 @@ fn bench_guarded_mutators(c: &mut Criterion) {
                 doc
             },
             BatchSize::SmallInput,
-        )
+        );
     });
     mg.finish();
 
@@ -211,7 +211,7 @@ fn bench_guarded_mutators(c: &mut Criterion) {
                 doc
             },
             BatchSize::SmallInput,
-        )
+        );
     });
     sg.bench_function("move_item_span_50", |b| {
         b.iter_batched(
@@ -222,7 +222,7 @@ fn bench_guarded_mutators(c: &mut Criterion) {
                 doc
             },
             BatchSize::SmallInput,
-        )
+        );
     });
     sg.finish();
 }
@@ -250,7 +250,7 @@ fn bench_emit_insertions(c: &mut Criterion) {
                 doc
             },
             BatchSize::SmallInput,
-        )
+        );
     });
     g.bench_function("push_back_value_scalar", |b| {
         b.iter_batched(
@@ -261,7 +261,7 @@ fn bench_emit_insertions(c: &mut Criterion) {
                 doc
             },
             BatchSize::SmallInput,
-        )
+        );
     });
     g.bench_function("insert_after_value_scalar", |b| {
         b.iter_batched(
@@ -272,7 +272,7 @@ fn bench_emit_insertions(c: &mut Criterion) {
                 doc
             },
             BatchSize::SmallInput,
-        )
+        );
     });
     g.finish();
 }

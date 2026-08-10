@@ -2302,12 +2302,10 @@ fn walk_path(
     }
     let (head, tail) = segments.split_first()?;
     match (head, node.kind()) {
-        (QuerySegment::Key(k), SyntaxKind::BlockMapping)
-        | (QuerySegment::Key(k), SyntaxKind::FlowMapping) => {
+        (QuerySegment::Key(k), SyntaxKind::BlockMapping | SyntaxKind::FlowMapping) => {
             walk_mapping(node, k, tail, base, source)
         }
-        (QuerySegment::Index(i), SyntaxKind::BlockSequence)
-        | (QuerySegment::Index(i), SyntaxKind::FlowSequence) => {
+        (QuerySegment::Index(i), SyntaxKind::BlockSequence | SyntaxKind::FlowSequence) => {
             walk_sequence(node, *i, tail, base, source)
         }
         // Wildcard / recursive descent / kind mismatch — bail out;

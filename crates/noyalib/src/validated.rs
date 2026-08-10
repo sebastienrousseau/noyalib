@@ -145,7 +145,7 @@ impl<T> DerefMut for ValidatedValidator<T> {
 impl<T> From<T> for Validated<T> {
     #[inline]
     fn from(v: T) -> Self {
-        Validated(v)
+        Self(v)
     }
 }
 
@@ -153,7 +153,7 @@ impl<T> From<T> for Validated<T> {
 impl<T> From<T> for ValidatedValidator<T> {
     #[inline]
     fn from(v: T) -> Self {
-        ValidatedValidator(v)
+        Self(v)
     }
 }
 
@@ -169,7 +169,7 @@ where
         use serde_core::de::Error as _;
         let inner = T::deserialize(deserializer)?;
         match inner.validate_with(&()) {
-            Ok(()) => Ok(Validated(inner)),
+            Ok(()) => Ok(Self(inner)),
             Err(report) => Err(D::Error::custom(format_report(&report))),
         }
     }
@@ -187,7 +187,7 @@ where
         use serde_core::de::Error as _;
         let inner = T::deserialize(deserializer)?;
         match inner.validate() {
-            Ok(()) => Ok(ValidatedValidator(inner)),
+            Ok(()) => Ok(Self(inner)),
             Err(errors) => Err(D::Error::custom(format_validator_errors(&errors))),
         }
     }

@@ -71,7 +71,7 @@ fn main() -> noyalib::Result<()> {
     println!();
     println!("  Raw metadata view (cfg.server.raw):");
     if let Value::Mapping(m) = &cfg.server.raw {
-        for (k, v) in m.iter() {
+        for (k, v) in m {
             if matches!(k.as_str(), "host" | "port" | "tls") {
                 continue;
             }

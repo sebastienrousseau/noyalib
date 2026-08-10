@@ -924,7 +924,7 @@ fn error_format_with_source_shows_location() {
 
 #[test]
 fn roundtrip_complex_document() {
-    let yaml = r#"
+    let yaml = r"
 string: hello
 int: 42
 float: 3.14
@@ -935,7 +935,7 @@ sequence:
   - 2
 mapping:
   nested: value
-"#;
+";
     let v: Value = from_str(yaml).unwrap();
     let output = to_string(&v).unwrap();
     let v2: Value = from_str(&output).unwrap();

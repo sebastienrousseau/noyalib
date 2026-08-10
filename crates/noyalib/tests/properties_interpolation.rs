@@ -118,7 +118,7 @@ fn invalid_placeholder_character_errors() {
     // Quote so the space stays inside the placeholder rather than
     // being consumed by YAML's plain-scalar trim rules.
     let res: Result<Value, _> = from_str_with_config("x: \"${FOO BAR}\"\n", &cfg);
-    assert!(res.is_err(), "{:?}", res);
+    assert!(res.is_err(), "{res:?}");
 }
 
 #[test]

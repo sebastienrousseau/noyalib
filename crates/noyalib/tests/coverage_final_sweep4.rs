@@ -177,7 +177,7 @@ fn singleton_map_recursive_deep() {
     #[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
     enum Node {
         Leaf(i32),
-        Branch(Vec<Node>),
+        Branch(Vec<Self>),
     }
     #[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
     struct Tree {

@@ -397,7 +397,7 @@ fn rc_weak_anchor_debug_dangling() {
 fn rc_weak_anchor_serialize_dangling() {
     let w = RcWeakAnchor::<i32>::dangling();
     let yaml = to_string(&w).unwrap();
-    assert!(yaml.contains("null") || yaml.contains("~"));
+    assert!(yaml.contains("null") || yaml.contains('~'));
 }
 
 #[test]
@@ -474,7 +474,7 @@ fn arc_weak_anchor_debug_dangling() {
 fn arc_weak_anchor_serialize_dangling() {
     let w = ArcWeakAnchor::<i32>::dangling();
     let yaml = to_string(&w).unwrap();
-    assert!(yaml.contains("null") || yaml.contains("~"));
+    assert!(yaml.contains("null") || yaml.contains('~'));
 }
 
 #[test]

@@ -1292,7 +1292,7 @@ fn bench_mapping(c: &mut Criterion) {
     // iter
     let _ = group.bench_function("iter", |b| {
         b.iter(|| {
-            for entry in black_box(&map).iter() {
+            for entry in black_box(&map) {
                 black_box(entry);
             }
         });
@@ -1481,7 +1481,7 @@ fn bench_mapping_any(c: &mut Criterion) {
         b.iter(|| {
             let mut m = MappingAny::new();
             for i in 0..10 {
-                let _ = m.insert(Value::from(i as i64), Value::from(format!("val{i}")));
+                let _ = m.insert(Value::from(i64::from(i)), Value::from(format!("val{i}")));
             }
             black_box(m)
         });
@@ -1553,7 +1553,7 @@ fn bench_mapping_any(c: &mut Criterion) {
     // iter
     let _ = group.bench_function("iter", |b| {
         b.iter(|| {
-            for entry in black_box(&any_map).iter() {
+            for entry in black_box(&any_map) {
                 black_box(entry);
             }
         });

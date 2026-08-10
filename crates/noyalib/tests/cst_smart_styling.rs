@@ -18,8 +18,7 @@ fn single_quoted_neighbours_drive_single_quoted_emit() {
     doc.set_value("c", &Value::String("three".into())).unwrap();
     assert!(
         doc.to_string().contains("c: 'three'"),
-        "expected 'three' single-quoted, got: {}",
-        doc
+        "expected 'three' single-quoted, got: {doc}"
     );
 }
 
@@ -30,8 +29,7 @@ fn double_quoted_neighbours_drive_double_quoted_emit() {
     doc.set_value("c", &Value::String("three".into())).unwrap();
     assert!(
         doc.to_string().contains("c: \"three\""),
-        "expected double-quoted, got: {}",
-        doc
+        "expected double-quoted, got: {doc}"
     );
 }
 
@@ -43,8 +41,7 @@ fn plain_dominant_neighbourhood_keeps_plain() {
     // Plain dominant → plain emit (no quoting added).
     assert!(
         doc.to_string().contains("c: four\n"),
-        "expected plain, got: {}",
-        doc
+        "expected plain, got: {doc}"
     );
 }
 
@@ -57,8 +54,7 @@ fn mixed_neighbourhood_falls_back_to_plain_when_safe() {
     doc.set_value("c", &Value::String("four".into())).unwrap();
     assert!(
         doc.to_string().contains("c: four\n"),
-        "ambiguous neighbourhood should keep plain, got: {}",
-        doc
+        "ambiguous neighbourhood should keep plain, got: {doc}"
     );
 }
 
@@ -72,8 +68,7 @@ fn explicit_quoted_site_is_preserved_regardless_of_neighbours() {
     doc.set_value("c", &Value::String("four".into())).unwrap();
     assert!(
         doc.to_string().contains("c: 'four'"),
-        "expected single-quoted preserved, got: {}",
-        doc
+        "expected single-quoted preserved, got: {doc}"
     );
 }
 
@@ -102,8 +97,7 @@ fn neighbour_only_applies_when_target_is_plain() {
     doc.set_value("c", &Value::String("four".into())).unwrap();
     assert!(
         doc.to_string().contains("c: 'four'"),
-        "site style wins over neighbours, got: {}",
-        doc
+        "site style wins over neighbours, got: {doc}"
     );
 }
 
@@ -122,7 +116,6 @@ c: foo
     doc.set_value("c", &Value::String("three".into())).unwrap();
     assert!(
         doc.to_string().contains("c: 'three'"),
-        "expected single-quoted via plurality of scalar siblings, got: {}",
-        doc
+        "expected single-quoted via plurality of scalar siblings, got: {doc}"
     );
 }

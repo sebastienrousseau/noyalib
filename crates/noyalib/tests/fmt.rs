@@ -58,7 +58,7 @@ fn test_space_after_serialize() {
     let val = SpaceAfter(42i64);
     let yaml = to_string(&val).unwrap();
     // Should end with extra newline (blank line after value)
-    assert!(yaml.ends_with('\n'), "got: {:?}", yaml);
+    assert!(yaml.ends_with('\n'), "got: {yaml:?}");
     assert_eq!(yaml, "42\n");
 }
 
@@ -108,7 +108,7 @@ fn test_flow_map_in_struct() {
 
     let yaml = to_string(&config).unwrap();
     assert!(yaml.contains("HOME:"), "got: {yaml}");
-    assert!(yaml.contains("{"), "got: {yaml}");
+    assert!(yaml.contains('{'), "got: {yaml}");
 
     let parsed: Config = from_str(&yaml).unwrap();
     assert_eq!(parsed.env.0["HOME"], "/home/user");

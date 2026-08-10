@@ -348,7 +348,7 @@ fn parser_scanner_explicit_key_indicator() {
 fn parser_scanner_stray_flow_seq_close_errors() {
     let yaml = "v: ]\n";
     let err = from_str::<Value>(yaml).unwrap_err();
-    assert!(err.to_string().contains("]") || err.to_string().contains("flow"));
+    assert!(err.to_string().contains(']') || err.to_string().contains("flow"));
 }
 
 // ── Stray `}` outside any flow mapping. ──────────────────────────
@@ -356,7 +356,7 @@ fn parser_scanner_stray_flow_seq_close_errors() {
 fn parser_scanner_stray_flow_map_close_errors() {
     let yaml = "v: }\n";
     let err = from_str::<Value>(yaml).unwrap_err();
-    assert!(err.to_string().contains("}") || err.to_string().contains("flow"));
+    assert!(err.to_string().contains('}') || err.to_string().contains("flow"));
 }
 
 // ── Deeply-nested flow collections. ──────────────────────────────

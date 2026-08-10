@@ -45,10 +45,10 @@ impl Number {
     #[must_use]
     pub fn as_i64(&self) -> Option<i64> {
         match self {
-            Number::Integer(n) => Some(*n),
+            Self::Integer(n) => Some(*n),
             #[cfg(feature = "lossless-u64")]
-            Number::Unsigned(n) => i64::try_from(*n).ok(),
-            Number::Float(_) => None,
+            Self::Unsigned(n) => i64::try_from(*n).ok(),
+            Self::Float(_) => None,
         }
     }
 
@@ -67,9 +67,9 @@ impl Number {
     #[must_use]
     pub fn as_u64(&self) -> Option<u64> {
         match self {
-            Number::Integer(n) if *n >= 0 => Some(*n as u64),
+            Self::Integer(n) if *n >= 0 => Some(*n as u64),
             #[cfg(feature = "lossless-u64")]
-            Number::Unsigned(n) => Some(*n),
+            Self::Unsigned(n) => Some(*n),
             _ => None,
         }
     }
@@ -90,10 +90,10 @@ impl Number {
     #[must_use]
     pub fn as_f64(&self) -> f64 {
         match self {
-            Number::Integer(n) => *n as f64,
+            Self::Integer(n) => *n as f64,
             #[cfg(feature = "lossless-u64")]
-            Number::Unsigned(n) => *n as f64,
-            Number::Float(n) => *n,
+            Self::Unsigned(n) => *n as f64,
+            Self::Float(n) => *n,
         }
     }
 
@@ -109,10 +109,10 @@ impl Number {
     #[must_use]
     pub fn is_integer(&self) -> bool {
         match self {
-            Number::Integer(_) => true,
+            Self::Integer(_) => true,
             #[cfg(feature = "lossless-u64")]
-            Number::Unsigned(_) => true,
-            Number::Float(_) => false,
+            Self::Unsigned(_) => true,
+            Self::Float(_) => false,
         }
     }
 
@@ -127,7 +127,7 @@ impl Number {
     /// ```
     #[must_use]
     pub fn is_float(&self) -> bool {
-        matches!(self, Number::Float(_))
+        matches!(self, Self::Float(_))
     }
 
     /// Returns `true` if the number can be represented as an `i64`.
@@ -144,10 +144,10 @@ impl Number {
     #[must_use]
     pub fn is_i64(&self) -> bool {
         match self {
-            Number::Integer(_) => true,
+            Self::Integer(_) => true,
             #[cfg(feature = "lossless-u64")]
-            Number::Unsigned(n) => i64::try_from(*n).is_ok(),
-            Number::Float(_) => false,
+            Self::Unsigned(n) => i64::try_from(*n).is_ok(),
+            Self::Float(_) => false,
         }
     }
 
@@ -166,10 +166,10 @@ impl Number {
     #[must_use]
     pub fn is_u64(&self) -> bool {
         match self {
-            Number::Integer(n) => *n >= 0,
+            Self::Integer(n) => *n >= 0,
             #[cfg(feature = "lossless-u64")]
-            Number::Unsigned(_) => true,
-            Number::Float(_) => false,
+            Self::Unsigned(_) => true,
+            Self::Float(_) => false,
         }
     }
 
@@ -207,10 +207,10 @@ impl Number {
     #[must_use]
     pub fn is_nan(&self) -> bool {
         match self {
-            Number::Float(n) => n.is_nan(),
-            Number::Integer(_) => false,
+            Self::Float(n) => n.is_nan(),
+            Self::Integer(_) => false,
             #[cfg(feature = "lossless-u64")]
-            Number::Unsigned(_) => false,
+            Self::Unsigned(_) => false,
         }
     }
 
@@ -230,10 +230,10 @@ impl Number {
     #[must_use]
     pub fn is_infinite(&self) -> bool {
         match self {
-            Number::Float(n) => n.is_infinite(),
-            Number::Integer(_) => false,
+            Self::Float(n) => n.is_infinite(),
+            Self::Integer(_) => false,
             #[cfg(feature = "lossless-u64")]
-            Number::Unsigned(_) => false,
+            Self::Unsigned(_) => false,
         }
     }
 
@@ -254,10 +254,10 @@ impl Number {
     #[must_use]
     pub fn is_finite(&self) -> bool {
         match self {
-            Number::Float(n) => n.is_finite(),
-            Number::Integer(_) => true,
+            Self::Float(n) => n.is_finite(),
+            Self::Integer(_) => true,
             #[cfg(feature = "lossless-u64")]
-            Number::Unsigned(_) => true,
+            Self::Unsigned(_) => true,
         }
     }
 }
@@ -265,10 +265,10 @@ impl Number {
 impl fmt::Display for Number {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Number::Integer(n) => write!(f, "{n}"),
+            Self::Integer(n) => write!(f, "{n}"),
             #[cfg(feature = "lossless-u64")]
-            Number::Unsigned(n) => write!(f, "{n}"),
-            Number::Float(n) => write!(f, "{n}"),
+            Self::Unsigned(n) => write!(f, "{n}"),
+            Self::Float(n) => write!(f, "{n}"),
         }
     }
 }
@@ -296,20 +296,20 @@ impl FromStr for Number {
 
         // Handle special float values
         match s {
-            ".nan" | ".NaN" | ".NAN" => return Ok(Number::Float(f64::NAN)),
-            ".inf" | ".Inf" | ".INF" => return Ok(Number::Float(f64::INFINITY)),
-            "+.inf" | "+.Inf" | "+.INF" => return Ok(Number::Float(f64::INFINITY)),
-            "-.inf" | "-.Inf" | "-.INF" => return Ok(Number::Float(f64::NEG_INFINITY)),
+            ".nan" | ".NaN" | ".NAN" => return Ok(Self::Float(f64::NAN)),
+            ".inf" | ".Inf" | ".INF" => return Ok(Self::Float(f64::INFINITY)),
+            "+.inf" | "+.Inf" | "+.INF" => return Ok(Self::Float(f64::INFINITY)),
+            "-.inf" | "-.Inf" | "-.INF" => return Ok(Self::Float(f64::NEG_INFINITY)),
             _ => {}
         }
 
         // Try parsing as integer first
         if let Ok(n) = s.parse::<i64>() {
-            return Ok(Number::Integer(n));
+            return Ok(Self::Integer(n));
         }
         #[cfg(feature = "lossless-u64")]
         if let Ok(n) = s.parse::<u64>() {
-            return Ok(Number::Unsigned(n));
+            return Ok(Self::Unsigned(n));
         }
 
         // Handle hex (0x), octal (0o), and binary (0b) integers
@@ -318,29 +318,29 @@ impl FromStr for Number {
             match prefix {
                 "0x" | "0X" => {
                     if let Ok(n) = i64::from_str_radix(rest, 16) {
-                        return Ok(Number::Integer(n));
+                        return Ok(Self::Integer(n));
                     }
                     #[cfg(feature = "lossless-u64")]
                     if let Ok(n) = u64::from_str_radix(rest, 16) {
-                        return Ok(Number::Unsigned(n));
+                        return Ok(Self::Unsigned(n));
                     }
                 }
                 "0o" | "0O" => {
                     if let Ok(n) = i64::from_str_radix(rest, 8) {
-                        return Ok(Number::Integer(n));
+                        return Ok(Self::Integer(n));
                     }
                     #[cfg(feature = "lossless-u64")]
                     if let Ok(n) = u64::from_str_radix(rest, 8) {
-                        return Ok(Number::Unsigned(n));
+                        return Ok(Self::Unsigned(n));
                     }
                 }
                 "0b" | "0B" => {
                     if let Ok(n) = i64::from_str_radix(rest, 2) {
-                        return Ok(Number::Integer(n));
+                        return Ok(Self::Integer(n));
                     }
                     #[cfg(feature = "lossless-u64")]
                     if let Ok(n) = u64::from_str_radix(rest, 2) {
-                        return Ok(Number::Unsigned(n));
+                        return Ok(Self::Unsigned(n));
                     }
                 }
                 _ => {}
@@ -349,7 +349,7 @@ impl FromStr for Number {
 
         // Try parsing as float
         if let Ok(n) = s.parse::<f64>() {
-            return Ok(Number::Float(n));
+            return Ok(Self::Float(n));
         }
 
         Err(ParseNumberError { _private: () })
@@ -359,10 +359,10 @@ impl FromStr for Number {
 impl PartialEq for Number {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (Number::Integer(a), Number::Integer(b)) => a == b,
+            (Self::Integer(a), Self::Integer(b)) => a == b,
             #[cfg(feature = "lossless-u64")]
-            (Number::Unsigned(a), Number::Unsigned(b)) => a == b,
-            (Number::Float(a), Number::Float(b)) => {
+            (Self::Unsigned(a), Self::Unsigned(b)) => a == b,
+            (Self::Float(a), Self::Float(b)) => {
                 // Treat NaN == NaN to satisfy the Eq contract (reflexivity)
                 (a.is_nan() && b.is_nan()) || a == b
             }
@@ -376,16 +376,16 @@ impl Eq for Number {}
 impl Hash for Number {
     fn hash<H: Hasher>(&self, state: &mut H) {
         match self {
-            Number::Integer(n) => {
+            Self::Integer(n) => {
                 0u8.hash(state);
                 n.hash(state);
             }
             #[cfg(feature = "lossless-u64")]
-            Number::Unsigned(n) => {
+            Self::Unsigned(n) => {
                 2u8.hash(state);
                 n.hash(state);
             }
-            Number::Float(n) => {
+            Self::Float(n) => {
                 1u8.hash(state);
                 // Eq/Hash contract: equal values must hash equal. Two
                 // edge cases break naive `to_bits()` hashing:
@@ -425,11 +425,11 @@ impl PartialOrd for Number {
 impl Ord for Number {
     fn cmp(&self, other: &Self) -> Ordering {
         match (self, other) {
-            (Number::Integer(a), Number::Integer(b)) => a.cmp(b),
+            (Self::Integer(a), Self::Integer(b)) => a.cmp(b),
             #[cfg(feature = "lossless-u64")]
-            (Number::Unsigned(a), Number::Unsigned(b)) => a.cmp(b),
+            (Self::Unsigned(a), Self::Unsigned(b)) => a.cmp(b),
             #[cfg(feature = "lossless-u64")]
-            (Number::Integer(a), Number::Unsigned(b)) => {
+            (Self::Integer(a), Self::Unsigned(b)) => {
                 if *a < 0 {
                     Ordering::Less
                 } else {
@@ -437,14 +437,14 @@ impl Ord for Number {
                 }
             }
             #[cfg(feature = "lossless-u64")]
-            (Number::Unsigned(a), Number::Integer(b)) => {
+            (Self::Unsigned(a), Self::Integer(b)) => {
                 if *b < 0 {
                     Ordering::Greater
                 } else {
                     a.cmp(&(*b as u64))
                 }
             }
-            (Number::Float(a), Number::Float(b)) => {
+            (Self::Float(a), Self::Float(b)) => {
                 // Handle NaN: treat all NaN as equal and greater than any non-NaN
                 match (a.is_nan(), b.is_nan()) {
                     (true, true) => Ordering::Equal,
@@ -453,7 +453,7 @@ impl Ord for Number {
                     (false, false) => a.partial_cmp(b).unwrap_or(Ordering::Equal),
                 }
             }
-            (Number::Integer(a), Number::Float(b)) => {
+            (Self::Integer(a), Self::Float(b)) => {
                 if b.is_nan() {
                     Ordering::Less
                 } else if *a > (1_i64 << 53) || *a < -(1_i64 << 53) {
@@ -480,16 +480,16 @@ impl Ord for Number {
                     (*a as f64).partial_cmp(b).unwrap_or(Ordering::Equal)
                 }
             }
-            (Number::Float(a), Number::Integer(b)) => {
+            (Self::Float(a), Self::Integer(b)) => {
                 // Delegate to the Integer-Float case and invert.
-                match Number::Integer(*b).cmp(&Number::Float(*a)) {
+                match Self::Integer(*b).cmp(&Self::Float(*a)) {
                     Ordering::Less => Ordering::Greater,
                     Ordering::Greater => Ordering::Less,
                     Ordering::Equal => Ordering::Equal,
                 }
             }
             #[cfg(feature = "lossless-u64")]
-            (Number::Unsigned(a), Number::Float(b)) => {
+            (Self::Unsigned(a), Self::Float(b)) => {
                 if b.is_nan() {
                     Ordering::Less
                 } else {
@@ -497,13 +497,11 @@ impl Ord for Number {
                 }
             }
             #[cfg(feature = "lossless-u64")]
-            (Number::Float(a), Number::Unsigned(b)) => {
-                match Number::Unsigned(*b).cmp(&Number::Float(*a)) {
-                    Ordering::Less => Ordering::Greater,
-                    Ordering::Greater => Ordering::Less,
-                    Ordering::Equal => Ordering::Equal,
-                }
-            }
+            (Self::Float(a), Self::Unsigned(b)) => match Self::Unsigned(*b).cmp(&Self::Float(*a)) {
+                Ordering::Less => Ordering::Greater,
+                Ordering::Greater => Ordering::Less,
+                Ordering::Equal => Ordering::Equal,
+            },
         }
     }
 }
@@ -514,64 +512,64 @@ impl Ord for Number {
 
 impl From<i8> for Number {
     fn from(v: i8) -> Self {
-        Number::Integer(i64::from(v))
+        Self::Integer(i64::from(v))
     }
 }
 
 impl From<i16> for Number {
     fn from(v: i16) -> Self {
-        Number::Integer(i64::from(v))
+        Self::Integer(i64::from(v))
     }
 }
 
 impl From<i32> for Number {
     fn from(v: i32) -> Self {
-        Number::Integer(i64::from(v))
+        Self::Integer(i64::from(v))
     }
 }
 
 impl From<i64> for Number {
     fn from(v: i64) -> Self {
-        Number::Integer(v)
+        Self::Integer(v)
     }
 }
 
 impl From<isize> for Number {
     fn from(v: isize) -> Self {
-        Number::Integer(v as i64)
+        Self::Integer(v as i64)
     }
 }
 
 impl From<u8> for Number {
     fn from(v: u8) -> Self {
-        Number::Integer(i64::from(v))
+        Self::Integer(i64::from(v))
     }
 }
 
 impl From<u16> for Number {
     fn from(v: u16) -> Self {
-        Number::Integer(i64::from(v))
+        Self::Integer(i64::from(v))
     }
 }
 
 impl From<u32> for Number {
     fn from(v: u32) -> Self {
-        Number::Integer(i64::from(v))
+        Self::Integer(i64::from(v))
     }
 }
 
 impl From<u64> for Number {
     fn from(v: u64) -> Self {
         if let Ok(v) = i64::try_from(v) {
-            Number::Integer(v)
+            Self::Integer(v)
         } else {
             #[cfg(feature = "lossless-u64")]
             {
-                Number::Unsigned(v)
+                Self::Unsigned(v)
             }
             #[cfg(not(feature = "lossless-u64"))]
             {
-                Number::Float(v as f64)
+                Self::Float(v as f64)
             }
         }
     }
@@ -579,18 +577,18 @@ impl From<u64> for Number {
 
 impl From<usize> for Number {
     fn from(v: usize) -> Self {
-        Number::from(v as u64)
+        Self::from(v as u64)
     }
 }
 
 impl From<f32> for Number {
     fn from(v: f32) -> Self {
-        Number::Float(f64::from(v))
+        Self::Float(f64::from(v))
     }
 }
 
 impl From<f64> for Number {
     fn from(v: f64) -> Self {
-        Number::Float(v)
+        Self::Float(v)
     }
 }

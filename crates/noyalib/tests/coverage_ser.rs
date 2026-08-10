@@ -368,7 +368,7 @@ fn two_element_nested_sequence_block_layout() {
         }),
     ]);
     let yaml = to_string_value(&v).unwrap();
-    assert!(yaml.contains("k"), "{yaml}");
+    assert!(yaml.contains('k'), "{yaml}");
     assert!(yaml.contains('1'), "{yaml}");
 }
 

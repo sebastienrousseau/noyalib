@@ -254,7 +254,7 @@ pub struct ParserConfig {
 
 impl Default for ParserConfig {
     fn default() -> Self {
-        ParserConfig {
+        Self {
             yaml_version: YamlVersion::V1_2,
             max_depth: 128,
             max_document_length: 1024 * 1024 * 64, // 64 MB
@@ -319,7 +319,7 @@ impl ParserConfig {
     /// ```
     #[must_use]
     pub fn strict() -> Self {
-        ParserConfig {
+        Self {
             yaml_version: YamlVersion::V1_2,
             max_depth: 64,
             max_document_length: 1024 * 1024, // 1 MB

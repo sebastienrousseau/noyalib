@@ -387,7 +387,7 @@ impl SimdScanner {
                 count += 1;
             }
         }
-        SimdScanner {
+        Self {
             bitmap,
             needles: compact,
             needle_count: count,
@@ -778,7 +778,7 @@ pub fn parse_decimal_u64(bytes: &[u8]) -> Option<u64> {
         if !b.is_ascii_digit() {
             return None;
         }
-        result = result.checked_mul(10)?.checked_add((b - b'0') as u64)?;
+        result = result.checked_mul(10)?.checked_add(u64::from(b - b'0'))?;
         i += 1;
     }
     Some(result)
@@ -1019,8 +1019,7 @@ mod tests {
                     assert_eq!(
                         find_any_of(&buf, needles),
                         scalar(&buf, needles),
-                        "mismatch needles={:?} length={length} pos={pos}",
-                        needles,
+                        "mismatch needles={needles:?} length={length} pos={pos}",
                     );
                     buf[pos] = saved;
                 }
@@ -1323,8 +1322,8 @@ mod tests {
             -10,
             100,
             -100,
-            i32::MIN as i64,
-            i32::MAX as i64,
+            i64::from(i32::MIN),
+            i64::from(i32::MAX),
             i64::MIN,
             i64::MAX,
             i64::MAX - 1,

@@ -264,7 +264,7 @@ fn test_mapping_any_retain() {
     let _ = map.insert(Value::from(3), Value::from("three"));
 
     // Keep only values that end with "e"
-    map.retain(|_, v| v.as_str().map(|s| s.ends_with('e')).unwrap_or(false));
+    map.retain(|_, v| v.as_str().is_some_and(|s| s.ends_with('e')));
 
     assert_eq!(map.len(), 2);
     assert!(map.contains_key(&Value::from(1))); // "one"

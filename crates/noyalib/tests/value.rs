@@ -115,11 +115,11 @@ fn test_value_index_mapping() {
 
 #[test]
 fn test_value_index_nested() {
-    let yaml = r#"
+    let yaml = r"
 outer:
   inner:
     value: 42
-"#;
+";
     let value: Value = from_str(yaml).unwrap();
 
     let outer = value.get("outer").unwrap();
@@ -309,7 +309,7 @@ fn test_value_deserialize_mapping() {
 
 #[test]
 fn test_value_roundtrip() {
-    let yaml = r#"
+    let yaml = r"
 name: test
 version: 1
 enabled: true
@@ -320,7 +320,7 @@ tags:
 config:
   key1: value1
   key2: value2
-"#;
+";
 
     let value: Value = from_str(yaml).unwrap();
     let output = to_string(&value).unwrap();
@@ -573,13 +573,13 @@ fn test_value_bracket_index_mapping() {
 
 #[test]
 fn test_value_bracket_index_nested() {
-    let yaml = r#"
+    let yaml = r"
 users:
   - name: alice
     age: 30
   - name: bob
     age: 25
-"#;
+";
     let value: Value = from_str(yaml).unwrap();
 
     // Nested bracket indexing (Index trait)
@@ -708,7 +708,7 @@ fn test_number_ord() {
     // Integer ordering
     assert!(Number::Integer(1) < Number::Integer(2));
     assert!(Number::Integer(2) > Number::Integer(1));
-    assert!(Number::Integer(1) == Number::Integer(1));
+    assert_eq!(Number::Integer(1), Number::Integer(1));
 
     // Float ordering
     assert!(Number::Float(1.0) < Number::Float(2.0));
@@ -736,8 +736,8 @@ fn test_value_ord() {
     // Type ordering: Null < Bool < Number < String < Sequence < Mapping < Tagged
     assert!(Value::Null < Value::Bool(false));
     assert!(Value::Bool(true) < Value::Number(Number::Integer(0)));
-    assert!(Value::Number(Number::Integer(0)) < Value::String("".to_string()));
-    assert!(Value::String("".to_string()) < Value::Sequence(vec![]));
+    assert!(Value::Number(Number::Integer(0)) < Value::String(String::new()));
+    assert!(Value::String(String::new()) < Value::Sequence(vec![]));
     assert!(Value::Sequence(vec![]) < Value::Mapping(Mapping::new()));
 
     // Same type ordering
@@ -882,7 +882,7 @@ fn test_tag_creation() {
     assert_eq!(tag3.as_str(), "!third");
 
     assert_eq!(tag.as_ref(), "!custom");
-    assert_eq!(format!("{}", tag), "!custom");
+    assert_eq!(format!("{tag}"), "!custom");
 
     let owned = tag.into_string();
     assert_eq!(owned, "!custom");
@@ -903,7 +903,7 @@ fn test_tagged_value() {
     assert_eq!(tagged.value().as_str(), Some("2024-12-31"));
 
     // Display
-    let display = format!("{}", tagged);
+    let display = format!("{tagged}");
     assert!(display.contains("!timestamp"));
 
     // Into parts
@@ -922,7 +922,7 @@ fn test_parse_number_error() {
     use std::str::FromStr as _;
 
     let err = Number::from_str("invalid").unwrap_err();
-    assert_eq!(format!("{}", err), "invalid number");
+    assert_eq!(format!("{err}"), "invalid number");
 
     // Test that it implements Error trait
     let _: &dyn Error = &err;
@@ -951,18 +951,18 @@ fn test_value_display() {
     assert_eq!(format!("{}", Value::String("hello".to_string())), "hello");
 
     let seq = Value::Sequence(vec![Value::from(1), Value::from(2)]);
-    assert_eq!(format!("{}", seq), "[1, 2]");
+    assert_eq!(format!("{seq}"), "[1, 2]");
 
     let mut map = Mapping::new();
     let _ = map.insert("a".to_string(), Value::from(1));
     let map_val = Value::Mapping(map);
-    assert_eq!(format!("{}", map_val), "{a: 1}");
+    assert_eq!(format!("{map_val}"), "{a: 1}");
 
     let tagged = Value::Tagged(Box::new(TaggedValue::new(
         Tag::new("!test"),
         Value::from(42),
     )));
-    let display = format!("{}", tagged);
+    let display = format!("{tagged}");
     assert!(display.contains("!test"));
 }
 
@@ -1291,7 +1291,7 @@ fn test_value_display_mapping_multiple() {
     let _ = map.insert("a".to_string(), Value::from(1));
     let _ = map.insert("b".to_string(), Value::from(2));
     let value = Value::Mapping(map);
-    let display = format!("{}", value);
+    let display = format!("{value}");
     assert!(display.contains("a: 1"));
     assert!(display.contains("b: 2"));
     assert!(display.contains(", "));
@@ -1300,10 +1300,10 @@ fn test_value_display_mapping_multiple() {
 #[test]
 fn test_value_display_sequence_multiple() {
     let seq = Value::Sequence(vec![Value::from(1), Value::from(2), Value::from(3)]);
-    let display = format!("{}", seq);
-    assert!(display.contains("1"));
-    assert!(display.contains("2"));
-    assert!(display.contains("3"));
+    let display = format!("{seq}");
+    assert!(display.contains('1'));
+    assert!(display.contains('2'));
+    assert!(display.contains('3'));
     assert!(display.contains(", "));
 }
 
@@ -1658,7 +1658,7 @@ fn test_mapping_iter_mut() {
     let _ = map.insert("a", Value::from(1));
     let _ = map.insert("b", Value::from(2));
 
-    for (_, v) in map.iter_mut() {
+    for (_, v) in &mut map {
         if let Some(n) = v.as_i64() {
             *v = Value::from(n * 10);
         }
@@ -1801,7 +1801,7 @@ fn test_mapping_display() {
     let _ = map.insert("a", Value::from(1));
     let _ = map.insert("b", Value::from(2));
 
-    let s = format!("{}", map);
+    let s = format!("{map}");
     assert!(s.contains("a: 1"));
     assert!(s.contains("b: 2"));
 }
@@ -2020,7 +2020,7 @@ fn test_mapping_partial_ord() {
     let mut map2 = Mapping::new();
     let _ = map2.insert("a", Value::from(2));
 
-    assert!(map1.partial_cmp(&map2) == Some(std::cmp::Ordering::Less));
+    assert_eq!(map1.partial_cmp(&map2), Some(std::cmp::Ordering::Less));
 }
 
 #[test]
@@ -2071,11 +2071,11 @@ fn test_mapping_deserialize_from_yaml() {
 fn test_mapping_deserialize_nested() {
     use noyalib::from_str;
 
-    let yaml = r#"
+    let yaml = r"
 outer:
   inner: value
   number: 42
-"#;
+";
     let map: Mapping = from_str(yaml).unwrap();
 
     assert!(map.contains_key("outer"));
@@ -2091,7 +2091,7 @@ outer:
 fn test_apply_merge_basic() {
     use noyalib::from_str;
 
-    let yaml = r#"
+    let yaml = r"
 defaults: &defaults
   timeout: 30
   retries: 3
@@ -2099,7 +2099,7 @@ defaults: &defaults
 server:
   <<: *defaults
   host: localhost
-"#;
+";
 
     let mut value: Value = from_str(yaml).unwrap();
     value.apply_merge().unwrap();
@@ -2117,7 +2117,7 @@ server:
 fn test_apply_merge_no_override() {
     use noyalib::from_str;
 
-    let yaml = r#"
+    let yaml = r"
 defaults: &defaults
   timeout: 30
   retries: 3
@@ -2126,7 +2126,7 @@ server:
   <<: *defaults
   host: localhost
   timeout: 60
-"#;
+";
 
     let mut value: Value = from_str(yaml).unwrap();
     value.apply_merge().unwrap();
@@ -2141,7 +2141,7 @@ server:
 fn test_apply_merge_multiple_sources() {
     use noyalib::from_str;
 
-    let yaml = r#"
+    let yaml = r"
 a: &a
   x: 1
   common: from_a
@@ -2153,7 +2153,7 @@ b: &b
 merged:
   <<: [*a, *b]
   z: 3
-"#;
+";
 
     let mut value: Value = from_str(yaml).unwrap();
     value.apply_merge().unwrap();
@@ -2172,7 +2172,7 @@ merged:
 fn test_apply_merge_nested() {
     use noyalib::from_str;
 
-    let yaml = r#"
+    let yaml = r"
 base: &base
   nested:
     a: 1
@@ -2180,7 +2180,7 @@ base: &base
 level1:
   <<: *base
   extra: value
-"#;
+";
 
     let mut value: Value = from_str(yaml).unwrap();
     value.apply_merge().unwrap();
@@ -2193,7 +2193,7 @@ level1:
 fn test_apply_merge_recursive() {
     use noyalib::from_str;
 
-    let yaml = r#"
+    let yaml = r"
 base1: &base1
   a: 1
 
@@ -2204,7 +2204,7 @@ base2: &base2
 final:
   <<: *base2
   c: 3
-"#;
+";
 
     let mut value: Value = from_str(yaml).unwrap();
     value.apply_merge().unwrap();
@@ -2219,7 +2219,7 @@ final:
 fn test_apply_merge_in_sequence() {
     use noyalib::from_str;
 
-    let yaml = r#"
+    let yaml = r"
 defaults: &defaults
   timeout: 30
 
@@ -2229,7 +2229,7 @@ servers:
   - <<: *defaults
     name: server2
     timeout: 60
-"#;
+";
 
     let mut value: Value = from_str(yaml).unwrap();
     value.apply_merge().unwrap();
@@ -2280,11 +2280,11 @@ fn test_apply_merge_error_sequence_in_merge_element() {
 fn test_apply_merge_no_merge_key() {
     use noyalib::from_str;
 
-    let yaml = r#"
+    let yaml = r"
 simple:
   a: 1
   b: 2
-"#;
+";
 
     let mut value: Value = from_str(yaml).unwrap();
     let original = value.clone();
@@ -2298,13 +2298,13 @@ simple:
 fn test_apply_merge_empty_merge_source() {
     use noyalib::from_str;
 
-    let yaml = r#"
+    let yaml = r"
 empty: &empty {}
 
 test:
   <<: *empty
   value: 1
-"#;
+";
 
     let mut value: Value = from_str(yaml).unwrap();
     value.apply_merge().unwrap();
@@ -2317,14 +2317,14 @@ test:
 fn test_apply_merge_idempotent() {
     use noyalib::from_str;
 
-    let yaml = r#"
+    let yaml = r"
 defaults: &defaults
   timeout: 30
 
 server:
   <<: *defaults
   host: localhost
-"#;
+";
 
     let mut value: Value = from_str(yaml).unwrap();
     value.apply_merge().unwrap();

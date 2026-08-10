@@ -92,14 +92,14 @@ fn run_robotics_examples() {
 
     // ── Sensor calibration use case ──────────────────────────────────
     support::task_with_output("Sensor calibration: joint angles from YAML", || {
-        let yaml = r#"
+        let yaml = r"
 joint1: 90.0
 joint2: -45.0
 joint3: 180.0
 joint4: 0.0
 joint5: 270.0
 joint6: 135.0
-"#;
+";
         #[derive(Debug, serde::Deserialize)]
         struct RobotArm {
             joint1: Radians,
@@ -139,11 +139,11 @@ joint6: 135.0
 
     // ── StrictFloat in a struct ──────────────────────────────────────
     support::task_with_output("StrictFloat in a calibration struct", || {
-        let yaml = r#"
+        let yaml = r"
 offset_x: 0.001
 offset_y: -0.002
 scale: 1.00015
-"#;
+";
         #[derive(Debug, serde::Deserialize)]
         struct Calibration {
             offset_x: StrictFloat,

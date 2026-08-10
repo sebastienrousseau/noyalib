@@ -95,13 +95,13 @@ mod anchor_replay {
 
     #[test]
     fn nested_anchor_in_mapping_value() {
-        let yaml = r#"
+        let yaml = r"
 config:
   db: &db_cfg
     host: db.local
     port: 5432
 replica: *db_cfg
-"#;
+";
         #[derive(Debug, serde::Deserialize, PartialEq)]
         struct DbCfg {
             host: String,
@@ -145,13 +145,13 @@ replica: *db_cfg
 
     #[test]
     fn anchor_typed_struct() {
-        let yaml = r#"
+        let yaml = r"
 primary: &srv
   name: web-01
   cpu: 4
   memory: 16
 failover: *srv
-"#;
+";
         #[derive(Debug, serde::Deserialize, PartialEq)]
         struct Server {
             name: String,
@@ -230,14 +230,14 @@ failover: *srv
 
     #[test]
     fn deep_nesting_with_anchors() {
-        let yaml = r#"
+        let yaml = r"
 l1:
   l2:
     l3: &deep
       l4:
         value: found
 shallow: *deep
-"#;
+";
         #[derive(Debug, serde::Deserialize, PartialEq)]
         struct L4 {
             value: String,
@@ -308,14 +308,14 @@ shallow: *deep
 
     #[test]
     fn anchor_alias_merge_key_fallback() {
-        let yaml = r#"
+        let yaml = r"
 base: &base
   timeout: 30
   retries: 3
 server:
   <<: *base
   host: example.com
-"#;
+";
         let v: noyalib::Value = noyalib::from_str(yaml).unwrap();
         let server = v.get("server").unwrap();
         assert_eq!(server.get("timeout").unwrap(), &noyalib::Value::from(30));
@@ -617,11 +617,11 @@ mod robotics_tests {
 
     #[test]
     fn struct_with_radians_fields() {
-        let yaml = r#"
+        let yaml = r"
 joint1: 90.0
 joint2: -45.0
 joint3: 180.0
-"#;
+";
         #[derive(Debug, serde::Deserialize)]
         struct Arm {
             joint1: Radians,

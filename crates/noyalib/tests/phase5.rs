@@ -24,20 +24,20 @@ fn test_merge_simple_mappings() {
 #[test]
 fn test_merge_nested_mappings() {
     let mut base: Value = from_str(
-        r#"
+        r"
 server:
   host: localhost
   port: 8080
-"#,
+",
     )
     .unwrap();
 
     let other: Value = from_str(
-        r#"
+        r"
 server:
   port: 9090
   ssl: true
-"#,
+",
     )
     .unwrap();
 
@@ -103,24 +103,24 @@ fn test_merge_null_replaces() {
 #[test]
 fn test_merge_deep_nesting() {
     let mut base: Value = from_str(
-        r#"
+        r"
 level1:
   level2:
     level3:
       a: 1
       b: 2
-"#,
+",
     )
     .unwrap();
 
     let other: Value = from_str(
-        r#"
+        r"
 level1:
   level2:
     level3:
       b: 3
       c: 4
-"#,
+",
     )
     .unwrap();
 
@@ -246,7 +246,7 @@ fn test_error_format_with_source() {
     assert!(formatted.contains("error:"));
     assert!(formatted.contains("line 2"));
     assert!(formatted.contains("port: invalid"));
-    assert!(formatted.contains("^"));
+    assert!(formatted.contains('^'));
 }
 
 #[test]
@@ -257,7 +257,7 @@ fn test_error_format_without_location() {
 
     // Should just return the error message without source context
     assert!(formatted.contains("generic error"));
-    assert!(!formatted.contains("^"));
+    assert!(!formatted.contains('^'));
 }
 
 #[test]
@@ -363,50 +363,50 @@ fn test_location_from_index_at_newline() {
 #[test]
 fn test_error_display() {
     let err = Error::Parse("test error".to_string());
-    let display = format!("{}", err);
+    let display = format!("{err}");
     assert!(display.contains("test error"));
 
     let err = Error::Serialize("serialize error".to_string());
-    let display = format!("{}", err);
+    let display = format!("{err}");
     assert!(display.contains("serialize error"));
 
     let err = Error::Deserialize("deserialize error".to_string());
-    let display = format!("{}", err);
+    let display = format!("{err}");
     assert!(display.contains("deserialize error"));
 
     let err = Error::Invalid("invalid error".to_string());
-    let display = format!("{}", err);
+    let display = format!("{err}");
     assert!(display.contains("invalid error"));
 
     let err = Error::TypeMismatch {
         expected: "string",
         found: "integer".to_string(),
     };
-    let display = format!("{}", err);
+    let display = format!("{err}");
     assert!(display.contains("string"));
     assert!(display.contains("integer"));
 
     let err = Error::MissingField("name".to_string());
-    let display = format!("{}", err);
+    let display = format!("{err}");
     assert!(display.contains("name"));
 
     let err = Error::UnknownField("extra".to_string());
-    let display = format!("{}", err);
+    let display = format!("{err}");
     assert!(display.contains("extra"));
 
     let err = Error::RecursionLimitExceeded { depth: 100 };
-    let display = format!("{}", err);
+    let display = format!("{err}");
     assert!(display.contains("100"));
 
     let err = Error::Custom("custom error".to_string());
-    let display = format!("{}", err);
+    let display = format!("{err}");
     assert!(display.contains("custom error"));
 }
 
 #[test]
 fn test_error_parse_at_multiline() {
     let err = Error::parse_at("error msg", "hello\nworld\nthird", 12);
-    let display = format!("{}", err);
+    let display = format!("{err}");
     assert!(display.contains("error msg"));
     assert!(display.contains("line 3"));
 }
@@ -414,7 +414,7 @@ fn test_error_parse_at_multiline() {
 #[test]
 fn test_error_deserialize_at_with_column() {
     let err = Error::deserialize_at("deser error", "hello world", 6);
-    let display = format!("{}", err);
+    let display = format!("{err}");
     assert!(display.contains("deser error"));
     assert!(display.contains("column 7"));
 }
@@ -425,18 +425,18 @@ fn test_error_format_with_source_multiline() {
     let err = Error::parse_at("test error", source, 12);
     let formatted = err.format_with_source(source);
     assert!(formatted.contains("test error"));
-    assert!(formatted.contains("^"));
+    assert!(formatted.contains('^'));
 }
 
 #[test]
 fn test_value_get_path_deep() {
-    let yaml = r#"
+    let yaml = r"
 level1:
   level2:
     level3:
       level4:
         value: deep
-"#;
+";
     let value: Value = from_str(yaml).unwrap();
     assert_eq!(
         value

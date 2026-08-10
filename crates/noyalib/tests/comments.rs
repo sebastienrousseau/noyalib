@@ -35,7 +35,7 @@ fn spans_point_at_hash() {
     let cs = load_comments(yaml).unwrap();
     assert_eq!(cs.len(), 1);
     // `#` is at byte 6.
-    assert_eq!(&yaml[cs[0].start..cs[0].start + 1], "#");
+    assert_eq!(&yaml[cs[0].start..=cs[0].start], "#");
     assert_eq!(cs[0].start, 6);
 }
 

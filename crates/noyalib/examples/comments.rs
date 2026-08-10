@@ -25,13 +25,13 @@ fn main() {
 
     // ── Comments are stripped during parsing ──────────────────────────
     support::task_with_output("Comments stripped during parsing (YAML spec)", || {
-        let yaml = r#"
+        let yaml = r"
 # Database configuration
 host: localhost  # primary host
 port: 5432       # default postgres port
 # Connection pool
 pool_size: 10    # max connections
-"#;
+";
         let v: Value = from_str(yaml).unwrap();
         let output = to_string(&v).unwrap();
         vec![

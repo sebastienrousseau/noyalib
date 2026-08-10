@@ -1044,7 +1044,7 @@ fn error_format_with_source_with_location() {
     let formatted = err.format_with_source("key: value");
     assert!(formatted.contains("unexpected token"));
     assert!(formatted.contains("line 1:5"));
-    assert!(formatted.contains("^"));
+    assert!(formatted.contains('^'));
 }
 
 #[test]
@@ -1284,7 +1284,7 @@ fn spanned_serialization() {
     let spanned = Spanned::new(42_i32);
     let yaml = to_string(&spanned).unwrap();
     // Spanned serializes transparently as the inner value
-    assert!(yaml.trim() == "42");
+    assert_eq!(yaml.trim(), "42");
 }
 
 #[test]
@@ -2527,8 +2527,7 @@ fn error_all_variants_display() {
         let msg = err.to_string();
         assert!(
             !msg.is_empty(),
-            "Error {:?} should have non-empty display",
-            err
+            "Error {err:?} should have non-empty display"
         );
     }
 }
@@ -2941,11 +2940,11 @@ fn ser_string_with_special_chars() {
 fn ser_bool_values() {
     let t = Value::Bool(true);
     let yaml = to_string(&t).unwrap();
-    assert!(yaml.trim() == "true");
+    assert_eq!(yaml.trim(), "true");
 
     let f = Value::Bool(false);
     let yaml = to_string(&f).unwrap();
-    assert!(yaml.trim() == "false");
+    assert_eq!(yaml.trim(), "false");
 }
 
 // ============================================================================

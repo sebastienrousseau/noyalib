@@ -47,8 +47,7 @@ fn equivalence_arity_0_through_16() {
             assert_eq!(
                 find_any_of(&buf, &needles),
                 scalar_find(&buf, &needles),
-                "arity={arity} length={length} needles={:?}",
-                needles,
+                "arity={arity} length={length} needles={needles:?}",
             );
 
             if length == 0 || arity == 0 {
@@ -63,8 +62,7 @@ fn equivalence_arity_0_through_16() {
                     assert_eq!(
                         find_any_of(&buf, &needles),
                         scalar_find(&buf, &needles),
-                        "arity={arity} length={length} pos={pos} needle={:#x}",
-                        n,
+                        "arity={arity} length={length} pos={pos} needle={n:#x}",
                     );
                 }
                 buf[pos] = saved;
