@@ -171,7 +171,7 @@ fn duplicate_policy_last_keeps_last_value() {
 fn duplicate_policy_error_rejects_duplicates() {
     let config = ParserConfig::new().duplicate_key_policy(DuplicateKeyPolicy::Error);
     let err = from_str_with_config::<BTreeMap<String, i32>>("a: 1\na: 2\n", &config).unwrap_err();
-    assert!(err.to_string().contains("duplicate") || err.to_string().contains("a"));
+    assert!(err.to_string().contains("duplicate") || err.to_string().contains('a'));
 }
 
 // ── Merge-key edge cases (streaming) ─────────────────────────────────────
@@ -179,7 +179,7 @@ fn duplicate_policy_error_rejects_duplicates() {
 #[test]
 fn merge_key_multi_anchor_sequence_precedence() {
     // Left source wins in a sequence merge: `<<: [*first, *second]`.
-    let yaml = r#"
+    let yaml = r"
 first: &f
   a: 1
   b: 2
@@ -188,7 +188,7 @@ second: &s
   c: 30
 target:
   <<: [*f, *s]
-"#;
+";
     #[derive(serde::Deserialize)]
     struct Doc {
         target: BTreeMap<String, i64>,

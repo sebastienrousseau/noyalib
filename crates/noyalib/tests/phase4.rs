@@ -307,11 +307,11 @@ fn test_deep_nesting_with_custom_indent() {
 
 #[test]
 fn test_get_path_simple() {
-    let yaml = r#"
+    let yaml = r"
 server:
   host: localhost
   port: 8080
-"#;
+";
     let value: Value = from_str(yaml).unwrap();
 
     assert_eq!(
@@ -323,12 +323,12 @@ server:
 
 #[test]
 fn test_get_path_array_index() {
-    let yaml = r#"
+    let yaml = r"
 items:
   - first
   - second
   - third
-"#;
+";
     let value: Value = from_str(yaml).unwrap();
 
     assert_eq!(value.get_path("items[0]").unwrap().as_str(), Some("first"));
@@ -338,13 +338,13 @@ items:
 
 #[test]
 fn test_get_path_nested_array() {
-    let yaml = r#"
+    let yaml = r"
 items:
   - name: first
     value: 1
   - name: second
     value: 2
-"#;
+";
     let value: Value = from_str(yaml).unwrap();
 
     assert_eq!(
@@ -361,12 +361,12 @@ items:
 
 #[test]
 fn test_get_path_deep_nesting() {
-    let yaml = r#"
+    let yaml = r"
 level1:
   level2:
     level3:
       value: deep
-"#;
+";
     let value: Value = from_str(yaml).unwrap();
 
     assert_eq!(
@@ -389,10 +389,10 @@ fn test_get_path_not_found() {
 
 #[test]
 fn test_get_path_invalid_index() {
-    let yaml = r#"
+    let yaml = r"
 items:
   - first
-"#;
+";
     let value: Value = from_str(yaml).unwrap();
 
     assert!(value.get_path("items[99]").is_none());
@@ -400,10 +400,10 @@ items:
 
 #[test]
 fn test_get_path_mut() {
-    let yaml = r#"
+    let yaml = r"
 server:
   port: 8080
-"#;
+";
     let mut value: Value = from_str(yaml).unwrap();
 
     if let Some(port) = value.get_path_mut("server.port") {
@@ -415,10 +415,10 @@ server:
 
 #[test]
 fn test_get_path_array_mut() {
-    let yaml = r#"
+    let yaml = r"
 items:
   - old
-"#;
+";
     let mut value: Value = from_str(yaml).unwrap();
 
     if let Some(item) = value.get_path_mut("items[0]") {

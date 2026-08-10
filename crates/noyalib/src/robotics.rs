@@ -85,7 +85,7 @@ impl<'de> serde_core::Deserialize<'de> for StrictFloat {
         D: serde_core::Deserializer<'de>,
     {
         let v = f64::deserialize(deserializer)?;
-        StrictFloat::try_from(v).map_err(serde_core::de::Error::custom)
+        Self::try_from(v).map_err(serde_core::de::Error::custom)
     }
 }
 
@@ -127,7 +127,7 @@ impl<'de> serde_core::Deserialize<'de> for Radians {
         D: serde_core::Deserializer<'de>,
     {
         let degrees = f64::deserialize(deserializer)?;
-        Ok(Radians(degrees.to_radians()))
+        Ok(Self(degrees.to_radians()))
     }
 }
 

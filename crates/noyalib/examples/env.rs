@@ -44,7 +44,7 @@ fn expand_env(value: &mut Value, env: &HashMap<&str, &str>) {
 fn main() {
     support::header("noyalib -- env");
 
-    let yaml = r#"
+    let yaml = r"
 database:
   host: ${DB_HOST}
   port: ${DB_PORT}
@@ -54,7 +54,7 @@ app:
   name: ${APP_NAME}
   env: ${ENVIRONMENT}
   debug: ${DEBUG}
-"#;
+";
 
     let env = HashMap::from([
         ("DB_HOST", "localhost"),

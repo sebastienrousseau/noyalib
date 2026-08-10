@@ -57,7 +57,7 @@ pub struct ParseConfig {
 
 impl Default for ParseConfig {
     fn default() -> Self {
-        ParseConfig {
+        Self {
             max_depth: 128,
             max_document_length: 1024 * 1024 * 64, // 64 MB
             max_alias_expansions: 1024,
@@ -100,7 +100,7 @@ impl ParseConfig {
 
 impl From<&crate::de::ParserConfig> for ParseConfig {
     fn from(c: &crate::de::ParserConfig) -> Self {
-        ParseConfig {
+        Self {
             max_depth: c.max_depth,
             max_document_length: c.max_document_length,
             max_alias_expansions: c.max_alias_expansions,

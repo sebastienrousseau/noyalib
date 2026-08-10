@@ -67,7 +67,7 @@ pub fn validate_yaml_failsafe_schema(value: &Value) -> Result<()> {
 }
 
 fn validate_failsafe_recursive(value: &Value, path: &mut String) -> Result<()> {
-    use core::fmt::Write;
+    use core::fmt::Write as _;
     match value {
         Value::String(_) => Ok(()),
         Value::Sequence(seq) => {
@@ -81,7 +81,7 @@ fn validate_failsafe_recursive(value: &Value, path: &mut String) -> Result<()> {
         }
         Value::Mapping(map) => {
             let base_len = path.len();
-            for (key, val) in map.iter() {
+            for (key, val) in map {
                 let _ = write!(path, ".{key}");
                 validate_failsafe_recursive(val, path)?;
                 path.truncate(base_len);
@@ -142,7 +142,7 @@ pub fn validate_yaml_json_schema(value: &Value) -> Result<()> {
 }
 
 fn validate_json_recursive(value: &Value, path: &mut String) -> Result<()> {
-    use core::fmt::Write;
+    use core::fmt::Write as _;
     match value {
         Value::Null | Value::Bool(_) | Value::String(_) => Ok(()),
         Value::Number(n) => {
@@ -167,7 +167,7 @@ fn validate_json_recursive(value: &Value, path: &mut String) -> Result<()> {
         }
         Value::Mapping(map) => {
             let base_len = path.len();
-            for (key, val) in map.iter() {
+            for (key, val) in map {
                 let _ = write!(path, ".{key}");
                 validate_json_recursive(val, path)?;
                 path.truncate(base_len);
@@ -208,7 +208,7 @@ pub fn validate_yaml_core_schema(value: &Value) -> Result<()> {
 }
 
 fn validate_core_recursive(value: &Value, path: &mut String) -> Result<()> {
-    use core::fmt::Write;
+    use core::fmt::Write as _;
     match value {
         Value::Null | Value::Bool(_) | Value::String(_) | Value::Number(_) => Ok(()),
         Value::Sequence(seq) => {
@@ -222,7 +222,7 @@ fn validate_core_recursive(value: &Value, path: &mut String) -> Result<()> {
         }
         Value::Mapping(map) => {
             let base_len = path.len();
-            for (key, val) in map.iter() {
+            for (key, val) in map {
                 let _ = write!(path, ".{key}");
                 validate_core_recursive(val, path)?;
                 path.truncate(base_len);

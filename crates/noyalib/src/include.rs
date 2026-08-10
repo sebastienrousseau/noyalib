@@ -238,7 +238,7 @@ impl SafeFileResolver {
     /// suitable for [`crate::ParserConfig::include_resolver`].
     #[must_use]
     pub fn into_resolver(self) -> IncludeResolver {
-        let this = self.clone();
+        let this = self;
         IncludeResolver::new(move |req: IncludeRequest<'_>| this.resolve(req))
     }
 

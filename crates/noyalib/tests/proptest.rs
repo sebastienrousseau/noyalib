@@ -195,7 +195,7 @@ proptest! {
     #[test]
     fn number_hash_consistent_integers(a in any::<i64>(), b in any::<i64>()) {
         use std::collections::hash_map::DefaultHasher;
-        use std::hash::{Hash, Hasher};
+        use std::hash::{Hash as _, Hasher as _};
 
         let na = Number::Integer(a);
         let nb = Number::Integer(b);
@@ -213,7 +213,7 @@ proptest! {
     #[test]
     fn number_hash_identical_floats(f in any::<f64>().prop_filter("finite", |f| f.is_finite())) {
         use std::collections::hash_map::DefaultHasher;
-        use std::hash::{Hash, Hasher};
+        use std::hash::{Hash as _, Hasher as _};
 
         let n1 = Number::Float(f);
         let n2 = Number::Float(f);
@@ -250,7 +250,7 @@ proptest! {
     #[test]
     fn value_hash_consistent(a in arb_value(), b in arb_value()) {
         use std::collections::hash_map::DefaultHasher;
-        use std::hash::{Hash, Hasher};
+        use std::hash::{Hash as _, Hasher as _};
 
         if a == b {
             let mut ha = DefaultHasher::new();
@@ -283,7 +283,7 @@ proptest! {
 
 fn hash_one<T: std::hash::Hash>(t: &T) -> u64 {
     use std::collections::hash_map::DefaultHasher;
-    use std::hash::Hasher;
+    use std::hash::Hasher as _;
     let mut h = DefaultHasher::new();
     t.hash(&mut h);
     h.finish()
@@ -391,7 +391,7 @@ proptest! {
         let mut base = Value::Mapping(Mapping::new());
 
         let mut other = Mapping::new();
-        for (k, v) in pairs.iter() {
+        for (k, v) in &pairs {
             let _ = other.insert(k.clone(), v.clone());
         }
 
@@ -399,7 +399,7 @@ proptest! {
         base.merge(Value::Mapping(other));
 
         // Base should now contain all keys from other with their final values
-        for (k, v) in other_clone.iter() {
+        for (k, v) in &other_clone {
             prop_assert_eq!(base.get(k.as_str()), Some(v));
         }
     }

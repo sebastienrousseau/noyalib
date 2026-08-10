@@ -137,13 +137,13 @@ fn parser_config_strict_rejects_deep() {
 #[test]
 fn parser_config_alias_expansion_limit() {
     let config = ParserConfig::new().max_alias_expansions(2);
-    let yaml = r#"
+    let yaml = r"
 anchor: &a
   x: 1
 ref1: *a
 ref2: *a
 ref3: *a
-"#;
+";
     let result: Result<Value, _> = from_str_with_config(yaml, &config);
     assert!(result.is_err());
 }
@@ -303,7 +303,7 @@ fn flow_seq_serialize_roundtrip() {
         tags: FlowSeq(vec!["a".into(), "b".into(), "c".into()]),
     };
     let yaml = to_string(&doc).unwrap();
-    assert!(yaml.contains("["));
+    assert!(yaml.contains('['));
     // Round-trip: deserialize back
     let parsed: Doc = from_str(&yaml).unwrap();
     assert_eq!(parsed.tags.0, vec!["a", "b", "c"]);
@@ -349,7 +349,7 @@ fn flow_map_serialize_roundtrip() {
         meta: FlowMap(map.clone()),
     };
     let yaml = to_string(&doc).unwrap();
-    assert!(yaml.contains("{"));
+    assert!(yaml.contains('{'));
     let parsed: Doc = from_str(&yaml).unwrap();
     assert_eq!(parsed.meta.0, map);
 }
@@ -377,7 +377,7 @@ fn lit_string_serialize() {
         script: LitString("line1\nline2\nline3\n".into()),
     };
     let yaml = to_string(&doc).unwrap();
-    assert!(yaml.contains("|") || yaml.contains("line1"));
+    assert!(yaml.contains('|') || yaml.contains("line1"));
 }
 
 #[test]
@@ -405,7 +405,7 @@ fn lit_str_serialize() {
     use noyalib::fmt::LitStr;
     let ls = LitStr("multi\nline\n");
     let yaml = to_string(&ls).unwrap();
-    assert!(yaml.contains("|") || yaml.contains("multi"));
+    assert!(yaml.contains('|') || yaml.contains("multi"));
 }
 
 #[test]
@@ -445,7 +445,7 @@ fn fold_str_serialize() {
     use noyalib::fmt::FoldStr;
     let fs = FoldStr("folded\ncontent\n");
     let yaml = to_string(&fs).unwrap();
-    assert!(yaml.contains(">") || yaml.contains("folded"));
+    assert!(yaml.contains('>') || yaml.contains("folded"));
 }
 
 #[test]
@@ -804,7 +804,7 @@ fn error_format_with_source_with_location() {
     let formatted = e.format_with_source(source);
     assert!(formatted.contains("error:"));
     assert!(formatted.contains("line 2"));
-    assert!(formatted.contains("^"));
+    assert!(formatted.contains('^'));
 }
 
 #[test]
@@ -1319,7 +1319,7 @@ fn path_index() {
     assert_eq!(p.depth(), 2);
     let display = format!("{p}");
     assert!(display.contains("items"));
-    assert!(display.contains("3"));
+    assert!(display.contains('3'));
 }
 
 #[test]
@@ -1383,7 +1383,7 @@ fn serializer_config_auto_below_threshold() {
     let v = vec![1, 2];
     let yaml = to_string_with_config(&v, &config).unwrap();
     // Small collection — auto should choose flow
-    assert!(yaml.contains("[") || yaml.contains("- "));
+    assert!(yaml.contains('[') || yaml.contains("- "));
 }
 
 #[test]

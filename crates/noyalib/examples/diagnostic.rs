@@ -30,13 +30,13 @@ fn main() {
 
         #[cfg(feature = "miette")]
         {
-            use miette::Diagnostic;
+            use miette::Diagnostic as _;
             lines.push(format!("code:     {:?}", err.code().map(|c| c.to_string())));
             lines.push(format!("help:     {:?}", err.help().map(|h| h.to_string())));
             lines.push(format!(
                 "labels:   {:?}",
                 err.labels()
-                    .map(|l| l.map(|s| format!("{:?}", s)).collect::<Vec<_>>())
+                    .map(|l| l.map(|s| format!("{s:?}")).collect::<Vec<_>>())
             ));
         }
 
@@ -58,7 +58,7 @@ fn main() {
 
         #[cfg(feature = "miette")]
         {
-            use miette::Diagnostic;
+            use miette::Diagnostic as _;
             lines.push(format!("code:  {}", err.code().unwrap()));
             lines.push(format!("help:  {}", err.help().unwrap()));
         }
@@ -81,7 +81,7 @@ fn main() {
 
         #[cfg(feature = "miette")]
         {
-            use miette::Diagnostic;
+            use miette::Diagnostic as _;
             if let Some(code) = err.code() {
                 lines.push(format!("code:  {code}"));
             }

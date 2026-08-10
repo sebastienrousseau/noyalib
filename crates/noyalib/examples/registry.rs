@@ -44,7 +44,7 @@ fn main() {
         assert!(Rc::ptr_eq(&alias2, &alias3));
         vec![
             format!("Rc strong count = {}", Rc::strong_count(&original)),
-            format!("All 4 references point to the same heap allocation"),
+            "All 4 references point to the same heap allocation".to_string(),
         ]
     });
 
@@ -64,7 +64,7 @@ fn main() {
         vec![
             format!("main thread: {:?}", *arc),
             thread_result,
-            format!("Arc::ptr_eq confirmed across threads"),
+            "Arc::ptr_eq confirmed across threads".to_string(),
         ]
     });
 
@@ -74,7 +74,7 @@ fn main() {
         #[allow(dead_code)]
         struct Node {
             name: String,
-            children: Vec<Rc<Node>>,
+            children: Vec<Rc<Self>>,
         }
 
         let mut reg = AnchorRegistry::<Node>::new();
@@ -124,7 +124,7 @@ fn main() {
                 "leaf_a strong_count = {} (shared by parent + sibling)",
                 Rc::strong_count(&leaf_a)
             ),
-            format!("True DAG: no duplication of leaf nodes"),
+            "True DAG: no duplication of leaf nodes".to_string(),
         ]
     });
 
@@ -148,7 +148,7 @@ fn main() {
         assert!(reg.resolve("x").is_some());
 
         vec![
-            format!("Registered 3 entries, cleared, then added 1 new"),
+            "Registered 3 entries, cleared, then added 1 new".to_string(),
             format!("Final len = {}", reg.len()),
         ]
     });

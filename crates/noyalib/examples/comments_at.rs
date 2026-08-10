@@ -68,5 +68,5 @@ features:\n  \
     );
     println!();
     println!("── full document after edit ─────────────────────────────");
-    println!("{}", doc);
+    println!("{doc}");
 }

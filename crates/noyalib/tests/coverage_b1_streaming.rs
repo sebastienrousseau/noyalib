@@ -672,7 +672,7 @@ fn empty_input_as_option() {
     // some configs surface an "empty document" error instead, which is
     // also acceptable here.
     let v: Result<Option<i64>, _> = from_str("");
-    assert!(v.map(|o| o.is_none()).unwrap_or(true));
+    assert!(v.map_or(true, |o| o.is_none()));
 }
 
 // ── Security limits ──────────────────────────────────────────────────────

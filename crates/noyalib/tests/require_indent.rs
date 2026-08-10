@@ -60,7 +60,7 @@ fn debug_includes_variant_name() {
     assert_eq!(s, "Even");
     let s = format!("{:?}", RequireIndent::Divisible(2));
     assert!(s.contains("Divisible"));
-    assert!(s.contains("2"));
+    assert!(s.contains('2'));
 }
 
 #[test]

@@ -77,7 +77,7 @@ pub(crate) mod shared_tracking {
                     false
                 }
             });
-            AnchorScope { owns }
+            Self { owns }
         }
     }
 
@@ -177,6 +177,7 @@ impl<T> RcAnchor<T> {
     /// let inner = a.into_inner();
     /// assert_eq!(*inner, 7);
     /// ```
+    #[must_use]
     pub fn into_inner(self) -> Rc<T> {
         self.0
     }
@@ -189,7 +190,7 @@ impl<T: serde_core::Serialize> serde_core::Serialize for RcAnchor<T> {
     {
         #[cfg(feature = "std")]
         {
-            let ptr = Rc::as_ptr(&self.0) as *const () as usize;
+            let ptr = Rc::as_ptr(&self.0).cast::<()>() as usize;
             match shared_tracking::track(ptr) {
                 shared_tracking::TrackOutcome::NotActive => self.0.serialize(serializer),
                 shared_tracking::TrackOutcome::New(id) => {
@@ -215,7 +216,7 @@ impl<'de, T: serde_core::Deserialize<'de>> serde_core::Deserialize<'de> for RcAn
     where
         D: serde_core::Deserializer<'de>,
     {
-        T::deserialize(deserializer).map(|v| RcAnchor(Rc::new(v)))
+        T::deserialize(deserializer).map(|v| Self(Rc::new(v)))
     }
 }
 
@@ -270,6 +271,7 @@ impl<T> ArcAnchor<T> {
     /// let inner = a.into_inner();
     /// assert_eq!(*inner, 7);
     /// ```
+    #[must_use]
     pub fn into_inner(self) -> Arc<T> {
         self.0
     }
@@ -282,7 +284,7 @@ impl<T: serde_core::Serialize> serde_core::Serialize for ArcAnchor<T> {
     {
         #[cfg(feature = "std")]
         {
-            let ptr = Arc::as_ptr(&self.0) as *const () as usize;
+            let ptr = Arc::as_ptr(&self.0).cast::<()>() as usize;
             match shared_tracking::track(ptr) {
                 shared_tracking::TrackOutcome::NotActive => self.0.serialize(serializer),
                 shared_tracking::TrackOutcome::New(id) => {
@@ -308,7 +310,7 @@ impl<'de, T: serde_core::Deserialize<'de>> serde_core::Deserialize<'de> for ArcA
     where
         D: serde_core::Deserializer<'de>,
     {
-        T::deserialize(deserializer).map(|v| ArcAnchor(Arc::new(v)))
+        T::deserialize(deserializer).map(|v| Self(Arc::new(v)))
     }
 }
 
@@ -346,6 +348,7 @@ impl<T> RcWeakAnchor<T> {
     /// let w: RcWeakAnchor<String> = RcWeakAnchor::dangling();
     /// assert!(w.upgrade().is_none());
     /// ```
+    #[must_use]
     pub fn dangling() -> Self {
         Self(RcWeak::new())
     }
@@ -360,6 +363,7 @@ impl<T> RcWeakAnchor<T> {
     /// let inner = w.into_inner();
     /// assert!(inner.upgrade().is_none());
     /// ```
+    #[must_use]
     pub fn into_inner(self) -> RcWeak<T> {
         self.0
     }
@@ -373,6 +377,7 @@ impl<T> RcWeakAnchor<T> {
     /// let w: RcWeakAnchor<i32> = RcWeakAnchor::dangling();
     /// assert!(w.upgrade().is_none());
     /// ```
+    #[must_use]
     pub fn upgrade(&self) -> Option<Rc<T>> {
         self.0.upgrade()
     }
@@ -396,7 +401,7 @@ impl<T: serde_core::Serialize> serde_core::Serialize for RcWeakAnchor<T> {
                     // Weak refs never define a new anchor. If tracking is active
                     // and the target was already anchored by a strong reference,
                     // emit an alias; otherwise fall back to inline value.
-                    let ptr = Rc::as_ptr(&v) as *const () as usize;
+                    let ptr = Rc::as_ptr(&v).cast::<()>() as usize;
                     if let Some(id) = shared_tracking::peek(ptr) {
                         let id_str = shared_tracking::format_id(id);
                         return serializer
@@ -418,7 +423,7 @@ impl<'de, T> serde_core::Deserialize<'de> for RcWeakAnchor<T> {
         // Always deserialize as a dangling weak — there's no registry to look up.
         // We consume the value to avoid errors.
         let _ = serde_core::de::IgnoredAny::deserialize(deserializer)?;
-        Ok(RcWeakAnchor(RcWeak::new()))
+        Ok(Self(RcWeak::new()))
     }
 }
 
@@ -456,6 +461,7 @@ impl<T> ArcWeakAnchor<T> {
     /// let w: ArcWeakAnchor<String> = ArcWeakAnchor::dangling();
     /// assert!(w.upgrade().is_none());
     /// ```
+    #[must_use]
     pub fn dangling() -> Self {
         Self(ArcWeak::new())
     }
@@ -470,6 +476,7 @@ impl<T> ArcWeakAnchor<T> {
     /// let inner = w.into_inner();
     /// assert!(inner.upgrade().is_none());
     /// ```
+    #[must_use]
     pub fn into_inner(self) -> ArcWeak<T> {
         self.0
     }
@@ -483,6 +490,7 @@ impl<T> ArcWeakAnchor<T> {
     /// let w: ArcWeakAnchor<i32> = ArcWeakAnchor::dangling();
     /// assert!(w.upgrade().is_none());
     /// ```
+    #[must_use]
     pub fn upgrade(&self) -> Option<Arc<T>> {
         self.0.upgrade()
     }
@@ -503,7 +511,7 @@ impl<T: serde_core::Serialize> serde_core::Serialize for ArcWeakAnchor<T> {
             Some(v) => {
                 #[cfg(feature = "std")]
                 {
-                    let ptr = Arc::as_ptr(&v) as *const () as usize;
+                    let ptr = Arc::as_ptr(&v).cast::<()>() as usize;
                     if let Some(id) = shared_tracking::peek(ptr) {
                         let id_str = shared_tracking::format_id(id);
                         return serializer
@@ -523,7 +531,7 @@ impl<'de, T> serde_core::Deserialize<'de> for ArcWeakAnchor<T> {
         D: serde_core::Deserializer<'de>,
     {
         let _ = serde_core::de::IgnoredAny::deserialize(deserializer)?;
-        Ok(ArcWeakAnchor(ArcWeak::new()))
+        Ok(Self(ArcWeak::new()))
     }
 }
 
@@ -574,6 +582,7 @@ impl<T> AnchorRegistry<T> {
     /// let reg = AnchorRegistry::<String>::new();
     /// assert!(reg.is_empty());
     /// ```
+    #[must_use]
     pub fn new() -> Self {
         Self {
             anchors: FxHashMap::default(),
@@ -610,6 +619,7 @@ impl<T> AnchorRegistry<T> {
     /// assert_eq!(*reg.resolve("a").unwrap(), 1);
     /// assert!(reg.resolve("missing").is_none());
     /// ```
+    #[must_use]
     pub fn resolve(&self, name: &str) -> Option<Rc<T>> {
         self.anchors.get(name).cloned()
     }
@@ -624,6 +634,7 @@ impl<T> AnchorRegistry<T> {
     /// let _ = reg.register("a".into(), 1);
     /// assert_eq!(reg.len(), 1);
     /// ```
+    #[must_use]
     pub fn len(&self) -> usize {
         self.anchors.len()
     }
@@ -637,6 +648,7 @@ impl<T> AnchorRegistry<T> {
     /// let reg = AnchorRegistry::<i32>::new();
     /// assert!(reg.is_empty());
     /// ```
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.anchors.is_empty()
     }
@@ -701,6 +713,7 @@ impl<T> ArcAnchorRegistry<T> {
     /// let reg = ArcAnchorRegistry::<String>::new();
     /// assert!(reg.is_empty());
     /// ```
+    #[must_use]
     pub fn new() -> Self {
         Self {
             anchors: FxHashMap::default(),
@@ -735,6 +748,7 @@ impl<T> ArcAnchorRegistry<T> {
     /// let _ = reg.register("a".into(), 1);
     /// assert_eq!(*reg.resolve("a").unwrap(), 1);
     /// ```
+    #[must_use]
     pub fn resolve(&self, name: &str) -> Option<Arc<T>> {
         self.anchors.get(name).cloned()
     }
@@ -748,6 +762,7 @@ impl<T> ArcAnchorRegistry<T> {
     /// let reg = ArcAnchorRegistry::<i32>::new();
     /// assert_eq!(reg.len(), 0);
     /// ```
+    #[must_use]
     pub fn len(&self) -> usize {
         self.anchors.len()
     }
@@ -761,6 +776,7 @@ impl<T> ArcAnchorRegistry<T> {
     /// let reg = ArcAnchorRegistry::<i32>::new();
     /// assert!(reg.is_empty());
     /// ```
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.anchors.is_empty()
     }
@@ -820,7 +836,7 @@ pub struct RcRecursive<T>(pub Rc<RefCell<Option<T>>>);
 #[cfg(feature = "std")]
 impl<T> Clone for RcRecursive<T> {
     fn clone(&self) -> Self {
-        RcRecursive(self.0.clone())
+        Self(self.0.clone())
     }
 }
 
@@ -851,7 +867,7 @@ impl<T> RcRecursive<T> {
     /// ```
     #[must_use]
     pub fn empty() -> Self {
-        RcRecursive(Rc::new(RefCell::new(None)))
+        Self(Rc::new(RefCell::new(None)))
     }
 
     /// Construct a recursive anchor pre-populated with `value`.
@@ -865,15 +881,17 @@ impl<T> RcRecursive<T> {
     /// ```
     #[must_use]
     pub fn new(value: T) -> Self {
-        RcRecursive(Rc::new(RefCell::new(Some(value))))
+        Self(Rc::new(RefCell::new(Some(value))))
     }
 
     /// Borrow the inner value immutably (runtime-checked).
+    #[must_use]
     pub fn borrow(&self) -> core::cell::Ref<'_, Option<T>> {
         self.0.borrow()
     }
 
     /// Borrow the inner value mutably (runtime-checked).
+    #[must_use]
     pub fn borrow_mut(&self) -> core::cell::RefMut<'_, Option<T>> {
         self.0.borrow_mut()
     }
@@ -893,11 +911,13 @@ impl<T> RcRecursive<T> {
     }
 
     /// Drop the inner value, returning it if any.
+    #[must_use]
     pub fn take(&self) -> Option<T> {
         self.borrow_mut().take()
     }
 
     /// Number of strong `Rc` references to this recursive cell.
+    #[must_use]
     pub fn strong_count(&self) -> usize {
         Rc::strong_count(&self.0)
     }
@@ -907,6 +927,7 @@ impl<T> RcRecursive<T> {
     /// referenced from multiple places — the weak reference does
     /// not count towards the strong-count, so cycle storage is
     /// released as soon as the last strong [`RcRecursive`] drops.
+    #[must_use]
     pub fn downgrade(&self) -> RcRecursion<T> {
         RcRecursion(Rc::downgrade(&self.0))
     }
@@ -931,7 +952,7 @@ impl<'de, T: serde_core::Deserialize<'de>> serde_core::Deserialize<'de> for RcRe
     where
         D: serde_core::Deserializer<'de>,
     {
-        T::deserialize(deserializer).map(RcRecursive::new)
+        T::deserialize(deserializer).map(Self::new)
     }
 }
 
@@ -946,7 +967,7 @@ pub struct RcRecursion<T>(pub RcWeak<RefCell<Option<T>>>);
 #[cfg(feature = "std")]
 impl<T> Clone for RcRecursion<T> {
     fn clone(&self) -> Self {
-        RcRecursion(self.0.clone())
+        Self(self.0.clone())
     }
 }
 
@@ -960,7 +981,7 @@ impl<T: fmt::Debug> fmt::Debug for RcRecursion<T> {
 #[cfg(feature = "std")]
 impl<T> Default for RcRecursion<T> {
     fn default() -> Self {
-        RcRecursion(RcWeak::new())
+        Self(RcWeak::new())
     }
 }
 
@@ -993,7 +1014,7 @@ pub struct ArcRecursive<T>(pub Arc<Mutex<Option<T>>>);
 #[cfg(feature = "std")]
 impl<T> Clone for ArcRecursive<T> {
     fn clone(&self) -> Self {
-        ArcRecursive(self.0.clone())
+        Self(self.0.clone())
     }
 }
 
@@ -1017,14 +1038,14 @@ impl<T> ArcRecursive<T> {
     /// anchor.
     #[must_use]
     pub fn empty() -> Self {
-        ArcRecursive(Arc::new(Mutex::new(None)))
+        Self(Arc::new(Mutex::new(None)))
     }
 
     /// Construct a thread-safe recursive anchor pre-populated
     /// with `value`.
     #[must_use]
     pub fn new(value: T) -> Self {
-        ArcRecursive(Arc::new(Mutex::new(Some(value))))
+        Self(Arc::new(Mutex::new(Some(value))))
     }
 
     /// Lock the inner cell. Recovers from poisoning rather than
@@ -1053,16 +1074,19 @@ impl<T> ArcRecursive<T> {
     }
 
     /// Drop the inner value, returning it if any.
+    #[must_use]
     pub fn take(&self) -> Option<T> {
         self.lock().take()
     }
 
     /// Number of strong `Arc` references to this recursive cell.
+    #[must_use]
     pub fn strong_count(&self) -> usize {
         Arc::strong_count(&self.0)
     }
 
     /// Downgrade to an [`ArcRecursion`] weak reference.
+    #[must_use]
     pub fn downgrade(&self) -> ArcRecursion<T> {
         ArcRecursion(Arc::downgrade(&self.0))
     }
@@ -1087,7 +1111,7 @@ impl<'de, T: serde_core::Deserialize<'de>> serde_core::Deserialize<'de> for ArcR
     where
         D: serde_core::Deserializer<'de>,
     {
-        T::deserialize(deserializer).map(ArcRecursive::new)
+        T::deserialize(deserializer).map(Self::new)
     }
 }
 
@@ -1099,7 +1123,7 @@ pub struct ArcRecursion<T>(pub ArcWeak<Mutex<Option<T>>>);
 #[cfg(feature = "std")]
 impl<T> Clone for ArcRecursion<T> {
     fn clone(&self) -> Self {
-        ArcRecursion(self.0.clone())
+        Self(self.0.clone())
     }
 }
 
@@ -1113,7 +1137,7 @@ impl<T: fmt::Debug> fmt::Debug for ArcRecursion<T> {
 #[cfg(feature = "std")]
 impl<T> Default for ArcRecursion<T> {
     fn default() -> Self {
-        ArcRecursion(ArcWeak::new())
+        Self(ArcWeak::new())
     }
 }
 

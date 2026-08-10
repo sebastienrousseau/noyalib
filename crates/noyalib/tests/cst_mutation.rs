@@ -217,7 +217,7 @@ fn set_value_number_emits_plain_regardless_of_existing_style() {
     doc.set_value("count", &Value::Number(42.into())).unwrap();
     assert_eq!(doc.to_string(), "count: 42\n");
     // Round-trip: the new value parses back as a number, not a string.
-    assert!(doc.as_value()["count"].as_i64() == Some(42));
+    assert_eq!(doc.as_value()["count"].as_i64(), Some(42));
 }
 
 #[test]
@@ -254,8 +254,7 @@ fn set_value_at_block_scalar_target_collapses_to_plain_for_single_line() {
         .unwrap();
     assert!(
         doc.to_string().contains("text: hello"),
-        "expected plain replacement, got: {}",
-        doc
+        "expected plain replacement, got: {doc}"
     );
 }
 

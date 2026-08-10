@@ -79,7 +79,7 @@ fn main() -> noyalib::Result<()> {
     doc.entry("spec.template.metadata.labels")
         .insert_value("tier", &Value::String("backend".into()))?;
 
-    println!("{}", doc);
+    println!("{doc}");
 
     println!();
     println!("  Comments and indentation preserved byte-for-byte.");

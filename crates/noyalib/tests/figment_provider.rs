@@ -11,7 +11,7 @@
 #![allow(missing_docs)]
 
 use figment::Figment;
-use figment::providers::Format;
+use figment::providers::Format as _;
 use noyalib::figment::Yaml;
 
 #[derive(Debug, serde::Deserialize, PartialEq)]

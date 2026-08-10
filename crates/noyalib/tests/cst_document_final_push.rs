@@ -104,7 +104,7 @@ fn final_cst_seq_last_item() {
     let src = "items:\n  - a\n  - b\n  - c\n";
     let mut doc = parse_document(src).expect("parse");
     doc.set("items[2]", "C").expect("set");
-    assert!(doc.to_string().contains("C"));
+    assert!(doc.to_string().contains('C'));
 }
 
 // ── Nested mappings: dotted paths ──────────────────────────────────

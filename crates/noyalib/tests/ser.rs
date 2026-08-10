@@ -23,7 +23,7 @@ fn test_serialize_bool() {
 fn test_serialize_integers() {
     assert!(to_string(&42i32).unwrap().contains("42"));
     assert!(to_string(&-42i32).unwrap().contains("-42"));
-    assert!(to_string(&0i32).unwrap().contains("0"));
+    assert!(to_string(&0i32).unwrap().contains('0'));
 }
 
 #[cfg(feature = "lossless-u64")]
@@ -191,7 +191,7 @@ enum UnitEnum {
 #[test]
 fn test_serialize_unit_enum() {
     let yaml = to_string(&UnitEnum::A).unwrap();
-    assert!(yaml.contains("A"));
+    assert!(yaml.contains('A'));
 }
 
 #[derive(serde::Serialize)]
@@ -436,7 +436,7 @@ fn test_serialize_to_writer_with_config() {
 fn test_serialize_char() {
     let c = 'a';
     let yaml = to_string(&c).unwrap();
-    assert!(yaml.contains("a"));
+    assert!(yaml.contains('a'));
 }
 
 #[test]
@@ -469,7 +469,7 @@ fn test_serialize_newtype_struct() {
 fn test_serialize_tuple() {
     let tuple = (1, "hello", true);
     let yaml = to_string(&tuple).unwrap();
-    assert!(yaml.contains("1"));
+    assert!(yaml.contains('1'));
     assert!(yaml.contains("hello"));
     assert!(yaml.contains("true"));
 }
@@ -666,7 +666,7 @@ fn test_serialize_block_scalar() {
     let value = Value::String("line1\nline2\nline3\n".to_string());
     let yaml = noyalib::to_string_with_config(&value, &config).unwrap();
     // Should use block scalar format
-    assert!(yaml.contains("|") || yaml.contains(">") || yaml.contains('\n'));
+    assert!(yaml.contains('|') || yaml.contains('>') || yaml.contains('\n'));
 }
 
 #[test]
@@ -682,7 +682,7 @@ fn test_serialize_string_needs_quoting() {
     assert!(yaml.contains('"') || yaml.contains('\''));
 
     // Empty string
-    let value = Value::String("".to_string());
+    let value = Value::String(String::new());
     let yaml = to_string(&value).unwrap();
     assert!(yaml.contains("\"\"") || yaml.contains("''"));
 }
@@ -739,15 +739,14 @@ fn test_serialize_string_escape_chars() {
     // Debug: println!("Backslash yaml: {:?}", yaml);
     assert!(
         yaml.contains("\\\\"),
-        "Expected escaped backslash in: {}",
-        yaml
+        "Expected escaped backslash in: {yaml}"
     );
 
     // String with carriage return (needs quoting due to control char)
     let value = Value::String("-with\rreturn".to_string());
     let yaml = to_string(&value).unwrap();
     // Debug: println!("CR yaml: {:?}", yaml);
-    assert!(yaml.contains("\\r"), "Expected escaped CR in: {}", yaml);
+    assert!(yaml.contains("\\r"), "Expected escaped CR in: {yaml}");
 
     // String with tab (needs quoting due to tab character)
     let value = Value::String("-with\ttab".to_string());
@@ -799,8 +798,8 @@ fn test_serialize_sequence_with_nested_sequence() {
     let outer = Value::Sequence(vec![inner1, inner2]);
 
     let yaml = to_string(&outer).unwrap();
-    assert!(yaml.contains("1"));
-    assert!(yaml.contains("4"));
+    assert!(yaml.contains('1'));
+    assert!(yaml.contains('4'));
 }
 
 #[test]

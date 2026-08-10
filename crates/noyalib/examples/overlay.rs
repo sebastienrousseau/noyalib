@@ -17,7 +17,7 @@ fn main() {
     support::header("noyalib -- overlay");
 
     support::task_with_output("Merge override configuration into base", || {
-        let base_yaml = r#"
+        let base_yaml = r"
 server:
   host: localhost
   port: 8080
@@ -28,9 +28,9 @@ database:
 logging:
   level: info
   format: text
-"#;
+";
 
-        let override_yaml = r#"
+        let override_yaml = r"
 server:
   host: prod.example.com
   ssl: true
@@ -39,7 +39,7 @@ database:
   pool_size: 20
 logging:
   level: warn
-"#;
+";
 
         let mut base: Value = from_str(base_yaml).unwrap();
         let overrides: Value = from_str(override_yaml).unwrap();

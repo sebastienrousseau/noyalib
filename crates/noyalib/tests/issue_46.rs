@@ -7,7 +7,7 @@
 //! `RecursionLimitExceeded` with default settings even though the
 //! YAML's real nesting depth is ~5 levels.
 
-use std::fmt::Write;
+use std::fmt::Write as _;
 
 /// Build a `pnpm-lock.yaml`-shaped document with `n` packages.
 /// True nesting depth tops out at 5 (root → packages → key → field → value).

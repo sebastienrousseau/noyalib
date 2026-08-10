@@ -1497,8 +1497,8 @@ impl serde_core::ser::Serializer for Serializer {
     }
 
     fn serialize_u64(self, v: u64) -> Result<Value> {
-        if v <= i64::MAX as u64 {
-            return Ok(Value::Number(Number::Integer(v as i64)));
+        if let Ok(v) = i64::try_from(v) {
+            return Ok(Value::Number(Number::Integer(v)));
         }
         // Values above `i64::MAX` require the `lossless-u64` feature.
         // Without it the `Number::Unsigned` variant does not exist and
@@ -1589,7 +1589,7 @@ impl serde_core::ser::Serializer for Serializer {
             | crate::fmt::MAGIC_LIT_STR
             | crate::fmt::MAGIC_FOLD_STR
             | crate::fmt::MAGIC_SPACE_AFTER => {
-                let inner = value.serialize(Serializer)?;
+                let inner = value.serialize(Self)?;
                 Ok(Value::Tagged(Box::new(TaggedValue::new(
                     Tag::new(name),
                     inner,
@@ -1597,7 +1597,7 @@ impl serde_core::ser::Serializer for Serializer {
             }
             crate::fmt::MAGIC_COMMENTED => {
                 // value is a tuple (inner_value, comment_string)
-                let inner = value.serialize(Serializer)?;
+                let inner = value.serialize(Self)?;
                 Ok(Value::Tagged(Box::new(TaggedValue::new(
                     Tag::new(name),
                     inner,
@@ -1606,7 +1606,7 @@ impl serde_core::ser::Serializer for Serializer {
             crate::fmt::MAGIC_ANCHOR_DEF | crate::fmt::MAGIC_ANCHOR_REF => {
                 // ANCHOR_DEF: value serializes as Sequence([String(id), inner]).
                 // ANCHOR_REF: value serializes as String(id).
-                let inner = value.serialize(Serializer)?;
+                let inner = value.serialize(Self)?;
                 Ok(Value::Tagged(Box::new(TaggedValue::new(
                     Tag::new(name),
                     inner,
@@ -1627,7 +1627,7 @@ impl serde_core::ser::Serializer for Serializer {
         T: ?Sized + serde_core::Serialize,
     {
         let mut map = Mapping::new();
-        let _ = map.insert(variant.to_owned(), value.serialize(Serializer)?);
+        let _ = map.insert(variant.to_owned(), value.serialize(Self)?);
         Ok(Value::Mapping(map))
     }
 
@@ -1877,7 +1877,7 @@ mod tests {
 
         match result {
             Err(Error::RecursionLimitExceeded { depth }) => assert!(depth > 128),
-            _ => panic!("Expected RecursionLimitExceeded error, got {:?}", result),
+            _ => panic!("Expected RecursionLimitExceeded error, got {result:?}"),
         }
     }
 

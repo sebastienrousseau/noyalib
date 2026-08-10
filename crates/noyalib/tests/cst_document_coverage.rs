@@ -724,7 +724,7 @@ fn coverage_doc_set_value_into_flow_mapping_value() {
     let mut doc = parse_document("k: {x: 1}\n").unwrap();
     doc.set_value("k.x", &Value::Number(Number::Integer(7)))
         .unwrap();
-    assert!(doc.to_string().contains("7"));
+    assert!(doc.to_string().contains('7'));
 }
 
 // ── insert_entry into nested mapping (covers prefix-aware paths) ────

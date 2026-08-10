@@ -152,7 +152,7 @@ pub enum BorrowedValue<'a> {
     /// let v = BorrowedValue::Sequence(vec![BorrowedValue::Null]);
     /// assert_eq!(v.as_sequence().unwrap().len(), 1);
     /// ```
-    Sequence(Vec<BorrowedValue<'a>>),
+    Sequence(Vec<Self>),
     /// YAML mapping with borrowed keys.
     ///
     /// # Examples
@@ -162,7 +162,7 @@ pub enum BorrowedValue<'a> {
     /// let v = from_str_borrowed("k: 1\n").unwrap();
     /// assert!(matches!(v, BorrowedValue::Mapping(_)));
     /// ```
-    Mapping(IndexMap<Cow<'a, str>, BorrowedValue<'a>, FxBuildHasher>),
+    Mapping(IndexMap<Cow<'a, str>, Self, FxBuildHasher>),
 }
 
 impl<'a> BorrowedValue<'a> {
@@ -240,7 +240,7 @@ impl<'a> BorrowedValue<'a> {
     /// assert_eq!(v.as_sequence().unwrap().len(), 1);
     /// ```
     #[must_use]
-    pub fn as_sequence(&self) -> Option<&[BorrowedValue<'a>]> {
+    pub fn as_sequence(&self) -> Option<&[Self]> {
         match self {
             Self::Sequence(s) => Some(s),
             _ => None,
@@ -257,7 +257,7 @@ impl<'a> BorrowedValue<'a> {
     /// assert!(v.as_mapping().is_some());
     /// ```
     #[must_use]
-    pub fn as_mapping(&self) -> Option<&IndexMap<Cow<'a, str>, BorrowedValue<'a>, FxBuildHasher>> {
+    pub fn as_mapping(&self) -> Option<&IndexMap<Cow<'a, str>, Self, FxBuildHasher>> {
         match self {
             Self::Mapping(m) => Some(m),
             _ => None,
@@ -280,7 +280,7 @@ impl<'a> BorrowedValue<'a> {
     /// assert_eq!(names.len(), 2);
     /// ```
     #[must_use]
-    pub fn query(&self, path: &str) -> Vec<&BorrowedValue<'a>> {
+    pub fn query(&self, path: &str) -> Vec<&Self> {
         let segments = parse_query_path(path);
         let mut results = Vec::new();
         borrowed_query_recursive(self, &segments, 0, &mut results);
@@ -297,7 +297,7 @@ impl<'a> BorrowedValue<'a> {
     /// assert_eq!(v.get_path("a.b").unwrap().as_i64(), Some(2));
     /// ```
     #[must_use]
-    pub fn get_path(&self, path: &str) -> Option<&BorrowedValue<'a>> {
+    pub fn get_path(&self, path: &str) -> Option<&Self> {
         let segments = parse_query_path(path);
         let mut current = self;
         for seg in &segments {

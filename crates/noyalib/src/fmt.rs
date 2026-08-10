@@ -213,6 +213,7 @@ impl<'a> LitStr<'a> {
     /// let s = LitStr("hello");
     /// assert_eq!(s.as_str(), "hello");
     /// ```
+    #[must_use]
     pub fn as_str(&self) -> &str {
         self.0
     }
@@ -226,6 +227,7 @@ impl<'a> LitStr<'a> {
     /// let s = LitStr("hello");
     /// assert_eq!(s.into_inner(), "hello");
     /// ```
+    #[must_use]
     pub fn into_inner(self) -> &'a str {
         self.0
     }
@@ -287,6 +289,7 @@ impl LitString {
     /// let s = LitString("hi".into());
     /// assert_eq!(s.into_inner(), "hi");
     /// ```
+    #[must_use]
     pub fn into_inner(self) -> String {
         self.0
     }
@@ -350,6 +353,7 @@ impl<'a> FoldStr<'a> {
     /// use noyalib::fmt::FoldStr;
     /// assert_eq!(FoldStr("x").as_str(), "x");
     /// ```
+    #[must_use]
     pub fn as_str(&self) -> &str {
         self.0
     }
@@ -362,6 +366,7 @@ impl<'a> FoldStr<'a> {
     /// use noyalib::fmt::FoldStr;
     /// assert_eq!(FoldStr("x").into_inner(), "x");
     /// ```
+    #[must_use]
     pub fn into_inner(self) -> &'a str {
         self.0
     }
@@ -422,6 +427,7 @@ impl FoldString {
     /// use noyalib::FoldString;
     /// assert_eq!(FoldString("x".into()).into_inner(), "x");
     /// ```
+    #[must_use]
     pub fn into_inner(self) -> String {
         self.0
     }
@@ -551,7 +557,7 @@ impl<'de, T: serde_core::Deserialize<'de>> serde_core::Deserialize<'de> for Comm
     {
         // Note: comments are serialization-only metadata and cannot survive a
         // roundtrip through YAML. Deserializing always produces an empty comment.
-        T::deserialize(deserializer).map(|v| Commented {
+        T::deserialize(deserializer).map(|v| Self {
             value: v,
             comment: String::new(),
         })

@@ -49,8 +49,7 @@ fn main() {
         let items = v
             .get("items")
             .and_then(|v| v.as_sequence())
-            .map(|s| s.len())
-            .unwrap_or(0);
+            .map_or(0, |s| s.len());
         vec![
             format!("items.len() = {items}"),
             format!("get_path    = {:?}", v.get_path("items").map(|_| "found")),

@@ -1242,7 +1242,7 @@ impl From<MappingAny> for FxIndexMap<Value, Value> {
 impl From<Mapping> for MappingAny {
     /// Converts a `Mapping` (with `String` keys) into a `MappingAny`.
     fn from(map: Mapping) -> Self {
-        let mut any = MappingAny::with_capacity(map.len());
+        let mut any = Self::with_capacity(map.len());
         for (k, v) in map {
             let _ = any.insert(Value::String(k), v);
         }

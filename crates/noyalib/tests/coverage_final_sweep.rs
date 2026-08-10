@@ -143,8 +143,8 @@ fn ser_flow_map_emits_inline() {
     let _ = m.insert("a".into(), 1);
     let _ = m.insert("b".into(), 2);
     let yaml = to_string(&Doc { inner: FlowMap(m) }).unwrap();
-    assert!(yaml.contains("{"));
-    assert!(yaml.contains("}"));
+    assert!(yaml.contains('{'));
+    assert!(yaml.contains('}'));
 }
 
 #[test]
@@ -157,8 +157,8 @@ fn ser_flow_seq_emits_inline() {
         items: FlowSeq(vec![1, 2, 3]),
     })
     .unwrap();
-    assert!(yaml.contains("["));
-    assert!(yaml.contains("]"));
+    assert!(yaml.contains('['));
+    assert!(yaml.contains(']'));
 }
 
 #[test]
@@ -171,7 +171,7 @@ fn ser_lit_str_emits_literal_block() {
         desc: LitString("line1\nline2\n".to_string()),
     })
     .unwrap();
-    assert!(yaml.contains("|"));
+    assert!(yaml.contains('|'));
 }
 
 #[test]
@@ -184,7 +184,7 @@ fn ser_fold_str_emits_folded_block() {
         desc: FoldString("paragraph one\n\nparagraph two\n".to_string()),
     })
     .unwrap();
-    assert!(yaml.contains(">"));
+    assert!(yaml.contains('>'));
 }
 
 #[test]

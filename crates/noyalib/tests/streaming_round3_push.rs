@@ -757,7 +757,7 @@ target:
 ";
     let v: Value = from_str(yaml).unwrap();
     let t = v.get_path("target").unwrap();
-    assert!(t.get_path("k1").map(|x| x.is_mapping()).unwrap_or(false));
+    assert!(t.get_path("k1").is_some_and(|x| x.is_mapping()));
     assert_eq!(t.get_path("k2").and_then(|x| x.as_str()), Some("literal"));
     assert_eq!(t.get_path("k3").and_then(|x| x.as_i64()), Some(9));
 }

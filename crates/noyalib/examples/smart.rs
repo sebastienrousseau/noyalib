@@ -27,7 +27,7 @@ fn main() {
         vec![format!("Output: {}", yaml.trim())]
     });
 
-    let yaml = r#"
+    let yaml = r"
 defaults: &defaults
   adapter: postgres
   host: localhost
@@ -40,7 +40,7 @@ production:
   <<: *defaults
   database: prod_db
   host: db.example.com
-"#;
+";
     let config: Value = from_str(yaml).unwrap();
 
     support::task_with_output("anchor/alias merge: development inherits defaults", || {

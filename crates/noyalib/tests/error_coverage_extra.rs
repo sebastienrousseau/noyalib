@@ -116,7 +116,7 @@ fn kind_classifier_covers_every_variant() {
 #[cfg(feature = "miette")]
 #[test]
 fn miette_code_help_labels_cover_every_variant() {
-    use miette::Diagnostic;
+    use miette::Diagnostic as _;
     for e in variant_gallery() {
         let _ = e.code().map(|c| c.to_string());
         let _ = e.help().map(|h| h.to_string());
@@ -145,7 +145,7 @@ fn miette_code_help_labels_cover_every_variant() {
 
 #[test]
 fn error_source_io_some() {
-    use std::error::Error as StdError;
+    use std::error::Error as _;
     let ioe = std::io::Error::other("nope");
     let e = Error::Io(ioe);
     assert!(e.source().is_some());
@@ -153,7 +153,7 @@ fn error_source_io_some() {
 
 #[test]
 fn error_source_shared_some() {
-    use std::error::Error as StdError;
+    use std::error::Error as _;
     let inner = Error::EndOfStream;
     let e = Error::Shared(Arc::new(inner));
     assert!(e.source().is_some());
@@ -161,7 +161,7 @@ fn error_source_shared_some() {
 
 #[test]
 fn error_source_other_none() {
-    use std::error::Error as StdError;
+    use std::error::Error as _;
     let e = Error::EndOfStream;
     assert!(e.source().is_none());
 }
@@ -213,7 +213,7 @@ fn format_with_source_with_valid_location() {
     let s = e.format_with_source(source);
     assert!(s.contains("error"));
     assert!(s.contains("line 2"));
-    assert!(s.contains("^"));
+    assert!(s.contains('^'));
 }
 
 #[test]
@@ -235,7 +235,7 @@ fn format_with_source_radius_empty_source() {
     };
     let s = e.format_with_source_radius("", 2);
     // Empty source → plain Display fallback.
-    assert!(s.contains("x"));
+    assert!(s.contains('x'));
 }
 
 #[test]
@@ -246,7 +246,7 @@ fn format_with_source_radius_out_of_range_line() {
     };
     let s = e.format_with_source_radius("only line", 2);
     // Out-of-range → falls back to plain Display.
-    assert!(s.contains("x"));
+    assert!(s.contains('x'));
 }
 
 #[test]
@@ -278,7 +278,7 @@ fn format_with_source_radius_with_valid_location_renders_window() {
     assert!(s.contains("l3"));
     assert!(s.contains("l4"));
     // Caret line.
-    assert!(s.contains("^"));
+    assert!(s.contains('^'));
 }
 
 // ============================================================================

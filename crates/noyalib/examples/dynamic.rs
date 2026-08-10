@@ -15,7 +15,7 @@ use noyalib::{Value, from_str, to_string};
 fn main() {
     support::header("noyalib -- dynamic");
 
-    let yaml = r#"
+    let yaml = r"
 name: my-config
 version: 1
 enabled: true
@@ -28,7 +28,7 @@ settings:
   timeout: 30
   retries: 3
   debug: false
-"#;
+";
 
     let value: Value = support::task("Parse YAML into Value", || from_str(yaml).unwrap());
 

@@ -71,7 +71,7 @@ use crate::value::Value;
 ///     other => panic!("expected mapping, got {other:?}"),
 /// }
 /// ```
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Flattened<T> {
     /// The typed deserialization of the underlying value.
     pub value: T,
@@ -147,7 +147,7 @@ where
         // value via `from_value`. The HRTB on `T` lets the
         // returned `T` outlive the temporary `&raw` borrow.
         let value = crate::from_value::<T>(&raw).map_err(serde_core::de::Error::custom)?;
-        Ok(Flattened { value, raw })
+        Ok(Self { value, raw })
     }
 }
 

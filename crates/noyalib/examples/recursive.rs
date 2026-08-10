@@ -18,14 +18,8 @@ use noyalib::{from_str, to_string};
 #[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
 #[serde(untagged)]
 enum FsEntry {
-    File {
-        name: String,
-        size: u64,
-    },
-    Dir {
-        name: String,
-        children: Vec<FsEntry>,
-    },
+    File { name: String, size: u64 },
+    Dir { name: String, children: Vec<Self> },
 }
 
 // ── Org chart ────────────────────────────────────────────────────────
@@ -35,7 +29,7 @@ struct Person {
     name: String,
     title: String,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    reports: Vec<Person>,
+    reports: Vec<Self>,
 }
 
 // ── Generic tree (Box<T> recursion) ──────────────────────────────────
@@ -44,7 +38,7 @@ struct Person {
 struct TreeNode {
     label: String,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    children: Vec<TreeNode>,
+    children: Vec<Self>,
 }
 
 fn count_tree(n: &TreeNode) -> usize {
@@ -64,7 +58,7 @@ fn main() {
 
     // ── File system tree ─────────────────────────────────────────────
     support::task_with_output("File system tree (recursive Vec)", || {
-        let yaml = r#"
+        let yaml = r"
 - name: src
   children:
     - name: lib.rs
@@ -79,7 +73,7 @@ fn main() {
           size: 12288
 - name: Cargo.toml
   size: 1024
-"#;
+";
         let tree: Vec<FsEntry> = from_str(yaml).unwrap();
         let yaml_out = to_string(&tree).unwrap();
         let rt: Vec<FsEntry> = from_str(&yaml_out).unwrap();
@@ -96,14 +90,14 @@ fn main() {
 
         vec![
             format!("entries   = {}", count_entries(&tree)),
-            format!("depth     = 3 (src/parser/scanner.rs)"),
+            "depth     = 3 (src/parser/scanner.rs)".to_string(),
             format!("roundtrip = {}", tree == rt),
         ]
     });
 
     // ── Org chart ────────────────────────────────────────────────────
     support::task_with_output("Org chart (recursive struct)", || {
-        let yaml = r#"
+        let yaml = r"
 name: Alice
 title: CEO
 reports:
@@ -119,7 +113,7 @@ reports:
         title: Engineer
   - name: Frank
     title: CFO
-"#;
+";
         let org: Person = from_str(yaml).unwrap();
         let yaml_out = to_string(&org).unwrap();
         let rt: Person = from_str(&yaml_out).unwrap();
@@ -146,7 +140,7 @@ reports:
 
     // ── Generic tree (recursive children) ──────────────────────────────
     support::task_with_output("Generic tree (recursive Vec<TreeNode>)", || {
-        let yaml = r#"
+        let yaml = r"
 label: root
 children:
   - label: A
@@ -159,7 +153,7 @@ children:
   - label: C
     children:
       - label: C1
-"#;
+";
         let tree: TreeNode = from_str(yaml).unwrap();
         let yaml_out = to_string(&tree).unwrap();
         let rt: TreeNode = from_str(&yaml_out).unwrap();

@@ -37,12 +37,12 @@ mod anchor_replay {
 
     #[test]
     fn mapping_anchor_alias() {
-        let yaml = r#"
+        let yaml = r"
 base: &base
   host: localhost
   port: 8080
 dev: *base
-"#;
+";
         #[derive(Debug, serde::Deserialize, PartialEq)]
         struct Server {
             host: String,
@@ -266,14 +266,14 @@ mod anchor_registry {
     #[test]
     fn rc_debug() {
         let reg = AnchorRegistry::<String>::new();
-        let debug = format!("{:?}", reg);
+        let debug = format!("{reg:?}");
         assert!(debug.contains("AnchorRegistry"));
     }
 
     #[test]
     fn arc_debug() {
         let reg = ArcAnchorRegistry::<String>::new();
-        let debug = format!("{:?}", reg);
+        let debug = format!("{reg:?}");
         assert!(debug.contains("ArcAnchorRegistry"));
     }
 }

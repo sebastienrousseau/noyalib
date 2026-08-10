@@ -1679,15 +1679,14 @@ impl<'a> Scanner<'a> {
                 let key_end = self
                     .tokens
                     .last()
-                    .map(|t| t.span.end)
-                    .unwrap_or(sk.index)
+                    .map_or(sk.index, |t| t.span.end)
                     .max(sk.index);
                 let key_end_trimmed = {
                     let mut e = key_end;
                     while e > sk.index
                         && matches!(
                             self.input.get(e - 1).copied(),
-                            Some(b' ') | Some(b'\t') | Some(b'\n') | Some(b'\r')
+                            Some(b' ' | b'\t' | b'\n' | b'\r')
                         )
                     {
                         e -= 1;

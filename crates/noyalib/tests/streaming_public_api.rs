@@ -71,12 +71,12 @@ fn anchor_alias_handled_natively() {
         primary: Endpoint,
         replica: Endpoint,
     }
-    let yaml = r#"
+    let yaml = r"
 primary: &p
   host: db.local
   port: 5432
 replica: *p
-"#;
+";
     let mut de = StreamingDeserializer::new(yaml);
     let d = Doc::deserialize(&mut de).unwrap();
     assert_eq!(d.primary, d.replica);
@@ -88,14 +88,14 @@ fn native_merge_key_expansion() {
     // Deserialise into a fully-consuming type (BTreeMap<String, BTreeMap<...>>)
     // so every key is kept — using a struct that ignores `base` would skip
     // an anchored value and trigger the AST fallback.
-    let yaml = r#"
+    let yaml = r"
 base: &b
   a: 1
   b: 2
 target:
   <<: *b
   c: 3
-"#;
+";
     let mut de = StreamingDeserializer::new(yaml);
     let outer: BTreeMap<String, BTreeMap<String, i64>> =
         serde_core::Deserialize::deserialize(&mut de).unwrap();
@@ -107,7 +107,7 @@ target:
 
 #[test]
 fn native_multi_merge_key_expansion() {
-    let yaml = r#"
+    let yaml = r"
 defaults: &d
   host: localhost
   port: 8080
@@ -117,7 +117,7 @@ overrides: &o
 target:
   <<: [*o, *d]
   debug: true
-"#;
+";
     let mut de = StreamingDeserializer::new(yaml);
     let outer: BTreeMap<String, BTreeMap<String, Value>> =
         serde_core::Deserialize::deserialize(&mut de).unwrap();

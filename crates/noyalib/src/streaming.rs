@@ -105,6 +105,7 @@ impl fmt::Debug for StreamingDeserializer<'_> {
 impl<'a> StreamingDeserializer<'a> {
     /// Create a streaming deserializer over the given YAML input using
     /// default parser settings.
+    #[must_use]
     pub fn new(input: &'a str) -> Self {
         Self::with_config(input, ParseConfig::default())
     }
@@ -537,9 +538,11 @@ impl<'a> StreamingDeserializer<'a> {
     fn take_tag_from_current(&mut self) -> Option<(String, String)> {
         let _ = self.peek_event().ok()?;
         match self.current.as_mut() {
-            Some(Event::Scalar { tag, .. })
-            | Some(Event::SequenceStart { tag, .. })
-            | Some(Event::MappingStart { tag, .. }) => tag.take(),
+            Some(
+                Event::Scalar { tag, .. }
+                | Event::SequenceStart { tag, .. }
+                | Event::MappingStart { tag, .. },
+            ) => tag.take(),
             _ => None,
         }
     }
@@ -856,7 +859,7 @@ impl<'de> serde_core::Deserializer<'de> for &mut StreamingDeserializer<'de> {
     {
         self.skip_to_content()?;
         if let Event::Scalar { value, style, .. } = self.next_event()? {
-            if let Scalar::Null = self.resolve_scalar(&value, style) {
+            if matches!(self.resolve_scalar(&value, style), Scalar::Null) {
                 return visitor.visit_unit();
             }
         }
@@ -875,27 +878,21 @@ impl<'de> serde_core::Deserializer<'de> for &mut StreamingDeserializer<'de> {
         }
         self.skip_to_content()?;
         if let Some(t) = self.take_tag_from_current() {
-            match (t.0.as_str(), t.1.as_str()) {
-                ("!!", "int")
-                | ("!!", "float")
-                | ("!!", "str")
-                | ("!!", "bool")
-                | ("!!", "null")
-                | ("!!", "seq")
-                | ("!!", "map") => {}
-                _ => {
-                    // TagRegistry opt-in: drop the tag and let the
-                    // inner value deserialize straight into the
-                    // newtype's target type.
-                    if self.tag_in_registry(&t) {
-                        return visitor.visit_newtype_struct(self);
-                    }
-                    return visitor.visit_map(StreamingTagMapAccess {
-                        de: self,
-                        tag: t,
-                        done: false,
-                    });
+            if let ("!!", "int" | "float" | "str" | "bool" | "null" | "seq" | "map") =
+                (t.0.as_str(), t.1.as_str())
+            {
+            } else {
+                // TagRegistry opt-in: drop the tag and let the
+                // inner value deserialize straight into the
+                // newtype's target type.
+                if self.tag_in_registry(&t) {
+                    return visitor.visit_newtype_struct(self);
                 }
+                return visitor.visit_map(StreamingTagMapAccess {
+                    de: self,
+                    tag: t,
+                    done: false,
+                });
             }
         }
         visitor.visit_newtype_struct(self)
@@ -986,13 +983,7 @@ impl<'de> serde_core::Deserializer<'de> for &mut StreamingDeserializer<'de> {
         self.skip_to_content()?;
         if let Some(t) = self.take_tag_from_current() {
             match (t.0.as_str(), t.1.as_str()) {
-                ("!!", "int")
-                | ("!!", "float")
-                | ("!!", "str")
-                | ("!!", "bool")
-                | ("!!", "null")
-                | ("!!", "seq")
-                | ("!!", "map") => {}
+                ("!!", "int" | "float" | "str" | "bool" | "null" | "seq" | "map") => {}
                 _ => {
                     return visitor.visit_enum(StreamingTagEnumAccess { de: self, tag: t });
                 }
@@ -1648,13 +1639,10 @@ pub(crate) fn tag_is_registry_stripped(
 ) -> bool {
     if matches!(
         (handle, suffix),
-        ("!!", "int")
-            | ("!!", "float")
-            | ("!!", "str")
-            | ("!!", "bool")
-            | ("!!", "null")
-            | ("!!", "seq")
-            | ("!!", "map")
+        (
+            "!!",
+            "int" | "float" | "str" | "bool" | "null" | "seq" | "map"
+        )
     ) {
         return false;
     }
@@ -1748,7 +1736,7 @@ fn looks_like_integer_literal(s: &str, legacy_octal: bool) -> bool {
     if legacy_octal && b.len() >= 2 && b[0] == b'0' {
         return b[1..].iter().all(|c| (b'0'..=b'7').contains(c));
     }
-    let start = if b[0] == b'+' || b[0] == b'-' { 1 } else { 0 };
+    let start = usize::from(b[0] == b'+' || b[0] == b'-');
     start < b.len() && b[start..].iter().all(u8::is_ascii_digit)
 }
 
@@ -1825,7 +1813,7 @@ fn parse_sexagesimal_float(s: &str) -> Option<f64> {
         if idx > 0 && n >= 60.0 {
             return None;
         }
-        total = total * 60.0 + n;
+        total = total.mul_add(60.0, n);
     }
     Some(sign * total)
 }
@@ -1852,7 +1840,7 @@ fn parse_integer(s: &str, legacy_octal: bool, lossless_u64: bool) -> Option<Pars
     {
         return parse_radix_integer(&s[1..], 8, lossless_u64);
     }
-    let start = if b[0] == b'+' || b[0] == b'-' { 1 } else { 0 };
+    let start = usize::from(b[0] == b'+' || b[0] == b'-');
     if start >= b.len() {
         return None;
     }

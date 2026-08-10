@@ -95,15 +95,13 @@ fn main() {
                 "inf roundtrip = {}",
                 rt.get("inf")
                     .and_then(|v| v.as_f64())
-                    .map(|f| f.is_infinite())
-                    .unwrap_or(false)
+                    .is_some_and(|f| f.is_infinite())
             ),
             format!(
                 "nan roundtrip = {}",
                 rt.get("nan")
                     .and_then(|v| v.as_f64())
-                    .map(|f| f.is_nan())
-                    .unwrap_or(false)
+                    .is_some_and(|f| f.is_nan())
             ),
             format!(
                 "big roundtrip = {}",

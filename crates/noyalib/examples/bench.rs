@@ -51,7 +51,7 @@ fn main() {
     // ── Test data ────────────────────────────────────────────────────
     let simple_yaml = "name: test\nversion: 1\nenabled: true\n";
 
-    let nested_yaml = r#"
+    let nested_yaml = r"
 server:
   host: localhost
   port: 8080
@@ -65,9 +65,9 @@ database:
   credentials:
     username: admin
     password: secret
-"#;
+";
 
-    let sequence_yaml = r#"
+    let sequence_yaml = r"
 items:
   - name: item1
     value: 100
@@ -78,7 +78,7 @@ items:
   - name: item3
     value: 300
     tags: [tag4, tag5, tag6]
-"#;
+";
 
     let large_yaml: String = (0..50).map(|i| format!("key{i}: value{i}\n")).collect();
 

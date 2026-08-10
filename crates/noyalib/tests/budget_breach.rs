@@ -84,14 +84,14 @@ fn max_events_trips_on_overflow() {
 #[test]
 fn max_merge_keys_trips_on_overflow() {
     // 5 merge keys (each `<<: *anchor` is one) under a cap of 2.
-    let yaml = r#"
+    let yaml = r"
 defaults: &d {x: 1}
 - <<: *d
 - <<: *d
 - <<: *d
 - <<: *d
 - <<: *d
-"#;
+";
     let cfg = ParserConfig::new().max_merge_keys(2);
     let res: Result<Value, _> = from_str_with_config(yaml, &cfg);
     // The fixture parses as YAML in noyalib's flow; we assert that

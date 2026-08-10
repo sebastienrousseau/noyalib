@@ -96,7 +96,7 @@ impl KeyInterner {
     /// ```
     #[must_use]
     pub fn new() -> Self {
-        KeyInterner {
+        Self {
             table: FxHashMap::default(),
         }
     }
@@ -114,7 +114,7 @@ impl KeyInterner {
     /// ```
     #[must_use]
     pub fn with_capacity(capacity: usize) -> Self {
-        KeyInterner {
+        Self {
             table: FxHashMap::with_capacity_and_hasher(capacity, rustc_hash::FxBuildHasher),
         }
     }
@@ -133,7 +133,7 @@ impl KeyInterner {
     /// assert!(std::sync::Arc::ptr_eq(&one, &two));
     /// ```
     pub fn intern(&mut self, key: &str) -> Arc<str> {
-        if let Some((existing, _)) = self.table.get_key_value(key) {
+        if let Some((existing, ())) = self.table.get_key_value(key) {
             return Arc::clone(existing);
         }
         let arc: Arc<str> = Arc::from(key);
@@ -157,7 +157,7 @@ impl KeyInterner {
     pub fn get(&self, key: &str) -> Option<Arc<str>> {
         self.table
             .get_key_value(key)
-            .map(|(arc, _)| Arc::clone(arc))
+            .map(|(arc, ())| Arc::clone(arc))
     }
 
     /// Number of distinct keys interned so far.

@@ -91,7 +91,7 @@ fn block_sequence_produces_sequence_items() {
         let first = item.children().next().expect("at least one child");
         match first {
             GreenChild::Token { kind, .. } => {
-                assert_eq!(*kind, SyntaxKind::DashIndicator)
+                assert_eq!(*kind, SyntaxKind::DashIndicator);
             }
             GreenChild::Node(_) => panic!("first child of SequenceItem must be `-`"),
         }
@@ -128,12 +128,12 @@ fn flow_sequence_is_flat_in_phase_1() {
     let leaf_kinds = token_kinds_of(fs);
     assert!(leaf_kinds.contains(&SyntaxKind::OpenBracket));
     assert!(leaf_kinds.contains(&SyntaxKind::CloseBracket));
-    assert!(
+    assert_eq!(
         leaf_kinds
             .iter()
             .filter(|k| **k == SyntaxKind::Comma)
-            .count()
-            == 2
+            .count(),
+        2
     );
 }
 

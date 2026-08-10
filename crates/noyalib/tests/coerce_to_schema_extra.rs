@@ -117,12 +117,12 @@ fn coerce_invalid_schema_returns_error() {
 #[test]
 fn coerce_no_op_when_schema_matches() {
     let yaml = "port: 8080\nactive: true\n";
-    let schema = r#"
+    let schema = r"
 type: object
 properties:
   port: { type: integer }
   active: { type: boolean }
-"#;
+";
     let (n, after) = run_coerce(yaml, schema).unwrap();
     assert_eq!(n, 0);
     assert!(after.contains("port: 8080"));
@@ -135,14 +135,14 @@ fn coerce_nested_pointer_builds_dotted_path() {
     // A nested property coercion drives value_path_from_pointer's
     // multi-segment branch (the `i > 0` dot separator).
     let yaml = "server:\n  port: \"5432\"\n";
-    let schema = r#"
+    let schema = r"
 type: object
 properties:
   server:
     type: object
     properties:
       port: { type: integer }
-"#;
+";
     let (n, after) = run_coerce(yaml, schema).unwrap();
     assert_eq!(n, 1, "nested port should coerce");
     assert!(after.contains("port: 5432"), "{after}");

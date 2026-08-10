@@ -11,7 +11,7 @@
 use noyalib::ParserConfig;
 use noyalib::borrowed::{BorrowedValue, from_str_borrowed};
 use std::collections::hash_map::DefaultHasher;
-use std::hash::{Hash, Hasher};
+use std::hash::{Hash as _, Hasher as _};
 
 fn hash(v: &BorrowedValue<'_>) -> u64 {
     let mut h = DefaultHasher::new();

@@ -22,7 +22,7 @@ fn levenshtein(a: &str, b: &str) -> usize {
     for (i, ca) in a.chars().enumerate() {
         curr[0] = i + 1;
         for (j, &cb) in b_chars.iter().enumerate() {
-            let cost = if ca == cb { 0 } else { 1 };
+            let cost = usize::from(ca != cb);
             curr[j + 1] = (prev[j + 1] + 1).min(curr[j] + 1).min(prev[j] + cost);
         }
         std::mem::swap(&mut prev, &mut curr);
@@ -49,12 +49,11 @@ fn validate_config(value: &Value, required: &[&str]) -> Vec<String> {
         match suggest_key(value, key) {
             Some((suggestion, dist)) => {
                 issues.push(format!(
-                    "field '{}' not found. Did you mean '{}'? (edit distance: {})",
-                    key, suggestion, dist
+                    "field '{key}' not found. Did you mean '{suggestion}'? (edit distance: {dist})"
                 ));
             }
             None => {
-                issues.push(format!("field '{}' not found. No similar keys.", key));
+                issues.push(format!("field '{key}' not found. No similar keys."));
             }
         }
     }

@@ -356,7 +356,7 @@ struct Config {
 
 #[test]
 fn test_complex_config() {
-    let yaml = r#"
+    let yaml = r"
 name: my-app
 version: 1
 features:
@@ -366,7 +366,7 @@ features:
 settings:
   timeout: 30
   retries: 3
-"#;
+";
 
     let expected = Config {
         name: "my-app".to_string(),

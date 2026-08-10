@@ -21,14 +21,14 @@ fn native_merge_at_start_single_anchor() {
         retries: u32,
         host: String,
     }
-    let yaml = r#"
+    let yaml = r"
 defaults: &d
   timeout: 30
   retries: 3
 server:
   <<: *d
   host: example.com
-"#;
+";
     #[derive(serde::Deserialize)]
     struct Doc {
         server: Cfg,
@@ -46,14 +46,14 @@ fn native_merge_local_key_overrides_merged() {
         host: String,
         port: u16,
     }
-    let yaml = r#"
+    let yaml = r"
 base: &b
   host: default.local
   port: 80
 server:
   <<: *b
   host: override.local
-"#;
+";
     #[derive(serde::Deserialize)]
     struct Doc {
         server: Cfg,
@@ -65,14 +65,14 @@ server:
 
 #[test]
 fn native_merge_into_btreemap() {
-    let yaml = r#"
+    let yaml = r"
 base: &b
   a: 1
   b: 2
 target:
   <<: *b
   c: 3
-"#;
+";
     let m: BTreeMap<String, BTreeMap<String, i64>> = from_str(yaml).unwrap();
     let target = &m["target"];
     assert_eq!(target["a"], 1);
@@ -82,12 +82,12 @@ target:
 
 #[test]
 fn native_merge_empty_target_is_noop() {
-    let yaml = r#"
+    let yaml = r"
 empty: &e {}
 target:
   <<: *e
   only: here
-"#;
+";
     #[derive(serde::Deserialize)]
     struct Doc {
         target: BTreeMap<String, String>,
@@ -109,7 +109,7 @@ fn native_merge_preserves_merged_nested_value() {
         limits: Limits,
         name: String,
     }
-    let yaml = r#"
+    let yaml = r"
 base: &b
   limits:
     max: 100
@@ -117,7 +117,7 @@ base: &b
 target:
   <<: *b
   name: test
-"#;
+";
     #[derive(serde::Deserialize)]
     struct Doc {
         target: Cfg,
@@ -140,14 +140,14 @@ fn fallback_locals_before_merge_still_correct() {
         host: String,
         port: u16,
     }
-    let yaml = r#"
+    let yaml = r"
 base: &b
   host: merged.local
   port: 80
 server:
   host: local.local
   <<: *b
-"#;
+";
     #[derive(serde::Deserialize)]
     struct Doc {
         server: Cfg,
@@ -166,7 +166,7 @@ fn fallback_sequence_merge_still_correct() {
         b: u32,
         c: u32,
     }
-    let yaml = r#"
+    let yaml = r"
 src1: &s1
   a: 1
   b: 2
@@ -175,7 +175,7 @@ src2: &s2
   c: 30
 target:
   <<: [*s1, *s2]
-"#;
+";
     #[derive(serde::Deserialize)]
     struct Doc {
         target: Cfg,
@@ -191,11 +191,11 @@ target:
 
 #[test]
 fn unknown_merge_target_yields_anchor_error() {
-    let yaml = r#"
+    let yaml = r"
 target:
   <<: *missing
   host: x
-"#;
+";
     #[derive(Debug, serde::Deserialize)]
     #[allow(dead_code)]
     struct Cfg {
@@ -228,13 +228,13 @@ fn roundtrip_after_native_merge() {
         host: String,
         port: u16,
     }
-    let yaml = r#"
+    let yaml = r"
 base: &b
   host: db.local
   port: 5432
 target:
   <<: *b
-"#;
+";
     #[derive(serde::Deserialize, serde::Serialize)]
     struct Doc {
         target: Cfg,
@@ -249,7 +249,7 @@ target:
 
 #[test]
 fn multiple_mappings_with_independent_merges() {
-    let yaml = r#"
+    let yaml = r"
 base_a: &ba
   x: 1
 base_b: &bb
@@ -258,7 +258,7 @@ one:
   <<: *ba
 two:
   <<: *bb
-"#;
+";
     #[derive(serde::Deserialize)]
     struct Doc {
         one: BTreeMap<String, i64>,

@@ -142,7 +142,7 @@ impl<'de> serde_core::Deserialize<'de> for NewtypeWrapper {
             value: String,
         }
         let inner = Inner::deserialize(deserializer)?;
-        Ok(NewtypeWrapper(format!("{}={}", inner.tag, inner.value)))
+        Ok(Self(format!("{}={}", inner.tag, inner.value)))
     }
 }
 
@@ -169,7 +169,7 @@ fn streaming_alias_bytes_guard() {
     let cfg = ParserConfig::new().max_document_length(128);
     // Anchor with an 80-byte payload, then 10 aliases of it.
     let payload = "x".repeat(80);
-    let yaml = format!("a: &a {payload}\nlist:\n  - *a\n  - *a\n  - *a\n",);
+    let yaml = format!("a: &a {payload}\nlist:\n  - *a\n  - *a\n  - *a\n");
     let err = from_str_with_config::<Value>(&yaml, &cfg).unwrap_err();
     assert!(
         err.to_string().to_lowercase().contains("limit")

@@ -397,7 +397,7 @@ fn rc_weak_anchor_debug_dangling() {
 fn rc_weak_anchor_serialize_dangling() {
     let w = RcWeakAnchor::<i32>::dangling();
     let yaml = to_string(&w).unwrap();
-    assert!(yaml.contains("null") || yaml.contains("~"));
+    assert!(yaml.contains("null") || yaml.contains('~'));
 }
 
 #[test]
@@ -474,7 +474,7 @@ fn arc_weak_anchor_debug_dangling() {
 fn arc_weak_anchor_serialize_dangling() {
     let w = ArcWeakAnchor::<i32>::dangling();
     let yaml = to_string(&w).unwrap();
-    assert!(yaml.contains("null") || yaml.contains("~"));
+    assert!(yaml.contains("null") || yaml.contains('~'));
 }
 
 #[test]
@@ -495,4 +495,52 @@ fn arc_weak_anchor_deserialize_always_dangling() {
 fn arc_weak_anchor_deserialize_null() {
     let w: ArcWeakAnchor<String> = from_str("~").unwrap();
     assert!(w.upgrade().is_none());
+}
+
+// ============================================================================
+// into_inner — unwrapping the anchor back to the plain smart pointer
+// ============================================================================
+//
+// These four methods were previously exercised only by their doc examples.
+// `cargo llvm-cov` does not instrument doctests by default, so they counted
+// as uncovered functions in the coverage gate despite being demonstrably
+// used. Cover them here as ordinary tests, asserting the property that
+// matters: `into_inner` hands back the *same* allocation it was given, not
+// a copy of it.
+
+#[test]
+fn rc_anchor_into_inner_returns_the_same_allocation() {
+    let rc = Rc::new(7_i32);
+    let inner = RcAnchor(Rc::clone(&rc)).into_inner();
+    assert!(Rc::ptr_eq(&rc, &inner), "into_inner must not reallocate");
+    assert_eq!(*inner, 7);
+}
+
+#[test]
+fn arc_anchor_into_inner_returns_the_same_allocation() {
+    let arc = Arc::new(7_i32);
+    let inner = ArcAnchor(Arc::clone(&arc)).into_inner();
+    assert!(Arc::ptr_eq(&arc, &inner), "into_inner must not reallocate");
+    assert_eq!(*inner, 7);
+}
+
+#[test]
+fn rc_weak_anchor_into_inner_still_upgrades_while_owner_lives() {
+    let rc = Rc::new(11_i32);
+    let inner = RcWeakAnchor::from(Rc::downgrade(&rc)).into_inner();
+    assert_eq!(inner.upgrade().map(|v| *v), Some(11));
+
+    // ... and stops upgrading once the last strong reference is gone.
+    drop(rc);
+    assert!(inner.upgrade().is_none());
+}
+
+#[test]
+fn arc_weak_anchor_into_inner_still_upgrades_while_owner_lives() {
+    let arc = Arc::new(11_i32);
+    let inner = ArcWeakAnchor::from(Arc::downgrade(&arc)).into_inner();
+    assert_eq!(inner.upgrade().map(|v| *v), Some(11));
+
+    drop(arc);
+    assert!(inner.upgrade().is_none());
 }
