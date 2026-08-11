@@ -282,9 +282,32 @@ impl<'de> serde_core::Deserializer<'de> for &'de Value {
         serde_core::Deserializer::deserialize_map(self, visitor)
     }
 
+    fn deserialize_option<V>(self, visitor: V) -> crate::Result<V::Value>
+    where
+        V: serde_core::de::Visitor<'de>,
+    {
+        // `option` used to be in the `forward_to_deserialize_any!` list
+        // below, which sent every value straight to `deserialize_any`.
+        // For anything other than null that hands the visitor a concrete
+        // scalar — `visit_borrowed_str`, `visit_i64` — and serde's
+        // `Option` visitor rejects it:
+        //
+        //     invalid type: string "hello", expected option
+        //
+        // Only `~` happened to work, because `deserialize_any` maps
+        // `Value::Null` to `visit_unit` and the `Option` visitor accepts
+        // that as `None`. Every *populated* Option field failed, for any
+        // `T`. See #239, which reported it for `Option<String>`; it was
+        // never specific to strings or to empty ones.
+        match self {
+            Value::Null => visitor.visit_none(),
+            _ => visitor.visit_some(self),
+        }
+    }
+
     serde_core::forward_to_deserialize_any! {
         bool i8 i16 i32 i64 u8 u16 u32 u64 f32 f64 char str string bytes
-        byte_buf option unit unit_struct newtype_struct tuple
+        byte_buf unit unit_struct newtype_struct tuple
         tuple_struct identifier ignored_any
     }
 }

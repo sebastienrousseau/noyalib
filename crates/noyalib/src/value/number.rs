@@ -285,8 +285,7 @@ impl fmt::Display for ParseNumberError {
     }
 }
 
-#[cfg(feature = "std")]
-impl std::error::Error for ParseNumberError {}
+impl core::error::Error for ParseNumberError {}
 
 impl FromStr for Number {
     type Err = ParseNumberError;

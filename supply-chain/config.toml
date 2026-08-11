@@ -38,7 +38,7 @@ criteria = "safe-to-deploy"
 suggest = false
 
 [[exemptions.bytes]]
-version = "1.12.0"
+version = "1.12.1"
 criteria = "safe-to-deploy"
 
 [[exemptions.data-encoding]]
@@ -51,16 +51,16 @@ criteria = "safe-to-deploy"
 suggest = false
 
 [[exemptions.granit-parser]]
-version = "0.0.7"
+version = "1.0.1"
 criteria = "safe-to-deploy"
 
 [[exemptions.jsonschema-regex]]
-version = "0.48.5"
+version = "0.49.9"
 criteria = "safe-to-deploy"
 suggest = false
 
 [[exemptions.jsonschema-value]]
-version = "0.49.2"
+version = "0.49.9"
 criteria = "safe-to-deploy"
 
 [[exemptions.micromap]]
@@ -87,7 +87,7 @@ criteria = "safe-to-deploy"
 suggest = false
 
 [[exemptions.serde-saphyr]]
-version = "0.0.29"
+version = "1.0.1"
 criteria = "safe-to-deploy"
 
 [[exemptions.sval]]

@@ -17,8 +17,7 @@
     dead_code,
     unused_results,
     unused_must_use,
-    non_snake_case,
-    clippy::all
+    non_snake_case
 )]
 #![allow(clippy::unwrap_used)]
 
@@ -251,7 +250,7 @@ fn tag_equality_ignores_bang_prefix() {
 #[test]
 fn tag_ordering_and_sorting() {
     // Drives `Ord::cmp` (compares the un-banged forms).
-    let mut tags = vec![Tag::new("!charlie"), Tag::new("alpha"), Tag::new("!bravo")];
+    let mut tags = [Tag::new("!charlie"), Tag::new("alpha"), Tag::new("!bravo")];
     tags.sort();
     let ordered: Vec<&str> = tags.iter().map(Tag::nobang).collect();
     assert_eq!(ordered, vec!["alpha", "bravo", "charlie"]);

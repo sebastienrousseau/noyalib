@@ -14,8 +14,7 @@
     dead_code,
     unused_results,
     unused_must_use,
-    non_snake_case,
-    clippy::all
+    non_snake_case
 )]
 #![allow(clippy::unwrap_used)]
 
