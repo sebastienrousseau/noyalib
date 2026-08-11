@@ -330,11 +330,15 @@ required-features = ["simd"]
 [dependencies]
 serde_core = { version = "1.0", default-features = false, features = ["alloc"] }
 serde = { version = "1.0", optional = true, default-features = false, features = ["derive", "alloc"] }
-indexmap = { version = ">=2, <3", features = ["serde"] }
-rustc-hash = ">=2, <3"
+indexmap = { version = ">=2, <3", default-features = false, features = ["serde"] }
+rustc-hash = { version = ">=2, <3", default-features = false }
+# `rustc_hash::FxHashMap`/`FxHashSet` are std-only aliases. On
+# bare-metal targets the maps come from hashbrown instead, keyed by
+# the same FxBuildHasher, so hashing behaviour is identical. See #210.
+hashbrown = { version = "0.15", default-features = false }
 itoa = { version = "1", optional = true }
 ryu = { version = "1", optional = true }
-memchr = "2.7"
+memchr = { version = "2.7", default-features = false }
 smallvec = { version = "1.13", default-features = false }
 miette = { version = "7", optional = true }
 ariadne = { version = "0.5", optional = true, default-features = false }
@@ -527,7 +531,19 @@ minimal = ["std"]
 # trait's `StdError` super-trait resolves consistently. With this
 # wired, `cargo build --no-default-features` truly compiles in
 # no_std and serde's de::Error does not require `std::error::Error`.
-std = ["serde_core/std", "serde?/std"]
+std = [
+    "serde_core/std",
+    "serde?/std",
+    # These three are declared `default-features = false` so bare-metal
+    # targets can build (#210). Hosted builds turn their std back on
+    # here, which keeps `rustc_hash::FxHashMap`/`FxHashSet` available
+    # and `IndexMap`'s default `RandomState` hasher in place — without
+    # this the public signatures that spell `IndexMap<K, V>` would need
+    # a third parameter.
+    "indexmap/std",
+    "rustc-hash/std",
+    "memchr/std",
+]
 miette = ["dep:miette"]
 ariadne = ["dep:ariadne"]
 robotics = ["dep:serde"]

@@ -50,7 +50,7 @@
 //! semantics.
 
 use crate::prelude::*;
-use rustc_hash::FxHashMap;
+use crate::prelude::{FxBuildHasher, FxHashMap};
 
 /// Interner for `&str` → `Arc<str>` deduplication.
 ///
@@ -115,7 +115,7 @@ impl KeyInterner {
     #[must_use]
     pub fn with_capacity(capacity: usize) -> Self {
         Self {
-            table: FxHashMap::with_capacity_and_hasher(capacity, rustc_hash::FxBuildHasher),
+            table: FxHashMap::with_capacity_and_hasher(capacity, FxBuildHasher),
         }
     }
 

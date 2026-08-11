@@ -1090,6 +1090,7 @@ dependencies = [
  "criterion",
  "figment",
  "garde",
+ "hashbrown 0.15.5",
  "indexmap",
  "itoa",
  "jsonschema",

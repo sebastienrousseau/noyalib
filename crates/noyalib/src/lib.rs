@@ -407,6 +407,15 @@ pub(crate) mod prelude {
     pub(crate) use alloc::vec;
     pub(crate) use alloc::vec::Vec;
     pub(crate) use core::fmt;
+
+    // `rustc_hash::FxHashMap`/`FxHashSet` are aliases for the std
+    // `HashMap`/`HashSet`, so they do not exist without std. hashbrown
+    // provides the same containers for bare-metal targets; keying them
+    // with `FxBuildHasher` keeps hashing behaviour identical to the
+    // hosted build. See #210.
+    pub(crate) use rustc_hash::FxBuildHasher;
+    pub(crate) type FxHashMap<K, V> = hashbrown::HashMap<K, V, FxBuildHasher>;
+    pub(crate) type FxHashSet<T> = hashbrown::HashSet<T, FxBuildHasher>;
 }
 
 /// Internal prelude for std compatibility.
@@ -420,6 +429,10 @@ pub(crate) mod prelude {
     pub(crate) use std::sync::Arc;
     pub(crate) use std::vec;
     pub(crate) use std::vec::Vec;
+
+    // Hosted builds keep the std-backed maps unchanged; the no_std
+    // prelude substitutes hashbrown equivalents. See #210.
+    pub(crate) use rustc_hash::{FxBuildHasher, FxHashMap, FxHashSet};
 }
 
 mod anchors;

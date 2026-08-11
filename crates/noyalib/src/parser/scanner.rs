@@ -7,6 +7,7 @@
 
 // VecDeque replaced with Vec + consumed index for better cache locality.
 
+use crate::prelude::FxHashMap;
 use crate::prelude::*;
 
 /// Byte-offset span in the source input.
@@ -162,7 +163,7 @@ pub(crate) struct Scanner<'a> {
     /// `%TAG !! tag:example.com,2000:app/`), the scanner substitutes
     /// the full URI prefix in place of the handle so the loader sees
     /// the resolved tag without needing directive context (P76L).
-    tag_handles: rustc_hash::FxHashMap<String, String>,
+    tag_handles: FxHashMap<String, String>,
     flow_stack: Vec<bool>,
     /// When set, the scanner records inter-token trivia and source-
     /// bearing token spans for the green-tree builder. Off by default
@@ -395,7 +396,7 @@ impl<'a> Scanner<'a> {
             stream_ended: false,
             comments: Vec::new(),
             yaml_directive_seen: false,
-            tag_handles: rustc_hash::FxHashMap::default(),
+            tag_handles: FxHashMap::default(),
             flow_stack: Vec::new(),
             recording: false,
             trivia: Vec::new(),

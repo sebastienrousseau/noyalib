@@ -10,7 +10,7 @@ use core::hash::{Hash, Hasher};
 use core::ops::{Index, IndexMut};
 use indexmap::IndexMap;
 use indexmap::map::{IntoIter, Iter, IterMut, Keys, Values, ValuesMut};
-use rustc_hash::FxBuildHasher;
+use crate::prelude::FxBuildHasher;
 
 /// Fast IndexMap using FxBuildHasher.
 type FxIndexMap<K, V> = IndexMap<K, V, FxBuildHasher>;

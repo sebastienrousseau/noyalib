@@ -10,7 +10,7 @@
 
 use crate::prelude::*;
 
-use rustc_hash::{FxHashMap, FxHashSet};
+use crate::prelude::{FxHashMap, FxHashSet};
 use smallvec::SmallVec;
 
 use crate::error::{Error, Result, closest_name};

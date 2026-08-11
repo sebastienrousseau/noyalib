@@ -7,7 +7,7 @@ use crate::prelude::*;
 #[cfg(feature = "std")]
 use core::cell::RefCell;
 
-use rustc_hash::FxHashMap;
+use crate::prelude::FxHashMap;
 
 #[cfg(feature = "std")]
 use crate::value::Value;
