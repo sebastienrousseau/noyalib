@@ -9,8 +9,9 @@
 //! `<<: *anchor` merge-key pattern is expanded natively.
 
 use crate::prelude::*;
+use crate::prelude::{f64_fract, f64_mul_add};
 
-use rustc_hash::{FxHashMap, FxHashSet};
+use crate::prelude::{FxHashMap, FxHashSet};
 use smallvec::SmallVec;
 
 use crate::error::{Error, Result, closest_name};
@@ -703,7 +704,7 @@ impl<'de> serde_core::Deserializer<'de> for &mut StreamingDeserializer<'de> {
                 // typed struct fields can consume them.
                 Scalar::Float(f)
                     if f.is_finite()
-                        && f.fract() == 0.0
+                        && f64_fract(f) == 0.0
                         && f >= i64::MIN as f64
                         && f <= i64::MAX as f64 =>
                 {
@@ -729,7 +730,7 @@ impl<'de> serde_core::Deserializer<'de> for &mut StreamingDeserializer<'de> {
                 #[cfg(feature = "lossless-u64")]
                 Scalar::Uint(n) => return visitor.visit_u64(n),
                 Scalar::Float(f)
-                    if f.is_finite() && f.fract() == 0.0 && f >= 0.0 && f <= u64::MAX as f64 =>
+                    if f.is_finite() && f64_fract(f) == 0.0 && f >= 0.0 && f <= u64::MAX as f64 =>
                 {
                     return visitor.visit_u64(f as u64);
                 }
@@ -1839,7 +1840,7 @@ fn parse_sexagesimal_float(s: &str) -> Option<f64> {
         if idx > 0 && n >= 60.0 {
             return None;
         }
-        total = total.mul_add(60.0, n);
+        total = f64_mul_add(total, 60.0, n);
     }
     Some(sign * total)
 }

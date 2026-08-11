@@ -18,7 +18,7 @@ use std::rc::{Rc, Weak as RcWeak};
 #[cfg(feature = "std")]
 use std::sync::Weak as ArcWeak;
 
-use rustc_hash::FxHashMap;
+use crate::prelude::FxHashMap;
 
 /// Thread-local identity tracking for automatic anchor/alias emission.
 ///
@@ -31,8 +31,8 @@ use rustc_hash::FxHashMap;
 /// serialising thread; the scope guard ensures state does not leak across calls.
 #[cfg(feature = "std")]
 pub(crate) mod shared_tracking {
+    use crate::prelude::FxHashMap;
     use core::cell::RefCell;
-    use rustc_hash::FxHashMap;
 
     pub(crate) enum TrackOutcome {
         NotActive,

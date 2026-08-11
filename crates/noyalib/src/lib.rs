@@ -407,6 +407,37 @@ pub(crate) mod prelude {
     pub(crate) use alloc::vec;
     pub(crate) use alloc::vec::Vec;
     pub(crate) use core::fmt;
+
+    // `rustc_hash::FxHashMap`/`FxHashSet` are aliases for the std
+    // `HashMap`/`HashSet`, so they do not exist without std. hashbrown
+    // provides the same containers for bare-metal targets; keying them
+    // with `FxBuildHasher` keeps hashing behaviour identical to the
+    // hosted build. See #210.
+    pub(crate) use rustc_hash::FxBuildHasher;
+    pub(crate) type FxHashMap<K, V> = hashbrown::HashMap<K, V, FxBuildHasher>;
+    pub(crate) type FxHashSet<T> = hashbrown::HashSet<T, FxBuildHasher>;
+
+    // `indexmap`'s default hasher is `RandomState`, which lives in std.
+    // Without it `IndexMap<K, V>` needs its third parameter spelled at
+    // every use — including public signatures such as
+    // `Mapping::into_inner`. Defaulting `S` to `FxBuildHasher` here
+    // keeps the spelling identical across targets, so no public API
+    // changes shape for hosted callers. See #210.
+    pub(crate) type IndexMap<K, V, S = FxBuildHasher> = indexmap::IndexMap<K, V, S>;
+
+    // `f64::fract` and `f64::mul_add` are std inherent methods; `core`
+    // has neither. libm supplies the equivalents. `fract` is defined as
+    // `self - self.trunc()`, which is what libm::trunc gives exactly.
+    // See #210.
+    #[inline]
+    pub(crate) fn f64_fract(x: f64) -> f64 {
+        x - libm::trunc(x)
+    }
+
+    #[inline]
+    pub(crate) fn f64_mul_add(a: f64, b: f64, c: f64) -> f64 {
+        libm::fma(a, b, c)
+    }
 }
 
 /// Internal prelude for std compatibility.
@@ -420,6 +451,26 @@ pub(crate) mod prelude {
     pub(crate) use std::sync::Arc;
     pub(crate) use std::vec;
     pub(crate) use std::vec::Vec;
+
+    // Hosted builds keep the std-backed maps unchanged; the no_std
+    // prelude substitutes hashbrown equivalents. See #210.
+    pub(crate) use rustc_hash::{FxBuildHasher, FxHashMap, FxHashSet};
+
+    // Hosted builds keep indexmap's own default hasher; the no_std
+    // prelude substitutes `FxBuildHasher`. See #210.
+    pub(crate) use indexmap::IndexMap;
+
+    // Hosted builds use the inherent std methods; the no_std prelude
+    // routes these through libm. See #210.
+    #[inline]
+    pub(crate) fn f64_fract(x: f64) -> f64 {
+        x.fract()
+    }
+
+    #[inline]
+    pub(crate) fn f64_mul_add(a: f64, b: f64, c: f64) -> f64 {
+        a.mul_add(b, c)
+    }
 }
 
 mod anchors;

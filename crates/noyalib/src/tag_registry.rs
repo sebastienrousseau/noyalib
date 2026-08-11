@@ -45,8 +45,8 @@
 //! of my way" newtype/unit-style use cases (the robotics, scientific,
 //! and units scenarios in particular).
 
+use crate::prelude::FxHashSet;
 use crate::prelude::*;
-use rustc_hash::FxHashSet;
 
 /// A set of custom YAML tags that the streaming deserializer should
 /// strip and pass through instead of routing via the AST fallback.

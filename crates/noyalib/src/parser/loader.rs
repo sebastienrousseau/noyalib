@@ -8,11 +8,11 @@
 use crate::de::RequireIndent;
 use crate::error::{Error, Result};
 use crate::parser::events::Event;
+use crate::prelude::IndexMap;
 use crate::prelude::*;
 #[cfg(feature = "std")]
 use crate::span_context::SpanTree;
 use crate::value::{Mapping, Number, Tag, TaggedValue, Value};
-use indexmap::IndexMap;
 
 /// Maximum number of bytes an expanded alias can account for per document.
 /// Prevents billion-laughs style attacks.
@@ -919,8 +919,8 @@ impl<'a> NoSpanLoader<'a> {
         NoSpanLoader {
             docs: Vec::new(),
             stack: Vec::new(),
-            anchor_map: IndexMap::new(),
-            anchor_def_spans: IndexMap::new(),
+            anchor_map: IndexMap::default(),
+            anchor_def_spans: IndexMap::default(),
             alias_count: 0,
             alias_bytes: 0,
             merge_key_count: 0,
