@@ -1,6 +1,6 @@
 [package]
 name = "noyalib"
-version = "0.0.20"
+version = "0.0.19"
 edition = "2024"
 rust-version = "1.86.0"
 license = "MIT OR Apache-2.0"
@@ -372,7 +372,7 @@ figment = { version = "0.10", optional = true, features = ["env"] }
 # so an `--all-features` build doesn't pull in the saphyr crate
 # (which is fine on MSRV 1.86+ but still extra deps the rest of
 # the workspace doesn't need).
-serde-saphyr = { version = "0.0", optional = true }
+serde-saphyr = { version = "1.0", optional = true }
 # Parallel multi-document parsing — pulled in only when the
 # `parallel` feature is on. Rayon is the de-facto safe data-parallel
 # Rust crate and itself uses well-vetted unsafe internally; the
