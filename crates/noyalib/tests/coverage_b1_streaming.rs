@@ -6,8 +6,7 @@
     dead_code,
     unused_results,
     unused_must_use,
-    non_snake_case,
-    clippy::all
+    non_snake_case
 )]
 
 //! Broad coverage sweep for `crates/noyalib/src/streaming.rs`.
@@ -94,6 +93,7 @@ fn scalar_u64_large() {
 }
 
 #[test]
+#[expect(clippy::approx_constant)]
 fn scalar_f64_plain() {
     let f: f64 = from_str("3.14\n").unwrap();
     assert!((f - 3.14).abs() < 1e-9);
