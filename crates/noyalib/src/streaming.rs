@@ -1618,6 +1618,32 @@ where
     }
 }
 
+/// Parse a plain scalar as a float, rejecting the bare special forms.
+///
+/// Rust's `f64::from_str` accepts `nan`, `inf` and `infinity` in any
+/// case, with an optional sign. YAML 1.2 spells those `.nan`, `.inf`
+/// and `-.inf` — with a leading dot — and the dotted forms are matched
+/// explicitly by the resolver before this is reached.
+///
+/// Accepting the bare spellings here resolved a plain scalar like
+/// `nAn` to a float, which threw away its original text. Used as a
+/// mapping key it came back as `nan`, so `nAn: null` did not
+/// round-trip; the `roundtrip_value` proptest found it. Bare forms are
+/// left as strings, which is what the spec asks for.
+///
+/// An explicit `!!float nan` is unaffected: tagged scalars resolve in
+/// `parser/loader.rs`, where the tag makes the intent unambiguous.
+fn parse_plain_float(s: &str) -> Option<f64> {
+    let unsigned = s.strip_prefix(['+', '-']).unwrap_or(s);
+    if unsigned.eq_ignore_ascii_case("nan")
+        || unsigned.eq_ignore_ascii_case("inf")
+        || unsigned.eq_ignore_ascii_case("infinity")
+    {
+        return None;
+    }
+    s.parse::<f64>().ok()
+}
+
 fn is_fallback_error(e: &Error) -> bool {
     match e {
         Error::Custom(msg) => msg == FALLBACK_SENTINEL,
@@ -1708,12 +1734,12 @@ pub(crate) fn resolve_plain_ext(
                     Scalar::Int(n)
                 } else if let Some(f) = parse_sexagesimal_float(s) {
                     Scalar::Float(f)
-                } else if let Ok(f) = s.parse::<f64>() {
+                } else if let Some(f) = parse_plain_float(s) {
                     Scalar::Float(f)
                 } else {
                     Scalar::Str(Cow::Borrowed(s))
                 }
-            } else if let Ok(f) = s.parse::<f64>() {
+            } else if let Some(f) = parse_plain_float(s) {
                 Scalar::Float(f)
             } else {
                 Scalar::Str(Cow::Borrowed(s))
