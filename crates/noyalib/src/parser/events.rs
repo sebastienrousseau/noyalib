@@ -5,8 +5,8 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 // Copyright (c) 2026 Noyalib. All rights reserved.
 
+use crate::prelude::IndexMap;
 use crate::prelude::*;
-use indexmap::IndexMap;
 
 use super::scanner::{ScalarStyle, ScanError, Scanner, Span, TokenKind};
 
@@ -110,7 +110,7 @@ impl<'a> Parser<'a> {
             current_kind: None,
             current_span: Span::default(),
             has_current: false,
-            marks: IndexMap::new(),
+            marks: IndexMap::default(),
             next_anchor_id: 0,
             first_document_ended: false,
         }

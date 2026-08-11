@@ -4,13 +4,13 @@
 // Copyright (c) 2026 Noyalib. All rights reserved.
 
 use super::Value;
+use crate::prelude::FxBuildHasher;
+use crate::prelude::IndexMap;
 use crate::prelude::*;
 use core::cmp::Ordering;
 use core::hash::{Hash, Hasher};
 use core::ops::{Index, IndexMut};
-use indexmap::IndexMap;
 use indexmap::map::{IntoIter, Iter, IterMut, Keys, Values, ValuesMut};
-use crate::prelude::FxBuildHasher;
 
 /// Fast IndexMap using FxBuildHasher.
 type FxIndexMap<K, V> = IndexMap<K, V, FxBuildHasher>;
@@ -740,6 +740,9 @@ impl<const N: usize> From<[(String, Value); N]> for Mapping {
     }
 }
 
+// See the note on the sibling impl: identical to the `FxIndexMap`
+// version once no_std defaults the hasher. #210.
+#[cfg(feature = "std")]
 impl From<IndexMap<String, Value>> for Mapping {
     fn from(map: IndexMap<String, Value>) -> Self {
         Self(map.into_iter().collect())
@@ -752,6 +755,10 @@ impl From<FxIndexMap<String, Value>> for Mapping {
     }
 }
 
+// On no_std the prelude defaults `IndexMap`'s hasher to
+// `FxBuildHasher`, which makes this identical to the `FxIndexMap`
+// impl below. Gated so the two do not collide there. See #210.
+#[cfg(feature = "std")]
 impl From<Mapping> for IndexMap<String, Value> {
     fn from(map: Mapping) -> Self {
         map.0.into_iter().collect()
@@ -1215,6 +1222,9 @@ impl<const N: usize> From<[(Value, Value); N]> for MappingAny {
     }
 }
 
+// See the note on the sibling impl: identical to the `FxIndexMap`
+// version once no_std defaults the hasher. #210.
+#[cfg(feature = "std")]
 impl From<IndexMap<Value, Value>> for MappingAny {
     fn from(map: IndexMap<Value, Value>) -> Self {
         Self(map.into_iter().collect())
@@ -1227,6 +1237,10 @@ impl From<FxIndexMap<Value, Value>> for MappingAny {
     }
 }
 
+// On no_std the prelude defaults `IndexMap`'s hasher to
+// `FxBuildHasher`, which makes this identical to the `FxIndexMap`
+// impl below. Gated so the two do not collide there. See #210.
+#[cfg(feature = "std")]
 impl From<MappingAny> for IndexMap<Value, Value> {
     fn from(map: MappingAny) -> Self {
         map.0.into_iter().collect()

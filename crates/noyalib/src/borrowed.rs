@@ -21,10 +21,10 @@
 use crate::error::{Error, Result};
 use crate::parser::{Event, ParseConfig, Parser, ScalarStyle};
 use crate::path::{QuerySegment, parse_query_path};
+use crate::prelude::IndexMap;
 use crate::prelude::*;
-use core::hash::{Hash, Hasher};
-use indexmap::IndexMap;
 use crate::prelude::{FxBuildHasher, FxHashMap};
+use core::hash::{Hash, Hasher};
 
 /// Why a YAML scalar could not be borrowed directly from the input
 /// buffer and had to be materialised into an owned `String`.

@@ -1,6 +1,6 @@
 [package]
 name = "noyalib"
-version = "0.0.19"
+version = "0.0.20"
 edition = "2024"
 rust-version = "1.86.0"
 license = "MIT OR Apache-2.0"
@@ -336,6 +336,11 @@ rustc-hash = { version = ">=2, <3", default-features = false }
 # bare-metal targets the maps come from hashbrown instead, keyed by
 # the same FxBuildHasher, so hashing behaviour is identical. See #210.
 hashbrown = { version = "0.15", default-features = false }
+# `core` has no float math: `f64::fract` and `f64::mul_add` are std
+# inherent methods. libm supplies them for bare-metal targets;
+# hosted builds use the inherent ones and never call into it.
+# See #210.
+libm = { version = "0.2", default-features = false }
 itoa = { version = "1", optional = true }
 ryu = { version = "1", optional = true }
 memchr = { version = "2.7", default-features = false }

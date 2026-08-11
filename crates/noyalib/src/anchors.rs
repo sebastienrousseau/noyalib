@@ -31,8 +31,8 @@ use crate::prelude::FxHashMap;
 /// serialising thread; the scope guard ensures state does not leak across calls.
 #[cfg(feature = "std")]
 pub(crate) mod shared_tracking {
-    use core::cell::RefCell;
     use crate::prelude::FxHashMap;
+    use core::cell::RefCell;
 
     pub(crate) enum TrackOutcome {
         NotActive,

@@ -4,6 +4,7 @@
 // Copyright (c) 2026 Noyalib. All rights reserved.
 
 use crate::error::{Error, Result};
+use crate::prelude::f64_fract;
 use crate::prelude::*;
 use crate::span_context;
 use crate::value::{Number, Value};
@@ -203,7 +204,7 @@ impl<'de> serde_core::Deserializer<'de> for Deserializer<'de> {
                 })),
             },
             Value::Number(Number::Float(n))
-                if n.fract() == 0.0
+                if f64_fract(*n) == 0.0
                     && *n >= i64::MIN as f64
                     && *n <= i64::MAX as f64
                     && !n.is_nan() =>
@@ -257,7 +258,7 @@ impl<'de> serde_core::Deserializer<'de> for Deserializer<'de> {
             #[cfg(feature = "lossless-u64")]
             Value::Number(Number::Unsigned(n)) => self.wrap_err(visitor.visit_u64(*n)),
             Value::Number(Number::Float(n))
-                if n.fract() == 0.0 && *n >= 0.0 && *n <= u64::MAX as f64 && !n.is_nan() =>
+                if f64_fract(*n) == 0.0 && *n >= 0.0 && *n <= u64::MAX as f64 && !n.is_nan() =>
             {
                 self.wrap_err(visitor.visit_u64(*n as u64))
             }
