@@ -7,6 +7,9 @@
 //! value. `~` was the only input that worked, because `deserialize_any`
 //! maps null to `visit_unit` and serde reads that as `None`.
 
+// SPDX-License-Identifier: MIT OR Apache-2.0
+// Copyright (c) 2026 Noyalib. All rights reserved.
+
 use noyalib::from_str_strict;
 
 #[derive(serde::Deserialize, Debug, PartialEq)]
