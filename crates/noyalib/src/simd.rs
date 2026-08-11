@@ -440,7 +440,7 @@ impl SimdScanner {
     /// register, and the bitmap test wins beyond that point).
     #[cfg(all(feature = "nightly-simd", noyalib_nightly))]
     fn find_any_simd(&self, haystack: &[u8]) -> Option<usize> {
-        use core::simd::cmp::SimdPartialEq;
+        use core::simd::cmp::SimdPartialEq as _;
         use core::simd::{Mask, Simd};
 
         const LANES: usize = 32;
@@ -538,7 +538,7 @@ impl SimdScanner {
 
     #[cfg(all(feature = "nightly-simd", noyalib_nightly))]
     fn structural_bitmask_32_simd(&self, chunk: &[u8; 32]) -> u32 {
-        use core::simd::cmp::SimdPartialEq;
+        use core::simd::cmp::SimdPartialEq as _;
         use core::simd::{Mask, Simd};
 
         let needle_count = self.needle_count as usize;

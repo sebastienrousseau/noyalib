@@ -690,13 +690,13 @@ multiple_crate_versions = "allow"
 
 pedantic = { level = "warn", priority = -1 }
 nursery = { level = "warn", priority = -1 }
+unused_trait_names = "warn"
 
 # TODO fix or expect pedantic
 cast_possible_truncation = "allow"
 cast_possible_wrap = "allow"
 cast_precision_loss = "allow"
 cast_sign_loss = "allow"
-checked_conversions = "warn"  # fixed in #240, keep it enforcing
 default_trait_access = "allow"
 doc_markdown = "allow"
 float_cmp = "allow"
