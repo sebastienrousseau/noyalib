@@ -250,13 +250,18 @@ Ranked by value-to-effort. Each is semver-additive and optional-feature-gated.
 Milestones are releasable under the lockstep contract (core + satellites move
 together). Rough order, dependency-aware:
 
-- **M1 — "Finish the editors" (v0.0.18–0.0.19).** Epic A (A1 comment, A2
-  reorder, A5 key spans), B1 coverage-100, F3 docs-matrix. Unblocks LSP/MCP/
-  CLI edit features. *Closes most of #221.*
-- **M2 — "Prove it fast & safe" (v0.0.20).** A3 extended remove, B2 editor
-  fuzzing, C1 published benches, E1 SBOM, E2 OpenSSF badge.
-- **M3 — "Reach everywhere" (v0.0.21).** A4 quoting-aware Emit (the hard one),
-  D1 bare-metal (*closes #210*), C2 perf gate, C3 SIMD soundness.
+- **M1 — "Finish the editors" (v0.0.18–0.0.19).** Epic A: A2 reorder and A5
+  key spans shipped here; **A1 comment slipped to v0.0.21**. B1 coverage-100,
+  F3 docs-matrix. Unblocks LSP/MCP/CLI edit features. *Closes most of #221.*
+- **M2 — "Prove it fast & safe" (v0.0.20).** A3 extended remove — *partly
+  done*: multi-line values, nested collections and nested sequence items are
+  removable; sole entries and flow-collection members are still refused, and
+  `remove_subtree` is not implemented. B2 editor fuzzing, C1 published
+  benches, E1 SBOM, E2 OpenSSF badge. **D1 bare-metal landed here rather than
+  in M3** (*closed #210*).
+- **M3 — "Reach everywhere" (v0.0.21).** A1 comment mutation (`set_comment` /
+  `remove_comment`, arrived from M1), A4 quoting-aware Emit (the hard one, and
+  still open), C2 perf gate, C3 SIMD soundness.
 - **M4 — "Own the niche" (v0.0.22 → 0.1.0).** F1 serde_yaml succession, F2
   cookbook, the satellite build-outs (CLI-1..4, MCP-1..3, LSP-1..3,
   WASM-1..3), and the §5 features that survive triage. Cut **0.1.0** when the

@@ -439,7 +439,7 @@ table below groups the inventory by capability theme.
 | Migration from `serde_yaml` | `compat-serde-yaml` feature with name-for-name re-exports; `From`/`TryFrom` parity for `Value`/`Mapping`/`Number`; `Document::validate`; comment-aware reads via `load_comments` |
 | Binary scalars | First-class `!!binary` tag; RFC 4648 base64 round-trip with `serde_bytes::ByteBuf`/`Bytes`; non-UTF-8 payloads supported |
 | Flatten guard | `Spanned<Value>` in `#[serde(flatten)]` returns an actionable error pointing at the working alternative |
-| Lossless editing | Side-table CST with byte-faithful round-trip; `Document::entry(path)` chainable mutable handle (19 methods); `rename_anchor` / `swap_items` / `move_item` and the auto-formatting `*_value` inserts; automatic indent detection (2/3/4-space) |
+| Lossless editing | Side-table CST with byte-faithful round-trip; `Document::entry(path)` chainable mutable handle (19 methods); `rename_key` / `rename_anchor` / `swap_items` / `move_item` and the auto-formatting `*_value` inserts; `set_comment` / `remove_comment` for inline and leading comments; automatic indent detection (2/3/4-space) |
 | Anchor management | `Document::anchors()` / `aliases()` / `aliases_of(name)`; `materialise_alias_at(byte_pos)` and `materialise_aliases_of(name)` for breaking aliases |
 | Schema codegen | `schema` feature: `JsonSchema` derive re-export; `schema_for::<T>()` and `schema_for_yaml::<T>()`; honours `#[doc]`, `#[serde(default)]`, `#[serde(rename)]` |
 | Schema validation | `validate-schema` feature: `validate_against_schema(value, schema)`; aggregated violations with RFC 6901 paths |

@@ -29,6 +29,16 @@
 //!   the change if the spliced source is invalid YAML, leaving the
 //!   document untouched.
 //!
+//! - **Comments.** [`Document::comments_at`](crate::cst::Document::comments_at)
+//!   classifies the comments decorating a node into a
+//!   [`CommentBundle`](crate::cst::CommentBundle), and
+//!   [`Document::set_comment`](crate::cst::Document::set_comment) /
+//!   [`Document::remove_comment`](crate::cst::Document::remove_comment)
+//!   write them back, addressed by
+//!   [`CommentPosition`](crate::cst::CommentPosition). A leading block
+//!   is written at the node's own indentation. Both go through
+//!   `replace_span`, so they inherit its guard.
+//!
 //! - **Auto-formatting.** [`Emit`](crate::cst::Emit) turns a typed
 //!   value into the YAML spelling that re-parses to exactly that
 //!   value at a given site, so
