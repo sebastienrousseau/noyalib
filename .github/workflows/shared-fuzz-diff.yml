@@ -52,3 +52,17 @@ jobs:
       - run: cargo +nightly fuzz run fuzz_diff -- -max_total_time=10
         working-directory: .
         continue-on-error: true
+
+      # The editor target fuzzes the *mutators*, not the parser: it
+      # applies a generated edit to a generated document and checks the
+      # guarantees the API makes — a refusal leaves the source
+      # byte-identical, a comment edit never changes the value, an
+      # accepted remove shrinks the document.
+      #
+      # Deliberately not `continue-on-error`. `fuzz_diff` tolerates
+      # findings because a differential disagreement with another parser
+      # is often a difference of opinion; a broken editor invariant is
+      # not. This target found a value-changing comment edit within a
+      # minute of existing, so a finding here should stop the build.
+      - run: cargo +nightly fuzz run fuzz_editors -- -max_total_time=30
+        working-directory: .

@@ -518,6 +518,19 @@ impl Document {
     /// assert_eq!(doc.source(), "port: 8080  # listen port\n");
     /// ```
     pub fn set_comment(&mut self, path: &str, position: CommentPosition, text: &str) -> Result<()> {
+        let p = path.to_owned();
+        let txt = text.to_owned();
+        self.guarded_comment_edit("set_comment", move |d| {
+            d.set_comment_inner(&p, position, &txt)
+        })
+    }
+
+    fn set_comment_inner(
+        &mut self,
+        path: &str,
+        position: CommentPosition,
+        text: &str,
+    ) -> Result<()> {
         let Some((start, end)) = self.span_at(path) else {
             return Err(Error::Parse(format!(
                 "set_comment: path `{path}` does not resolve"
@@ -579,6 +592,13 @@ impl Document {
     /// assert_eq!(doc.source(), "port: 8080\n");
     /// ```
     pub fn remove_comment(&mut self, path: &str, position: CommentPosition) -> Result<()> {
+        let p = path.to_owned();
+        self.guarded_comment_edit("remove_comment", move |doc| {
+            doc.remove_comment_inner(&p, position)
+        })
+    }
+
+    fn remove_comment_inner(&mut self, path: &str, position: CommentPosition) -> Result<()> {
         if self.span_at(path).is_none() {
             return Err(Error::Parse(format!(
                 "remove_comment: path `{path}` does not resolve"
@@ -605,6 +625,48 @@ impl Document {
                 self.replace_span(start_of_run, end_of_run, "")
             }
         }
+    }
+}
+
+impl Document {
+    /// Run a comment edit, then require the document's *value* to be
+    /// unchanged.
+    ///
+    /// Comments are trivia: an edit to them that alters what the
+    /// document means is a bug by definition. Enforcing that as an
+    /// invariant beats reasoning about every context, because the
+    /// contexts are not obvious. A folded block scalar is the case that
+    /// found this:
+    ///
+    /// ```text
+    /// >        set_comment("", Inline, "")        >  #
+    /// ```
+    ///
+    /// Appending `  #` to a block scalar does not write a comment — the
+    /// text becomes scalar *content*, and the value changes from `">"`
+    /// to `">  #"`. The `fuzz_editors` target found it within a minute
+    /// of existing.
+    fn guarded_comment_edit<F>(&mut self, what: &str, edit: F) -> Result<()>
+    where
+        F: FnOnce(&mut Self) -> Result<()>,
+    {
+        let before = crate::from_str::<crate::Value>(self.source()).ok();
+        let snapshot = self.clone();
+        edit(self)?;
+
+        if let Some(before) = before {
+            let unchanged =
+                matches!(crate::from_str::<crate::Value>(self.source()), Ok(a) if a == before);
+            if !unchanged {
+                *self = snapshot;
+                return Err(Error::Parse(format!(
+                    "{what}: the edit would change the document's value, not just its \
+                     comments — it was left unchanged. This happens where a `#` is not \
+                     a comment, such as inside a block scalar."
+                )));
+            }
+        }
+        Ok(())
     }
 }
 

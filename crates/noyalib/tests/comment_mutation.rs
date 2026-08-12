@@ -121,3 +121,69 @@ fn unresolvable_path_is_an_error_not_a_silent_no_op() {
     );
     assert!(doc.remove_comment("nope", CommentPosition::Inline).is_err());
 }
+
+// ── Value preservation ──────────────────────────────────────────────
+//
+// A comment edit must never change what the document means. That is not
+// obvious to enforce case by case, because `#` is not always a comment:
+// inside a block scalar it is content. The `fuzz_editors` target found
+// this within a minute of existing, on a folded scalar.
+
+/// Documents where a naive `  # ...` append would land inside content
+/// rather than beside it.
+const TRICKY: &[&str] = &[
+    ">\n",
+    "|\n",
+    "a: >\n  folded\n",
+    "a: |\n  literal\n",
+    "a: |\n  has # inside\n",
+    "a: >-\n  folded strip\n",
+    "a: \"quoted # not comment\"\n",
+    "a: 'single # not comment'\n",
+];
+
+#[test]
+fn a_comment_edit_never_changes_the_value() {
+    for src in TRICKY {
+        for path in ["", "a"] {
+            for position in [CommentPosition::Inline, CommentPosition::Before] {
+                let Ok(before) = noyalib::from_str::<noyalib::Value>(src) else {
+                    continue;
+                };
+                let mut doc = parse_document(src).expect("parse");
+
+                // Either outcome is acceptable; changing the value is not.
+                if doc.set_comment(path, position, "note").is_ok() {
+                    let after =
+                        noyalib::from_str::<noyalib::Value>(doc.source()).unwrap_or_else(|e| {
+                            panic!("{src:?} {path:?} {position:?}: unparseable after edit: {e}")
+                        });
+                    assert_eq!(
+                        after,
+                        before,
+                        "set_comment changed the value of {src:?} at {path:?} ({position:?})\n\
+                         source became {:?}",
+                        doc.source()
+                    );
+                }
+            }
+        }
+    }
+}
+
+#[test]
+fn a_refused_comment_edit_leaves_the_source_intact() {
+    for src in TRICKY {
+        for position in [CommentPosition::Inline, CommentPosition::Before] {
+            let mut doc = parse_document(src).expect("parse");
+            let before = doc.source().to_owned();
+            if doc.set_comment("", position, "note").is_err() {
+                assert_eq!(
+                    doc.source(),
+                    before,
+                    "a refused comment edit modified {src:?}"
+                );
+            }
+        }
+    }
+}
