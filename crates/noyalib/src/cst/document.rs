@@ -1332,6 +1332,12 @@ impl Document {
     /// assert_eq!(doc.to_string(), "items:\n  - one\n  - two\n  - three\n");
     /// ```
     pub fn push_back(&mut self, path: &str, fragment: &str) -> Result<()> {
+        let p = path.to_owned();
+        let f = fragment.to_owned();
+        self.guarded_insert(path, "push_back", move |d| d.push_back_inner(&p, &f))
+    }
+
+    fn push_back_inner(&mut self, path: &str, fragment: &str) -> Result<()> {
         self.ensure_cache();
         let seq_len = {
             let cache = self.cache.borrow();
@@ -1624,6 +1630,18 @@ impl Document {
     /// );
     /// ```
     pub fn insert_after(&mut self, item_path: &str, fragment: &str) -> Result<()> {
+        // The container is the parent sequence: `items[2]` -> `items`.
+        let container = item_path
+            .rfind('[')
+            .map_or_else(|| item_path.to_owned(), |b| item_path[..b].to_owned());
+        let p = item_path.to_owned();
+        let f = fragment.to_owned();
+        self.guarded_insert(&container, "insert_after", move |d| {
+            d.insert_after_inner(&p, &f)
+        })
+    }
+
+    fn insert_after_inner(&mut self, item_path: &str, fragment: &str) -> Result<()> {
         let segments = parse_query_path(item_path);
         if !matches!(segments.last(), Some(QuerySegment::Index(_))) {
             return Err(Error::Parse(
@@ -3622,6 +3640,55 @@ fn indent_continuation_lines(fragment: &str, indent: usize) -> String {
 ///   when its aliases are re-read, which leaves the shape identical and
 ///   is allowed. That is a documented feature, and an earlier
 ///   value-comparing version of this oracle wrongly rejected it.
+impl Document {
+    /// Run `edit`, then require the document's shape outside
+    /// `container_path` to be unchanged.
+    ///
+    /// The inserters legitimately change the shape *of the container
+    /// they insert into* — that is their job — so the container's
+    /// subtree is elided and everything else must match. Without this a
+    /// fragment containing a newline escapes:
+    ///
+    /// ```text
+    /// push_back("s", "v\nqq: 7")  on  "s:\n  - 1\nz: 9\n"
+    /// ```
+    ///
+    /// appended `- v` to the sequence *and* gave the document a
+    /// top-level `qq`, returning `Ok`, because the result is valid
+    /// YAML.
+    fn guarded_insert<F>(&mut self, container_path: &str, what: &str, edit: F) -> Result<()>
+    where
+        F: FnOnce(&mut Self) -> Result<()>,
+    {
+        self.ensure_cache();
+        let segments = parse_query_path(container_path);
+        let before_shape = {
+            let cache = self.cache.borrow();
+            let (value, _) = cache.as_ref().expect("ensure_cache populated");
+            shape_excluding(value, &segments)
+        };
+
+        let snapshot = self.clone();
+        edit(self)?;
+
+        // Fallible parse: an invalid splice commits optimistically by
+        // design and surfaces via `validate`, and cannot be smuggling
+        // entries anyway.
+        let Ok(after_value) = crate::from_str::<Value>(&self.source) else {
+            return Ok(());
+        };
+        if shape_excluding(&after_value, &segments) != before_shape {
+            *self = snapshot;
+            return Err(Error::Parse(format!(
+                "{what}: the fragment added or removed entries outside \
+                 `{container_path}` — the document was left unchanged. Use \
+                 the `_value` variant to write a value without splicing YAML."
+            )));
+        }
+        Ok(())
+    }
+}
+
 fn shape_excluding(value: &Value, segments: &[QuerySegment]) -> String {
     fn walk(v: &Value, skip: &[QuerySegment], out: &mut String) {
         // Reaching the elided path contributes a fixed marker, so the

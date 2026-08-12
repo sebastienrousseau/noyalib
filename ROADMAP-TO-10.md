@@ -124,7 +124,7 @@ risk → categories moved.**
     `value == original − path`; every refusal leaves the source
     byte-identical (already tested).
   - M · medium risk · **API, correctness**
-- **A4. Fragment containment** — *partly done, v0.0.21.* Investigation
+- ~~**A4. Fragment containment**~~ — **done, v0.0.21.** Investigation
   changed the shape of this task twice.
   - Routing `set` through `Emit` would have **broken its documented
     contract**: it splices verbatim on purpose, and `set(p, "{x: 1}")`
@@ -142,10 +142,17 @@ risk → categories moved.**
     edits to **anchored** values, whose aliases legitimately change
     elsewhere. It also parses fallibly, because an invalid splice commits
     optimistically by design and surfaces via `validate`.
-  - *Remaining:* `insert_entry` / `push_back` take fragments too and are
-    not yet guarded; a property test over arbitrary scalars would
-    strengthen the `set_value` round-trip claim beyond the enumerated
-    cases. M · medium · **API, correctness**
+  - **Completed, v0.0.21.** `push_back` and `insert_after` had the same
+    hole — `push_back("s", "v\nqq: 7")` appended to the sequence *and*
+    gave the document a top-level `qq`. Both now run through
+    `guarded_insert`, which elides the container being inserted into
+    (its shape must change) and requires everything else to match; for
+    `insert_after("items[2]", ..)` the container is the parent sequence.
+    `insert_entry` was already covered, delegating to the guarded `set`.
+  - Property tests at 512 cases each now generalise the round-trip claim
+    beyond enumerated inputs: arbitrary scalars survive `set_value` at
+    top level and nested, and `set` never silently corrupts — whatever
+    it returns, siblings survive and the entry count holds.
 - ~~**A5. Read-only key spans**~~ — **done, v0.0.19** (`key_span`).
 
 ### EPIC B — Testing to a defensible 10
