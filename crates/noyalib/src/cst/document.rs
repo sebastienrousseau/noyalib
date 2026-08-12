@@ -503,10 +503,38 @@ impl Document {
     /// Replace the value at `path` with `fragment`.
     ///
     /// `fragment` is spliced verbatim into the source — the caller
-    /// supplies the YAML representation. This deliberately matches
-    /// no scalar style automatically; choose double-quoted, plain,
-    /// or block style to suit. Auto-formatting (the `Emit` trait
-    /// from the design doc) is a follow-up.
+    /// supplies the YAML representation. This deliberately matches no
+    /// scalar style automatically; choose double-quoted, plain, or
+    /// block style to suit.
+    ///
+    /// # Prefer [`Document::set_value`] for values
+    ///
+    /// Verbatim means the fragment is YAML, not text. `set(p, "true")`
+    /// writes the boolean, `set(p, "")` writes null, and
+    /// `set(p, "v # x")` writes `v` with a comment after it. If you
+    /// have a *value* rather than a spelling, [`set_value`] renders it
+    /// — quoting, escaping and choosing a block style as needed — so
+    /// it reads back as exactly what you passed in.
+    ///
+    /// [`set_value`]: Document::set_value
+    ///
+    /// # The fragment cannot reach outside `path`
+    ///
+    /// A fragment containing a newline could previously give the
+    /// document new entries:
+    ///
+    /// ```text
+    /// set("a", "v\nc: 3")  on  "a: 1\nb: 2\n"   ->   a: v
+    ///                                                  c: 3
+    ///                                                  b: 2
+    /// ```
+    ///
+    /// The re-parse guard could not catch that, because the result is
+    /// valid YAML. An oracle now checks that restoring the original
+    /// value at `path` reproduces the original document; if the
+    /// fragment changed anything elsewhere, the edit is refused and the
+    /// document is left untouched. Restructuring the target itself —
+    /// scalar to mapping, say — remains allowed.
     ///
     /// # Errors
     ///
@@ -525,7 +553,56 @@ impl Document {
     /// ```
     pub fn set(&mut self, path: &str, fragment: &str) -> Result<()> {
         let (s, e) = self.write_span(path)?;
-        self.replace_span(s, e, fragment)
+
+        // Verbatim splicing is this method's contract, and a fragment
+        // that legitimately restructures the *target* — scalar to
+        // mapping, say — must keep working. What must not happen is a
+        // fragment reaching outside the target:
+        //
+        //     set("a", "v\nc: 3")  on  "a: 1\nb: 2\n"
+        //
+        // spliced a newline and gave the document a new key `c`. The
+        // re-parse guard cannot see it, because the result is valid
+        // YAML — just not the document anyone asked for.
+        //
+        // The oracle: take the edited document, put the original value
+        // back at `path`, and require the result to equal the original
+        // document. Anything the fragment changed elsewhere survives
+        // that restoration and shows up as a mismatch.
+        //
+        // Callers wanting a value rendered safely should use
+        // `set_value`, which quotes and picks a scalar style.
+        self.ensure_cache();
+        let segments = parse_query_path(path);
+        let before_shape = {
+            let cache = self.cache.borrow();
+            let (value, _) = cache.as_ref().expect("ensure_cache populated");
+            shape_excluding(value, &segments)
+        };
+
+        let snapshot = self.clone();
+        self.replace_span(s, e, fragment)?;
+
+        // Parse fallibly rather than through `as_value`. A splice that
+        // is structurally invalid — `set("name", "[")` — commits
+        // optimistically by design and only surfaces via `validate`;
+        // forcing a parse here would panic on it and change that
+        // documented behaviour. An unparseable result cannot be
+        // smuggling extra entries anyway, so there is nothing for this
+        // oracle to check.
+        let Ok(after_value) = crate::from_str::<Value>(&self.source) else {
+            return Ok(());
+        };
+        let after_shape = shape_excluding(&after_value, &segments);
+        if after_shape != before_shape {
+            *self = snapshot;
+            return Err(Error::Parse(format!(
+                "set: the fragment for `{path}` added or removed entries \
+                 elsewhere in the document — it was left unchanged. Use \
+                 `set_value` to write a value without splicing YAML."
+            )));
+        }
+        Ok(())
     }
 
     /// Resolve `path` to a byte span for a **write**, refusing when the value
@@ -3532,6 +3609,96 @@ fn indent_continuation_lines(fragment: &str, indent: usize) -> String {
 
 /// The typed value with the entry at `segments` removed — the integrity
 /// oracle for the multi-line `remove` path.
+/// A structural fingerprint of `value` with the subtree at `segments`
+/// elided.
+///
+/// Compares *shape* — which keys exist, how long sequences are — and
+/// deliberately not scalar contents. That distinction is the whole
+/// point:
+///
+/// - a fragment smuggling `\nc: 3` into the source **adds a key**, which
+///   changes the shape and is refused;
+/// - editing an anchored value **changes scalars** at existing paths
+///   when its aliases are re-read, which leaves the shape identical and
+///   is allowed. That is a documented feature, and an earlier
+///   value-comparing version of this oracle wrongly rejected it.
+fn shape_excluding(value: &Value, segments: &[QuerySegment]) -> String {
+    fn walk(v: &Value, skip: &[QuerySegment], out: &mut String) {
+        // Reaching the elided path contributes a fixed marker, so the
+        // target may change freely — including scalar to mapping.
+        if skip.is_empty() {
+            out.push_str("<target>");
+            return;
+        }
+        match v {
+            Value::Mapping(m) => {
+                out.push('{');
+                for (k, val) in m {
+                    out.push_str(k.as_str());
+                    out.push(':');
+                    let next = match skip.first() {
+                        Some(QuerySegment::Key(sk)) if sk.as_str() == k.as_str() => &skip[1..],
+                        _ => &[][..],
+                    };
+                    if next.len() < skip.len() {
+                        walk(val, next, out);
+                    } else {
+                        walk_all(val, out);
+                    }
+                    out.push(',');
+                }
+                out.push('}');
+            }
+            Value::Sequence(s) => {
+                out.push('[');
+                for (i, val) in s.iter().enumerate() {
+                    let next = match skip.first() {
+                        Some(QuerySegment::Index(si)) if *si == i => &skip[1..],
+                        _ => &[][..],
+                    };
+                    if next.len() < skip.len() {
+                        walk(val, next, out);
+                    } else {
+                        walk_all(val, out);
+                    }
+                    out.push(',');
+                }
+                out.push(']');
+            }
+            _ => out.push('_'),
+        }
+    }
+
+    /// Shape of a subtree with nothing elided.
+    fn walk_all(v: &Value, out: &mut String) {
+        match v {
+            Value::Mapping(m) => {
+                out.push('{');
+                for (k, val) in m {
+                    out.push_str(k.as_str());
+                    out.push(':');
+                    walk_all(val, out);
+                    out.push(',');
+                }
+                out.push('}');
+            }
+            Value::Sequence(s) => {
+                out.push('[');
+                for val in s {
+                    walk_all(val, out);
+                    out.push(',');
+                }
+                out.push(']');
+            }
+            _ => out.push('_'),
+        }
+    }
+
+    let mut out = String::new();
+    walk(value, segments, &mut out);
+    out
+}
+
 fn expected_after_remove(value: &Value, segments: &[QuerySegment]) -> Result<Value> {
     let (last, parents) = segments
         .split_last()

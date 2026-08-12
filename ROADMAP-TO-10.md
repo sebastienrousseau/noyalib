@@ -124,13 +124,28 @@ risk → categories moved.**
     `value == original − path`; every refusal leaves the source
     byte-identical (already tested).
   - M · medium risk · **API, correctness**
-- **A4. Quoting-aware `Emit` for the fragment mutators** — *the highest-value
-  remaining correctness work.* Route `set` / `insert_entry` / `push_back`
-  through the same `Emit` path the `_value` variants already use.
-  - *Accept:* property test — for arbitrary scalar `s`, `set(path, s)`
-    then read back returns exactly `s`; the "valid but misinterpreted"
-    class is closed; semver-additive.
-  - L · higher risk (touches every mutator) · **API, correctness**
+- **A4. Fragment containment** — *partly done, v0.0.21.* Investigation
+  changed the shape of this task twice.
+  - Routing `set` through `Emit` would have **broken its documented
+    contract**: it splices verbatim on purpose, and `set(p, "{x: 1}")`
+    turning a scalar into a mapping is legitimate use. The safe route already
+    exists — `set_value` renders a typed value, and was verified to
+    round-trip every hazardous input exactly (`"true"`, `""`,
+    `"v # x"`, `"v\nc: 3"`, `"x: y"`, `"- item"`).
+  - The real defect was narrower and worse: a fragment could reach
+    **outside its path**. `set("a", "v\nc: 3")` gave the document a new
+    key `c` and returned `Ok`, because the result is valid YAML. **Fixed**
+    by a structural oracle — the document's shape outside the edited path
+    must be unchanged.
+  - The oracle compares *shape*, not values, and that distinction was
+    found the hard way: a value-comparing first version wrongly rejected
+    edits to **anchored** values, whose aliases legitimately change
+    elsewhere. It also parses fallibly, because an invalid splice commits
+    optimistically by design and surfaces via `validate`.
+  - *Remaining:* `insert_entry` / `push_back` take fragments too and are
+    not yet guarded; a property test over arbitrary scalars would
+    strengthen the `set_value` round-trip claim beyond the enumerated
+    cases. M · medium · **API, correctness**
 - ~~**A5. Read-only key spans**~~ — **done, v0.0.19** (`key_span`).
 
 ### EPIC B — Testing to a defensible 10
