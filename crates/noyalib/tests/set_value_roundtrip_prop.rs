@@ -17,7 +17,7 @@ use noyalib::cst::parse_document;
 use proptest::prelude::*;
 
 proptest! {
-    #![proptest_config(ProptestConfig::with_cases(512))]
+    #![proptest_config(ProptestConfig::with_cases(2048))]
 
     /// Any scalar string round-trips through `set_value`.
     #[test]

@@ -4384,6 +4384,17 @@ pub(super) fn can_use_block_literal(s: &str) -> bool {
     if trimmed.ends_with('\n') {
         return false;
     }
+    // A block literal needs at least one content line. `"\n"` strips to
+    // nothing, which would emit a header with an empty body —
+    //
+    //     a: |
+    //     b: 2
+    //
+    // and that does not parse. Double quoting carries it instead. Found
+    // by the `set_value` round-trip property test.
+    if trimmed.is_empty() {
+        return false;
+    }
     // No line may start with a space or tab — that requires an
     // explicit indentation indicator we do not emit yet.
     for line in trimmed.split('\n') {
@@ -4511,6 +4522,17 @@ pub(super) fn is_plain_safe(s: &str) -> bool {
     }
     // Cannot end with whitespace.
     if matches!(*bytes.last().unwrap(), b' ' | b'\t') {
+        return false;
+    }
+    // Cannot end with `:`. The loop below rejects `": "`, but a colon at
+    // the very end has no following byte to catch it there — and in
+    // block context a trailing colon reads as a mapping indicator, so
+    //
+    //     a: a:
+    //
+    // does not parse. Found by the `set_value` round-trip property
+    // test, which proptest minimised to `"a:"`.
+    if *bytes.last().unwrap() == b':' {
         return false;
     }
     // Disallow line breaks and control characters; disallow `: ` and
