@@ -75,3 +75,35 @@ jobs:
           key: no-std-wasm
       - name: cargo check --no-default-features --target wasm32-unknown-unknown
         run: cargo check --no-default-features --lib --locked --target wasm32-unknown-unknown
+
+  # Bare-metal `*-none` targets — the ones #210 was about. They have no
+  # `std` at all, so a dependency pulling it in fails here instead of
+  # being masked. wasm32 above passed *throughout* the #210 bug for
+  # exactly that reason: the target has std available, so the three
+  # dependencies that were pulling it in unconditionally went unnoticed.
+  # That is why wasm32 alone is not sufficient cover.
+  bare-metal:
+    name: no_std (${{ matrix.target }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - thumbv7em-none-eabihf
+          - riscv32imac-unknown-none-elf
+          - aarch64-unknown-none
+    env:
+      CARGO_TARGET_DIR: ${{ github.workspace }}/target-no-std-bare
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # master
+        with:
+          toolchain: stable
+          targets: ${{ matrix.target }}
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+        with:
+          workspaces: ". -> target-no-std-bare"
+          key: no-std-bare-${{ matrix.target }}
+      - name: cargo check --no-default-features --target ${{ matrix.target }}
+        run: cargo check --no-default-features --lib --locked --target ${{ matrix.target }}
+

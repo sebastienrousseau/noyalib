@@ -44,9 +44,9 @@ unchanged.
 | **API / functionality** | 9 | 488 public fns; lossless CST editors incl. `set`/`insert`/`remove`/`rename_key`/`rename_anchor`/`swap_items`/`move_item`/`set_comment`/`remove_comment`; streaming; async | #221 remains: quoting-aware `Emit` for the fragment mutators, `remove_subtree`, flow-collection edits |
 | **Correctness / testing** | 9.5 | 161 test files, 5 961 tests, coverage gate (95 fn / 94 line / 93 region), Miri, differential fuzz vs saphyr | Fuzz is a PR smoke, not continuous; no structured fuzzers for the *editors*; property-test breadth uneven |
 | **Performance** | 9 | 16 benches, SIMD, `fast-int`/`fast-float`, `parallel` | No published numbers; no CI regression gate; no criterion baselines |
-| **Security / supply-chain** | 9 | cargo-vet, cargo-deny, cargo-audit, CodeQL, OSSF scorecard, REUSE 850/850, `unsafe` forbidden except `simd` | No SBOM artifact; no SLSA provenance; no OpenSSF badge; **schema validator has no depth or time bound** (§EPIC G); `build.rs` unaudited |
+| **Security / supply-chain** | 9 | cargo-vet, cargo-deny, cargo-audit, CodeQL, OSSF scorecard, REUSE 850/850, `unsafe` forbidden except `simd`; schema-validator hardening pinned by test (v0.0.21) | No SBOM artifact; no SLSA provenance; no OpenSSF badge; depth bound not caller-configurable; `build.rs` unaudited |
 | **Documentation** | 9 | rustdoc-strict + broken-intra-doc-link gate, `USER-GUIDE.md`, ADRs, 79 examples | No docs.rs feature-matrix proof; no cookbook; no competitive comparison page |
-| **no_std / portability** | 9.5 | `no_std`+alloc; **wasm32 and bare-metal `thumbv7em` / `riscv32imac` / `aarch64-unknown-none` all build** (v0.0.20) | No embedded target in the CI matrix yet — it builds, but nothing stops it regressing |
+| **no_std / portability** | **10** | `no_std`+alloc; wasm32 and bare-metal `thumbv7em` / `riscv32imac` / `aarch64-unknown-none` build (v0.0.20) **and are gated in CI** (v0.0.21) | — |
 | **DX / ergonomics** | 8.5 | miette/ariadne diagnostics, typed path API, recovery | No derive helpers/builders; fix-hints not uniform across the error taxonomy |
 | **Interop / ecosystem** | 9 | serde, `compat-serde-yaml` shim, figment, schemars, garde/validator, tokio, sval | Successor position is *earned but unclaimed* — see EPIC F1 |
 | **Satellites** | 7.5 | wasm/mcp/lsp/cli all shipping | Each v0.0.x; **`noyalib-mcp` predates the 2026-07-28 MCP spec**; no npm/registry packaging |
@@ -82,11 +82,14 @@ unchanged.
   siblings *and its parent*, so `remove("a.x")` on `a: {x: 1, y: 2}`
   deleted the whole document and returned `Ok`. The lesson generalises:
   **any fast path that skips the oracle needs a proof, not an intuition.**
-- **Schema validator is unbounded.** `validate-schema` has no depth limit,
-  no validation-time budget, and no asserted policy on external `$ref`.
-  It happens to be safe from remote fetch because `jsonschema` is declared
-  `default-features = false` — an accident, not a guarantee, with no test
-  pinning it. See EPIC G.
+- **Schema validator hardening was untested, not absent.** Measured at
+  v0.0.21: external `$ref` *is* refused, and recursion *is* bounded (the
+  `jsonschema` crate stops at depth 129). Both properties come from how the
+  dependency is configured — `default-features = false` — rather than from
+  anything this crate asserts, so a feature flag or a version bump could
+  have removed either silently. **Fixed in v0.0.21** by
+  `tests/schema_hardening.rs`, which pins both. An earlier revision of this
+  roadmap claimed the bounds were missing; they were merely unguarded.
 - **`build.rs` unaudited.** Build scripts execute at compile time, before
   any application code. 2026 supply-chain guidance treats them as a
   first-class risk surface; ours has no documented contract.
@@ -169,9 +172,12 @@ risk → categories moved.**
   `FxHashMap`/`FxHashSet` being std-only aliases; `indexmap`'s default
   hasher being std-only (worked around with a cfg-defaulted alias so no
   public signature changed); and `core` having no `f64::fract`/`mul_add`.
-- **D2. Keep it built** — add `thumbv7em-none-eabihf` and
-  `riscv32imac-unknown-none-elf` to the CI matrix. It builds today with
-  nothing stopping it regressing tomorrow. S · low · **no_std**
+- ~~**D2. Keep it built**~~ — **done, v0.0.21.** `shared-no-std.yml` gains
+  a `bare-metal` matrix over `thumbv7em-none-eabihf`,
+  `riscv32imac-unknown-none-elf` and `aarch64-unknown-none`. Recorded there:
+  wasm32 passed *throughout* the #210 bug, because the target has `std`
+  available and masked three dependencies pulling it in unconditionally —
+  so wasm32 alone was never sufficient cover.
 - **D3. `alloc`-free surface audit** — document which APIs need `alloc` vs
   pure `core`. M · medium · **no_std, docs**
 
@@ -193,14 +199,18 @@ VEX are what auditors now ask for.
   **security**
 - **E4. OpenSSF Best Practices badge** — passing → silver. S · low ·
   **security, governance**
-- **E5. `build.rs` contract** — document what it does, why it is needed,
-  and what it must never do (no network, no codegen from untrusted input);
-  assert it in CI. Build scripts run before your code does. S · low ·
-  **security**
-- **E6. MSRV & deprecation policy** — write it down. The v0.0.21 branch hit
-  this twice: an `is_none_or` call needing 1.82 against a 1.80 MSRV, and a
-  dev-dependency whose own MSRV had moved five releases past the floor.
-  S · low · **governance**
+- ~~**E5. `build.rs` contract**~~ — **done, v0.0.21.** The module comment
+  states what it may do (declare cfgs, read `$RUSTC --version`, read one
+  env var) and what it must never do; a `build-script-contract` CI job
+  asserts the latter by grepping for network and filesystem capability, a
+  subprocess count above one, and any `[build-dependencies]`. Grepping for
+  capability means a future edit has to defeat CI rather than a reader's
+  attention.
+- ~~**E6. MSRV & deprecation policy**~~ — **done, v0.0.21.**
+  `doc/MSRV-AND-DEPRECATION.md`. The clause that mattered: a dev-dependency
+  outrunning the floor is a *decision*, not a mechanical fix — raising a
+  user-facing promise to accommodate a test tool should be deliberate, not
+  a way to turn a job green.
 
 ### EPIC F — Documentation & interop leadership
 
@@ -239,15 +249,17 @@ noyalib already ships a JSON Schema 2020-12 validator. That makes this an
 opportunity rather than a chore — but the hardening the spec requires is
 currently absent.
 
-- **G1. Harden the schema validator.** Refuse external `$ref` explicitly
-  (today it is merely unreachable because `jsonschema` is pulled with
-  `default-features = false` — no test pins it); add a configurable depth
-  bound and a validation-time budget.
-  - *Accept:* a test proving a remote `$ref` is refused rather than fetched;
-    a deeply-nested schema is rejected in bounded time; both documented as
-    guarantees.
-  - M · low risk · **security, interop** — *and it is a prerequisite for
-    anything claiming MCP conformance.*
+- ~~**G1. Pin the schema-validator hardening**~~ — **done, v0.0.21.**
+  Measurement changed the shape of this task: the protections already
+  existed, undocumented and untested. `tests/schema_hardening.rs` now pins
+  six properties — external `$ref` refused, that refusal being fast enough
+  to rule out a network attempt, recursion bounded at depth 500/2 000/10 000
+  without stack exhaustion, the bound naming itself in the error, local
+  `$ref`/`$defs` still resolving, and ordinary schemas unaffected — and
+  `schema_validate.rs` documents them as contract.
+  - *Still open:* a **configurable** depth bound and an explicit
+    validation-time budget. Today's limit is `jsonschema`'s, not ours, so a
+    caller cannot tighten it. S–M · low · **security, interop**
 - **G2. `noyalib-mcp` → 2026-07-28 conformance.** Stateless core, Tasks for
   long edits, Extensions, OAuth 2.1. Add an MCP Inspector conformance job.
   L · medium · **satellites, ecosystem**

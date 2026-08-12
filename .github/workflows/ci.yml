@@ -124,6 +124,50 @@ jobs:
     # `uses: sebastienrousseau/noyalib/.github/workflows/shared-cargo-machete.yml@<sha>`.
     uses: ./.github/workflows/shared-cargo-machete.yml
 
+  build-script-contract:
+    name: build.rs contract
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: build.rs must not touch the network or the filesystem
+        run: |
+          set -euo pipefail
+          f=crates/noyalib/build.rs
+
+          # A build script runs before any crate code, on every machine
+          # that compiles this crate. Its documented contract (see the
+          # module comment in that file) is: declare cfgs, read
+          # `$RUSTC --version`, read one env var. Nothing else.
+          #
+          # Grepping for capability rather than reviewing by eye means a
+          # future edit that reaches further has to defeat CI, not just
+          # a reader's attention.
+          if grep -nE '\b(TcpStream|UdpSocket|reqwest|ureq|curl|hyper)\b' "$f"; then
+            echo "::error::build.rs must not access the network"
+            exit 1
+          fi
+          if grep -nE 'fs::(write|create|remove|copy|rename|read_to_string|File)' "$f"; then
+            echo "::error::build.rs must not touch the filesystem"
+            exit 1
+          fi
+
+          # It legitimately spawns one subprocess: `$RUSTC --version`.
+          # Anything else is out of contract.
+          spawns=$(grep -cE 'Command::new' "$f" || true)
+          if [ "${spawns}" -gt 1 ]; then
+            echo "::error::build.rs spawns ${spawns} subprocesses; the contract allows one (\$RUSTC --version)"
+            exit 1
+          fi
+
+          # No build-dependencies: adding one is a supply-chain change
+          # that deserves its own review rather than arriving silently.
+          if grep -qE '^\[build-dependencies\]' crates/noyalib/Cargo.toml; then
+            echo "::error::build.rs must have no [build-dependencies]"
+            exit 1
+          fi
+
+          echo "build.rs contract holds: no network, no filesystem, one subprocess, no build-deps"
+
   reuse-lint:
     # Dogfooded from shared-reuse.yml — see the shared file for
     # full context. Satellites will consume it via
