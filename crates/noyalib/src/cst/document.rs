@@ -686,13 +686,37 @@ impl Document {
     pub fn remove(&mut self, path: &str) -> Result<()> {
         self.ensure_cache();
         let segments = parse_query_path(path);
-        let (line_start, line_end, multiline) = {
+        // `multiline` is no longer branched on — every path is guarded.
+        let (line_start, line_end, _multiline) = {
             let cache = self.cache.borrow();
             let (value, span_tree) = cache.as_ref().expect("ensure_cache populated");
             entry_line_span(value, span_tree, &self.source, &segments)?
         };
-        if !multiline {
-            // Single-line entry — original fast path, unchanged.
+        // Fast path only when the entry demonstrably owns its line.
+        //
+        // This used to be `if !multiline`, on the reasoning that
+        // deleting one line cannot surprise anyone. A flow collection
+        // breaks that: in `a: {x: 1, y: 2}` the entry `a.x` shares a
+        // line with its siblings *and* its parent, so "delete the line"
+        // removed the whole `a` entry — and for a single-entry
+        // document, the whole document — while returning `Ok`. Silent
+        // data loss.
+        //
+        // The test is whether the entry's own key starts the line. If
+        // it does, the line is the entry and splicing it is safe. If it
+        // does not, something else shares the line and the typed oracle
+        // below has to arbitrate.
+        //
+        // Keeping a fast path at all matters: the oracle compares
+        // against "the document with this path absent", which is the
+        // wrong expectation for a duplicated key. `remove("k")` on
+        // `k: one\nk: two` deletes the winning occurrence and leaves
+        // the shadowed one, so the oracle would refuse an edit that is
+        // both intended and tested.
+        let owns_its_line = self
+            .key_span(path)
+            .is_some_and(|(ks, _)| self.source[line_start..ks].trim().is_empty());
+        if !_multiline && owns_its_line {
             return self.replace_span(line_start, line_end, "");
         }
 
