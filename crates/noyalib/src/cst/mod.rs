@@ -88,7 +88,7 @@ mod green;
 mod syntax;
 
 pub use anchor::{AliasInfo, AnchorInfo};
-pub use annotated::CommentBundle;
+pub use annotated::{CommentBundle, CommentPosition};
 #[cfg(feature = "validate-schema")]
 #[cfg_attr(docsrs, doc(cfg(feature = "validate-schema")))]
 pub use coerce::coerce_to_schema;

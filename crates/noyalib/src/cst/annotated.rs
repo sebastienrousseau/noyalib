@@ -473,6 +473,183 @@ fn line_end(src: &str, byte: usize) -> usize {
     i
 }
 
+/// Where a comment sits relative to the node it decorates.
+///
+/// Mirrors the two positions [`CommentBundle`] reports, so a read with
+/// [`Document::comments_at`] and a write with
+/// [`Document::set_comment`] address the same thing.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CommentPosition {
+    /// The trailing comment on the node's own line.
+    Inline,
+    /// The contiguous run of comment lines immediately above the node.
+    Before,
+}
+
+impl Document {
+    /// Set the comment at `path` in the given position.
+    ///
+    /// Replaces an existing comment, or writes a new one when there is
+    /// none. `text` is the comment body without the leading `#`; a
+    /// single leading space is added when `text` does not already begin
+    /// with whitespace, so `set_comment(p, Inline, "note")` yields
+    /// `# note`.
+    ///
+    /// For [`CommentPosition::Before`], a `text` containing newlines
+    /// becomes one `#` line per line, each at the node's own
+    /// indentation.
+    ///
+    /// The edit goes through [`Document::replace_span`], so it inherits
+    /// the same guard: an edit that would make the document re-parse
+    /// differently is rejected rather than written.
+    ///
+    /// # Errors
+    ///
+    /// - `path` does not resolve to a node.
+    /// - The resulting document would not re-parse to the same value.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use noyalib::cst::{parse_document, CommentPosition};
+    ///
+    /// let mut doc = parse_document("port: 8080\n").unwrap();
+    /// doc.set_comment("port", CommentPosition::Inline, "listen port").unwrap();
+    /// assert_eq!(doc.source(), "port: 8080  # listen port\n");
+    /// ```
+    pub fn set_comment(&mut self, path: &str, position: CommentPosition, text: &str) -> Result<()> {
+        let Some((start, end)) = self.span_at(path) else {
+            return Err(Error::Parse(format!(
+                "set_comment: path `{path}` does not resolve"
+            )));
+        };
+        let bundle = self.comments_at(path);
+
+        match position {
+            CommentPosition::Inline => {
+                let body = normalise_body(text);
+                if let Some(existing) = bundle.inline {
+                    self.replace_span(existing.start, existing.end, &format!("#{body}"))
+                } else {
+                    // No inline comment yet: append at the end of the
+                    // node's own line, before the newline.
+                    let line_end = line_end_from(self.source(), end);
+                    self.replace_span(line_end, line_end, &format!("  #{body}"))
+                }
+            }
+            CommentPosition::Before => {
+                let indent = indent_of_line_containing(self.source(), start);
+                let block: String = text
+                    .split('\n')
+                    .map(|l| format!("{indent}#{}\n", normalise_body(l)))
+                    .collect();
+                if let (Some(first), Some(last)) = (bundle.before.first(), bundle.before.last()) {
+                    // Replace the existing run, including the newline
+                    // that terminates its last line.
+                    let end_of_run = line_end_from(self.source(), last.end) + 1;
+                    let start_of_run = line_start_from(self.source(), first.start);
+                    self.replace_span(start_of_run, end_of_run.min(self.source().len()), &block)
+                } else {
+                    let line_start = line_start_from(self.source(), start);
+                    self.replace_span(line_start, line_start, &block)
+                }
+            }
+        }
+    }
+
+    /// Remove the comment at `path` in the given position.
+    ///
+    /// A no-op when there is no comment there. For
+    /// [`CommentPosition::Inline`] the whitespace separating the
+    /// comment from the node's content goes with it, so no trailing
+    /// spaces are left behind. For [`CommentPosition::Before`] the
+    /// whole run of comment lines is removed.
+    ///
+    /// # Errors
+    ///
+    /// As [`Document::set_comment`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use noyalib::cst::{parse_document, CommentPosition};
+    ///
+    /// let mut doc = parse_document("port: 8080  # note\n").unwrap();
+    /// doc.remove_comment("port", CommentPosition::Inline).unwrap();
+    /// assert_eq!(doc.source(), "port: 8080\n");
+    /// ```
+    pub fn remove_comment(&mut self, path: &str, position: CommentPosition) -> Result<()> {
+        if self.span_at(path).is_none() {
+            return Err(Error::Parse(format!(
+                "remove_comment: path `{path}` does not resolve"
+            )));
+        }
+        let bundle = self.comments_at(path);
+        match position {
+            CommentPosition::Inline => {
+                let Some(c) = bundle.inline else {
+                    return Ok(());
+                };
+                // Take the run of whitespace before the `#` too.
+                let from = trim_back_whitespace(self.source(), c.start);
+                self.replace_span(from, c.end, "")
+            }
+            CommentPosition::Before => {
+                let (Some(first), Some(last)) = (bundle.before.first(), bundle.before.last())
+                else {
+                    return Ok(());
+                };
+                let start_of_run = line_start_from(self.source(), first.start);
+                let end_of_run =
+                    (line_end_from(self.source(), last.end) + 1).min(self.source().len());
+                self.replace_span(start_of_run, end_of_run, "")
+            }
+        }
+    }
+}
+
+/// Give a comment body exactly one leading space unless it already
+/// starts with whitespace, so `"note"` and `" note"` both render as
+/// `# note`.
+fn normalise_body(text: &str) -> String {
+    if text.starts_with(char::is_whitespace) || text.is_empty() {
+        text.to_owned()
+    } else {
+        format!(" {text}")
+    }
+}
+
+/// Byte index of the newline ending the line containing `idx`, or the
+/// end of the source when the last line is unterminated.
+fn line_end_from(src: &str, idx: usize) -> usize {
+    src[idx..].find('\n').map_or(src.len(), |n| idx + n)
+}
+
+/// Byte index just after the newline preceding `idx`, i.e. the start of
+/// the line containing it.
+fn line_start_from(src: &str, idx: usize) -> usize {
+    src[..idx].rfind('\n').map_or(0, |n| n + 1)
+}
+
+/// Walk back over spaces and tabs immediately before `idx`.
+fn trim_back_whitespace(src: &str, idx: usize) -> usize {
+    let bytes = src.as_bytes();
+    let mut i = idx;
+    while i > 0 && (bytes[i - 1] == b' ' || bytes[i - 1] == b'\t') {
+        i -= 1;
+    }
+    i
+}
+
+/// The leading whitespace of the line containing `idx`.
+fn indent_of_line_containing(src: &str, idx: usize) -> String {
+    let start = line_start_from(src, idx);
+    src[start..]
+        .chars()
+        .take_while(|c| *c == ' ' || *c == '\t')
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
