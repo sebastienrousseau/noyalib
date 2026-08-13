@@ -1374,7 +1374,8 @@ impl Document {
         let line_end = end_of_line(&self.source, last_end);
         let indent: String = " ".repeat(dash_col);
         let lead = leading_break_for_splice(&self.source, line_end);
-        let new_line = format!("{lead}{indent}- {fragment}\n");
+        let nl = document_break(&self.source);
+        let new_line = format!("{lead}{indent}- {fragment}{nl}");
         self.replace_span(line_end, line_end, &new_line)
     }
 
@@ -1576,6 +1577,10 @@ impl Document {
         // the children re-indented by `key_col + indent_unit` so the
         // nested structure lines up with the surrounding file's
         // convention (Phase 2.2).
+        // The fragment is a caller-supplied or generated emission and is
+        // always `\n`-separated; only the breaks this splice *adds* take
+        // the document's spelling.
+        let nl = document_break(&self.source);
         let new_line = if fragment.contains('\n') {
             let unit = detect_indent_unit(&self.source);
             let inner_indent: String = " ".repeat(key_col + unit);
@@ -1584,19 +1589,19 @@ impl Document {
             // single-entry collection) does not introduce a stray
             // blank between the key and its first child.
             let body = fragment.trim_start_matches('\n');
-            let mut buf = format!("{indent}{key}:\n");
+            let mut buf = format!("{indent}{key}:{nl}");
             for line in body.split('\n') {
                 if line.is_empty() {
-                    buf.push('\n');
+                    buf.push_str(nl);
                 } else {
                     buf.push_str(&inner_indent);
                     buf.push_str(line);
-                    buf.push('\n');
+                    buf.push_str(nl);
                 }
             }
             buf
         } else {
-            format!("{indent}{key}: {fragment}\n")
+            format!("{indent}{key}: {fragment}{nl}")
         };
         let lead = leading_break_for_splice(&self.source, line_end);
         self.replace_span(line_end, line_end, &format!("{lead}{new_line}"))
@@ -1660,7 +1665,8 @@ impl Document {
         let line_end = end_of_line(&self.source, item_end);
         let indent: String = " ".repeat(dash_col);
         let lead = leading_break_for_splice(&self.source, line_end);
-        let new_line = format!("{lead}{indent}- {fragment}\n");
+        let nl = document_break(&self.source);
+        let new_line = format!("{lead}{indent}- {fragment}{nl}");
         self.replace_span(line_end, line_end, &new_line)
     }
 
@@ -1835,28 +1841,30 @@ impl Document {
             // Replace in place. The fragment's continuation lines (a
             // block scalar's body) shift to the existing key's column,
             // landing at `key_col + 2` — the depth `set_value` writes.
-            let inline = indent_continuation_lines(&fragment, column);
+            let inline = indent_continuation_lines(&fragment, column, document_break(&self.source));
             self.set(&child_path, &inline)
         } else if is_collection {
             // `key:` then the emission as its children, one indent
             // step in from the key.
             let inner = " ".repeat(column + self.indent_unit());
             let lead = leading_break_for_splice(&self.source, anchor_pos);
-            let mut line = format!("{lead}{indent}{key_spelling}:\n");
+            let nl = document_break(&self.source);
+            let mut line = format!("{lead}{indent}{key_spelling}:{nl}");
             for body_line in fragment.split('\n') {
                 if body_line.is_empty() {
-                    line.push('\n');
+                    line.push_str(nl);
                 } else {
                     line.push_str(&inner);
                     line.push_str(body_line);
-                    line.push('\n');
+                    line.push_str(nl);
                 }
             }
             self.replace_span(anchor_pos, anchor_pos, &line)
         } else {
-            let inline = indent_continuation_lines(&fragment, column);
+            let nl = document_break(&self.source);
+            let inline = indent_continuation_lines(&fragment, column, nl);
             let lead = leading_break_for_splice(&self.source, anchor_pos);
-            let line = format!("{lead}{indent}{key_spelling}: {inline}\n");
+            let line = format!("{lead}{indent}{key_spelling}: {inline}{nl}");
             self.replace_span(anchor_pos, anchor_pos, &line)
         };
         if let Err(e) = spliced {
@@ -2076,7 +2084,11 @@ impl Document {
         // `push_back` / `insert_after` splice `{indent}- {fragment}`,
         // so the first line is already placed; every later line must
         // clear the `- ` indicator itself.
-        Ok(indent_continuation_lines(&fragment, column + 2))
+        Ok(indent_continuation_lines(
+            &fragment,
+            column + 2,
+            document_break(&self.source),
+        ))
     }
 
     /// The item the insertion mutators anchor against: the column of
@@ -3607,7 +3619,7 @@ fn sequence_parent_path(item_path: &str) -> String {
 ///
 /// Blank lines stay blank — trailing whitespace on an empty line is
 /// noise the emitters never introduce deliberately.
-fn indent_continuation_lines(fragment: &str, indent: usize) -> String {
+fn indent_continuation_lines(fragment: &str, indent: usize, nl: &str) -> String {
     if !fragment.contains('\n') {
         return fragment.to_owned();
     }
@@ -3615,7 +3627,9 @@ fn indent_continuation_lines(fragment: &str, indent: usize) -> String {
     let mut out = String::with_capacity(fragment.len() + indent * 4);
     for (i, line) in fragment.split('\n').enumerate() {
         if i > 0 {
-            out.push('\n');
+            // An emission is always `\n`-separated; the breaks it grows
+            // when spliced take the document's spelling instead.
+            out.push_str(nl);
             if !line.is_empty() {
                 out.push_str(&pad);
             }
@@ -4038,18 +4052,43 @@ fn walk_collections(node: &GreenNode, visit: &mut dyn FnMut(SyntaxKind)) {
 /// Position of the byte immediately past the next `\n` at or after
 /// `pos`. If `pos` already points past a newline, returns `pos`.
 /// At end-of-input, returns `source.len()`.
+/// The line break this document uses, for a splice that adds a line.
+///
+/// A splice derives its indentation from the site rather than assuming
+/// two spaces; the terminator deserves the same treatment. Returns
+/// `"\r\n"` only when the document is *wholly* CRLF — at least one break,
+/// and every `\n` preceded by `\r` — so the answer is the document's
+/// convention rather than a guess. An LF document, a mixed one, and a
+/// single unterminated line all yield `"\n"`: mixed input has no
+/// convention to honour, and picking one would rewrite bytes the caller
+/// did not ask about.
+fn document_break(source: &str) -> &'static str {
+    let bytes = source.as_bytes();
+    let mut saw = false;
+    for (i, &b) in bytes.iter().enumerate() {
+        if b == b'\n' {
+            if i == 0 || bytes[i - 1] != b'\r' {
+                return "\n";
+            }
+            saw = true;
+        }
+    }
+    if saw { "\r\n" } else { "\n" }
+}
+
 /// The line break a splice at `pos` must supply for itself, if any.
 ///
 /// [`end_of_line`] returns the byte after the line's `\n`, or the end
 /// of the source when the last line has no terminator. Splicing a new
 /// entry at that second position would land it on the tail of the last
 /// line (`a: 1  b: 2`), so the new text has to open with a break of its
-/// own. Everywhere else this is empty.
+/// own — in the document's own spelling ([`document_break`]).
+/// Everywhere else this is empty.
 fn leading_break_for_splice(source: &str, pos: usize) -> &'static str {
     if pos == 0 || source.as_bytes()[pos - 1] == b'\n' {
         ""
     } else {
-        "\n"
+        document_break(source)
     }
 }
 
