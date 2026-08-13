@@ -7,7 +7,135 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+## [v0.0.21] - 2026-08-12
+
+Includes the work prepared as **0.0.20**, which was merged to `main` but
+never tagged and so never reached crates.io. The published sequence goes
+0.0.19 → 0.0.21.
+
+### Added
+
+- **Comment mutation on the CST** (#221, sub-ask 1):
+
+  ```rust
+  pub enum CommentPosition { Inline, Before }
+  Document::set_comment(path, position, text)
+  Document::remove_comment(path, position)
+  ```
+
+  Both go through `replace_span`, so they inherit its guard. A leading
+  block takes the node's own indentation; inline removal takes the
+  padding with it; an unresolvable path is an error, not a silent no-op.
+
+- **`no_std` support on bare-metal targets** (#210) —
+  `thumbv7em-none-eabihf`, `riscv32imac-unknown-none-elf` and
+  `aarch64-unknown-none` build, and are covered by a CI matrix. The
+  issue documented two root causes; there were four:
+  - `indexmap`, `rustc-hash` and `memchr` lacked
+    `default-features = false`, so `extern crate std` reached
+    bare-metal. The crate's own `std` feature now turns theirs back
+    on — load-bearing, because without it `FxHashMap`/`FxHashSet` stop
+    existing on *hosted* builds.
+  - `FxHashMap`/`FxHashSet` do not exist without std. The no_std
+    prelude aliases them onto **hashbrown keyed by the same
+    `FxBuildHasher`**, so hashing behaviour is identical everywhere.
+  - `IndexMap`'s default hasher is std-only, which would have added a
+    third type parameter to the public `Mapping::into_inner` /
+    `from_inner`. The no_std prelude defaults `S` instead, so **no
+    public API changes shape for hosted callers**.
+  - `core` has no `f64::fract` / `f64::mul_add`; these are backed by
+    **libm** on no_std.
+
+  `wasm32-unknown-unknown` passed throughout the bug only because it
+  has std available, which masked the problem entirely.
+
+- **`fuzz_editors`** — a structured fuzz target for the edit API, as
+  opposed to the byte-oriented parser targets. It applies a generated
+  edit to a generated document and asserts that a refusal leaves the
+  source byte-identical, that a comment edit never changes the value,
+  and that an accepted `remove` shrinks the document. Runs 30 s per
+  push in CI, and unlike `fuzz_diff` it is not `continue-on-error`.
+
+- **Schema-validator hardening tests** — external `$ref` was already
+  refused and recursion already bounded, but nothing asserted either.
+
+- **`doc/MSRV-AND-DEPRECATION.md`** — the MSRV and deprecation policy,
+  previously applied from memory.
+
 ### Fixed
+
+- **`Document::remove` deleted more than it was asked to.** Given
+  `a: {x: 1, y: 2}`, `remove("a.x")` deleted the entire document; with a
+  preceding entry it deleted all of `a`. The typed oracle guarded only
+  multi-line edits, and in a flow collection an entry shares its line
+  with its siblings *and its parent*. The fast path now requires the
+  entry to own its line; anything else goes through the oracle.
+
+- **A `set` fragment could reach outside its path.**
+  `set("a", "v\nc: 3")` added a new top-level key `c` and returned
+  `Ok` — valid YAML, so the re-parse guard could not see it. A
+  structural oracle now requires the shape outside the edited path to
+  be unchanged. It compares *shape*, not values, because an edit to an
+  anchored node legitimately changes its aliases elsewhere.
+
+- **`push_back` and `insert_after` had the same hole** — both now go
+  through `guarded_insert`.
+
+- **Two `Emit` defects** found by a new round-trip property test, which
+  passed locally and failed in CI on a different seed:
+  - a scalar ending in a colon was emitted plain, producing `a: a:`,
+    which does not parse;
+  - a lone newline produced a block-literal header with an empty body.
+
+  Neither corrupted data — the oracle refused — but `set_value`, the
+  API documented as the *safe* route, could fail on valid input.
+
+- **A comment edit could change the document's value**, found by
+  `fuzz_editors` against the API added in this same release: appending
+  ` #` to a block scalar makes the text scalar *content*, not a
+  comment. `set_comment`/`remove_comment` now require the value to be
+  unchanged and roll back otherwise, so the invariant is enforced
+  rather than the contexts enumerated.
+
+### Changed
+
+- **`build.rs` now has a written contract**, asserted in CI by grepping
+  for capability: no network, no filesystem, at most one subprocess, no
+  `[build-dependencies]`.
+
+- **`ROADMAP-TO-10.md` reconciled with the tree.** It had drifted on
+  eight counts — public function count, test count, which epics had
+  shipped, the state of #210 — each recorded rather than silently
+  overwritten.
+
+### Notes
+
+`#221` is not closed: `remove_subtree`, sole-entry and flow-member
+removal remain. They now refuse safely rather than corrupting.
+
+## [v0.0.19] - 2026-08-11
+
+### Fixed
+
+- **`from_str_strict` rejected every populated `Option` field** (#239).
+  Reported as `Option<String>` failing on `""`, which reads like an
+  empty-string edge case; in fact every `Option<T>` field with a value
+  failed, for every `T`. `option` sat in the
+  `forward_to_deserialize_any!` list, so `deserialize_option` fell
+  through to `deserialize_any`, which hands the visitor a concrete
+  scalar. Only null worked — `deserialize_any` maps `Value::Null` to
+  `visit_unit`, which serde accepts as `None` — likely why the bug
+  survived, since the null path is the one most likely to be tested.
+  `from_str` was never affected. Thanks to **@kshpytsya** for the
+  report and the minimal repro.
+
+- **Bare `nan` / `inf` spellings destroyed a scalar's text.** A mapping
+  key `nAn` came back as `nan`, so `nAn: null` did not round-trip;
+  found by the `roundtrip_value` property test.
+  `resolve_plain_scalar` fell back to `s.parse::<f64>()`, and Rust
+  accepts `nan`, `inf` and `infinity` in any case with an optional
+  sign. YAML 1.2 spells the specials with a leading dot. Bare
+  spellings now stay strings; an explicit `!!float nan` is unaffected.
 
 - **`Document::remove` now takes the trivia the entry owns, and only
   that** (#225). Three cases produced a silently wrong document rather
@@ -33,6 +161,51 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   which now includes a single-line entry with a head comment — goes
   through the existing re-parse and typed-value guard; the single-line
   fast path is unchanged.
+
+  Thanks to **@zoosky**.
+
+### Changed
+
+- **Configured clippy lints were never applied** (#228).
+  `[package.metadata.clippy] warn-lints = [...]` is not a table cargo
+  reads, so none of the configured lints were in effect. It is now a
+  real `[lints.clippy]` table with `cargo`, `pedantic` and `nursery` at
+  warn. Test files no longer carry `allow(clippy::all)`, so the suite is
+  linted too.
+
+- **`serde_core` is now a direct dependency** (#227), replacing `serde`
+  with derive.
+
+- Clippy-driven refactors, all from **@EdJoPaTo** with authorship
+  preserved: `i64::try_from` in place of a `as i64` cast (#240),
+  `pedantic`/`nursery` autofixes (#241), `use Trait as _` for traits
+  imported only for their methods (#242), `format!("literal")` →
+  `"literal".to_string()` (#243), and an unconditional
+  `impl core::error::Error for ParseNumberError` (#256).
+
+- **Coverage gate rebaselined 96% → 95% (functions).** The threshold
+  left under three functions of slack, and a no-op rename
+  (`MappingAny::with_capacity` → `Self::with_capacity`) moved the
+  measurement. The same commit reported 78 uncovered then 77 on
+  consecutive runs of an identical command. Line (94%) and region (93%)
+  floors are unchanged — those were stable across every run.
+
+### Dependencies
+
+Two consolidation waves, 19 Dependabot pull requests. serde-saphyr
+0.0.29 → 1.0.1, bytes 1.12.0 → 1.12.1, jsonschema 0.49.2 → 0.49.6,
+validator 0.19.0 → 0.21.0, sval 2.20.0 → 2.21.0, schemars 1.2.1 →
+1.2.2, the tokio-stack group, and the workflow action groups (#257,
+#238). serde-saphyr's major bump is bench-only — optional, gated behind
+`compare-saphyr`, and the benches were verified to compile against
+1.0.1 rather than the API being assumed stable.
+
+Nine crates came up unvetted after the bumps. Refreshing imported
+audits covered four outright with genuine third-party audits —
+fancy-regex, jsonschema, referencing, regex-automata — rather than
+exempting them; the remaining five already had exemptions.
+**Nine unvetted crates produced zero new exemptions.** `libm` likewise
+entered via a refreshed audit.
 
 ## [v0.0.18] - 2026-07-31
 
