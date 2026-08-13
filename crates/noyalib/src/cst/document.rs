@@ -503,10 +503,38 @@ impl Document {
     /// Replace the value at `path` with `fragment`.
     ///
     /// `fragment` is spliced verbatim into the source — the caller
-    /// supplies the YAML representation. This deliberately matches
-    /// no scalar style automatically; choose double-quoted, plain,
-    /// or block style to suit. Auto-formatting (the `Emit` trait
-    /// from the design doc) is a follow-up.
+    /// supplies the YAML representation. This deliberately matches no
+    /// scalar style automatically; choose double-quoted, plain, or
+    /// block style to suit.
+    ///
+    /// # Prefer [`Document::set_value`] for values
+    ///
+    /// Verbatim means the fragment is YAML, not text. `set(p, "true")`
+    /// writes the boolean, `set(p, "")` writes null, and
+    /// `set(p, "v # x")` writes `v` with a comment after it. If you
+    /// have a *value* rather than a spelling, [`set_value`] renders it
+    /// — quoting, escaping and choosing a block style as needed — so
+    /// it reads back as exactly what you passed in.
+    ///
+    /// [`set_value`]: Document::set_value
+    ///
+    /// # The fragment cannot reach outside `path`
+    ///
+    /// A fragment containing a newline could previously give the
+    /// document new entries:
+    ///
+    /// ```text
+    /// set("a", "v\nc: 3")  on  "a: 1\nb: 2\n"   ->   a: v
+    ///                                                  c: 3
+    ///                                                  b: 2
+    /// ```
+    ///
+    /// The re-parse guard could not catch that, because the result is
+    /// valid YAML. An oracle now checks that restoring the original
+    /// value at `path` reproduces the original document; if the
+    /// fragment changed anything elsewhere, the edit is refused and the
+    /// document is left untouched. Restructuring the target itself —
+    /// scalar to mapping, say — remains allowed.
     ///
     /// # Errors
     ///
@@ -525,7 +553,56 @@ impl Document {
     /// ```
     pub fn set(&mut self, path: &str, fragment: &str) -> Result<()> {
         let (s, e) = self.write_span(path)?;
-        self.replace_span(s, e, fragment)
+
+        // Verbatim splicing is this method's contract, and a fragment
+        // that legitimately restructures the *target* — scalar to
+        // mapping, say — must keep working. What must not happen is a
+        // fragment reaching outside the target:
+        //
+        //     set("a", "v\nc: 3")  on  "a: 1\nb: 2\n"
+        //
+        // spliced a newline and gave the document a new key `c`. The
+        // re-parse guard cannot see it, because the result is valid
+        // YAML — just not the document anyone asked for.
+        //
+        // The oracle: take the edited document, put the original value
+        // back at `path`, and require the result to equal the original
+        // document. Anything the fragment changed elsewhere survives
+        // that restoration and shows up as a mismatch.
+        //
+        // Callers wanting a value rendered safely should use
+        // `set_value`, which quotes and picks a scalar style.
+        self.ensure_cache();
+        let segments = parse_query_path(path);
+        let before_shape = {
+            let cache = self.cache.borrow();
+            let (value, _) = cache.as_ref().expect("ensure_cache populated");
+            shape_excluding(value, &segments)
+        };
+
+        let snapshot = self.clone();
+        self.replace_span(s, e, fragment)?;
+
+        // Parse fallibly rather than through `as_value`. A splice that
+        // is structurally invalid — `set("name", "[")` — commits
+        // optimistically by design and only surfaces via `validate`;
+        // forcing a parse here would panic on it and change that
+        // documented behaviour. An unparseable result cannot be
+        // smuggling extra entries anyway, so there is nothing for this
+        // oracle to check.
+        let Ok(after_value) = crate::from_str::<Value>(&self.source) else {
+            return Ok(());
+        };
+        let after_shape = shape_excluding(&after_value, &segments);
+        if after_shape != before_shape {
+            *self = snapshot;
+            return Err(Error::Parse(format!(
+                "set: the fragment for `{path}` added or removed entries \
+                 elsewhere in the document — it was left unchanged. Use \
+                 `set_value` to write a value without splicing YAML."
+            )));
+        }
+        Ok(())
     }
 
     /// Resolve `path` to a byte span for a **write**, refusing when the value
@@ -686,13 +763,37 @@ impl Document {
     pub fn remove(&mut self, path: &str) -> Result<()> {
         self.ensure_cache();
         let segments = parse_query_path(path);
-        let (line_start, line_end, multiline) = {
+        // `multiline` is no longer branched on — every path is guarded.
+        let (line_start, line_end, _multiline) = {
             let cache = self.cache.borrow();
             let (value, span_tree) = cache.as_ref().expect("ensure_cache populated");
             entry_line_span(value, span_tree, &self.source, &segments)?
         };
-        if !multiline {
-            // Single-line entry — original fast path, unchanged.
+        // Fast path only when the entry demonstrably owns its line.
+        //
+        // This used to be `if !multiline`, on the reasoning that
+        // deleting one line cannot surprise anyone. A flow collection
+        // breaks that: in `a: {x: 1, y: 2}` the entry `a.x` shares a
+        // line with its siblings *and* its parent, so "delete the line"
+        // removed the whole `a` entry — and for a single-entry
+        // document, the whole document — while returning `Ok`. Silent
+        // data loss.
+        //
+        // The test is whether the entry's own key starts the line. If
+        // it does, the line is the entry and splicing it is safe. If it
+        // does not, something else shares the line and the typed oracle
+        // below has to arbitrate.
+        //
+        // Keeping a fast path at all matters: the oracle compares
+        // against "the document with this path absent", which is the
+        // wrong expectation for a duplicated key. `remove("k")` on
+        // `k: one\nk: two` deletes the winning occurrence and leaves
+        // the shadowed one, so the oracle would refuse an edit that is
+        // both intended and tested.
+        let owns_its_line = self
+            .key_span(path)
+            .is_some_and(|(ks, _)| self.source[line_start..ks].trim().is_empty());
+        if !_multiline && owns_its_line {
             return self.replace_span(line_start, line_end, "");
         }
 
@@ -1231,6 +1332,12 @@ impl Document {
     /// assert_eq!(doc.to_string(), "items:\n  - one\n  - two\n  - three\n");
     /// ```
     pub fn push_back(&mut self, path: &str, fragment: &str) -> Result<()> {
+        let p = path.to_owned();
+        let f = fragment.to_owned();
+        self.guarded_insert(path, "push_back", move |d| d.push_back_inner(&p, &f))
+    }
+
+    fn push_back_inner(&mut self, path: &str, fragment: &str) -> Result<()> {
         self.ensure_cache();
         let seq_len = {
             let cache = self.cache.borrow();
@@ -1523,6 +1630,18 @@ impl Document {
     /// );
     /// ```
     pub fn insert_after(&mut self, item_path: &str, fragment: &str) -> Result<()> {
+        // The container is the parent sequence: `items[2]` -> `items`.
+        let container = item_path
+            .rfind('[')
+            .map_or_else(|| item_path.to_owned(), |b| item_path[..b].to_owned());
+        let p = item_path.to_owned();
+        let f = fragment.to_owned();
+        self.guarded_insert(&container, "insert_after", move |d| {
+            d.insert_after_inner(&p, &f)
+        })
+    }
+
+    fn insert_after_inner(&mut self, item_path: &str, fragment: &str) -> Result<()> {
         let segments = parse_query_path(item_path);
         if !matches!(segments.last(), Some(QuerySegment::Index(_))) {
             return Err(Error::Parse(
@@ -3508,6 +3627,145 @@ fn indent_continuation_lines(fragment: &str, indent: usize) -> String {
 
 /// The typed value with the entry at `segments` removed — the integrity
 /// oracle for the multi-line `remove` path.
+/// A structural fingerprint of `value` with the subtree at `segments`
+/// elided.
+///
+/// Compares *shape* — which keys exist, how long sequences are — and
+/// deliberately not scalar contents. That distinction is the whole
+/// point:
+///
+/// - a fragment smuggling `\nc: 3` into the source **adds a key**, which
+///   changes the shape and is refused;
+/// - editing an anchored value **changes scalars** at existing paths
+///   when its aliases are re-read, which leaves the shape identical and
+///   is allowed. That is a documented feature, and an earlier
+///   value-comparing version of this oracle wrongly rejected it.
+impl Document {
+    /// Run `edit`, then require the document's shape outside
+    /// `container_path` to be unchanged.
+    ///
+    /// The inserters legitimately change the shape *of the container
+    /// they insert into* — that is their job — so the container's
+    /// subtree is elided and everything else must match. Without this a
+    /// fragment containing a newline escapes:
+    ///
+    /// ```text
+    /// push_back("s", "v\nqq: 7")  on  "s:\n  - 1\nz: 9\n"
+    /// ```
+    ///
+    /// appended `- v` to the sequence *and* gave the document a
+    /// top-level `qq`, returning `Ok`, because the result is valid
+    /// YAML.
+    fn guarded_insert<F>(&mut self, container_path: &str, what: &str, edit: F) -> Result<()>
+    where
+        F: FnOnce(&mut Self) -> Result<()>,
+    {
+        self.ensure_cache();
+        let segments = parse_query_path(container_path);
+        let before_shape = {
+            let cache = self.cache.borrow();
+            let (value, _) = cache.as_ref().expect("ensure_cache populated");
+            shape_excluding(value, &segments)
+        };
+
+        let snapshot = self.clone();
+        edit(self)?;
+
+        // Fallible parse: an invalid splice commits optimistically by
+        // design and surfaces via `validate`, and cannot be smuggling
+        // entries anyway.
+        let Ok(after_value) = crate::from_str::<Value>(&self.source) else {
+            return Ok(());
+        };
+        if shape_excluding(&after_value, &segments) != before_shape {
+            *self = snapshot;
+            return Err(Error::Parse(format!(
+                "{what}: the fragment added or removed entries outside \
+                 `{container_path}` — the document was left unchanged. Use \
+                 the `_value` variant to write a value without splicing YAML."
+            )));
+        }
+        Ok(())
+    }
+}
+
+fn shape_excluding(value: &Value, segments: &[QuerySegment]) -> String {
+    fn walk(v: &Value, skip: &[QuerySegment], out: &mut String) {
+        // Reaching the elided path contributes a fixed marker, so the
+        // target may change freely — including scalar to mapping.
+        if skip.is_empty() {
+            out.push_str("<target>");
+            return;
+        }
+        match v {
+            Value::Mapping(m) => {
+                out.push('{');
+                for (k, val) in m {
+                    out.push_str(k.as_str());
+                    out.push(':');
+                    let next = match skip.first() {
+                        Some(QuerySegment::Key(sk)) if sk.as_str() == k.as_str() => &skip[1..],
+                        _ => &[][..],
+                    };
+                    if next.len() < skip.len() {
+                        walk(val, next, out);
+                    } else {
+                        walk_all(val, out);
+                    }
+                    out.push(',');
+                }
+                out.push('}');
+            }
+            Value::Sequence(s) => {
+                out.push('[');
+                for (i, val) in s.iter().enumerate() {
+                    let next = match skip.first() {
+                        Some(QuerySegment::Index(si)) if *si == i => &skip[1..],
+                        _ => &[][..],
+                    };
+                    if next.len() < skip.len() {
+                        walk(val, next, out);
+                    } else {
+                        walk_all(val, out);
+                    }
+                    out.push(',');
+                }
+                out.push(']');
+            }
+            _ => out.push('_'),
+        }
+    }
+
+    /// Shape of a subtree with nothing elided.
+    fn walk_all(v: &Value, out: &mut String) {
+        match v {
+            Value::Mapping(m) => {
+                out.push('{');
+                for (k, val) in m {
+                    out.push_str(k.as_str());
+                    out.push(':');
+                    walk_all(val, out);
+                    out.push(',');
+                }
+                out.push('}');
+            }
+            Value::Sequence(s) => {
+                out.push('[');
+                for val in s {
+                    walk_all(val, out);
+                    out.push(',');
+                }
+                out.push(']');
+            }
+            _ => out.push('_'),
+        }
+    }
+
+    let mut out = String::new();
+    walk(value, segments, &mut out);
+    out
+}
+
 fn expected_after_remove(value: &Value, segments: &[QuerySegment]) -> Result<Value> {
     let (last, parents) = segments
         .split_last()
@@ -4126,6 +4384,17 @@ pub(super) fn can_use_block_literal(s: &str) -> bool {
     if trimmed.ends_with('\n') {
         return false;
     }
+    // A block literal needs at least one content line. `"\n"` strips to
+    // nothing, which would emit a header with an empty body —
+    //
+    //     a: |
+    //     b: 2
+    //
+    // and that does not parse. Double quoting carries it instead. Found
+    // by the `set_value` round-trip property test.
+    if trimmed.is_empty() {
+        return false;
+    }
     // No line may start with a space or tab — that requires an
     // explicit indentation indicator we do not emit yet.
     for line in trimmed.split('\n') {
@@ -4253,6 +4522,17 @@ pub(super) fn is_plain_safe(s: &str) -> bool {
     }
     // Cannot end with whitespace.
     if matches!(*bytes.last().unwrap(), b' ' | b'\t') {
+        return false;
+    }
+    // Cannot end with `:`. The loop below rejects `": "`, but a colon at
+    // the very end has no following byte to catch it there — and in
+    // block context a trailing colon reads as a mapping indicator, so
+    //
+    //     a: a:
+    //
+    // does not parse. Found by the `set_value` round-trip property
+    // test, which proptest minimised to `"a:"`.
+    if *bytes.last().unwrap() == b':' {
         return false;
     }
     // Disallow line breaks and control characters; disallow `: ` and

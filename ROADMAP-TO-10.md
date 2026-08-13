@@ -1,300 +1,420 @@
-<!-- SPDX-FileCopyrightText: 2026 Noyalib -->
-<!-- SPDX-License-Identifier: MIT OR Apache-2.0 -->
+<!--
+SPDX-FileCopyrightText: 2026 Noyalib
+SPDX-License-Identifier: MIT OR Apache-2.0
+-->
 
 # noyalib ecosystem — road to 10/10
 
-An evidence-based analysis of the noyalib core crate and its four satellites
-(`noyalib-wasm`, `noyalib-mcp`, `noyalib-lsp`, `noya-cli`), the gaps that
-stand between "excellent" and "10/10 in every category", and a phased,
-reviewable implementation plan.
+Last reconciled against the tree at **v0.0.21**. Every number in §1 was
+counted from the repository at that point, not carried forward; where a
+previous revision of this document was wrong, §0 says so.
 
-> Honest framing: this is already a top-decile Rust library. The core clears
-> a CI gate most crates never attempt — coverage ≥95%, Miri, MSRV 1.86,
-> `no_std`, differential fuzzing, `cargo-vet`/`deny`/`machete`,
-> `cargo-semver-checks`, REUSE, and a full 3-OS × stable/nightly matrix.
-> The work below is about closing the *last* margins and adding strategic
-> capability, not fixing something broken.
+---
+
+## 0. What changed since the last revision
+
+This document had drifted. Recorded plainly so the corrections are
+auditable:
+
+| Claim (previous) | Reality at v0.0.21 |
+|---|---|
+| 467 public fns | **488** |
+| 142 test files | **161** |
+| 77 examples | **79** |
+| A1 comment mutation → M1 (v0.0.18–0.0.19) | landed in **v0.0.21** |
+| A2 reorder, A5 key spans → "planned" | landed in **v0.0.19** |
+| A3 extended remove → M2, unqualified | **partly** done — see EPIC A |
+| D1 bare-metal → M3 (v0.0.21) | landed in **v0.0.20**, closed #210 |
+| #210 open | **closed** |
+| Coverage gate "≥95%" | 95% functions, deliberately rebaselined from 96 |
+
+The coverage rebaseline deserves a note rather than a silent number: 96%
+left under three functions of slack, and the metric proved unstable
+across runs of the *same commit* (78 uncovered then 77). A threshold a
+no-op rename can breach measures LLVM's instantiation accounting, not
+the test suite. Line (94%) and region (93%) floors were stable and are
+unchanged.
 
 ---
 
 ## 1. Current-state scorecard
 
-Grades are current, evidence-based. "→ 10" is what this plan targets.
-
-| Category | Now | Evidence | Gap to 10/10 |
+| Category | Now | Evidence (counted at v0.0.21) | Gap to 10/10 |
 |---|---|---|---|
-| **API / functionality** | 8.5 | 467 public fns; lossless CST editors (`set`/`insert`/`remove`/`rename_key`/`rename_anchor`); streaming; async | CST edit API incomplete (#221): comment mutation, sequence reorder, extended `remove`, quoting-aware `Emit` |
-| **Correctness / testing** | 9.5 | 142 test files, coverage ≥95% gate, Miri, differential fuzz vs saphyr | Coverage floor is 95% not 100%; fuzz is a 10 s smoke, not continuous; property-test breadth uneven |
-| **Performance** | 9 | 16 benches, SIMD, `fast-int`/`fast-float`, `parallel` (rayon) | No published, tracked benchmark numbers; no CI regression gate; no criterion baselines |
-| **Security / supply-chain** | 9.5 | cargo-vet, cargo-deny, CodeQL, OSSF scorecard action, REUSE, `unsafe` forbidden except `simd` | No published SBOM artifact per release; no OpenSSF Best Practices badge; `simd` `unsafe` needs a documented safety-invariant audit |
-| **Documentation** | 9 | rustdoc-strict, `USER-GUIDE.md`, ADRs, 77 examples, README | No docs.rs feature-matrix build proof; no task-oriented cookbook; no per-satellite docs site |
-| **no_std / portability** | 8 | `no_std` + alloc; wasm32 bare-metal builds | #210: does not build for `*-none` bare-metal; no `thumbv*`/embedded target in CI |
-| **DX / ergonomics** | 8.5 | miette/ariadne diagnostics, typed path API, recovery | No derive helpers/builders for common flows; error taxonomy could surface fix-hints uniformly |
-| **Interop / ecosystem** | 9 | serde, `serde_yaml` compat shim, figment, schemars, garde/validator, tokio, sval | `serde_yaml` is unmaintained upstream — noyalib should *claim the successor position* explicitly, with a migration guide + shim parity table |
-| **Satellites** | 7.5 | wasm/mcp/lsp/cli all shipping | Each is v0.0.x with obvious next features (below); no shared docs, no published npm/registry packaging for wasm/mcp |
-| **Release / governance** | 9.5 | ADR-0005 strict lockstep, signed commits, Keep-a-Changelog | MSRV/deprecation policy not written down as a doc; release is partly manual |
+| **API / functionality** | 9 | 488 public fns; lossless CST editors incl. `set`/`insert`/`remove`/`rename_key`/`rename_anchor`/`swap_items`/`move_item`/`set_comment`/`remove_comment`; streaming; async | #221 remains: quoting-aware `Emit` for the fragment mutators, `remove_subtree`, flow-collection edits |
+| **Correctness / testing** | 9.5 | 161 test files, 5 961 tests, coverage gate (95 fn / 94 line / 93 region), Miri, differential fuzz vs saphyr | Fuzz is a PR smoke, not continuous; no structured fuzzers for the *editors*; property-test breadth uneven |
+| **Performance** | 9 | 16 benches, SIMD, `fast-int`/`fast-float`, `parallel` | No published numbers; no CI regression gate; no criterion baselines |
+| **Security / supply-chain** | 9 | cargo-vet, cargo-deny, cargo-audit, CodeQL, OSSF scorecard, REUSE 850/850, `unsafe` forbidden except `simd`; schema-validator hardening pinned by test (v0.0.21) | No SBOM artifact; no SLSA provenance; no OpenSSF badge; depth bound not caller-configurable; `build.rs` unaudited |
+| **Documentation** | 9 | rustdoc-strict + broken-intra-doc-link gate, `USER-GUIDE.md`, ADRs, 79 examples | No docs.rs feature-matrix proof; no cookbook; no competitive comparison page |
+| **no_std / portability** | **10** | `no_std`+alloc; wasm32 and bare-metal `thumbv7em` / `riscv32imac` / `aarch64-unknown-none` build (v0.0.20) **and are gated in CI** (v0.0.21) | — |
+| **DX / ergonomics** | 8.5 | miette/ariadne diagnostics, typed path API, recovery | No derive helpers/builders; fix-hints not uniform across the error taxonomy |
+| **Interop / ecosystem** | 9 | serde, `compat-serde-yaml` shim, figment, schemars, garde/validator, tokio, sval | Successor position is *earned but unclaimed* — see EPIC F1 |
+| **Satellites** | 7.5 | wasm/mcp/lsp/cli all shipping | Each v0.0.x; **`noyalib-mcp` predates the 2026-07-28 MCP spec**; no npm/registry packaging |
+| **Release / governance** | 9.5 | ADR-0005 lockstep, signed commits, Keep-a-Changelog | MSRV/deprecation policy undocumented; release partly manual |
 
-**Weighted read:** core ≈ **9.0/10**, satellites ≈ **7.5/10**. The two
-project-tracked issues (#221, #210) plus the satellite build-out are ~80% of
-the distance to a clean 10 everywhere.
+**Weighted read:** core ≈ **9.2/10**, satellites ≈ **7.5/10**.
 
 ---
 
 ## 2. Gaps & issues (grounded)
 
 ### 2.1 Project-tracked
-- **#221 — CST edit API remaining gaps.** `rename_key` (gap 2) just landed via
-  #222. Still open: **(1)** comment mutation (`set_comment`/`insert_comment`/
-  `remove_comment`), **(3)** sequence reorder (`swap_items`/`move_item`),
-  **(4)** extended `remove` (multi-line/nested/sole-entry/flow), **(5)**
-  quoting-aware fragment emit (`set`/`insert`/`push_back` synthesise indent
-  but not quoting — a fragment with `:` or leading `-` can restructure a doc
-  the re-parse guard can't catch because the result is *valid* YAML).
-  Read-only key spans for duplicate-key diagnostics is a bonus ask.
-- **#210 — `no_std` does not build for bare-metal `*-none` targets.** wasm32
-  builds; true embedded (`thumbv7em-none-eabihf`, etc.) does not.
 
-### 2.2 Analysis-surfaced (not yet tracked)
-- **Coverage floor at 95%.** For a data-format library, the uncovered 5% is
-  exactly where edge-case bugs live (error branches, recovery paths, SIMD
-  fallbacks). A 100% region floor with justified `#[coverage(off)]` on
-  genuinely-unreachable arms is achievable and higher-signal.
-- **Fuzzing is a 10 s PR smoke.** No corpus accretion, no continuous/OSS-Fuzz
-  integration, no structured-input fuzzers for the *editors* (only the
-  parser is differentially fuzzed vs saphyr).
-- **No performance regression gate.** Benches exist but nothing fails CI on a
-  regression, and there are no published numbers to anchor claims like
-  "SIMD" / "fast-float".
-- **SIMD `unsafe` audit.** `simd`/`nightly-simd` opt out of the
-  `unsafe_code = forbid` invariant. There's no published soundness note /
-  Miri-under-SIMD coverage for those paths.
-- **`serde_yaml` succession.** `serde_yaml` is archived upstream; noyalib has
-  a `compat-serde-yaml` shim but doesn't *market or document* itself as the
-  drop-in successor — a large, free adoption lever.
-- **Satellite feature depth** (see §4).
-- **No published SBOM per release**, no OpenSSF Best Practices badge, no
-  MSRV/deprecation policy doc.
+- **#221 — CST edit API.** Sub-asks 1 (comment mutation), 2 (`rename_key`
+  + key spans) and 3 (reorder) are **done**. Remaining:
+  - **(4) Extended `remove`** — multi-line values, nested collections and
+    nested sequence items *do* work. Sole entries and flow-collection
+    members are refused; `remove_subtree` does not exist.
+  - **(5) Quoting-aware fragment emit** — the *`_value`* inserters
+    (`insert_entry_value`, `push_back_value`, `insert_after_value`) already
+    quote via `Emit`. The plain fragment mutators (`set`, `insert_entry`,
+    `push_back`) still splice verbatim, so a fragment containing `:` or a
+    leading `-` can restructure a document into something *valid but
+    different* — which the re-parse guard cannot catch. **This is the last
+    correctness hazard in the edit API.**
+- **#210 — bare-metal `no_std`.** **Closed in v0.0.20.**
+
+### 2.2 Analysis-surfaced
+
+- **A `remove` data-loss bug, found and fixed in v0.0.21.** The oracle
+  guard only ran for multi-line edits; single-line entries took an
+  unguarded path. In a flow collection an entry shares its line with its
+  siblings *and its parent*, so `remove("a.x")` on `a: {x: 1, y: 2}`
+  deleted the whole document and returned `Ok`. The lesson generalises:
+  **any fast path that skips the oracle needs a proof, not an intuition.**
+- **Schema validator hardening was untested, not absent.** Measured at
+  v0.0.21: external `$ref` *is* refused, and recursion *is* bounded (the
+  `jsonschema` crate stops at depth 129). Both properties come from how the
+  dependency is configured — `default-features = false` — rather than from
+  anything this crate asserts, so a feature flag or a version bump could
+  have removed either silently. **Fixed in v0.0.21** by
+  `tests/schema_hardening.rs`, which pins both. An earlier revision of this
+  roadmap claimed the bounds were missing; they were merely unguarded.
+- **`build.rs` unaudited.** Build scripts execute at compile time, before
+  any application code. 2026 supply-chain guidance treats them as a
+  first-class risk surface; ours has no documented contract.
+- **Fuzzing is a PR smoke.** No corpus accretion, no continuous run, and
+  no structured fuzzers for the editors — only the parser is differentially
+  fuzzed against saphyr.
+- **No performance regression gate**, and no published numbers to anchor
+  the SIMD / `fast-float` claims.
+- **SIMD `unsafe` audit.** `simd`/`nightly-simd` opt out of
+  `unsafe_code = forbid` with no published soundness note.
 
 ---
 
 ## 3. Implementation plan — core crate
 
-Format: **Epic → tasks → acceptance criteria → effort (S≤1d / M≤1wk / L>1wk)
-→ risk → categories moved.** Sequenced into milestones in §6.
+Format: **Epic → tasks → acceptance → effort (S≤1d / M≤1wk / L>1wk) →
+risk → categories moved.**
 
-### EPIC A — Complete the CST surgical-edit API (closes #221)
-The single biggest functionality lever; the design pattern (resolve span →
-splice → re-parse-and-oracle guard → rollback) is already proven by
-`rename_key`.
+### EPIC A — Finish the CST surgical-edit API (closes #221)
 
-- **A1. Comment mutation** — `set_comment(path, position, text)`,
-  `insert_comment(path, position, text)`, `remove_comment(path, position)`
-  where `position ∈ {Leading, Inline, Trailing}`, built on `comments_at`.
-  - *Accept:* byte-identity everywhere except the comment span; `#`-prefix and
-    surrounding whitespace synthesised; guard + rollback; ≥20 tests incl.
-    multi-line leading blocks, inline-after-value, blank-line interactions.
-  - M · low risk · **API, DX**
-- **A2. Sequence reorder** — `swap_items(seq, i, j)`, `move_item(seq, from, to)`.
-  - *Accept:* single computed splice plan (no offset-invalidation bugs);
-    preserves each item's comments/anchors/formatting; refuses flow seqs in
-    v1 (mirror `remove`); ≥18 tests.
-  - M · medium risk (multi-span offset math) · **API**
-- **A3. Extended `remove`** — multi-line / nested / sole-entry / block-flow.
-  Port the reference `replace_span` fallback from the #221 reporter's `yqr`,
-  keeping the parse-differently guard.
-  - *Accept:* removing a nested block map/seq leaves siblings byte-identical;
-    sole-entry removal yields a valid empty collection; ≥25 tests + a fuzz
-    target that removes a random path and asserts `value == original − path`.
-  - L · medium risk · **API, correctness**
-- **A4. Quoting-aware `Emit`** — the deferred auto-formatting follow-up:
-  fragment inserters quote/escape scalars so a value containing `:` / leading
-  `-` / `#` cannot restructure the document.
-  - *Accept:* a property test — for arbitrary scalar `s`, `set(path, s)` then
-    read-back returns exactly `s`; the "valid-but-misinterpreted" class is
-    closed; semver-additive (new `EmitOptions`, existing behaviour default).
-  - L · higher risk (touches every mutator) · **API, correctness**
-- **A5. Read-only key spans** — `Document::key_span(path)` / duplicate-key
-  reporting with positions.
-  - *Accept:* powers diagnostics without walking the green tree by hand; used
-    by lsp (§4.3). S · low · **API, DX**
+- ~~**A1. Comment mutation**~~ — **done, v0.0.21.**
+  `set_comment(path, position, text)` / `remove_comment(path, position)`
+  with `CommentPosition ∈ {Inline, Before}`, leading blocks written at the
+  node's own indentation. *Deferred:* a separate `insert_comment` and a
+  `Trailing` position — `set_comment` covers both intents today; add them
+  only if a caller shows the distinction matters.
+- ~~**A2. Sequence reorder**~~ — **done, v0.0.19** (`swap_items`, `move_item`).
+- **A3. Extended `remove`** — remaining: `remove_subtree`, sole-entry
+  removal yielding a valid empty collection, and flow-collection members.
+  - *Accept:* flow-member removal rewrites the flow collection rather than
+    the line; a fuzz target removes a random path and asserts
+    `value == original − path`; every refusal leaves the source
+    byte-identical (already tested).
+  - M · medium risk · **API, correctness**
+- ~~**A4. Fragment containment**~~ — **done, v0.0.21.** Investigation
+  changed the shape of this task twice.
+  - Routing `set` through `Emit` would have **broken its documented
+    contract**: it splices verbatim on purpose, and `set(p, "{x: 1}")`
+    turning a scalar into a mapping is legitimate use. The safe route already
+    exists — `set_value` renders a typed value, and was verified to
+    round-trip every hazardous input exactly (`"true"`, `""`,
+    `"v # x"`, `"v\nc: 3"`, `"x: y"`, `"- item"`).
+  - The real defect was narrower and worse: a fragment could reach
+    **outside its path**. `set("a", "v\nc: 3")` gave the document a new
+    key `c` and returned `Ok`, because the result is valid YAML. **Fixed**
+    by a structural oracle — the document's shape outside the edited path
+    must be unchanged.
+  - The oracle compares *shape*, not values, and that distinction was
+    found the hard way: a value-comparing first version wrongly rejected
+    edits to **anchored** values, whose aliases legitimately change
+    elsewhere. It also parses fallibly, because an invalid splice commits
+    optimistically by design and surfaces via `validate`.
+  - **Completed, v0.0.21.** `push_back` and `insert_after` had the same
+    hole — `push_back("s", "v\nqq: 7")` appended to the sequence *and*
+    gave the document a top-level `qq`. Both now run through
+    `guarded_insert`, which elides the container being inserted into
+    (its shape must change) and requires everything else to match; for
+    `insert_after("items[2]", ..)` the container is the parent sequence.
+    `insert_entry` was already covered, delegating to the guarded `set`.
+  - Property tests at 512 cases each now generalise the round-trip claim
+    beyond enumerated inputs: arbitrary scalars survive `set_value` at
+    top level and nested, and `set` never silently corrupts — whatever
+    it returns, siblings survive and the entry count holds.
+- ~~**A5. Read-only key spans**~~ — **done, v0.0.19** (`key_span`).
 
 ### EPIC B — Testing to a defensible 10
-- **B1. Raise coverage floor 95% → 100% regions**, with justified
-  `#[coverage(off)]` on unreachable arms only. Accept: gate at 100%; every
-  suppression carries a one-line why. M · low · **testing**
-- **B2. Editor fuzzing** — structured `arbitrary`-driven fuzz targets for each
-  mutator (set/insert/remove/rename/reorder/comment): apply a random edit,
-  assert the guard's invariant (re-parse equals the typed oracle) or a clean
-  refusal. Accept: 6 new fuzz targets; corpus committed; runs nightly, not
-  just 10 s. M · low · **testing, correctness**
-- **B3. Continuous fuzzing** — submit to OSS-Fuzz (or a nightly long-run job)
-  with corpus persistence. Accept: OSS-Fuzz project merged, or a nightly
-  ≥30 min job green. M · low · **testing, security**
-- **B4. Property-test parity** — ensure every public codec path
-  (parse↔serialise↔CST-round-trip) has a `proptest`/`arbitrary` round-trip.
-  Accept: a checklist test that fails if a public entry point lacks one. M ·
-  low · **testing**
+
+- **B1. Coverage floor.** Keep 95/94/93 rather than chase 100. The v0.0.19
+  experience is the argument: the function metric moved between runs of an
+  identical commit, so a higher floor buys flakiness, not assurance.
+  Instead: **B1′ — make the metric trustworthy** by pinning the nightly
+  used for coverage, so run-to-run variance is attributable. S · low ·
+  **testing**
+- **B2. Editor fuzzing** — structured `arbitrary` targets per mutator
+  (set/insert/remove/rename/reorder/comment): apply a random edit, assert
+  the oracle invariant or a clean refusal. The v0.0.21 data-loss bug is
+  exactly what this catches. M · low · **testing, correctness**
+- **B3. Continuous fuzzing** — OSS-Fuzz, or a nightly ≥30 min job with a
+  persisted corpus. M · low · **testing, security**
+- **B4. Property-test parity** — a checklist test that fails when a public
+  codec entry point has no round-trip property. M · low · **testing**
 
 ### EPIC C — Performance, measured and defended
-- **C1. Published benchmark suite** — criterion baselines checked in; a
-  `BENCHMARKS.md` with numbers vs `serde_yaml`, `saphyr`, `yaml-rust2` on a
-  fixed corpus and machine spec. S–M · low · **performance, docs**
-- **C2. CI regression gate** — `criterion` + `critcmp` (or `cargo-codspeed`)
-  failing the build on >X% regression on a canonical set. M · medium
-  (runner noise) · **performance**
-- **C3. SIMD soundness note** — document the `unsafe` invariants; run Miri /
-  sanitizers over the scalar-fallback equivalence tests; add a
-  `simd == scalar` differential property. M · medium · **performance, security**
 
-### EPIC D — no_std / portability (closes #210)
-- **D1. Bare-metal `*-none` build** — audit for hidden `std`/`alloc`-assuming
-  paths; gate `thumbv7em-none-eabihf` (+ `riscv32imac-unknown-none-elf`) in
-  CI with a `#![no_std]`/`#![no_main]` smoke crate. M · medium · **no_std**
-- **D2. `alloc`-free surface audit** — document exactly which APIs need
-  `alloc` vs pure `core`; consider a `core`-only reader for the
-  streaming/event API. M · medium · **no_std, docs**
+- **C1. Published benchmarks** — criterion baselines + `BENCHMARKS.md` with
+  numbers against `serde-saphyr`, `yaml-rust2` and (as a historical
+  baseline) `serde_yaml`, on a stated corpus and machine. S–M · low ·
+  **performance, docs**
+- **C2. CI regression gate** — fail on >X% regression. Budget for runner
+  noise: the CI *duration* monitor in this repo already demonstrates the
+  failure mode, where a single slow run tripped a 1.1× threshold that the
+  rolling average then absorbed. Use a median-of-N, not a single sample.
+  M · medium · **performance**
+- **C3. SIMD soundness note** — document the `unsafe` invariants; Miri over
+  the scalar-fallback equivalence tests; a `simd == scalar` differential
+  property. M · medium · **performance, security**
+
+### EPIC D — no_std / portability
+
+- ~~**D1. Bare-metal build**~~ — **done, v0.0.20.** Four root causes, two
+  more than #210 documented: dependencies pulling `std` unconditionally;
+  `FxHashMap`/`FxHashSet` being std-only aliases; `indexmap`'s default
+  hasher being std-only (worked around with a cfg-defaulted alias so no
+  public signature changed); and `core` having no `f64::fract`/`mul_add`.
+- ~~**D2. Keep it built**~~ — **done, v0.0.21.** `shared-no-std.yml` gains
+  a `bare-metal` matrix over `thumbv7em-none-eabihf`,
+  `riscv32imac-unknown-none-elf` and `aarch64-unknown-none`. Recorded there:
+  wasm32 passed *throughout* the #210 bug, because the target has `std`
+  available and masked three dependencies pulling it in unconditionally —
+  so wasm32 alone was never sufficient cover.
+- **D3. `alloc`-free surface audit** — document which APIs need `alloc` vs
+  pure `core`. M · medium · **no_std, docs**
 
 ### EPIC E — Security / supply-chain to 10
-- **E1. Per-release SBOM** — emit CycloneDX (`cargo-cyclonedx`) as a release
-  asset; link it from the README. S · low · **security**
-- **E2. OpenSSF Best Practices badge** — complete the passing (→ silver)
-  questionnaire; add the badge. S · low · **security, governance**
-- **E3. Provenance** — cargo publish with build provenance / attestations;
-  document the signing story (SSH-signed tags + verified releases). S–M ·
-  low · **security, governance**
+
+Updated against 2026 practice: SBOM alone is table stakes; provenance and
+VEX are what auditors now ask for.
+
+- **E1. Per-release SBOM** — CycloneDX *and* SPDX (`cargo-cyclonedx` /
+  `cargo-sbom`) as release assets. S · low · **security**
+- **E2. SLSA build provenance** — GitHub's `attest-build-provenance` reaches
+  SLSA Build L2 directly and **L3 via reusable workflows**, which this repo
+  already uses throughout. Attest the release artifacts and the SBOM
+  predicate. S–M · low · **security, governance**
+- **E3. VEX statements** — publish exploitability assessments for advisories
+  that cannot be fixed upstream. The fleet has a live example: an advisory
+  reachable only through a dependency the crate never called. VEX is how
+  you say that formally instead of in a commit message. M · low ·
+  **security**
+- **E4. OpenSSF Best Practices badge** — passing → silver. S · low ·
+  **security, governance**
+- ~~**E5. `build.rs` contract**~~ — **done, v0.0.21.** The module comment
+  states what it may do (declare cfgs, read `$RUSTC --version`, read one
+  env var) and what it must never do; a `build-script-contract` CI job
+  asserts the latter by grepping for network and filesystem capability, a
+  subprocess count above one, and any `[build-dependencies]`. Grepping for
+  capability means a future edit has to defeat CI rather than a reader's
+  attention.
+- ~~**E6. MSRV & deprecation policy**~~ — **done, v0.0.21.**
+  `doc/MSRV-AND-DEPRECATION.md`. The clause that mattered: a dev-dependency
+  outrunning the floor is a *decision*, not a mechanical fix — raising a
+  user-facing promise to accommodate a test tool should be deliberate, not
+  a way to turn a job green.
 
 ### EPIC F — Documentation & interop leadership
-- **F1. `serde_yaml` successor positioning** — a `MIGRATING-FROM-SERDE-YAML.md`
-  with a shim parity table (what matches, what intentionally differs, how to
-  flip), a one-line `Cargo.toml` swap, and a compile-tested example. High
-  adoption ROI. M · low · **interop, docs**
-- **F2. Task-oriented cookbook** — `doc/COOKBOOK.md`: "edit a value keeping
-  comments", "merge two docs", "validate against a JSON Schema", "stream a
-  huge file", each a runnable, doctested snippet. M · low · **docs, DX**
-- **F3. docs.rs feature-matrix proof** — CI job building docs with each major
-  feature set so the rustdoc never silently breaks under a feature combo. S ·
-  low · **docs**
+
+- **F1. Claim the successor position.** `serde_yaml` is archived and
+  `serde_yml` now ships a shim pointing here; noyalib is already named
+  alongside `serde-saphyr` and `yaml-rust2` in community "what should I use
+  now" threads. Convert that into `MIGRATING-FROM-SERDE-YAML.md` with a
+  shim parity table, a one-line `Cargo.toml` swap and a compile-tested
+  example. **Highest adoption ROI on this list.** M · low · **interop, docs**
+- **F2. Honest competitive comparison** — a page stating where each library
+  wins. `serde-saphyr` deliberately has *no* `Value` DOM and deserialises
+  straight into typed structs, which is faster and leaner for
+  `from_str::<T>` and unable to do what a CST does. noyalib's differentiator
+  is the lossless editing surface plus schema validation. Say so, including
+  where a reader should pick the other one. S · low · **docs, interop**
+- **F3. The Norway problem, stated.** `serde-saphyr` markets its typed-schema
+  approach as the answer to `NO → false`. Document noyalib's resolution
+  rules and how to get strict behaviour, rather than leaving readers to
+  infer it. S · low · **docs, correctness**
+- **F4. Task-oriented cookbook** — runnable, doctested recipes. M · low ·
+  **docs, DX**
+- **F5. docs.rs feature-matrix proof** — CI builds docs under each major
+  feature combination. S · low · **docs**
+
+### EPIC G — Agent-era readiness *(new)*
+
+The 2026-07-28 MCP specification is the largest revision since launch: a
+stateless protocol core, an Extensions framework, Tasks, MCP Apps,
+authorization hardening and a formal deprecation policy. It also lifts
+tool `inputSchema`/`outputSchema` to **full JSON Schema 2020-12** —
+`oneOf`/`anyOf`/`allOf`, conditionals, `$ref`/`$defs` — and requires that
+implementations **not auto-dereference external `$ref` URIs** and **bound
+schema depth and validation time**.
+
+noyalib already ships a JSON Schema 2020-12 validator. That makes this an
+opportunity rather than a chore — but the hardening the spec requires is
+currently absent.
+
+- ~~**G1. Pin the schema-validator hardening**~~ — **done, v0.0.21.**
+  Measurement changed the shape of this task: the protections already
+  existed, undocumented and untested. `tests/schema_hardening.rs` now pins
+  six properties — external `$ref` refused, that refusal being fast enough
+  to rule out a network attempt, recursion bounded at depth 500/2 000/10 000
+  without stack exhaustion, the bound naming itself in the error, local
+  `$ref`/`$defs` still resolving, and ordinary schemas unaffected — and
+  `schema_validate.rs` documents them as contract.
+  - *Still open:* a **configurable** depth bound and an explicit
+    validation-time budget. Today's limit is `jsonschema`'s, not ours, so a
+    caller cannot tighten it. S–M · low · **security, interop**
+- **G2. `noyalib-mcp` → 2026-07-28 conformance.** Stateless core, Tasks for
+  long edits, Extensions, OAuth 2.1. Add an MCP Inspector conformance job.
+  L · medium · **satellites, ecosystem**
+- **G3. Tool-schema generation.** noyalib already has `schemars`; expose a
+  helper that emits an MCP-shaped tool schema from a Rust type, so agent
+  authors get validated tool definitions without hand-writing JSON Schema.
+  M · low · **interop, DX**
+- **G4. Agent-safe editing profile.** Agents edit configuration files
+  unattended. Package the existing guarantees — oracle-guarded mutators,
+  byte-faithful round-trip, refusal over silent corruption — as a documented
+  "safe for unattended edits" profile, with the failure modes stated. The
+  v0.0.21 data-loss bug is precisely the class this profile must exclude.
+  S–M · low · **docs, DX, correctness**
 
 ---
 
 ## 4. Implementation plan — satellites
 
-### 4.1 `noya-cli` (noyafmt, noyavalidate) → 10
-- **CLI-1.** `noyaedit` subcommand exposing the CST mutators (set/get/remove/
-  rename/reorder) as a jq-style path CLI — the natural home for Epic A.
-- **CLI-2.** Shell completions (bash/zsh/fish/pwsh) via `clap_complete`; man
-  pages via `clap_mangen`; ship in releases.
-- **CLI-3.** Prebuilt binaries per-platform (`cargo-dist`) + `cargo-binstall`
-  metadata; Homebrew tap; a `pre-commit` hook entry (doc/pre-commit.md exists
-  — wire an official `pre-commit-hooks.yaml`).
-- **CLI-4.** `--format json|sarif` for `noyavalidate` so it drops into CI
-  annotations and code scanning.
-- *Effort:* M each · **satellites, DX, ecosystem**
+### 4.1 `noya-cli` (noyafmt, noyavalidate)
 
-### 4.2 `noyalib-mcp` → 10
-- **MCP-1.** Expand the tool set to cover the *complete* CST edit API as it
-  lands (comment mutation, reorder, extended remove) — keep every tool
-  read-only-by-contract with the guard.
-- **MCP-2.** Resources + prompts (not just tools): expose the parsed doc as an
-  MCP resource; ship prompt templates for common edit intents.
-- **MCP-3.** Publish to the MCP registry + a signed release; add a conformance
-  test against the MCP Inspector in CI (pacs008-mcp already does this — reuse
-  the pattern).
-- *Effort:* M each · **satellites, ecosystem**
+- **CLI-1.** `noyaedit` exposing the CST mutators as a jq-style path CLI.
+- **CLI-2.** Shell completions (`clap_complete`) + man pages (`clap_mangen`).
+- **CLI-3.** Prebuilt binaries (`cargo-dist`), `cargo-binstall` metadata,
+  Homebrew tap, official `pre-commit-hooks.yaml`.
+- **CLI-4.** `--format json|sarif` for `noyavalidate` so it lands in code
+  scanning.
 
-### 4.3 `noyalib-lsp` → 10
-- **LSP-1.** Consume Epic A5 (key spans) for duplicate-key diagnostics with
-  ranges; add code actions ("rename key", "sort keys", "remove entry") backed
-  by the CST mutators — surgical, comment-preserving edits from the editor.
-- **LSP-2.** Semantic tokens, document symbols/outline, folding ranges, hover
-  with schema docs when a `validate-schema` schema is attached.
-- **LSP-3.** A VS Code extension (thin client) published to the Marketplace +
-  OpenVSX; document Neovim/Helix/Emacs setup.
-- *Effort:* M–L · **satellites, DX**
+### 4.2 `noyalib-mcp`
 
-### 4.4 `noyalib-wasm` → 10
-- **WASM-1.** Ship a proper **npm package** with generated **TypeScript
-  types**, ESM + CJS, and a size-tracked bundle (`wasm-opt` on in release).
-- **WASM-2.** Expose the full lossless-edit API (not just parse/serialise) so
-  browser tools get the same guarantees; a live playground page.
-- **WASM-3.** `wasm32-wasi` target + a Deno/Bun smoke test in CI.
-- *Effort:* M · **satellites, ecosystem**
+Now gated on **G2** above — conformance to the 2026-07-28 spec comes before
+feature breadth.
+
+- **MCP-1.** Cover the complete CST edit API as it lands.
+- **MCP-2.** Resources + prompts, not just tools.
+- **MCP-3.** Publish to the MCP registry with a signed release.
+
+### 4.3 `noyalib-lsp`
+
+- **LSP-1.** Duplicate-key diagnostics on `key_span`; code actions backed by
+  the mutators — including the new comment mutators.
+- **LSP-2.** Semantic tokens, symbols, folding, schema-aware hover.
+- **LSP-3.** VS Code extension (Marketplace + OpenVSX); Neovim/Helix/Emacs.
+
+### 4.4 `noyalib-wasm`
+
+- **WASM-1.** npm package with TypeScript types, ESM + CJS, size-tracked.
+- **WASM-2.** Expose the full lossless-edit API; a live playground.
+- **WASM-3.** `wasm32-wasi` + Deno/Bun smoke tests.
 
 ---
 
-## 5. New feature proposals (beyond gaps)
+## 5. New feature proposals
 
-Ranked by value-to-effort. Each is semver-additive and optional-feature-gated.
+Ranked value-to-effort; each semver-additive and feature-gated.
 
-1. **JSONPath / JMESPath-style query** over `Value` and `Document` (read side
-   of the jq-story that `yqr` is building on top) — a `query` feature.
-2. **YAML→JSON / JSON→YAML** lossless-where-possible converters as first-class
-   APIs (+ CLI), with anchor/merge handling documented.
-3. **Schema *inference*** — generate a JSON Schema or Rust `struct` skeleton
-   from a sample document (pairs with the existing `schema` feature).
-4. **Merge-key (`<<`) materialisation & round-trip policy** as a documented,
-   testable surface (it already trips several edge cases in #221).
-5. **`Document::diff` / structural patch** — produce a minimal comment-
-   preserving patch between two documents (powers the CLI/LSP/MCP "apply
-   change" flows and 3-way merges).
-6. **Deterministic canonical form** (`to_canonical`) for hashing/signing YAML
-   payloads — useful to the finance/config audiences the sibling projects
-   target.
-7. **Editor-grade error recovery surface** — expose the `recovery` module's
-   partial parse as a public "best-effort" API for tooling.
+1. **`Document::diff` / structural patch** — a minimal comment-preserving
+   patch between two documents. Powers CLI/LSP/MCP "apply change" flows and
+   3-way merges, and is the natural substrate for agent edits (**G4**).
+2. **JSONPath / JMESPath-style query** over `Value` and `Document`.
+3. **Deterministic canonical form** (`to_canonical`) for hashing and signing
+   payloads — increasingly relevant as config gets signed rather than
+   trusted.
+4. **YAML↔JSON lossless-where-possible converters**, with anchor/merge
+   behaviour documented.
+5. **Schema *inference*** — emit a JSON Schema or `struct` skeleton from a
+   sample document. Pairs with **G3**: infer, then serve as a tool schema.
+6. **Merge-key (`<<`) round-trip policy** as a documented, tested surface.
+7. **Editor-grade recovery surface** — expose partial parses as a public
+   best-effort API.
 
 ---
 
 ## 6. Sequencing & milestones
 
-Milestones are releasable under the lockstep contract (core + satellites move
-together). Rough order, dependency-aware:
+Releasable under the lockstep contract (core + satellites move together).
 
-- **M1 — "Finish the editors" (v0.0.18–0.0.19).** Epic A (A1 comment, A2
-  reorder, A5 key spans), B1 coverage-100, F3 docs-matrix. Unblocks LSP/MCP/
-  CLI edit features. *Closes most of #221.*
-- **M2 — "Prove it fast & safe" (v0.0.20).** A3 extended remove, B2 editor
-  fuzzing, C1 published benches, E1 SBOM, E2 OpenSSF badge.
-- **M3 — "Reach everywhere" (v0.0.21).** A4 quoting-aware Emit (the hard one),
-  D1 bare-metal (*closes #210*), C2 perf gate, C3 SIMD soundness.
-- **M4 — "Own the niche" (v0.0.22 → 0.1.0).** F1 serde_yaml succession, F2
-  cookbook, the satellite build-outs (CLI-1..4, MCP-1..3, LSP-1..3,
-  WASM-1..3), and the §5 features that survive triage. Cut **0.1.0** when the
-  edit API is complete and the successor story is documented.
+- **M1 — "Finish the editors" (v0.0.18–0.0.19).** ✅ A2 reorder, A5 key
+  spans, B1 coverage gate, F5 docs-matrix groundwork. *A1 slipped to
+  v0.0.21.*
+- **M2 — "Reach everywhere" (v0.0.20).** ✅ D1 bare-metal (*closed #210*).
+- **M3 — "Safe to automate" (v0.0.21).** ✅ A1 comment mutation; the
+  `remove` data-loss fix. **Open:** A4 quoting-aware `Emit` — the last
+  correctness hazard — and **G1** validator hardening.
+- **M4 — "Provably trustworthy" (v0.0.22).** A3 remainder, B2 editor
+  fuzzing, E1–E6 (SBOM, SLSA provenance, VEX, badge, `build.rs` contract,
+  MSRV policy), D2 embedded CI targets.
+- **M5 — "Own the niche" (v0.0.23 → 0.1.0).** F1 succession guide, F2
+  comparison, F3 Norway stance, G2–G4 agent readiness, C1–C2 published and
+  gated performance, the satellite build-outs. Cut **0.1.0** when the edit
+  API is complete, the successor story is documented, and MCP conformance
+  is demonstrated.
 
 ### Category → milestone it reaches 10
 
 | Category | Reaches 10 at |
 |---|---|
-| API / functionality | M3 (Emit) / M4 (features) |
-| Correctness / testing | M2 (fuzz + 100% cov) |
-| Performance | M3 (gate + numbers) |
-| Security / supply-chain | M2 (SBOM + badge + SIMD note) |
-| Documentation | M4 (cookbook + migration) |
-| no_std / portability | M3 (#210) |
-| DX / ergonomics | M3–M4 (Emit + CLI/LSP actions) |
-| Interop / ecosystem | M4 (serde_yaml succession) |
-| Satellites | M4 |
-| Release / governance | M2 (policy docs + SBOM) |
+| no_std / portability | M2 ✅ (M4 to keep it there) |
+| API / functionality | M3–M4 (needs A3 + A4) |
+| Correctness / testing | M4 |
+| Security / supply-chain | M4 |
+| Interop / ecosystem | M5 |
+| Documentation | M5 |
+| Performance | M5 |
+| Satellites | M5 |
 
 ---
 
 ## 7. Effort summary
 
-- **Core:** ~6 epics, ~20 tasks. The three L-items (A3, A4, plus D1) are the
-  critical path; everything else is S/M and parallelisable.
-- **Satellites:** ~13 tasks, mostly M, gated on Epic A landing in core.
-- **Risk hotspots:** A4 (quoting-aware Emit — touches every mutator; mitigate
-  with a property test and an opt-in `EmitOptions` default-off flip), C2
-  (bench-gate flakiness on shared runners — use codspeed or a noise budget),
-  D1 (hidden `alloc` assumptions).
+Roughly 6–9 focused weeks to M4, and M5 is dominated by satellites rather
+than core work. The two items with the best ratio of value to effort are
+**F1** (the successor guide — adoption, near-zero risk) and **G1**
+(validator hardening — small, and a prerequisite for any MCP claim).
 
-## 8. What I'd *not* do (scope discipline)
+The single highest-risk item remains **A4**: it touches every mutator, and
+the failure it prevents is silent.
 
-- Don't chase 100% coverage by testing genuinely-unreachable arms — mark them
-  `#[coverage(off)]` with a reason instead.
-- Don't add a plugin/DSL layer; the value is a rock-solid lossless core +
-  thin, honest satellites.
-- Don't break the `unsafe`-forbid invariant beyond the audited `simd` seam.
-- Keep the lockstep contract — no feature ships in a satellite ahead of the
-  core capability it needs.
+---
+
+## 8. What I'd *not* do
+
+- **Chase a 100% coverage floor.** Demonstrated flaky at 96; the marginal
+  5% is mostly unreachable error arms, and a flaky gate teaches people to
+  ignore gates.
+- **Re-implement a CSS/JS/general minifier, or any large third-party
+  surface, to avoid a dependency** — unless the dependency carries an
+  unfixable advisory *and* the replacement is small enough to test
+  exhaustively. (The sibling `html-generator` case met that bar; most will
+  not.)
+- **Chase `serde-saphyr` on no-DOM deserialisation throughput.** Different
+  design centre. Compete on lossless editing, schema validation and
+  portability, and say so honestly.
+- **Add a plugin/scripting surface.** A YAML library that executes user code
+  inherits an attack surface disproportionate to the benefit.
+- **Support YAML 1.1 semantics by default.** Legacy behaviours stay behind
+  explicit flags; the default should be predictable.

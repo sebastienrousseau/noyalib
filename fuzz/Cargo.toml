@@ -9,7 +9,8 @@ license = "MIT OR Apache-2.0"
 cargo-fuzz = true
 
 [dependencies]
-libfuzzer-sys = "0.4"
+libfuzzer-sys = { version = "0.4", features = ["arbitrary-derive"] }
+arbitrary = { version = "1", features = ["derive"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 serde_yaml_ng = "0.10"
@@ -86,6 +87,13 @@ bench = false
 [[bin]]
 name = "fuzz_no_span_loader"
 path = "fuzz_targets/fuzz_no_span_loader.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fuzz_editors"
+path = "fuzz_targets/fuzz_editors.rs"
 test = false
 doc = false
 bench = false

@@ -12,6 +12,27 @@
 //! Gated behind the `validate-schema` Cargo feature (which implies
 //! `schema`).
 //!
+//! # Hardening guarantees
+//!
+//! Two properties hold and are pinned by `tests/schema_hardening.rs`:
+//!
+//! - **External `$ref` is never dereferenced.** A schema referencing a
+//!   remote URI is refused, not fetched. `jsonschema` is declared
+//!   `default-features = false`, so its `resolve-http` support is
+//!   absent; the tests assert both the refusal and that it is fast,
+//!   since a network attempt would be slow.
+//! - **Schema recursion is bounded.** Deeply nested schemas are refused
+//!   with `recursion depth limit exceeded` rather than exhausting the
+//!   stack — a stack overflow aborts the process instead of returning an
+//!   error a caller can handle. The bound belongs to `jsonschema`.
+//!
+//! Local `$ref` and `$defs` are unaffected; they are the composition
+//! mechanism JSON Schema 2020-12 tool definitions rely on.
+//!
+//! Both properties are inherited from how the dependency is configured
+//! rather than implemented here, which is exactly why they are tested:
+//! a feature flag or a dependency bump could remove either silently.
+//!
 //! # Examples
 //!
 //! ```

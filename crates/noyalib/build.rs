@@ -6,6 +6,32 @@
 //! the crate. Used to gate `nightly-simd` so a user passing
 //! `--all-features` on stable does not get a hard compile error
 //! from the unstable `feature(portable_simd)` attribute.
+//!
+//! # Contract
+//!
+//! A build script runs on the machine of anyone who compiles this
+//! crate, before any of its code does, with the full privileges of the
+//! build. That makes it a supply-chain surface in its own right, so
+//! what this one may do is stated rather than left to inspection.
+//!
+//! It **does**:
+//!
+//! - declare two `cfg` names via `cargo:rustc-check-cfg`;
+//! - run `$RUSTC --version` and read its stdout, to detect nightly;
+//! - read the `NOYALIB_COVERAGE` environment variable.
+//!
+//! It **must never**:
+//!
+//! - access the network;
+//! - read or write any file, inside the source tree or outside it;
+//! - generate code, or emit anything that ends up compiled;
+//! - depend on another crate — it has no `[build-dependencies]`, and
+//!   adding one should be treated as a change worth reviewing on its
+//!   own.
+//!
+//! `ci.yml` asserts the network/filesystem half of that by grepping
+//! this file; if the assertion and this comment ever disagree, the
+//! assertion wins and one of them is a bug.
 
 fn main() {
     // Inform Cargo that the cfg names below are known —
