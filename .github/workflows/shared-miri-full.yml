@@ -55,7 +55,23 @@ jobs:
         run: cargo +nightly miri test --lib
         env:
           MIRIFLAGS: -Zmiri-disable-isolation
+      # `cargo miri test --lib` still builds the crate's dev-dependencies,
+      # and criterion pulls `alloca`, whose build script shells out to
+      # cc-rs. Cross-compiling to mips64 therefore needs a mips64 C
+      # toolchain on the runner even though Miri interprets the Rust and
+      # never executes that C. Without it the step dies at
+      # `ToolNotFound: mips64-linux-gnuabi64-gcc` before a single test
+      # runs. `alloca` is not optional in criterion — it arrives via the
+      # default `cargo_bench_support` feature — so this cannot be dropped
+      # from the dependency side without breaking the benches.
+      - name: Install mips64 cross toolchain (for the big-endian pass)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends gcc-mips64-linux-gnuabi64
+          mips64-linux-gnuabi64-gcc --version | head -1
       - name: Run focused Miri suite (big-endian mips64)
         run: ./scripts/miri.sh
         env:
           MIRI_TARGET: mips64-unknown-linux-gnuabi64
+          # cc-rs looks up the target-specific compiler by this name.
+          CC_mips64_unknown_linux_gnuabi64: mips64-linux-gnuabi64-gcc
