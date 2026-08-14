@@ -328,13 +328,14 @@ impl Document {
     pub fn set_leading_comment(&mut self, path: &str, text: &str) -> Result<()> {
         let (key_start, entry_line_start, indent) = self.leading_comment_site(path)?;
         let _ = key_start;
+        let nl = comment_line_break(self.source());
         let rendered: String = text
             .split('\n')
             .map(|line| {
                 if line.is_empty() {
-                    format!("{indent}#\n")
+                    format!("{indent}#{nl}")
                 } else {
-                    format!("{indent}# {line}\n")
+                    format!("{indent}# {line}{nl}")
                 }
             })
             .collect();
@@ -545,16 +546,19 @@ impl Document {
                     self.replace_span(existing.start, existing.end, &format!("#{body}"))
                 } else {
                     // No inline comment yet: append at the end of the
-                    // node's own line, before the newline.
-                    let line_end = line_end_from(self.source(), end);
+                    // node's own line, before the *whole* break. Landing
+                    // on the `\n` of a `\r\n` would splice between the
+                    // two and strand a lone `\r`.
+                    let line_end = line_break_start(self.source(), end);
                     self.replace_span(line_end, line_end, &format!("  #{body}"))
                 }
             }
             CommentPosition::Before => {
                 let indent = indent_of_line_containing(self.source(), start);
+                let nl = comment_line_break(self.source());
                 let block: String = text
                     .split('\n')
-                    .map(|l| format!("{indent}#{}\n", normalise_body(l)))
+                    .map(|l| format!("{indent}#{}{nl}", normalise_body(l)))
                     .collect();
                 if let (Some(first), Some(last)) = (bundle.before.first(), bundle.before.last()) {
                     // Replace the existing run, including the newline
@@ -685,6 +689,40 @@ fn normalise_body(text: &str) -> String {
 /// end of the source when the last line is unterminated.
 fn line_end_from(src: &str, idx: usize) -> usize {
     src[idx..].find('\n').map_or(src.len(), |n| idx + n)
+}
+
+/// Byte index where the line break ending the line containing `idx`
+/// *begins* — the `\r` of a `\r\n`, not the `\n`.
+///
+/// [`line_end_from`] answers "where is the `\n`", which is the right
+/// question for reading a line and the wrong one for appending to it: an
+/// insertion there lands between the `\r` and the `\n`.
+fn line_break_start(src: &str, idx: usize) -> usize {
+    let end = line_end_from(src, idx);
+    if end > idx && src.as_bytes()[end - 1] == b'\r' {
+        end - 1
+    } else {
+        end
+    }
+}
+
+/// The line break to give a comment line this edit adds.
+///
+/// `"\r\n"` only when the document is wholly CRLF — every `\n` preceded
+/// by a `\r`. A mixed document has no convention to honour, so it keeps
+/// the `"\n"` default rather than being rewritten to a guess.
+fn comment_line_break(src: &str) -> &'static str {
+    let bytes = src.as_bytes();
+    let mut saw = false;
+    for (i, &b) in bytes.iter().enumerate() {
+        if b == b'\n' {
+            if i == 0 || bytes[i - 1] != b'\r' {
+                return "\n";
+            }
+            saw = true;
+        }
+    }
+    if saw { "\r\n" } else { "\n" }
 }
 
 /// Byte index just after the newline preceding `idx`, i.e. the start of
