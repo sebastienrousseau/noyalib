@@ -7,6 +7,67 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+## [v0.0.22] - 2026-08-13
+
+### Fixed
+
+- **Splices adopt the document's own line break instead of assuming `\n`**
+  (#261, thanks **@zoosky**) — an edit that added a line wrote a hard-coded
+  `\n` whatever the document used. The mutators already derived a splice's
+  *indentation* from the site; the terminator was the one thing still
+  assumed. Affected `insert_entry` / `push_back` / `insert_after` and their
+  `_value` counterparts, `set_leading_comment`, and
+  `set_comment(Before | Inline)`.
+
+  The inline case was the worst of them. It spliced at `line_end_from` —
+  the index of the `\n` — which inside a `\r\n` lands **between the two**
+  and stranded a lone `\r`. `set_inline_comment` was already correct, since
+  it splices at the node's span end, so the two APIs for the same operation
+  disagreed. They now agree, and a test pins that.
+
+  `document_break` (and `comment_line_break`, its counterpart in
+  `annotated.rs`) reports `"\r\n"` only when the document is **wholly**
+  CRLF — at least one break, and every `\n` preceded by a `\r`. So it reads
+  the document's convention rather than guessing one:
+
+  - `leading_break_for_splice` returns it instead of `"\n"`
+  - `indent_continuation_lines` takes it, so a multi-line emission grows
+    CRLF on *every* line rather than only the last
+  - the inline-comment splice moves to a new `line_break_start`, which
+    steps back over a `\r`
+
+  Deliberate non-changes, each with a test: a **mixed-ending** document
+  keeps the `\n` default (there is no convention to honour, and picking one
+  would rewrite bytes the caller did not ask about); a document with **no
+  break at all** likewise; a document whose **last line is unterminated**
+  still reads the convention from the breaks it does have. `set_value` and
+  `remove` never added a line and are pinned as controls.
+
+  No data was lost by the old behaviour — values round-tripped, and the
+  inline case stayed valid because YAML 1.2 accepts a lone `\r` as a break.
+  What a caller got was a file returning with two or three terminators in
+  it, which for a lossless CST shows up as a whole-file diff on Windows, or
+  a `.gitattributes` / CI line-ending check firing.
+
+  No public API changes shape: `document_break` and `comment_line_break`
+  are private, and `indent_continuation_lines` is private and gained a
+  parameter.
+
+  Cross-checked against a real consumer: yqr carries a local workaround
+  that restores the convention at emit time. With that workaround
+  **disabled** and yqr pointed at this change, its full suite passes
+  (163/163) including five CRLF regression tests; against unpatched 0.0.21
+  with the workaround disabled, three of those fail on exactly this
+  property. The change subsumes the workaround.
+
+### Changed
+
+- Install snippets across `README.md`, `crates/noyalib/README.md`,
+  `MIGRATION.md`, `GETTING_STARTED.md`, `doc/USER-GUIDE.md` and
+  `doc/pre-commit.md` now read `0.0.22`. They had been left on `0.0.18` —
+  never bumped for 0.0.19, 0.0.20 or 0.0.21 — so this clears three
+  releases of drift.
+
 ## [v0.0.21] - 2026-08-12
 
 Includes the work prepared as **0.0.20**, which was merged to `main` but

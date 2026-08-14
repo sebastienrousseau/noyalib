@@ -45,7 +45,7 @@ to crates.io as before:
 
 ```toml
 [dependencies]
-noyalib = "0.0.18"
+noyalib = "0.0.22"
 ```
 
 ### Consuming a satellite crate
@@ -56,8 +56,8 @@ version pin:
 
 ```toml
 [dependencies]
-noyalib-wasm = "0.0.18"   # crates.io — repo doesn't matter to Cargo
-noyalib-mcp  = "0.0.18"
+noyalib-wasm = "0.0.22"   # crates.io — repo doesn't matter to Cargo
+noyalib-mcp  = "0.0.22"
 ```
 
 The [ADR-0005 strict-lockstep contract](doc/adr/0005-workspace-split.md#versioning-contract)
