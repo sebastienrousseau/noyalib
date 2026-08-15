@@ -84,9 +84,12 @@ jobs:
           mips64-linux-gnuabi64-gcc --version | head -1
           # Fail loudly here rather than 40 minutes into the Miri pass if
           # the sysroot headers are still missing.
-          test -f /usr/mips64-linux-gnuabi64/include/bits/libc-header-start.h \
-            && echo "mips64 sysroot headers present" \
-            || { echo "mips64 libc headers missing"; exit 1; }
+          if [ -f /usr/mips64-linux-gnuabi64/include/bits/libc-header-start.h ]; then
+            echo "mips64 sysroot headers present"
+          else
+            echo "mips64 libc headers missing" >&2
+            exit 1
+          fi
       - name: Run focused Miri suite (big-endian mips64)
         run: ./scripts/miri.sh
         env:
