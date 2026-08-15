@@ -32,7 +32,12 @@ jobs:
     name: Miri (full + big-endian, scheduled)
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    # The native full sweep alone measures ~58 min. Until the toolchain
+    # fix below, the big-endian pass died within seconds of starting, so
+    # the old 90 min budget was never actually tested against a run that
+    # got to do the cross work. Now that it does, 90 leaves ~30 min for a
+    # Miri-interpreted cross-target suite — too tight to rely on.
+    timeout-minutes: 150
     env:
       RUSTUP_TOOLCHAIN: nightly
       CARGO_TARGET_DIR: ${{ github.workspace }}/target-miri-full
@@ -64,11 +69,27 @@ jobs:
       # runs. `alloca` is not optional in criterion — it arrives via the
       # default `cargo_bench_support` feature — so this cannot be dropped
       # from the dependency side without breaking the benches.
+      # `gcc-mips64-linux-gnuabi64` alone is not enough: it provides the
+      # cross compiler but no target sysroot, so the build falls back to
+      # the host `/usr/include` and dies on
+      # `bits/libc-header-start.h: No such file or directory`.
+      # `libc6-dev-mips64-cross` supplies the mips64 libc headers under
+      # /usr/mips64-linux-gnuabi64/include. Both are required.
       - name: Install mips64 cross toolchain (for the big-endian pass)
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends gcc-mips64-linux-gnuabi64
+          sudo apt-get install -y --no-install-recommends \
+            gcc-mips64-linux-gnuabi64 \
+            libc6-dev-mips64-cross
           mips64-linux-gnuabi64-gcc --version | head -1
+          # Fail loudly here rather than 40 minutes into the Miri pass if
+          # the sysroot headers are still missing.
+          if [ -f /usr/mips64-linux-gnuabi64/include/bits/libc-header-start.h ]; then
+            echo "mips64 sysroot headers present"
+          else
+            echo "mips64 libc headers missing" >&2
+            exit 1
+          fi
       - name: Run focused Miri suite (big-endian mips64)
         run: ./scripts/miri.sh
         env:
