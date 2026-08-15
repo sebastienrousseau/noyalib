@@ -6,7 +6,21 @@ on:
   pull_request:
     branches: [main, "feat/**"]
   schedule:
-    - cron: '0 4 * * *'  # Nightly at 04:00 UTC — triggers Miri
+    # Nightly at 04:00 UTC. Keeps the standard matrix + audit running
+    # against `main` on days with no pushes, so external drift (a new
+    # advisory, a toolchain bump) surfaces within a day.
+    - cron: '0 4 * * *'
+    # Mondays at 05:00 UTC — the full Miri sweep only (see `miri-full`
+    # below). Split out of the nightly because that job alone costs
+    # ~113 min: ~58 min native + ~56 min Miri-interpreted big-endian
+    # mips64. Nightly was never a deliberate cadence for it — the job
+    # had been failing in seconds since at least 2026-08-05, so the real
+    # cost only appeared once it was fixed.
+    #
+    # An hour off the nightly on purpose. `concurrency` below is keyed
+    # on workflow + ref with `cancel-in-progress: true`, so two crons
+    # firing at the same instant would cancel one another.
+    - cron: '0 5 * * 1'
   workflow_dispatch:
 
 permissions: read-all
@@ -57,9 +71,22 @@ jobs:
     uses: ./.github/workflows/shared-miri-focused.yml
 
   miri-full:
-    # Dogfooded from shared-miri-full.yml. Weekly full sweep +
-    # big-endian mips64 target, gated behind schedule /
-    # workflow_dispatch.
+    # Dogfooded from shared-miri-full.yml. Full sweep + big-endian
+    # mips64 target.
+    #
+    # Restricted to the WEEKLY cron so the nightly run does not pay its
+    # ~113 min. The shared workflow's own guard only distinguishes
+    # schedule from push, which cannot tell the two crons apart — that
+    # has to happen here, at the call site, because the shared file is
+    # consumed by the satellites too and must not hardcode this repo's
+    # cron.
+    #
+    # `github.event.schedule` carries the cron expression that fired, and
+    # is absent on push / pull_request, so those skip the job as before.
+    # workflow_dispatch still runs it on demand.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event.schedule == '0 5 * * 1'
     uses: ./.github/workflows/shared-miri-full.yml
 
   cargo-deny:

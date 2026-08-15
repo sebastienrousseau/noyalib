@@ -9,8 +9,24 @@ name: shared / Miri (full + big-endian, scheduled)
 # `scripts/miri.sh`. Catches endianness assumptions that would
 # slip past the focused per-PR job.
 #
-# Bandwidth-intensive (~30+ minutes) so gated behind the
-# `schedule` / `workflow_dispatch` event.
+# Bandwidth-intensive so gated behind the `schedule` /
+# workflow_dispatch` event. Measured cost on noyalib is ~113 min:
+# ~58 min native + ~56 min for the Miri-interpreted big-endian pass.
+#
+# CADENCE IS THE CALLER'S. This guard only distinguishes schedule from
+# push — it cannot tell one cron from another. A consumer that wants
+# this weekly rather than nightly must say so at the call site, e.g.
+#
+#   jobs:
+#     miri-full:
+#       if: >-
+#         github.event_name == 'workflow_dispatch' ||
+#         github.event.schedule == '0 5 * * 1'
+#       uses: sebastienrousseau/noyalib/.github/workflows/shared-miri-full.yml@<sha>
+#
+# `github.event.schedule` holds the cron expression that fired. Keep
+# multiple crons at different minutes: `cancel-in-progress` keyed on
+# workflow + ref means simultaneous crons cancel each other.
 #
 # CACHE-POISONING GUARD: same isolated CARGO_TARGET_DIR pattern
 # as the focused Miri job (target-miri-full for this one).
