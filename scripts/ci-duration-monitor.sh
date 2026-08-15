@@ -50,6 +50,18 @@ set -euo pipefail
 # ── Config ─────────────────────────────────────────────────────────
 BRANCH="${BRANCH:-main}"
 WORKFLOW_FILE="${WORKFLOW_FILE:-ci.yml}"
+# Compare like with like. `ci.yml` runs a different job set depending on
+# the event: `miri-full` is gated on `schedule` / `workflow_dispatch`, so
+# a scheduled run measures ~6900s against ~650s for a push — a 10x gap
+# that has nothing to do with any regression. Mixing the two makes the
+# average meaningless and the ratio pure noise.
+#
+# This went unnoticed because the scheduled run used to FAIL (miri-full
+# could not find its mips64 cross toolchain), and this script only reads
+# `status=success` runs — so schedule runs were filtered out by accident
+# rather than by design. The moment miri-full was fixed, 115-minute runs
+# entered the population and the gate blew up.
+EVENT="${EVENT:-push}"
 N_BASELINE="${N_BASELINE:-5}"
 THRESHOLD_RATIO="${THRESHOLD_RATIO:-1.1}"
 # How many of the most recent runs must ALL exceed the threshold
@@ -62,13 +74,14 @@ echo "── CI duration monitor ──"
 echo "  repo:        ${REPO}"
 echo "  branch:      ${BRANCH}"
 echo "  workflow:    ${WORKFLOW_FILE}"
+echo "  event:       ${EVENT} (job set differs by event — see header)"
 echo "  baseline N:  ${N_BASELINE}"
 echo "  threshold:   ${THRESHOLD_RATIO}×"
 echo
 
 # ── Fetch recent successful CI runs ────────────────────────────────
 NEED=$((N_BASELINE + RECENT_WINDOW))
-RUNS=$(gh api "/repos/${REPO}/actions/workflows/${WORKFLOW_FILE}/runs?branch=${BRANCH}&status=success&per_page=${NEED}" \
+RUNS=$(gh api "/repos/${REPO}/actions/workflows/${WORKFLOW_FILE}/runs?branch=${BRANCH}&status=success&event=${EVENT}&per_page=${NEED}" \
     --paginate=false 2>&1 || echo "__err__")
 
 if [[ "${RUNS}" == "__err__" ]] || ! printf '%s' "${RUNS}" | jq -e '.workflow_runs' > /dev/null 2>&1; then
