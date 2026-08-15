@@ -56,19 +56,6 @@ jobs:
           save-if: false
       - name: Setup Miri
         run: cargo +nightly miri setup
-      - name: Run full Miri suite (native)
-        run: cargo +nightly miri test --lib
-        env:
-          MIRIFLAGS: -Zmiri-disable-isolation
-      # `cargo miri test --lib` still builds the crate's dev-dependencies,
-      # and criterion pulls `alloca`, whose build script shells out to
-      # cc-rs. Cross-compiling to mips64 therefore needs a mips64 C
-      # toolchain on the runner even though Miri interprets the Rust and
-      # never executes that C. Without it the step dies at
-      # `ToolNotFound: mips64-linux-gnuabi64-gcc` before a single test
-      # runs. `alloca` is not optional in criterion — it arrives via the
-      # default `cargo_bench_support` feature — so this cannot be dropped
-      # from the dependency side without breaking the benches.
       # `gcc-mips64-linux-gnuabi64` alone is not enough: it provides the
       # cross compiler but no target sysroot, so the build falls back to
       # the host `/usr/include` and dies on
@@ -82,14 +69,29 @@ jobs:
             gcc-mips64-linux-gnuabi64 \
             libc6-dev-mips64-cross
           mips64-linux-gnuabi64-gcc --version | head -1
-          # Fail loudly here rather than 40 minutes into the Miri pass if
-          # the sysroot headers are still missing.
+          # This step runs BEFORE the ~58-minute native sweep on purpose,
+          # so a toolchain or sysroot problem surfaces in seconds instead
+          # of an hour in. It costs nothing to front-load: apt is fast and
+          # the native pass does not depend on it.
           if [ -f /usr/mips64-linux-gnuabi64/include/bits/libc-header-start.h ]; then
             echo "mips64 sysroot headers present"
           else
             echo "mips64 libc headers missing" >&2
             exit 1
           fi
+      - name: Run full Miri suite (native)
+        run: cargo +nightly miri test --lib
+        env:
+          MIRIFLAGS: -Zmiri-disable-isolation
+      # `cargo miri test --lib` still builds the crate's dev-dependencies,
+      # and criterion pulls `alloca`, whose build script shells out to
+      # cc-rs. Cross-compiling to mips64 therefore needs a mips64 C
+      # toolchain on the runner even though Miri interprets the Rust and
+      # never executes that C. Without it the step dies at
+      # `ToolNotFound: mips64-linux-gnuabi64-gcc` before a single test
+      # runs. `alloca` is not optional in criterion — it arrives via the
+      # default `cargo_bench_support` feature — so this cannot be dropped
+      # from the dependency side without breaking the benches.
       - name: Run focused Miri suite (big-endian mips64)
         run: ./scripts/miri.sh
         env:
