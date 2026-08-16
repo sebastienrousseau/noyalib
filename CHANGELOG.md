@@ -45,12 +45,37 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Changed
 
+- **`swap_items` / `move_item` exchange whole entries, not value bytes**
+  (#269). An item now moves with the lines it owns — its head-comment
+  run included — which is the same range `remove` deletes
+  (`owned_entry_range`). Previously only the two value spans moved, so
+  every comment stayed with the *slot*: swapping `- one  # first` and
+  `- two  # second` produced `- two  # first`, and a `# about one`
+  header stayed above index 0 while the item it described moved away.
+  At `Ok`, and invisible to the typed oracle, which compares values and
+  cannot see a comment.
+
+  This is a **behaviour change, not a bug fix**: the old semantics were
+  deliberate and tested (`swap_preserves_inline_comment_position`, "the
+  comment annotates the slot"). What changed the call is that `remove`
+  decides the same question the other way for the same bytes, and two
+  mutators in one crate holding opposite views of who owns a comment is
+  the harder thing to defend. That test is rewritten, with the reasoning
+  in the test body.
+
+  Falling out of the same change: multi-line and differently-indented
+  items now exchange whole entries rather than values, so an item's own
+  indentation travels with it. A **flow** sequence keeps the value-span
+  exchange — its members have no lines of their own.
+
+  Fixes three doc-comment claims that never held: `swap_items`
+  documented refusals for flow sequences, multi-line items and
+  differently-indented items, none of which fired.
 - Tests that pinned the old refusals now pin the completed behaviour.
   The data-loss suite (`remove_flow_data_loss.rs`) keeps its original
   property — the parent, the siblings and the rest of the document must
   survive — and asserts the exact narrowed output instead of an error,
   so a return of the v0.0.21 bug still fails it just as loudly.
-
 
 ## [v0.0.22] - 2026-08-13
 

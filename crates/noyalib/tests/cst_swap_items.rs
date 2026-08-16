@@ -4,9 +4,11 @@
 //! `Document::swap_items` — exchange two items of a block sequence.
 //!
 //! Each test parses a document, swaps two items, and checks the result
-//! is byte-identical to the expected output — only the two items' value
-//! bytes move; the `- ` indicators, indentation, and every other item
-//! stay verbatim. Refusal tests assert the document is left untouched.
+//! is byte-identical to the expected output. Each item's **whole entry**
+//! moves — its own lines and the head-comment run above them, the range
+//! `remove` deletes — while every other item and the surrounding
+//! structure stay verbatim. Refusal tests assert the document is left
+//! untouched.
 
 #![allow(missing_docs)]
 
@@ -43,11 +45,112 @@ fn swap_nested_sequence_under_a_key() {
 }
 
 #[test]
-fn swap_preserves_inline_comment_position() {
-    // Only the value bytes move; the comment annotates the slot.
+fn inline_comment_travels_with_its_item() {
+    // This test previously asserted the opposite — that only the value
+    // bytes move, so a comment annotates the *slot* rather than the
+    // item. It was changed deliberately, not incidentally, so the
+    // reasoning is recorded here rather than in a commit message.
+    //
+    // `remove` already decides this question the other way for the same
+    // bytes: an entry owns the comment run directly above it
+    // (`owned_entry_range`), because leaving it behind "silently becomes
+    // documentation for the *next* entry". Two mutators in one crate
+    // cannot hold opposite views of who a comment belongs to. Reorder
+    // now matches remove.
     let mut doc = parse_document("- a  # first\n- b  # second\n").unwrap();
     doc.swap_items("", 0, 1).unwrap();
-    assert_eq!(doc.source(), "- b  # first\n- a  # second\n");
+    assert_eq!(doc.source(), "- b  # second\n- a  # first\n");
+}
+
+#[test]
+fn head_comment_travels_with_its_item() {
+    // The unambiguous half: `# about one` documents `one`, not slot 0.
+    let mut doc = parse_document("# about one\n- one\n# about two\n- two\n").unwrap();
+    doc.swap_items("", 0, 1).unwrap();
+    assert_eq!(doc.source(), "# about two\n- two\n# about one\n- one\n");
+}
+
+#[test]
+fn a_multi_line_head_comment_run_travels_whole() {
+    let mut doc = parse_document("# one, line 1\n# one, line 2\n- one\n- two\n").unwrap();
+    doc.swap_items("", 0, 1).unwrap();
+    assert_eq!(doc.source(), "- two\n# one, line 1\n# one, line 2\n- one\n");
+}
+
+#[test]
+fn a_comment_between_items_belongs_to_the_one_below_it() {
+    // Same rule `owned_value_end` applies for `remove`: trailing
+    // comment lines are not the previous entry's, so this run travels
+    // with `two`.
+    let mut doc = parse_document("- one\n# doc two\n- two\n").unwrap();
+    doc.swap_items("", 0, 1).unwrap();
+    assert_eq!(doc.source(), "# doc two\n- two\n- one\n");
+}
+
+#[test]
+fn a_blank_detached_comment_stays_put() {
+    // A blank line detaches the run, so a document header is not swept
+    // into the first item — the property `absorb_head_comments` exists
+    // to hold.
+    let mut doc = parse_document("# header\n\n- one\n- two\n").unwrap();
+    doc.swap_items("", 0, 1).unwrap();
+    assert_eq!(doc.source(), "# header\n\n- two\n- one\n");
+}
+
+#[test]
+fn only_one_item_carrying_a_comment_still_swaps_cleanly() {
+    let mut doc = parse_document("- one  # first\n- two\n").unwrap();
+    doc.swap_items("", 0, 1).unwrap();
+    assert_eq!(doc.source(), "- two\n- one  # first\n");
+}
+
+#[test]
+fn multi_line_items_exchange_whole_entries() {
+    let mut doc = parse_document("- a: 1\n  b: 2\n- c: 3\n  d: 4\n").unwrap();
+    doc.swap_items("", 0, 1).unwrap();
+    assert_eq!(doc.source(), "- c: 3\n  d: 4\n- a: 1\n  b: 2\n");
+}
+
+#[test]
+fn a_crlf_document_keeps_crlf() {
+    let mut doc = parse_document("- one  # first\r\n- two  # second\r\n").unwrap();
+    doc.swap_items("", 0, 1).unwrap();
+    assert_eq!(doc.source(), "- two  # second\r\n- one  # first\r\n");
+}
+
+#[test]
+fn a_missing_final_newline_is_not_invented_or_lost() {
+    // Each position keeps its own terminator while the bodies move. Get
+    // this wrong and the two lines splice into one (`- b- a`).
+    let mut doc = parse_document("- a\n- b").unwrap();
+    doc.swap_items("", 0, 1).unwrap();
+    assert_eq!(doc.source(), "- b\n- a");
+}
+
+#[test]
+fn swap_in_a_nested_sequence_carries_the_comment_and_indent() {
+    let mut doc = parse_document("items:\n  # doc a\n  - a\n  - b\n").unwrap();
+    doc.swap_items("items", 0, 1).unwrap();
+    assert_eq!(doc.source(), "items:\n  - b\n  # doc a\n  - a\n");
+}
+
+#[test]
+fn a_flow_sequence_keeps_the_value_span_exchange() {
+    // Flow members share a line with each other and with the brackets,
+    // so there is no per-item line to move. Unchanged behaviour.
+    let mut doc = parse_document("[one, two, three]\n").unwrap();
+    doc.swap_items("", 0, 2).unwrap();
+    assert_eq!(doc.source(), "[three, two, one]\n");
+}
+
+#[test]
+fn item_indentation_travels_with_the_item() {
+    // The doc comment used to claim this case was refused. It was not —
+    // it silently swapped values and left each item's own spacing
+    // behind. Now the entry moves whole.
+    let mut doc = parse_document("- a\n-   b\n").unwrap();
+    doc.swap_items("", 0, 1).unwrap();
+    assert_eq!(doc.source(), "-   b\n- a\n");
 }
 
 #[test]
