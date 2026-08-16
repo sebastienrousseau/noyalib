@@ -7,6 +7,51 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+## [v0.0.23] - 2026-08-16
+
+### Added
+
+- **`Document::remove` now covers flow members and sole entries**
+  (#221, sub-ask 4 — completes the issue). Both classes previously
+  refused. The refusals were correct at the time: v0.0.21 turned them
+  from *silent data loss* into errors, because a flow member shares its
+  line with its siblings **and its parent**, so "delete the line"
+  deleted the parent — and for a one-entry document, the document.
+
+  - **Flow members.** `a: {x: 1, y: 2}` → `remove("a.x")` → `a: {y: 2}`;
+    `a: [1, 2, 3]` → `remove("a[1]")` → `a: [1, 3]`. The member's own
+    span is spliced along with exactly one separator: the comma *after*
+    it, or — for the last member — the comma *before* it, so neither
+    `{, y: 2}` nor `{x: 1, }` can result. A separator parked on another
+    line is deliberately not matched; a multi-line flow collection
+    refuses rather than splicing bytes it cannot account for.
+
+  - **Sole entries.** Removing the last entry of a collection now writes
+    that collection out explicitly — `a:\n  x: 1` becomes `a:\n  {}`,
+    a sole sequence item leaves `[]`, and a single-key document becomes
+    `{}`. Deleting the bytes alone would leave a dangling `a:`, which
+    re-parses as **null**: a type change, not a removal.
+
+  The document's trailing newline survives the rewrite. A collection's
+  span can run to the end of its last line, so overwriting that range
+  wholesale would take the final newline with it — harmless to a parser,
+  but this is a lossless CST, where a vanished trailing newline is a
+  whole-file diff and a failing end-of-file check.
+
+  `remove_subtree` was **not** added. The issue offered it as an
+  alternative to extending `remove`, and extending `remove` is the path
+  that was taken, so a second entry point would be a synonym rather than
+  a capability.
+
+### Changed
+
+- Tests that pinned the old refusals now pin the completed behaviour.
+  The data-loss suite (`remove_flow_data_loss.rs`) keeps its original
+  property — the parent, the siblings and the rest of the document must
+  survive — and asserts the exact narrowed output instead of an error,
+  so a return of the v0.0.21 bug still fails it just as loudly.
+
+
 ## [v0.0.22] - 2026-08-13
 
 ### Fixed

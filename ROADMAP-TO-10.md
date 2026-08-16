@@ -41,7 +41,7 @@ unchanged.
 
 | Category | Now | Evidence (counted at v0.0.21) | Gap to 10/10 |
 |---|---|---|---|
-| **API / functionality** | 9 | 488 public fns; lossless CST editors incl. `set`/`insert`/`remove`/`rename_key`/`rename_anchor`/`swap_items`/`move_item`/`set_comment`/`remove_comment`; streaming; async | #221 remains: quoting-aware `Emit` for the fragment mutators, `remove_subtree`, flow-collection edits |
+| **API / functionality** | 9 | 488 public fns; lossless CST editors incl. `set`/`insert`/`remove`/`rename_key`/`rename_anchor`/`swap_items`/`move_item`/`set_comment`/`remove_comment`; streaming; async | #221 **closed** in v0.0.23 — flow-member and sole-entry removal completed sub-ask 4; sub-ask 5 was resolved in v0.0.21 by a structural oracle rather than auto-quoting |
 | **Correctness / testing** | 9.5 | 161 test files, 5 961 tests, coverage gate (95 fn / 94 line / 93 region), Miri, differential fuzz vs saphyr | Fuzz is a PR smoke, not continuous; no structured fuzzers for the *editors*; property-test breadth uneven |
 | **Performance** | 9 | 16 benches, SIMD, `fast-int`/`fast-float`, `parallel` | No published numbers; no CI regression gate; no criterion baselines |
 | **Security / supply-chain** | 9 | cargo-vet, cargo-deny, cargo-audit, CodeQL, OSSF scorecard, REUSE 850/850, `unsafe` forbidden except `simd`; schema-validator hardening pinned by test (v0.0.21) | No SBOM artifact; no SLSA provenance; no OpenSSF badge; depth bound not caller-configurable; `build.rs` unaudited |
