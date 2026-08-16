@@ -324,17 +324,20 @@ fn remove_returns_path_not_found_for_missing_key() {
 }
 
 #[test]
-fn remove_rejects_only_entry_of_mapping() {
+fn remove_empties_the_only_entry_of_a_mapping() {
+    // Refused before #221 sub-ask 4. The collection is now written out
+    // as `{}` — deleting the bytes would leave the parent re-parsing as
+    // null, a type change rather than a removal.
     let mut doc = parse_document("only: 1\n").unwrap();
-    let err = doc.remove("only").unwrap_err();
-    assert!(err.to_string().contains("only entry"));
+    doc.remove("only").unwrap();
+    assert_eq!(doc.source(), "{}\n");
 }
 
 #[test]
-fn remove_rejects_only_entry_of_sequence() {
+fn remove_empties_the_only_entry_of_a_sequence() {
     let mut doc = parse_document("xs:\n  - a\n").unwrap();
-    let err = doc.remove("xs[0]").unwrap_err();
-    assert!(err.to_string().contains("only entry"));
+    doc.remove("xs[0]").unwrap();
+    assert_eq!(doc.source(), "xs:\n  []\n");
 }
 
 #[test]

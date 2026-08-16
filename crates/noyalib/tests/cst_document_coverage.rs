@@ -221,17 +221,23 @@ fn coverage_doc_remove_root_rejected() {
 }
 
 #[test]
-fn coverage_doc_remove_only_entry_of_mapping_rejected() {
+fn coverage_doc_remove_only_entry_of_mapping_empties_it() {
+    // Was a refusal until #221 sub-ask 4. Removing the last entry now
+    // writes an explicit `{}`: deleting the bytes alone would leave the
+    // parent re-parsing as *null*, which is a type change rather than a
+    // removal.
     let mut doc = parse_document("a: 1\n").unwrap();
-    let err = doc.remove("a").unwrap_err();
-    assert!(format!("{err}").contains("only entry of a mapping"));
+    doc.remove("a").unwrap();
+    assert_eq!(doc.to_string(), "{}\n");
+    // The typed value is an empty mapping, not null.
+    assert!(matches!(&*doc.as_value(), Value::Mapping(m) if m.is_empty()));
 }
 
 #[test]
-fn coverage_doc_remove_only_entry_of_sequence_rejected() {
+fn coverage_doc_remove_only_entry_of_sequence_empties_it() {
     let mut doc = parse_document("items:\n  - one\n").unwrap();
-    let err = doc.remove("items[0]").unwrap_err();
-    assert!(format!("{err}").contains("only entry of a sequence"));
+    doc.remove("items[0]").unwrap();
+    assert_eq!(doc.to_string(), "items:\n  []\n");
 }
 
 #[test]

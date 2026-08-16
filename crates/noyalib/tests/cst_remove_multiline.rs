@@ -80,13 +80,23 @@ fn single_line_removal_unchanged() {
 }
 
 #[test]
-fn sole_nested_entry_still_refused() {
-    // Removing the only entry of a mapping is still refused, even when
-    // that entry is multi-line.
+fn sole_nested_entry_empties_the_document() {
+    // Was refused until #221 sub-ask 4. Removing the only entry now
+    // yields an explicit empty mapping, and the multi-line value it
+    // carried goes with it.
     let src = "only:\n  a: 1\n  b: 2\n";
     let mut doc = parse_document(src).unwrap();
-    assert!(doc.remove("only").is_err());
-    assert_eq!(doc.source(), src);
+    doc.remove("only").unwrap();
+    assert_eq!(doc.source(), "{}\n");
+}
+
+#[test]
+fn nested_entry_beside_a_sibling_is_unaffected_by_the_sole_entry_path() {
+    // Same shape, one more key: this is NOT the sole-entry case, so it
+    // still takes the ordinary guarded line splice.
+    let mut doc = parse_document("only:\n  a: 1\n  b: 2\nkeep: 9\n").unwrap();
+    doc.remove("only").unwrap();
+    assert_eq!(doc.source(), "keep: 9\n");
 }
 
 // ── Typed value after a nested removal ──────────────────────────────

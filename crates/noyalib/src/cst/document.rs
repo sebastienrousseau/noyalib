@@ -729,24 +729,34 @@ impl Document {
     /// assert_eq!(doc.to_string(), "  # note for next\nnext: 2\n");
     /// ```
     ///
-    /// Restrictions in this phase:
-    /// - Block context only — flow-collection entry removal (`[a, b, c]`
-    ///   → `[a, c]`) is a follow-up.
-    /// - Multi-line values and nested block collections **are** removed
+    /// Coverage (issue #221 sub-ask 4 is complete as of v0.0.23):
+    /// - **Multi-line values and nested block collections** are removed
     ///   — the whole entry, from its key / `-` indicator through the
-    ///   last line the value owns. The multi-line splice is guarded by
-    ///   an eager re-parse and a typed-value oracle (the document minus
-    ///   this one path); a splice that would change anything else rolls
-    ///   back. The single-line case keeps its original fast path.
-    /// - Removing the only entry of a block mapping or sequence is
-    ///   rejected — the result would parse differently (an empty
-    ///   block becomes `null`), and the caller needs to express that
-    ///   intent explicitly.
+    ///   last line the value owns.
+    /// - **Flow-collection members** are removed (`{x: 1, y: 2}` →
+    ///   `{y: 2}`, `[1, 2, 3]` → `[1, 3]`). The member's own span goes,
+    ///   plus exactly one separator: the comma after it, or — for the
+    ///   last member — the comma before it. A separator sitting on
+    ///   another line is not matched, so a multi-line flow collection
+    ///   refuses rather than splicing something it cannot see.
+    /// - **The last entry of a collection** empties that collection
+    ///   rather than deleting its bytes: `a:\n  x: 1` becomes
+    ///   `a:\n  {}`, and a sole sequence item leaves `[]`. Deleting the
+    ///   bytes would leave a dangling `a:`, which re-parses as **null**
+    ///   — a type change rather than a removal. The document's trailing
+    ///   newline survives.
+    ///
+    /// Every path except the single-line block fast path is guarded by
+    /// an eager re-parse **and** a typed-value oracle (the document
+    /// minus exactly this one path); a splice that would change anything
+    /// else rolls back and the document is left untouched. The fast path
+    /// is kept only where the entry demonstrably owns its whole line,
+    /// because the oracle's expectation is wrong for a duplicated key.
     ///
     /// # Errors
     ///
     /// - Path not found.
-    /// - Restrictions above.
+    /// - A flow separator that cannot be located on the member's line.
     /// - The same parse-after-edit errors as
     ///   [`Document::replace_span`]; on failure the document is left
     ///   unchanged.
@@ -763,11 +773,22 @@ impl Document {
     pub fn remove(&mut self, path: &str) -> Result<()> {
         self.ensure_cache();
         let segments = parse_query_path(path);
-        // `multiline` is no longer branched on — every path is guarded.
-        let (line_start, line_end, _multiline) = {
+        let removal = {
             let cache = self.cache.borrow();
             let (value, span_tree) = cache.as_ref().expect("ensure_cache populated");
             entry_line_span(value, span_tree, &self.source, &segments)?
+        };
+        // What to splice, and what to put back. Only `Line` can take the
+        // unguarded fast path below; the other two always face the oracle,
+        // because both edit *inside* a line shared with other data.
+        let (line_start, line_end, _multiline, replacement) = match removal {
+            Removal::Line {
+                start,
+                end,
+                multiline,
+            } => (start, end, multiline, ""),
+            Removal::FlowMember { start, end } => (start, end, true, ""),
+            Removal::SoleEntry { start, end, empty } => (start, end, true, empty),
         };
         // Fast path only when the entry demonstrably owns its line.
         //
@@ -790,9 +811,10 @@ impl Document {
         // `k: one\nk: two` deletes the winning occurrence and leaves
         // the shadowed one, so the oracle would refuse an edit that is
         // both intended and tested.
-        let owns_its_line = self
-            .key_span(path)
-            .is_some_and(|(ks, _)| self.source[line_start..ks].trim().is_empty());
+        let owns_its_line = matches!(removal, Removal::Line { .. })
+            && self
+                .key_span(path)
+                .is_some_and(|(ks, _)| self.source[line_start..ks].trim().is_empty());
         if !_multiline && owns_its_line {
             return self.replace_span(line_start, line_end, "");
         }
@@ -806,7 +828,7 @@ impl Document {
             expected_after_remove(value, &segments)?
         };
         let snapshot = self.clone();
-        if let Err(e) = self.replace_span(line_start, line_end, "") {
+        if let Err(e) = self.replace_span(line_start, line_end, replacement) {
             *self = snapshot;
             return Err(Error::Parse(format!(
                 "remove: removing `{path}` could not be spliced ({e}); \
@@ -2911,12 +2933,104 @@ fn resolve_span(
 /// addressed by `segments` — including its key / `-` indicator,
 /// leading indentation, and trailing line break — so a caller can
 /// splice the empty string in to delete it.
+/// How `remove` should splice a given entry out of the source.
+///
+/// Three shapes, because "delete the entry" means three different byte
+/// edits depending on what the entry shares its line with:
+///
+/// - [`Removal::Line`] — the entry owns whole lines; delete them.
+/// - [`Removal::FlowMember`] — the entry lives inside `{…}` / `[…]`
+///   alongside its siblings, so only its own span plus one separator
+///   may go.
+/// - [`Removal::SoleEntry`] — the entry is the last one in its
+///   collection. Deleting its bytes would leave `a:` behind, which
+///   re-parses as *null*, not as an empty collection — a type change,
+///   not a removal. The collection is replaced with an explicit `{}`
+///   or `[]` instead.
+#[derive(Debug, Clone, Copy)]
+enum Removal {
+    Line {
+        start: usize,
+        end: usize,
+        multiline: bool,
+    },
+    FlowMember {
+        start: usize,
+        end: usize,
+    },
+    SoleEntry {
+        start: usize,
+        end: usize,
+        empty: &'static str,
+    },
+}
+
+/// Widen a flow member's span to take exactly one separator with it.
+///
+/// `{x: 1, y: 2}` minus `x` must become `{y: 2}`, not `{, y: 2}`. The
+/// comma *after* the member is preferred; the last member takes the one
+/// *before* it instead. A lone member has no separator to take — that is
+/// [`Removal::SoleEntry`]'s job, not this one.
+///
+/// Only spaces and tabs are crossed while looking. A separator parked on
+/// another line (a multi-line flow collection) is deliberately not
+/// matched: the resulting splice would still be guarded by the typed
+/// oracle, so the outcome is a refusal rather than a mangled document.
+fn flow_member_range(source: &str, start: usize, end: usize) -> (usize, usize) {
+    let bytes = source.as_bytes();
+
+    // Forward: `x: 1, y: 2` → take `, ` after the member.
+    let mut i = end;
+    while i < bytes.len() && matches!(bytes[i], b' ' | b'\t') {
+        i += 1;
+    }
+    if i < bytes.len() && bytes[i] == b',' {
+        i += 1;
+        while i < bytes.len() && matches!(bytes[i], b' ' | b'\t') {
+            i += 1;
+        }
+        return (start, i);
+    }
+
+    // Backward: the member is last, so take the `, ` before it.
+    let mut j = start;
+    while j > 0 && matches!(bytes[j - 1], b' ' | b'\t') {
+        j -= 1;
+    }
+    if j > 0 && bytes[j - 1] == b',' {
+        return (j - 1, end);
+    }
+
+    (start, end)
+}
+
+/// Is the collection at `start` written in flow style (`{…}` / `[…]`)?
+fn is_flow_collection(source: &str, start: usize) -> bool {
+    source
+        .as_bytes()
+        .get(start)
+        .is_some_and(|b| matches!(b, b'{' | b'['))
+}
+
+/// The collection's span with any trailing whitespace given back.
+///
+/// A collection's span can run to the end of the line holding its last
+/// value, newline included. Overwriting that range with `{}` would take
+/// the document's final newline with it — `only: 1\n` becoming `{}`
+/// rather than `{}\n`. Harmless to a parser, but this is a lossless CST:
+/// a vanished trailing newline is a whole-file diff and trips
+/// `.gitattributes` and CI end-of-file checks.
+fn collection_span_trimmed(source: &str, start: usize, end: usize) -> (usize, usize) {
+    let trimmed = source[..end].trim_end().len();
+    (start, trimmed.max(start))
+}
+
 fn entry_line_span(
     value: &Value,
     span_tree: &SpanTree,
     source: &str,
     segments: &[QuerySegment],
-) -> Result<(usize, usize, bool)> {
+) -> Result<Removal> {
     if segments.is_empty() {
         return Err(Error::Parse(
             "remove requires a non-empty path (cannot remove the document root)".into(),
@@ -2956,35 +3070,77 @@ fn entry_line_span(
 
     // Final segment — locate this entry's key / dash and value.
     match (head, value, span_tree) {
-        (QuerySegment::Key(k), Value::Mapping(m), SpanTree::Mapping { entries, .. }) => {
-            if m.len() <= 1 {
-                return Err(Error::Parse(
-                    "remove cannot delete the only entry of a mapping".into(),
-                ));
-            }
+        (
+            QuerySegment::Key(k),
+            Value::Mapping(m),
+            SpanTree::Mapping {
+                start: coll_start,
+                end: coll_end,
+                entries,
+            },
+        ) => {
             let pos = m
                 .iter()
                 .position(|(mk, _)| mk == k)
                 .ok_or_else(|| Error::Parse(format!("path not found: missing key {k:?}")))?;
+            // Last entry: the collection itself becomes `{}`. Deleting the
+            // bytes would leave a dangling `a:` that re-parses as null.
+            if m.len() <= 1 {
+                let (start, end) = collection_span_trimmed(source, *coll_start, *coll_end);
+                return Ok(Removal::SoleEntry {
+                    start,
+                    end,
+                    empty: "{}",
+                });
+            }
             let ((key_start, _key_end), child_tree) = &entries[pos];
             let (value_start, raw_value_end) = span_tree_bounds(child_tree);
-            Ok(owned_entry_range(
-                source,
-                *key_start,
-                value_start,
-                raw_value_end,
-            ))
+            if is_flow_collection(source, *coll_start) {
+                let member_end = owned_value_end(source, value_start, raw_value_end);
+                let (s, e) = flow_member_range(source, *key_start, member_end);
+                return Ok(Removal::FlowMember { start: s, end: e });
+            }
+            let (start, end, multiline) =
+                owned_entry_range(source, *key_start, value_start, raw_value_end);
+            Ok(Removal::Line {
+                start,
+                end,
+                multiline,
+            })
         }
-        (QuerySegment::Index(i), Value::Sequence(seq), SpanTree::Sequence { items, .. }) => {
+        (
+            QuerySegment::Index(i),
+            Value::Sequence(seq),
+            SpanTree::Sequence {
+                start: coll_start,
+                end: coll_end,
+                items,
+            },
+        ) => {
+            if *i >= seq.len() {
+                return Err(Error::Parse(format!(
+                    "path not found: index {i} out of bounds"
+                )));
+            }
             if seq.len() <= 1 {
-                return Err(Error::Parse(
-                    "remove cannot delete the only entry of a sequence".into(),
-                ));
+                let (start, end) = collection_span_trimmed(source, *coll_start, *coll_end);
+                return Ok(Removal::SoleEntry {
+                    start,
+                    end,
+                    empty: "[]",
+                });
             }
             let item_tree = items
                 .get(*i)
                 .ok_or_else(|| Error::Parse(format!("path not found: index {i} out of bounds")))?;
             let (value_start, raw_value_end) = span_tree_bounds(item_tree);
+            if is_flow_collection(source, *coll_start) {
+                // No `-` indicator in flow style; the item's own span is
+                // the member.
+                let member_end = owned_value_end(source, value_start, raw_value_end);
+                let (s, e) = flow_member_range(source, value_start, member_end);
+                return Ok(Removal::FlowMember { start: s, end: e });
+            }
             // The `-` indicator sits before the value on the same line,
             // separated by inline whitespace. Walk backward to find it.
             let dash_pos = locate_preceding_dash(source, value_start).ok_or_else(|| {
@@ -2992,12 +3148,13 @@ fn entry_line_span(
                     "remove: could not locate '-' indicator preceding sequence item".into(),
                 )
             })?;
-            Ok(owned_entry_range(
-                source,
-                dash_pos,
-                value_start,
-                raw_value_end,
-            ))
+            let (start, end, multiline) =
+                owned_entry_range(source, dash_pos, value_start, raw_value_end);
+            Ok(Removal::Line {
+                start,
+                end,
+                multiline,
+            })
         }
         _ => Err(Error::Parse("path not found".into())),
     }
