@@ -1131,7 +1131,8 @@ impl Document {
     /// byte-identical.
     ///
     /// An item owns the same range here that [`remove`](Self::remove)
-    /// deletes: see [`owned_entry_range`]. That is deliberate — the two
+    /// deletes — `owned_entry_range` computes both. That is deliberate:
+    /// the two
     /// have to agree about who a comment belongs to, or the same bytes
     /// are the entry's property under one call and the slot's under the
     /// other. A reorder that moved only value bytes would leave each
@@ -3316,12 +3317,6 @@ fn owned_value_end(source: &str, value_start: usize, raw_value_end: usize) -> us
     }
 }
 
-/// Walk `start` up over the contiguous run of full-line comments directly
-/// above an entry, each beginning at column `indent`.
-///
-/// Stops at a blank line, a non-comment line, or a comment at a different
-/// column — so a comment detached by a blank line stays put, and so does
-/// one belonging to an enclosing or nested level.
 /// Split a whole-line range into its content and the line break that
 /// ends it, if any.
 ///
@@ -3339,6 +3334,12 @@ fn split_line_terminator(text: &str) -> (&str, &str) {
     }
 }
 
+/// Walk `start` up over the contiguous run of full-line comments directly
+/// above an entry, each beginning at column `indent`.
+///
+/// Stops at a blank line, a non-comment line, or a comment at a different
+/// column — so a comment detached by a blank line stays put, and so does
+/// one belonging to an enclosing or nested level.
 fn absorb_head_comments(source: &str, mut start: usize, indent: usize) -> usize {
     while start > 0 {
         // `start` is always 0 or one past a `\n`, so the preceding line is
