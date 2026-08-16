@@ -1125,18 +1125,26 @@ impl Document {
         Ok(())
     }
 
-    /// Swap two items of the block sequence at `path`, rewriting only
-    /// the two items' value bytes — every other item, and the `- `
-    /// indicators, indentation and surrounding structure, stay
+    /// Swap two items of the block sequence at `path`, exchanging each
+    /// item's **whole entry** — its own lines, its head-comment run
+    /// included. Every other item, and the surrounding structure, stay
     /// byte-identical.
+    ///
+    /// An item owns the same range here that [`remove`](Self::remove)
+    /// deletes: see [`owned_entry_range`]. That is deliberate — the two
+    /// have to agree about who a comment belongs to, or the same bytes
+    /// are the entry's property under one call and the slot's under the
+    /// other. A reorder that moved only value bytes would leave each
+    /// comment annotating whichever item landed beneath it, silently
+    /// and at `Ok`.
+    ///
+    /// A **flow** sequence has no per-item lines to exchange, so its
+    /// members keep the narrower value-span swap.
     ///
     /// Guarded like the other mutators: after the two splices the
     /// document must re-parse **and** its typed value must equal the
     /// original with exactly items `i` and `j` exchanged, or the edit
-    /// is rolled back and the document is left untouched. That guard is
-    /// what makes the byte swap safe — a case the raw swap cannot
-    /// preserve (for example two items at different indentation depths)
-    /// is refused rather than silently corrupting the document.
+    /// is rolled back and the document is left untouched.
     ///
     /// Swapping an index with itself, or two items whose values are
     /// already equal, is a no-op that returns `Ok(())`.
@@ -1145,8 +1153,7 @@ impl Document {
     ///
     /// - `path` does not resolve to a sequence.
     /// - `i` or `j` is out of bounds for that sequence.
-    /// - The value bytes of an item could not be located (e.g. a flow
-    ///   sequence, whose items this phase does not address).
+    /// - The bytes of an item could not be located.
     /// - The splice would not re-parse, or fails the integrity check
     ///   above (both roll back).
     ///
@@ -1158,6 +1165,16 @@ impl Document {
     /// let mut doc = parse_document("- a\n- b\n- c\n").unwrap();
     /// doc.swap_items("", 0, 2).unwrap();
     /// assert_eq!(doc.source(), "- c\n- b\n- a\n");
+    /// ```
+    ///
+    /// A comment travels with the item it documents:
+    ///
+    /// ```
+    /// use noyalib::cst::parse_document;
+    ///
+    /// let mut doc = parse_document("# about one\n- one\n# about two\n- two\n").unwrap();
+    /// doc.swap_items("", 0, 1).unwrap();
+    /// assert_eq!(doc.source(), "# about two\n- two\n# about one\n- one\n");
     /// ```
     pub fn swap_items(&mut self, path: &str, i: usize, j: usize) -> Result<()> {
         let segments = parse_query_path(path);
@@ -1184,8 +1201,32 @@ impl Document {
         let span_j = self.span_at(&pj).ok_or_else(|| {
             Error::Parse(format!("swap_items: could not locate item {j} of `{path}`"))
         })?;
-        let text_i = self.source()[span_i.0..span_i.1].to_string();
-        let text_j = self.source()[span_j.0..span_j.1].to_string();
+
+        // What each range receives. Whole entries when both items own
+        // their lines; bare value spans for a flow member, which does
+        // not.
+        let (range_i, range_j, into_i, into_j) = match self.owned_item_ranges(&pi, &pj) {
+            Some((ri, rj)) => {
+                let (body_i, term_i) = split_line_terminator(&self.source[ri.0..ri.1]);
+                let (body_j, term_j) = split_line_terminator(&self.source[rj.0..rj.1]);
+                // Each *position* keeps its own line terminator while the
+                // bodies move. The last entry of a document may have none,
+                // and carrying the breaks along with the bodies would join
+                // two lines into one: `- a\n- b` would swap to `- b- a`.
+                (
+                    ri,
+                    rj,
+                    format!("{body_j}{term_i}"),
+                    format!("{body_i}{term_j}"),
+                )
+            }
+            None => (
+                span_i,
+                span_j,
+                self.source()[span_j.0..span_j.1].to_string(),
+                self.source()[span_i.0..span_i.1].to_string(),
+            ),
+        };
 
         // Integrity oracle: the old value with items i and j exchanged.
         let expected = {
@@ -1195,12 +1236,12 @@ impl Document {
         };
 
         let snapshot = self.clone();
-        // Replace the *later* span first so the earlier span's byte
+        // Replace the *later* range first so the earlier range's byte
         // offsets stay valid for the second splice.
-        let (lo, hi, lo_text, hi_text) = if span_i.0 < span_j.0 {
-            (span_i, span_j, &text_j, &text_i)
+        let (lo, hi, lo_text, hi_text) = if range_i.0 < range_j.0 {
+            (range_i, range_j, &into_i, &into_j)
         } else {
-            (span_j, span_i, &text_i, &text_j)
+            (range_j, range_i, &into_j, &into_i)
         };
         for (span, text) in [(hi, hi_text), (lo, lo_text)] {
             if let Err(e) = self.replace_span(span.0, span.1, text) {
@@ -1222,20 +1263,49 @@ impl Document {
             *self = snapshot;
             return Err(Error::Parse(format!(
                 "swap_items: swapping items {i} and {j} of `{path}` failed the integrity \
-                 check — the byte swap could not preserve the items (e.g. multi-line or \
-                 differently-indented values); the document was left unchanged"
+                 check — the exchange would change data beyond the two items; \
+                 the document was left unchanged"
             )));
         }
         Ok(())
     }
 
+    /// The whole-line ranges the items at `pi` and `pj` own, or `None`
+    /// when either has no lines of its own.
+    ///
+    /// `None` is the flow-member case — `[one, two]`, where the items
+    /// share a line with each other and with the brackets — and it is
+    /// also the safe answer for a path that does not resolve, leaving
+    /// the caller on the value-span path it used before.
+    fn owned_item_ranges(&self, pi: &str, pj: &str) -> Option<((usize, usize), (usize, usize))> {
+        let cache = self.cache.borrow();
+        let (value, span_tree) = cache.as_ref()?;
+        let owned =
+            |p: &str| match entry_line_span(value, span_tree, &self.source, &parse_query_path(p)) {
+                Ok(Removal::Line { start, end, .. }) => Some((start, end)),
+                _ => None,
+            };
+        let (ri, rj) = (owned(pi)?, owned(pj)?);
+        // Two distinct items own disjoint ranges — a comment run between
+        // them belongs to the one below it, and `owned_value_end` keeps
+        // the one above from claiming it. Checked rather than assumed:
+        // overlapping ranges would have the second splice write into
+        // bytes the first had already moved, which the typed oracle
+        // cannot catch because the result still parses.
+        if ri.0 < rj.1 && rj.0 < ri.1 {
+            return None;
+        }
+        Some((ri, rj))
+    }
+
     /// Move the item at `from` to index `to` in the block sequence at
     /// `path`, shifting the items in between by one. The move is
     /// applied as a run of adjacent [`swap_items`](Self::swap_items)
-    /// steps, so it inherits that method's guarantees — only item value
-    /// bytes move, structure is preserved, and each step is guarded —
-    /// and the whole move is **atomic**: if any step is refused, the
-    /// document is rolled back to its state before the call.
+    /// steps, so it inherits that method's guarantees — each item's
+    /// whole entry moves, its comments with it, structure is preserved,
+    /// and each step is guarded — and the whole move is **atomic**: if
+    /// any step is refused, the document is rolled back to its state
+    /// before the call.
     ///
     /// Moving an index to itself is a no-op that returns `Ok(())`.
     ///
@@ -1243,8 +1313,7 @@ impl Document {
     ///
     /// - `path` does not resolve to a sequence.
     /// - `from` or `to` is out of bounds for that sequence.
-    /// - Any underlying swap is refused (e.g. multi-line or
-    ///   differently-indented items); the document is left unchanged.
+    /// - Any underlying swap is refused; the document is left unchanged.
     ///
     /// # Examples
     ///
@@ -3253,6 +3322,23 @@ fn owned_value_end(source: &str, value_start: usize, raw_value_end: usize) -> us
 /// Stops at a blank line, a non-comment line, or a comment at a different
 /// column — so a comment detached by a blank line stays put, and so does
 /// one belonging to an enclosing or nested level.
+/// Split a whole-line range into its content and the line break that
+/// ends it, if any.
+///
+/// Used by [`Document::swap_items`], which exchanges the two bodies but
+/// leaves each terminator where it is. The final entry of a document may
+/// carry none — `- a\n- b` — and moving the breaks with the bodies would
+/// splice that into the single line `- b- a`.
+fn split_line_terminator(text: &str) -> (&str, &str) {
+    if let Some(body) = text.strip_suffix("\r\n") {
+        (body, "\r\n")
+    } else if let Some(body) = text.strip_suffix('\n') {
+        (body, "\n")
+    } else {
+        (text, "")
+    }
+}
+
 fn absorb_head_comments(source: &str, mut start: usize, indent: usize) -> usize {
     while start > 0 {
         // `start` is always 0 or one past a `\n`, so the preceding line is

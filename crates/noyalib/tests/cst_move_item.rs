@@ -3,8 +3,9 @@
 
 //! `Document::move_item` — move a block-sequence item to a new index.
 //!
-//! Built on `swap_items`, so only item value bytes move and the whole
-//! move is atomic: a refused step leaves the document byte-identical.
+//! Built on `swap_items`, so each item's whole entry moves — comments
+//! included — and the whole move is atomic: a refused step leaves the
+//! document byte-identical.
 
 #![allow(missing_docs)]
 
@@ -102,4 +103,33 @@ fn typed_value_reflects_the_move() {
     let v: Value = from_str(doc.source()).unwrap();
     let expected: Value = from_str("- 2\n- 3\n- 4\n- 1\n").unwrap();
     assert_eq!(v, expected);
+}
+
+// ── Trivia travels with the item ────────────────────────────────────
+
+#[test]
+fn move_carries_each_item_s_inline_comment() {
+    let mut doc = parse_document("- a  # ca\n- b  # cb\n- c  # cc\n").unwrap();
+    doc.move_item("", 0, 2).unwrap();
+    assert_eq!(doc.source(), "- b  # cb\n- c  # cc\n- a  # ca\n");
+}
+
+#[test]
+fn move_carries_each_item_s_head_comment() {
+    let src = "# about a\n- a\n# about b\n- b\n# about c\n- c\n";
+    let mut doc = parse_document(src).unwrap();
+    doc.move_item("", 2, 0).unwrap();
+    assert_eq!(
+        doc.source(),
+        "# about c\n- c\n# about a\n- a\n# about b\n- b\n"
+    );
+}
+
+#[test]
+fn move_backwards_is_the_inverse_of_move_forwards() {
+    let src = "- a  # ca\n- b  # cb\n- c  # cc\n- d  # cd\n";
+    let mut doc = parse_document(src).unwrap();
+    doc.move_item("", 0, 3).unwrap();
+    doc.move_item("", 3, 0).unwrap();
+    assert_eq!(doc.source(), src);
 }
