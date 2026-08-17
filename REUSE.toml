@@ -152,3 +152,11 @@ path = [
 precedence = "aggregate"
 SPDX-FileCopyrightText = "2026 Noyalib"
 SPDX-License-Identifier = "MIT OR Apache-2.0"
+
+# The release-signing public key. A PGP armored block cannot carry SPDX
+# headers without corrupting the armor, so it is annotated here instead.
+[[annotations]]
+path = "KEYS.asc"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 Noyalib"
+SPDX-License-Identifier = "MIT OR Apache-2.0"

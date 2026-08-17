@@ -174,6 +174,68 @@ jobs:
           cd -
           cosign sign-blob --bundle "SBOM.txt.bundle" SBOM.txt
 
+      # ── Optional detached GPG signatures ──────────────────────────
+      # Additive to the sigstore bundles above, not a replacement.
+      # Keyless signing is the stronger primitive — no long-lived key to
+      # guard, and every signature is publicly logged in Rekor — but it
+      # requires cosign and network access to verify. A detached `.asc`
+      # can be checked with the gpg any distro already ships, offline,
+      # which is what package maintainers and air-gapped consumers ask
+      # for.
+      #
+      # Deliberately a STEP in this job rather than a separate job. The
+      # `.asc` files are produced before the same `upload-artifact` that
+      # carries the crate and the bundles, so they cannot lose a race
+      # with the release job. static-site-generator learned this the
+      # hard way: its signing job ran concurrently with publishing, so
+      # the signatures were generated, stored, and dropped before the
+      # release was assembled (sebastienrousseau/static-site-generator#678).
+      #
+      # Absent secret = skip, not fail. Every release before this one
+      # shipped without GPG, and a fork without the key must still be
+      # able to cut a release.
+      - name: GPG sign release artefacts (optional)
+        env:
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+        run: |
+          set -euo pipefail
+          if [ -z "${GPG_PRIVATE_KEY:-}" ]; then
+            echo "GPG_PRIVATE_KEY not set — skipping detached signatures."
+            echo "The sigstore bundles above are unaffected."
+            exit 0
+          fi
+
+          # Import into a throwaway keyring inside the runner workspace
+          # so nothing persists and GNUPGHOME never points at a shared
+          # location.
+          # Declared separately from the assignment so a mktemp failure
+          # is not masked by export's own exit status (SC2155).
+          GNUPGHOME="$(mktemp -d)"
+          export GNUPGHOME
+          chmod 700 "$GNUPGHOME"
+          printf '%s' "$GPG_PRIVATE_KEY" | gpg --batch --quiet --import
+          KEY_ID="$(gpg --list-secret-keys --with-colons | awk -F: '/^fpr:/ {print $10; exit}')"
+          echo "signing with ${KEY_ID}"
+
+          sign() {
+            gpg --batch --yes --quiet \
+                --pinentry-mode loopback \
+                --passphrase "${GPG_PASSPHRASE:-}" \
+                --local-user "$KEY_ID" \
+                --armor --detach-sign "$1"
+            # Verify what we just wrote. An unverifiable signature is
+            # worse than none: it looks like a guarantee and is not.
+            gpg --batch --quiet --verify "$1.asc" "$1"
+            echo "  signed + verified $1"
+          }
+
+          for f in target/package/*.crate; do sign "$f"; done
+          sign SBOM.txt
+
+          gpgconf --kill all || true
+          rm -rf "$GNUPGHOME"
+
       - name: Upload release artifacts
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
@@ -185,6 +247,8 @@ jobs:
             target/package/SHA512SUMS.txt
             SBOM.txt
             SBOM.txt.bundle
+            target/package/*.asc
+            SBOM.txt.asc
           retention-days: 5
 
   # ── Cross-platform verification ─────────────────────────────────────
