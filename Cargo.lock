@@ -1096,7 +1096,7 @@ dependencies = [
  "criterion",
  "figment",
  "garde",
- "hashbrown 0.15.5",
+ "hashbrown 0.17.1",
  "indexmap",
  "itoa",
  "jsonschema",
