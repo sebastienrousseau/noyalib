@@ -7,6 +7,64 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+## [v0.0.24] - 2026-08-18
+
+### Fixed
+
+- **`remove` stranded a sole entry's head comment** (#280, reported by
+  **@zoosky**). The same comment on the same entry was taken when the
+  entry had a sibling and left behind when it did not:
+
+  ```yaml
+  # before, with a sibling            # before, as the last entry
+  a:                                  a:
+    # documents x                       # documents x
+    x: 1                                x: 1
+    y: 2                              b: 2
+
+  # after: comment removed with x     # after: comment stranded above {}
+  a:                                  a:
+    y: 2                                # documents x
+                                        {}
+                                      b: 2
+  ```
+
+  The two arms derived their range from different things.
+  `Removal::Line` goes through `owned_entry_range`, which calls
+  `absorb_head_comments` and so owns the contiguous same-indent comment
+  run above the entry. `Removal::SoleEntry` replaced the *collection's*
+  span, and a collection starts at its first entry's **content** —
+  below the comment — so the run was never absorbed. Returned `Ok`, and
+  invisible to the typed oracle, because a comment is not in the typed
+  value.
+
+  Both paths now share `sole_entry_range`. Two consequences worth
+  naming:
+
+  - The splice can begin *above* the entry, so the entry's own leading
+    whitespace falls inside the replaced range and is written back —
+    otherwise `a:` loses its value entirely rather than gaining `{}`.
+  - **Flow collections are excluded.** `a: {x: 1}` starts at the `{`
+    part way along a line whose earlier bytes belong to the key. There
+    is no head-comment run to own there, and those bytes are not
+    indentation: treating them as such rewrote `a: {x: 1}` as `   {}`
+    and lost the key. Caught by an existing test.
+
+  Unchanged, and now pinned: a comment detached by a blank line, or at a
+  different column, is not the entry's and stays put; an inline trailing
+  comment sits inside the collection span and was always removed
+  correctly.
+
+### Changed
+
+- Dependency updates rolled into this release, superseding #273, #274,
+  #275, #276, #277 and #278:
+  - `jsonschema` 0.49.6 → 0.49.9
+  - `hashbrown` 0.15.5 → 0.17.1
+  - `github/codeql-action/{analyze,init,upload-sarif}` 4.37.6 → 4.37.7
+  - `taiki-e/install-action` 2.85.10 → 2.86.1
+
+
 ## [v0.0.23] - 2026-08-16
 
 ### Added

@@ -786,9 +786,14 @@ impl Document {
                 start,
                 end,
                 multiline,
-            } => (start, end, multiline, ""),
-            Removal::FlowMember { start, end } => (start, end, true, ""),
-            Removal::SoleEntry { start, end, empty } => (start, end, true, empty),
+            } => (start, end, multiline, String::new()),
+            Removal::FlowMember { start, end } => (start, end, true, String::new()),
+            Removal::SoleEntry {
+                start,
+                end,
+                empty,
+                indent,
+            } => (start, end, true, format!("{}{empty}", " ".repeat(indent))),
         };
         // Fast path only when the entry demonstrably owns its line.
         //
@@ -828,7 +833,7 @@ impl Document {
             expected_after_remove(value, &segments)?
         };
         let snapshot = self.clone();
-        if let Err(e) = self.replace_span(line_start, line_end, replacement) {
+        if let Err(e) = self.replace_span(line_start, line_end, &replacement) {
             *self = snapshot;
             return Err(Error::Parse(format!(
                 "remove: removing `{path}` could not be spliced ({e}); \
@@ -3032,6 +3037,14 @@ enum Removal {
         start: usize,
         end: usize,
         empty: &'static str,
+        /// Columns of indentation to re-emit before `empty`.
+        ///
+        /// The splice can now start *above* the entry, at the head of its
+        /// comment run, so the entry's own leading whitespace is inside
+        /// the replaced range and has to be written back — otherwise
+        /// `a:\n  # doc\n  x: 1` collapses to `a:\n{}`, which is not
+        /// `a`'s value at all.
+        indent: usize,
     },
 }
 
@@ -3095,6 +3108,45 @@ fn collection_span_trimmed(source: &str, start: usize, end: usize) -> (usize, us
     (start, trimmed.max(start))
 }
 
+/// The span to replace when a collection's **last** entry is removed,
+/// plus the indentation the replacement must re-emit.
+///
+/// Two things the collection's own span does not give us:
+///
+/// * **The head-comment run.** A collection starts at its first entry's
+///   *content*, which is below any comment describing that entry. The
+///   `Removal::Line` path owns that run via `absorb_head_comments`, so
+///   without this the same comment on the same entry was taken when the
+///   entry had a sibling and stranded when it did not — left describing
+///   an empty collection (#280). The typed oracle cannot catch it: a
+///   comment is not in the typed value.
+/// * **The indentation.** Starting the splice at the head of the comment
+///   run puts the entry's own leading whitespace inside the replaced
+///   range, so it has to be written back or `a:` loses its value.
+///
+/// A comment detached by a blank line, or at a different column, is not
+/// the entry's — `absorb_head_comments` already stops at both.
+fn sole_entry_range(source: &str, coll_start: usize, coll_end: usize) -> (usize, usize, usize) {
+    let (start, end) = collection_span_trimmed(source, coll_start, coll_end);
+
+    // Flow collections sit inline — `a: {x: 1}` starts at the `{`, part
+    // way along a line whose earlier bytes belong to the *key*. There is
+    // no head-comment run above such an entry to own, and the bytes
+    // before `{` are not indentation to re-emit: treating them as such
+    // would rewrite `a: {x: 1}` as `   {}` and lose the key.
+    if is_flow_collection(source, coll_start) {
+        return (start, end, 0);
+    }
+
+    let line_start = start_of_line(source, coll_start);
+    let indent = coll_start - line_start;
+    (
+        absorb_head_comments(source, line_start, indent),
+        end,
+        indent,
+    )
+}
+
 fn entry_line_span(
     value: &Value,
     span_tree: &SpanTree,
@@ -3156,11 +3208,12 @@ fn entry_line_span(
             // Last entry: the collection itself becomes `{}`. Deleting the
             // bytes would leave a dangling `a:` that re-parses as null.
             if m.len() <= 1 {
-                let (start, end) = collection_span_trimmed(source, *coll_start, *coll_end);
+                let (start, end, indent) = sole_entry_range(source, *coll_start, *coll_end);
                 return Ok(Removal::SoleEntry {
                     start,
                     end,
                     empty: "{}",
+                    indent,
                 });
             }
             let ((key_start, _key_end), child_tree) = &entries[pos];
@@ -3193,11 +3246,12 @@ fn entry_line_span(
                 )));
             }
             if seq.len() <= 1 {
-                let (start, end) = collection_span_trimmed(source, *coll_start, *coll_end);
+                let (start, end, indent) = sole_entry_range(source, *coll_start, *coll_end);
                 return Ok(Removal::SoleEntry {
                     start,
                     end,
                     empty: "[]",
+                    indent,
                 });
             }
             let item_tree = items
