@@ -914,9 +914,9 @@ dependencies = [
 
 [[package]]
 name = "jsonschema"
-version = "0.49.6"
+version = "0.49.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7e17384278234b10419a63c93fc85695ac9fc2da0833e3c59167f9986499590c"
+checksum = "59ec8a241beed129f06114aa68007e905ca350e7baeb6e17a7631bb7978d91b2"
 dependencies = [
  "ahash",
  "bytecount",
@@ -1089,14 +1089,14 @@ checksum = "2bf50223579dc7cdcfb3bfcacf7069ff68243f8c363f62ffa99cf000a6b9c451"
 
 [[package]]
 name = "noyalib"
-version = "0.0.23"
+version = "0.0.24"
 dependencies = [
  "ariadne",
  "bytes",
  "criterion",
  "figment",
  "garde",
- "hashbrown 0.15.5",
+ "hashbrown 0.17.1",
  "indexmap",
  "itoa",
  "jsonschema",

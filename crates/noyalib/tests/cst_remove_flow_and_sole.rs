@@ -185,3 +185,88 @@ fn comments_outside_the_flow_collection_survive() {
         "# header\na: {y: 2}  # trailing\nb: 2\n",
     );
 }
+
+// ── Head comments on a sole entry (#280) ────────────────────────────
+//
+// `Removal::Line` owned the entry's head-comment run via
+// `owned_entry_range`; `Removal::SoleEntry` replaced the *collection's*
+// span, which begins at the first entry's content — below the comment.
+// So the same comment on the same entry was taken when the entry had a
+// sibling and stranded when it did not, left describing an empty
+// collection. Invisible to the typed oracle, which cannot see comments.
+
+#[test]
+fn sole_entry_removal_takes_its_head_comment() {
+    remove_ok(
+        "a:\n  # documents x\n  x: 1\nb: 2\n",
+        "a.x",
+        "a:\n  {}\nb: 2\n",
+    );
+}
+
+#[test]
+fn sole_entry_removal_takes_the_whole_head_comment_run() {
+    remove_ok(
+        "a:\n  # one\n  # two\n  x: 1\nb: 2\n",
+        "a.x",
+        "a:\n  {}\nb: 2\n",
+    );
+}
+
+#[test]
+fn sole_sequence_item_takes_its_head_comment() {
+    remove_ok("xs:\n  # about one\n  - one\n", "xs[0]", "xs:\n  []\n");
+}
+
+#[test]
+fn sole_root_entry_takes_its_head_comment() {
+    remove_ok("# doc for only\nonly: 1\n", "only", "{}\n");
+}
+
+#[test]
+fn the_same_comment_is_treated_the_same_with_and_without_a_sibling() {
+    // The heart of #280: these two differ only in whether `a` has a
+    // second entry, so they must agree about who owns `# documents x`.
+    remove_ok(
+        "a:\n  # documents x\n  x: 1\n  y: 2\n",
+        "a.x",
+        "a:\n  y: 2\n",
+    );
+    remove_ok(
+        "a:\n  # documents x\n  x: 1\nb: 2\n",
+        "a.x",
+        "a:\n  {}\nb: 2\n",
+    );
+}
+
+#[test]
+fn a_detached_comment_is_not_the_entrys_and_stays() {
+    // A blank line severs ownership — `absorb_head_comments` stops there,
+    // and the sole-entry path must inherit that, not widen it.
+    remove_ok(
+        "a:\n  # detached\n\n  x: 1\n",
+        "a.x",
+        "a:\n  # detached\n\n  {}\n",
+    );
+}
+
+#[test]
+fn an_inline_comment_was_already_correct_and_stays_correct() {
+    // Inside the collection span, so it was never stranded.
+    remove_ok("a:\n  x: 1  # trailing\n", "a.x", "a:\n  {}\n");
+}
+
+#[test]
+fn indentation_survives_absorbing_the_comment_run() {
+    // The splice now starts above the entry, so the entry's own leading
+    // whitespace is inside the replaced range and must be written back.
+    // Without that, `a:` loses its value entirely.
+    let mut doc = parse_document("a:\n    # deep\n    x: 1\nb: 2\n").unwrap();
+    doc.remove("a.x").unwrap();
+    assert_eq!(doc.to_string(), "a:\n    {}\nb: 2\n");
+    let v = doc.as_value();
+    let Value::Mapping(root) = &*v else {
+        panic!("not a mapping")
+    };
+    assert!(matches!(root.get("a"), Some(Value::Mapping(m)) if m.is_empty()));
+}
