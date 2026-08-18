@@ -218,16 +218,38 @@ jobs:
           KEY_ID="$(gpg --list-secret-keys --with-colons | awk -F: '/^fpr:/ {print $10; exit}')"
           echo "signing with ${KEY_ID}"
 
+          # Trust the key ultimately *in this throwaway keyring*. A fresh
+          # GNUPGHOME has no ownertrust database, so `gpg --verify` would
+          # otherwise report a perfectly good signature as
+          # "not certified with a trusted signature". That warning is not
+          # cosmetic here: without it the verification below cannot
+          # distinguish our key from any other key that happens to
+          # produce a valid signature.
+          printf '%s:6:\n' "$KEY_ID" | gpg --batch --quiet --import-ownertrust
+
           sign() {
             gpg --batch --yes --quiet \
                 --pinentry-mode loopback \
                 --passphrase "${GPG_PASSPHRASE:-}" \
                 --local-user "$KEY_ID" \
                 --armor --detach-sign "$1"
-            # Verify what we just wrote. An unverifiable signature is
-            # worse than none: it looks like a guarantee and is not.
-            gpg --batch --quiet --verify "$1.asc" "$1"
-            echo "  signed + verified $1"
+
+            # Verify what we just wrote, and assert three things rather
+            # than trusting the exit status. `gpg --verify` returns 0 for
+            # a valid signature from an *untrusted* key, so the exit code
+            # alone does not say what a reader assumes it says.
+            #
+            #   GOODSIG    the signature is cryptographically valid
+            #   VALIDSIG   it was made by THIS key, not merely some key
+            #   TRUST_*    the key is certified, not dangling
+            local status
+            status="$(mktemp)"
+            gpg --batch --status-fd=1 --verify "$1.asc" "$1" >"$status" 2>/dev/null
+            grep -q '^\[GNUPG:\] GOODSIG'                  "$status" || { echo "::error::$1: signature is not GOODSIG";  sed 's/^/    /' "$status"; exit 1; }
+            grep -q "^\[GNUPG:\] VALIDSIG ${KEY_ID}"       "$status" || { echo "::error::$1: not signed by ${KEY_ID}";   sed 's/^/    /' "$status"; exit 1; }
+            grep -qE '^\[GNUPG:\] TRUST_(ULTIMATE|FULLY)'  "$status" || { echo "::error::$1: key is not trusted";        sed 's/^/    /' "$status"; exit 1; }
+            rm -f "$status"
+            echo "  signed + verified (GOODSIG, VALIDSIG ${KEY_ID}, trusted) $1"
           }
 
           for f in target/package/*.crate; do sign "$f"; done
