@@ -9,14 +9,14 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [v0.0.25] - 2026-08-19
 
-**Three fixes from [@zoosky](https://github.com/zoosky)**, all found while
+**Four fixes from [@zoosky](https://github.com/zoosky)**, all found while
 adopting v0.0.24 in [yqr](https://github.com/zoosky/yqr), and all cases
 where the previous behaviour produced or refused something this codebase
 already disagreed with elsewhere.
 
 Each arrived as a reproduction against a published version, a diagnosis
 naming the responsible function, a fix, and tests — including the cases
-that had to keep failing. Two of the three were found by pointing a real
+that had to keep failing. Three of the four were found by pointing a real
 consumer at a release and reporting what broke, which is the kind of
 testing a library cannot do for itself.
 
@@ -115,6 +115,48 @@ testing a library cannot do for itself.
   address through `parse_query_path`, so a dotted key stays out of reach
   for them. Whether the path grammar should grow an escape form is a
   separate question.
+
+- **An inserted scalar was quoted because some unrelated line was
+  quoted** (#290). The dominance vote counted only quoted scalars against
+  each other — plain ones did not vote — so a single quoted scalar
+  anywhere decided the spelling of every later insertion:
+
+  ```yaml
+  quoted: "30"        # four lines away, untouched by the edit
+  labels:
+    app: web
+    tier: "frontend"  # before — the sibling is plain
+  ```
+
+  On a Kubernetes manifest the vote was settled by `value: "30"` in a
+  container's env block, arbitrarily far from the labels being edited.
+  Nothing was *wrong* with the value — it round-trips and the document
+  stays valid — but the diff a reviewer saw was a quoted value among
+  plain ones. It also disagreed with `set`, which writes plain at the
+  same site.
+
+  `EmitCtx`'s doc already stated the intent — an implementation should
+  "match the file it is landing in" — so the radius was wrong rather than
+  the idea. Insertion now learns from the collection it lands in and only
+  falls back to the document-wide vote when that collection has no scalar
+  values to learn from.
+
+  Two details decided by implementing it:
+
+  - **Only values vote, not keys.** Counting scalar tokens across the
+    site's byte range cannot tell one from the other, and mapping keys
+    are almost always plain — `a: "one"` / `b: "two"` would tie two plain
+    keys against two quoted values and pick plain, the opposite of what
+    the site says. The entry values are read from the span tree instead.
+  - **Plain needs a strict majority.** A tie means the site is genuinely
+    mixed (`a: 1` beside `b: 'two'`), and there the quoting already
+    present is the better guide. Every case #290 reports has plain
+    winning outright.
+
+  `Document::dominant_quote_style` is public, documented, and pinned by
+  three doctests, so its behaviour is unchanged — this narrows what
+  *insertion* asks, not what that function answers. Of the two options in
+  the report this is the second, which leaves the public API alone.
 
 ### Changed
 

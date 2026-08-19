@@ -1739,15 +1739,92 @@ impl Document {
     // ── Auto-formatting insertion (the `Emit` tier) ─────────────────
 
     /// The emission context for a site starting at `column`: the
-    /// document's own detected conventions, so an insertion looks like
-    /// the file it lands in.
-    fn emit_ctx(&self, column: usize) -> EmitCtx {
+    /// conventions of the collection being edited, so an insertion looks
+    /// like the lines beside it.
+    ///
+    /// `site` is the path of the collection receiving the entry.
+    /// When it holds scalars they decide the quote style — **plain ones
+    /// included**. Only when the site offers no evidence at all (an empty
+    /// collection) does this fall back to the document-wide vote.
+    ///
+    /// The document-wide vote is deliberately unchanged. It counts quoted
+    /// scalars against each other and ignores plain ones, so one quoted
+    /// line anywhere decided the spelling of every later insertion: on a
+    /// Kubernetes manifest, `value: "30"` in a container's env block
+    /// dictated the spelling of a label four lines from the top (#290).
+    /// `EmitCtx`'s own doc says an implementation should "match the file
+    /// it is landing in" — landing in is a *site*, and the whole document
+    /// was the wrong radius rather than the wrong idea.
+    ///
+    /// `Document::dominant_quote_style` is public with documented
+    /// behaviour and three doctests pinning it, so its meaning stays as
+    /// it is; this narrows what *insertion* asks, not what the function
+    /// answers.
+    fn emit_ctx_at(&self, column: usize, site: &str) -> EmitCtx {
         EmitCtx::new(
-            self.dominant_quote_style(),
+            self.quote_style_for_site(site),
             self.dominant_flow_style(),
             self.indent_unit(),
             column,
         )
+    }
+
+    /// Quote style for an insertion landing in the collection at `path`,
+    /// falling back to the document when that collection has no scalar
+    /// values to learn from.
+    ///
+    /// Reads the collection's entry **values** from the span tree rather
+    /// than counting scalar tokens in a byte range. A byte range cannot
+    /// tell a key from a value, and mapping keys are almost always plain
+    /// — so `a: "one"` / `b: "two"` counts two plain keys against two
+    /// quoted values and ties to plain, which is the opposite of what the
+    /// site says. Values are the only scalars an insertion imitates.
+    fn quote_style_for_site(&self, path: &str) -> crate::ScalarStyle {
+        let counts = {
+            let cache = self.cache.borrow();
+            cache.as_ref().and_then(|(value, tree)| {
+                let (_, sub) = resolve_tree(value, tree, &parse_query_path(path))?;
+                let mut counts = (0_usize, 0_usize, 0_usize);
+                let mut tally = |t: &SpanTree| {
+                    // Only leaves are scalars; a nested collection has no
+                    // spelling of its own to copy.
+                    if let SpanTree::Leaf(start, _) = t {
+                        match self.source.as_bytes().get(*start) {
+                            Some(b'"') => counts.2 += 1,
+                            Some(b'\'') => counts.1 += 1,
+                            Some(_) => counts.0 += 1,
+                            None => {}
+                        }
+                    }
+                };
+                match sub {
+                    SpanTree::Mapping { entries, .. } => {
+                        entries.iter().for_each(|(_, v)| tally(v));
+                    }
+                    SpanTree::Sequence { items, .. } => items.iter().for_each(&mut tally),
+                    _ => return None,
+                }
+                Some(counts)
+            })
+        };
+        match counts {
+            Some((plain, single, double)) if plain + single + double > 0 => {
+                // Plain needs a *strict* majority. A tie means the site is
+                // genuinely mixed — `a: 1` beside `b: 'two'` — and there
+                // the existing quoting is the better guide than a
+                // preference for bare scalars. #290 is about unrelated
+                // lines deciding the spelling, not about mixed sites, and
+                // every case it reports has plain winning outright.
+                if plain > single && plain > double {
+                    crate::ScalarStyle::Plain
+                } else if single >= double {
+                    crate::ScalarStyle::SingleQuoted
+                } else {
+                    crate::ScalarStyle::DoubleQuoted
+                }
+            }
+            _ => self.dominant_quote_style(),
+        }
     }
 
     /// Insert `key: value` into the block mapping at `mapping_path`,
@@ -1897,7 +1974,9 @@ impl Document {
             None => self.mapping_insert_anchor(mapping_path)?,
         };
         self.refuse_inside_aliased_anchor("insert_entry_value", mapping_path, probe)?;
-        let ctx = self.emit_ctx(column);
+        // Learn the spelling from the mapping being edited, not the whole
+        // document (#290).
+        let ctx = self.emit_ctx_at(column, mapping_path);
         let fragment = value.emit(&ctx)?;
         let key_spelling = emit_key(key, &ctx);
         let indent = " ".repeat(column);
@@ -2011,7 +2090,7 @@ impl Document {
         }
         let (column, anchor_pos) = self.sequence_item_anchor(path, len - 1)?;
         self.refuse_inside_aliased_anchor("push_back_value", path, anchor_pos)?;
-        let fragment = self.emit_sequence_item(value, column)?;
+        let fragment = self.emit_sequence_item(value, column, path)?;
 
         let snapshot = self.clone();
         self.guarded_item_splice(
@@ -2073,7 +2152,7 @@ impl Document {
         };
         let (column, anchor_pos) = self.sequence_item_anchor(&seq_path, index)?;
         self.refuse_inside_aliased_anchor("insert_after_value", item_path, anchor_pos)?;
-        let fragment = self.emit_sequence_item(value, column)?;
+        let fragment = self.emit_sequence_item(value, column, &seq_path)?;
 
         let snapshot = self.clone();
         self.guarded_item_splice(
@@ -2144,8 +2223,13 @@ impl Document {
     /// at `column`, carrying any continuation lines to the item's own
     /// content indent so the splice template's single line grows into
     /// a correctly-indented block.
-    fn emit_sequence_item<E: Emit + ?Sized>(&self, value: &E, column: usize) -> Result<String> {
-        let ctx = self.emit_ctx(column);
+    fn emit_sequence_item<E: Emit + ?Sized>(
+        &self,
+        value: &E,
+        column: usize,
+        site: &str,
+    ) -> Result<String> {
+        let ctx = self.emit_ctx_at(column, site);
         let fragment = value.emit(&ctx)?;
         // `push_back` / `insert_after` splice `{indent}- {fragment}`,
         // so the first line is already placed; every later line must
