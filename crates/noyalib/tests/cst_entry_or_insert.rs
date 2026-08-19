@@ -182,3 +182,115 @@ metadata:
     assert!(out.contains("team: platform"));
     assert!(out.contains("env: prod"));
 }
+
+// ── Keys the path grammar cannot express (#288) ─────────────────────
+//
+// The anchor for a new entry used to be found by taking the last key
+// from the typed view, composing it back into a path string, and
+// re-parsing that. `parse_query_path` splits on `.`, `[` and `*`
+// unconditionally, so no key containing one survived the round trip —
+// and a mapping whose keys all contain one looked as if none of its
+// entries had source bytes at all. That is the Kubernetes
+// `app.kubernetes.io/name` convention, so it was most of the manifests
+// in the world. The anchor now comes from the span tree, which needs no
+// path at all.
+
+#[test]
+fn a_new_key_lands_in_a_mapping_whose_keys_hold_a_dot() {
+    let mut doc = parse_document(
+        "metadata:\n  labels:\n    app.kubernetes.io/name: web\n    app.kubernetes.io/component: frontend\n",
+    )
+    .unwrap();
+    doc.insert_entry("metadata.labels", "tier", "frontend")
+        .unwrap();
+    assert_eq!(
+        doc.to_string(),
+        "metadata:\n  labels:\n    app.kubernetes.io/name: web\n    app.kubernetes.io/component: frontend\n    tier: frontend\n"
+    );
+}
+
+#[test]
+fn the_same_holds_for_bracket_star_and_quoted_keys() {
+    for (src, expected) in [
+        ("m:\n  a[0]: 1\n", "m:\n  a[0]: 1\n  b: 2\n"),
+        ("m:\n  a*b: 1\n", "m:\n  a*b: 1\n  b: 2\n"),
+        ("m:\n  \"a.b\": 1\n", "m:\n  \"a.b\": 1\n  b: 2\n"),
+    ] {
+        let mut doc = parse_document(src).unwrap();
+        doc.insert_entry("m", "b", "2").unwrap();
+        assert_eq!(doc.to_string(), expected, "for {src:?}");
+    }
+}
+
+#[test]
+fn a_dotted_key_mapping_keeps_its_line_endings() {
+    let mut doc = parse_document("labels:\r\n  app.kubernetes.io/name: web\r\n").unwrap();
+    doc.insert_entry("labels", "tier", "web").unwrap();
+    assert_eq!(
+        doc.to_string(),
+        "labels:\r\n  app.kubernetes.io/name: web\r\n  tier: web\r\n"
+    );
+}
+
+#[test]
+fn a_trailing_implicit_null_is_the_anchor_rather_than_a_gap() {
+    // `b:` owns no value bytes, but its key is a real line at the right
+    // column — and it is the line a new sibling belongs after. Anchoring
+    // on the last entry that *has* a value would insert above it.
+    let mut doc = parse_document("m:\n  a: 1\n  b:\n").unwrap();
+    doc.insert_entry("m", "c", "3").unwrap();
+    assert_eq!(doc.to_string(), "m:\n  a: 1\n  b:\n  c: 3\n");
+
+    let mut doc = parse_document("m:\n  a:\n  b:\n").unwrap();
+    doc.insert_entry("m", "c", "3").unwrap();
+    assert_eq!(doc.to_string(), "m:\n  a:\n  b:\n  c: 3\n");
+}
+
+#[test]
+fn an_alias_valued_last_entry_anchors_on_its_own_line() {
+    // Pre-existing, found while reviewing this change: an alias entry's
+    // span tree resolves *through* to the anchor's definition, which is
+    // somewhere else in the document. Anchoring on that span put the new
+    // key beside the anchor, in a different mapping, at `Ok(())`:
+    //
+    //     d: &d          d: &d
+    //       x: 1           x: 1
+    //     s:        ->   c: 9        <- landed here
+    //       a: 1         s:
+    //       b: *d          a: 1
+    //                      b: *d
+    let mut doc = parse_document("d: &d\n  x: 1\ns:\n  a: 1\n  b: *d\n").unwrap();
+    doc.insert_entry("s", "c", "9").unwrap();
+    assert_eq!(
+        doc.to_string(),
+        "d: &d\n  x: 1\ns:\n  a: 1\n  b: *d\n  c: 9\n"
+    );
+
+    // The same when the alias entry is the mapping's only one.
+    let mut doc = parse_document("d: &d\n  x: 1\ns:\n  b: *d\n").unwrap();
+    doc.insert_entry("s", "c", "9").unwrap();
+    assert_eq!(doc.to_string(), "d: &d\n  x: 1\ns:\n  b: *d\n  c: 9\n");
+}
+
+#[test]
+fn a_mapping_with_a_merge_key_and_an_entry_of_its_own_anchors_on_the_entry() {
+    let mut doc = parse_document("d: &d\n  x: 1\ns:\n  <<: *d\n  own: 1\n").unwrap();
+    doc.insert_entry("s", "y", "2").unwrap();
+    assert_eq!(
+        doc.to_string(),
+        "d: &d\n  x: 1\ns:\n  <<: *d\n  own: 1\n  y: 2\n"
+    );
+}
+
+#[test]
+fn the_typed_insert_path_gains_the_same_reach() {
+    // `insert_entry_value` already went through `mapping_insert_anchor`;
+    // this pins that the shared fix reaches it too.
+    let mut doc = parse_document("labels:\n  app.kubernetes.io/name: web\n").unwrap();
+    doc.insert_entry_value("labels", "tier", &Value::String("frontend".into()))
+        .unwrap();
+    assert_eq!(
+        doc.to_string(),
+        "labels:\n  app.kubernetes.io/name: web\n  tier: frontend\n"
+    );
+}
