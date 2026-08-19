@@ -11,6 +11,7 @@ use crate::cst::builder::{
 use crate::cst::emit::{Emit, EmitCtx, emit_key};
 use crate::cst::green::{GreenChild, GreenNode};
 use crate::cst::syntax::SyntaxKind;
+use crate::doc_boundary::strip_bom;
 use crate::error::{Error, Result};
 use crate::path::{QuerySegment, parse_query_path};
 use crate::prelude::*;
@@ -776,7 +777,7 @@ impl Document {
         let removal = {
             let cache = self.cache.borrow();
             let (value, span_tree) = cache.as_ref().expect("ensure_cache populated");
-            entry_line_span(value, span_tree, &self.source, &segments)?
+            entry_line_span(value, span_tree, &self.source, &segments, None)?
         };
         // What to splice, and what to put back. Only `Line` can take the
         // unguarded fast path below; the other two always face the oracle,
@@ -1286,11 +1287,16 @@ impl Document {
     fn owned_item_ranges(&self, pi: &str, pj: &str) -> Option<((usize, usize), (usize, usize))> {
         let cache = self.cache.borrow();
         let (value, span_tree) = cache.as_ref()?;
-        let owned =
-            |p: &str| match entry_line_span(value, span_tree, &self.source, &parse_query_path(p)) {
-                Ok(Removal::Line { start, end, .. }) => Some((start, end)),
-                _ => None,
-            };
+        let owned = |p: &str| match entry_line_span(
+            value,
+            span_tree,
+            &self.source,
+            &parse_query_path(p),
+            None,
+        ) {
+            Ok(Removal::Line { start, end, .. }) => Some((start, end)),
+            _ => None,
+        };
         let (ri, rj) = (owned(pi)?, owned(pj)?);
         // Two distinct items own disjoint ranges — a comment run between
         // them belongs to the one below it, and `owned_value_end` keeps
@@ -3126,7 +3132,16 @@ fn collection_span_trimmed(source: &str, start: usize, end: usize) -> (usize, us
 ///
 /// A comment detached by a blank line, or at a different column, is not
 /// the entry's — `absorb_head_comments` already stops at both.
-fn sole_entry_range(source: &str, coll_start: usize, coll_end: usize) -> (usize, usize, usize) {
+///
+/// `parent_key` is the byte offset of the key this collection is the value
+/// of, when it has one. It decides the indentation: a block collection may
+/// share its key's column, but the `{}` / `[]` that replaces it may not.
+fn sole_entry_range(
+    source: &str,
+    coll_start: usize,
+    coll_end: usize,
+    parent_key: Option<usize>,
+) -> (usize, usize, usize) {
     let (start, end) = collection_span_trimmed(source, coll_start, coll_end);
 
     // Flow collections sit inline — `a: {x: 1}` starts at the `{`, part
@@ -3139,12 +3154,42 @@ fn sole_entry_range(source: &str, coll_start: usize, coll_end: usize) -> (usize,
     }
 
     let line_start = start_of_line(source, coll_start);
-    let indent = coll_start - line_start;
+    let own_indent = coll_start - line_start;
+
+    // A block sequence is allowed to sit at its key's own column — `on:` /
+    // `- push`, the GitHub Actions and Ansible idiom. What replaces it is
+    // not: `{}` / `[]` is a block *mapping value*, and one that shares its
+    // key's column does not re-parse as that key's value. So the entry's
+    // own indent is the right answer only when it already clears the key.
+    //
+    // The comment run is still absorbed at the entry's own column, which is
+    // where those comment lines actually sit.
+    let indent = match parent_key.map(|key| column_of(source, key)) {
+        Some(key_column) if own_indent <= key_column => key_column + 2,
+        _ => own_indent,
+    };
     (
-        absorb_head_comments(source, line_start, indent),
+        absorb_head_comments(source, line_start, own_indent),
         end,
         indent,
     )
+}
+
+/// The column a byte offset sits in, with a leading BOM discounted.
+///
+/// A BOM is zero-width, so `on:` after one is in column 0, not column 3 —
+/// counting its bytes toward the column is the mistake #123 fixed in the
+/// scanner, and the same one is available here. Everything else that can
+/// precede a key on its line (indent spaces, `- `, `? `) is one byte per
+/// column, so the subtraction is exact.
+fn column_of(source: &str, offset: usize) -> usize {
+    let line_start = start_of_line(source, offset);
+    let bom = if line_start == 0 {
+        strip_bom(source.as_bytes())
+    } else {
+        0
+    };
+    offset.saturating_sub(line_start + bom)
 }
 
 fn entry_line_span(
@@ -3152,6 +3197,7 @@ fn entry_line_span(
     span_tree: &SpanTree,
     source: &str,
     segments: &[QuerySegment],
+    parent_key: Option<usize>,
 ) -> Result<Removal> {
     if segments.is_empty() {
         return Err(Error::Parse(
@@ -3166,15 +3212,21 @@ fn entry_line_span(
     // Recurse into nested mappings / sequences until the segment list
     // identifies the *parent* of the entry to remove.
     if !tail.is_empty() {
-        let (child_value, child_tree) = match (head, value, span_tree) {
+        // The key descended through is the parent key of everything below
+        // it — which is what the sole-entry arm needs to know how deep an
+        // empty collection has to sit. A sequence item is not a key, so
+        // descending through one clears it.
+        let (child_value, child_tree, child_key) = match (head, value, span_tree) {
             (QuerySegment::Key(k), Value::Mapping(m), SpanTree::Mapping { entries, .. }) => {
                 let pos = m
                     .iter()
                     .position(|(mk, _)| mk == k)
                     .ok_or_else(|| Error::Parse(format!("path not found: missing key {k:?}")))?;
+                let ((key_start, _), child_tree) = &entries[pos];
                 (
                     m.iter().nth(pos).map(|(_, v)| v).expect("pos in range"),
-                    &entries[pos].1,
+                    child_tree,
+                    Some(*key_start),
                 )
             }
             (QuerySegment::Index(i), Value::Sequence(seq), SpanTree::Sequence { items, .. }) => (
@@ -3184,10 +3236,11 @@ fn entry_line_span(
                 items.get(*i).ok_or_else(|| {
                     Error::Parse(format!("path not found: index {i} out of bounds"))
                 })?,
+                None,
             ),
             _ => return Err(Error::Parse("path not found".into())),
         };
-        return entry_line_span(child_value, child_tree, source, tail);
+        return entry_line_span(child_value, child_tree, source, tail, child_key);
     }
 
     // Final segment — locate this entry's key / dash and value.
@@ -3208,7 +3261,8 @@ fn entry_line_span(
             // Last entry: the collection itself becomes `{}`. Deleting the
             // bytes would leave a dangling `a:` that re-parses as null.
             if m.len() <= 1 {
-                let (start, end, indent) = sole_entry_range(source, *coll_start, *coll_end);
+                let (start, end, indent) =
+                    sole_entry_range(source, *coll_start, *coll_end, parent_key);
                 return Ok(Removal::SoleEntry {
                     start,
                     end,
@@ -3246,7 +3300,8 @@ fn entry_line_span(
                 )));
             }
             if seq.len() <= 1 {
-                let (start, end, indent) = sole_entry_range(source, *coll_start, *coll_end);
+                let (start, end, indent) =
+                    sole_entry_range(source, *coll_start, *coll_end, parent_key);
                 return Ok(Removal::SoleEntry {
                     start,
                     end,
