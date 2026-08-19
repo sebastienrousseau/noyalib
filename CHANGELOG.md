@@ -7,6 +7,75 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+## [v0.0.25] - 2026-08-19
+
+Two fixes from **@zoosky**, both found while adopting v0.0.24 in yqr, and
+both cases where the previous behaviour produced or refused something the
+parser itself disagreed with.
+
+### Fixed
+
+- **`remove` wrote an empty collection at its key's own column** (#283,
+  PR #284). A block sequence may sit at its key's column — `on:` /
+  `- push` is what nearly every GitHub Actions and Ansible file looks
+  like. What replaces it may not: `{}` / `[]` is a block *mapping value*,
+  and one sharing its key's column does not re-parse as that key's value.
+
+  ```yaml
+  on:            ->   on:            # before: Ok(()), and unreadable
+  - push              []
+  jobs: {}            jobs: {}
+  ```
+
+  The inconsistency was visible from inside: delete the `jobs:` line and
+  the identical removal was *refused* by the oracle, because the guard
+  re-parses with this parser, which accepts `on:\n[]\njobs: {}` and
+  rejects `on:\n[]`. Same shape, same output spelling — `Ok` with a
+  sibling, refused without one.
+
+  `sole_entry_range` took the indent from the removed entry's own line,
+  which for this layout *is* the key's column. The constraint is
+  "strictly deeper than the key", and the two coincide for every layout
+  except this one. The parent key's offset is now threaded down and the
+  indent clamped to the key's column + 2 when the entry's own indent does
+  not already clear it. A root collection, or one reached through a
+  sequence item, has no parent key and is unchanged.
+
+  The head-comment run from #280 is still absorbed at the entry's **own**
+  column, where those comment lines actually sit — only the replacement
+  moves.
+
+- **A wrapped flow collection was refused when its closing indicator sat
+  at the parent's column** (#285, PR #286):
+
+  ```yaml
+  ports: [
+    80,
+    443,
+  ]
+  ```
+
+  A *read* refusal, so nothing downstream ran. The indentation check
+  exists so that flow content continuing across a line break cannot be
+  ambiguous with sibling block content (yaml-test-suite 9C9N) — but that
+  rationale is about **content**. A line whose first character is `]` or
+  `}` cannot begin block content, so there is nothing to be ambiguous
+  with; the rule was reaching the terminator too.
+
+  The asymmetry was already in the tree: the same closer at column 0 is
+  accepted at the root, where `self.indent` is `-1`. Only a flow inside a
+  block mapping refused it.
+
+  Under-indented flow **content** stays refused, deliberately — that is
+  9C9N's rule and this does not touch it. `ports: [` / `80,` / `]` is
+  still an error, as is 9C9N itself, whose third line opens with a scalar
+  rather than the indicator.
+
+### Changed
+
+- Version → 0.0.25.
+
+
 ## [v0.0.24] - 2026-08-18
 
 ### Fixed
