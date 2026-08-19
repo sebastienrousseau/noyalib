@@ -270,3 +270,81 @@ fn indentation_survives_absorbing_the_comment_run() {
     };
     assert!(matches!(root.get("a"), Some(Value::Mapping(m)) if m.is_empty()));
 }
+
+// ── Sole entry of a same-column collection (#283) ───────────────────
+//
+// A block collection may share its key's column — `on:` / `- push` is
+// what nearly every GitHub Actions and Ansible file looks like. What
+// replaces it may not: `{}` / `[]` is a block *mapping value*, and one
+// at its key's column does not re-parse as that key's value. Taking the
+// removed entry's own indent therefore wrote `on:` / `[]`, which this
+// parser accepts and PyYAML and Psych both reject.
+//
+// The guard could not catch it: it re-parses with this parser. It did
+// fire on the same removal when the mapping had no following entry,
+// which is the inconsistency that made the shape visible.
+
+#[test]
+fn sole_item_of_a_same_column_sequence_is_indented_under_its_key() {
+    remove_ok("on:\n- push\njobs: {}\n", "on[0]", "on:\n  []\njobs: {}\n");
+}
+
+#[test]
+fn sole_item_of_a_same_column_sequence_is_the_whole_document() {
+    // Previously refused by the oracle — `on:` / `[]` does not re-parse
+    // when nothing follows it, so the removal reported failure and left
+    // the document alone. The same bytes it wanted to write were `Ok`
+    // whenever a sibling entry came after.
+    remove_ok("on:\n- push\n", "on[0]", "on:\n  []\n");
+}
+
+#[test]
+fn sole_item_of_a_nested_same_column_sequence_clears_its_key() {
+    remove_ok(
+        "steps:\n  on:\n  - a\nx: 1\n",
+        "steps.on[0]",
+        "steps:\n  on:\n    []\nx: 1\n",
+    );
+}
+
+#[test]
+fn a_same_column_item_still_takes_its_head_comment() {
+    // Both halves at once: the run above the item is absorbed at the
+    // item's own column, and the replacement is written at the key's.
+    remove_ok(
+        "on:\n# about push\n- push\njobs: {}\n",
+        "on[0]",
+        "on:\n  []\njobs: {}\n",
+    );
+}
+
+#[test]
+fn an_indented_collection_keeps_its_own_indent() {
+    // The clamp only ever raises the indent to clear the key, so a
+    // collection that already clears it is untouched — including one
+    // indented far past the conventional two columns.
+    remove_ok(
+        "on:\n  - push\njobs: {}\n",
+        "on[0]",
+        "on:\n  []\njobs: {}\n",
+    );
+    remove_ok("a:\n      x: 1\nb: 2\n", "a.x", "a:\n      {}\nb: 2\n");
+}
+
+#[test]
+fn a_leading_bom_does_not_inflate_the_key_column() {
+    // A BOM is zero-width: `on:` after one is in column 0, so the
+    // replacement belongs in column 2. Measuring the key's column in bytes
+    // would put it in column 5 — the mistake #123 fixed in the scanner.
+    remove_ok(
+        "\u{feff}on:\n- push\nj: 1\n",
+        "on[0]",
+        "\u{feff}on:\n  []\nj: 1\n",
+    );
+}
+
+#[test]
+fn a_root_collection_has_no_key_to_clear() {
+    remove_ok("only: 1\n", "only", "{}\n");
+    remove_ok("- one\n", "[0]", "[]\n");
+}
