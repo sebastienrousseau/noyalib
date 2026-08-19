@@ -9,9 +9,16 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [v0.0.25] - 2026-08-19
 
-Two fixes from **@zoosky**, both found while adopting v0.0.24 in yqr, and
-both cases where the previous behaviour produced or refused something the
-parser itself disagreed with.
+**Three fixes from [@zoosky](https://github.com/zoosky)**, all found while
+adopting v0.0.24 in [yqr](https://github.com/zoosky/yqr), and all cases
+where the previous behaviour produced or refused something this codebase
+already disagreed with elsewhere.
+
+Each arrived as a reproduction against a published version, a diagnosis
+naming the responsible function, a fix, and tests — including the cases
+that had to keep failing. Two of the three were found by pointing a real
+consumer at a release and reporting what broke, which is the kind of
+testing a library cannot do for itself.
 
 ### Fixed
 

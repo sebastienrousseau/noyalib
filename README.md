@@ -1561,6 +1561,33 @@ tools, LSP capabilities, WASM bindings).
 
 ---
 
+## Acknowledgements
+
+Independent implementations find things a library's own test suite cannot,
+because they exercise it against files nobody thought to write down.
+
+[@zoosky](https://github.com/zoosky), author of
+[yqr](https://github.com/zoosky/yqr), has been noyalib's most consistent
+source of that signal — eight merged commits across the CST edit API and
+the scanner, and the reports behind #221, #269, #280, #283, #285 and #288.
+The pattern is the same each time: adopt a published release in a real
+consumer, find where it produces or refuses something the library itself
+disagrees with, and arrive with a reproduction, a diagnosis naming the
+responsible function, a fix, and the tests that must keep failing.
+
+Two contributions are worth naming specifically. #269 was filed as a
+defect and then **re-framed by its author** once he read the tests — the
+behaviour was deliberate, so the argument became a design question about
+whether two mutators may disagree about who owns a comment, which is a
+better question than the one originally asked. And #261's CRLF fix was
+proven by disabling yqr's local workaround and showing the suite pass
+against the branch while failing against the released version — evidence
+rather than assertion.
+
+Thanks also to [@kshpytsya](https://github.com/kshpytsya) and
+[@EdJoPaTo](https://github.com/EdJoPaTo) for reports and clippy
+follow-ups.
+
 ## License
 
 Dual-licensed under [Apache 2.0](https://www.apache.org/licenses/LICENSE-2.0) or [MIT](https://opensource.org/licenses/MIT), at your option.
