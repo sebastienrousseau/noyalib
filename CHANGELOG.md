@@ -71,6 +71,44 @@ parser itself disagreed with.
   still an error, as is 9C9N itself, whose third line opens with a scalar
   rather than the indicator.
 
+- **A new key could not be inserted into a mapping whose keys contain a
+  `.`, `[` or `*`, and the refusal blamed a `<<` merge that was not
+  there** (#288, PR #289).
+
+  ```yaml
+  labels:
+    app.kubernetes.io/name: web
+    app.kubernetes.io/component: frontend
+  ```
+
+  `insert_entry("labels", "tier", "frontend")` refused. That is the
+  standard Kubernetes label convention, so the shape is everywhere.
+
+  Two sites took the last key from the **typed** view, composed it back
+  into a path *string*, and re-parsed it — `mapping_insert_anchor`, and
+  `insert_entry`, which duplicated the logic inline. `parse_query_path`
+  splits on `.`, `[` and `*` unconditionally, so no such key survives the
+  round trip and every entry looked span-less. With no anchor left, the
+  only error the function knew about fired: the merge one.
+
+  Two defects nested — a path round trip that no such key survives, and a
+  diagnostic asserting a cause rather than reporting an observation.
+
+  The anchor never needed a path. `mapping_insert_anchor` now walks the
+  span tree's entries directly, through a new `resolve_tree`, and
+  `insert_entry` shares it instead of keeping its own copy. Three things
+  fall out, each tested: keys holding `[`, `*` or quoted dots insert
+  correctly; a mapping whose last entry is an implicit null anchors on
+  that entry's key line, so a sibling lands **after** it rather than
+  above it; and a mapping with both a `<<` merge and an entry of its own
+  anchors on the entry. A merge-**only** mapping still refuses, leading
+  with what was observed.
+
+  Insert only — `set`, `remove`, `rename_key` and `swap_items` still
+  address through `parse_query_path`, so a dotted key stays out of reach
+  for them. Whether the path grammar should grow an escape form is a
+  separate question.
+
 ### Changed
 
 - Version → 0.0.25.
