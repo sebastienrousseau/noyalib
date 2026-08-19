@@ -1627,50 +1627,13 @@ impl Document {
             return self.set(&child_path, fragment);
         }
 
-        // New-key path — splice a sibling line.
+        // New-key path — splice a sibling line. The anchor comes from
+        // `mapping_insert_anchor`, which reads the target mapping's own
+        // entries out of the span tree; this used to take the last key
+        // from the typed view and compose it back into a path string,
+        // which no key holding a `.` or `[` survives.
         self.ensure_cache();
-        let last_key: String = {
-            let cache = self.cache.borrow();
-            let (value, _) = cache.as_ref().expect("ensure_cache populated");
-            let target = if mapping_path.is_empty() {
-                value
-            } else {
-                path_value(value, mapping_path)
-                    .ok_or_else(|| Error::Parse(format!("path not found: {mapping_path}")))?
-            };
-            let mapping = match target {
-                Value::Mapping(m) => m,
-                _ => {
-                    return Err(Error::Parse(
-                        "insert_entry: target path is not a mapping".into(),
-                    ));
-                }
-            };
-            if mapping.is_empty() {
-                return Err(Error::Parse(
-                    "insert_entry: empty mapping has no anchor for indentation — \
-                     use `set` with a fragment instead"
-                        .into(),
-                ));
-            }
-            mapping
-                .iter()
-                .last()
-                .map(|(k, _)| k.clone())
-                .expect("non-empty mapping has a last entry")
-        };
-        let last_path = if mapping_path.is_empty() {
-            last_key
-        } else {
-            format!("{mapping_path}.{last_key}")
-        };
-        let (last_value_start, last_value_end) = self.span_at(&last_path).ok_or_else(|| {
-            Error::Parse("insert_entry: could not resolve last entry span".into())
-        })?;
-        let key_col = column_of_key_at(&self.source, last_value_start).ok_or_else(|| {
-            Error::Parse("insert_entry: could not locate last key's column for indentation".into())
-        })?;
-        let line_end = end_of_line(&self.source, last_value_end);
+        let (key_col, line_end, _) = self.mapping_insert_anchor(mapping_path)?;
         let indent: String = " ".repeat(key_col);
 
         // Single-line values (scalars, flow collections, anything
@@ -2220,48 +2183,72 @@ impl Document {
     /// and splice position from; the third is a probe position that is
     /// definitely *inside* the mapping, for the anchor/alias check.
     fn mapping_insert_anchor(&self, path: &str) -> Result<(usize, usize, usize)> {
-        let keys: Vec<String> = {
-            let cache = self.cache.borrow();
-            let (value, _) = cache.as_ref().expect("caller validated the document");
-            let target = if path.is_empty() {
-                value
-            } else {
-                path_value(value, path)
-                    .ok_or_else(|| Error::Parse(format!("path not found: {path}")))?
-            };
-            let Value::Mapping(m) = target else {
-                return Err(Error::Parse(format!("`{path}` does not address a mapping")));
-            };
-            m.iter().map(|(k, _)| k.clone()).collect()
+        self.ensure_cache();
+        let cache = self.cache.borrow();
+        let (value, span_tree) = cache.as_ref().expect("caller validated the document");
+        let segments = parse_query_path(path);
+        let (target, target_tree) = if path.is_empty() {
+            (value, span_tree)
+        } else {
+            resolve_tree(value, span_tree, &segments)
+                .ok_or_else(|| Error::Parse(format!("path not found: {path}")))?
         };
-        if keys.is_empty() {
+        let Value::Mapping(m) = target else {
             return Err(Error::Parse(format!(
-                "the mapping at `{path}` is empty, so it has no entry to anchor indentation \
+                "`{path}` is not a mapping, so it has no entry to anchor a new key on"
+            )));
+        };
+        if m.is_empty() {
+            return Err(Error::Parse(format!(
+                "`{path}` is an empty mapping, so it has no entry to anchor indentation \
                  on — use `set` with a fragment instead"
             )));
         }
-        // Search from the back for an entry with bytes of its own. A
-        // key the mapping only inherits through a `<<` merge appears
-        // in the typed view (last, at that) but owns no span here, so
-        // the last *addressable* entry is the anchor.
-        let anchor = keys.iter().rev().find_map(|key| {
-            let child = if path.is_empty() {
-                key.clone()
-            } else {
-                format!("{path}.{key}")
-            };
-            self.span_at(&child)
-        });
-        let (start, end) = anchor.ok_or_else(|| {
+        let SpanTree::Mapping { entries, .. } = target_tree else {
+            return Err(Error::Parse(format!(
+                "`{path}` is not a mapping in the source, so it has no entry to anchor a \
+                 new key on"
+            )));
+        };
+        // Search from the back for an entry with bytes of its own, over
+        // the *span tree* rather than by composing each key back into a
+        // path string and re-parsing it. A key containing `.` or `[` —
+        // the `app.kubernetes.io/name` convention — cannot survive that
+        // round trip, so a mapping of such keys used to look as if none
+        // of its entries had source bytes at all.
+        //
+        // Entries the typed view gained through a `<<` merge are absent
+        // here by construction: this tree is built from the source.
+        let anchor = entries
+            .iter()
+            .rev()
+            .find_map(|((key_start, key_end), child_tree)| {
+                let (start, end) = span_tree_bounds(child_tree);
+                if start == end {
+                    // An implicit null (`b:` with no value) owns no value
+                    // bytes, but its *key* is a real line at the right
+                    // column — and it is the line a new sibling belongs
+                    // after. Taking the column from the key directly:
+                    // `column_of_key_at` infers a key's column from a
+                    // *value* offset, so it would walk past this one.
+                    let line_start = start_of_line(&self.source, *key_start);
+                    let bom = if line_start == 0 {
+                        strip_bom(self.source.as_bytes())
+                    } else {
+                        0
+                    };
+                    let column = key_start.saturating_sub(line_start + bom);
+                    return Some((column, *key_end, *key_start));
+                }
+                let (start, end) = trim_value_span(&self.source, start, end);
+                let column = column_of_key_at(&self.source, start)?;
+                Some((column, end, start))
+            });
+        let (column, end, start) = anchor.ok_or_else(|| {
             Error::Parse(format!(
                 "no entry of the mapping at `{path}` has source bytes of its own to anchor \
-                 indentation on (every key is inherited through a `{MERGE_KEY_SPELLING}` \
-                 merge) — use `set` with a fragment instead"
-            ))
-        })?;
-        let column = column_of_key_at(&self.source, start).ok_or_else(|| {
-            Error::Parse(format!(
-                "could not locate the last key's column in `{path}` for indentation"
+                 indentation on — every entry is inherited through a \
+                 `{MERGE_KEY_SPELLING}` merge — use `set` with a fragment instead"
             ))
         })?;
         Ok((column, end_of_line(&self.source, end), start))
@@ -2953,6 +2940,41 @@ fn span_tree_bounds(t: &SpanTree) -> (usize, usize) {
             (*start, *end)
         }
         SpanTree::Alias(inner) => span_tree_bounds(inner),
+    }
+}
+
+/// Resolve `segments` to the `(value, span tree)` pair they address.
+///
+/// The span-tree twin of [`resolve_span`], for callers that need the
+/// addressed node's *structure* rather than its span — the sole one today
+/// is `mapping_insert_anchor`, which reads the target mapping's entries
+/// directly instead of rebuilding a path string per key.
+fn resolve_tree<'a>(
+    value: &'a Value,
+    span_tree: &'a SpanTree,
+    segments: &[QuerySegment],
+) -> Option<(&'a Value, &'a SpanTree)> {
+    if let SpanTree::Alias(inner) = span_tree {
+        return resolve_tree(value, inner, segments);
+    }
+    let Some((head, tail)) = segments.split_first() else {
+        return Some((value, span_tree));
+    };
+    match (head, value, span_tree) {
+        (QuerySegment::Key(k), Value::Mapping(m), SpanTree::Mapping { entries, .. }) => {
+            // `m` (an IndexMap) preserves insertion order, matching the
+            // parallel order in `entries` (see `span_context::walk`).
+            for ((mk, mv), (_, child_tree)) in m.iter().zip(entries.iter()) {
+                if mk == k {
+                    return resolve_tree(mv, child_tree, tail);
+                }
+            }
+            None
+        }
+        (QuerySegment::Index(i), Value::Sequence(seq), SpanTree::Sequence { items, .. }) => {
+            resolve_tree(seq.get(*i)?, items.get(*i)?, tail)
+        }
+        _ => None,
     }
 }
 
