@@ -1799,9 +1799,15 @@ impl Document {
                 };
                 match sub {
                     SpanTree::Mapping { entries, .. } => {
-                        entries.iter().for_each(|(_, v)| tally(v));
+                        for (_, v) in entries {
+                            tally(v);
+                        }
                     }
-                    SpanTree::Sequence { items, .. } => items.iter().for_each(&mut tally),
+                    SpanTree::Sequence { items, .. } => {
+                        for item in items {
+                            tally(item);
+                        }
+                    }
                     _ => return None,
                 }
                 Some(counts)
