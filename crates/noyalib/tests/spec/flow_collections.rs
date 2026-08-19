@@ -90,6 +90,45 @@ fn flow_sequence_multiline() {
     assert_eq!(v, vec![1, 2, 3]);
 }
 
+// A flow collection wrapped over several lines, with its closing
+// indicator on a line of its own at or below the parent key's column.
+// This is ordinary hand-written config — a long `args:` or `ports:` list
+// wrapped for width — and it used to be refused outright: the
+// more-indented rule for flow continuation was applied to the closing
+// indicator as well as to content.
+#[test]
+fn flow_sequence_wrapped_with_closer_at_the_parent_column() {
+    let v: Value = from_str("ports: [\n  80,\n  443,\n]\n").unwrap();
+    let Value::Mapping(m) = &v else {
+        panic!("not a mapping")
+    };
+    assert_eq!(
+        m.get("ports"),
+        Some(&Value::Sequence(vec![Value::from(80), Value::from(443)]))
+    );
+}
+
+#[test]
+fn flow_mapping_wrapped_with_closer_at_the_parent_column() {
+    let v: Value = from_str("env: {\n  A: 1,\n  B: 2,\n}\nx: 1\n").unwrap();
+    let Value::Mapping(m) = &v else {
+        panic!("not a mapping")
+    };
+    assert!(matches!(m.get("env"), Some(Value::Mapping(e)) if e.len() == 2));
+    assert_eq!(m.get("x"), Some(&Value::from(1)));
+}
+
+#[test]
+fn a_wrapped_flow_closer_may_sit_below_its_own_key() {
+    // Inside a flow collection indentation closes nothing, so a closer
+    // further left than the key that opened it is still unambiguous.
+    let v: Value = from_str("a:\n  b: [\n    1,\n]\nc: 2\n").unwrap();
+    let Value::Mapping(m) = &v else {
+        panic!("not a mapping")
+    };
+    assert_eq!(m.get("c"), Some(&Value::from(2)));
+}
+
 #[test]
 fn mixed_flow_and_block() {
     let v: Value = from_str("mapping:\n  key: [1, 2, 3]\nscalar: value\n").unwrap();

@@ -878,7 +878,34 @@ impl<'a> Scanner<'a> {
                     }
                     let line_has_content =
                         look < self.input.len() && !Self::is_break(self.input[look]);
-                    if line_has_content && space_indent_col <= self.indent {
+                    // A line that opens with the flow collection's own
+                    // closing indicator is exempt. The rule above exists
+                    // because under-indented *content* is ambiguous with
+                    // sibling block content (9C9N, VJP3) — and a `]` or
+                    // `}` can never begin block content, so there is
+                    // nothing for it to be ambiguous with. The wrapped
+                    // list is ordinary hand-written YAML:
+                    //
+                    //     ports: [
+                    //       80,
+                    //       443,
+                    //     ]
+                    //
+                    // and every other implementation reads it. Content on
+                    // such a line is still checked: `c]` (9C9N's third
+                    // line) opens with content, not with the indicator.
+                    //
+                    // The indicator has to follow the *space* prefix with
+                    // nothing between: a tab is not indentation (§6.1), and
+                    // exempting `\t]` as well would quietly accept a line
+                    // this scanner rejects today and PyYAML still rejects.
+                    // `look` has already skipped tabs, so the test reads the
+                    // byte right after the spaces instead.
+                    let after_spaces = self.pos + space_indent_col as usize;
+                    let closes_flow = line_has_content
+                        && after_spaces < self.input.len()
+                        && matches!(self.input[after_spaces], b']' | b'}');
+                    if line_has_content && !closes_flow && space_indent_col <= self.indent {
                         return Err(self.error(
                             "flow content must be indented more than the surrounding block",
                         ));

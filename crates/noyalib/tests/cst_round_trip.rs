@@ -192,6 +192,12 @@ fn round_trip_basic_cases() {
         "flow: [1, 2, 3]\n",
         "ref: &a value\nuse: *a\n",
         "key:\n  nested: value\n  list:\n    - a\n    - b\n",
+        // A flow collection wrapped over several lines keeps every byte,
+        // closing indicator at the parent's column included — the shape a
+        // long `ports:` or `args:` list takes once it is wrapped for width.
+        "ports: [\n  80,\n  443,\n]\n",
+        "env: {\n  A: 1,\n  B: 2,\n}\nx: 1\n",
+        "ports: [\n  80, # first\n  443,\n]\n",
     ] {
         let doc = parse_document(src).unwrap_or_else(|e| panic!("parse failed for {src:?}: {e}"));
         assert_eq!(doc.to_string(), *src, "round-trip failed for {src:?}");

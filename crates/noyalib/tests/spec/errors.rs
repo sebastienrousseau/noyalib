@@ -420,9 +420,26 @@ fn flow_continuation_must_be_indented_more_than_parent() {
     // 9C9N — flow seq continues at col 0 inside an indented block.
     let r: Result<Value, _> = from_str("---\nflow: [a,\nb,\nc]\n");
     assert!(r.is_err());
+    // VJP3 — the same rule, reached through a flow mapping.
+    let r: Result<Value, _> = from_str("k: {\nk\n:\nv\n}\n");
+    assert!(r.is_err());
     // Counter-examples: properly-indented continuation parses.
     let _: Value = from_str("---\nflow: [a,\n  b,\n  c]\n").unwrap();
     let _: Value = from_str("[\n  a,\n  b\n]\n").unwrap();
+    // The rule covers content, not the closing indicator: a `]` or `}`
+    // cannot begin block content, so there is nothing for it to be
+    // ambiguous with, and a wrapped list closing at the parent's column
+    // is ordinary YAML.
+    let _: Value = from_str("ports: [\n  80,\n  443,\n]\n").unwrap();
+    // Content on that line is still content — 9C9N's own third line
+    // (`c]`) opens with a scalar, not with the indicator.
+    let r: Result<Value, _> = from_str("ports: [\n80,\n]\n");
+    assert!(r.is_err());
+    // And the indicator has to follow the space prefix with nothing
+    // between: a tab is not indentation (§6.1), so a tab-indented
+    // closer stays refused rather than riding in on the exemption.
+    let r: Result<Value, _> = from_str("ports: [\n  80,\n\t]\n");
+    assert!(r.is_err());
 }
 
 // yaml-test-suite 9KBC / CXX2 — `from_str` previously stopped lazily
