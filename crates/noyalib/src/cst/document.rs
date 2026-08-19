@@ -11,6 +11,7 @@ use crate::cst::builder::{
 use crate::cst::emit::{Emit, EmitCtx, emit_key};
 use crate::cst::green::{GreenChild, GreenNode};
 use crate::cst::syntax::SyntaxKind;
+use crate::doc_boundary::strip_bom;
 use crate::error::{Error, Result};
 use crate::path::{QuerySegment, parse_query_path};
 use crate::prelude::*;
@@ -776,7 +777,7 @@ impl Document {
         let removal = {
             let cache = self.cache.borrow();
             let (value, span_tree) = cache.as_ref().expect("ensure_cache populated");
-            entry_line_span(value, span_tree, &self.source, &segments)?
+            entry_line_span(value, span_tree, &self.source, &segments, None)?
         };
         // What to splice, and what to put back. Only `Line` can take the
         // unguarded fast path below; the other two always face the oracle,
@@ -1286,11 +1287,16 @@ impl Document {
     fn owned_item_ranges(&self, pi: &str, pj: &str) -> Option<((usize, usize), (usize, usize))> {
         let cache = self.cache.borrow();
         let (value, span_tree) = cache.as_ref()?;
-        let owned =
-            |p: &str| match entry_line_span(value, span_tree, &self.source, &parse_query_path(p)) {
-                Ok(Removal::Line { start, end, .. }) => Some((start, end)),
-                _ => None,
-            };
+        let owned = |p: &str| match entry_line_span(
+            value,
+            span_tree,
+            &self.source,
+            &parse_query_path(p),
+            None,
+        ) {
+            Ok(Removal::Line { start, end, .. }) => Some((start, end)),
+            _ => None,
+        };
         let (ri, rj) = (owned(pi)?, owned(pj)?);
         // Two distinct items own disjoint ranges — a comment run between
         // them belongs to the one below it, and `owned_value_end` keeps
@@ -1621,50 +1627,13 @@ impl Document {
             return self.set(&child_path, fragment);
         }
 
-        // New-key path — splice a sibling line.
+        // New-key path — splice a sibling line. The anchor comes from
+        // `mapping_insert_anchor`, which reads the target mapping's own
+        // entries out of the span tree; this used to take the last key
+        // from the typed view and compose it back into a path string,
+        // which no key holding a `.` or `[` survives.
         self.ensure_cache();
-        let last_key: String = {
-            let cache = self.cache.borrow();
-            let (value, _) = cache.as_ref().expect("ensure_cache populated");
-            let target = if mapping_path.is_empty() {
-                value
-            } else {
-                path_value(value, mapping_path)
-                    .ok_or_else(|| Error::Parse(format!("path not found: {mapping_path}")))?
-            };
-            let mapping = match target {
-                Value::Mapping(m) => m,
-                _ => {
-                    return Err(Error::Parse(
-                        "insert_entry: target path is not a mapping".into(),
-                    ));
-                }
-            };
-            if mapping.is_empty() {
-                return Err(Error::Parse(
-                    "insert_entry: empty mapping has no anchor for indentation — \
-                     use `set` with a fragment instead"
-                        .into(),
-                ));
-            }
-            mapping
-                .iter()
-                .last()
-                .map(|(k, _)| k.clone())
-                .expect("non-empty mapping has a last entry")
-        };
-        let last_path = if mapping_path.is_empty() {
-            last_key
-        } else {
-            format!("{mapping_path}.{last_key}")
-        };
-        let (last_value_start, last_value_end) = self.span_at(&last_path).ok_or_else(|| {
-            Error::Parse("insert_entry: could not resolve last entry span".into())
-        })?;
-        let key_col = column_of_key_at(&self.source, last_value_start).ok_or_else(|| {
-            Error::Parse("insert_entry: could not locate last key's column for indentation".into())
-        })?;
-        let line_end = end_of_line(&self.source, last_value_end);
+        let (key_col, line_end, _) = self.mapping_insert_anchor(mapping_path)?;
         let indent: String = " ".repeat(key_col);
 
         // Single-line values (scalars, flow collections, anything
@@ -1770,15 +1739,98 @@ impl Document {
     // ── Auto-formatting insertion (the `Emit` tier) ─────────────────
 
     /// The emission context for a site starting at `column`: the
-    /// document's own detected conventions, so an insertion looks like
-    /// the file it lands in.
-    fn emit_ctx(&self, column: usize) -> EmitCtx {
+    /// conventions of the collection being edited, so an insertion looks
+    /// like the lines beside it.
+    ///
+    /// `site` is the path of the collection receiving the entry.
+    /// When it holds scalars they decide the quote style — **plain ones
+    /// included**. Only when the site offers no evidence at all (an empty
+    /// collection) does this fall back to the document-wide vote.
+    ///
+    /// The document-wide vote is deliberately unchanged. It counts quoted
+    /// scalars against each other and ignores plain ones, so one quoted
+    /// line anywhere decided the spelling of every later insertion: on a
+    /// Kubernetes manifest, `value: "30"` in a container's env block
+    /// dictated the spelling of a label four lines from the top (#290).
+    /// `EmitCtx`'s own doc says an implementation should "match the file
+    /// it is landing in" — landing in is a *site*, and the whole document
+    /// was the wrong radius rather than the wrong idea.
+    ///
+    /// `Document::dominant_quote_style` is public with documented
+    /// behaviour and three doctests pinning it, so its meaning stays as
+    /// it is; this narrows what *insertion* asks, not what the function
+    /// answers.
+    fn emit_ctx_at(&self, column: usize, site: &str) -> EmitCtx {
         EmitCtx::new(
-            self.dominant_quote_style(),
+            self.quote_style_for_site(site),
             self.dominant_flow_style(),
             self.indent_unit(),
             column,
         )
+    }
+
+    /// Quote style for an insertion landing in the collection at `path`,
+    /// falling back to the document when that collection has no scalar
+    /// values to learn from.
+    ///
+    /// Reads the collection's entry **values** from the span tree rather
+    /// than counting scalar tokens in a byte range. A byte range cannot
+    /// tell a key from a value, and mapping keys are almost always plain
+    /// — so `a: "one"` / `b: "two"` counts two plain keys against two
+    /// quoted values and ties to plain, which is the opposite of what the
+    /// site says. Values are the only scalars an insertion imitates.
+    fn quote_style_for_site(&self, path: &str) -> crate::ScalarStyle {
+        let counts = {
+            let cache = self.cache.borrow();
+            cache.as_ref().and_then(|(value, tree)| {
+                let (_, sub) = resolve_tree(value, tree, &parse_query_path(path))?;
+                let mut counts = (0_usize, 0_usize, 0_usize);
+                let mut tally = |t: &SpanTree| {
+                    // Only leaves are scalars; a nested collection has no
+                    // spelling of its own to copy.
+                    if let SpanTree::Leaf(start, _) = t {
+                        match self.source.as_bytes().get(*start) {
+                            Some(b'"') => counts.2 += 1,
+                            Some(b'\'') => counts.1 += 1,
+                            Some(_) => counts.0 += 1,
+                            None => {}
+                        }
+                    }
+                };
+                match sub {
+                    SpanTree::Mapping { entries, .. } => {
+                        for (_, v) in entries {
+                            tally(v);
+                        }
+                    }
+                    SpanTree::Sequence { items, .. } => {
+                        for item in items {
+                            tally(item);
+                        }
+                    }
+                    _ => return None,
+                }
+                Some(counts)
+            })
+        };
+        match counts {
+            Some((plain, single, double)) if plain + single + double > 0 => {
+                // Plain needs a *strict* majority. A tie means the site is
+                // genuinely mixed — `a: 1` beside `b: 'two'` — and there
+                // the existing quoting is the better guide than a
+                // preference for bare scalars. #290 is about unrelated
+                // lines deciding the spelling, not about mixed sites, and
+                // every case it reports has plain winning outright.
+                if plain > single && plain > double {
+                    crate::ScalarStyle::Plain
+                } else if single >= double {
+                    crate::ScalarStyle::SingleQuoted
+                } else {
+                    crate::ScalarStyle::DoubleQuoted
+                }
+            }
+            _ => self.dominant_quote_style(),
+        }
     }
 
     /// Insert `key: value` into the block mapping at `mapping_path`,
@@ -1928,7 +1980,9 @@ impl Document {
             None => self.mapping_insert_anchor(mapping_path)?,
         };
         self.refuse_inside_aliased_anchor("insert_entry_value", mapping_path, probe)?;
-        let ctx = self.emit_ctx(column);
+        // Learn the spelling from the mapping being edited, not the whole
+        // document (#290).
+        let ctx = self.emit_ctx_at(column, mapping_path);
         let fragment = value.emit(&ctx)?;
         let key_spelling = emit_key(key, &ctx);
         let indent = " ".repeat(column);
@@ -2042,7 +2096,7 @@ impl Document {
         }
         let (column, anchor_pos) = self.sequence_item_anchor(path, len - 1)?;
         self.refuse_inside_aliased_anchor("push_back_value", path, anchor_pos)?;
-        let fragment = self.emit_sequence_item(value, column)?;
+        let fragment = self.emit_sequence_item(value, column, path)?;
 
         let snapshot = self.clone();
         self.guarded_item_splice(
@@ -2104,7 +2158,7 @@ impl Document {
         };
         let (column, anchor_pos) = self.sequence_item_anchor(&seq_path, index)?;
         self.refuse_inside_aliased_anchor("insert_after_value", item_path, anchor_pos)?;
-        let fragment = self.emit_sequence_item(value, column)?;
+        let fragment = self.emit_sequence_item(value, column, &seq_path)?;
 
         let snapshot = self.clone();
         self.guarded_item_splice(
@@ -2175,8 +2229,13 @@ impl Document {
     /// at `column`, carrying any continuation lines to the item's own
     /// content indent so the splice template's single line grows into
     /// a correctly-indented block.
-    fn emit_sequence_item<E: Emit + ?Sized>(&self, value: &E, column: usize) -> Result<String> {
-        let ctx = self.emit_ctx(column);
+    fn emit_sequence_item<E: Emit + ?Sized>(
+        &self,
+        value: &E,
+        column: usize,
+        site: &str,
+    ) -> Result<String> {
+        let ctx = self.emit_ctx_at(column, site);
         let fragment = value.emit(&ctx)?;
         // `push_back` / `insert_after` splice `{indent}- {fragment}`,
         // so the first line is already placed; every later line must
@@ -2214,48 +2273,72 @@ impl Document {
     /// and splice position from; the third is a probe position that is
     /// definitely *inside* the mapping, for the anchor/alias check.
     fn mapping_insert_anchor(&self, path: &str) -> Result<(usize, usize, usize)> {
-        let keys: Vec<String> = {
-            let cache = self.cache.borrow();
-            let (value, _) = cache.as_ref().expect("caller validated the document");
-            let target = if path.is_empty() {
-                value
-            } else {
-                path_value(value, path)
-                    .ok_or_else(|| Error::Parse(format!("path not found: {path}")))?
-            };
-            let Value::Mapping(m) = target else {
-                return Err(Error::Parse(format!("`{path}` does not address a mapping")));
-            };
-            m.iter().map(|(k, _)| k.clone()).collect()
+        self.ensure_cache();
+        let cache = self.cache.borrow();
+        let (value, span_tree) = cache.as_ref().expect("caller validated the document");
+        let segments = parse_query_path(path);
+        let (target, target_tree) = if path.is_empty() {
+            (value, span_tree)
+        } else {
+            resolve_tree(value, span_tree, &segments)
+                .ok_or_else(|| Error::Parse(format!("path not found: {path}")))?
         };
-        if keys.is_empty() {
+        let Value::Mapping(m) = target else {
             return Err(Error::Parse(format!(
-                "the mapping at `{path}` is empty, so it has no entry to anchor indentation \
+                "`{path}` is not a mapping, so it has no entry to anchor a new key on"
+            )));
+        };
+        if m.is_empty() {
+            return Err(Error::Parse(format!(
+                "`{path}` is an empty mapping, so it has no entry to anchor indentation \
                  on — use `set` with a fragment instead"
             )));
         }
-        // Search from the back for an entry with bytes of its own. A
-        // key the mapping only inherits through a `<<` merge appears
-        // in the typed view (last, at that) but owns no span here, so
-        // the last *addressable* entry is the anchor.
-        let anchor = keys.iter().rev().find_map(|key| {
-            let child = if path.is_empty() {
-                key.clone()
-            } else {
-                format!("{path}.{key}")
-            };
-            self.span_at(&child)
-        });
-        let (start, end) = anchor.ok_or_else(|| {
+        let SpanTree::Mapping { entries, .. } = target_tree else {
+            return Err(Error::Parse(format!(
+                "`{path}` is not a mapping in the source, so it has no entry to anchor a \
+                 new key on"
+            )));
+        };
+        // Search from the back for an entry with bytes of its own, over
+        // the *span tree* rather than by composing each key back into a
+        // path string and re-parsing it. A key containing `.` or `[` —
+        // the `app.kubernetes.io/name` convention — cannot survive that
+        // round trip, so a mapping of such keys used to look as if none
+        // of its entries had source bytes at all.
+        //
+        // Entries the typed view gained through a `<<` merge are absent
+        // here by construction: this tree is built from the source.
+        let anchor = entries
+            .iter()
+            .rev()
+            .find_map(|((key_start, key_end), child_tree)| {
+                let (start, end) = span_tree_bounds(child_tree);
+                if start == end {
+                    // An implicit null (`b:` with no value) owns no value
+                    // bytes, but its *key* is a real line at the right
+                    // column — and it is the line a new sibling belongs
+                    // after. Taking the column from the key directly:
+                    // `column_of_key_at` infers a key's column from a
+                    // *value* offset, so it would walk past this one.
+                    let line_start = start_of_line(&self.source, *key_start);
+                    let bom = if line_start == 0 {
+                        strip_bom(self.source.as_bytes())
+                    } else {
+                        0
+                    };
+                    let column = key_start.saturating_sub(line_start + bom);
+                    return Some((column, *key_end, *key_start));
+                }
+                let (start, end) = trim_value_span(&self.source, start, end);
+                let column = column_of_key_at(&self.source, start)?;
+                Some((column, end, start))
+            });
+        let (column, end, start) = anchor.ok_or_else(|| {
             Error::Parse(format!(
                 "no entry of the mapping at `{path}` has source bytes of its own to anchor \
-                 indentation on (every key is inherited through a `{MERGE_KEY_SPELLING}` \
-                 merge) — use `set` with a fragment instead"
-            ))
-        })?;
-        let column = column_of_key_at(&self.source, start).ok_or_else(|| {
-            Error::Parse(format!(
-                "could not locate the last key's column in `{path}` for indentation"
+                 indentation on — every entry is inherited through a \
+                 `{MERGE_KEY_SPELLING}` merge — use `set` with a fragment instead"
             ))
         })?;
         Ok((column, end_of_line(&self.source, end), start))
@@ -2950,6 +3033,41 @@ fn span_tree_bounds(t: &SpanTree) -> (usize, usize) {
     }
 }
 
+/// Resolve `segments` to the `(value, span tree)` pair they address.
+///
+/// The span-tree twin of [`resolve_span`], for callers that need the
+/// addressed node's *structure* rather than its span — the sole one today
+/// is `mapping_insert_anchor`, which reads the target mapping's entries
+/// directly instead of rebuilding a path string per key.
+fn resolve_tree<'a>(
+    value: &'a Value,
+    span_tree: &'a SpanTree,
+    segments: &[QuerySegment],
+) -> Option<(&'a Value, &'a SpanTree)> {
+    if let SpanTree::Alias(inner) = span_tree {
+        return resolve_tree(value, inner, segments);
+    }
+    let Some((head, tail)) = segments.split_first() else {
+        return Some((value, span_tree));
+    };
+    match (head, value, span_tree) {
+        (QuerySegment::Key(k), Value::Mapping(m), SpanTree::Mapping { entries, .. }) => {
+            // `m` (an IndexMap) preserves insertion order, matching the
+            // parallel order in `entries` (see `span_context::walk`).
+            for ((mk, mv), (_, child_tree)) in m.iter().zip(entries.iter()) {
+                if mk == k {
+                    return resolve_tree(mv, child_tree, tail);
+                }
+            }
+            None
+        }
+        (QuerySegment::Index(i), Value::Sequence(seq), SpanTree::Sequence { items, .. }) => {
+            resolve_tree(seq.get(*i)?, items.get(*i)?, tail)
+        }
+        _ => None,
+    }
+}
+
 /// Resolve `segments` to a byte span in the typed cache. The returned `bool`
 /// is `true` when resolution passed *through* an alias reference (the span
 /// then belongs to the anchor, not the addressed key) — correct to return for
@@ -3126,7 +3244,16 @@ fn collection_span_trimmed(source: &str, start: usize, end: usize) -> (usize, us
 ///
 /// A comment detached by a blank line, or at a different column, is not
 /// the entry's — `absorb_head_comments` already stops at both.
-fn sole_entry_range(source: &str, coll_start: usize, coll_end: usize) -> (usize, usize, usize) {
+///
+/// `parent_key` is the byte offset of the key this collection is the value
+/// of, when it has one. It decides the indentation: a block collection may
+/// share its key's column, but the `{}` / `[]` that replaces it may not.
+fn sole_entry_range(
+    source: &str,
+    coll_start: usize,
+    coll_end: usize,
+    parent_key: Option<usize>,
+) -> (usize, usize, usize) {
     let (start, end) = collection_span_trimmed(source, coll_start, coll_end);
 
     // Flow collections sit inline — `a: {x: 1}` starts at the `{`, part
@@ -3139,12 +3266,42 @@ fn sole_entry_range(source: &str, coll_start: usize, coll_end: usize) -> (usize,
     }
 
     let line_start = start_of_line(source, coll_start);
-    let indent = coll_start - line_start;
+    let own_indent = coll_start - line_start;
+
+    // A block sequence is allowed to sit at its key's own column — `on:` /
+    // `- push`, the GitHub Actions and Ansible idiom. What replaces it is
+    // not: `{}` / `[]` is a block *mapping value*, and one that shares its
+    // key's column does not re-parse as that key's value. So the entry's
+    // own indent is the right answer only when it already clears the key.
+    //
+    // The comment run is still absorbed at the entry's own column, which is
+    // where those comment lines actually sit.
+    let indent = match parent_key.map(|key| column_of(source, key)) {
+        Some(key_column) if own_indent <= key_column => key_column + 2,
+        _ => own_indent,
+    };
     (
-        absorb_head_comments(source, line_start, indent),
+        absorb_head_comments(source, line_start, own_indent),
         end,
         indent,
     )
+}
+
+/// The column a byte offset sits in, with a leading BOM discounted.
+///
+/// A BOM is zero-width, so `on:` after one is in column 0, not column 3 —
+/// counting its bytes toward the column is the mistake #123 fixed in the
+/// scanner, and the same one is available here. Everything else that can
+/// precede a key on its line (indent spaces, `- `, `? `) is one byte per
+/// column, so the subtraction is exact.
+fn column_of(source: &str, offset: usize) -> usize {
+    let line_start = start_of_line(source, offset);
+    let bom = if line_start == 0 {
+        strip_bom(source.as_bytes())
+    } else {
+        0
+    };
+    offset.saturating_sub(line_start + bom)
 }
 
 fn entry_line_span(
@@ -3152,6 +3309,7 @@ fn entry_line_span(
     span_tree: &SpanTree,
     source: &str,
     segments: &[QuerySegment],
+    parent_key: Option<usize>,
 ) -> Result<Removal> {
     if segments.is_empty() {
         return Err(Error::Parse(
@@ -3166,15 +3324,21 @@ fn entry_line_span(
     // Recurse into nested mappings / sequences until the segment list
     // identifies the *parent* of the entry to remove.
     if !tail.is_empty() {
-        let (child_value, child_tree) = match (head, value, span_tree) {
+        // The key descended through is the parent key of everything below
+        // it — which is what the sole-entry arm needs to know how deep an
+        // empty collection has to sit. A sequence item is not a key, so
+        // descending through one clears it.
+        let (child_value, child_tree, child_key) = match (head, value, span_tree) {
             (QuerySegment::Key(k), Value::Mapping(m), SpanTree::Mapping { entries, .. }) => {
                 let pos = m
                     .iter()
                     .position(|(mk, _)| mk == k)
                     .ok_or_else(|| Error::Parse(format!("path not found: missing key {k:?}")))?;
+                let ((key_start, _), child_tree) = &entries[pos];
                 (
                     m.iter().nth(pos).map(|(_, v)| v).expect("pos in range"),
-                    &entries[pos].1,
+                    child_tree,
+                    Some(*key_start),
                 )
             }
             (QuerySegment::Index(i), Value::Sequence(seq), SpanTree::Sequence { items, .. }) => (
@@ -3184,10 +3348,11 @@ fn entry_line_span(
                 items.get(*i).ok_or_else(|| {
                     Error::Parse(format!("path not found: index {i} out of bounds"))
                 })?,
+                None,
             ),
             _ => return Err(Error::Parse("path not found".into())),
         };
-        return entry_line_span(child_value, child_tree, source, tail);
+        return entry_line_span(child_value, child_tree, source, tail, child_key);
     }
 
     // Final segment — locate this entry's key / dash and value.
@@ -3208,7 +3373,8 @@ fn entry_line_span(
             // Last entry: the collection itself becomes `{}`. Deleting the
             // bytes would leave a dangling `a:` that re-parses as null.
             if m.len() <= 1 {
-                let (start, end, indent) = sole_entry_range(source, *coll_start, *coll_end);
+                let (start, end, indent) =
+                    sole_entry_range(source, *coll_start, *coll_end, parent_key);
                 return Ok(Removal::SoleEntry {
                     start,
                     end,
@@ -3246,7 +3412,8 @@ fn entry_line_span(
                 )));
             }
             if seq.len() <= 1 {
-                let (start, end, indent) = sole_entry_range(source, *coll_start, *coll_end);
+                let (start, end, indent) =
+                    sole_entry_range(source, *coll_start, *coll_end, parent_key);
                 return Ok(Removal::SoleEntry {
                     start,
                     end,

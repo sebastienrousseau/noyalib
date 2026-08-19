@@ -931,3 +931,97 @@ fn every_emit_type_through_every_mutator() {
     all(&map(&[("nested", Value::from("v"))]));
     all(&seq(&[Value::from(1_i64), Value::from(2_i64)]));
 }
+
+// ── #290: the quote vote is scoped to the edit site ─────────────────
+//
+// The document-wide vote counts quoted scalars against each other and
+// ignores plain ones, so one quoted line anywhere decided the spelling of
+// every later insertion. On a Kubernetes manifest that meant `value: "30"`
+// in a container's env block dictating the spelling of a label at the top
+// of the file. Insertion now learns from the collection it lands in.
+
+#[test]
+fn an_unrelated_quoted_line_does_not_quote_the_insertion() {
+    for src in [
+        "quoted: \"30\"\nlabels:\n  app: web\n",
+        "quoted: 'x'\nlabels:\n  app: web\n",
+    ] {
+        let mut doc = parse_document(src).unwrap();
+        doc.insert_entry_value("labels", "tier", "frontend")
+            .unwrap();
+        assert!(
+            doc.to_string().ends_with("  app: web\n  tier: frontend\n"),
+            "the sibling is plain, so the insertion should be: {:?}",
+            doc.to_string()
+        );
+    }
+}
+
+#[test]
+fn the_site_majority_decides_not_a_single_distant_quote() {
+    let mut doc =
+        parse_document("m:\n  a: one\n  b: two\n  c: three\n  d: four\n  e: \"5\"\n").unwrap();
+    doc.insert_entry_value("m", "j", "w").unwrap();
+    assert!(
+        doc.to_string().ends_with("  j: w\n"),
+        "{:?}",
+        doc.to_string()
+    );
+}
+
+#[test]
+fn a_genuinely_quoted_site_still_gets_quoted_insertions() {
+    let mut doc = parse_document("m:\n  a: \"one\"\n  b: \"two\"\n").unwrap();
+    doc.insert_entry_value("m", "j", "w").unwrap();
+    assert!(
+        doc.to_string().ends_with("  j: \"w\"\n"),
+        "{:?}",
+        doc.to_string()
+    );
+
+    let mut doc = parse_document("m:\n  a: 'one'\n  b: 'two'\n").unwrap();
+    doc.insert_entry_value("m", "j", "w").unwrap();
+    assert!(
+        doc.to_string().ends_with("  j: 'w'\n"),
+        "{:?}",
+        doc.to_string()
+    );
+}
+
+#[test]
+fn keys_do_not_vote_only_values_do() {
+    // Mapping keys are almost always plain, so counting scalar tokens in
+    // the site's byte range would tie two plain keys against two quoted
+    // values and wrongly pick plain.
+    let mut doc = parse_document("m:\n  alpha: \"one\"\n  beta: \"two\"\n").unwrap();
+    doc.insert_entry_value("m", "gamma", "w").unwrap();
+    assert!(
+        doc.to_string().ends_with("  gamma: \"w\"\n"),
+        "{:?}",
+        doc.to_string()
+    );
+}
+
+#[test]
+fn a_mixed_site_keeps_the_quoting_it_has() {
+    // A tie is not evidence for stripping quotes; #290 is about unrelated
+    // lines deciding, not about mixed sites.
+    let mut doc = parse_document("m:\n  a: 1\n  b: 'two'\n").unwrap();
+    doc.insert_entry_value("m", "c", "three").unwrap();
+    assert!(
+        doc.to_string().contains("c: 'three'"),
+        "{:?}",
+        doc.to_string()
+    );
+}
+
+#[test]
+fn sequences_learn_from_their_own_items() {
+    let mut doc = parse_document("quoted: \"30\"\nxs:\n  - alpha\n  - beta\n").unwrap();
+    doc.push_back_value("xs", "billing").unwrap();
+    assert!(
+        doc.to_string().ends_with("  - beta\n  - billing\n"),
+        "{:?}",
+        doc.to_string()
+    );
+}

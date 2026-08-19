@@ -7,6 +7,162 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+## [v0.0.25] - 2026-08-19
+
+**Four fixes from [@zoosky](https://github.com/zoosky)**, all found while
+adopting v0.0.24 in [yqr](https://github.com/zoosky/yqr), and all cases
+where the previous behaviour produced or refused something this codebase
+already disagreed with elsewhere.
+
+Each arrived as a reproduction against a published version, a diagnosis
+naming the responsible function, a fix, and tests — including the cases
+that had to keep failing. Three of the four were found by pointing a real
+consumer at a release and reporting what broke, which is the kind of
+testing a library cannot do for itself.
+
+### Fixed
+
+- **`remove` wrote an empty collection at its key's own column** (#283,
+  PR #284). A block sequence may sit at its key's column — `on:` /
+  `- push` is what nearly every GitHub Actions and Ansible file looks
+  like. What replaces it may not: `{}` / `[]` is a block *mapping value*,
+  and one sharing its key's column does not re-parse as that key's value.
+
+  ```yaml
+  on:            ->   on:            # before: Ok(()), and unreadable
+  - push              []
+  jobs: {}            jobs: {}
+  ```
+
+  The inconsistency was visible from inside: delete the `jobs:` line and
+  the identical removal was *refused* by the oracle, because the guard
+  re-parses with this parser, which accepts `on:\n[]\njobs: {}` and
+  rejects `on:\n[]`. Same shape, same output spelling — `Ok` with a
+  sibling, refused without one.
+
+  `sole_entry_range` took the indent from the removed entry's own line,
+  which for this layout *is* the key's column. The constraint is
+  "strictly deeper than the key", and the two coincide for every layout
+  except this one. The parent key's offset is now threaded down and the
+  indent clamped to the key's column + 2 when the entry's own indent does
+  not already clear it. A root collection, or one reached through a
+  sequence item, has no parent key and is unchanged.
+
+  The head-comment run from #280 is still absorbed at the entry's **own**
+  column, where those comment lines actually sit — only the replacement
+  moves.
+
+- **A wrapped flow collection was refused when its closing indicator sat
+  at the parent's column** (#285, PR #286):
+
+  ```yaml
+  ports: [
+    80,
+    443,
+  ]
+  ```
+
+  A *read* refusal, so nothing downstream ran. The indentation check
+  exists so that flow content continuing across a line break cannot be
+  ambiguous with sibling block content (yaml-test-suite 9C9N) — but that
+  rationale is about **content**. A line whose first character is `]` or
+  `}` cannot begin block content, so there is nothing to be ambiguous
+  with; the rule was reaching the terminator too.
+
+  The asymmetry was already in the tree: the same closer at column 0 is
+  accepted at the root, where `self.indent` is `-1`. Only a flow inside a
+  block mapping refused it.
+
+  Under-indented flow **content** stays refused, deliberately — that is
+  9C9N's rule and this does not touch it. `ports: [` / `80,` / `]` is
+  still an error, as is 9C9N itself, whose third line opens with a scalar
+  rather than the indicator.
+
+- **A new key could not be inserted into a mapping whose keys contain a
+  `.`, `[` or `*`, and the refusal blamed a `<<` merge that was not
+  there** (#288, PR #289).
+
+  ```yaml
+  labels:
+    app.kubernetes.io/name: web
+    app.kubernetes.io/component: frontend
+  ```
+
+  `insert_entry("labels", "tier", "frontend")` refused. That is the
+  standard Kubernetes label convention, so the shape is everywhere.
+
+  Two sites took the last key from the **typed** view, composed it back
+  into a path *string*, and re-parsed it — `mapping_insert_anchor`, and
+  `insert_entry`, which duplicated the logic inline. `parse_query_path`
+  splits on `.`, `[` and `*` unconditionally, so no such key survives the
+  round trip and every entry looked span-less. With no anchor left, the
+  only error the function knew about fired: the merge one.
+
+  Two defects nested — a path round trip that no such key survives, and a
+  diagnostic asserting a cause rather than reporting an observation.
+
+  The anchor never needed a path. `mapping_insert_anchor` now walks the
+  span tree's entries directly, through a new `resolve_tree`, and
+  `insert_entry` shares it instead of keeping its own copy. Three things
+  fall out, each tested: keys holding `[`, `*` or quoted dots insert
+  correctly; a mapping whose last entry is an implicit null anchors on
+  that entry's key line, so a sibling lands **after** it rather than
+  above it; and a mapping with both a `<<` merge and an entry of its own
+  anchors on the entry. A merge-**only** mapping still refuses, leading
+  with what was observed.
+
+  Insert only — `set`, `remove`, `rename_key` and `swap_items` still
+  address through `parse_query_path`, so a dotted key stays out of reach
+  for them. Whether the path grammar should grow an escape form is a
+  separate question.
+
+- **An inserted scalar was quoted because some unrelated line was
+  quoted** (#290). The dominance vote counted only quoted scalars against
+  each other — plain ones did not vote — so a single quoted scalar
+  anywhere decided the spelling of every later insertion:
+
+  ```yaml
+  quoted: "30"        # four lines away, untouched by the edit
+  labels:
+    app: web
+    tier: "frontend"  # before — the sibling is plain
+  ```
+
+  On a Kubernetes manifest the vote was settled by `value: "30"` in a
+  container's env block, arbitrarily far from the labels being edited.
+  Nothing was *wrong* with the value — it round-trips and the document
+  stays valid — but the diff a reviewer saw was a quoted value among
+  plain ones. It also disagreed with `set`, which writes plain at the
+  same site.
+
+  `EmitCtx`'s doc already stated the intent — an implementation should
+  "match the file it is landing in" — so the radius was wrong rather than
+  the idea. Insertion now learns from the collection it lands in and only
+  falls back to the document-wide vote when that collection has no scalar
+  values to learn from.
+
+  Two details decided by implementing it:
+
+  - **Only values vote, not keys.** Counting scalar tokens across the
+    site's byte range cannot tell one from the other, and mapping keys
+    are almost always plain — `a: "one"` / `b: "two"` would tie two plain
+    keys against two quoted values and pick plain, the opposite of what
+    the site says. The entry values are read from the span tree instead.
+  - **Plain needs a strict majority.** A tie means the site is genuinely
+    mixed (`a: 1` beside `b: 'two'`), and there the quoting already
+    present is the better guide. Every case #290 reports has plain
+    winning outright.
+
+  `Document::dominant_quote_style` is public, documented, and pinned by
+  three doctests, so its behaviour is unchanged — this narrows what
+  *insertion* asks, not what that function answers. Of the two options in
+  the report this is the second, which leaves the public API alone.
+
+### Changed
+
+- Version → 0.0.25.
+
+
 ## [v0.0.24] - 2026-08-18
 
 ### Fixed

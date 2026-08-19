@@ -62,7 +62,7 @@
 
 ```toml
 [dependencies]
-noyalib = "0.0.24"
+noyalib = "0.0.25"
 ```
 
 ### As a CLI tool
@@ -106,7 +106,7 @@ maintainer runbook.
 
 ```toml
 [dependencies]
-noyalib = { version = "0.0.24", default-features = false }
+noyalib = { version = "0.0.25", default-features = false }
 ```
 
 Requires `alloc`. Core data binding (`from_str`, `to_string`, `Value`,
@@ -192,7 +192,7 @@ the application needs.
 ```toml
 # Example: rich diagnostics + schema validation
 [dependencies]
-noyalib = { version = "0.0.24", features = ["miette", "validate-schema"] }
+noyalib = { version = "0.0.25", features = ["miette", "validate-schema"] }
 ```
 
 **Optional features:** `lossless-u64` preserves YAML integer scalars above
@@ -305,7 +305,7 @@ tables for each.
 -[dependencies]
 -serde_yaml = "0.9"
 +[dependencies]
-+noyalib = "0.0.24"
++noyalib = "0.0.25"
 ```
 
 ```diff
@@ -1285,7 +1285,7 @@ disagreement on priorities.
 - **You have a hard dependency budget that cannot tolerate a
   Grisu / Ryu float formatter and a hash-randomised lookup
   table.** Default profile carries 8 runtime deps. `noyalib =
-  { version = "0.0.24", default-features = false, features =
+  { version = "0.0.25", default-features = false, features =
   ["std"] }` (or the equivalent `features = ["minimal"]`) drops
   to 5 — `itoa`, `ryu`, and `serde_ignored` become opt-in via
   the `fast-int` / `fast-float` / `strict-deserialise` features.
@@ -1560,6 +1560,33 @@ document the surface specific to each artifact (binaries, MCP
 tools, LSP capabilities, WASM bindings).
 
 ---
+
+## Acknowledgements
+
+Independent implementations find things a library's own test suite cannot,
+because they exercise it against files nobody thought to write down.
+
+[@zoosky](https://github.com/zoosky), author of
+[yqr](https://github.com/zoosky/yqr), has been noyalib's most consistent
+source of that signal — eight merged commits across the CST edit API and
+the scanner, and the reports behind #221, #269, #280, #283, #285 and #288.
+The pattern is the same each time: adopt a published release in a real
+consumer, find where it produces or refuses something the library itself
+disagrees with, and arrive with a reproduction, a diagnosis naming the
+responsible function, a fix, and the tests that must keep failing.
+
+Two contributions are worth naming specifically. #269 was filed as a
+defect and then **re-framed by its author** once he read the tests — the
+behaviour was deliberate, so the argument became a design question about
+whether two mutators may disagree about who owns a comment, which is a
+better question than the one originally asked. And #261's CRLF fix was
+proven by disabling yqr's local workaround and showing the suite pass
+against the branch while failing against the released version — evidence
+rather than assertion.
+
+Thanks also to [@kshpytsya](https://github.com/kshpytsya) and
+[@EdJoPaTo](https://github.com/EdJoPaTo) for reports and clippy
+follow-ups.
 
 ## License
 
