@@ -344,15 +344,33 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          # Built as an array under `nullglob` so the .asc entries simply
+          # vanish when GPG signing was skipped, instead of reaching gh as
+          # unmatched literal globs and failing the release.
+          #
+          # The .asc files were produced, uploaded to the workflow artifact,
+          # and then dropped here: this list is explicit and did not name
+          # them. Same outcome as
+          # sebastienrousseau/static-site-generator#678, reached from the
+          # opposite direction — there a glob raced the signing job, here an
+          # explicit list omitted its output.
+          shopt -s nullglob
+          assets=(
+            artifacts/target/package/*.crate
+            artifacts/target/package/*.bundle
+            artifacts/target/package/*.asc
+            artifacts/target/package/SHA256SUMS.txt
+            artifacts/target/package/SHA512SUMS.txt
+            artifacts/SBOM.txt
+            artifacts/SBOM.txt.bundle
+            artifacts/SBOM.txt.asc
+          )
+          shopt -u nullglob
+          printf 'attaching %s\n' "${assets[@]}"
           gh release create "$GITHUB_REF_NAME" \
             --title "noyalib $GITHUB_REF_NAME" \
             --notes-file RELEASE_NOTES.md \
-            artifacts/target/package/*.crate \
-            artifacts/target/package/*.bundle \
-            artifacts/target/package/SHA256SUMS.txt \
-            artifacts/target/package/SHA512SUMS.txt \
-            artifacts/SBOM.txt \
-            artifacts/SBOM.txt.bundle
+            "${assets[@]}"
 
   # ── Publish to crates.io ────────────────────────────────────────────
   crates-io:
