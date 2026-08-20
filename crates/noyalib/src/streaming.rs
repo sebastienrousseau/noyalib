@@ -227,7 +227,17 @@ impl<'a> StreamingDeserializer<'a> {
     }
 
     fn next_event(&mut self) -> Result<Event<'a>> {
-        if let Some(ev) = self.current.take() {
+        if let Some(mut ev) = self.current.take() {
+            if let Event::Alias {
+                ref anchor,
+                ref span,
+            } = ev
+            {
+                let start = span.start;
+                ev = self.resolve_alias(anchor, start)?;
+            }
+            self.handle_anchor(&mut ev);
+            self.maybe_record(&ev);
             return Ok(ev);
         }
 
