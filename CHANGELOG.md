@@ -158,7 +158,58 @@ testing a library cannot do for itself.
   *insertion* asks, not what that function answers. Of the two options in
   the report this is the second, which leaves the public API alone.
 
+- **`remove` refuses an alias-valued entry instead of silently doing
+  nothing** (PR #292). **Behaviour change**: a call that previously
+  returned `Ok(())` now returns an error.
+
+  ```yaml
+  a: &x 1
+  b: *x     # remove("b") -> Ok(()), document unchanged
+  ```
+
+  An alias resolves *through* to its anchor, so the value span for `b`
+  is the anchor's bytes on another line — before `b`'s own key. The
+  range arithmetic degenerated to an empty splice, so the call removed
+  nothing and reported success.
+
+  Refusing is what `SpanTree::Alias`'s own documentation already
+  prescribes: a write there would splice the anchor's bytes, which
+  belong to a different key. The message names the entry and the reason.
+  Removing the anchor's own entry still works, as does `replace_span`
+  for callers who want the bytes gone deliberately.
+
+  Present since at least v0.0.24 — reproduced identically on that tag —
+  and surfaced by the corrected fuzz invariant below, which asserts that
+  an accepted removal changed the source.
+
+### Testing
+
+- **The differential fuzz target's remove invariant was unsound** (PR
+  #291). `fuzz_editors` asserted that an accepted `remove` shrinks the
+  parsed value. It does not, under duplicate mapping keys: `Value`
+  deduplicates and the last duplicate wins, so removing one of two `5:`
+  entries deletes a line from the source while both parses still show
+  three keys. A correct edit failed the assertion and `fuzz-diff` went
+  red on `main`.
+
+  Asserting the *source* gets shorter is also wrong — removing the only
+  entry rewrites `"::\n"` to `"{}\n"`, which is correct and exactly as
+  long. What holds is that the source changed, and that is what the
+  target now asserts; the node count is kept only in the non-strict
+  direction, which still catches a removal that takes a parent with it.
+
+  `remove` itself was correct throughout. Both behaviours are pinned in
+  `tests/cst_remove_fuzz_regressions.rs` so they run under the normal
+  suite rather than only under a nightly fuzz job.
+
 ### Changed
+
+- Per-release notes moved from the repository root to
+  [`doc/release-notes/`](doc/release-notes/README.md), renamed to match
+  their tags exactly (`doc/release-notes/v0.0.17.md` documents
+  `v0.0.17`). Moved with `git mv`, so history follows. Links that
+  pointed at the old root paths were updated; deep links to
+  `RELEASE-NOTES-v0.0.N.md` on `main` will need adjusting.
 
 - Version → 0.0.25.
 
