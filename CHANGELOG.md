@@ -7,6 +7,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+## [v0.0.26] - 2026-08-20
+
 ### Fixed
 
 - **`remove` left a whitespace-only line in a wrapped flow collection**
@@ -57,6 +59,19 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   were written against an independent implementation of the same fix and
   pass unmodified against this one, which is the closest thing to a
   second opinion a single codebase gets.
+
+- **The ecosystem scorecard scored a security probe it had not run.**
+  `cargo audit --json` exits 101 where a user-defined `audit = "audit"`
+  alias in `~/.cargo/config.toml` shadows the subcommand and recurses.
+  The probe's fallback counted `RUSTSEC` occurrences in whatever landed on
+  stdout, so an error message yielded "0 advisories" and a clean pass —
+  the harness's own "no credit for unmeasured work" rule violated in the
+  place it matters most. It now invokes `cargo-audit` directly and treats
+  unparsable output as N/A. Exit status alone cannot decide this, because
+  `cargo-audit` also exits non-zero when it genuinely finds advisories;
+  the discriminator is whether `.vulnerabilities.count` parses. The real
+  count for this release is 0 across 272 crates, confirmed by running the
+  binary directly.
 
 ## [v0.0.25] - 2026-08-19
 
