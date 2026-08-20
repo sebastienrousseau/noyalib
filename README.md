@@ -283,6 +283,39 @@ Per-crate READMEs cover the surface specific to each artifact:
 | **GitHub Actions / pre-commit / Helm / Compose / pyproject-adjacent YAML** | [validation gates in `noya-cli/examples/`](https://github.com/sebastienrousseau/noya-cli/tree/main/examples) |
 | **Vite / Webpack / Next.js / Cloudflare Workers / Deno / Bun** | [bundling guide (noyalib-wasm repo)](https://github.com/sebastienrousseau/noyalib-wasm/blob/main/doc/bundling.md) |
 
+### How good is this, really?
+
+The suite carries a rating, and the rating is a program.
+
+```sh
+scripts/ecosystem-scorecard.sh --network
+```
+
+It runs ~30 probes across the five repos — tests, spec conformance,
+clippy, rustdoc under `-D warnings`, `cargo audit`/`deny`/`vet`, REUSE,
+dependency-closure size, SHA-pinning of GitHub Actions, fuzz targets,
+release signatures, OpenSSF Scorecard — and prints, for every one, the
+command that produced the number next to the number itself.
+
+Three properties make the score worth quoting:
+
+- **Falsifiable.** Every metric names its command and its threshold.
+  Disagree with a row? Run the command in that row.
+- **No credit for unmeasured work.** A probe that cannot run (tool
+  absent, no network, opt-in gate not passed) scores `N/A` and leaves
+  the denominator. It is never silently counted as a pass. The report
+  states what fraction of the rubric actually executed.
+- **Reproducible.** The header records rustc/cargo versions, host
+  triple, and each repo's commit SHA and dirty flag.
+
+`--json` emits the same data for CI. The script exits non-zero below
+`SCORE_FLOOR` (default `0.90`), so the rating can gate a merge instead
+of decorating a README.
+
+Full methodology, the competitive landscape, and the measured gaps —
+including the ones that do not flatter this project — are in
+[`doc/ECOSYSTEM.md`](doc/ECOSYSTEM.md).
+
 The rest of this README covers the **library** surface
 (`noyalib` itself). For the satellite crates, jump straight to
 their READMEs above.
