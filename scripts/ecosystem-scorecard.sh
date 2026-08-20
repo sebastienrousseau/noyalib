@@ -373,12 +373,28 @@ probe_repo() {
 
   # ---- SUPPLY CHAIN ----------------------------------------------------
   if have cargo-audit; then
-    run "$WORK/$repo.audit" cargo audit --json
+    # Invoke the binary directly rather than as `cargo audit`. A
+    # user-defined `audit = "audit"` alias in ~/.cargo/config.toml shadows
+    # the subcommand and recurses, so `cargo audit` exits 101 having
+    # produced only an error message.
+    run "$WORK/$repo.audit" cargo-audit audit --json
+    local arc=$?
+    # A non-zero exit is ambiguous here: cargo-audit also exits non-zero
+    # when it *finds* advisories. The discriminator is whether the output
+    # parses. The previous fallback counted "RUSTSEC" in whatever landed on
+    # stdout, so an error message scored zero advisories — a clean pass on
+    # a security probe from a command that never ran. Unparsable output is
+    # now N/A, which is what "we did not measure this" is meant to look
+    # like.
     local vulns
-    vulns=$(jq -r '.vulnerabilities.count // 0' "$WORK/$repo.audit" 2>/dev/null || echo "?")
-    [ "$vulns" = "?" ] && vulns=$(grep -c 'RUSTSEC' "$WORK/$repo.audit")
-    record "$repo" audit_vulnerabilities supply_chain 5 "$vulns advisories" \
-      "$(score_atmost "$vulns" 0)" "cargo audit --json | .vulnerabilities.count"
+    vulns=$(jq -r '.vulnerabilities.count // empty' "$WORK/$repo.audit" 2>/dev/null)
+    if [ -n "$vulns" ]; then
+      record "$repo" audit_vulnerabilities supply_chain 5 "$vulns advisories" \
+        "$(score_atmost "$vulns" 0)" "cargo-audit audit --json | .vulnerabilities.count"
+    else
+      record "$repo" audit_vulnerabilities supply_chain 5 "no parsable output (rc=$arc)" NA \
+        "cargo-audit audit --json produced no .vulnerabilities.count — not scored"
+    fi
   else
     record "$repo" audit_vulnerabilities supply_chain 5 "tool absent" NA "cargo-audit not installed"
   fi
