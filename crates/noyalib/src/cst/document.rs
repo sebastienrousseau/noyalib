@@ -5211,3 +5211,112 @@ pub(super) fn format_double_quoted(s: &str) -> String {
     out.push('"');
     out
 }
+#[cfg(test)]
+mod absorb_emptied_line_tests {
+    //! Direct unit coverage for @zoosky's #294 helper.
+    //!
+    //! The integration tests in `tests/cst_remove_wrapped_flow.rs` drive
+    //! this through `remove`, which is the behaviour that matters. These
+    //! pin the boundary decisions at the byte level, where an off-by-one
+    //! is legible — the difference between reclaiming a line and eating
+    //! the newline that ends the one above it.
+
+    use super::{absorb_emptied_line, end_of_line, flow_member_range, start_of_line};
+
+    /// Byte range of the first occurrence of `needle` in `hay`.
+    fn span(hay: &str, needle: &str) -> (usize, usize) {
+        let s = hay.find(needle).expect("needle present");
+        (s, s + needle.len())
+    }
+
+    #[test]
+    fn widens_when_the_member_is_alone_on_its_line() {
+        let src = "ports: [\n  80,\n  443,\n]\n";
+        let (s, e) = span(src, "80,");
+        let (ws, we) = absorb_emptied_line(src, s, e);
+        assert_eq!(&src[ws..we], "  80,\n", "takes indentation and terminator");
+    }
+
+    #[test]
+    fn refuses_when_an_opening_indicator_shares_the_line() {
+        let src = "ports: [80,\n  443,\n]\n";
+        let (s, e) = span(src, "80,");
+        assert_eq!(absorb_emptied_line(src, s, e), (s, e), "unchanged");
+    }
+
+    #[test]
+    fn refuses_when_a_sibling_shares_the_line() {
+        let src = "ports: [\n  80, 443,\n]\n";
+        let (s, e) = span(src, "80, ");
+        assert_eq!(absorb_emptied_line(src, s, e), (s, e), "unchanged");
+    }
+
+    #[test]
+    fn refuses_when_a_comment_shares_the_line() {
+        let src = "ports: [\n  80, # why\n  443,\n]\n";
+        let (s, e) = span(src, "80,");
+        assert_eq!(absorb_emptied_line(src, s, e), (s, e), "unchanged");
+    }
+
+    #[test]
+    fn refuses_when_a_closing_indicator_shares_the_line() {
+        let src = "ports: [\n  80,\n  443]\n";
+        let (s, e) = span(src, "443");
+        assert_eq!(absorb_emptied_line(src, s, e), (s, e), "unchanged");
+    }
+
+    #[test]
+    fn refuses_at_end_of_input_with_no_terminator() {
+        // Nothing to reclaim: widening here would report a range that
+        // runs past the last byte of a line that never ended.
+        let src = "  80";
+        let (s, e) = span(src, "80");
+        assert_eq!(absorb_emptied_line(src, s, e), (s, e), "unchanged");
+    }
+
+    #[test]
+    fn keeps_the_carriage_return_with_the_line() {
+        let src = "ports: [\r\n  80,\r\n  443,\r\n]\r\n";
+        let (s, e) = span(src, "80,");
+        let (ws, we) = absorb_emptied_line(src, s, e);
+        assert_eq!(&src[ws..we], "  80,\r\n", "CRLF travels with the line");
+    }
+
+    #[test]
+    fn a_zero_indent_member_still_widens() {
+        let src = "[\n1,\n2,\n]\n";
+        let (s, e) = span(src, "1,");
+        let (ws, we) = absorb_emptied_line(src, s, e);
+        assert_eq!(&src[ws..we], "1,\n");
+    }
+
+    #[test]
+    fn flow_member_range_composes_the_widening() {
+        // The separator is taken first, then the line — the order matters,
+        // because widening a range that stops short of the comma would
+        // leave the comma stranded on the reclaimed line.
+        let src = "ports: [\n  80,\n  443,\n]\n";
+        let (s, e) = span(src, "80");
+        let (rs, re) = flow_member_range(src, s, e);
+        assert_eq!(&src[rs..re], "  80,\n");
+    }
+
+    #[test]
+    fn flow_member_range_is_unchanged_on_a_single_line() {
+        let src = "cfg: {a: 1, b: 2}\n";
+        let (s, e) = span(src, "a: 1");
+        let (rs, re) = flow_member_range(src, s, e);
+        assert_eq!(&src[rs..re], "a: 1, ", "member plus one separator, no line");
+    }
+
+    #[test]
+    fn line_helpers_agree_with_the_widened_range() {
+        // Guards the assumption the helper is built on: the widened range
+        // is exactly [start_of_line, end_of_line] of the member.
+        let src = "ports: [\n  80,\n  443,\n]\n";
+        let (s, e) = span(src, "80,");
+        let (ws, we) = absorb_emptied_line(src, s, e);
+        assert_eq!(ws, start_of_line(src, s));
+        assert_eq!(we, end_of_line(src, e));
+    }
+}

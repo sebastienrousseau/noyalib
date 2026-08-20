@@ -7,6 +7,57 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Fixed
+
+- **`remove` left a whitespace-only line in a wrapped flow collection**
+  (#294, reported and fixed by [@zoosky](https://github.com/zoosky),
+  PR #296). A flow collection written one member per line —
+
+  ```yaml
+  ports: [
+    80,
+    443,
+  ]
+  ```
+
+  — lost the member but kept its indentation, so `remove("ports[0]")`
+  wrote `  ` onto a line that had held content. The value round-tripped
+  unchanged, so this was never corruption; it was trailing whitespace in
+  a patch, which `git diff --check`, `yamllint`'s `trailing-spaces` and
+  `editorconfig-checker` all reject. A library whose promise is that an
+  edit touches only what the path names should not hand its caller a diff
+  their own lint refuses.
+
+  `flow_member_range` took the member and exactly one separator — right
+  for `{x: 1, y: 2}`, and all a single-line collection ever needs — but
+  nothing then asked whether the line had anything left on it. The block
+  path had always answered that same question the other way:
+  `owned_entry_range` takes the entry's whole line, indentation included.
+  Same operation, same shape, opposite answers.
+
+  The member now takes its whole line when — and only when — it is alone
+  on it. The condition is "alone on its line", not "the collection is
+  wrapped", so an opening indicator, a sibling member, a trailing comment
+  or the closing indicator all keep the line standing and leave those
+  outputs byte-identical.
+
+  Unreachable before #285: a wrapped flow collection did not parse, so
+  nothing downstream of the scanner had ever seen one. That is the second
+  time in two releases that fixing a parse refusal exposed a defect it
+  had been hiding.
+
+  The fix is `absorb_emptied_line`, named for the existing
+  `absorb_head_comments` it sits beside. Its doc comment draws one
+  boundary worth repeating: a comment left on the line keeps the line,
+  because what a comment stranded by a removal *means* is the caller's
+  question, not something a whitespace rule should decide.
+
+  42 tests added — 13 from @zoosky's PR, plus 18 integration and 11 unit
+  tests here — and the `cst_wrapped_flow_edit` example. The unit tests
+  were written against an independent implementation of the same fix and
+  pass unmodified against this one, which is the closest thing to a
+  second opinion a single codebase gets.
+
 ## [v0.0.25] - 2026-08-19
 
 **Four fixes from [@zoosky](https://github.com/zoosky)**, all found while
