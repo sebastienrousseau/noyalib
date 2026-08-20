@@ -158,6 +158,26 @@ testing a library cannot do for itself.
   *insertion* asks, not what that function answers. Of the two options in
   the report this is the second, which leaves the public API alone.
 
+### Testing
+
+- **The differential fuzz target's remove invariant was unsound** (PR
+  #291). `fuzz_editors` asserted that an accepted `remove` shrinks the
+  parsed value. It does not, under duplicate mapping keys: `Value`
+  deduplicates and the last duplicate wins, so removing one of two `5:`
+  entries deletes a line from the source while both parses still show
+  three keys. A correct edit failed the assertion and `fuzz-diff` went
+  red on `main`.
+
+  Asserting the *source* gets shorter is also wrong — removing the only
+  entry rewrites `"::\n"` to `"{}\n"`, which is correct and exactly as
+  long. What holds is that the source changed, and that is what the
+  target now asserts; the node count is kept only in the non-strict
+  direction, which still catches a removal that takes a parent with it.
+
+  `remove` itself was correct throughout. Both behaviours are pinned in
+  `tests/cst_remove_fuzz_regressions.rs` so they run under the normal
+  suite rather than only under a nightly fuzz job.
+
 ### Changed
 
 - Version → 0.0.25.
