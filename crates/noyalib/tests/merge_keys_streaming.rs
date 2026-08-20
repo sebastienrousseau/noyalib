@@ -268,3 +268,26 @@ two:
     assert_eq!(d.one["x"], 1);
     assert_eq!(d.two["y"], 2);
 }
+
+// ── Override keys with aliases ───────────────────────────────────────────
+
+#[test]
+fn override_with_alias() {
+    let yaml = r"
+base: &b
+  x: 1
+  y: 1
+other: &other
+  2
+overridden:
+  <<: *b
+  y: *other
+";
+    #[derive(serde::Deserialize)]
+    struct Doc {
+        overridden: BTreeMap<String, i64>,
+    }
+    let d: Doc = from_str(yaml).unwrap();
+    assert_eq!(d.overridden["x"], 1);
+    assert_eq!(d.overridden["y"], 2);
+}
