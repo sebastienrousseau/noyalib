@@ -348,3 +348,163 @@ fn a_root_collection_has_no_key_to_clear() {
     remove_ok("only: 1\n", "only", "{}\n");
     remove_ok("- one\n", "[0]", "[]\n");
 }
+
+// ── A member alone on its line in a wrapped collection (#294) ───────
+//
+// A flow collection may be wrapped over several lines, one member per
+// line — a long `ports:` or `args:` list broken for width. Splicing out
+// just the member's bytes then left the line's indentation behind as a
+// whitespace-only line. Valid YAML, and it loads back correctly, so
+// nothing here is corruption; what it is, is trailing whitespace
+// written onto a line that had none, which `git diff --check`,
+// `yamllint` and most pre-commit hooks are configured to reject.
+//
+// The condition is "the member is alone on its line", not "the
+// collection is wrapped". Anything else surviving on the line — the
+// opening indicator, the closing one, a sibling member, a comment —
+// keeps the line, and the controls below pin each of those.
+//
+// This shape was unreachable before #285: a wrapped flow collection did
+// not parse at all, so nothing downstream of the parser had ever seen
+// one.
+
+#[test]
+fn a_member_alone_on_its_line_takes_the_line_with_it() {
+    remove_ok(
+        "ports: [\n  80,\n  443,\n]\n",
+        "ports[0]",
+        "ports: [\n  443,\n]\n",
+    );
+}
+
+#[test]
+fn a_middle_member_takes_its_line_and_nothing_above_or_below() {
+    remove_ok(
+        "ports: [\n  80,\n  443,\n  8080,\n]\n",
+        "ports[1]",
+        "ports: [\n  80,\n  8080,\n]\n",
+    );
+}
+
+#[test]
+fn the_last_member_leaves_the_line_above_alone() {
+    // The separator belongs to the line above, which this removal does
+    // not own, so `80,` keeps its comma. A trailing comma before `]` is
+    // valid per the flow-sequence production (the entries after a `,`
+    // are optional) and both PyYAML and Psych read it back as `[80]`.
+    // Reaching up a line to delete it would be reformatting, not
+    // removing.
+    remove_ok(
+        "ports: [\n  80,\n  443,\n]\n",
+        "ports[1]",
+        "ports: [\n  80,\n]\n",
+    );
+    remove_ok(
+        "ports: [\n  80,\n  443\n]\n",
+        "ports[1]",
+        "ports: [\n  80,\n]\n",
+    );
+}
+
+#[test]
+fn a_wrapped_flow_mapping_behaves_the_same_way() {
+    remove_ok(
+        "cfg: {\n  a: 1,\n  b: 2,\n}\n",
+        "cfg.a",
+        "cfg: {\n  b: 2,\n}\n",
+    );
+    remove_ok(
+        "cfg: {\n  a: 1,\n  b: 2\n}\n",
+        "cfg.b",
+        "cfg: {\n  a: 1,\n}\n",
+    );
+}
+
+#[test]
+fn a_crlf_document_keeps_both_bytes_of_its_terminator() {
+    // Taking the `\n` and leaving the `\r` would plant a lone CR in a
+    // CRLF document — the defect class of #261.
+    remove_ok(
+        "ports: [\r\n  80,\r\n  443,\r\n]\r\n",
+        "ports[0]",
+        "ports: [\r\n  443,\r\n]\r\n",
+    );
+    remove_ok(
+        "ports: [\r\n  80,\r\n  443,\r\n]\r\n",
+        "ports[1]",
+        "ports: [\r\n  80,\r\n]\r\n",
+    );
+}
+
+#[test]
+fn a_wrapped_collection_at_the_root_and_one_nested_two_levels_down() {
+    remove_ok("[\n  80,\n  443,\n]\n", "[0]", "[\n  443,\n]\n");
+    remove_ok(
+        "a:\n  ports: [\n    80,\n    443,\n  ]\nb: 2\n",
+        "a.ports[0]",
+        "a:\n  ports: [\n    443,\n  ]\nb: 2\n",
+    );
+}
+
+#[test]
+fn the_reader_s_own_blank_lines_are_not_the_member_s_to_take() {
+    remove_ok(
+        "ports: [\n\n  80,\n\n  443,\n]\n",
+        "ports[0]",
+        "ports: [\n\n\n  443,\n]\n",
+    );
+}
+
+// ── Controls: lines the member does not own ─────────────────────────
+
+#[test]
+fn a_member_sharing_the_opening_indicator_s_line_leaves_it_standing() {
+    remove_ok(
+        "ports: [80,\n  443,\n]\n",
+        "ports[0]",
+        "ports: [\n  443,\n]\n",
+    );
+}
+
+#[test]
+fn a_member_sharing_the_closing_indicator_s_line_leaves_it_standing() {
+    remove_ok(
+        "ports: [\n  80,\n  443]\n",
+        "ports[1]",
+        "ports: [\n  80,\n  ]\n",
+    );
+}
+
+#[test]
+fn a_sibling_on_the_same_line_keeps_the_line() {
+    remove_ok(
+        "ports: [\n  80, 443,\n  8080,\n]\n",
+        "ports[0]",
+        "ports: [\n  443,\n  8080,\n]\n",
+    );
+}
+
+#[test]
+fn a_comment_on_the_line_keeps_the_line() {
+    // What a comment left behind by a removal *means* is a question for
+    // the caller; it is not answered here by a whitespace rule.
+    remove_ok(
+        "ports: [\n  80, # http\n  443,\n]\n",
+        "ports[0]",
+        "ports: [\n  # http\n  443,\n]\n",
+    );
+}
+
+#[test]
+fn a_single_line_collection_is_untouched_by_any_of_this() {
+    remove_ok("ports: [80, 443]\n", "ports[0]", "ports: [443]\n");
+    remove_ok("ports: [80, 443]\n", "ports[1]", "ports: [80]\n");
+    remove_ok("cfg: {a: 1, b: 2}\n", "cfg.a", "cfg: {b: 2}\n");
+}
+
+#[test]
+fn a_sole_member_is_still_the_sole_entry_path() {
+    // Emptying the collection is `Removal::SoleEntry`'s job; the line
+    // rule must not reach it.
+    remove_ok("ports: [\n  80,\n]\n", "ports[0]", "ports: []\n");
+}
