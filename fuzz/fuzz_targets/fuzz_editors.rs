@@ -148,15 +148,44 @@ fuzz_target!(|case: Case| {
 
     // ── Invariant 3: an accepted remove drops exactly one path ──────
     if let (Some(path), Some(before)) = (removed_path, before_val) {
+        // An accepted remove must have changed the source.
+        //
+        // Two things this deliberately does NOT assert, both of which
+        // libFuzzer disproved on this target:
+        //
+        // 1. That the parsed value shrinks. `Value` deduplicates mapping
+        //    keys and the last duplicate wins, so for
+        //
+        //        2: /
+        //        5?::
+        //        5: /
+        //        5: 55/
+        //
+        //    `remove("5")` correctly deletes the `5: 55/` entry, yet both
+        //    parses collapse to three keys and a node count reports
+        //    4 -> 4.
+        //
+        // 2. That the source gets shorter. Removing the last entry can
+        //    rewrite the document to an empty flow mapping: `"::\n"`
+        //    becomes `"{}\n"`, which is correct and exactly as long.
+        //
+        // What is always true is that the text moved.
+        assert_ne!(
+            doc.source(),
+            before_src,
+            "remove({path:?}) reported success but left the source unchanged"
+        );
+
         if let Ok(after) = noyalib::from_str::<Value>(doc.source()) {
-            // Count leaves as a cheap proxy for "one thing left". A
-            // removal that took a parent with it — the v0.0.21 flow
-            // bug — shows up as a much larger drop.
+            // The value must never *grow*. A removal that took a parent
+            // with it — the v0.0.21 flow bug — still shows up here as a
+            // large drop, and this direction stays sound under duplicate
+            // keys.
             let before_n = count_nodes(&before);
             let after_n = count_nodes(&after);
             assert!(
-                after_n < before_n,
-                "remove({path:?}) did not shrink the document: {before_n} -> {after_n}"
+                after_n <= before_n,
+                "remove({path:?}) grew the document: {before_n} -> {after_n}"
             );
         }
     }
