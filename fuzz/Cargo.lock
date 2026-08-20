@@ -196,6 +196,7 @@ dependencies = [
  "noyalib",
  "saphyr",
  "serde",
+ "serde_core",
  "serde_json",
  "serde_yaml_ng",
 ]

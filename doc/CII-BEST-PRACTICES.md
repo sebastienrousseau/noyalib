@@ -43,7 +43,7 @@ artefact that satisfies it.
 | :--- | :--- |
 | Source under version control | Git, GitHub-hosted |
 | Unique version identifier per release | SemVer tags `v0.0.x` |
-| Release notes per version | `RELEASE-NOTES-v0.0.X.md` for each tagged release |
+| Release notes per version | `doc/release-notes/v0.0.X.md` for each tagged release, indexed by [`doc/release-notes/README.md`](release-notes/README.md) |
 | Standardised file structure | Cargo workspace conventions; `crates/`, `doc/`, `pkg/` |
 | Changelog kept | `CHANGELOG.md` (Keep-a-Changelog format) |
 

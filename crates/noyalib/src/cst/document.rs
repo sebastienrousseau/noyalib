@@ -3383,6 +3383,24 @@ fn entry_line_span(
                 });
             }
             let ((key_start, _key_end), child_tree) = &entries[pos];
+            // An alias value resolves *through* to its anchor, so the span
+            // here belongs to the anchor's bytes on some other line — not
+            // to this entry. Splicing it would edit a different key, which
+            // is why `SpanTree::Alias`'s own doc says a write must refuse.
+            //
+            // Left unchecked the arithmetic silently degenerated instead:
+            // for `a: &x 1` / `b: *x`, the value span (6,7) sits *before*
+            // the key at 8, `owned_entry_range` produced an empty range,
+            // and the splice removed nothing while returning `Ok`. Found
+            // by the `fuzz_editors` shrink invariant.
+            if matches!(child_tree, SpanTree::Alias(_)) {
+                return Err(Error::Parse(format!(
+                    "remove: the value of `{k}` is an alias (`*name`); its source bytes \
+                     belong to the anchor, not to this entry, so removing it here would \
+                     edit a different key — remove the anchor's entry, or use \
+                     `replace_span` deliberately"
+                )));
+            }
             let (value_start, raw_value_end) = span_tree_bounds(child_tree);
             if is_flow_collection(source, *coll_start) {
                 let member_end = owned_value_end(source, value_start, raw_value_end);
@@ -3424,6 +3442,13 @@ fn entry_line_span(
             let item_tree = items
                 .get(*i)
                 .ok_or_else(|| Error::Parse(format!("path not found: index {i} out of bounds")))?;
+            if matches!(item_tree, SpanTree::Alias(_)) {
+                return Err(Error::Parse(format!(
+                    "remove: item {i} is an alias (`*name`); its source bytes belong to the \
+                     anchor, not to this item, so removing it here would edit different \
+                     content"
+                )));
+            }
             let (value_start, raw_value_end) = span_tree_bounds(item_tree);
             if is_flow_collection(source, *coll_start) {
                 // No `-` indicator in flow style; the item's own span is
