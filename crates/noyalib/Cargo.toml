@@ -1,6 +1,6 @@
 [package]
 name = "noyalib"
-version = "0.0.25"
+version = "0.0.26"
 edition = "2024"
 rust-version = "1.86.0"
 license = "MIT OR Apache-2.0"
@@ -205,6 +205,10 @@ path = "examples/lossless_edit.rs"
 [[example]]
 name = "cst_surgical_edit"
 path = "examples/cst_surgical_edit.rs"
+
+[[example]]
+name = "cst_wrapped_flow_edit"
+path = "examples/cst_wrapped_flow_edit.rs"
 
 [[example]]
 name = "lossless_u64"

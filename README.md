@@ -62,7 +62,7 @@
 
 ```toml
 [dependencies]
-noyalib = "0.0.25"
+noyalib = "0.0.26"
 ```
 
 ### As a CLI tool
@@ -106,7 +106,7 @@ maintainer runbook.
 
 ```toml
 [dependencies]
-noyalib = { version = "0.0.25", default-features = false }
+noyalib = { version = "0.0.26", default-features = false }
 ```
 
 Requires `alloc`. Core data binding (`from_str`, `to_string`, `Value`,
@@ -192,7 +192,7 @@ the application needs.
 ```toml
 # Example: rich diagnostics + schema validation
 [dependencies]
-noyalib = { version = "0.0.25", features = ["miette", "validate-schema"] }
+noyalib = { version = "0.0.26", features = ["miette", "validate-schema"] }
 ```
 
 **Optional features:** `lossless-u64` preserves YAML integer scalars above
@@ -338,7 +338,7 @@ tables for each.
 -[dependencies]
 -serde_yaml = "0.9"
 +[dependencies]
-+noyalib = "0.0.25"
++noyalib = "0.0.26"
 ```
 
 ```diff
@@ -614,7 +614,7 @@ stack, etc.) live in
 | **WASM** | Compiles to `wasm32-unknown-unknown`. wasm-bindgen bindings (camelCase per JS conventions): `parse()`, `stringify()`, `getPath()`, `validateJson()`, `merge()`, plus the `WasmDocument` class (`toString()`, `get()`, `getSource()`, `set()`, `setValue()`, `spanAt()`, `commentsAt()`, `replaceSpan()`). Browser demo included. |
 | **Errors** | Source locations on all parse errors. `format_with_source()` renders rustc-style diagnostics with `-->` pointer. `#[track_caller]` on all Index panics. `miette::Diagnostic` integration included (`--features miette`) for rich terminal reports with error codes, actionable help text, and source spans. |
 | **no\_std** | Full `#![no_std]` support with `alloc`. Use `default-features = false`. Core parsing (`from_str`, `to_string`, `Value`, schemas) works without `std`. I/O functions (`from_reader`, `to_writer`), `Spanned<T>` deserialization (TLS), and the CST module require the `std` feature. CI enforces `cargo check --no-default-features` on every push. |
-| **CST editing** | Side-table CST (`noyalib::cst`) for byte-faithful round-tripping. `Document::set("server.port", "9090")` rewrites only the touched bytes; comments, blank lines, and sibling formatting survive. `Document::entry(path)` is the chainable mutable handle (19 methods covering path / set / set_value / remove / insert / insert_value / push_back / push_back_value / insert_after / insert_after_value / and_modify / or_insert / or_insert_with / or_insert_value / get / span_at / comments / exists / nested entry, plus smart `items[0]` path composition). `Document::indent_unit()` detects 2-/3-/4-space conventions so inserts conform to the file's existing style. The `*_value` insertion mutators auto-format through the `cst::Emit` trait — a string that would re-parse as a number, a boolean, or a nested collection is quoted — and every splice is checked against a typed oracle, rolling back rather than restructuring the document. |
+| **CST editing** | Side-table CST (`noyalib::cst`) for byte-faithful round-tripping. `Document::set("server.port", "9090")` rewrites only the touched bytes; comments, blank lines, and sibling formatting survive. `Document::entry(path)` is the chainable mutable handle (19 methods covering path / set / set_value / remove / insert / insert_value / push_back / push_back_value / insert_after / insert_after_value / and_modify / or_insert / or_insert_with / or_insert_value / get / span_at / comments / exists / nested entry, plus smart `items[0]` path composition). `Document::indent_unit()` detects 2-/3-/4-space conventions so inserts conform to the file's existing style. The `*_value` insertion mutators auto-format through the `cst::Emit` trait — a string that would re-parse as a number, a boolean, or a nested collection is quoted — and every splice is checked against a typed oracle, rolling back rather than restructuring the document. `remove` takes an entry's whole line — indentation and terminator — whenever the entry is alone on it, in flow collections wrapped one member per line as well as in block style, so an edit never leaves a whitespace-only line for `git diff --check` or `yamllint` to reject. |
 | **Anchors v2** | `Document::anchors()` / `aliases()` / `aliases_of(name)` enumerate every `&name` / `*name` lexeme in source order. `Document::materialise_alias_at(byte_pos)` and `materialise_aliases_of(name)` "break" an alias by inlining the anchored scalar's source bytes — leaves the alias site independent of future anchor edits. |
 | **Schema codegen** | `schema` feature: derive `JsonSchema` (re-exported from `schemars`), then `schema_for::<T>() -> Result<Value>` or `schema_for_yaml::<T>() -> Result<String>` to emit the JSON Schema 2020-12 document. Honours `#[doc]`, `#[serde(default)]`, `#[serde(rename)]`, integer bounds, nested types via `$defs`. |
 | **Schema validation** | `validate-schema` feature (implies `schema`): `validate_against_schema(value, schema) -> Result<()>` enforces a JSON Schema 2020-12 contract on parsed YAML. Multiple violations aggregated with RFC 6901 JSON-pointer paths. `validate_against_schema_str` is the raw-text convenience. |
@@ -1281,6 +1281,7 @@ cargo run --example all
 | | `nostd` | #![no\_std] compatibility guide |
 | | `preserve` | CST preservation foundations |
 | | `lossless_edit` | Renovate-style version bump (CST `Document::set`) |
+| | `cst_wrapped_flow_edit` | Removing from a flow collection wrapped one member per line |
 | **Runtime** | `async_io` | Async integration (spawn\_blocking pattern) |
 | | `recursive` | Self-referential types (trees, org charts) |
 | **Bench** | `bench` | Performance overview |
@@ -1318,7 +1319,7 @@ disagreement on priorities.
 - **You have a hard dependency budget that cannot tolerate a
   Grisu / Ryu float formatter and a hash-randomised lookup
   table.** Default profile carries 8 runtime deps. `noyalib =
-  { version = "0.0.25", default-features = false, features =
+  { version = "0.0.26", default-features = false, features =
   ["std"] }` (or the equivalent `features = ["minimal"]`) drops
   to 5 — `itoa`, `ryu`, and `serde_ignored` become opt-in via
   the `fast-int` / `fast-float` / `strict-deserialise` features.

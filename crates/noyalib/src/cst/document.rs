@@ -3166,7 +3166,8 @@ enum Removal {
     },
 }
 
-/// Widen a flow member's span to take exactly one separator with it.
+/// Widen a flow member's span to take exactly one separator with it,
+/// and its whole line when the splice would leave that line blank.
 ///
 /// `{x: 1, y: 2}` minus `x` must become `{y: 2}`, not `{, y: 2}`. The
 /// comma *after* the member is preferred; the last member takes the one
@@ -3177,6 +3178,10 @@ enum Removal {
 /// another line (a multi-line flow collection) is deliberately not
 /// matched: the resulting splice would still be guarded by the typed
 /// oracle, so the outcome is a refusal rather than a mangled document.
+///
+/// The separator walk alone is not the whole answer for a **wrapped**
+/// collection, where a member can be the only thing on its line — see
+/// [`absorb_emptied_line`].
 fn flow_member_range(source: &str, start: usize, end: usize) -> (usize, usize) {
     let bytes = source.as_bytes();
 
@@ -3190,7 +3195,7 @@ fn flow_member_range(source: &str, start: usize, end: usize) -> (usize, usize) {
         while i < bytes.len() && matches!(bytes[i], b' ' | b'\t') {
             i += 1;
         }
-        return (start, i);
+        return absorb_emptied_line(source, start, i);
     }
 
     // Backward: the member is last, so take the `, ` before it.
@@ -3199,10 +3204,70 @@ fn flow_member_range(source: &str, start: usize, end: usize) -> (usize, usize) {
         j -= 1;
     }
     if j > 0 && bytes[j - 1] == b',' {
-        return (j - 1, end);
+        return absorb_emptied_line(source, j - 1, end);
     }
 
-    (start, end)
+    absorb_emptied_line(source, start, end)
+}
+
+/// Give a flow member its whole line when removing it would leave that
+/// line holding nothing but indentation.
+///
+/// A flow collection wrapped over several lines puts one member per
+/// line, so splicing out just the member's bytes leaves the line's
+/// indentation behind as a whitespace-only line:
+///
+/// ```text
+/// ports: [        remove("ports[0]")     ports: [
+///   80,                   ->              ␣␣
+///   443,                                  443,
+/// ]                                     ]
+/// ```
+///
+/// The result still loads — this is not corruption — but it writes
+/// trailing whitespace onto a line that had none, which is what
+/// `git diff --check`, `yamllint` and most pre-commit hooks exist to
+/// catch. A lossless CST that edits one member should not hand its
+/// caller a diff their own lint rejects.
+///
+/// The condition is deliberately "the member is alone on its line",
+/// not "the collection is wrapped". Anything else surviving on the line
+/// keeps the line:
+///
+/// - `ports: [80,` — the opening indicator is on it, so it stays.
+/// - `  443]` — the closing indicator is on it, so it stays.
+/// - `  80, # http` — the comment is on it, so it stays, and what a
+///   comment left behind by a removal *means* stays the caller's
+///   question rather than being decided here by a whitespace rule.
+///
+/// The line terminator goes with the line, `\r\n` included; taking the
+/// `\n` and leaving the `\r` would plant a lone CR in a CRLF document.
+fn absorb_emptied_line(source: &str, start: usize, end: usize) -> (usize, usize) {
+    let bytes = source.as_bytes();
+
+    // Everything before the member on its line must be indentation.
+    let line_start = source[..start].rfind('\n').map_or(0, |nl| nl + 1);
+    if !source[line_start..start]
+        .bytes()
+        .all(|b| matches!(b, b' ' | b'\t'))
+    {
+        return (start, end);
+    }
+
+    // And everything after it must be indentation up to the terminator.
+    // A `]`, a `#`, or a sibling member here means the line still has
+    // content, and the member does not own it.
+    let mut i = end;
+    while i < bytes.len() && matches!(bytes[i], b' ' | b'\t') {
+        i += 1;
+    }
+    match bytes.get(i) {
+        Some(b'\n') => (line_start, i + 1),
+        Some(b'\r') if bytes.get(i + 1) == Some(&b'\n') => (line_start, i + 2),
+        // No terminator to take (end of source): leave the range alone
+        // rather than swallow an indent with nothing to fold it into.
+        _ => (start, end),
+    }
 }
 
 /// Is the collection at `start` written in flow style (`{…}` / `[…]`)?
@@ -5145,4 +5210,113 @@ pub(super) fn format_double_quoted(s: &str) -> String {
     }
     out.push('"');
     out
+}
+#[cfg(test)]
+mod absorb_emptied_line_tests {
+    //! Direct unit coverage for @zoosky's #294 helper.
+    //!
+    //! The integration tests in `tests/cst_remove_wrapped_flow.rs` drive
+    //! this through `remove`, which is the behaviour that matters. These
+    //! pin the boundary decisions at the byte level, where an off-by-one
+    //! is legible — the difference between reclaiming a line and eating
+    //! the newline that ends the one above it.
+
+    use super::{absorb_emptied_line, end_of_line, flow_member_range, start_of_line};
+
+    /// Byte range of the first occurrence of `needle` in `hay`.
+    fn span(hay: &str, needle: &str) -> (usize, usize) {
+        let s = hay.find(needle).expect("needle present");
+        (s, s + needle.len())
+    }
+
+    #[test]
+    fn widens_when_the_member_is_alone_on_its_line() {
+        let src = "ports: [\n  80,\n  443,\n]\n";
+        let (s, e) = span(src, "80,");
+        let (ws, we) = absorb_emptied_line(src, s, e);
+        assert_eq!(&src[ws..we], "  80,\n", "takes indentation and terminator");
+    }
+
+    #[test]
+    fn refuses_when_an_opening_indicator_shares_the_line() {
+        let src = "ports: [80,\n  443,\n]\n";
+        let (s, e) = span(src, "80,");
+        assert_eq!(absorb_emptied_line(src, s, e), (s, e), "unchanged");
+    }
+
+    #[test]
+    fn refuses_when_a_sibling_shares_the_line() {
+        let src = "ports: [\n  80, 443,\n]\n";
+        let (s, e) = span(src, "80, ");
+        assert_eq!(absorb_emptied_line(src, s, e), (s, e), "unchanged");
+    }
+
+    #[test]
+    fn refuses_when_a_comment_shares_the_line() {
+        let src = "ports: [\n  80, # why\n  443,\n]\n";
+        let (s, e) = span(src, "80,");
+        assert_eq!(absorb_emptied_line(src, s, e), (s, e), "unchanged");
+    }
+
+    #[test]
+    fn refuses_when_a_closing_indicator_shares_the_line() {
+        let src = "ports: [\n  80,\n  443]\n";
+        let (s, e) = span(src, "443");
+        assert_eq!(absorb_emptied_line(src, s, e), (s, e), "unchanged");
+    }
+
+    #[test]
+    fn refuses_at_end_of_input_with_no_terminator() {
+        // Nothing to reclaim: widening here would report a range that
+        // runs past the last byte of a line that never ended.
+        let src = "  80";
+        let (s, e) = span(src, "80");
+        assert_eq!(absorb_emptied_line(src, s, e), (s, e), "unchanged");
+    }
+
+    #[test]
+    fn keeps_the_carriage_return_with_the_line() {
+        let src = "ports: [\r\n  80,\r\n  443,\r\n]\r\n";
+        let (s, e) = span(src, "80,");
+        let (ws, we) = absorb_emptied_line(src, s, e);
+        assert_eq!(&src[ws..we], "  80,\r\n", "CRLF travels with the line");
+    }
+
+    #[test]
+    fn a_zero_indent_member_still_widens() {
+        let src = "[\n1,\n2,\n]\n";
+        let (s, e) = span(src, "1,");
+        let (ws, we) = absorb_emptied_line(src, s, e);
+        assert_eq!(&src[ws..we], "1,\n");
+    }
+
+    #[test]
+    fn flow_member_range_composes_the_widening() {
+        // The separator is taken first, then the line — the order matters,
+        // because widening a range that stops short of the comma would
+        // leave the comma stranded on the reclaimed line.
+        let src = "ports: [\n  80,\n  443,\n]\n";
+        let (s, e) = span(src, "80");
+        let (rs, re) = flow_member_range(src, s, e);
+        assert_eq!(&src[rs..re], "  80,\n");
+    }
+
+    #[test]
+    fn flow_member_range_is_unchanged_on_a_single_line() {
+        let src = "cfg: {a: 1, b: 2}\n";
+        let (s, e) = span(src, "a: 1");
+        let (rs, re) = flow_member_range(src, s, e);
+        assert_eq!(&src[rs..re], "a: 1, ", "member plus one separator, no line");
+    }
+
+    #[test]
+    fn line_helpers_agree_with_the_widened_range() {
+        // Guards the assumption the helper is built on: the widened range
+        // is exactly [start_of_line, end_of_line] of the member.
+        let src = "ports: [\n  80,\n  443,\n]\n";
+        let (s, e) = span(src, "80,");
+        let (ws, we) = absorb_emptied_line(src, s, e);
+        assert_eq!(ws, start_of_line(src, s));
+        assert_eq!(we, end_of_line(src, e));
+    }
 }
