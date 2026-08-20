@@ -397,5 +397,20 @@ jobs:
         #   - noyalib-lsp  at sebastienrousseau/noyalib-lsp  (v0.0.13+)
         #   - noya-cli     at sebastienrousseau/noya-cli     (v0.0.13+)
         run: |
-          set -euxo pipefail
-          cargo publish -p noyalib --all-features
+          set -uxo pipefail
+          # Tolerate a version that is already on crates.io, the way all
+          # four satellites already do. The tag is the trigger, so this
+          # step runs again on any re-run of the release job — and it also
+          # loses the race whenever a maintainer follows the runbook's
+          # `git tag -s ... && cargo publish` by hand. Neither is a failed
+          # release, but a bare `cargo publish` reports both as one: that
+          # is exactly what turned v0.0.26's otherwise-green run red.
+          #
+          # Any other non-zero exit still fails the job.
+          out=$(cargo publish -p noyalib --all-features --locked 2>&1) && rc=0 || rc=$?
+          echo "$out"
+          if [ "$rc" -ne 0 ]; then
+            echo "$out" | grep -qE "already (exists|uploaded)" \
+              && { echo "version already on crates.io — tolerating"; exit 0; }
+            exit "$rc"
+          fi
