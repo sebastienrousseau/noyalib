@@ -12,6 +12,9 @@ cargo-fuzz = true
 libfuzzer-sys = { version = "0.4", features = ["arbitrary-derive"] }
 arbitrary = { version = "1", features = ["derive"] }
 serde = { version = "1.0", features = ["derive"] }
+# `fuzz_from_value` derives through serde_core, matching the crate
+# itself since noyalib moved to it as a direct dependency (#227).
+serde_core = { version = "1.0", features = ["std"] }
 serde_json = "1.0"
 serde_yaml_ng = "0.10"
 saphyr = "0.0.6"
