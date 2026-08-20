@@ -207,6 +207,10 @@ name = "cst_surgical_edit"
 path = "examples/cst_surgical_edit.rs"
 
 [[example]]
+name = "cst_wrapped_flow_edit"
+path = "examples/cst_wrapped_flow_edit.rs"
+
+[[example]]
 name = "lossless_u64"
 path = "examples/lossless_u64.rs"
 required-features = ["lossless-u64"]
