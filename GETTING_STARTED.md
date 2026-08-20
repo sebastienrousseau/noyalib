@@ -73,9 +73,9 @@ features:
 | Edit YAML lossy-free (preserving comments and layout) | [crates/noyalib/README.md § CST](./crates/noyalib/README.md) and `noyalib::cst::Document` |
 | Validate YAML against a JSON Schema | `noyavalidate --schema schema.yaml input.yaml` |
 | Format YAML | `noyafmt --write file.yaml` |
-| Use the LSP server in your editor | [crates/noyalib-lsp/README.md](./crates/noyalib-lsp/README.md) |
-| Drive noyalib from an AI agent (MCP) | [crates/noyalib-mcp/README.md](./crates/noyalib-mcp/README.md) |
-| Run noyalib in the browser | [crates/noyalib-wasm/README.md](./crates/noyalib-wasm/README.md) |
+| Use the LSP server in your editor | [crates/noyalib-lsp/README.md](https://github.com/sebastienrousseau/noyalib-lsp#readme) |
+| Drive noyalib from an AI agent (MCP) | [crates/noyalib-mcp/README.md](https://github.com/sebastienrousseau/noyalib-mcp#readme) |
+| Run noyalib in the browser | [crates/noyalib-wasm/README.md](https://github.com/sebastienrousseau/noyalib-wasm#readme) |
 | Look up a domain term | [GLOSSARY.md](./GLOSSARY.md) |
 | Contribute code | [CONTRIBUTING.md](./CONTRIBUTING.md) |
 

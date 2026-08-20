@@ -269,8 +269,8 @@ npm install @sebastienrousseau/noyalib-wasm
 
 Per-crate READMEs cover the surface specific to each artifact:
 
-- **CLI**: [`crates/noya-cli/README.md`](crates/noya-cli/README.md) — flags, exit codes, recipes.
-- **LSP**: [`crates/noyalib-lsp/README.md`](crates/noyalib-lsp/README.md) — capabilities, editor configs.
+- **CLI**: [`noya-cli`](https://github.com/sebastienrousseau/noya-cli#readme) — flags, exit codes, recipes.
+- **LSP**: [`noyalib-lsp`](https://github.com/sebastienrousseau/noyalib-lsp#readme) — capabilities, editor configs.
 - **MCP**: [`sebastienrousseau/noyalib-mcp`](https://github.com/sebastienrousseau/noyalib-mcp) — tools, host configs (split repo since v0.0.13; strict lockstep per [ADR-0005](doc/adr/0005-workspace-split.md)).
 - **WASM**: [`sebastienrousseau/noyalib-wasm`](https://github.com/sebastienrousseau/noyalib-wasm) — JS API, bundling (split repo since v0.0.12).
 
@@ -278,9 +278,9 @@ Per-crate READMEs cover the surface specific to each artifact:
 
 | If you use… | Drop-in config |
 |---|---|
-| **VS Code / JetBrains / Neovim / Helix / Emacs / Zed / Sublime** | [editor configs in `noyalib-lsp/examples/`](crates/noyalib-lsp/examples/) |
+| **VS Code / JetBrains / Neovim / Helix / Emacs / Zed / Sublime** | [editor configs in `noyalib-lsp/examples/`](https://github.com/sebastienrousseau/noyalib-lsp/tree/main/examples) |
 | **Claude Desktop / Cursor / Continue.dev / Zed assistant / hosted MCP** | [client configs (noyalib-mcp repo)](https://github.com/sebastienrousseau/noyalib-mcp/tree/main/examples) |
-| **GitHub Actions / pre-commit / Helm / Compose / pyproject-adjacent YAML** | [validation gates in `noya-cli/examples/`](crates/noya-cli/examples/) |
+| **GitHub Actions / pre-commit / Helm / Compose / pyproject-adjacent YAML** | [validation gates in `noya-cli/examples/`](https://github.com/sebastienrousseau/noya-cli/tree/main/examples) |
 | **Vite / Webpack / Next.js / Cloudflare Workers / Deno / Bun** | [bundling guide (noyalib-wasm repo)](https://github.com/sebastienrousseau/noyalib-wasm/blob/main/doc/bundling.md) |
 
 The rest of this README covers the **library** surface
@@ -1541,17 +1541,18 @@ value.interpolate_properties_lossy(&map);
 | [`doc/MIGRATION.md`](doc/MIGRATION.md) | Umbrella index of migration guides for `serde_yaml` 0.9, `serde_yml`, `yaml_serde`, `serde-yaml-ng`, `serde-norway`, `serde-yaml-bw`, `serde-saphyr`, `yaml-spanned`. Each linked guide is a per-crate function-mapping table + behavioural-difference notes + checklist. |
 | [`SECURITY.md`](SECURITY.md) | Disclosure policy, supported versions, contact, security design summary. |
 | [`CONTRIBUTING.md`](CONTRIBUTING.md) | Signed-commit policy, PR guidelines, local-test recipe. |
-| [`CHANGELOG.md`](CHANGELOG.md) | Per-release notes following Keep a Changelog 1.1.0. |
+| [`CHANGELOG.md`](CHANGELOG.md) | Per-release notes following Keep a Changelog 1.1.0. **The complete record** — every release appears here. |
+| [`doc/release-notes/`](doc/release-notes/README.md) | Narrative notes for v0.0.1–v0.0.17, one file per tag. Complements the changelog rather than duplicating it. |
 | [`doc/USER-GUIDE.md`](doc/USER-GUIDE.md) | Long-form usage guide with worked examples for every major feature. |
 | [`doc/ARCHITECTURE.md`](doc/ARCHITECTURE.md) | Module map, hot-path notes, design decisions. |
-| [`doc/GLOSSARY.md`](doc/GLOSSARY.md) | YAML / serde terminology reference. |
+| [`doc/GLOSSARY.md`](GLOSSARY.md) | YAML / serde terminology reference. |
 | [`crates/noyalib/doc/internals.md`](crates/noyalib/doc/internals.md) | Library internals (parser stages, loader frames, CST green tree). |
 | [`crates/noyalib/doc/errors.md`](crates/noyalib/doc/errors.md) | Error reference — every variant, when it fires, how to handle it. |
 
 The per-crate READMEs at
 [`crates/noyalib`](crates/noyalib/README.md),
-[`crates/noya-cli`](crates/noya-cli/README.md),
-[`crates/noyalib-lsp`](crates/noyalib-lsp/README.md), and the
+[`noya-cli`](https://github.com/sebastienrousseau/noya-cli#readme),
+[`noyalib-lsp`](https://github.com/sebastienrousseau/noyalib-lsp#readme), and the
 split-out satellite repos
 [`sebastienrousseau/noyalib-mcp`](https://github.com/sebastienrousseau/noyalib-mcp)
 and

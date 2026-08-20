@@ -739,7 +739,7 @@ under `--all-targets` by a feature-gated import, and the dependency set
 had drifted. No public API change (`cargo-semver-checks` green); two
 deserialiser error-message strings change wording — see *Fixed*.
 
-Full narrative: [`RELEASE-NOTES-v0.0.16.md`](RELEASE-NOTES-v0.0.16.md).
+Full narrative: [`doc/release-notes/v0.0.16.md`](doc/release-notes/v0.0.16.md).
 
 Lockstep versioning: `noyalib` bumps `0.0.15` → `0.0.16`.
 Satellites publish `=0.0.16` from their own repos:
@@ -896,7 +896,7 @@ Satellites publish `=0.0.16` from their own repos:
   §10 — including what `suggest = false` means and why exemptions are
   never added in bulk. They live there rather than inline because
   `cargo vet fmt` strips comments from `supply-chain/config.toml`.
-- Added `RELEASE-NOTES-v0.0.16.md`, matching the per-release file
+- Added `doc/release-notes/v0.0.16.md`, matching the per-release file
   `doc/CII-BEST-PRACTICES.md` claims for every tagged release. No CI gate
   asserts this; noted as a follow-up.
 - Added `examples/strict_deserialise.rs` — the default-on
@@ -1656,7 +1656,7 @@ Documentation:
 
 * `SECURITY.md` and `doc/POLICIES.md` document the new
   resource-limit knobs and their threat model.
-* CHANGELOG, READMEs, and `RELEASE-NOTES-v0.0.6.md` cross-reference
+* CHANGELOG, READMEs, and `doc/release-notes/v0.0.6.md` cross-reference
   the new safe-by-default contracts.
 * MSRV inconsistency (workspace claimed 1.75 in some places,
   Cargo.toml says 1.85 since v0.0.5) resolved on both axes.

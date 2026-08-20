@@ -41,7 +41,10 @@ fuzz_target!(|data: &[u8]| {
     // saphyr returns its own value type; compare via JSON to put all
     // three on the same axis.
     let Ok(saph_str) =
-        std::panic::catch_unwind(|| match saphyr::Yaml::load_from_str(s) {
+        std::panic::catch_unwind(|| match {
+                use saphyr::LoadableYamlNode as _;
+                saphyr::Yaml::load_from_str(s)
+            } {
             Ok(docs) => Some(format!("{:?}", docs)),
             Err(_) => None,
         })
