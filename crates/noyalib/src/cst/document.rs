@@ -3166,7 +3166,8 @@ enum Removal {
     },
 }
 
-/// Widen a flow member's span to take exactly one separator with it.
+/// Widen a flow member's span to take exactly one separator with it,
+/// and its whole line when the splice would leave that line blank.
 ///
 /// `{x: 1, y: 2}` minus `x` must become `{y: 2}`, not `{, y: 2}`. The
 /// comma *after* the member is preferred; the last member takes the one
@@ -3177,6 +3178,10 @@ enum Removal {
 /// another line (a multi-line flow collection) is deliberately not
 /// matched: the resulting splice would still be guarded by the typed
 /// oracle, so the outcome is a refusal rather than a mangled document.
+///
+/// The separator walk alone is not the whole answer for a **wrapped**
+/// collection, where a member can be the only thing on its line — see
+/// [`absorb_emptied_line`].
 fn flow_member_range(source: &str, start: usize, end: usize) -> (usize, usize) {
     let bytes = source.as_bytes();
 
@@ -3190,7 +3195,7 @@ fn flow_member_range(source: &str, start: usize, end: usize) -> (usize, usize) {
         while i < bytes.len() && matches!(bytes[i], b' ' | b'\t') {
             i += 1;
         }
-        return (start, i);
+        return absorb_emptied_line(source, start, i);
     }
 
     // Backward: the member is last, so take the `, ` before it.
@@ -3199,10 +3204,70 @@ fn flow_member_range(source: &str, start: usize, end: usize) -> (usize, usize) {
         j -= 1;
     }
     if j > 0 && bytes[j - 1] == b',' {
-        return (j - 1, end);
+        return absorb_emptied_line(source, j - 1, end);
     }
 
-    (start, end)
+    absorb_emptied_line(source, start, end)
+}
+
+/// Give a flow member its whole line when removing it would leave that
+/// line holding nothing but indentation.
+///
+/// A flow collection wrapped over several lines puts one member per
+/// line, so splicing out just the member's bytes leaves the line's
+/// indentation behind as a whitespace-only line:
+///
+/// ```text
+/// ports: [        remove("ports[0]")     ports: [
+///   80,                   ->              ␣␣
+///   443,                                  443,
+/// ]                                     ]
+/// ```
+///
+/// The result still loads — this is not corruption — but it writes
+/// trailing whitespace onto a line that had none, which is what
+/// `git diff --check`, `yamllint` and most pre-commit hooks exist to
+/// catch. A lossless CST that edits one member should not hand its
+/// caller a diff their own lint rejects.
+///
+/// The condition is deliberately "the member is alone on its line",
+/// not "the collection is wrapped". Anything else surviving on the line
+/// keeps the line:
+///
+/// - `ports: [80,` — the opening indicator is on it, so it stays.
+/// - `  443]` — the closing indicator is on it, so it stays.
+/// - `  80, # http` — the comment is on it, so it stays, and what a
+///   comment left behind by a removal *means* stays the caller's
+///   question rather than being decided here by a whitespace rule.
+///
+/// The line terminator goes with the line, `\r\n` included; taking the
+/// `\n` and leaving the `\r` would plant a lone CR in a CRLF document.
+fn absorb_emptied_line(source: &str, start: usize, end: usize) -> (usize, usize) {
+    let bytes = source.as_bytes();
+
+    // Everything before the member on its line must be indentation.
+    let line_start = source[..start].rfind('\n').map_or(0, |nl| nl + 1);
+    if !source[line_start..start]
+        .bytes()
+        .all(|b| matches!(b, b' ' | b'\t'))
+    {
+        return (start, end);
+    }
+
+    // And everything after it must be indentation up to the terminator.
+    // A `]`, a `#`, or a sibling member here means the line still has
+    // content, and the member does not own it.
+    let mut i = end;
+    while i < bytes.len() && matches!(bytes[i], b' ' | b'\t') {
+        i += 1;
+    }
+    match bytes.get(i) {
+        Some(b'\n') => (line_start, i + 1),
+        Some(b'\r') if bytes.get(i + 1) == Some(&b'\n') => (line_start, i + 2),
+        // No terminator to take (end of source): leave the range alone
+        // rather than swallow an indent with nothing to fold it into.
+        _ => (start, end),
+    }
 }
 
 /// Is the collection at `start` written in flow style (`{…}` / `[…]`)?
