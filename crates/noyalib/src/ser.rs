@@ -987,6 +987,26 @@ fn write_double_quoted(output: &mut String, s: &str) {
 }
 
 /// Write a string using YAML literal block scalar style (|).
+/// Write a block scalar's content lines at `indent + 1`.
+///
+/// An empty line gets **no** indentation. The block's indent is detected from
+/// its first non-empty line, so an empty one has nothing to say; writing the
+/// indent anyway leaves it standing as trailing whitespace on a line that
+/// holds nothing, which `git diff --check` and `yamllint` reject.
+///
+/// This must stay one function. It had three identical copies — `|` auto, `|`
+/// explicit and `>` — and the empty-line rule was missing from all three, so
+/// fixing any one of them would have left the other two writing it.
+fn write_block_scalar_body(output: &mut String, s: &str, indent: usize, config: &SerializerConfig) {
+    for line in s.lines() {
+        output.push('\n');
+        if !line.is_empty() {
+            write_indent(output, config.indent * (indent + 1));
+            output.push_str(line);
+        }
+    }
+}
+
 fn write_block_scalar(output: &mut String, s: &str, indent: usize, config: &SerializerConfig) {
     // Determine chomping indicator based on trailing newlines
     let chomping = if s.ends_with('\n') {
@@ -1002,11 +1022,7 @@ fn write_block_scalar(output: &mut String, s: &str, indent: usize, config: &Seri
     output.push('|');
     output.push_str(chomping);
 
-    for line in s.lines() {
-        output.push('\n');
-        write_indent(output, config.indent * (indent + 1));
-        output.push_str(line);
-    }
+    write_block_scalar_body(output, s, indent, config);
 
     // s.lines() does not yield trailing empty lines, so we must emit them
     // for the "keep" (+) chomping mode to roundtrip correctly.
@@ -1080,43 +1096,64 @@ fn write_sequence(
             output.push('\n');
             write_indent(output, config.indent * indent);
         }
-        output.push_str("- ");
+        output.push('-');
 
         match value {
             Value::Mapping(m) if !m.is_empty() => {
-                // Write first key-value on same line as dash
-                let mut iter = m.iter();
-                if let Some((k, v)) = iter.next() {
-                    write_string(output, k, indent + 1, config);
-                    output.push_str(": ");
-                    if matches!(v, Value::Mapping(_) | Value::Sequence(_)) {
-                        write_value(output, v, indent + 2, false, config, depth + 1)?;
-                    } else {
-                        write_value(output, v, indent + 1, false, config, depth + 1)?;
+                // The item's first key shares the dash's line, so the dash
+                // always takes its space here whatever the *value* looks
+                // like — `- key: 1` and `- key:` alike.
+                output.push(' ');
+                for (j, (k, v)) in m.iter().enumerate() {
+                    if j > 0 {
+                        output.push('\n');
+                        write_indent(output, config.indent * (indent + 1));
                     }
-                }
-                // Write remaining key-values
-                for (k, v) in iter {
-                    output.push('\n');
-                    write_indent(output, config.indent * (indent + 1));
                     write_string(output, k, indent + 1, config);
-                    output.push_str(": ");
-                    if matches!(v, Value::Mapping(_) | Value::Sequence(_)) {
-                        write_value(output, v, indent + 2, false, config, depth + 1)?;
-                    } else {
-                        write_value(output, v, indent + 1, false, config, depth + 1)?;
+                    output.push(':');
+                    if indicator_takes_a_space(v) {
+                        output.push(' ');
                     }
+                    let next_indent = if needs_block_layout(v) {
+                        indent + 2
+                    } else {
+                        indent + 1
+                    };
+                    write_value(output, v, next_indent, false, config, depth + 1)?;
                 }
-            }
-            Value::Sequence(_) => {
-                write_value(output, value, indent + 1, false, config, depth + 1)?;
             }
             _ => {
+                if indicator_takes_a_space(value) {
+                    output.push(' ');
+                }
                 write_value(output, value, indent + 1, false, config, depth + 1)?;
             }
         }
     }
     Ok(())
+}
+
+/// Whether the indicator introducing `value` — the `:` after a key, or a
+/// sequence item's `-` — must be followed by a space.
+///
+/// An inline scalar needs one (`key: 1`, `- 1`). A block collection does not:
+/// it begins on the *next* line, so the space would be left dangling at the
+/// end of this one. That is invisible, it re-parses identically, and it is
+/// exactly what `git diff --check` and `yamllint`'s `trailing-spaces` reject.
+///
+/// The exception is an anchor-wrapped block value, which renders as
+/// `&idNNN\n  ...`: the `&` is on *this* line, so the space is real
+/// separation rather than leftovers.
+///
+/// [`write_mapping`] has always applied this rule; [`write_sequence`] carried
+/// its own copy of the key-writing and did not, which is the whole of the bug
+/// this function exists to stop recurring. One rule, one place, both callers.
+fn indicator_takes_a_space(value: &Value) -> bool {
+    !needs_block_layout(value)
+        || matches!(
+            value,
+            Value::Tagged(t) if t.tag().as_str() == crate::fmt::MAGIC_ANCHOR_DEF
+        )
 }
 
 /// Whether a value needs block-style layout (indented on the line after `:`)
@@ -1162,16 +1199,11 @@ fn write_mapping(
         }
         write_string(output, key, indent, config);
 
-        if needs_block_layout(value) {
-            output.push(':');
-            // Anchor-wrapped block values render as "&idNNN\n  ..." — we
-            // need the space between ":" and "&" to keep valid YAML.
-            if matches!(
-                value,
-                Value::Tagged(t) if t.tag().as_str() == crate::fmt::MAGIC_ANCHOR_DEF
-            ) {
-                output.push(' ');
-            }
+        output.push(':');
+        if indicator_takes_a_space(value) {
+            output.push(' ');
+        }
+        let next_indent = if needs_block_layout(value) {
             // `compact_list_indent`: when on, sequence values
             // under a mapping key align with the key column
             // instead of being bumped one indent level deeper.
@@ -1179,16 +1211,15 @@ fn write_mapping(
             // guides (Kubernetes manifests, GitHub Actions
             // workflows). Mappings and other non-sequence block
             // values keep the standard indent.
-            let next_indent = if config.compact_list_indent && matches!(value, Value::Sequence(_)) {
+            if config.compact_list_indent && matches!(value, Value::Sequence(_)) {
                 indent
             } else {
                 indent + 1
-            };
-            write_value(output, value, next_indent, false, config, depth + 1)?;
+            }
         } else {
-            output.push_str(": ");
-            write_value(output, value, indent, false, config, depth + 1)?;
-        }
+            indent
+        };
+        write_value(output, value, next_indent, false, config, depth + 1)?;
     }
     Ok(())
 }
@@ -1345,11 +1376,7 @@ fn write_literal_block(output: &mut String, s: &str, indent: usize, config: &Ser
     output.push('|');
     output.push_str(chomping);
 
-    for line in s.lines() {
-        output.push('\n');
-        write_indent(output, config.indent * (indent + 1));
-        output.push_str(line);
-    }
+    write_block_scalar_body(output, s, indent, config);
 }
 
 fn write_folded_block(output: &mut String, s: &str, indent: usize, config: &SerializerConfig) {
@@ -1362,11 +1389,7 @@ fn write_folded_block(output: &mut String, s: &str, indent: usize, config: &Seri
     output.push('>');
     output.push_str(chomping);
 
-    for line in s.lines() {
-        output.push('\n');
-        write_indent(output, config.indent * (indent + 1));
-        output.push_str(line);
-    }
+    write_block_scalar_body(output, s, indent, config);
 }
 
 /// Serialize an iterable of values as a multi-document YAML
