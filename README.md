@@ -608,7 +608,7 @@ stack, etc.) live in
 | **Formatting** | Per-value output control: `FlowSeq<T>`, `FlowMap<T>`, `LitStr`, `FoldStr`, `Commented<T>`, `SpaceAfter<T>`. |
 | **Enums** | `singleton_map`, `singleton_map_optional`, `singleton_map_recursive`, `singleton_map_with` -- custom key transforms (snake\_case, kebab-case, lowercase). |
 | **Schemas** | Validate against YAML schema levels: `validate_yaml_failsafe_schema`, `validate_yaml_json_schema`, `validate_yaml_core_schema`. |
-| **Anchors** | Anchors (`&`), aliases (`*`), and merge keys (`<<`), including composition: an entry written after a `<<:` may take an alias as its value and overrides the merged entry of the same name, and the result does not depend on whether the alias appears before or after the merge key. Smart pointer wrappers: `RcAnchor`, `ArcAnchor`, `RcWeakAnchor`, `ArcWeakAnchor`. |
+| **Anchors** | Anchors (`&`), aliases (`*`), and merge keys (`<<`), including composition: an entry written after a `<<:` may take an alias as its value and overrides the merged entry of the same name, and the result does not depend on whether the alias appears before or after the merge key. Only a **plain** `<<` is a merge key — a quoted `"<<"`, and an alias resolving to the string `<<`, are ordinary keys, matching the YAML merge type's tag resolution. Smart pointer wrappers: `RcAnchor`, `ArcAnchor`, `RcWeakAnchor`, `ArcWeakAnchor`. |
 | **Security** | 7 configurable limits in `ParserConfig`: depth, document size, alias expansions, mapping keys, sequence length, duplicate key policy, strict booleans. `ParserConfig::strict()` for untrusted input. Billion-laughs safe via `max_alias_expansions` with `saturating_add` overflow protection. |
 | **Compat** | YAML 1.1 legacy boolean mode (`legacy_booleans`): resolves `yes`/`no`/`on`/`off`/`y`/`n` as booleans for Docker Compose, GitHub Actions, and other YAML 1.1 tooling. Solves the "Norway problem". |
 | **WASM** | Compiles to `wasm32-unknown-unknown`. wasm-bindgen bindings (camelCase per JS conventions): `parse()`, `stringify()`, `getPath()`, `validateJson()`, `merge()`, plus the `WasmDocument` class (`toString()`, `get()`, `getSource()`, `set()`, `setValue()`, `spanAt()`, `commentsAt()`, `replaceSpan()`). Browser demo included. |
@@ -1282,7 +1282,7 @@ cargo run --example all
 | | `preserve` | CST preservation foundations |
 | | `lossless_edit` | Renovate-style version bump (CST `Document::set`) |
 | | `cst_wrapped_flow_edit` | Removing from a flow collection wrapped one member per line |
-| | `merge_keys_with_aliases` | Merge keys (`<<:`) and aliases (`*name`) in one mapping |
+| | `merge_keys_with_aliases` | Merge keys (`<<:`) and aliases (`*name`) in one mapping; which spellings of `<<` are merges |
 | **Runtime** | `async_io` | Async integration (spawn\_blocking pattern) |
 | | `recursive` | Self-referential types (trees, org charts) |
 | **Bench** | `bench` | Performance overview |
