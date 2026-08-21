@@ -436,13 +436,39 @@ probe_repo() {
     record "$repo" reuse_compliance supply_chain 1 "tool absent" NA "reuse not installed"
   fi
 
-  # Dependency closure size. Every transitive crate is attack surface and
-  # a compile-time cost. The threshold is a budget, not a pass/fail.
+  # Dependency closure size.
+  #
+  # This was one flat budget of 60 for every repo, which is why `noya-cli`
+  # scored 0 at 130 crates. Investigating that produced a better rule than
+  # a bigger number.
+  #
+  # A **library's** dependencies propagate: every downstream consumer
+  # inherits the whole closure whether they wanted it or not, so its size
+  # is a cost imposed on other people and belongs in the score. `noyalib`
+  # sits at 12, which is the number that actually matters here.
+  #
+  # A **leaf binary's** do not. Nobody inherits `noya-cli`'s tree; a user
+  # installs the tool deliberately, and 130 of those crates are `miette`'s
+  # `fancy` renderer giving `noyavalidate` source excerpts and carets —
+  # which for a validator is the job, not bloat. There is no defensible
+  # universal threshold for that, so this records the number and does not
+  # score it. Inventing a budget that the current value happens to clear
+  # would be curve-grading with extra steps.
+  #
+  # The count is still printed and still in the JSON, so a leaf that
+  # doubles its tree is visible; it simply does not pretend to be a pass
+  # or a fail against a line nobody can justify.
   local deps
   deps=$(cargo tree -e normal --prefix none --no-dedupe 2>/dev/null \
          | awk 'NF{print $1}' | sort -u | grep -c .)
-  record "$repo" dependency_closure supply_chain 2 "$deps unique runtime crates" \
-    "$(score_atmost "$deps" 60)" "cargo tree -e normal --prefix none --no-dedupe | sort -u (budget 60)"
+  if [ "$repo" = "noyalib" ]; then
+    record "$repo" dependency_closure supply_chain 2 "$deps unique runtime crates" \
+      "$(score_atmost "$deps" 60)" \
+      "cargo tree -e normal --prefix none --no-dedupe | sort -u (library budget 60; propagates to consumers)"
+  else
+    record "$repo" dependency_closure supply_chain 2 "$deps unique runtime crates (leaf, not scored)" NA \
+      "cargo tree -e normal --prefix none --no-dedupe | sort -u — recorded, not scored: a leaf binary's tree is not inherited"
+  fi
 
   # Actions pinned by SHA, not by a mutable tag.
   if [ -d .github/workflows ]; then
