@@ -14,11 +14,26 @@
 # non-zero only when ALL W of them exceed
 # `${THRESHOLD_RATIO}` × baseline — a sustained regression.
 #
-# W (`RECENT_WINDOW`, default 2) exists because a single hosted-runner
+# W (`RECENT_WINDOW`, default 3) exists because a single hosted-runner
 # measurement is not evidence. Identical work on this repo has
 # ranged 513s-746s, so a one-run gate reports variance as
 # regression; setting `RECENT_WINDOW=1` restores that older,
 # noisier behaviour.
+#
+# W was 2 until v0.0.26, when the gate failed `main` on two consecutive
+# runs (788s, 804s) that turned out to be Windows runner allocation, not
+# code. The very next run — carrying every commit the "regression" was
+# blamed on — came back at 587s. Measured across eight consecutive runs
+# on `main` with no relevant code change, `test-matrix (windows-latest,
+# stable)` ranged 465s-800s, a 1.7x spread, and contributed +306s of a
+# +591s total delta on its own. Wall-clock for a parallel matrix is
+# max(jobs), so this gate inherits the variance of its noisiest platform
+# whole. Two consecutive breaches sit inside that noise; three do not.
+#
+# The baseline is a MEDIAN, not a mean, for the same reason. One slow
+# baseline run drags a mean upward and raises the threshold, masking a
+# real regression; one fast run lowers it and manufactures a false alarm.
+# A median of five is unmoved by either.
 #
 # The threshold + window size are inputs (not hardcoded) so the
 # calling workflow can loosen or tighten the gate without editing
@@ -67,7 +82,7 @@ THRESHOLD_RATIO="${THRESHOLD_RATIO:-1.1}"
 # How many of the most recent runs must ALL exceed the threshold
 # before this counts as a regression. 1 restores the old
 # single-run behaviour.
-RECENT_WINDOW="${RECENT_WINDOW:-2}"
+RECENT_WINDOW="${RECENT_WINDOW:-3}"
 REPO="${GITHUB_REPOSITORY:-$(git remote get-url origin | sed -E 's#(git@github.com:|https://github.com/)##; s#\.git$##')}"
 
 echo "── CI duration monitor ──"
@@ -127,7 +142,13 @@ LATEST=$(printf '%s' "${RECENT_LIST}" | head -1)
 LATEST_INT=${LATEST%.*}
 
 # ── Rolling average (integer arithmetic via awk to avoid python) ──
-BASELINE_AVG=$(printf '%s\n' "${BASELINE_LIST}" | awk 'BEGIN {sum=0; n=0} {sum+=$1; n+=1} END {printf "%.1f", sum/n}')
+BASELINE_AVG=$(printf '%s\n' "${BASELINE_LIST}" | sort -n | awk '
+    { v[n++] = $1 }
+    END {
+        if (n == 0) { print "0.0"; exit }
+        if (n % 2) printf "%.1f", v[(n-1)/2]
+        else       printf "%.1f", (v[n/2 - 1] + v[n/2]) / 2
+    }')
 
 # Threshold in seconds.
 THRESHOLD_SEC=$(awk -v b="${BASELINE_AVG}" -v t="${THRESHOLD_RATIO}" 'BEGIN {printf "%.1f", b * t}')
@@ -142,7 +163,7 @@ RECENT_FMT=$(printf '%s\n' "${RECENT_LIST}" | awk '{printf "%.0fs ", $1}')
 
 echo "  latest run:  ${LATEST_INT}s"
 echo "  recent ${RECENT_WINDOW}:    ${RECENT_FMT}"
-echo "  baseline (${N_BASELINE}-run avg): ${BASELINE_AVG}s"
+echo "  baseline (${N_BASELINE}-run median): ${BASELINE_AVG}s"
 echo "  threshold:   ${THRESHOLD_SEC}s (${THRESHOLD_RATIO}× baseline)"
 echo "  observed:    ${RATIO}× baseline (latest)"
 echo
@@ -155,9 +176,12 @@ if [[ "${REGRESSION}" == "1" ]]; then
          runs (${RECENT_FMT}) exceed threshold ${THRESHOLD_SEC}s
          (latest ${RATIO}×; gate is ${THRESHOLD_RATIO}×)
 
-  Sustained across the window, so this is not runner noise.
-  Investigate the shared-workflow bumps landed since the last
-  green baseline. See #127 AC #5 for the invariant.
+  ${RECENT_WINDOW} consecutive breaches is past what runner allocation
+  has produced on this repo, so this is worth investigating — but
+  confirm before acting. Compare per-job durations against a green run
+  and check whether one platform dominates the delta. If a single OS
+  accounts for most of it while the others barely move, that is
+  allocation, not code. See #127 AC #5 for the invariant.
 EOF
     exit 1
 fi
