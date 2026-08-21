@@ -99,7 +99,10 @@ fn main() {
     // point at the string — both are ordinary keys whose value is whatever
     // they were given.
     for (label, doc) in [
-        ("plain      <<: *base", "base: &base\n  x: 1\nout:\n  <<: *base\n"),
+        (
+            "plain      <<: *base",
+            "base: &base\n  x: 1\nout:\n  <<: *base\n",
+        ),
         ("quoted   \"<<\": 1", "out:\n  \"<<\": 1\n  x: 1\n"),
         ("alias to \"<<\"", "k: &k \"<<\"\nout:\n  *k : 1\n  x: 1\n"),
         ("alias to plain <<", "k: &k <<\nout:\n  *k : 1\n  x: 1\n"),

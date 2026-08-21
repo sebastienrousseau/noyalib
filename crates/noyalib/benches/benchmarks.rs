@@ -1051,52 +1051,6 @@ fn bench_value_mutate(c: &mut Criterion) {
             base_clone.merge_concat(black_box(other.clone()));
             black_box(base_clone)
         });
-
-    // ── YAML merge-key (`<<:`) expansion ─────────────────────────────
-    //
-    // Distinct from the `merge_small` / `merge_nested` / `merge_concat`
-    // benches above, which time `Value::merge()` — an API method on an
-    // already-parsed value. These time the parser expanding `<<:` while
-    // loading, which is the path that carries merge-key eligibility.
-    {
-        let one_source = "base: &b\n  a: 1\n  b: 2\n  c: 3\nout:\n  <<: *b\n  d: 4\n";
-        let _ = group.bench_function("merge_key_single_anchor", |b| {
-            b.iter(|| {
-                let v: Value = noyalib::from_str(black_box(one_source)).unwrap();
-                black_box(v)
-            });
-        });
-
-        let two_sources = "a: &a\n  x: 1\nb: &b\n  y: 2\nout:\n  <<: [*a, *b]\n  z: 3\n";
-        let _ = group.bench_function("merge_key_sequence_of_anchors", |b| {
-            b.iter(|| {
-                let v: Value = noyalib::from_str(black_box(two_sources)).unwrap();
-                black_box(v)
-            });
-        });
-
-        // The negative side of the same decision: a key that spells `<<`
-        // but is quoted takes the ordinary-key path. Timing it alongside
-        // the real merge shows the eligibility check is not a tax on
-        // documents that never merge.
-        let quoted_key = "out:\n  \"<<\": 1\n  y: 2\n";
-        let _ = group.bench_function("merge_key_quoted_is_ordinary", |b| {
-            b.iter(|| {
-                let v: Value = noyalib::from_str(black_box(quoted_key)).unwrap();
-                black_box(v)
-            });
-        });
-
-        // A mapping of the same size with no `<<` at all — the baseline
-        // the two above should be compared against.
-        let no_merge = "out:\n  a: 1\n  b: 2\n  c: 3\n  d: 4\n";
-        let _ = group.bench_function("merge_key_absent_baseline", |b| {
-            b.iter(|| {
-                let v: Value = noyalib::from_str(black_box(no_merge)).unwrap();
-                black_box(v)
-            });
-        });
-    }
     });
 
     // remove
@@ -2813,6 +2767,58 @@ criterion_group!(
     bench_spanned,
 );
 
+/// YAML merge-key (`<<:`) expansion during parsing.
+///
+/// Distinct from `bench_value_mutate`'s `merge_small` / `merge_nested` /
+/// `merge_concat`, which time [`noyalib::Value::merge`] — an API method on
+/// an already-parsed value. Nothing measured the parser expanding `<<:`
+/// while loading, which is the path that carries merge-key eligibility
+/// (only a plain `<<` is a merge key; a quoted `"<<"` or an alias to the
+/// string is an ordinary key).
+///
+/// `merge_key_absent_baseline` parses a mapping of the same size with no
+/// `<<` at all, so the others can be read against a document that never
+/// merges rather than in isolation.
+fn bench_merge_key_expansion(c: &mut Criterion) {
+    let mut group = c.benchmark_group("merge_key_expansion");
+
+    let one_source = "base: &b\n  a: 1\n  b: 2\n  c: 3\nout:\n  <<: *b\n  d: 4\n";
+    let _ = group.bench_function("merge_key_single_anchor", |b| {
+        b.iter(|| {
+            let v: Value = from_str(black_box(one_source)).unwrap();
+            black_box(v)
+        });
+    });
+
+    let two_sources = "a: &a\n  x: 1\nb: &b\n  y: 2\nout:\n  <<: [*a, *b]\n  z: 3\n";
+    let _ = group.bench_function("merge_key_sequence_of_anchors", |b| {
+        b.iter(|| {
+            let v: Value = from_str(black_box(two_sources)).unwrap();
+            black_box(v)
+        });
+    });
+
+    // The negative side of the same decision: a key spelling `<<` but
+    // quoted takes the ordinary-key path.
+    let quoted_key = "out:\n  \"<<\": 1\n  y: 2\n";
+    let _ = group.bench_function("merge_key_quoted_is_ordinary", |b| {
+        b.iter(|| {
+            let v: Value = from_str(black_box(quoted_key)).unwrap();
+            black_box(v)
+        });
+    });
+
+    let no_merge = "out:\n  a: 1\n  b: 2\n  c: 3\n  d: 4\n";
+    let _ = group.bench_function("merge_key_absent_baseline", |b| {
+        b.iter(|| {
+            let v: Value = from_str(black_box(no_merge)).unwrap();
+            black_box(v)
+        });
+    });
+
+    group.finish();
+}
+
 criterion_group!(
     benches_extras,
     bench_fmt_wrappers,
@@ -2820,6 +2826,7 @@ criterion_group!(
     bench_singleton_map,
     bench_error_location,
     bench_value_serde,
+    bench_merge_key_expansion,
 );
 
 criterion_main!(

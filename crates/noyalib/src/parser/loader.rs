@@ -467,8 +467,7 @@ impl<'a> Loader<'a> {
                 // Decide merge-key eligibility here, while the scalar's style
                 // is still in hand — `resolve_untagged_scalar` returns a
                 // `Value::String("<<")` for a plain and a quoted `<<` alike.
-                let is_plain_merge_candidate =
-                    matches!(style, crate::parser::ScalarStyle::Plain);
+                let is_plain_merge_candidate = matches!(style, crate::parser::ScalarStyle::Plain);
                 let v =
                     if let Some(t) = tag {
                         if self.config.tag_registry.as_ref().is_some_and(|r| {
@@ -1137,8 +1136,7 @@ impl<'a> NoSpanLoader<'a> {
                 // presentation is still known — `resolve_untagged_scalar`
                 // yields `Value::String("<<")` for a plain and a quoted `<<`
                 // alike.
-                let is_plain_merge_candidate =
-                    matches!(style, crate::parser::ScalarStyle::Plain);
+                let is_plain_merge_candidate = matches!(style, crate::parser::ScalarStyle::Plain);
                 if let Some(name) = anchor {
                     let _ = self.anchor_def_spans.insert(name.clone(), span.start);
                     let _ = self.anchor_map.insert(name, v.clone());
@@ -1834,7 +1832,10 @@ mod merge_key_eligibility_tests {
         // Both halves must hold. Neither the flag alone nor the spelling
         // alone may promote a key to a merge instruction.
         assert!(!treated_as_merge("x", true), "flag alone is not enough");
-        assert!(!treated_as_merge(MERGE_KEY, false), "spelling alone is not enough");
+        assert!(
+            !treated_as_merge(MERGE_KEY, false),
+            "spelling alone is not enough"
+        );
         assert!(treated_as_merge(MERGE_KEY, true), "both together");
     }
 }
