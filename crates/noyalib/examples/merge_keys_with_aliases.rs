@@ -92,6 +92,31 @@ fn main() {
         "recording an event twice would show up here as extra entries"
     );
 
+    println!("\nOnly a *plain* `<<` is a merge key:\n");
+
+    // The YAML merge type gives `tag:yaml.org,2002:merge` to a plain `<<`.
+    // A quoted one resolves to `...:str`, as does an alias that happens to
+    // point at the string — both are ordinary keys whose value is whatever
+    // they were given.
+    for (label, doc) in [
+        (
+            "plain      <<: *base",
+            "base: &base\n  x: 1\nout:\n  <<: *base\n",
+        ),
+        ("quoted   \"<<\": 1", "out:\n  \"<<\": 1\n  x: 1\n"),
+        ("alias to \"<<\"", "k: &k \"<<\"\nout:\n  *k : 1\n  x: 1\n"),
+        ("alias to plain <<", "k: &k <<\nout:\n  *k : 1\n  x: 1\n"),
+    ] {
+        let v: Value = from_str(doc).expect("parse");
+        let merged = v["out"].get("<<").is_none();
+        println!(
+            "  {:<22} -> {:<34} {}",
+            label,
+            format!("{:?}", v["out"]),
+            if merged { "merged" } else { "ordinary key" }
+        );
+    }
+
     println!("\nA merge target must be an alias, or a sequence of them:\n");
     for bad in ["job:\n  <<: 1\n", "job:\n  <<: *missing\n"] {
         let err = from_str::<Value>(bad).unwrap_err();

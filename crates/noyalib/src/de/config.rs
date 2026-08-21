@@ -978,6 +978,12 @@ pub enum MergeKeyPolicy {
     /// Apply the YAML 1.2 merge-key semantics — `<<:` keys trigger
     /// automatic merge of the value into the enclosing mapping.
     /// Default.
+    ///
+    /// Only a **plain** `<<` scalar is a merge key. The YAML merge
+    /// type gives `tag:yaml.org,2002:merge` to a plain `<<`; a quoted
+    /// `"<<"` and an alias that happens to resolve to the string
+    /// `<<` both resolve to `tag:yaml.org,2002:str` and stay ordinary
+    /// keys, whatever this policy is set to.
     #[default]
     Auto,
     /// Treat `<<` as an ordinary string key. The mapping retains a
