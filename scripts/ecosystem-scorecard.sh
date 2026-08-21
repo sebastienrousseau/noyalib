@@ -271,7 +271,17 @@ probe_repo() {
   if [ "${return_from_tests:-0}" = "1" ]; then
     : # already recorded a build failure above
   elif [ "$rc" = "124" ]; then
-    record "$repo" tests correctness 5 "timeout after ${PROBE_TIMEOUT}s" 0 "$probe (killed at ceiling)"
+    # A timeout is *unmeasured*, not *failed*, and rule 2 above says an
+    # unmeasured probe never scores 0. Scoring it 0 asserted a correctness
+    # failure the suite does not have — v0.0.27's scorecard reported
+    # `correctness 83.3%` purely because this ceiling fired on a cold
+    # target dir, while the same suite run directly passed 5739/0.
+    #
+    # N/A keeps it honest and keeps it loud: N/A rows are printed and they
+    # lower the reported rubric coverage, so a suite that never finishes
+    # cannot quietly vanish from the denominator either.
+    record "$repo" tests correctness 5 "did not finish within ${PROBE_TIMEOUT}s" NA \
+      "$probe — killed at the ceiling, so not measured (raise --timeout to score it)"
   elif [ "$rc" -ne 0 ] && [ $((passed+failed)) -eq 0 ]; then
     record "$repo" tests correctness 5 "build failed" 0 "$probe (rc=$rc)"
   else
