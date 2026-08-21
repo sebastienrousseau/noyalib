@@ -234,6 +234,15 @@ enum Frame {
         key: String,
         /// The typed key that produced `key`, kept for the collision check.
         key_value: Value,
+        /// Whether `key` is eligible to be read as a `<<` merge key.
+        ///
+        /// Only a **plain** `<<` scalar is: the YAML merge type gives
+        /// `tag:yaml.org,2002:merge` to a plain `<<`, while a quoted `"<<"`
+        /// and an alias resolving to the string `<<` both resolve to
+        /// `...:str`. `key` is the *stringified* key, identical in every
+        /// case, so the distinction has to be carried from where the
+        /// scalar's presentation was still known.
+        key_may_merge: bool,
         key_span: (usize, usize),
         start: usize,
         anchor: Option<String>,
@@ -430,7 +439,11 @@ impl<'a> Loader<'a> {
                 // reached this value *through* an alias — a read resolves
                 // through (issue #149), a write must refuse (would splice the
                 // anchor's bytes, a different key).
-                self.push_node(value, SpanTree::Alias(Box::new(span_tree)), input)?;
+                // An alias is never a merge key either. The merge tag is
+                // resolved from a plain `<<` *scalar*; `<<: *x` where `*x`
+                // happens to resolve to the string `\"<<\"` is an ordinary
+                // key whose value is that string.
+                self.push_node(value, SpanTree::Alias(Box::new(span_tree)), input, false)?;
             }
             Event::Scalar {
                 value,
@@ -451,6 +464,11 @@ impl<'a> Loader<'a> {
                     && matches!(style, crate::parser::ScalarStyle::Plain)
                     && anchor.is_none()
                     && tag.is_none();
+                // Decide merge-key eligibility here, while the scalar's style
+                // is still in hand — `resolve_untagged_scalar` returns a
+                // `Value::String("<<")` for a plain and a quoted `<<` alike.
+                let is_plain_merge_candidate =
+                    matches!(style, crate::parser::ScalarStyle::Plain);
                 let v =
                     if let Some(t) = tag {
                         if self.config.tag_registry.as_ref().is_some_and(|r| {
@@ -480,7 +498,7 @@ impl<'a> Loader<'a> {
                     let _ = self.anchor_def_spans.insert(name.clone(), span.start);
                     let _ = self.anchor_map.insert(name, (v.clone(), st.clone()));
                 }
-                self.push_node(v, st, input)?;
+                self.push_node(v, st, input, is_plain_merge_candidate)?;
             }
             Event::SequenceStart {
                 anchor, tag, span, ..
@@ -520,7 +538,8 @@ impl<'a> Loader<'a> {
                     if let Some(name) = anchor {
                         let _ = self.anchor_map.insert(name, (v.clone(), st.clone()));
                     }
-                    self.push_node(v, st, input)?;
+                    // A sequence or mapping is never the string `<<`.
+                    self.push_node(v, st, input, false)?;
                 } else {
                     return Err(Error::parse_at(
                         "unexpected sequence end",
@@ -575,7 +594,8 @@ impl<'a> Loader<'a> {
                     if let Some(name) = anchor {
                         let _ = self.anchor_map.insert(name, (v.clone(), st.clone()));
                     }
-                    self.push_node(v, st, input)?;
+                    // A sequence or mapping is never the string `<<`.
+                    self.push_node(v, st, input, false)?;
                 } else {
                     return Err(Error::parse_at("unexpected mapping end", input, span.start));
                 }
@@ -585,7 +605,22 @@ impl<'a> Loader<'a> {
     }
 
     #[inline]
-    fn push_node(&mut self, value: Value, span: SpanTree, input: &str) -> Result<()> {
+    /// Push a completed node into the enclosing frame.
+    ///
+    /// `may_be_merge_key` says whether this value is *eligible* to be read
+    /// as a `<<` merge key. Only a **plain** scalar is: the YAML merge type
+    /// gives `tag:yaml.org,2002:merge` to a plain `<<`, while a quoted
+    /// `"<<"` resolves to `tag:yaml.org,2002:str` and is an ordinary key.
+    /// By the time a scalar reaches here it is a `Value::String("<<")`
+    /// either way, so the distinction has to be carried in rather than
+    /// re-derived.
+    fn push_node(
+        &mut self,
+        value: Value,
+        span: SpanTree,
+        input: &str,
+        may_be_merge_key: bool,
+    ) -> Result<()> {
         if self.stack.is_empty() {
             self.docs.push((value, span));
             return Ok(());
@@ -619,7 +654,8 @@ impl<'a> Loader<'a> {
                 // a merge key (`<<`) that will be buffered rather than
                 // inserted — merge values bypass the collision check, so
                 // the clone would be pure waste on `<<`-heavy documents.
-                let is_buffered_merge_key = matches!(&value, Value::String(s) if s == MERGE_KEY)
+                let is_buffered_merge_key = may_be_merge_key
+                    && matches!(&value, Value::String(s) if s == MERGE_KEY)
                     && !matches!(self.config.merge_key_policy, MergeKeyPolicy::AsOrdinary);
                 let key_value = if is_buffered_merge_key {
                     Value::Null
@@ -658,6 +694,7 @@ impl<'a> Loader<'a> {
                     typed_keys: old_typed_keys,
                     key: key_str,
                     key_value,
+                    key_may_merge: may_be_merge_key,
                     key_span,
                     start: old_start,
                     anchor: old_anchor,
@@ -671,13 +708,14 @@ impl<'a> Loader<'a> {
                 typed_keys,
                 key,
                 key_value,
+                key_may_merge,
                 key_span,
                 start,
                 anchor,
                 merge_values,
                 tag,
             } => {
-                let is_merge = key == MERGE_KEY;
+                let is_merge = *key_may_merge && key == MERGE_KEY;
                 let merge_treat_as_ordinary =
                     matches!(self.config.merge_key_policy, MergeKeyPolicy::AsOrdinary);
                 let merge_reject = matches!(self.config.merge_key_policy, MergeKeyPolicy::Error);
@@ -880,6 +918,9 @@ enum NoSpanFrame {
         // The typed key value the current `key` string was derived
         // from; consumed by the collision check in the value arm.
         key_value: Value,
+        /// Whether `key` may be read as a `<<` merge key — see the same
+        /// field on [`Frame::MappingValue`].
+        key_may_merge: bool,
         anchor: Option<String>,
         merge_values: Vec<Value>,
         tag: Option<(String, String)>,
@@ -1064,7 +1105,7 @@ impl<'a> NoSpanLoader<'a> {
                 {
                     return Err(Error::RepetitionLimitExceeded);
                 }
-                self.push_value(value)?;
+                self.push_value(value, false)?;
             }
             Event::Scalar {
                 value,
@@ -1092,11 +1133,17 @@ impl<'a> NoSpanLoader<'a> {
                     } else {
                         resolve_untagged_scalar(value, style, self.config)
                     };
+                // Merge-key eligibility is decided here, while the scalar's
+                // presentation is still known — `resolve_untagged_scalar`
+                // yields `Value::String("<<")` for a plain and a quoted `<<`
+                // alike.
+                let is_plain_merge_candidate =
+                    matches!(style, crate::parser::ScalarStyle::Plain);
                 if let Some(name) = anchor {
                     let _ = self.anchor_def_spans.insert(name.clone(), span.start);
                     let _ = self.anchor_map.insert(name, v.clone());
                 }
-                self.push_value(v)?;
+                self.push_value(v, is_plain_merge_candidate)?;
             }
             Event::SequenceStart { anchor, tag, span } => {
                 self.depth += 1;
@@ -1120,7 +1167,7 @@ impl<'a> NoSpanLoader<'a> {
                     if let Some(name) = anchor {
                         let _ = self.anchor_map.insert(name, v.clone());
                     }
-                    self.push_value(v)?;
+                    self.push_value(v, false)?;
                 }
             }
             Event::MappingStart { anchor, tag, span } => {
@@ -1157,14 +1204,19 @@ impl<'a> NoSpanLoader<'a> {
                     if let Some(name) = anchor {
                         let _ = self.anchor_map.insert(name, v.clone());
                     }
-                    self.push_value(v)?;
+                    self.push_value(v, false)?;
                 }
             }
         }
         Ok(())
     }
 
-    fn push_value(&mut self, value: Value) -> Result<()> {
+    /// Push a completed value into the enclosing frame.
+    ///
+    /// `may_be_merge_key` mirrors `push_node` on the span-tracking loader:
+    /// only a **plain** `<<` scalar is a merge key, and by the time a value
+    /// arrives here it is a `Value::String("<<")` however it was written.
+    fn push_value(&mut self, value: Value, may_be_merge_key: bool) -> Result<()> {
         if self.stack.is_empty() {
             self.docs.push(value);
             return Ok(());
@@ -1192,7 +1244,8 @@ impl<'a> NoSpanLoader<'a> {
                 // Skip the clone on merge keys that will be buffered
                 // rather than inserted; merge values bypass the
                 // collision check, so the clone would be waste.
-                let is_buffered_merge_key = matches!(&value, Value::String(s) if s == MERGE_KEY)
+                let is_buffered_merge_key = may_be_merge_key
+                    && matches!(&value, Value::String(s) if s == MERGE_KEY)
                     && !matches!(self.config.merge_key_policy, MergeKeyPolicy::AsOrdinary);
                 let key_value = if is_buffered_merge_key {
                     Value::Null
@@ -1206,6 +1259,7 @@ impl<'a> NoSpanLoader<'a> {
                     let old_merge_values = core::mem::take(merge_values);
                     let old_tag = tag.take();
                     *self.stack.last_mut().unwrap() = NoSpanFrame::MappingValue {
+                        key_may_merge: may_be_merge_key,
                         map: old_map,
                         typed_keys: old_typed_keys,
                         key,
@@ -1221,11 +1275,12 @@ impl<'a> NoSpanLoader<'a> {
                 typed_keys,
                 key,
                 key_value,
+                key_may_merge,
                 anchor,
                 merge_values,
                 tag,
             } => {
-                let is_merge = key == MERGE_KEY;
+                let is_merge = *key_may_merge && key == MERGE_KEY;
                 let merge_treat_as_ordinary =
                     matches!(self.config.merge_key_policy, MergeKeyPolicy::AsOrdinary);
                 let merge_reject = matches!(self.config.merge_key_policy, MergeKeyPolicy::Error);
@@ -1689,5 +1744,97 @@ r: *z
         let via_span_full =
             crate::parser::parse(src, &config).expect("span-full loader accepts the same stream");
         assert_eq!(via_span_full.len(), 3);
+    }
+}
+
+#[cfg(test)]
+mod merge_key_eligibility_tests {
+    //! Unit coverage for "only a plain `<<` is a merge key".
+    //!
+    //! The integration matrix in `tests/merge_key_plain_only.rs` drives
+    //! this through documents on both the streaming and AST paths, which
+    //! is the behaviour that matters. These pin the decision at the level
+    //! where it is actually made, because the interesting property is a
+    //! negative one: by the time a key reaches the mapping arms it is a
+    //! `Value::String("<<")` whatever its presentation was, so the *only*
+    //! thing keeping a quoted `"<<"` from merging is the flag threaded in
+    //! from the scalar site.
+    //!
+    //! Two loaders exist — the span-tracking one and the no-span one —
+    //! each with its own frame enum and its own pair of merge checks.
+    //! Four sites in total, which is why the first attempt at this fix
+    //! patched one of them and changed nothing observable.
+
+    use super::{MERGE_KEY, MergeKeyPolicy, Value};
+
+    /// Reproduces the eligibility decision made at both `MappingKey` arms.
+    fn buffered_as_merge(value: &Value, may_be_merge_key: bool, policy: MergeKeyPolicy) -> bool {
+        may_be_merge_key
+            && matches!(value, Value::String(s) if s == MERGE_KEY)
+            && !matches!(policy, MergeKeyPolicy::AsOrdinary)
+    }
+
+    /// Reproduces the decision made at both `MappingValue` arms.
+    fn treated_as_merge(key: &str, key_may_merge: bool) -> bool {
+        key_may_merge && key == MERGE_KEY
+    }
+
+    #[test]
+    fn a_plain_double_angle_is_eligible() {
+        let v = Value::String(MERGE_KEY.to_owned());
+        assert!(buffered_as_merge(&v, true, MergeKeyPolicy::Auto));
+        assert!(treated_as_merge(MERGE_KEY, true));
+    }
+
+    #[test]
+    fn a_non_plain_double_angle_is_not_eligible() {
+        // The quoted case: same `Value`, same key string, flag false.
+        let v = Value::String(MERGE_KEY.to_owned());
+        assert!(!buffered_as_merge(&v, false, MergeKeyPolicy::Auto));
+        assert!(!treated_as_merge(MERGE_KEY, false));
+    }
+
+    #[test]
+    fn the_value_alone_cannot_distinguish_them() {
+        // The reason the flag has to be threaded at all: presentation is
+        // gone, so both spellings are literally the same value here.
+        let plain = Value::String(MERGE_KEY.to_owned());
+        let quoted = Value::String(MERGE_KEY.to_owned());
+        assert_eq!(plain, quoted, "identical once resolved");
+        assert!(buffered_as_merge(&plain, true, MergeKeyPolicy::Auto));
+        assert!(!buffered_as_merge(&quoted, false, MergeKeyPolicy::Auto));
+    }
+
+    #[test]
+    fn an_ordinary_key_is_never_eligible_however_the_flag_is_set() {
+        let v = Value::String("not-a-merge".to_owned());
+        assert!(!buffered_as_merge(&v, true, MergeKeyPolicy::Auto));
+        assert!(!treated_as_merge("not-a-merge", true));
+    }
+
+    #[test]
+    fn as_ordinary_policy_suppresses_even_a_plain_double_angle() {
+        let v = Value::String(MERGE_KEY.to_owned());
+        assert!(!buffered_as_merge(&v, true, MergeKeyPolicy::AsOrdinary));
+    }
+
+    #[test]
+    fn a_non_string_key_is_never_eligible() {
+        // `<<` as an integer or sequence key cannot be a merge key.
+        assert!(!buffered_as_merge(&Value::Null, true, MergeKeyPolicy::Auto));
+        assert!(!buffered_as_merge(
+            &Value::Sequence(vec![]),
+            true,
+            MergeKeyPolicy::Auto
+        ));
+    }
+
+    #[test]
+    fn eligibility_is_required_not_merely_sufficient() {
+        // Both halves must hold. Neither the flag alone nor the spelling
+        // alone may promote a key to a merge instruction.
+        assert!(!treated_as_merge("x", true), "flag alone is not enough");
+        assert!(!treated_as_merge(MERGE_KEY, false), "spelling alone is not enough");
+        assert!(treated_as_merge(MERGE_KEY, true), "both together");
     }
 }

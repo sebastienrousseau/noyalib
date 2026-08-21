@@ -370,3 +370,52 @@ fn directive_only_stream_parses_as_null() {
     let v: Value = from_str("---\n").unwrap();
     assert!(v.is_null());
 }
+
+// ── Only a plain `<<` is a merge key ─────────────────────────────────────
+//
+// The YAML merge type tags a *plain* `<<` scalar with
+// `tag:yaml.org,2002:merge`. A quoted `"<<"`, and an alias that happens to
+// resolve to the string `<<`, both resolve to `...:str` and are ordinary
+// keys. Both were being read as merge instructions, because by the time a
+// key reaches the loader's mapping handling it is a `Value::String("<<")`
+// whichever way it was written — the presentation is gone. Eligibility is
+// now decided where the style is still in hand and carried through
+// `push_node`.
+//
+// The full matrix, asserted on both the streaming and AST paths, is in
+// `merge_key_plain_only.rs`; these are the ones that must never regress
+// silently.
+
+#[test]
+fn regression_quoted_merge_spelling_is_an_ordinary_key() {
+    let v: Value = from_str("out:\n  \"<<\": 1\n  y: 2\n").expect("a quoted `<<` is just a key");
+    assert_eq!(v["out"]["<<"], Value::from(1));
+    assert_eq!(v["out"]["y"], Value::from(2));
+}
+
+#[test]
+fn regression_alias_to_merge_spelling_is_an_ordinary_key() {
+    let v: Value =
+        from_str("k: &k \"<<\"\nout:\n  *k : 1\n  y: 2\n").expect("an alias key is not a merge");
+    assert_eq!(v["out"]["<<"], Value::from(1));
+    assert_eq!(v["out"]["y"], Value::from(2));
+}
+
+#[test]
+fn regression_plain_merge_key_still_merges() {
+    // The counterweight: narrowing eligibility must not break the real
+    // thing. A plain `<<` merges and does not survive as a literal key.
+    let v: Value = from_str("base: &b\n  x: 1\n  y: 2\nout:\n  <<: *b\n").expect("plain merge");
+    assert_eq!(v["out"]["x"], Value::from(1));
+    assert_eq!(v["out"]["y"], Value::from(2));
+    assert!(v["out"].get("<<").is_none());
+}
+
+#[test]
+fn regression_quoted_merge_spelling_beside_a_real_merge() {
+    // Both in one mapping: the plain one merges, the quoted one stays.
+    let v: Value =
+        from_str("base: &b\n  x: 1\nout:\n  <<: *b\n  \"<<\": 2\n").expect("both in one mapping");
+    assert_eq!(v["out"]["x"], Value::from(1));
+    assert_eq!(v["out"]["<<"], Value::from(2));
+}
