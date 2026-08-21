@@ -307,9 +307,10 @@ fn a_plain_merge_key_with_a_scalar_target_is_refused_on_both_paths() {
         from_str::<Value>(y).is_err(),
         "scalar merge target must be refused"
     );
+    // Refused either by `load_all` itself or by the document it yields.
     let ast_err = load_all(y)
         .ok()
         .and_then(|mut i| i.next())
-        .map_or(true, |r| r.is_err());
+        .is_none_or(|r| r.is_err());
     assert!(ast_err, "the AST path must refuse it too");
 }
