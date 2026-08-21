@@ -189,6 +189,24 @@ impl<'a> Lookahead<'a> {
             Self::Raw(ev) | Self::Processed(ev) => ev,
         }
     }
+
+    /// Take the event out, whichever state the slot was in.
+    ///
+    /// `next_event` hands a parked event back unchanged in both states,
+    /// though for different reasons: a `Processed` one has already been
+    /// resolved, anchored and recorded, and doing that again would
+    /// double-record it; a `Raw` one is parked deliberately by the
+    /// merge-key path via `peek_parser_event` and then dropped with
+    /// `skip_event`, so resolving it on the way out would expand a
+    /// `<<: *base` that is meant to be consumed whole.
+    ///
+    /// Same action, different justifications — so this is one method
+    /// rather than two match arms that look like a distinction.
+    fn into_inner(self) -> Event<'a> {
+        match self {
+            Self::Raw(ev) | Self::Processed(ev) => ev,
+        }
+    }
 }
 
 impl<'a> StreamingDeserializer<'a> {
@@ -353,15 +371,10 @@ impl<'a> StreamingDeserializer<'a> {
     }
 
     fn next_event(&mut self) -> Result<Event<'a>> {
-        match self.current.take() {
-            // A Raw slot is returned as-is. The merge path parks an
-            // unresolved alias here on purpose (`peek_parser_event`) and then
-            // drops it with `skip_event`; resolving on the way out would
-            // expand a `<<: *base` that is meant to be consumed whole.
-            Some(Lookahead::Raw(ev)) => return Ok(ev),
-            // Already done — reprocessing double-records it.
-            Some(Lookahead::Processed(ev)) => return Ok(ev),
-            None => {}
+        // Both states hand the event back unchanged — see
+        // [`Lookahead::into_inner`] for why each does.
+        if let Some(slot) = self.current.take() {
+            return Ok(slot.into_inner());
         }
 
         let mut ev_opt = None;
@@ -2260,6 +2273,18 @@ mod lookahead_tests {
         assert!(matches!(
             Lookahead::Processed(alias("n")).event(),
             Event::Alias { .. }
+        ));
+    }
+
+    #[test]
+    fn into_inner_yields_the_event_from_either_state() {
+        assert!(matches!(
+            Lookahead::Raw(alias("n")).into_inner(),
+            Event::Alias { .. }
+        ));
+        assert!(matches!(
+            Lookahead::Processed(scalar("a")).into_inner(),
+            Event::Scalar { .. }
         ));
     }
 
