@@ -62,7 +62,7 @@
 
 ```toml
 [dependencies]
-noyalib = "0.0.26"
+noyalib = "0.0.27"
 ```
 
 ### As a CLI tool
@@ -106,7 +106,7 @@ maintainer runbook.
 
 ```toml
 [dependencies]
-noyalib = { version = "0.0.26", default-features = false }
+noyalib = { version = "0.0.27", default-features = false }
 ```
 
 Requires `alloc`. Core data binding (`from_str`, `to_string`, `Value`,
@@ -192,7 +192,7 @@ the application needs.
 ```toml
 # Example: rich diagnostics + schema validation
 [dependencies]
-noyalib = { version = "0.0.26", features = ["miette", "validate-schema"] }
+noyalib = { version = "0.0.27", features = ["miette", "validate-schema"] }
 ```
 
 **Optional features:** `lossless-u64` preserves YAML integer scalars above
@@ -338,7 +338,7 @@ tables for each.
 -[dependencies]
 -serde_yaml = "0.9"
 +[dependencies]
-+noyalib = "0.0.26"
++noyalib = "0.0.27"
 ```
 
 ```diff
@@ -385,7 +385,7 @@ Crates.io state verified **2026-05-08**:
 | [`serde-yaml-ng`](https://crates.io/crates/serde-yaml-ng) | `0.10.0` | yes | [`MIGRATION-FROM-SERDE-YAML-NG.md`](doc/MIGRATION-FROM-SERDE-YAML-NG.md) |
 | [`serde-norway`](https://crates.io/crates/serde-norway) | `0.9.42` | yes | [`MIGRATION-FROM-SERDE-NORWAY.md`](doc/MIGRATION-FROM-SERDE-NORWAY.md) |
 | [`serde-yaml-bw`](https://crates.io/crates/serde-yaml-bw) | `2.5.6` | **no** (breaking 2.x; 8-variant `Value` with `Alias`) | [`MIGRATION-FROM-SERDE-YAML-BW.md`](doc/MIGRATION-FROM-SERDE-YAML-BW.md) |
-| [`serde-saphyr`](https://crates.io/crates/serde-saphyr) | `0.0.26` | **no** (no `Value` DOM, streaming-only) | [`MIGRATION-FROM-SERDE-SAPHYR.md`](doc/MIGRATION-FROM-SERDE-SAPHYR.md) |
+| [`serde-saphyr`](https://crates.io/crates/serde-saphyr) | `0.0.27` | **no** (no `Value` DOM, streaming-only) | [`MIGRATION-FROM-SERDE-SAPHYR.md`](doc/MIGRATION-FROM-SERDE-SAPHYR.md) |
 | [`yaml-spanned`](https://crates.io/crates/yaml-spanned) | `0.0.3` | **no** (parser-only, no `to_string`) | [`MIGRATION-FROM-YAML-SPANNED.md`](doc/MIGRATION-FROM-YAML-SPANNED.md) |
 
 The umbrella index is
@@ -1320,7 +1320,7 @@ disagreement on priorities.
 - **You have a hard dependency budget that cannot tolerate a
   Grisu / Ryu float formatter and a hash-randomised lookup
   table.** Default profile carries 8 runtime deps. `noyalib =
-  { version = "0.0.26", default-features = false, features =
+  { version = "0.0.27", default-features = false, features =
   ["std"] }` (or the equivalent `features = ["minimal"]`) drops
   to 5 — `itoa`, `ryu`, and `serde_ignored` become opt-in via
   the `fast-int` / `fast-float` / `strict-deserialise` features.

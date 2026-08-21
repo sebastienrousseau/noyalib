@@ -7,6 +7,87 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+## [v0.0.27] - 2026-08-21
+
+Two correctness fixes in alias and merge-key handling, both found by
+consumers pointing a real workload at a published release.
+
+### Fixed
+
+- **An alias used as a value beside a merge key came back unresolved**
+  (#301, reported and diagnosed by
+  [@mathstuf](https://github.com/mathstuf), fixed in #304).
+
+  ```yaml
+  base: &b   { x: 1, y: 1 }
+  other: &other 2
+  overridden:
+    <<: *b
+    y: *other        # deserialised as the string "other", not 2
+  ```
+
+  `peek_event` and `next_event` each read from either the replay stack or
+  the parser, and resolved aliases on the **parser branch only** — then
+  labelled both results processed. An alias arriving through replay was
+  therefore stored as though it were fully processed while still being an
+  `Event::Alias`. The replay stack only exists once a merge has injected
+  something, which is why the same document works with the alias written
+  above the `<<:` line and fails below it.
+
+  Alias resolution now runs whichever branch the event came from, in one
+  `process_event`; `anchor_and_record` is the single place doing anchor
+  bookkeeping; and the lookahead slot is typed (`Lookahead::{Raw,
+  Processed}`) so its two consumers stop inferring which kind they hold,
+  in opposite directions. Inline alias resolutions 3 -> 1, anchor/record
+  pairs 3 -> 1.
+
+- **Only a plain `<<` scalar is a merge key.** The YAML merge type gives
+  `tag:yaml.org,2002:merge` to a **plain** `<<`; a quoted `"<<"`, and an
+  alias resolving to the string `<<`, both resolve to
+  `tag:yaml.org,2002:str`. Both were being read as merge instructions.
+
+  By the time a key reaches the mapping arms it is a
+  `Value::String("<<")` however it was written, so eligibility is now
+  decided at each scalar-resolution site and carried in the frame.
+  `loader.rs` holds two complete loaders, each with its own frame enum
+  and its own pair of merge checks — four sites in all. The first attempt
+  patched one and changed nothing observable.
+
+  `Value::apply_merge` remains style-blind by nature and is documented as
+  such: it operates on an already-built `Value`, where presentation does
+  not exist.
+
+  > **Behaviour change.** A document where a quoted `"<<"` or an alias to
+  > `<<` currently triggers a merge will stop merging and gain a literal
+  > `<<` key instead. This is spec-correct, but it is **silent** — no
+  > error is raised. If you rely on either spelling, quote-strip it to a
+  > plain `<<` before upgrading.
+
+### Added
+
+- `merge_keys_with_aliases` example — merge keys and aliases in one
+  mapping, and which spellings of `<<` are merges.
+- Benchmarks for `<<:` expansion (`merge_key_single_anchor`,
+  `merge_key_sequence_of_anchors`, `merge_key_quoted_is_ordinary`, and a
+  `merge_key_absent_baseline`). The existing `merge_small` /
+  `merge_nested` / `merge_concat` time `Value::merge()`, an API method on
+  an already-parsed value; nothing measured merge-key expansion during
+  parsing.
+- 63 tests across three tiers: 13 unit, 35 integration (the merge-key
+  matrix asserts every case on **both** the streaming and AST paths), and
+  8 regression, plus a differential oracle comparing `from_str::<Value>`
+  against `load_all`, which shares no lookahead code.
+
+### Changed
+
+- `doc/ECOSYSTEM.md` and `doc/scorecard.json` regenerated against this
+  release. The previous scorecard's `audit_vulnerabilities` rows were
+  never actually measured — `cargo audit` was exiting 101 under a
+  shadowing shell alias and the probe's fallback read that as zero
+  advisories. That probe was fixed in v0.0.26; this is the first
+  scorecard where those rows are earned.
+
+
 ## [v0.0.26] - 2026-08-20
 
 ### Fixed
