@@ -211,6 +211,10 @@ name = "cst_wrapped_flow_edit"
 path = "examples/cst_wrapped_flow_edit.rs"
 
 [[example]]
+name = "merge_keys_with_aliases"
+path = "examples/merge_keys_with_aliases.rs"
+
+[[example]]
 name = "lossless_u64"
 path = "examples/lossless_u64.rs"
 required-features = ["lossless-u64"]
