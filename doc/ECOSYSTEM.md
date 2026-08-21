@@ -373,9 +373,19 @@ because a score that hides its own limits is a marketing number:
 - It measures the *presence* of fuzz targets, not fuzzing effort. Two
   targets that have never found anything score the same as two that
   have.
-- `dependency_closure` uses a flat budget of 60 crates for every repo.
-  A WASM shim and a language server do not deserve the same budget;
-  this should become per-repo.
+- **`dependency_closure` used one flat budget of 60 for every repo.** That
+  is why `noya-cli` scored 0 at 130 crates. The obvious fix — a per-repo
+  budget — turned out to be the wrong one: any number picked now would be
+  a number picked so the current value clears it. The rule that survived
+  scrutiny is about *propagation*. A library's dependencies are inherited
+  by every downstream consumer, so their size is a cost imposed on other
+  people and belongs in the score; `noyalib` sits at 12. A leaf binary's
+  are not inherited, and 130 of `noya-cli`'s crates are `miette`'s `fancy`
+  renderer giving `noyavalidate` source excerpts and carets — which for a
+  validator is the job, not bloat. Leaves are therefore **recorded and not
+  scored**: the count stays in the table and the JSON, so a leaf that
+  doubles its tree is obvious, but it is not judged against a line nobody
+  can defend.
 - `Code-Review` cannot be fixed by any script, and no probe pretends
   otherwise.
 - Test *pass ratio* is scored, but not test *quality*. A suite of 4,000
