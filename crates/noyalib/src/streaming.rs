@@ -7,6 +7,46 @@
 //! eliminating all intermediate allocations. Anchors and aliases are
 //! handled natively via event buffering and replay. The common
 //! `<<: *anchor` merge-key pattern is expanded natively.
+//!
+//! # Where events come from
+//!
+//! Every event reaches the deserializer through one of two sources, and
+//! the distinction is the source of this module's sharpest edges:
+//!
+//! * **the parser**, for text not yet read; and
+//! * **the replay stack**, for buffered events being re-emitted — the
+//!   contents of an anchored node standing in for an alias, or a mapping
+//!   injected by a `<<:` merge.
+//!
+//! Anything that reads an event must handle *both*. Alias resolution once
+//! ran on the parser branch only, so an alias arriving through replay was
+//! stored as though it were fully processed while still being an
+//! `Event::Alias`, and deserialised as the literal anchor name. The replay
+//! stack only exists after a merge injects something, which is why the bug
+//! reproduced solely when an alias-valued entry followed a `<<:` key and
+//! vanished when the same entry was written above it (#301).
+//!
+//! [`StreamingDeserializer::process_event`] is now the single place that
+//! resolves an alias, and [`StreamingDeserializer::anchor_and_record`] the
+//! single place that does anchor bookkeeping, so a future branch cannot
+//! quietly acquire a partial copy.
+//!
+//! # The lookahead slot
+//!
+//! One event of lookahead is parked in `current`, and it may hold either a
+//! **raw** parser event or a **processed** one — see [`Lookahead`]. The two
+//! are not interchangeable:
+//!
+//! * the merge-key path fills the slot deliberately raw, because it must
+//!   see `<<: *base` as an unresolved `Event::Alias` in order to treat it
+//!   as a merge instruction rather than a value; while
+//! * a processed event must never be put through processing again, because
+//!   recording is append-only — a second pass puts the event into an
+//!   in-flight anchor buffer twice, and every alias to that anchor then
+//!   replays a duplicated stream.
+//!
+//! Both consumers used to infer which kind they held, in opposite
+//! directions. The state now travels with the event.
 
 use crate::prelude::*;
 use crate::prelude::{f64_fract, f64_mul_add};
@@ -74,7 +114,10 @@ pub struct StreamingDeserializer<'a> {
     config: ParseConfig,
     tag_registry: Option<Arc<crate::TagRegistry>>,
     depth: usize,
-    current: Option<Event<'a>>,
+    /// One-event lookahead. See [`Lookahead`] — the slot holds either a
+    /// raw parser event or a fully processed one, and which it is has to
+    /// travel with the event rather than be inferred by the consumer.
+    current: Option<Lookahead<'a>>,
     raw_str_mode: bool,
     anchor_events: FxHashMap<String, SmallVec<[BufferedEvent; SMALL_VEC_SIZE]>>,
     anchor_def_spans: FxHashMap<String, usize>,
@@ -100,6 +143,69 @@ impl fmt::Debug for StreamingDeserializer<'_> {
             .field("replay_stack_len", &self.replay_stack.len())
             .field("is_recording", &self.recording.is_some())
             .finish()
+    }
+}
+
+/// What state the one-event lookahead slot is in.
+///
+/// The slot is written by three different paths and read by two, and the
+/// two kinds of event are not interchangeable:
+///
+/// * `Raw` is straight off the parser. An `Event::Alias` is still visible
+///   *as an alias*, which the merge-key path depends on — it needs to see
+///   `<<: *base` before anything resolves it.
+/// * `Processed` has been through alias resolution, [`handle_anchor`] and
+///   [`maybe_record`]. Putting it through those again is not idempotent:
+///   a second `maybe_record` pushes the event into the in-flight anchor
+///   buffer twice, so every alias to that anchor replays a corrupted
+///   stream.
+///
+/// Before this existed both kinds shared one `Option<Event>` field, and
+/// each consumer guessed. `next_event` assumed processed and returned raw
+/// events unresolved — which is why an alias used as a merge-key override
+/// value (`y: *other` beside `<<: *b`) came back unresolved (#301, found
+/// by @mathstuf). `next_parser_event` assumed the opposite and would
+/// double-record an already-processed one.
+///
+/// Making the state travel with the event turns both of those from a
+/// guess into a match arm.
+#[derive(Debug)]
+enum Lookahead<'a> {
+    /// Straight from the parser: aliases unresolved, not yet recorded.
+    Raw(Event<'a>),
+    /// Alias-resolved, anchor-handled and recorded. Do not reprocess.
+    Processed(Event<'a>),
+}
+
+impl<'a> Lookahead<'a> {
+    fn event(&self) -> &Event<'a> {
+        match self {
+            Self::Raw(ev) | Self::Processed(ev) => ev,
+        }
+    }
+
+    fn event_mut(&mut self) -> &mut Event<'a> {
+        match self {
+            Self::Raw(ev) | Self::Processed(ev) => ev,
+        }
+    }
+
+    /// Take the event out, whichever state the slot was in.
+    ///
+    /// `next_event` hands a parked event back unchanged in both states,
+    /// though for different reasons: a `Processed` one has already been
+    /// resolved, anchored and recorded, and doing that again would
+    /// double-record it; a `Raw` one is parked deliberately by the
+    /// merge-key path via `peek_parser_event` and then dropped with
+    /// `skip_event`, so resolving it on the way out would expand a
+    /// `<<: *base` that is meant to be consumed whole.
+    ///
+    /// Same action, different justifications — so this is one method
+    /// rather than two match arms that look like a distinction.
+    fn into_inner(self) -> Event<'a> {
+        match self {
+            Self::Raw(ev) | Self::Processed(ev) => ev,
+        }
     }
 }
 
@@ -165,31 +271,44 @@ impl<'a> StreamingDeserializer<'a> {
         self
     }
 
+    /// Peek without resolving anything. The merge-key path calls this so an
+    /// `Event::Alias` is still visible as an alias.
     fn peek_parser_event(&mut self) -> Result<&Event<'a>> {
         if self.current.is_none() {
             let event = self
                 .parser
                 .next_event()
                 .map_err(|e| Error::parse_at(&*e.message, self.input, e.index))?;
-            self.current = Some(event);
+            self.current = Some(Lookahead::Raw(event));
         }
-        Ok(self.current.as_ref().unwrap())
+        Ok(self.current.as_ref().unwrap().event())
     }
 
     fn next_parser_event(&mut self) -> Result<Event<'a>> {
-        let mut ev = if let Some(ev) = self.current.take() {
-            ev
-        } else {
-            self.parser
-                .next_event()
-                .map_err(|e| Error::parse_at(&*e.message, self.input, e.index))?
-        };
-        self.handle_anchor(&mut ev);
-        self.maybe_record(&ev);
-        Ok(ev)
+        match self.current.take() {
+            // Already anchored and recorded — doing it again would push a
+            // duplicate into any in-flight anchor buffer.
+            Some(Lookahead::Processed(ev)) => Ok(ev),
+            Some(Lookahead::Raw(mut ev)) => {
+                self.anchor_and_record(&mut ev);
+                Ok(ev)
+            }
+            None => {
+                let mut ev = self
+                    .parser
+                    .next_event()
+                    .map_err(|e| Error::parse_at(&*e.message, self.input, e.index))?;
+                self.anchor_and_record(&mut ev);
+                Ok(ev)
+            }
+        }
     }
 
     fn peek_event(&mut self) -> Result<&Event<'a>> {
+        // A Raw slot is deliberately left alone here. The merge-key path
+        // fills it via `peek_parser_event` precisely so it can see an
+        // unresolved `Event::Alias`, and then consumes it itself; resolving
+        // it on the way past defeats that and breaks merge handling.
         if self.current.is_none() {
             // Drain empty replay frames in a loop, not via tail-recursion.
             // Arbitrary YAML inputs can create deep empty-frame chains
@@ -202,33 +321,60 @@ impl<'a> StreamingDeserializer<'a> {
                 }
                 let _ = self.replay_stack.pop();
             }
-            let mut ev = if let Some(ev) = ev_opt {
+            // Alias resolution has to happen whichever side the event came
+            // from. It used to run only on the parser branch, so an alias
+            // replayed out of injected merge content was stored as though it
+            // were processed while still being an `Event::Alias` — which is
+            // exactly the `y: *other` beside `<<: *b` case in #301.
+            let raw = if let Some(ev) = ev_opt {
                 ev
             } else {
-                let mut ev = self
-                    .parser
+                self.parser
                     .next_event()
-                    .map_err(|e| Error::parse_at(&*e.message, self.input, e.index))?;
-                if let Event::Alias {
-                    ref anchor,
-                    ref span,
-                } = ev
-                {
-                    let start = span.start;
-                    ev = self.resolve_alias(anchor, start)?;
-                }
-                ev
+                    .map_err(|e| Error::parse_at(&*e.message, self.input, e.index))?
             };
-            self.handle_anchor(&mut ev);
-            self.maybe_record(&ev);
-            self.current = Some(ev);
+            let ev = self.process_event(raw)?;
+            self.current = Some(Lookahead::Processed(ev));
         }
-        Ok(self.current.as_ref().unwrap())
+        Ok(self.current.as_ref().unwrap().event())
+    }
+
+    /// Anchor bookkeeping + recording, without alias resolution.
+    ///
+    /// Split out because `next_parser_event` needs exactly this pair and must
+    /// *not* resolve: it is the raw accessor the merge-key path relies on to
+    /// see an `Event::Alias` as an alias. Three call sites carried their own
+    /// copy before, which is the same duplication that let alias resolution
+    /// go missing from one branch and produce #301.
+    ///
+    /// Not idempotent: `maybe_record` appends, so calling it twice on one
+    /// event puts that event into the in-flight anchor buffer twice.
+    fn anchor_and_record(&mut self, ev: &mut Event<'a>) {
+        self.handle_anchor(ev);
+        self.maybe_record(ev);
+    }
+
+    /// Alias resolution + [`Self::anchor_and_record`], in one place so the
+    /// callers cannot drift apart. Only ever apply to a [`Lookahead::Raw`]
+    /// event.
+    fn process_event(&mut self, mut ev: Event<'a>) -> Result<Event<'a>> {
+        if let Event::Alias {
+            ref anchor,
+            ref span,
+        } = ev
+        {
+            let start = span.start;
+            ev = self.resolve_alias(anchor, start)?;
+        }
+        self.anchor_and_record(&mut ev);
+        Ok(ev)
     }
 
     fn next_event(&mut self) -> Result<Event<'a>> {
-        if let Some(ev) = self.current.take() {
-            return Ok(ev);
+        // Both states hand the event back unchanged — see
+        // [`Lookahead::into_inner`] for why each does.
+        if let Some(slot) = self.current.take() {
+            return Ok(slot.into_inner());
         }
 
         let mut ev_opt = None;
@@ -239,27 +385,17 @@ impl<'a> StreamingDeserializer<'a> {
             }
             let _ = self.replay_stack.pop();
         }
-        if let Some(mut ev) = ev_opt {
-            self.handle_anchor(&mut ev);
-            self.maybe_record(&ev);
-            return Ok(ev);
+        if let Some(ev) = ev_opt {
+            // Same gap as `peek_event` had: a replayed event can still be an
+            // unresolved alias.
+            return self.process_event(ev);
         }
 
-        let mut ev = self
+        let ev = self
             .parser
             .next_event()
             .map_err(|e| Error::parse_at(&*e.message, self.input, e.index))?;
-        if let Event::Alias {
-            ref anchor,
-            ref span,
-        } = ev
-        {
-            let start = span.start;
-            ev = self.resolve_alias(anchor, start)?;
-        }
-        self.handle_anchor(&mut ev);
-        self.maybe_record(&ev);
-        Ok(ev)
+        self.process_event(ev)
     }
 
     fn buffered_to_event(&self, be: BufferedEvent) -> Event<'a> {
@@ -538,7 +674,7 @@ impl<'a> StreamingDeserializer<'a> {
     /// `next_value_seed` reroutes back through `deserialize_any`.
     fn take_tag_from_current(&mut self) -> Option<(String, String)> {
         let _ = self.peek_event().ok()?;
-        match self.current.as_mut() {
+        match self.current.as_mut().map(Lookahead::event_mut) {
             Some(
                 Event::Scalar { tag, .. }
                 | Event::SequenceStart { tag, .. }
@@ -572,7 +708,7 @@ impl<'a> StreamingDeserializer<'a> {
             Event::Scalar { tag, .. }
             | Event::SequenceStart { tag, .. }
             | Event::MappingStart { tag, .. },
-        ) = self.current.as_mut()
+        ) = self.current.as_mut().map(Lookahead::event_mut)
         {
             *tag = Some(t);
         }
@@ -1075,7 +1211,7 @@ impl<'de> serde_core::Deserializer<'de> for &mut StreamingDeserializer<'de> {
         // RFC 4648 base64 payload. Recognise the tag on the current
         // event, decode without buffering, and hand the bytes to the
         // visitor — the AST fallback path is unnecessary here.
-        let is_binary = match self.current.as_ref() {
+        let is_binary = match self.current.as_ref().map(Lookahead::event) {
             Some(Event::Scalar { tag: Some(t), .. }) => {
                 let full = format!("{}{}", t.0, t.1);
                 crate::de::is_binary_tag(&full)
@@ -1446,7 +1582,7 @@ impl<'de> serde_core::de::VariantAccess<'de> for StreamingVariantAccess<'_, 'de>
     fn unit_variant(self) -> Result<()> {
         let ev = self.de.next_event()?;
         if !matches!(ev, Event::MappingEnd { .. }) {
-            self.de.current = Some(ev);
+            self.de.current = Some(Lookahead::Processed(ev));
             self.de.skip_value()?;
             if !matches!(self.de.next_event()?, Event::MappingEnd { .. }) {
                 return Err(Error::Invalid("expected mapping end".into()));
@@ -2040,4 +2176,124 @@ fn filter_merge_entries(
         i = end;
     }
     Some(out)
+}
+
+#[cfg(test)]
+mod lookahead_tests {
+    //! Unit coverage for the lookahead slot's two states.
+    //!
+    //! The integration tests in `tests/streaming_alias_lookahead.rs` drive
+    //! this through real documents, which is the behaviour that matters.
+    //! These pin the type itself, because the whole point of [`Lookahead`]
+    //! is that a consumer can no longer confuse a raw parser event with a
+    //! processed one — and a silent change to the accessors would put that
+    //! confusion straight back.
+
+    use super::{Event, Lookahead, ScalarStyle};
+    use crate::parser::scanner_span_default;
+
+    fn scalar(v: &'static str) -> Event<'static> {
+        Event::Scalar {
+            value: std::borrow::Cow::Borrowed(v),
+            style: ScalarStyle::Plain,
+            anchor: None,
+            tag: None,
+            span: scanner_span_default(),
+        }
+    }
+
+    fn alias(name: &str) -> Event<'static> {
+        Event::Alias {
+            anchor: name.to_string(),
+            span: scanner_span_default(),
+        }
+    }
+
+    #[test]
+    fn event_reads_through_both_states() {
+        let raw = Lookahead::Raw(scalar("a"));
+        let done = Lookahead::Processed(scalar("a"));
+        assert!(matches!(raw.event(), Event::Scalar { .. }));
+        assert!(matches!(done.event(), Event::Scalar { .. }));
+    }
+
+    #[test]
+    fn event_mut_reads_through_both_states() {
+        let mut raw = Lookahead::Raw(scalar("a"));
+        let mut done = Lookahead::Processed(scalar("a"));
+        assert!(matches!(raw.event_mut(), Event::Scalar { .. }));
+        assert!(matches!(done.event_mut(), Event::Scalar { .. }));
+    }
+
+    #[test]
+    fn event_mut_actually_mutates_in_place() {
+        // `take_tag_from_current` reaches through this to steal a tag, so a
+        // copy rather than a borrow would silently lose the edit.
+        let mut slot = Lookahead::Processed(Event::Scalar {
+            value: std::borrow::Cow::Borrowed("a"),
+            style: ScalarStyle::Plain,
+            anchor: None,
+            tag: Some(("!".into(), "custom".into())),
+            span: scanner_span_default(),
+        });
+        if let Event::Scalar { tag, .. } = slot.event_mut() {
+            let stolen = tag.take();
+            assert!(stolen.is_some(), "tag was there to take");
+        }
+        match slot.event() {
+            Event::Scalar { tag, .. } => assert!(tag.is_none(), "the take must stick"),
+            other => panic!("unexpected event: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn the_two_states_are_distinguishable() {
+        // The entire reason the type exists. Holding the same event both
+        // ways must still be tellable apart, or the consumers are back to
+        // guessing and #301 comes with them.
+        let raw = Lookahead::Raw(alias("n"));
+        let done = Lookahead::Processed(alias("n"));
+        assert!(matches!(raw, Lookahead::Raw(_)));
+        assert!(matches!(done, Lookahead::Processed(_)));
+        assert!(!matches!(raw, Lookahead::Processed(_)));
+        assert!(!matches!(done, Lookahead::Raw(_)));
+    }
+
+    #[test]
+    fn an_alias_can_sit_in_either_state() {
+        // A Raw alias is what the merge path parks deliberately; a
+        // Processed one must already have been resolved, so an
+        // `Event::Alias` wearing the Processed label is the bug #301 was.
+        // The type cannot enforce that, which is why the resolution now
+        // lives in one `process_event` rather than at each call site.
+        assert!(matches!(
+            Lookahead::Raw(alias("n")).event(),
+            Event::Alias { .. }
+        ));
+        assert!(matches!(
+            Lookahead::Processed(alias("n")).event(),
+            Event::Alias { .. }
+        ));
+    }
+
+    #[test]
+    fn into_inner_yields_the_event_from_either_state() {
+        assert!(matches!(
+            Lookahead::Raw(alias("n")).into_inner(),
+            Event::Alias { .. }
+        ));
+        assert!(matches!(
+            Lookahead::Processed(scalar("a")).into_inner(),
+            Event::Scalar { .. }
+        ));
+    }
+
+    #[test]
+    fn debug_is_available_for_tracing_the_slot() {
+        // The #301 diagnosis came from printing this slot; losing `Debug`
+        // would remove the only way to see a mislabelled event.
+        let s = format!("{:?}", Lookahead::Raw(alias("n")));
+        assert!(s.contains("Raw"), "state must be visible: {s}");
+        assert!(s.contains("Alias"), "event must be visible: {s}");
+    }
 }

@@ -419,3 +419,76 @@ fn regression_quoted_merge_spelling_beside_a_real_merge() {
     assert_eq!(v["out"]["x"], Value::from(1));
     assert_eq!(v["out"]["<<"], Value::from(2));
 }
+
+// ── #301: alias resolution across the streaming lookahead slot ───────────
+//
+// The deserializer's one-event lookahead is filled from either the replay
+// stack (injected merge content) or the parser, and alias resolution ran on
+// the parser branch only — so an alias arriving via replay was stored as
+// "processed" while still an unresolved `Event::Alias` and deserialised as
+// the literal anchor name. Found by @mathstuf. The replay stack only exists
+// after a merge injects something, so the ordering pairs below are the
+// shape of the bug: identical documents that differed only in whether the
+// alias came before or after the `<<:` key.
+//
+// The full matrix lives in `streaming_alias_lookahead.rs`; these are the
+// few that must never regress silently.
+
+#[test]
+fn regression_301_alias_value_after_merge_key_resolves() {
+    #[derive(serde::Deserialize)]
+    struct Doc {
+        overridden: BTreeMap<String, i64>,
+    }
+    let d: Doc = from_str(
+        "base: &b\n  x: 1\n  y: 1\nother: &other\n  2\noverridden:\n  <<: *b\n  y: *other\n",
+    )
+    .expect("alias after a merge key must resolve");
+    assert_eq!(d.overridden["x"], 1);
+    assert_eq!(d.overridden["y"], 2, "resolved to the anchor, not the name");
+}
+
+#[test]
+fn regression_301_alias_order_around_a_merge_key_is_irrelevant() {
+    #[derive(serde::Deserialize)]
+    struct Doc {
+        overridden: BTreeMap<String, i64>,
+    }
+    let after: Doc =
+        from_str("base: &b\n  y: 1\nn: &n 2\noverridden:\n  <<: *b\n  y: *n\n").expect("after");
+    let before: Doc =
+        from_str("base: &b\n  y: 1\nn: &n 2\noverridden:\n  y: *n\n  <<: *b\n").expect("before");
+    assert_eq!(after.overridden, before.overridden, "order must not matter");
+    assert_eq!(after.overridden["y"], 2);
+}
+
+#[test]
+fn regression_301_anchor_after_a_merge_replays_exactly_once() {
+    // `maybe_record` is not idempotent: recording an event twice puts it in
+    // the in-flight anchor buffer twice, so the alias replays a duplicated
+    // stream. A doubled mapping is the visible symptom.
+    let v: Value =
+        from_str("base: &b\n  x: 1\nout:\n  <<: *b\n  later: &later\n    k: 1\ncopy: *later\n")
+            .expect("parse");
+    assert_eq!(v["copy"]["k"], Value::from(1));
+    assert_eq!(
+        v["copy"].as_mapping().map(noyalib::Mapping::len),
+        Some(1),
+        "a double-recorded anchor shows up as extra entries"
+    );
+}
+
+#[test]
+fn regression_301_merge_key_alias_is_still_consumed_whole() {
+    // The counterweight: the merge path parks an *unresolved* alias in the
+    // slot on purpose and drops it. Resolving on the way out expands a
+    // `<<: *base` that was meant to be consumed as a merge instruction, so
+    // this must keep producing a merged mapping rather than a nested one.
+    let v: Value = from_str("base: &b\n  x: 1\n  y: 2\nout:\n  <<: *b\n").expect("parse");
+    assert_eq!(v["out"]["x"], Value::from(1));
+    assert_eq!(v["out"]["y"], Value::from(2));
+    assert!(
+        v["out"].get("<<").is_none(),
+        "the merge key must not survive as a literal key"
+    );
+}
