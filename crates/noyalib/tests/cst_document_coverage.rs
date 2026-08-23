@@ -991,3 +991,106 @@ fn coverage_doc_span_at_anchored_tagged_keep_chomped_keeps_trailing_blanks() {
         assert_eq!(&doc.source()[s..e], want, "span for {src:?}");
     }
 }
+
+// ── Writing into an implicit null ───────────────────────────────────
+
+#[test]
+fn coverage_doc_set_value_fills_in_an_implicit_null() {
+    // An implicit null has no bytes to replace, but it does have a place
+    // for a value: right after the `:` the loader recorded it on. The
+    // read side is unchanged — `span_at` still reports None above.
+    let mut doc = parse_document("a:\nb: 2\n").unwrap();
+    doc.set_value("a", &Value::from(9)).unwrap();
+    assert_eq!(doc.to_string(), "a: 9\nb: 2\n");
+
+    // Nested, and with the entry's own indentation.
+    let mut doc = parse_document("p:\n  a:\n  b: 2\n").unwrap();
+    doc.set_value("p.a", &Value::from(9)).unwrap();
+    assert_eq!(doc.to_string(), "p:\n  a: 9\n  b: 2\n");
+
+    // An empty sequence item, whose indicator is the `-`.
+    let mut doc = parse_document("a:\n  -\n  - 2\n").unwrap();
+    doc.set_value("a[0]", &Value::from(9)).unwrap();
+    assert_eq!(doc.to_string(), "a:\n  - 9\n  - 2\n");
+
+    // CRLF documents keep their terminator: the splice is inside the line.
+    let mut doc = parse_document("a:\r\nb: 2\r\n").unwrap();
+    doc.set_value("a", &Value::from(9)).unwrap();
+    assert_eq!(doc.to_string(), "a: 9\r\nb: 2\r\n");
+}
+
+#[test]
+fn coverage_doc_filling_in_lands_before_a_trailing_comment() {
+    // The insertion point is the byte after the indicator, which is ahead
+    // of any comment on the line. Behind it, the value would be commented
+    // out — valid YAML that silently means something else.
+    let mut doc = parse_document("a:   # todo\nb: 2\n").unwrap();
+    doc.set_value("a", &Value::from(9)).unwrap();
+    assert_eq!(doc.to_string(), "a: 9   # todo\nb: 2\n");
+    // And the value really is 9, not a commented-out nothing.
+    let back = parse_document(&doc.to_string()).unwrap();
+    assert_eq!(back.as_value().get("a"), Some(&Value::from(9)));
+}
+
+#[test]
+fn coverage_doc_filling_in_takes_the_style_a_replacement_would() {
+    // The site has no bytes, so there is no quoting intent to preserve —
+    // which is the state the neighbour rule already handles. Filling in
+    // and overwriting must not disagree about the result.
+    let mut filled = parse_document("a:\nb: \"x\"\nc: \"y\"\n").unwrap();
+    filled.set_value("a", &Value::from("hi")).unwrap();
+    let mut overwritten = parse_document("a: z\nb: \"x\"\nc: \"y\"\n").unwrap();
+    overwritten.set_value("a", &Value::from("hi")).unwrap();
+    assert_eq!(filled.to_string(), "a: \"hi\"\nb: \"x\"\nc: \"y\"\n");
+    assert_eq!(filled.to_string(), overwritten.to_string());
+}
+
+#[test]
+fn coverage_doc_insert_over_an_implicit_null_does_not_duplicate_the_key() {
+    // `insert_entry_value` upserts: an existing key is rewritten in place.
+    // An implicit null is an existing key, and appending there gave the
+    // mapping two `a` entries at Ok — visible only in the bytes, since the
+    // loader resolves duplicates last-wins.
+    let mut doc = parse_document("a:\nb: 2\n").unwrap();
+    doc.insert_entry_value("", "a", &Value::from(9)).unwrap();
+    assert_eq!(doc.to_string(), "a: 9\nb: 2\n");
+    assert_eq!(doc.to_string().matches("a:").count(), 1);
+
+    // The same, with the comment the entry carries.
+    let mut doc = parse_document("a:   # todo\nb: 2\n").unwrap();
+    doc.insert_entry_value("", "a", &Value::from(9)).unwrap();
+    assert_eq!(doc.to_string(), "a: 9   # todo\nb: 2\n");
+}
+
+#[test]
+fn coverage_doc_insert_still_creates_an_override_for_a_merged_in_key() {
+    // The boundary the implicit-null case has to stay clear of. A key a
+    // `<<` merge brings into view has no key token in this mapping, so
+    // there is nothing here to write into and an explicit entry is the
+    // right answer — unchanged behaviour.
+    let mut doc = parse_document("base: &m\n  k: 1\nc:\n  <<: *m\n  z: 2\n").unwrap();
+    doc.insert_entry_value("c", "k", &Value::from(9)).unwrap();
+    assert_eq!(
+        doc.to_string(),
+        "base: &m\n  k: 1\nc:\n  <<: *m\n  z: 2\n  k: 9\n"
+    );
+
+    // And a genuinely new key still appends.
+    let mut doc = parse_document("a: 1\nb: 2\n").unwrap();
+    doc.insert_entry_value("", "z", &Value::from(9)).unwrap();
+    assert_eq!(doc.to_string(), "a: 1\nb: 2\nz: 9\n");
+}
+
+#[test]
+fn coverage_doc_explicit_null_and_quoted_empty_are_replacements_not_fills() {
+    // #165 drew the line at a *plain empty* scalar, and it holds: these
+    // two carry real bytes, so they take the replacement path and the
+    // separator already in the source is not doubled.
+    let mut doc = parse_document("a: ~\nb: 2\n").unwrap();
+    doc.set_value("a", &Value::from(9)).unwrap();
+    assert_eq!(doc.to_string(), "a: 9\nb: 2\n");
+
+    let mut doc = parse_document("a: ''\nb: 2\n").unwrap();
+    doc.set_value("a", &Value::from(9)).unwrap();
+    assert_eq!(doc.to_string(), "a: 9\nb: 2\n");
+}
