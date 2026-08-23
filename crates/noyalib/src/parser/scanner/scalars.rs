@@ -87,11 +87,17 @@ impl Scanner<'_> {
                 }
                 let c = remaining[len];
                 if c == b':' {
-                    let next = if len + 1 < remaining.len() {
-                        remaining[len + 1]
-                    } else {
-                        0
-                    };
+                    // End of input terminates a plain scalar exactly as a
+                    // space or a line break does, so `a:` is the mapping
+                    // `{a: null}` and not the scalar `"a:"`. Substituting a
+                    // NUL for the absent byte did not do that: NUL is not in
+                    // IS_BLANK_OR_BREAK, so the scalar swallowed the colon.
+                    // The predicate twelve lines below already had this
+                    // right.
+                    if len + 1 >= remaining.len() {
+                        break;
+                    }
+                    let next = remaining[len + 1];
                     if Self::is_blank_or_break(next)
                         || (in_flow && (next == b',' || next == b']' || next == b'}'))
                     {
@@ -198,11 +204,13 @@ impl Scanner<'_> {
 
                 // Check for ':' followed by blank/flow-indicator.
                 if c == b':' {
-                    let next = if length + 1 < remaining.len() {
-                        remaining[length + 1]
-                    } else {
-                        0
-                    };
+                    // See the fast path above: end of input terminates the
+                    // scalar and leaves the colon to be scanned as a value
+                    // indicator.
+                    if length + 1 >= remaining.len() {
+                        break;
+                    }
+                    let next = remaining[length + 1];
                     if Self::is_blank_or_break(next)
                         || (in_flow && (next == b',' || next == b']' || next == b'}'))
                     {
