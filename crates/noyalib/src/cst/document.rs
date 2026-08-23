@@ -212,6 +212,12 @@ impl Document {
         // Reads resolve an alias through to its anchor (issue #149); the
         // through-alias flag only matters for writes (see `write_span`).
         let ((s, e), _through_alias) = resolve_span(value, span_tree, &segments)?;
+        // A zero-width span is an implicit null, which has no bytes to read
+        // (#165). The resolver now hands the position over for the write
+        // paths' benefit; discarding it is this reader's job.
+        if s == e {
+            return None;
+        }
         Some(trim_value_span(&self.source, s, e))
     }
 
@@ -582,6 +588,15 @@ impl Document {
         };
 
         let snapshot = self.clone();
+        // Filling in an implicit null: the span abuts the `:` / `-`, so the
+        // separator is this writer's to supply. Splicing stays verbatim.
+        let filled;
+        let fragment = if s == e {
+            filled = fill_in(fragment);
+            filled.as_str()
+        } else {
+            fragment
+        };
         self.replace_span(s, e, fragment)?;
 
         // Parse fallibly rather than through `as_value`. A splice that
@@ -631,6 +646,10 @@ impl Document {
                  reference; edit the anchor definition or replace the alias explicitly"
             )));
         }
+        if s == e {
+            return implicit_null_insertion_point(&self.source, s)
+                .ok_or_else(|| Error::Parse(format!("path not found: {path}")));
+        }
         Ok(trim_value_span(&self.source, s, e))
     }
 
@@ -649,6 +668,15 @@ impl Document {
     /// Non-string values (numbers, booleans, null) are emitted plain
     /// regardless of the existing style — quoting them would change
     /// the parsed type round-trip.
+    ///
+    /// # Filling in an implicit null
+    ///
+    /// An absent block-mapping value (`a:`) or empty sequence item (`- `) has
+    /// no bytes to replace, so the value is *inserted* after the `:` / `-`
+    /// instead — before any comment on the line, and with no style to inherit,
+    /// so the neighbour rule above decides the spelling on its own.
+    /// [`span_at`](Self::span_at) still reports `None` there: the node has
+    /// nothing to read, which is a separate question from where a write goes.
     ///
     /// # Errors
     ///
@@ -671,9 +699,22 @@ impl Document {
     /// ```
     pub fn set_value(&mut self, path: &str, value: &Value) -> Result<()> {
         let (s, e) = self.write_span(path)?;
-        let kind = leaf_kind_at(&self.green, s).ok_or_else(|| {
-            Error::Parse("could not locate green-tree leaf at target span".into())
-        })?;
+        // An empty span is an implicit null's insertion point, not a value to
+        // overwrite: there is no scalar leaf there to read a style from, and
+        // no `: ` separator either, since the span starts right after the
+        // indicator. Everything else about the site — the neighbours, the
+        // column — is read the same way.
+        let filling_in = s == e;
+        let kind = if filling_in {
+            // No existing bytes means no quoting *intent* to preserve, which
+            // is exactly the state `PlainScalar` denotes to the neighbour rule
+            // below.
+            SyntaxKind::PlainScalar
+        } else {
+            leaf_kind_at(&self.green, s).ok_or_else(|| {
+                Error::Parse("could not locate green-tree leaf at target span".into())
+            })?
+        };
         // Neighbour-aware styling: when the site is currently emitted
         // plain (so there is no quoting *intent* to preserve) and a
         // sibling style dominates the surrounding `BlockMapping`,
@@ -687,6 +728,11 @@ impl Document {
             entry_col,
         };
         let fragment = format_value_for_site(value, &ctx)?;
+        let fragment = if filling_in {
+            fill_in(&fragment)
+        } else {
+            fragment
+        };
         self.replace_span(s, e, &fragment)
     }
 
@@ -1855,6 +1901,12 @@ impl Document {
     /// cannot offer, since a fragment that restructures the document
     /// is still valid YAML.
     ///
+    /// An existing key is an **upsert**: its value is rewritten in place,
+    /// including when that value is an implicit null (`a:`), which is an entry
+    /// the mapping already has rather than one to append. A key it only
+    /// *inherits* through a `<<` merge has no entry here at all, so an
+    /// explicit one is created to override it.
+    ///
     /// # Errors
     ///
     /// - `mapping_path` does not resolve to a mapping, or the mapping
@@ -1938,16 +1990,24 @@ impl Document {
                  value — `remove` the entry and insert it afresh, or splice it with `set`"
             )));
         }
-        // A key present in the typed view but with no span of its own
-        // is inherited through a `<<` merge: there is nothing to
-        // replace, and an explicit entry overrides it.
+        // A key present in the typed view but with no *value* span used to be
+        // read as inherited through a `<<` merge — nothing to replace, so an
+        // explicit entry overrides it. Since #165 that no longer identifies a
+        // merge on its own: an implicit null (`a:`) has no value span either,
+        // and appending there produced a second `a` key at `Ok`. The key token
+        // separates them. A merged-in key has none, because it is not in this
+        // mapping's source at all; an implicit null has one, so the entry is
+        // already here and `set` writes into it.
         let child_path = if mapping_path.is_empty() {
             key.to_owned()
         } else {
             format!("{mapping_path}.{key}")
         };
         let existing = if in_mapping && addressable {
-            self.span_at(&child_path)
+            self.span_at(&child_path).or_else(|| {
+                self.key_span(&child_path)
+                    .and_then(|_| self.write_span(&child_path).ok())
+            })
         } else {
             None
         };
@@ -2971,6 +3031,36 @@ fn trim_value_span(source: &str, start: usize, end: usize) -> (usize, usize) {
     }
 }
 
+/// The empty span a value would be written into at an implicit null.
+///
+/// An absent block-mapping value or empty sequence item has no bytes of its
+/// own, so there is nothing to *replace* — but there is somewhere to insert,
+/// and the loader already records where: the zero-width leaf sits on the `:`
+/// or `-` indicator the value would have followed. The insertion point is the
+/// byte after it, which is before any trailing comment on the line, so a value
+/// written there lands ahead of the comment rather than behind it.
+///
+/// `None` when `pos` is not one of those two indicators. A zero-width span can
+/// in principle arrive from elsewhere, and inserting at a position this
+/// function has not identified would splice into the middle of something.
+///
+/// A caller writing here must supply the separator itself: the span abuts the
+/// indicator, and unlike a replacement span there is no `: ` already in the
+/// source. [`fill_in`] is that one byte, so the two writers cannot disagree
+/// about it.
+fn implicit_null_insertion_point(source: &str, pos: usize) -> Option<(usize, usize)> {
+    match source.as_bytes().get(pos) {
+        Some(b':' | b'-') => Some((pos + 1, pos + 1)),
+        _ => None,
+    }
+}
+
+/// A value written at an [`implicit_null_insertion_point`], separated from the
+/// indicator it follows.
+fn fill_in(fragment: &str) -> String {
+    format!(" {fragment}")
+}
+
 /// Whether `[start, end)` denotes a keep-chomped block scalar: it begins with
 /// a `|` / `>` block indicator carrying a `+` chomping indicator on the header
 /// line (`|+`, `>+`, `|+2`, `|2+`). A value span's start is the block
@@ -3087,8 +3177,11 @@ fn resolve_span(
         return match span_tree {
             // A zero-width leaf marks an implicit null (an absent
             // block-mapping value or empty sequence item): the node has no
-            // source bytes of its own, so it has no span.
-            SpanTree::Leaf(s, e) if s == e => None,
+            // source bytes of its own. Its *position* is still the `:` / `-`
+            // indicator it followed, which is where a value would be written,
+            // so the resolver reports it and each caller decides. `span_at`
+            // discards it (#165: an implicit null has no span to read);
+            // `write_span` turns it into an insertion point.
             SpanTree::Leaf(s, e) => Some(((*s, *e), false)),
             SpanTree::Sequence { start, end, .. } | SpanTree::Mapping { start, end, .. } => {
                 Some(((*start, *end), false))
