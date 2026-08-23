@@ -62,7 +62,7 @@
 
 ```toml
 [dependencies]
-noyalib = "0.0.27"
+noyalib = "0.0.28"
 ```
 
 ### As a CLI tool
@@ -106,7 +106,7 @@ maintainer runbook.
 
 ```toml
 [dependencies]
-noyalib = { version = "0.0.27", default-features = false }
+noyalib = { version = "0.0.28", default-features = false }
 ```
 
 Requires `alloc`. Core data binding (`from_str`, `to_string`, `Value`,
@@ -192,7 +192,7 @@ the application needs.
 ```toml
 # Example: rich diagnostics + schema validation
 [dependencies]
-noyalib = { version = "0.0.27", features = ["miette", "validate-schema"] }
+noyalib = { version = "0.0.28", features = ["miette", "validate-schema"] }
 ```
 
 **Optional features:** `lossless-u64` preserves YAML integer scalars above
@@ -338,7 +338,7 @@ tables for each.
 -[dependencies]
 -serde_yaml = "0.9"
 +[dependencies]
-+noyalib = "0.0.27"
++noyalib = "0.0.28"
 ```
 
 ```diff
@@ -1320,7 +1320,7 @@ disagreement on priorities.
 - **You have a hard dependency budget that cannot tolerate a
   Grisu / Ryu float formatter and a hash-randomised lookup
   table.** Default profile carries 8 runtime deps. `noyalib =
-  { version = "0.0.27", default-features = false, features =
+  { version = "0.0.28", default-features = false, features =
   ["std"] }` (or the equivalent `features = ["minimal"]`) drops
   to 5 — `itoa`, `ryu`, and `serde_ignored` become opt-in via
   the `fast-int` / `fast-float` / `strict-deserialise` features.
