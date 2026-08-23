@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
+// Copyright (c) 2026 Noyalib. All rights reserved.
+
 //! A `:` at end of input is a value indicator (issue #312).
 //!
 //! `a:` and `a:\n` are the same document one byte apart, and the
