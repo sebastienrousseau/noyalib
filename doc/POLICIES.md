@@ -457,6 +457,20 @@ feature opts in to rayon thread-pool use).
 | `mips64-unknown-linux-gnuabi64` | Miri (big-endian sanity, scheduled job) |
 | `wasm32-unknown-unknown` | `wasm-pack test --node` (per-PR) |
 
+### Bare-metal, `no_std` (CI-verified every PR)
+
+Built with `--no-default-features`; `alloc` is required, `std` is not
+present at all on these targets.
+
+| Target | Verification |
+|---|---|
+| `thumbv7em-none-eabihf` | `cargo check --no-default-features --lib --locked --target …` (per-PR) |
+| `riscv32imac-unknown-none-elf` | same |
+| `aarch64-unknown-none` | same |
+
+See [§ no_std (alloc-only) build](#no_std-alloc-only-build) for why
+these carry the invariant that `wasm32-unknown-unknown` cannot.
+
 ### no_std (alloc-only) build
 
 The `noyalib` crate compiles cleanly with **`--no-default-features`**
@@ -471,18 +485,26 @@ workflow job runs exactly that on every PR.
 > test what the name suggests. This document previously recommended that
 > exact combination; corrected in v0.0.16.
 
-**Hosted targets only.** "no_std" here means *alloc-only on a hosted
-target* — the crate is verified with `--no-default-features` on the
-native host and on `wasm32-unknown-unknown`. It does **not** currently
-build for bare-metal `*-none` targets (e.g. `thumbv7em-none-eabihf`,
-`riscv32imac-unknown-none-elf`, `aarch64-unknown-none`), and those are
-not in the supported set above. Two things block it, both pre-existing:
+**Bare-metal included.** `no_std` here means *alloc-only*, and it is
+verified on five configurations on every PR: the native host,
+`wasm32-unknown-unknown`, and the three bare-metal `*-none` targets
+`thumbv7em-none-eabihf`, `riscv32imac-unknown-none-elf` and
+`aarch64-unknown-none`.
 
-1. `indexmap`, `rustc-hash` and `memchr` are declared without
-   `default-features = false`, so they pull `std` in transitively.
-2. The crate uses `rustc_hash::FxHashMap` / `FxHashSet`, which do not
-   exist without `std`; a bare-metal build would need `hashbrown` with
-   `FxBuildHasher` instead.
+The bare-metal targets are the ones that actually hold the line.
+`wasm32-unknown-unknown` has `std` available, so a dependency pulling
+it in unconditionally passes there — which is exactly how #210 went
+unnoticed. A `*-none` target has no `std` at all, so the same mistake
+fails the build.
+
+This section previously said bare-metal did **not** build, and named
+two blockers. Both were fixed and the text was not updated:
+
+1. `indexmap`, `rustc-hash` and `memchr` are now all declared
+   `default-features = false`, so nothing pulls `std` transitively.
+2. `FxHashMap` / `FxHashSet` are `hashbrown::HashMap` / `HashSet` with
+   `FxBuildHasher` (see the `no_std` prelude in `lib.rs`) rather than
+   the `rustc_hash` aliases, which do not exist without `std`.
 
 If you need bare-metal support, please open an issue — it is a tractable
 change, but it is a deliberate non-goal today rather than an oversight.

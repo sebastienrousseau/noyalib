@@ -40,10 +40,19 @@ jobs:
     # Wall-clock measurements (noyalib):
     #   Local M-series Mac (aarch64 NEON): ~32 min on a fresh sysroot.
     #   GitHub ubuntu-latest (x86_64, 2 vCPU): ~45+ min.
-    # 60 min leaves headroom for runner contention without letting
-    # a real hang sit forever; the scheduled `miri-full` still covers
-    # the deeper sweep plus big-endian.
-    timeout-minutes: 60
+    #
+    # Raised from 60 to 90 during v0.0.28. 60 was not headroom: #313
+    # finished in ~50 min and #314 — which adds only version strings and
+    # Markdown — was cancelled at exactly 60:00. A job whose typical run
+    # is 45-50 min against a 60 min ceiling flakes on runner contention
+    # alone, and a cancellation reports as a failed required check, which
+    # is indistinguishable from real undefined behaviour until someone
+    # opens the log.
+    #
+    # 90 still bounds a genuine hang well inside the 6h GitHub limit; the
+    # scheduled `miri-full` continues to cover the deeper sweep plus
+    # big-endian.
+    timeout-minutes: 90
     env:
       CARGO_TARGET_DIR: ${{ github.workspace }}/target-miri
     steps:

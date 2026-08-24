@@ -7,6 +7,47 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+## [v0.0.28] - 2026-08-23
+
+Two CST and scanner correctness fixes, both about an *implicit null* —
+a mapping entry whose value is absent. One could not be written to; the
+other was not recognised at end of input.
+
+### Fixed
+
+- **Inserting over an implicit null appended a duplicate key** (#310,
+  fixed in #311). `a:` followed by an insertion emitted a second `a`
+  entry rather than filling the empty one. The load-back oracle could
+  not see it: the loader resolves duplicates last-wins, so the document
+  round-tripped to the right value while the *bytes* carried a
+  duplicate. It also relocated the entry to the end of the mapping,
+  which stranded any trailing comment on the key it had just shadowed.
+
+- **A `:` at end of input was not read as a mapping indicator** (#312,
+  fixed in #313). `a:` and `a:\n` are the same document one byte apart
+  — the trailing newline is not content — yet the first loaded as the
+  scalar `"a:"` and the second as `{a: null}`. The plain-scalar scanner
+  substituted a NUL for the absent byte after the colon, and NUL is not
+  in `IS_BLANK_OR_BREAK`, so the scalar swallowed the colon instead of
+  stopping at it.
+
+  Four faces, all now matching PyYAML and Psych:
+
+  | Input | Before | After |
+  |---|---|---|
+  | `"a:"` | `String("a:")` | `{a: null}` |
+  | `"a: 1\nb:"` | **parse error** | `{a: 1, b: null}` |
+  | `"p:\n  a:"` | `{p: String("a:")}` | `{p: {a: null}}` |
+  | `"- a:"` | `[String("a:")]` | `[{a: null}]` |
+
+  The second was a hard parse error on valid YAML and is the one most
+  likely to be hit — it needs only a mapping with a blank last value and
+  no trailing newline, which `printf` without `\n`, heredocs and
+  generated fragments all produce. The other three were silent wrong
+  values.
+
+No public API change. No MSRV change (still 1.86.0).
+
 ## [v0.0.27] - 2026-08-21
 
 Two correctness fixes in alias and merge-key handling, both found by
