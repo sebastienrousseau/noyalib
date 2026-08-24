@@ -376,7 +376,7 @@ serde_json = { version = "1.0", optional = true }
 # `validate-schema` feature is on. Default features are disabled so
 # we don't drag in `reqwest` for HTTP `$ref` resolution; users who
 # need that can re-enable it via their own dep.
-jsonschema = { version = "0.49", optional = true, default-features = false }
+jsonschema = { version = "0.50", optional = true, default-features = false }
 # `figment` integration — drop-in `Provider` for the popular
 # layered-configuration crate. Pulled in only when the `figment`
 # feature is on so non-figment users don't pay for it.
@@ -389,7 +389,7 @@ figment = { version = "0.10", optional = true, features = ["env"] }
 # so an `--all-features` build doesn't pull in the saphyr crate
 # (which is fine on MSRV 1.86+ but still extra deps the rest of
 # the workspace doesn't need).
-serde-saphyr = { version = "1.0", optional = true }
+serde-saphyr = { version = "1.1", optional = true }
 # Parallel multi-document parsing — pulled in only when the
 # `parallel` feature is on. Rayon is the de-facto safe data-parallel
 # Rust crate and itself uses well-vetted unsafe internally; the
@@ -419,7 +419,7 @@ serde_bytes = "0.11"
 criterion = "0.8"
 proptest = "1.11"
 serde_yaml_ng = "0.10"
-yaml-rust2 = "0.11"
+yaml-rust2 = "0.12"
 rust-yaml = "1.0.1"
 # Bench-only competitor surface. None of these ship transitively
 # in any release artefact — they are dev-deps used exclusively by
