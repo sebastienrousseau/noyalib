@@ -77,6 +77,19 @@ jobs:
           # release workflow's `validate` job.
           echo "Version verified: $TAG_VERSION"
 
+      # Everything *else* that carries the version: Cargo.lock, the
+      # changelog heading, README install snippets, and — in the
+      # satellites — the core pin and any registry manifest. Added
+      # after v0.0.28, where noyalib-mcp's server.json and glama.json
+      # were missed and the mismatch only surfaced after the tag was
+      # pushed, forcing a tag deletion and re-tag.
+      #
+      # The same script is runnable locally *before* tagging, which is
+      # the point:  scripts/verify-release-versions.sh
+      - name: Verify every version-bearing file agrees
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: ./scripts/verify-release-versions.sh "${GITHUB_REF_NAME}"
+
   # ── Build checksums & SBOM ──────────────────────────────────────────
   artifacts:
     name: Build artifacts
