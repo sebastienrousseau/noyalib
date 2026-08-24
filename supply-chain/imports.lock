@@ -244,8 +244,8 @@ user-id = 155409
 user-login = "yescallop"
 
 [[publisher.fraction]]
-version = "0.15.4"
-when = "2026-04-21"
+version = "0.16.0"
+when = "2026-08-09"
 user-id = 3406
 user-login = "dnsl48"
 user-name = "Serge Latyntsev"
@@ -306,22 +306,10 @@ user-id = 55123
 user-login = "rust-lang-owner"
 
 [[publisher.hashbrown]]
-version = "0.16.1"
-when = "2025-11-20"
-user-id = 55123
-user-login = "rust-lang-owner"
-
-[[publisher.hashbrown]]
 version = "0.17.1"
 when = "2026-05-09"
 user-id = 55123
 user-login = "rust-lang-owner"
-
-[[publisher.hashlink]]
-version = "0.10.0"
-when = "2024-12-09"
-user-id = 6715
-user-login = "kyren"
 
 [[publisher.icu_locid_transform_data]]
 version = "1.5.1"
@@ -385,8 +373,8 @@ when = "2026-04-28"
 trusted-publisher = "github:wasm-bindgen/wasm-bindgen"
 
 [[publisher.jsonschema]]
-version = "0.49.9"
-when = "2026-08-09"
+version = "0.50.1"
+when = "2026-08-22"
 user-id = 82692
 user-login = "Stranger6667"
 user-name = "Dmitry Dygalo"
@@ -460,8 +448,8 @@ user-login = "cuviper"
 user-name = "Josh Stone"
 
 [[publisher.num-bigint]]
-version = "0.4.6"
-when = "2024-06-27"
+version = "0.4.8"
+when = "2026-07-05"
 user-id = 539
 user-login = "cuviper"
 user-name = "Josh Stone"
@@ -632,8 +620,8 @@ user-login = "dtolnay"
 user-name = "David Tolnay"
 
 [[publisher.referencing]]
-version = "0.49.9"
-when = "2026-08-09"
+version = "0.50.1"
+when = "2026-08-22"
 user-id = 82692
 user-login = "Stranger6667"
 user-name = "Dmitry Dygalo"
@@ -1039,12 +1027,6 @@ trusted-publisher = "github:bytecodealliance/wasm-tools"
 version = "0.244.0"
 when = "2026-01-06"
 trusted-publisher = "github:bytecodealliance/wasm-tools"
-
-[[publisher.yaml-rust2]]
-version = "0.10.4"
-when = "2025-09-14"
-user-id = 250563
-user-login = "Ethiraric"
 
 [[publisher.yaml-spanned]]
 version = "0.0.3"
@@ -1641,27 +1623,6 @@ who = "ChromeOS"
 criteria = "safe-to-run"
 version = "0.10.5"
 aggregated-from = "https://chromium.googlesource.com/chromiumos/third_party/rust_crates/+/refs/heads/main/cargo-vet/audits.toml?format=TEXT"
-
-[[audits.google.audits.lazy_static]]
-who = "Lukasz Anforowicz <lukasza@chromium.org>"
-criteria = "safe-to-deploy"
-version = "1.4.0"
-notes = '''
-I grepped for \"crypt\", \"cipher\", \"fs\", \"net\" - there were no hits.
-
-There are two places where `unsafe` is used.  Unsafe review notes can be found
-in https://crrev.com/c/5347418.
-
-This crate has been added to Chromium in https://crrev.com/c/3321895.
-'''
-aggregated-from = "https://chromium.googlesource.com/chromium/src/+/main/third_party/rust/chromium_crates_io/supply-chain/audits.toml?format=TEXT"
-
-[[audits.google.audits.lazy_static]]
-who = "Lukasz Anforowicz <lukasza@chromium.org>"
-criteria = "safe-to-deploy"
-delta = "1.4.0 -> 1.5.0"
-notes = "Unsafe review notes: https://crrev.com/c/5650836"
-aggregated-from = "https://chromium.googlesource.com/chromium/src/+/main/third_party/rust/chromium_crates_io/supply-chain/audits.toml?format=TEXT"
 
 [[audits.google.audits.litemap]]
 who = "Manish Goregaokar <manishearth@google.com>"
@@ -2559,12 +2520,6 @@ who = "Chris Martin <cmartin@mozilla.com>"
 criteria = "safe-to-deploy"
 delta = "0.30.0 -> 0.29.0"
 notes = "No unsafe code, mostly algorithms and parsing. Very unlikely to cause security issues."
-aggregated-from = "https://hg.mozilla.org/mozilla-central/raw-file/tip/supply-chain/audits.toml"
-
-[[audits.mozilla.audits.hashlink]]
-who = "Erich Gubler <erichdongubler@gmail.com>"
-criteria = "safe-to-deploy"
-delta = "0.10.0 -> 0.11.0"
 aggregated-from = "https://hg.mozilla.org/mozilla-central/raw-file/tip/supply-chain/audits.toml"
 
 [[audits.mozilla.audits.icu_collections]]

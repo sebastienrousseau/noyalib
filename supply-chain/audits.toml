@@ -403,7 +403,7 @@ end = "2027-05-09"
 
 [[trusted.hashlink]]
 criteria = "safe-to-run"
-user-id = 6715 # kyren
+user-id = 6715
 start = "2019-07-06"
 end = "2027-05-09"
 
@@ -1099,7 +1099,7 @@ end = "2027-05-09"
 
 [[trusted.yaml-rust2]]
 criteria = "safe-to-run"
-user-id = 250563 # Ethiraric
+user-id = 250563
 start = "2024-02-08"
 end = "2027-05-09"
 

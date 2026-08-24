@@ -51,16 +51,19 @@ criteria = "safe-to-deploy"
 suggest = false
 
 [[exemptions.granit-parser]]
-version = "1.0.1"
+version = "1.1.0"
 criteria = "safe-to-deploy"
+
+[[exemptions.hashlink]]
+version = "0.12.1"
+criteria = "safe-to-run"
 
 [[exemptions.jsonschema-regex]]
-version = "0.49.9"
+version = "0.50.1"
 criteria = "safe-to-deploy"
-suggest = false
 
 [[exemptions.jsonschema-value]]
-version = "0.49.9"
+version = "0.50.1"
 criteria = "safe-to-deploy"
 
 [[exemptions.micromap]]
@@ -87,7 +90,7 @@ criteria = "safe-to-deploy"
 suggest = false
 
 [[exemptions.serde-saphyr]]
-version = "1.0.1"
+version = "1.1.0"
 criteria = "safe-to-deploy"
 
 [[exemptions.sval]]
@@ -120,4 +123,8 @@ criteria = "safe-to-run"
 
 [[exemptions.winapi-x86_64-pc-windows-gnu]]
 version = "0.4.0"
+criteria = "safe-to-run"
+
+[[exemptions.yaml-rust2]]
+version = "0.12.0"
 criteria = "safe-to-run"
