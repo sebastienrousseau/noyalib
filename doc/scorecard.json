@@ -1,6 +1,6 @@
 {
   "harness_version": "1.0.0",
-  "generated_utc": "2026-08-21T22:30:21Z",
+  "generated_utc": "2026-08-24T10:39:39Z",
   "rustc": "rustc 1.97.1 (8bab26f4f 2026-07-14)",
   "host": "aarch64-apple-darwin",
   "network_probes": true,
@@ -11,14 +11,14 @@
   "probes_na": 9,
   "rubric_executed_pct": 92,
   "repos": {
-    "noyalib": {"sha": "712e6d5", "worktree": "clean", "version": "0.0.27"},
-    "noya-cli": {"sha": "08c78e0", "worktree": "clean", "version": "0.0.27"},
-    "noyalib-lsp": {"sha": "7862df7", "worktree": "clean", "version": "0.0.27"},
-    "noyalib-mcp": {"sha": "8b0f771", "worktree": "clean", "version": "0.0.27"},
-    "noyalib-wasm": {"sha": "ce55f06", "worktree": "clean", "version": "0.0.27"}
+    "noyalib": {"sha": "0a0c75f", "worktree": "clean", "version": "0.0.28"},
+    "noya-cli": {"sha": "d6b056e", "worktree": "clean", "version": "0.0.28"},
+    "noyalib-lsp": {"sha": "162cab2", "worktree": "clean", "version": "0.0.28"},
+    "noyalib-mcp": {"sha": "cd59aa5", "worktree": "clean", "version": "0.0.28"},
+    "noyalib-wasm": {"sha": "deb8de5", "worktree": "clean", "version": "0.0.28"}
   },
   "measurements": [
-    {"repo":"noyalib","id":"tests","category":"correctness","weight":5,"value":"5739 passed / 0 failed","score":1.0000,"probe":"cargo test --workspace --locked --default-features"},
+    {"repo":"noyalib","id":"tests","category":"correctness","weight":5,"value":"5754 passed / 0 failed","score":1.0000,"probe":"cargo test --workspace --locked --default-features"},
     {"repo":"noyalib","id":"spec_conformance","category":"correctness","weight":5,"value":"406/406 cases","score":1.0000,"probe":"cargo test -p noyalib --test yaml_compliance_report"},
     {"repo":"noyalib","id":"clippy","category":"code_health","weight":3,"value":"0 diagnostics (rc=0)","score":1.0000,"probe":"cargo clippy --workspace --all-targets --locked --default-features -- -D warnings"},
     {"repo":"noyalib","id":"rustfmt","category":"code_health","weight":1,"value":"clean","score":1.0000,"probe":"cargo fmt --all --check"},
@@ -41,7 +41,7 @@
     {"repo":"noyalib","id":"release_sbom","category":"release","weight":2,"value":"3 sbom assets","score":1.0000,"probe":"gh release view --json assets | grep -i sbom"},
     {"repo":"noyalib","id":"dependabot_open","category":"release","weight":4,"value":"0 open alerts","score":1.0000,"probe":"gh api /repos/sebastienrousseau/noyalib/dependabot/alerts?state=open"},
     {"repo":"noyalib","id":"ci_main_green","category":"release","weight":3,"value":"success","score":1.0000,"probe":"gh run list --branch main --limit 1 --json conclusion"},
-    {"repo":"noyalib","id":"crates_io_current","category":"release","weight":2,"value":"tree 0.0.27 / crates.io 0.0.27","score":1.0000,"probe":"crates.io/api/v1/crates/noyalib .max_stable_version"},
+    {"repo":"noyalib","id":"crates_io_current","category":"release","weight":2,"value":"tree 0.0.28 / crates.io 0.0.28","score":1.0000,"probe":"crates.io/api/v1/crates/noyalib .max_stable_version"},
     {"repo":"noyalib","id":"openssf_scorecard","category":"release","weight":3,"value":"8.2/10","score":0.8200,"probe":"api.securityscorecards.dev/projects/github.com/sebastienrousseau/noyalib .score"},
     {"repo":"noya-cli","id":"tests","category":"correctness","weight":5,"value":"81 passed / 0 failed","score":1.0000,"probe":"cargo test --workspace --locked --default-features"},
     {"repo":"noya-cli","id":"clippy","category":"code_health","weight":3,"value":"0 diagnostics (rc=0)","score":1.0000,"probe":"cargo clippy --workspace --all-targets --locked --default-features -- -D warnings"},
@@ -64,7 +64,7 @@
     {"repo":"noya-cli","id":"release_sbom","category":"release","weight":2,"value":"3 sbom assets","score":1.0000,"probe":"gh release view --json assets | grep -i sbom"},
     {"repo":"noya-cli","id":"dependabot_open","category":"release","weight":4,"value":"0 open alerts","score":1.0000,"probe":"gh api /repos/sebastienrousseau/noya-cli/dependabot/alerts?state=open"},
     {"repo":"noya-cli","id":"ci_main_green","category":"release","weight":3,"value":"success","score":1.0000,"probe":"gh run list --branch main --limit 1 --json conclusion"},
-    {"repo":"noya-cli","id":"crates_io_current","category":"release","weight":2,"value":"tree 0.0.27 / crates.io 0.0.27","score":1.0000,"probe":"crates.io/api/v1/crates/noya-cli .max_stable_version"},
+    {"repo":"noya-cli","id":"crates_io_current","category":"release","weight":2,"value":"tree 0.0.28 / crates.io 0.0.28","score":1.0000,"probe":"crates.io/api/v1/crates/noya-cli .max_stable_version"},
     {"repo":"noya-cli","id":"openssf_scorecard","category":"release","weight":3,"value":"6.6/10","score":0.6600,"probe":"api.securityscorecards.dev/projects/github.com/sebastienrousseau/noya-cli .score"},
     {"repo":"noyalib-lsp","id":"tests","category":"correctness","weight":5,"value":"59 passed / 0 failed","score":1.0000,"probe":"cargo test --workspace --locked --default-features"},
     {"repo":"noyalib-lsp","id":"clippy","category":"code_health","weight":3,"value":"0 diagnostics (rc=0)","score":1.0000,"probe":"cargo clippy --workspace --all-targets --locked --default-features -- -D warnings"},
@@ -87,7 +87,7 @@
     {"repo":"noyalib-lsp","id":"release_sbom","category":"release","weight":2,"value":"3 sbom assets","score":1.0000,"probe":"gh release view --json assets | grep -i sbom"},
     {"repo":"noyalib-lsp","id":"dependabot_open","category":"release","weight":4,"value":"0 open alerts","score":1.0000,"probe":"gh api /repos/sebastienrousseau/noyalib-lsp/dependabot/alerts?state=open"},
     {"repo":"noyalib-lsp","id":"ci_main_green","category":"release","weight":3,"value":"success","score":1.0000,"probe":"gh run list --branch main --limit 1 --json conclusion"},
-    {"repo":"noyalib-lsp","id":"crates_io_current","category":"release","weight":2,"value":"tree 0.0.27 / crates.io 0.0.27","score":1.0000,"probe":"crates.io/api/v1/crates/noyalib-lsp .max_stable_version"},
+    {"repo":"noyalib-lsp","id":"crates_io_current","category":"release","weight":2,"value":"tree 0.0.28 / crates.io 0.0.28","score":1.0000,"probe":"crates.io/api/v1/crates/noyalib-lsp .max_stable_version"},
     {"repo":"noyalib-lsp","id":"openssf_scorecard","category":"release","weight":3,"value":"6.6/10","score":0.6600,"probe":"api.securityscorecards.dev/projects/github.com/sebastienrousseau/noyalib-lsp .score"},
     {"repo":"noyalib-mcp","id":"tests","category":"correctness","weight":5,"value":"62 passed / 0 failed","score":1.0000,"probe":"cargo test --workspace --locked --default-features"},
     {"repo":"noyalib-mcp","id":"clippy","category":"code_health","weight":3,"value":"0 diagnostics (rc=0)","score":1.0000,"probe":"cargo clippy --workspace --all-targets --locked --default-features -- -D warnings"},
@@ -110,7 +110,7 @@
     {"repo":"noyalib-mcp","id":"release_sbom","category":"release","weight":2,"value":"3 sbom assets","score":1.0000,"probe":"gh release view --json assets | grep -i sbom"},
     {"repo":"noyalib-mcp","id":"dependabot_open","category":"release","weight":4,"value":"0 open alerts","score":1.0000,"probe":"gh api /repos/sebastienrousseau/noyalib-mcp/dependabot/alerts?state=open"},
     {"repo":"noyalib-mcp","id":"ci_main_green","category":"release","weight":3,"value":"success","score":1.0000,"probe":"gh run list --branch main --limit 1 --json conclusion"},
-    {"repo":"noyalib-mcp","id":"crates_io_current","category":"release","weight":2,"value":"tree 0.0.27 / crates.io 0.0.27","score":1.0000,"probe":"crates.io/api/v1/crates/noyalib-mcp .max_stable_version"},
+    {"repo":"noyalib-mcp","id":"crates_io_current","category":"release","weight":2,"value":"tree 0.0.28 / crates.io 0.0.28","score":1.0000,"probe":"crates.io/api/v1/crates/noyalib-mcp .max_stable_version"},
     {"repo":"noyalib-mcp","id":"openssf_scorecard","category":"release","weight":3,"value":"6.6/10","score":0.6600,"probe":"api.securityscorecards.dev/projects/github.com/sebastienrousseau/noyalib-mcp .score"},
     {"repo":"noyalib-wasm","id":"tests","category":"correctness","weight":5,"value":"42 passed / 0 failed","score":1.0000,"probe":"cargo test --workspace --locked --default-features"},
     {"repo":"noyalib-wasm","id":"clippy","category":"code_health","weight":3,"value":"0 diagnostics (rc=0)","score":1.0000,"probe":"cargo clippy --workspace --all-targets --locked --default-features -- -D warnings"},
@@ -133,9 +133,9 @@
     {"repo":"noyalib-wasm","id":"release_sbom","category":"release","weight":2,"value":"3 sbom assets","score":1.0000,"probe":"gh release view --json assets | grep -i sbom"},
     {"repo":"noyalib-wasm","id":"dependabot_open","category":"release","weight":4,"value":"0 open alerts","score":1.0000,"probe":"gh api /repos/sebastienrousseau/noyalib-wasm/dependabot/alerts?state=open"},
     {"repo":"noyalib-wasm","id":"ci_main_green","category":"release","weight":3,"value":"success","score":1.0000,"probe":"gh run list --branch main --limit 1 --json conclusion"},
-    {"repo":"noyalib-wasm","id":"crates_io_current","category":"release","weight":2,"value":"tree 0.0.27 / crates.io 0.0.27","score":1.0000,"probe":"crates.io/api/v1/crates/noyalib-wasm .max_stable_version"},
+    {"repo":"noyalib-wasm","id":"crates_io_current","category":"release","weight":2,"value":"tree 0.0.28 / crates.io 0.0.28","score":1.0000,"probe":"crates.io/api/v1/crates/noyalib-wasm .max_stable_version"},
     {"repo":"noyalib-wasm","id":"openssf_scorecard","category":"release","weight":3,"value":"6.6/10","score":0.6600,"probe":"api.securityscorecards.dev/projects/github.com/sebastienrousseau/noyalib-wasm .score"},
-    {"repo":"ecosystem","id":"version_lockstep","category":"integrity","weight":5,"value":"4/4 pin =0.0.27","score":1.0000,"probe":"grep the noyalib pin in each satellite Cargo.toml (ADR-0005); all aligned"},
+    {"repo":"ecosystem","id":"version_lockstep","category":"integrity","weight":5,"value":"4/4 pin =0.0.28","score":1.0000,"probe":"grep the noyalib pin in each satellite Cargo.toml (ADR-0005); all aligned"},
     {"repo":"ecosystem","id":"host_coverage","category":"integrity","weight":3,"value":"5/5 hosts present","score":1.0000,"probe":"directory presence for noyalib noya-cli noyalib-lsp noyalib-mcp noyalib-wasm"}
   ]
 }
