@@ -193,7 +193,18 @@ where
         && config.policies.is_empty();
     if stream_eligible {
         if let Some(res) = crate::streaming::from_str_streaming(s, config) {
-            return res;
+            match res {
+                // A typed rejection the streaming walker cannot locate --
+                // serde's own visitor errors (`invalid type: ...`) and the
+                // typed `TypeMismatch` arms carry no position on this path.
+                // Fall through to the span-aware AST path below, which
+                // raises the same failure with its source location
+                // (`Deserializer::wrap_err`). Success, and parse errors that
+                // already carry a location, return as they are; the second
+                // parse is paid only on the error path.
+                Err(err) if err.location().is_none() => {}
+                other => return other,
+            }
         }
     }
     let parse_config = parser::ParseConfig::from(config);
@@ -413,7 +424,18 @@ where
         && !value_target_bypass;
     if stream_eligible {
         if let Some(res) = crate::streaming::from_str_streaming(s, config) {
-            return res;
+            match res {
+                // A typed rejection the streaming walker cannot locate --
+                // serde's own visitor errors (`invalid type: ...`) and the
+                // typed `TypeMismatch` arms carry no position on this path.
+                // Fall through to the span-aware AST path below, which
+                // raises the same failure with its source location
+                // (`Deserializer::wrap_err`). Success, and parse errors that
+                // already carry a location, return as they are; the second
+                // parse is paid only on the error path.
+                Err(err) if err.location().is_none() => {}
+                other => return other,
+            }
         }
     }
 
