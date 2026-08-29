@@ -57,21 +57,30 @@ struct Outer {
 
 /// Through `#[serde(flatten)]` serde buffers the map and re-dispatches via
 /// `deserialize_any`, so the failure is raised by serde's own visitor as
-/// `Error::Custom("invalid type: ...")`. It must be located too.
+/// `Error::Custom("invalid type: ...")`. It must be located too. The
+/// position is the enclosing mapping's start (line 1 here), not the
+/// scalar's: serde buffers flattened content into `Content` before
+/// re-dispatching it, so the deserializer that sees the error is the one
+/// for the mapping being flattened.
 #[test]
-fn visitor_error_on_the_any_path_carries_the_value_location() {
+fn visitor_error_on_the_any_path_carries_the_enclosing_mapping_location() {
     let err = from_str::<Outer>("name: x\nport: \"not-a-number\"\n").unwrap_err();
     let location = err
         .location()
         .unwrap_or_else(|| panic!("visitor error from text must carry a location, got: {err:?}"));
     assert_eq!(
         location.line(),
-        2,
-        "the offending scalar is on line 2: {err}"
+        1,
+        "the flattened mapping starts on line 1: {err}"
+    );
+    let text = err.to_string();
+    assert!(
+        text.contains("line 1") && text.contains("column"),
+        "Display must include the position: {text}"
     );
     assert!(
-        err.to_string().contains("line 2"),
-        "Display must include the position: {err}"
+        text.contains("invalid type") && text.contains("expected u16"),
+        "serde's own message is kept: {text}"
     );
 }
 
