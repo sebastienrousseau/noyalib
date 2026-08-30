@@ -48,6 +48,10 @@ pub struct ParseConfig {
     pub legacy_sexagesimal: bool,
     #[cfg(feature = "lossless-u64")]
     pub lossless_u64_integers: bool,
+    /// Mirrors `ParserConfig::plain_scalar_strings`. When `true`, a
+    /// plain scalar deserializes into a `String`/`char` target as its
+    /// literal text regardless of its resolved schema type.
+    pub plain_scalar_strings: bool,
     pub policies: Vec<Arc<dyn crate::policy::Policy>>,
     /// Tags registered for strip-through. When set, the loader resolves a
     /// registered tag's scalar as if untagged (matching the streaming path)
@@ -79,6 +83,7 @@ impl Default for ParseConfig {
             legacy_sexagesimal: false,
             #[cfg(feature = "lossless-u64")]
             lossless_u64_integers: false,
+            plain_scalar_strings: false,
             policies: Vec::new(),
             tag_registry: None,
         }
@@ -130,6 +135,7 @@ impl From<&crate::de::ParserConfig> for ParseConfig {
             legacy_sexagesimal: c.legacy_sexagesimal,
             #[cfg(feature = "lossless-u64")]
             lossless_u64_integers: c.lossless_u64_integers,
+            plain_scalar_strings: c.plain_scalar_strings,
             policies: c.policies.clone(),
             tag_registry: c.tag_registry.clone(),
         }

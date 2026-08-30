@@ -30,6 +30,13 @@ pub struct Deserializer<'de> {
     /// `"ABCD"` (no base64 decode). Default `false` preserves YAML
     /// 1.2 semantics.
     pub(crate) ignore_binary_tag_for_string: bool,
+    /// Per-call flag mirroring
+    /// [`ParserConfig::plain_scalar_strings`] (refs #344). When
+    /// `true`, a `String`/`char` target accepts a non-string scalar
+    /// (`Value::Bool`, `Value::Null`, `Value::Number`) and receives
+    /// its formatted text. Default `false` preserves the historical
+    /// refusal.
+    pub(crate) plain_scalar_strings: bool,
 }
 
 impl<'de> Deserializer<'de> {
@@ -48,6 +55,7 @@ impl<'de> Deserializer<'de> {
             value,
             span_ctx: None,
             ignore_binary_tag_for_string: false,
+            plain_scalar_strings: false,
         }
     }
 
@@ -73,22 +81,26 @@ impl<'de> Deserializer<'de> {
             value,
             span_ctx: Some(span_ctx),
             ignore_binary_tag_for_string: false,
+            plain_scalar_strings: false,
         }
     }
 
     /// Pass-through constructor for the
-    /// [`crate::ParserConfig::ignore_binary_tag_for_string`] flag.
-    /// Used internally by [`from_str_with_config`] when the caller
-    /// has opted in to the migration helper.
+    /// [`crate::ParserConfig::ignore_binary_tag_for_string`] and
+    /// [`crate::ParserConfig::plain_scalar_strings`] flags. Used
+    /// internally by [`from_str_with_config`] when the caller has
+    /// opted in to either.
     pub(crate) fn with_options(
         value: &'de Value,
         span_ctx: Option<&'de span_context::SpanContext>,
         ignore_binary_tag_for_string: bool,
+        plain_scalar_strings: bool,
     ) -> Self {
         Deserializer {
             value,
             span_ctx,
             ignore_binary_tag_for_string,
+            plain_scalar_strings,
         }
     }
 
@@ -101,6 +113,7 @@ impl<'de> Deserializer<'de> {
             value,
             span_ctx: self.span_ctx,
             ignore_binary_tag_for_string: self.ignore_binary_tag_for_string,
+            plain_scalar_strings: self.plain_scalar_strings,
         }
     }
 
@@ -300,6 +313,20 @@ impl<'de> serde_core::Deserializer<'de> for Deserializer<'de> {
             Value::String(s) if s.chars().count() == 1 => {
                 self.wrap_err(visitor.visit_char(s.chars().next().unwrap()))
             }
+            // Opt-in (refs #344, `plain_scalar_strings`): a `char`
+            // field sees the same literal text a `String` field
+            // would for a number, bool, or null — see
+            // `scalar_as_text` — further constrained to exactly one
+            // character, same as the arm above. Off by default.
+            _ if self.plain_scalar_strings => match scalar_as_text(self.value) {
+                Some(text) if text.chars().count() == 1 => {
+                    self.wrap_err(visitor.visit_char(text.chars().next().unwrap()))
+                }
+                _ => self.wrap_err(Err(Error::TypeMismatch {
+                    expected: "char",
+                    found: type_name(self.value),
+                })),
+            },
             _ => self.wrap_err(Err(Error::TypeMismatch {
                 expected: "char",
                 found: type_name(self.value),
@@ -331,6 +358,20 @@ impl<'de> serde_core::Deserializer<'de> for Deserializer<'de> {
                     })),
                 }
             }
+            // Opt-in (refs #344, `plain_scalar_strings`): a `String`
+            // target receives a number/bool/null scalar's text —
+            // implicit typing is a fallback used by
+            // `deserialize_any` for untyped targets, not a
+            // constraint on an explicitly-typed `String` field. Off
+            // by default — the catch-all below is the historical
+            // refusal.
+            _ if self.plain_scalar_strings => match scalar_as_text(self.value) {
+                Some(text) => self.wrap_err(visitor.visit_str(&text)),
+                None => self.wrap_err(Err(Error::TypeMismatch {
+                    expected: "string",
+                    found: type_name(self.value),
+                })),
+            },
             _ => self.wrap_err(Err(Error::TypeMismatch {
                 expected: "string",
                 found: type_name(self.value),
@@ -546,6 +587,7 @@ pub(crate) struct ValueSeqAccess<'de> {
     iter: core::slice::Iter<'de, Value>,
     span_ctx: Option<&'de span_context::SpanContext>,
     ignore_binary_tag_for_string: bool,
+    plain_scalar_strings: bool,
 }
 
 impl<'de> ValueSeqAccess<'de> {
@@ -554,6 +596,7 @@ impl<'de> ValueSeqAccess<'de> {
             iter: seq.iter(),
             span_ctx: de.span_ctx,
             ignore_binary_tag_for_string: de.ignore_binary_tag_for_string,
+            plain_scalar_strings: de.plain_scalar_strings,
         }
     }
 }
@@ -571,6 +614,7 @@ impl<'de> serde_core::de::SeqAccess<'de> for ValueSeqAccess<'de> {
                     value,
                     span_ctx: self.span_ctx,
                     ignore_binary_tag_for_string: self.ignore_binary_tag_for_string,
+                    plain_scalar_strings: self.plain_scalar_strings,
                 };
                 seed.deserialize(de).map(Some)
             }
@@ -584,6 +628,7 @@ pub(crate) struct ValueMapAccess<'de> {
     value: Option<&'de Value>,
     span_ctx: Option<&'de span_context::SpanContext>,
     ignore_binary_tag_for_string: bool,
+    plain_scalar_strings: bool,
 }
 
 impl<'de> ValueMapAccess<'de> {
@@ -593,6 +638,7 @@ impl<'de> ValueMapAccess<'de> {
             value: None,
             span_ctx: de.span_ctx,
             ignore_binary_tag_for_string: de.ignore_binary_tag_for_string,
+            plain_scalar_strings: de.plain_scalar_strings,
         }
     }
 
@@ -603,6 +649,7 @@ impl<'de> ValueMapAccess<'de> {
             value,
             span_ctx: self.span_ctx,
             ignore_binary_tag_for_string: self.ignore_binary_tag_for_string,
+            plain_scalar_strings: self.plain_scalar_strings,
         }
     }
 }
@@ -826,5 +873,66 @@ fn type_name(value: &Value) -> String {
         Value::Sequence(_) => "sequence".to_owned(),
         Value::Mapping(_) => "mapping".to_owned(),
         Value::Tagged(tagged) => format!("tagged value (!{})", tagged.tag().as_str()),
+    }
+}
+
+/// The literal text a scalar `Value` prints as, for the scalar kinds
+/// that are not already a `Value::String` — `bool`, `null`, and the
+/// `Number` variants. Returns `None` for `Value::String` (callers
+/// already hold the text directly), `Value::Sequence`,
+/// `Value::Mapping`, and `Value::Tagged` (handled at each call site).
+///
+/// Refs #344: a `String` (or one-character `char`) target receives a
+/// scalar's literal text even when it would otherwise resolve as a
+/// number, bool, or null for an untyped target — implicit typing is
+/// a fallback `deserialize_any` uses, not a constraint on an
+/// explicitly-typed field. Two caveats follow from `Value` no longer
+/// holding the original source text:
+///
+/// - `Value::Null` carries no text of its own, so this yields `""`.
+///   The *streaming* deserializer — which typed parses take by
+///   default — instead keeps a written `~`, `null`, or empty scalar
+///   verbatim; only a caller that forces the AST path (a non-default
+///   `ParserConfig`, or the `Value` target itself) sees `""` here.
+/// - An integer literal's original spelling is not preserved: `0x1F`
+///   parses to `Number::Integer(31)`, which formats back as `"31"`,
+///   not `"0x1F"`. The streaming path gives the byte-exact source
+///   text instead.
+fn scalar_as_text(value: &Value) -> Option<Cow<'_, str>> {
+    match value {
+        Value::Bool(b) => Some(Cow::Borrowed(if *b { "true" } else { "false" })),
+        Value::Null => Some(Cow::Borrowed("")),
+        Value::Number(Number::Integer(n)) => Some(Cow::Owned(n.to_string())),
+        #[cfg(feature = "lossless-u64")]
+        Value::Number(Number::Unsigned(n)) => Some(Cow::Owned(n.to_string())),
+        Value::Number(Number::Float(n)) => Some(Cow::Owned(format_float_for_string(*n))),
+        _ => None,
+    }
+}
+
+/// Format a float exactly as the emitter (`ser.rs`'s `write_value`)
+/// would print it as a YAML plain scalar — deliberately not
+/// `Number`'s own `Display` impl, which prints `4.0` as `4` (Rust's
+/// default float `Display` suppresses a redundant `.0`). Keeping the
+/// two in step means a `String` field reading a `Value::Number(Float)`
+/// back sees the same digits the value would serialize as.
+fn format_float_for_string(n: f64) -> String {
+    if n.is_nan() {
+        return ".nan".to_owned();
+    }
+    if n.is_infinite() {
+        return if n > 0.0 {
+            ".inf".to_owned()
+        } else {
+            "-.inf".to_owned()
+        };
+    }
+    #[cfg(feature = "fast-float")]
+    {
+        ryu::Buffer::new().format(n).to_owned()
+    }
+    #[cfg(not(feature = "fast-float"))]
+    {
+        format!("{n:?}")
     }
 }

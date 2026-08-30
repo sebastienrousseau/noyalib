@@ -932,6 +932,19 @@ impl<'de> serde_core::Deserializer<'de> for &mut StreamingDeserializer<'de> {
                             Cow::Owned(s) => visitor.visit_string(s),
                         };
                     }
+                    // Opt-in (refs #344,
+                    // `ParserConfig::plain_scalar_strings`): a `String`
+                    // target receives a plain scalar's literal text
+                    // unchanged, even where the resolver below would
+                    // classify it as a number, bool, or null. Off by
+                    // default — see the non-string-scalar refusal a
+                    // few lines down, which is the historical contract.
+                    if self.config.plain_scalar_strings {
+                        return match value {
+                            Cow::Borrowed(s) => visitor.visit_borrowed_str(s),
+                            Cow::Owned(s) => visitor.visit_string(s),
+                        };
+                    }
                     match value {
                         Cow::Borrowed(s) => match self.resolve_scalar(s, style) {
                             Scalar::Str(Cow::Borrowed(b)) => visitor.visit_borrowed_str(b),
@@ -969,6 +982,24 @@ impl<'de> serde_core::Deserializer<'de> for &mut StreamingDeserializer<'de> {
         V: serde_core::de::Visitor<'de>,
     {
         self.deserialize_str(visitor)
+    }
+
+    fn deserialize_char<V>(self, visitor: V) -> Result<V::Value>
+    where
+        V: serde_core::de::Visitor<'de>,
+    {
+        // Opt-in (refs #344): with `plain_scalar_strings` on, `char`'s
+        // `Visitor` accepts a one-character string via `visit_str`
+        // (falling back from `visit_char`), so routing through
+        // `deserialize_str` gives it the same literal-text treatment
+        // as a `String` target — a single-digit plain scalar is a
+        // valid one-character string. Off by default: fall back to
+        // `deserialize_any`, the historical (`forward_to_deserialize_any`)
+        // behaviour.
+        if self.config.plain_scalar_strings {
+            return self.deserialize_str(visitor);
+        }
+        self.deserialize_any(visitor)
     }
 
     fn deserialize_option<V>(self, visitor: V) -> Result<V::Value>
@@ -1275,7 +1306,7 @@ impl<'de> serde_core::Deserializer<'de> for &mut StreamingDeserializer<'de> {
     }
 
     serde_core::forward_to_deserialize_any! {
-        i8 i16 i32 u8 u16 u32 f32 char
+        i8 i16 i32 u8 u16 u32 f32
         tuple tuple_struct
     }
 }
