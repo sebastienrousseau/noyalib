@@ -466,6 +466,10 @@ impl<'de> serde_core::Deserializer<'de> for Deserializer<'de> {
             Value::Mapping(map) => {
                 self.wrap_err(visitor.visit_map(ValueMapAccess::from_de(&self, map)))
             }
+            // The null document (empty / whitespace-only / comment-only
+            // input, or a bare `---`) has "no entries" for a map or
+            // `#[serde(default)]` struct target. See #349.
+            Value::Null => self.wrap_err(visitor.visit_map(EmptyMapAccess)),
             // Tagged values are transparent for typed
             // `deserialize_*` calls — `HashMap::deserialize`
             // against `!!set { Mark, Sammy }` (which now surfaces
@@ -638,6 +642,35 @@ impl<'de> serde_core::de::MapAccess<'de> for ValueMapAccess<'de> {
             }
             None => Err(serde_core::de::Error::custom("value is missing")),
         }
+    }
+}
+
+/// `MapAccess` that immediately reports "no entries".
+///
+/// An empty, whitespace-only, or comment-only document (and a bare
+/// `---` with no content) parses as the YAML null document
+/// (`Value::Null`). `Mapping` and `#[serde(default)]` struct targets
+/// treat that the same way `serde_yaml` does — as a map with no
+/// entries — instead of a type-mismatch error. `deserialize_any`
+/// still visits `Value::Null` as `None`; only the map/struct entry
+/// points route through here. See #349.
+pub(crate) struct EmptyMapAccess;
+
+impl<'de> serde_core::de::MapAccess<'de> for EmptyMapAccess {
+    type Error = Error;
+
+    fn next_key_seed<K>(&mut self, _seed: K) -> Result<Option<K::Value>>
+    where
+        K: serde_core::de::DeserializeSeed<'de>,
+    {
+        Ok(None)
+    }
+
+    fn next_value_seed<V>(&mut self, _seed: V) -> Result<V::Value>
+    where
+        V: serde_core::de::DeserializeSeed<'de>,
+    {
+        Err(serde_core::de::Error::custom("value is missing"))
     }
 }
 
