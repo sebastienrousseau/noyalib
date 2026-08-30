@@ -7,6 +7,86 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+## [v0.0.29] - 2026-08-30
+
+Thirteen fixes and two opt-in configuration flags, spanning all three
+pillars: the serde deserializer, the emitter, and the CST editors.
+
+### Added
+
+- **`SerializerConfig::prefer_single_quotes`** (#361, #352). Opt-in: strings
+  that must be quoted but need no escapes are written `'like this'`
+  instead of `"like this"`. Strings containing characters that only
+  double quotes can spell (line breaks, non-printables) still get
+  double quotes, unchanged by the flag.
+
+- **`ParserConfig::plain_scalar_strings`** (#359, #344, ADR-0006). Opt-in:
+  a `String`/`char` target reading a plain scalar receives the literal
+  text (`no` stays `"no"`, `1.0` stays `"1.0"`) instead of a type
+  error, matching what most other YAML libraries do.
+
+### Fixed
+
+- **Typed rejections from `from_str` now carry the source location**
+  (#356, #330). The streaming fast-path raises serde's own wording but
+  cannot say where; the AST path knows where but words it differently.
+  A failed streaming parse is now re-run through the span-aware path
+  and the caller sees the streaming message with the AST location.
+
+- **Value/deserializer parity** (#360; #348, #349, #350, #351): `Number`'s `Display` agrees
+  with the serializer on floats; the null document deserializes into
+  an empty map or struct; a tagged scalar keeps its tag when `Value`
+  is reached through serde; and a multi-document stream is rejected
+  by the single-document entry points instead of silently returning
+  the first document.
+
+- **Emitter round-trip fixes** (#357; #345, #346, #347, #354, #355): plain scalars at dash and tab
+  boundaries are quoted; space-leading block scalars carry an
+  indentation indicator; `|+` block scalars no longer gain a newline
+  every round trip; `Value::Tagged` is emitted as a tagged value, not
+  a map keyed by the tag; `compact_list_indent` applies at every
+  depth; and a colon or hash is quoted only where YAML gives it
+  meaning.
+
+- **Digit-leading strings are written plain when they read back as
+  strings** (#358, #339): `2026-12-31`, `1.2.3` and `3rd` no longer
+  acquire quotes they never needed; anything that would read back as
+  a number (`42`, `1e3`, `007`, `0x1F`) stays quoted.
+
+- **CR, NEL, LS and PS force double-quoted style** (#362, #335), in
+  `to_string` and the CST writers both, spelled with their named
+  escapes (`\r`, `\N`, `\L`, `\P`). Any other style either normalises
+  them into ordinary line breaks or emits raw bytes that read back as
+  line breaks.
+
+- **CST: `set_value` with an equal value leaves the bytes alone**
+  (#363, #337). A no-op write no longer reformats the scalar it did not
+  change.
+
+- **CST: `remove` handles entries that share their line with a
+  sequence dash** (`- name: x`), and implicit-null items (#364,
+  #336).
+
+- **CST: `remove` of a merge-provided key refuses with an error
+  instead of panicking** (#340, #334). A key supplied by `<<:` owns no
+  bytes in the mapping it lands in.
+
+- **CST: `set_value` spells strings for flow context** (#343, #332).
+  Inside `[…]` / `{…}`, characters like `,` and `]` are structural
+  anywhere in a plain scalar, so replacement values are quoted under
+  the flow rules and flow edits re-parse the whole collection.
+
+- **CST: a new block literal keeps a trailing comment out of the
+  scalar** (#342, #333). Lifting `key: x  # note` into a multi-line literal
+  no longer swallows `# note` into the block's content.
+
+- **Scanner: a block scalar indicator inside a flow collection is
+  rejected** (#341, #331). `[|`, `{>` and friends are not valid YAML; they
+  now fail to parse instead of producing a surprising document.
+
+No breaking API change: both new flags are opt-in and default off.
+No MSRV change (still 1.86.0).
+
 ## [v0.0.28] - 2026-08-23
 
 Two CST and scanner correctness fixes, both about an *implicit null* —

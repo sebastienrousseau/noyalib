@@ -1,6 +1,6 @@
 [package]
 name = "noyalib"
-version = "0.0.28"
+version = "0.0.29"
 edition = "2024"
 rust-version = "1.86.0"
 license = "MIT OR Apache-2.0"
