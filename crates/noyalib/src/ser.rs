@@ -784,16 +784,30 @@ fn looks_like_number(s: &str) -> bool {
 
     let rest = &bytes[i..];
 
-    // Anything starting with a digit could be interpreted as numeric.
-    if rest[0].is_ascii_digit() {
-        return true;
-    }
-    // "." followed by digit: floats like .5
-    if rest[0] == b'.' && rest.len() > 1 && rest[1].is_ascii_digit() {
-        return true;
-    }
+    // A digit, or "." and a digit (floats like .5), can open a number.
+    // That is the cheap filter; the parser's own resolver has the last
+    // word, so digit-leading text it keeps as a string (`2026-12-31`,
+    // `1.2.3`, `3rd`, `1/2`) is written plain, as the author wrote it.
+    // The resolver sees the text after the signs: a permissive reader
+    // (yaml-rust2 accepts `++1`) may take stacked signs as one, so what
+    // follows them decides.
+    let candidate =
+        rest[0].is_ascii_digit() || (rest[0] == b'.' && rest.len() > 1 && rest[1].is_ascii_digit());
+    candidate && resolves_as_non_string(&s[i..])
+}
 
-    false
+/// The parser's verdict on a plain scalar: would it read back as a
+/// number, a boolean, or null rather than a string?
+///
+/// Runs the resolver the loaders and the streaming path share, with the
+/// YAML 1.1 legacy forms enabled (`0`-prefixed octals, sexagesimals) so a
+/// string is quoted whenever any reader configuration would turn it into
+/// something else.
+fn resolves_as_non_string(s: &str) -> bool {
+    !matches!(
+        crate::streaming::resolve_plain_ext(s, false, true, false, true, true, false),
+        crate::streaming::Scalar::Str(_)
+    )
 }
 
 /// Lookup table: true if the byte requires the string to be quoted.
