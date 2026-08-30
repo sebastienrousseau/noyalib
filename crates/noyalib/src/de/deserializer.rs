@@ -104,20 +104,41 @@ impl<'de> Deserializer<'de> {
         }
     }
 
+    /// Attach the source location of the value being deserialized to an
+    /// error that does not carry one yet.
+    ///
+    /// Three error shapes reach this point without a location when a typed
+    /// target rejects a value: [`Error::Deserialize`] (noyalib's own
+    /// deserialization failures), [`Error::TypeMismatch`] (the catch-all
+    /// arms of the typed `deserialize_*` methods), and [`Error::Custom`]
+    /// (serde's `invalid_type` / `invalid_value` / `custom`, raised by the
+    /// caller's visitor -- the path a `#[serde(flatten)]` field or any
+    /// `deserialize_any` descent takes). All three are re-wrapped as
+    /// [`Error::DeserializeWithLocation`] when the deserializer was built
+    /// from text (`from_str`, which records a span per value); the message
+    /// is the original error's text. Deserializers built without a span
+    /// context (`from_value`, [`Deserializer::new`]) return the error as
+    /// is, so `matches!(err, Error::TypeMismatch { .. })` keeps holding on
+    /// that path.
     fn wrap_err<T>(&self, res: Result<T>) -> Result<T> {
-        match res {
-            Err(Error::Deserialize(msg)) => {
-                if let Some(ctx) = self.span_ctx {
-                    let ptr: *const Value = self.value;
-                    let addr = ptr as usize;
-                    if let Some(span) = ctx.spans.get(&addr) {
-                        return Err(Error::deserialize_at(msg, &ctx.source, span.0));
-                    }
-                }
-                Err(Error::Deserialize(msg))
-            }
-            _ => res,
-        }
+        let err = match res {
+            Ok(value) => return Ok(value),
+            Err(err) => err,
+        };
+        let Some(ctx) = self.span_ctx else {
+            return Err(err);
+        };
+        let ptr: *const Value = self.value;
+        let addr = ptr as usize;
+        let Some(span) = ctx.spans.get(&addr) else {
+            return Err(err);
+        };
+        let message = match err {
+            Error::Deserialize(msg) | Error::Custom(msg) => msg,
+            mismatch @ Error::TypeMismatch { .. } => mismatch.to_string(),
+            other => return Err(other),
+        };
+        Err(Error::deserialize_at(message, &ctx.source, span.0))
     }
 }
 
