@@ -503,14 +503,18 @@ where
 /// (`Value::merge`, `Value::interpolate_properties`, …) before a
 /// final emit.
 ///
-/// **Note**: when `value` is itself a [`Value`] containing
-/// [`Value::Tagged`], the round-trip through `serialize` →
-/// `Value` is *lossy* on the tag — the standard `Serialize`
-/// pipeline routes `Tagged` through `serialize_map` (which is
-/// the right shape for serde-bridge interop with `serde_json`
-/// etc.) and the YAML-tag wire form is lost. Use
-/// [`to_string_value`] / [`to_writer_value`] for tag-preserving
-/// emission of a `Value` that may contain `Tagged`.
+/// **Note**: [`TaggedValue`]'s `Serialize` impl (and `Value::Tagged`'s own
+/// inline serialize arm) route through `serialize_map` with a single
+/// entry keyed by the tag string — the right shape for interop with a
+/// generic serializer that has no YAML-tag concept, `serde_json` and
+/// friends included. This crate's own [`Serializer`] *does* have a tag
+/// concept: it recognises that single-entry, `!`-prefixed-key shape when
+/// it builds the resulting [`Value`] and reconstructs [`Value::Tagged`],
+/// so `to_value`/`to_string` on a `Value` containing `Tagged` round-trips
+/// the tag rather than losing it to a degenerate one-entry mapping. Refs
+/// #350. For direct emission of a `Value` you already hold, without going
+/// through the `Serialize` pipeline at all, see [`to_string_value`] /
+/// [`to_writer_value`].
 ///
 /// # Errors
 ///
@@ -522,24 +526,24 @@ pub fn to_value<T>(value: &T) -> Result<Value>
 where
     T: ?Sized + serde_core::Serialize,
 {
-    // No tag-preserving fast-path here: the public `to_value` /
-    // `to_string` family keeps `T: ?Sized + serde_core::Serialize` so callers
-    // can serialise structs holding borrowed references. Users
-    // holding a [`Value`] who want lossless `Value::Tagged`
-    // round-trip should call [`to_string_value`] /
-    // [`to_string_value_with_config`] / [`to_writer_value`] —
-    // those skip the `Serialize` pipeline entirely.
+    // The public `to_value` / `to_string` family keeps
+    // `T: ?Sized + serde_core::Serialize` so callers can serialise structs
+    // holding borrowed references. `Value::Tagged`'s tag survives this path
+    // via `SerializeMap::end`'s single-entry-map reconstruction (see its
+    // doc comment); users who already hold a `Value` and want to skip the
+    // `Serialize` pipeline entirely can still call [`to_string_value`] /
+    // [`to_string_value_with_config`] / [`to_writer_value`].
     value.serialize(Serializer)
 }
 
 /// Serialize a [`Value`] directly to a YAML `String`, preserving
 /// [`Value::Tagged`] shape losslessly.
 ///
-/// Going through the generic `to_string<T: serde_core::Serialize>` path
-/// routes `Value::Tagged(...)` through `Serializer::serialize_map`
-/// (which emits a single-entry mapping for serde-bridge interop),
-/// which loses the YAML-tag wire form. This function bypasses the
-/// `Serialize` pipeline and writes the YAML-tag prefix directly.
+/// This function bypasses the `Serialize` pipeline entirely and writes
+/// the YAML-tag prefix directly. [`to_string`]/[`to_value`] also preserve
+/// `Value::Tagged` when `T` is (or contains) a `Value` — see the note on
+/// [`to_value`] — but this one skips the round trip through `Serializer`
+/// altogether.
 ///
 /// Use this whenever you hold a `Value` that may contain
 /// `Value::Tagged` and want the emitted YAML to round-trip back
@@ -735,10 +739,22 @@ fn write_value(
                     depth,
                 )?;
             } else {
-                // Write tag followed by value
+                // Write the tag, then its payload. A scalar payload sits on
+                // this same line after a space (`!tag value`); a non-empty
+                // mapping/sequence payload starts block layout on the next
+                // line instead, with no trailing space after the tag (that
+                // space would never be followed by anything, so it would
+                // survive only as trailing whitespace). `indent` here is
+                // already the slot this caller computed for the *whole*
+                // tagged value via `needs_block_layout`/`indicator_takes_a_space`
+                // above (see `write_mapping`/`write_sequence`), so the
+                // payload is written at that same `indent`, not one deeper.
                 output.push_str(tag_str);
-                output.push(' ');
-                write_value(output, tagged.value(), indent, false, config, depth + 1)?;
+                let inner = tagged.value();
+                if indicator_takes_a_space(inner) {
+                    output.push(' ');
+                }
+                write_value(output, inner, indent, false, config, depth + 1)?;
             }
         }
     }
@@ -796,8 +812,26 @@ fn looks_like_number(s: &str) -> bool {
     false
 }
 
-/// Lookup table: true if the byte requires the string to be quoted.
-/// Covers: control chars (except tab), colon, hash, newline, etc.
+/// A `:` ends a plain scalar only when a space, a tab, a flow indicator,
+/// or the end of the text follows it (YAML 1.2 plain scalars), so
+/// `word:count`, `10:00:00Z`, and `http://` stay plain.
+fn colon_ends_plain(bytes: &[u8], i: usize) -> bool {
+    match bytes.get(i + 1) {
+        None => true,
+        Some(&next) => matches!(next, b' ' | b'\t' | b',' | b'[' | b']' | b'{' | b'}'),
+    }
+}
+
+/// A `#` starts a comment only at the start of the text or after
+/// whitespace, so `a#b` stays plain.
+fn hash_starts_comment(bytes: &[u8], i: usize) -> bool {
+    i == 0 || matches!(bytes[i - 1], b' ' | b'\t')
+}
+
+/// Lookup table: true if the byte can require the string to be quoted.
+/// Covers: control chars (except tab), colon, hash, newline, etc. A colon
+/// or a hash is then judged in context by `colon_ends_plain` and
+/// `hash_starts_comment`.
 static NEEDS_QUOTE_BYTE: [bool; 128] = {
     let mut t = [false; 128];
     // Control characters (except tab 0x09)
@@ -858,11 +892,22 @@ fn write_string(output: &mut String, s: &str, indent: usize, config: &Serializer
 
     // Fast path: short ASCII strings that are clearly safe as plain scalars.
     // Avoids the full lookup table scan for the majority of mapping keys.
+    //
+    // The intent is: short, alnum-bounded, no newline. All four conditions
+    // below are ANDed — `||` binds looser than `&&`, and an earlier version
+    // of this guard read `a && b && c && !config.block_scalars ||
+    // no_newline`, which let *every* newline-free string take the fast path
+    // regardless of its first byte (`"-"` slipped through unquoted and
+    // re-parsed as a block sequence entry, not a scalar). The first/last
+    // alnum checks already exclude every `FIRST_CHAR_QUOTE` member (none of
+    // them are alphanumeric) and tab (also not alphanumeric), but the
+    // explicit `FIRST_CHAR_QUOTE` check is kept here too as defense in
+    // depth against the alnum check alone being loosened later.
     if bytes.len() <= 64
         && bytes[0].is_ascii_alphanumeric()
         && bytes[bytes.len() - 1].is_ascii_alphanumeric()
-        && !config.block_scalars
-        || bytes.iter().all(|&b| b != b'\n')
+        && bytes.iter().all(|&b| b != b'\n')
+        && !(bytes[0] < 128 && FIRST_CHAR_QUOTE[bytes[0] as usize])
     {
         let safe = bytes.iter().all(|&b| {
             b.is_ascii_alphanumeric() || b == b'_' || b == b'-' || b == b'.' || b == b'/'
@@ -906,6 +951,15 @@ fn write_string(output: &mut String, s: &str, indent: usize, config: &Serializer
         needs_quotes = true;
     }
 
+    // A leading or trailing tab must quote. `NEEDS_QUOTE_BYTE` deliberately
+    // excludes tab so an *interior* tab stays unescaped in a plain scalar,
+    // but YAML 1.2 still requires quoting when a plain scalar's content
+    // starts or ends in white space (tab included), or the boundary is
+    // lost on re-parse.
+    if bytes[0] == b'\t' || bytes[bytes.len() - 1] == b'\t' {
+        needs_quotes = true;
+    }
+
     // Check last character (trailing space)
     if bytes[bytes.len() - 1] == b' ' {
         needs_quotes = true;
@@ -919,16 +973,24 @@ fn write_string(output: &mut String, s: &str, indent: usize, config: &Serializer
         ) || looks_like_number(s);
     }
 
-    // Single pass through interior bytes
+    // Single pass through interior bytes. A colon or a hash counts only
+    // where YAML gives it meaning; see `colon_ends_plain` and
+    // `hash_starts_comment`.
     if !needs_quotes {
-        for &b in bytes {
-            if b < 128 && NEEDS_QUOTE_BYTE[b as usize] {
-                if b < 0x20 && b != b'\t' {
-                    has_control = true;
-                }
-                needs_quotes = true;
-                // Don't break - we need to know if there are control chars
+        for (i, &b) in bytes.iter().enumerate() {
+            if b >= 128 || !NEEDS_QUOTE_BYTE[b as usize] {
+                continue;
             }
+            if (b == b':' && !colon_ends_plain(bytes, i))
+                || (b == b'#' && !hash_starts_comment(bytes, i))
+            {
+                continue;
+            }
+            if b < 0x20 && b != b'\t' {
+                has_control = true;
+            }
+            needs_quotes = true;
+            // Don't break - we need to know if there are control chars
         }
     }
 
@@ -1007,6 +1069,31 @@ fn write_block_scalar_body(output: &mut String, s: &str, indent: usize, config: 
     }
 }
 
+/// The explicit indentation indicator digit(s), if the block needs one.
+///
+/// YAML 1.2.2 §8.1.1.1: a literal/folded block scalar's indentation is
+/// normally *auto-detected* from its first non-empty content line. That
+/// detection breaks when the first content line itself starts with a
+/// space or a tab — the leading whitespace gets folded into the detected
+/// indentation, inflating it past what later, less-indented lines carry,
+/// which a parser then rejects as inconsistent indentation. The fix is an
+/// explicit indentation indicator between the block style character
+/// (`|`/`>`) and the chomping indicator, stating the indentation as a
+/// number of columns *beyond the parent node's own indentation*.
+///
+/// [`write_block_scalar_body`] always places content `config.indent`
+/// columns beyond the indentation this function's caller was handed for
+/// this value's slot (the parent node's own indentation) — so whenever an
+/// indicator is needed, its value is exactly `config.indent`, independent
+/// of nesting depth.
+fn block_scalar_indent_indicator(s: &str, config: &SerializerConfig) -> String {
+    let first_content_line = s.lines().find(|line| !line.is_empty());
+    match first_content_line {
+        Some(line) if line.starts_with(' ') || line.starts_with('\t') => config.indent.to_string(),
+        _ => String::new(),
+    }
+}
+
 fn write_block_scalar(output: &mut String, s: &str, indent: usize, config: &SerializerConfig) {
     // Determine chomping indicator based on trailing newlines
     let chomping = if s.ends_with('\n') {
@@ -1020,20 +1107,29 @@ fn write_block_scalar(output: &mut String, s: &str, indent: usize, config: &Seri
     };
 
     output.push('|');
+    output.push_str(&block_scalar_indent_indicator(s, config));
     output.push_str(chomping);
 
     write_block_scalar_body(output, s, indent, config);
 
-    // s.lines() does not yield trailing empty lines, so we must emit them
-    // for the "keep" (+) chomping mode to roundtrip correctly.
+    // `str::lines()` never yields an extra empty element for the string's
+    // *final* line terminator, but every other trailing blank line DOES
+    // get its own element (and so its own newline from the loop above).
+    // That means the body loop always emits exactly one newline fewer
+    // than `s` actually ends with, regardless of how many trailing
+    // newlines there are: for `"text\n"` the loop emits none after
+    // "text" (`.lines()` is just `["text"]`), for `"text\n\n"` it emits
+    // one (`["text", ""]`), for `"text\n\n\n"` it emits two
+    // (`["text", "", ""]`), and so on -- one behind `s`'s own count every
+    // time. So exactly one more newline (never a count derived from `s`)
+    // closes the gap.
+    //
+    // The previous version pushed `s.len() - s.trim_end_matches('\n').len()`
+    // newlines here -- the *full* trailing-newline count -- which double
+    // counted every trailing newline past the first and grew the string by
+    // one extra `\n` on every serialize/parse round trip.
     if s.ends_with('\n') {
-        // Count trailing newlines
-        let trailing = s.len() - s.trim_end_matches('\n').len();
-        // lines() already omits one trailing newline in default mode,
-        // so for "+" mode we need to emit all trailing newlines explicitly.
-        for _ in 0..trailing {
-            output.push('\n');
-        }
+        output.push('\n');
     }
 }
 
@@ -1114,13 +1210,33 @@ fn write_sequence(
                     if indicator_takes_a_space(v) {
                         output.push(' ');
                     }
+                    // `compact_list_indent`: a sequence value starts at its
+                    // own key's indentation (`indent + 1`, matching `k`'s
+                    // own column) rather than one level deeper — the same
+                    // rule `write_mapping` applies, extended to a mapping
+                    // that is itself a sequence item. Every other
+                    // block-layout value (a mapping, or a sequence with the
+                    // option off) still gets the extra level.
                     let next_indent = if needs_block_layout(v) {
-                        indent + 2
+                        if config.compact_list_indent && matches!(v, Value::Sequence(_)) {
+                            indent + 1
+                        } else {
+                            indent + 2
+                        }
                     } else {
                         indent + 1
                     };
                     write_value(output, v, next_indent, false, config, depth + 1)?;
                 }
+            }
+            Value::Sequence(inner) if config.compact_list_indent && !inner.is_empty() => {
+                // `compact_list_indent`: a sequence item that is itself a
+                // sequence is written inline (`- - a`), with the nested
+                // dash sharing this item's own dash's line the same way a
+                // nested mapping's first key does above. Continuation
+                // elements align with that nested dash (`indent + 1`).
+                output.push(' ');
+                write_sequence(output, inner, indent + 1, true, config, depth + 1)?;
             }
             _ => {
                 if indicator_takes_a_space(value) {
@@ -1143,7 +1259,9 @@ fn write_sequence(
 ///
 /// The exception is an anchor-wrapped block value, which renders as
 /// `&idNNN\n  ...`: the `&` is on *this* line, so the space is real
-/// separation rather than leftovers.
+/// separation rather than leftovers. A regular (user) tag is the same
+/// story: `!tag\n  ...` also has visible text — the tag name — on this
+/// line, so the space is real separation there too.
 ///
 /// [`write_mapping`] has always applied this rule; [`write_sequence`] carried
 /// its own copy of the key-writing and did not, which is the whole of the bug
@@ -1153,12 +1271,16 @@ fn indicator_takes_a_space(value: &Value) -> bool {
         || matches!(
             value,
             Value::Tagged(t) if t.tag().as_str() == crate::fmt::MAGIC_ANCHOR_DEF
+                || !t.tag().as_str().starts_with("__noya_")
         )
 }
 
 /// Whether a value needs block-style layout (indented on the line after `:`)
 /// rather than inline scalar layout. Anchor-wrapped block collections must be
-/// treated like the inner collection.
+/// treated like the inner collection; a regular (user) tag likewise needs
+/// block layout exactly when *its* payload does (a tagged mapping/sequence
+/// under a key must be indented one level deeper, the same as an untagged
+/// one — see [`write_value`]'s `Value::Tagged` arm).
 fn needs_block_layout(v: &Value) -> bool {
     match v {
         Value::Mapping(m) => !m.is_empty(),
@@ -1170,6 +1292,9 @@ fn needs_block_layout(v: &Value) -> bool {
                 }
             }
             false
+        }
+        Value::Tagged(t) if !t.tag().as_str().starts_with("__noya_") => {
+            needs_block_layout(t.value())
         }
         _ => false,
     }
@@ -1374,6 +1499,7 @@ fn write_literal_block(output: &mut String, s: &str, indent: usize, config: &Ser
     };
 
     output.push('|');
+    output.push_str(&block_scalar_indent_indicator(s, config));
     output.push_str(chomping);
 
     write_block_scalar_body(output, s, indent, config);
@@ -1387,6 +1513,7 @@ fn write_folded_block(output: &mut String, s: &str, indent: usize, config: &Seri
     };
 
     output.push('>');
+    output.push_str(&block_scalar_indent_indicator(s, config));
     output.push_str(chomping);
 
     write_block_scalar_body(output, s, indent, config);
@@ -1832,6 +1959,32 @@ impl serde_core::ser::SerializeMap for SerializeMap {
     }
 
     fn end(self) -> Result<Value> {
+        // `TaggedValue::serialize` (and `Value::Tagged`'s own inline
+        // serialize arm) route through this exact `serialize_map(Some(1))`
+        // + one `serialize_entry` shape -- that single-entry-map wire form
+        // is the documented, unchanged shape for interop with a generic
+        // serializer that has no YAML-tag concept (`serde_json` and
+        // friends). Our own serializer *does* have a tag concept, so
+        // recognise that shape here and reconstruct `Value::Tagged`
+        // instead of losing the tag to a degenerate one-entry mapping.
+        // Refs #350.
+        let is_tag_shaped = self.map.len() == 1
+            && self
+                .map
+                .iter()
+                .next()
+                .is_some_and(|(k, _)| k.starts_with('!'));
+        if is_tag_shaped {
+            let (key, value) = self
+                .map
+                .into_iter()
+                .next()
+                .expect("is_tag_shaped confirmed exactly one entry");
+            return Ok(Value::Tagged(Box::new(TaggedValue::new(
+                Tag::new(key),
+                value,
+            ))));
+        }
         Ok(Value::Mapping(self.map))
     }
 }

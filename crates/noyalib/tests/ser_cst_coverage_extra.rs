@@ -567,15 +567,19 @@ fn ser_ser_string_with_leading_dash_round_trip() {
 }
 
 #[test]
-fn ser_ser_string_with_colon_inside_quoted() {
+fn ser_ser_string_with_colon_inside_stays_plain() {
+    // A colon ends a plain scalar only before a space, a tab, a flow
+    // indicator, or the end of the text; `key:value` is plain-safe.
     let yaml = to_string(&"key:value").unwrap();
-    assert!(yaml.contains('"') || yaml.contains('\''));
+    assert_eq!(yaml, "key:value");
 }
 
 #[test]
-fn ser_ser_string_with_hash_inside_quoted() {
+fn ser_ser_string_with_hash_inside_stays_plain() {
+    // A hash starts a comment only at the start or after whitespace;
+    // `foo#bar` is plain-safe.
     let yaml = to_string(&"foo#bar").unwrap();
-    assert!(yaml.contains('"') || yaml.contains('\''));
+    assert_eq!(yaml, "foo#bar");
 }
 
 #[test]
