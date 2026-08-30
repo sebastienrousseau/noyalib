@@ -237,6 +237,11 @@ path = "examples/schema_validation.rs"
 required-features = ["validate-schema"]
 
 [[example]]
+name = "schema_compiled"
+path = "examples/schema_compiled.rs"
+required-features = ["validate-schema"]
+
+[[example]]
 name = "strict_deserialise"
 path = "examples/strict_deserialise.rs"
 required-features = ["strict-deserialise"]

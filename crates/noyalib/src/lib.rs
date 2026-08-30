@@ -212,7 +212,7 @@
 //! | `minimal` | ⛔ | — | meta-alias for `std` only (drops the three above) | `std` |
 //! | `miette` | ⛔ | `miette 7` | rich terminal diagnostics | — |
 //! | `schema` | ⛔ | `schemars`, `serde_json` | [`schema_for`] / [`schema_for_yaml`] **+** consumer must also depend on `schemars = "1.2"` to derive [`JsonSchema`] | — |
-//! | `validate-schema` | ⛔ | `schema` + `jsonschema` | [`validate_against_schema`], [`coerce_to_schema`] | `schema` |
+//! | `validate-schema` | ⛔ | `schema` + `jsonschema` | [`validate_against_schema`], [`coerce_to_schema`], [`CompiledSchema`] | `schema` |
 //! | `figment` | ⛔ | `figment 0.10` | [`figment::Yaml`](crate::figment) Provider | `std` |
 //! | `garde` | ⛔ | `garde 0.22` | [`Validated<T>`] | — |
 //! | `validator` | ⛔ | `validator 0.19` | [`ValidatedValidator<T>`] | — |
@@ -651,7 +651,10 @@ pub use schema::{
 pub use schema_codegen::{JsonSchema, schema_for, schema_for_yaml};
 #[cfg(feature = "validate-schema")]
 #[cfg_attr(docsrs, doc(cfg(feature = "validate-schema")))]
-pub use schema_validate::{coerce_to_schema, validate_against_schema, validate_against_schema_str};
+pub use schema_validate::{
+    CompiledSchema, CompiledSchemaBuilder, SchemaViolation, coerce_to_schema,
+    validate_against_schema, validate_against_schema_str,
+};
 pub use ser::{
     FlowStyle, ScalarStyle, Serializer, SerializerConfig, to_fmt_writer, to_fmt_writer_with_config,
     to_string, to_string_multi, to_string_multi_with_config, to_string_value,

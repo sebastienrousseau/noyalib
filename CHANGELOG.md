@@ -14,6 +14,16 @@ pillars: the serde deserializer, the emitter, and the CST editors.
 
 ### Added
 
+- **`CompiledSchema`: compile a JSON Schema once, validate many**
+  (#329, ADR-0008). `CompiledSchema::compile(&schema)?.validate(&v)`
+  front-loads the schema compile that `validate_against_schema`
+  repeats per call; the builder opts in to `format` assertion
+  (annotation-only by default under Draft 2020-12) and registers
+  custom formats; `iter_errors` returns structured violations with
+  the instance path and offending keyword. `validate_against_schema`
+  is now compile-then-validate through the same type, so the
+  external-`$ref` and recursion hardening covers both paths.
+
 - **`SerializerConfig::prefer_single_quotes`** (#361, #352). Opt-in: strings
   that must be quoted but need no escapes are written `'like this'`
   instead of `"like this"`. Strings containing characters that only
