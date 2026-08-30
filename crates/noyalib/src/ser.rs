@@ -1184,13 +1184,33 @@ fn write_sequence(
                     if indicator_takes_a_space(v) {
                         output.push(' ');
                     }
+                    // `compact_list_indent`: a sequence value starts at its
+                    // own key's indentation (`indent + 1`, matching `k`'s
+                    // own column) rather than one level deeper — the same
+                    // rule `write_mapping` applies, extended to a mapping
+                    // that is itself a sequence item. Every other
+                    // block-layout value (a mapping, or a sequence with the
+                    // option off) still gets the extra level.
                     let next_indent = if needs_block_layout(v) {
-                        indent + 2
+                        if config.compact_list_indent && matches!(v, Value::Sequence(_)) {
+                            indent + 1
+                        } else {
+                            indent + 2
+                        }
                     } else {
                         indent + 1
                     };
                     write_value(output, v, next_indent, false, config, depth + 1)?;
                 }
+            }
+            Value::Sequence(inner) if config.compact_list_indent && !inner.is_empty() => {
+                // `compact_list_indent`: a sequence item that is itself a
+                // sequence is written inline (`- - a`), with the nested
+                // dash sharing this item's own dash's line the same way a
+                // nested mapping's first key does above. Continuation
+                // elements align with that nested dash (`indent + 1`).
+                output.push(' ');
+                write_sequence(output, inner, indent + 1, true, config, depth + 1)?;
             }
             _ => {
                 if indicator_takes_a_space(value) {
