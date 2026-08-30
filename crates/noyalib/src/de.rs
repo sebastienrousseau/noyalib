@@ -223,6 +223,7 @@ where
         &value,
         Some(_guard.as_ref()),
         config.ignore_binary_tag_for_string,
+        config.plain_scalar_strings,
     );
     locate_streaming_error(T::deserialize(de), streaming_err)
 }
@@ -503,6 +504,7 @@ where
             &value,
             Some(_guard.as_ref()),
             config.ignore_binary_tag_for_string,
+            config.plain_scalar_strings,
         );
         locate_streaming_error(T::deserialize(de), streaming_err)
     }
@@ -510,7 +512,12 @@ where
     #[cfg(not(feature = "std"))]
     {
         let value = parser::parse_one_value(s, &parse_config)?;
-        let de = Deserializer::with_options(&value, None, config.ignore_binary_tag_for_string);
+        let de = Deserializer::with_options(
+            &value,
+            None,
+            config.ignore_binary_tag_for_string,
+            config.plain_scalar_strings,
+        );
         locate_streaming_error(T::deserialize(de), streaming_err)
     }
 }

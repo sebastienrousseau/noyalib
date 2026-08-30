@@ -28,6 +28,7 @@ reference back. Nothing is silently rewritten.
 | [0003](./0003-zero-unsafe-policy.md) | `#![forbid(unsafe_code)]` workspace-wide | accepted |
 | [0004](./0004-lossless-u64-integers.md) | Opt in to lossless `u64` integers | proposed |
 | [0005](./0005-workspace-split.md) | Split workspace into 4 satellite repositories with strict-lockstep versioning | accepted |
+| [0006](./0006-plain-scalar-strings-opt-in.md) | Opt in to literal text for a `String`/`char` target reading a plain scalar | proposed |
 
 ## When to add an ADR
 
