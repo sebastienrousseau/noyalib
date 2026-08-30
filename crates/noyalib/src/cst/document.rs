@@ -678,6 +678,23 @@ impl Document {
     /// [`span_at`](Self::span_at) still reports `None` there: the node has
     /// nothing to read, which is a separate question from where a write goes.
     ///
+    /// # A trailing comment beside a new block literal
+    ///
+    /// A multi-line string is written as a literal block scalar, which
+    /// runs to the end of its last content line. A comment that trailed
+    /// the old one-line value (`title: Hello # note`) therefore moves to
+    /// the block scalar's header line, where YAML permits one:
+    ///
+    /// ```
+    /// use noyalib::cst::parse_document;
+    /// use noyalib::Value;
+    ///
+    /// let mut doc = parse_document("title: Hello # note\n").unwrap();
+    /// doc.set_value("title", &Value::String("multi\nline".into())).unwrap();
+    /// assert_eq!(doc.to_string(), "title: |- # note\n  multi\n  line\n");
+    /// assert_eq!(doc.as_value()["title"].as_str(), Some("multi\nline"));
+    /// ```
+    ///
     /// # Errors
     ///
     /// - Path not found.
@@ -728,6 +745,18 @@ impl Document {
             entry_col,
         };
         let fragment = format_value_for_site(value, &ctx)?;
+        // A block literal owns every byte through the end of its last
+        // content line, so a comment that trailed the old one-line value
+        // would be swallowed into the new value. Move it onto the header
+        // line, where YAML allows a comment, and widen the splice to
+        // cover it (#333).
+        let (fragment, e) = match trailing_comment_span(&self.source, e) {
+            Some((comment_start, line_end)) if fragment.starts_with('|') => (
+                hoist_comment_onto_header(&fragment, &self.source[comment_start..line_end]),
+                line_end,
+            ),
+            _ => (fragment, e),
+        };
         let fragment = if filling_in {
             fill_in(&fragment)
         } else {
@@ -3059,6 +3088,37 @@ fn implicit_null_insertion_point(source: &str, pos: usize) -> Option<(usize, usi
 /// indicator it follows.
 fn fill_in(fragment: &str) -> String {
     format!(" {fragment}")
+}
+
+/// The `#` comment that follows `pos` on the same line, if only inline
+/// whitespace separates them: `(comment_start, line_end)`, where
+/// `line_end` excludes the line break. `pos` is the end of a value span
+/// (or an implicit null's insertion point), so a `#` reached this way
+/// can only be a comment -- the scanner ended the value before it.
+fn trailing_comment_span(source: &str, pos: usize) -> Option<(usize, usize)> {
+    let bytes = source.as_bytes();
+    let mut i = pos;
+    while i < bytes.len() && matches!(bytes[i], b' ' | b'\t') {
+        i += 1;
+    }
+    if i >= bytes.len() || bytes[i] != b'#' {
+        return None;
+    }
+    let mut line_end = i;
+    while line_end < bytes.len() && !matches!(bytes[line_end], b'\n' | b'\r') {
+        line_end += 1;
+    }
+    Some((i, line_end))
+}
+
+/// Put `comment` after the header of the block literal `fragment`:
+/// `|-\n  a` with `# c` becomes `|- # c\n  a`. A fragment without a
+/// line break is not a block literal and is returned unchanged.
+fn hoist_comment_onto_header(fragment: &str, comment: &str) -> String {
+    match fragment.split_once('\n') {
+        Some((header, body)) => format!("{header} {comment}\n{body}"),
+        None => fragment.to_string(),
+    }
 }
 
 /// Whether `[start, end)` denotes a keep-chomped block scalar: it begins with
