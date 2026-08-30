@@ -444,7 +444,7 @@ where
     // provably correct because `is_value_target::<T>()` already
     // verified `TypeId::of::<T>() == TypeId::of::<Value>()`.
     if is_value_target::<T>() {
-        let mut value = parser::parse_one_value(s, &parse_config)?;
+        let mut value = parser::parse_exactly_one_value(s, &parse_config)?;
         apply_includes(&mut value, config)?;
         apply_properties(&mut value, config)?;
         for p in &config.policies {
@@ -463,7 +463,7 @@ where
 
     #[cfg(feature = "std")]
     {
-        let (mut value, span_tree) = parser::parse_one(s, &parse_config)?;
+        let (mut value, span_tree) = parser::parse_exactly_one(s, &parse_config)?;
         apply_includes(&mut value, config)?;
         apply_properties(&mut value, config)?;
         for p in &config.policies {
@@ -485,7 +485,7 @@ where
 
     #[cfg(not(feature = "std"))]
     {
-        let value = parser::parse_one_value(s, &parse_config)?;
+        let value = parser::parse_exactly_one_value(s, &parse_config)?;
         let de = Deserializer::with_options(&value, None, config.ignore_binary_tag_for_string);
         T::deserialize(de)
     }
