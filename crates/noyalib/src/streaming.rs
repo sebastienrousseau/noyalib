@@ -1757,10 +1757,16 @@ where
             // fetched. Stop *at* `StreamEnd` (querying past it would
             // return a benign "parser has already finished" error);
             // propagate any error encountered before that.
+            //
+            // A second `DocumentStart` here means the stream carries more
+            // than one document — `from_str`/`from_str_with_config` only
+            // support exactly one (`from_str_multi` is the multi-document
+            // entry point). See #351.
             loop {
                 match de.next_event() {
                     Ok(Event::StreamEnd) => break,
                     Ok(Event::DocumentEnd | Event::StreamStart) => continue,
+                    Ok(Event::DocumentStart) => return Some(Err(Error::MoreThanOneDocument)),
                     Ok(_) => break,
                     Err(e) => return Some(Err(e)),
                 }

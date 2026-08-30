@@ -845,9 +845,9 @@ impl fmt::Display for Error {
             }
             Self::Shared(arc) => fmt::Display::fmt(arc.as_ref(), f),
             Self::EndOfStream => f.write_str("unexpected end of stream"),
-            Self::MoreThanOneDocument => {
-                f.write_str("multiple documents in stream; expected exactly one")
-            }
+            Self::MoreThanOneDocument => f.write_str(
+                "deserializing from YAML containing more than one document is not supported",
+            ),
             Self::ScalarInMerge => f.write_str("scalar in merge"),
             Self::EmptyTag => f.write_str("empty tag"),
             Self::FailedToParseNumber(msg) => write!(f, "failed to parse number: {msg}"),
