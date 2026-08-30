@@ -812,8 +812,26 @@ fn looks_like_number(s: &str) -> bool {
     false
 }
 
-/// Lookup table: true if the byte requires the string to be quoted.
-/// Covers: control chars (except tab), colon, hash, newline, etc.
+/// A `:` ends a plain scalar only when a space, a tab, a flow indicator,
+/// or the end of the text follows it (YAML 1.2 plain scalars), so
+/// `word:count`, `10:00:00Z`, and `http://` stay plain.
+fn colon_ends_plain(bytes: &[u8], i: usize) -> bool {
+    match bytes.get(i + 1) {
+        None => true,
+        Some(&next) => matches!(next, b' ' | b'\t' | b',' | b'[' | b']' | b'{' | b'}'),
+    }
+}
+
+/// A `#` starts a comment only at the start of the text or after
+/// whitespace, so `a#b` stays plain.
+fn hash_starts_comment(bytes: &[u8], i: usize) -> bool {
+    i == 0 || matches!(bytes[i - 1], b' ' | b'\t')
+}
+
+/// Lookup table: true if the byte can require the string to be quoted.
+/// Covers: control chars (except tab), colon, hash, newline, etc. A colon
+/// or a hash is then judged in context by `colon_ends_plain` and
+/// `hash_starts_comment`.
 static NEEDS_QUOTE_BYTE: [bool; 128] = {
     let mut t = [false; 128];
     // Control characters (except tab 0x09)
@@ -955,16 +973,24 @@ fn write_string(output: &mut String, s: &str, indent: usize, config: &Serializer
         ) || looks_like_number(s);
     }
 
-    // Single pass through interior bytes
+    // Single pass through interior bytes. A colon or a hash counts only
+    // where YAML gives it meaning; see `colon_ends_plain` and
+    // `hash_starts_comment`.
     if !needs_quotes {
-        for &b in bytes {
-            if b < 128 && NEEDS_QUOTE_BYTE[b as usize] {
-                if b < 0x20 && b != b'\t' {
-                    has_control = true;
-                }
-                needs_quotes = true;
-                // Don't break - we need to know if there are control chars
+        for (i, &b) in bytes.iter().enumerate() {
+            if b >= 128 || !NEEDS_QUOTE_BYTE[b as usize] {
+                continue;
             }
+            if (b == b':' && !colon_ends_plain(bytes, i))
+                || (b == b'#' && !hash_starts_comment(bytes, i))
+            {
+                continue;
+            }
+            if b < 0x20 && b != b'\t' {
+                has_control = true;
+            }
+            needs_quotes = true;
+            // Don't break - we need to know if there are control chars
         }
     }
 
