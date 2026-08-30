@@ -925,6 +925,7 @@ impl Document {
                 multiline,
             } => (start, end, multiline, String::new()),
             Removal::FlowMember { start, end } => (start, end, true, String::new()),
+            Removal::SpanWithinLine { start, end } => (start, end, true, String::new()),
             Removal::SoleEntry {
                 start,
                 end,
@@ -3365,6 +3366,15 @@ enum Removal {
         start: usize,
         end: usize,
     },
+    /// The entry's first line is shared with a sequence `-` indicator
+    /// (`- name: x`, `- - a`): only the entry's own bytes go, through
+    /// its owned range plus the following sibling's indentation, so
+    /// the sibling moves up onto the indicator's line. Always guarded
+    /// by the typed oracle.
+    SpanWithinLine {
+        start: usize,
+        end: usize,
+    },
     SoleEntry {
         start: usize,
         end: usize,
@@ -3675,6 +3685,25 @@ fn entry_line_span(
             // `<<` line itself with `{}`.
             let ((key_start, _key_end), child_tree) =
                 entries.get(pos).ok_or_else(|| merge_provided_key(k))?;
+            // The sole key of a mapping that shares its line with a
+            // sequence `-` indicator (`- name: x`): the mapping's bytes
+            // are exactly the entry's own, and the item must stay, so
+            // the entry is replaced with `{}` in place instead of
+            // splicing whole lines (#336).
+            if m.len() <= 1 && !is_flow_collection(source, *coll_start) {
+                if let Some(((key_start, _), entry_tree)) = entries.first() {
+                    if locate_preceding_dash(source, *key_start).is_some() {
+                        let (vs, rve) = span_tree_bounds(entry_tree);
+                        let end = owned_value_end(source, vs, rve);
+                        return Ok(Removal::SoleEntry {
+                            start: *key_start,
+                            end,
+                            empty: "{}",
+                            indent: 0,
+                        });
+                    }
+                }
+            }
             // Last entry: the collection itself becomes `{}`. Deleting the
             // bytes would leave a dangling `a:` that re-parses as null.
             if m.len() <= 1 {
@@ -3710,6 +3739,20 @@ fn entry_line_span(
                 let member_end = owned_value_end(source, value_start, raw_value_end);
                 let (s, e) = flow_member_range(source, *key_start, member_end);
                 return Ok(Removal::FlowMember { start: s, end: e });
+            }
+            // A mapping that is a sequence item carries its first key on
+            // the `- ` indicator's line. Deleting that entry's whole line
+            // would take the indicator -- and so the item -- with it (the
+            // splice failed re-parse or the integrity check before, #336).
+            // Instead only the entry's own bytes go, through its owned
+            // range plus the following sibling's indentation, so the next
+            // key moves up beside the indicator.
+            if locate_preceding_dash(source, *key_start).is_some() {
+                let (_, end, _) = owned_entry_range(source, *key_start, value_start, raw_value_end);
+                return Ok(Removal::SpanWithinLine {
+                    start: *key_start,
+                    end: skip_line_indent(source, end),
+                });
             }
             let (start, end, multiline) =
                 owned_entry_range(source, *key_start, value_start, raw_value_end);
@@ -3763,11 +3806,29 @@ fn entry_line_span(
             }
             // The `-` indicator sits before the value on the same line,
             // separated by inline whitespace. Walk backward to find it.
-            let dash_pos = locate_preceding_dash(source, value_start).ok_or_else(|| {
-                Error::Parse(
-                    "remove: could not locate '-' indicator preceding sequence item".into(),
-                )
-            })?;
+            // An implicit-null item owns no bytes and its empty span sits
+            // past the line break, so the walk may cross one (#336).
+            let dash_pos = locate_preceding_dash(source, value_start)
+                .or_else(|| {
+                    (value_start == raw_value_end)
+                        .then(|| locate_dash_at_or_across_break(source, value_start))
+                        .flatten()
+                })
+                .ok_or_else(|| {
+                    Error::Parse(
+                        "remove: could not locate '-' indicator preceding sequence item".into(),
+                    )
+                })?;
+            // A sequence nested in a sequence shares its first item's
+            // line with the enclosing dash (`- - a`). As for a mapping's
+            // first key above, only the item's own bytes go (#336).
+            if locate_preceding_dash(source, dash_pos).is_some() {
+                let (_, end, _) = owned_entry_range(source, dash_pos, value_start, raw_value_end);
+                return Ok(Removal::SpanWithinLine {
+                    start: dash_pos,
+                    end: skip_line_indent(source, end),
+                });
+            }
             let (start, end, multiline) =
                 owned_entry_range(source, dash_pos, value_start, raw_value_end);
             Ok(Removal::Line {
@@ -4920,6 +4981,38 @@ fn end_of_line(source: &str, pos: usize) -> usize {
         i += 1;
     }
     if i < bytes.len() { i + 1 } else { i }
+}
+
+/// [`locate_preceding_dash`] for an implicit-null item, which owns no
+/// bytes: its empty value span sits *at* the `-` indicator itself (the
+/// scanner marks the missing value there), or -- when trailing blanks
+/// intervene -- past the line break. Both shapes resolve to the dash
+/// (#336).
+fn locate_dash_at_or_across_break(source: &str, value_start: usize) -> Option<usize> {
+    let bytes = source.as_bytes();
+    if bytes.get(value_start) == Some(&b'-') {
+        return Some(value_start);
+    }
+    let mut i = value_start;
+    if i > 0 && bytes[i - 1] == b'\n' {
+        i -= 1;
+        if i > 0 && bytes[i - 1] == b'\r' {
+            i -= 1;
+        }
+    }
+    locate_preceding_dash(source, i)
+}
+
+/// The position just past the indentation of the line starting at
+/// `line_start`: spaces and tabs skipped, stopping at content or the
+/// line break.
+fn skip_line_indent(source: &str, line_start: usize) -> usize {
+    let bytes = source.as_bytes();
+    let mut i = line_start;
+    while i < bytes.len() && matches!(bytes[i], b' ' | b'\t') {
+        i += 1;
+    }
+    i
 }
 
 fn locate_preceding_dash(source: &str, value_start: usize) -> Option<usize> {
