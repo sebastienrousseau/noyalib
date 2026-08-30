@@ -694,30 +694,9 @@ fn write_value(
             }
         }
         Value::Number(Number::Float(n)) => {
-            if n.is_nan() {
-                output.push_str(".nan");
-            } else if n.is_infinite() {
-                if *n > 0.0 {
-                    output.push_str(".inf");
-                } else {
-                    output.push_str("-.inf");
-                }
-            } else {
-                #[cfg(feature = "fast-float")]
-                {
-                    let mut buf = ryu::Buffer::new();
-                    output.push_str(buf.format(*n));
-                }
-                #[cfg(not(feature = "fast-float"))]
-                {
-                    // `{:?}` preserves float-ness for whole numbers
-                    // (`1.0` not `1`) so the YAML round-trips back as
-                    // `Number::Float`. Slower than ryu and emits
-                    // expanded decimal form for very large magnitudes,
-                    // but correct.
-                    let _ = write!(output, "{n:?}");
-                }
-            }
+            // Shared with `Number`'s `Display` impl (see #348) so the
+            // two never disagree on how a float prints.
+            let _ = crate::value::write_float(output, *n);
         }
         Value::String(s) => write_string(output, s, indent, config),
         Value::Sequence(seq) => write_sequence(output, seq, indent, is_root, config, depth)?,

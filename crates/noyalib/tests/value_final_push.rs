@@ -72,9 +72,12 @@ fn final_value_mappingany_default_then_insert() {
 
 #[test]
 fn final_value_number_display_special_floats() {
-    // Number::Display routes through `f64`'s default Display:
-    // "inf", "-inf", "NaN" (not the YAML `.inf` / `.nan` form,
-    // which is the *serializer*'s job to emit).
+    // Number::Display shares the serializer's float formatter (#348),
+    // so it prints the YAML `.inf` / `-.inf` / `.nan` forms, not
+    // `f64`'s default "inf" / "-inf" / "NaN". The loose `contains`
+    // checks below hold for both forms; see
+    // `number_float_display.rs` for exact-string coverage of the
+    // fixed output.
     let pos_inf = format!("{}", Number::Float(f64::INFINITY));
     assert!(pos_inf.contains("inf"));
     let neg_inf = format!("{}", Number::Float(f64::NEG_INFINITY));
