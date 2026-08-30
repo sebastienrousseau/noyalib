@@ -162,6 +162,14 @@ pub struct ParserConfig {
     /// applications that treat the tag as advisory. Default
     /// `false`.
     pub ignore_binary_tag_for_string: bool,
+    /// When enabled, a plain scalar deserializes into a [`String`]
+    /// (or `char`) target as its source text even where the YAML 1.2
+    /// schema resolves it to a number, boolean, or null:
+    /// `password: 123456` gives `"123456"`, `~` gives `"~"`, an empty
+    /// value gives `""`. Off by default: a `String` field refuses a
+    /// non-string plain scalar. Quoted scalars are strings either
+    /// way. Matches what serde_yaml did for typed targets.
+    pub plain_scalar_strings: bool,
     /// When `true`, accept YAML 1.1-style **sexagesimal** numbers
     /// (`60:00`, `1:30:00`) as integers. The colon-separated
     /// digits are interpreted in base 60: each component is
@@ -275,6 +283,7 @@ impl Default for ParserConfig {
             no_schema: false,
             legacy_octal_numbers: false,
             ignore_binary_tag_for_string: false,
+            plain_scalar_strings: false,
             legacy_sexagesimal: false,
             #[cfg(feature = "lossless-u64")]
             lossless_u64_integers: false,
@@ -340,6 +349,7 @@ impl ParserConfig {
             no_schema: false,
             legacy_octal_numbers: false,
             ignore_binary_tag_for_string: false,
+            plain_scalar_strings: false,
             legacy_sexagesimal: false,
             #[cfg(feature = "lossless-u64")]
             lossless_u64_integers: false,
@@ -875,6 +885,27 @@ impl ParserConfig {
     #[must_use]
     pub fn ignore_binary_tag_for_string(mut self, on: bool) -> Self {
         self.ignore_binary_tag_for_string = on;
+        self
+    }
+
+    /// When enabled, a plain scalar deserializes into a [`String`]
+    /// (or `char`) target as its source text even where the YAML 1.2
+    /// schema resolves it to a number, boolean, or null:
+    /// `password: 123456` gives `"123456"`, `~` gives `"~"`, an empty
+    /// value gives `""`. Off by default: a `String` field refuses a
+    /// non-string plain scalar. Quoted scalars are strings either
+    /// way. Matches what serde_yaml did for typed targets.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use noyalib::ParserConfig;
+    /// let cfg = ParserConfig::new().plain_scalar_strings(true);
+    /// assert!(cfg.plain_scalar_strings);
+    /// ```
+    #[must_use]
+    pub fn plain_scalar_strings(mut self, on: bool) -> Self {
+        self.plain_scalar_strings = on;
         self
     }
 
