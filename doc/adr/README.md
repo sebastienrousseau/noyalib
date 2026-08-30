@@ -31,6 +31,7 @@ reference back. Nothing is silently rewritten.
 | [0006](./0006-plain-scalar-strings-opt-in.md) | Opt in to literal text for a `String`/`char` target reading a plain scalar | proposed |
 | [0007](./0007-prefer-single-quotes-option.md) | Add `prefer_single_quotes` as an opt-in serializer config flag | accepted |
 | [0008](./0008-compiled-schema.md) | `CompiledSchema`: compile a JSON Schema once, validate many | accepted |
+| [0009](./0009-set-path-parent-creation.md) | `Document::set_path`: parent-creating writes in the CST editor | accepted |
 
 ## When to add an ADR
 

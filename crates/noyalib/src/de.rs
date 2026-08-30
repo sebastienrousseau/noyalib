@@ -615,7 +615,7 @@ fn find_value_path<'a>(value: &'a Value, addr: usize, segments: &mut Vec<PathSeg
     }
     match value {
         Value::Mapping(map) => {
-            for (key, child) in map.iter() {
+            for (key, child) in map {
                 segments.push(PathSegment::Key(key));
                 if find_value_path(child, addr, segments) {
                     return true;

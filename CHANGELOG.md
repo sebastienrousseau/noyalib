@@ -24,6 +24,17 @@ pillars: the serde deserializer, the emitter, and the CST editors.
   is now compile-then-validate through the same type, so the
   external-`$ref` and recursion hardening covers both paths.
 
+- **`Document::set_path`: parent-creating writes in the CST editor**
+  (#327, ADR-0009). `doc.set_path("menu.visible", &true.into())` on
+  `title: x` creates the missing `menu:` level on the way; an empty
+  document (comments, blank lines, or a bare `---` only) receives its
+  first key with the header preserved. Missing levels indent at the
+  document's `indent_unit()`, quoting stays with `Emit`, and every
+  byte goes through the existing oracle-guarded mutators. An existing
+  segment that resolves to a scalar, a non-root null, a flow ancestor
+  (#338), or a missing sequence index refuses cleanly with the source
+  byte-identical.
+
 - **`SerializerConfig::prefer_single_quotes`** (#361, #352). Opt-in: strings
   that must be quoted but need no escapes are written `'like this'`
   instead of `"like this"`. Strings containing characters that only

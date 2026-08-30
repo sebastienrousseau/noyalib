@@ -826,6 +826,175 @@ impl Document {
         self.replace_span(s, e, &fragment)
     }
 
+    /// Like [`set_value`](Self::set_value), but creates every missing
+    /// mapping level along `path` on the way (#327, ADR-0009).
+    ///
+    /// A frontmatter writer setting `menu.visible` must not care
+    /// whether `menu:` exists yet — the writer it replaces creates it.
+    /// `set_path` resolves the deepest existing ancestor and:
+    ///
+    /// - **whole path exists** — behaves exactly like
+    ///   [`set_value`](Self::set_value) (upsert, equal-value no-op,
+    ///   scalar-only replacement);
+    /// - **a block-mapping ancestor exists** — inserts the remaining
+    ///   chain through
+    ///   [`insert_entry_value`](Self::insert_entry_value), which owns
+    ///   the indentation, quoting, and the typed-oracle guard;
+    /// - **the document is empty** (nothing but comments, blank lines,
+    ///   or a bare `---`) — appends the rendered chain after the
+    ///   existing bytes, so a comment header survives its document's
+    ///   first key.
+    ///
+    /// The style machinery is the same one every `*_value` mutator
+    /// uses: quoting stays with [`Emit`], new levels indent at the
+    /// document's [`indent_unit`](Self::indent_unit), and the edit is
+    /// verified to change exactly the addressed path before it is
+    /// kept.
+    ///
+    /// # Errors
+    ///
+    /// - An existing path segment resolves to a scalar (`title.x`
+    ///   where `title` is a string) or to a null value other than the
+    ///   empty document root; the source is left byte-identical.
+    /// - A missing segment is a sequence index — `set_path` creates
+    ///   mappings, never sequence items.
+    /// - The nearest existing ancestor is a flow collection or an
+    ///   empty `{}` — the flow inserters are tracked by #338; the
+    ///   refusal is clean.
+    /// - The same errors as [`set_value`](Self::set_value) /
+    ///   [`insert_entry_value`](Self::insert_entry_value) otherwise.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use noyalib::cst::parse_document;
+    /// use noyalib::Value;
+    ///
+    /// // Creates the missing `menu:` level.
+    /// let mut doc = parse_document("title: x\n").unwrap();
+    /// doc.set_path("menu.visible", &Value::Bool(true)).unwrap();
+    /// assert_eq!(doc.to_string(), "title: x\nmenu:\n  visible: true\n");
+    ///
+    /// // An empty document receives its first key.
+    /// let mut doc = parse_document("").unwrap();
+    /// doc.set_path("menu.visible", &Value::Bool(true)).unwrap();
+    /// assert_eq!(doc.to_string(), "menu:\n  visible: true\n");
+    ///
+    /// // An existing leaf is an ordinary upsert.
+    /// let mut doc = parse_document("menu:\n  visible: false\n").unwrap();
+    /// doc.set_path("menu.visible", &Value::Bool(true)).unwrap();
+    /// assert_eq!(doc.to_string(), "menu:\n  visible: true\n");
+    /// ```
+    pub fn set_path(&mut self, path: &str, value: &Value) -> Result<()> {
+        if let Err(e) = self.validate() {
+            return Err(Error::Parse(format!(
+                "set_path: the document does not parse, so `{path}` cannot be resolved \
+                 ({e}); the document was left unchanged"
+            )));
+        }
+        let segments = parse_query_path(path);
+        if segments.is_empty() {
+            return Err(Error::Parse(
+                "set_path requires a non-empty path (the document root is not an entry)".into(),
+            ));
+        }
+        self.ensure_cache();
+        let missing_from = {
+            let cache = self.cache.borrow();
+            let (root, _) = cache.as_ref().expect("ensure_cache populated");
+            first_missing_segment(root, &segments, path)?
+        };
+        if missing_from == segments.len() {
+            return self.set_value(path, value);
+        }
+        // Everything still to create must be a mapping key: a sequence
+        // has no natural "missing item" to materialise.
+        for segment in &segments[missing_from..] {
+            match segment {
+                QuerySegment::Key(_) => {}
+                QuerySegment::Index(i) => {
+                    return Err(Error::Parse(format!(
+                        "set_path: `{path}` needs sequence item [{i}] created, and set_path \
+                         creates mappings only — push the item with `push_back_value` first"
+                    )));
+                }
+                QuerySegment::Wildcard | QuerySegment::RecursiveDescent => {
+                    return Err(Error::Parse(format!(
+                        "set_path: `{path}` contains a wildcard or recursive-descent segment, \
+                         which does not address a single entry"
+                    )));
+                }
+            }
+        }
+        // Wrap the value in one mapping per missing level below the
+        // first, innermost out: `menu.theme.dark` over an existing root
+        // becomes insert(root, "menu", {theme: {dark: value}}).
+        let mut nested = value.clone();
+        for segment in segments[missing_from + 1..].iter().rev() {
+            let QuerySegment::Key(key) = segment else {
+                unreachable!("non-key segments rejected above")
+            };
+            let mut level = Mapping::new();
+            let _ = level.insert(key.clone(), nested);
+            nested = Value::Mapping(level);
+        }
+        let QuerySegment::Key(first_missing) = &segments[missing_from] else {
+            unreachable!("non-key segments rejected above")
+        };
+
+        let root_is_null = {
+            let cache = self.cache.borrow();
+            let (root, _) = cache.as_ref().expect("ensure_cache populated");
+            matches!(root, Value::Null)
+        };
+        if missing_from == 0 && root_is_null {
+            return self.append_first_entry(path, first_missing, nested);
+        }
+        let ancestor_path = format_query_prefix(&segments[..missing_from]);
+        self.insert_entry_value(&ancestor_path, first_missing, &nested)
+    }
+
+    /// The empty-document arm of [`set_path`](Self::set_path): render
+    /// the whole new chain and append it after the existing bytes
+    /// (comments, blank lines, a bare `---`), so nothing an author
+    /// wrote is disturbed. The candidate is parsed and compared to the
+    /// expected typed value *before* the document is touched — a null
+    /// the author spelled out (`null`, `~`) fails that check and is
+    /// refused with the source byte-identical.
+    fn append_first_entry(&mut self, path: &str, key: &str, nested: Value) -> Result<()> {
+        let mut expected_root = Mapping::new();
+        let _ = expected_root.insert(key.to_owned(), nested);
+        let expected = Value::Mapping(expected_root);
+        let config = crate::SerializerConfig::new().indent(self.indent_unit());
+        let mut rendered = crate::to_string_value_with_config(&expected, &config)?;
+        if !rendered.ends_with('\n') {
+            rendered.push('\n');
+        }
+        let needs_break = !self.source.is_empty() && !self.source.ends_with('\n');
+        let fragment = if needs_break {
+            format!("\n{rendered}")
+        } else {
+            rendered
+        };
+        let mut candidate = String::with_capacity(self.source.len() + fragment.len());
+        candidate.push_str(&self.source);
+        candidate.push_str(&fragment);
+        let candidate_value: Value = crate::from_str(&candidate).map_err(|e| {
+            Error::Parse(format!(
+                "set_path: `{path}` cannot be created here — the document's root is not a \
+                 mapping and not empty ({e}); the document was left unchanged"
+            ))
+        })?;
+        if candidate_value != expected {
+            return Err(Error::Parse(format!(
+                "set_path: `{path}` cannot be created here — the document's root already \
+                 holds a non-mapping value; the document was left unchanged"
+            )));
+        }
+        let end = self.source.len();
+        self.replace_span(end, end, &fragment)
+    }
+
     /// Remove the value at `path` along with its surrounding entry
     /// (key + colon for mappings, `-` indicator for sequences).
     /// Trailing whitespace and the line break are removed too so the
@@ -4690,6 +4859,88 @@ fn expected_after_remove(value: &Value, segments: &[QuerySegment]) -> Result<Val
         }
         _ => Err(Error::Parse("path not found".into())),
     }
+}
+
+/// Index of the first `segments` entry with no existing node under
+/// `root`, walking the typed view. `segments.len()` means the whole
+/// path resolves. An existing segment whose value cannot be descended
+/// through — a scalar, a null (other than the empty document root), a
+/// sequence where a key is asked for — is an error naming it, so
+/// [`Document::set_path`] refuses before touching a byte (#327).
+fn first_missing_segment(root: &Value, segments: &[QuerySegment], path: &str) -> Result<usize> {
+    let mut cursor = root;
+    for (i, segment) in segments.iter().enumerate() {
+        match segment {
+            QuerySegment::Key(key) => match cursor {
+                Value::Mapping(map) => match map.get(key.as_str()) {
+                    Some(child) => cursor = child,
+                    None => return Ok(i),
+                },
+                // The null *document* has no bytes claiming the root is
+                // null; everything is missing. An explicit `null` is
+                // told apart later, by the pre-edit candidate check.
+                Value::Null if i == 0 => return Ok(0),
+                Value::Null => {
+                    return Err(Error::Parse(format!(
+                        "set_path: `{}` resolves to a null value — filling an implicit \
+                         null with a new mapping is a fragment edit for now; splice it \
+                         with `set` (`{path}` was not written)",
+                        format_query_prefix(&segments[..i]),
+                    )));
+                }
+                _ => {
+                    return Err(Error::Parse(format!(
+                        "set_path: `{}` resolves to a non-mapping, so `{path}` cannot \
+                         descend through it; the document was left unchanged",
+                        format_query_prefix(&segments[..i]),
+                    )));
+                }
+            },
+            QuerySegment::Index(index) => match cursor {
+                Value::Sequence(seq) => match seq.get(*index) {
+                    Some(child) => cursor = child,
+                    None => return Ok(i),
+                },
+                _ => {
+                    return Err(Error::Parse(format!(
+                        "set_path: `{}` resolves to a non-sequence, so `{path}` cannot \
+                         index into it; the document was left unchanged",
+                        format_query_prefix(&segments[..i]),
+                    )));
+                }
+            },
+            QuerySegment::Wildcard | QuerySegment::RecursiveDescent => {
+                return Err(Error::Parse(format!(
+                    "set_path: `{path}` contains a wildcard or recursive-descent segment, \
+                     which does not address a single entry"
+                )));
+            }
+        }
+    }
+    Ok(segments.len())
+}
+
+/// Render `segments` back into the dotted/bracketed path syntax
+/// (`a.b[2].c`) so an ancestor prefix can be handed to the existing
+/// path-addressed mutators.
+fn format_query_prefix(segments: &[QuerySegment]) -> String {
+    use core::fmt::Write as _;
+    let mut out = String::new();
+    for segment in segments {
+        match segment {
+            QuerySegment::Key(key) => {
+                if !out.is_empty() {
+                    out.push('.');
+                }
+                out.push_str(key);
+            }
+            QuerySegment::Index(index) => {
+                let _ = write!(out, "[{index}]");
+            }
+            QuerySegment::Wildcard | QuerySegment::RecursiveDescent => {}
+        }
+    }
+    out
 }
 
 /// Walk backward from `value_start` past inline whitespace and find
