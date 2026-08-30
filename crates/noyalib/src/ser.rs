@@ -1070,16 +1070,24 @@ fn write_block_scalar(output: &mut String, s: &str, indent: usize, config: &Seri
 
     write_block_scalar_body(output, s, indent, config);
 
-    // s.lines() does not yield trailing empty lines, so we must emit them
-    // for the "keep" (+) chomping mode to roundtrip correctly.
+    // `str::lines()` never yields an extra empty element for the string's
+    // *final* line terminator, but every other trailing blank line DOES
+    // get its own element (and so its own newline from the loop above).
+    // That means the body loop always emits exactly one newline fewer
+    // than `s` actually ends with, regardless of how many trailing
+    // newlines there are: for `"text\n"` the loop emits none after
+    // "text" (`.lines()` is just `["text"]`), for `"text\n\n"` it emits
+    // one (`["text", ""]`), for `"text\n\n\n"` it emits two
+    // (`["text", "", ""]`), and so on -- one behind `s`'s own count every
+    // time. So exactly one more newline (never a count derived from `s`)
+    // closes the gap.
+    //
+    // The previous version pushed `s.len() - s.trim_end_matches('\n').len()`
+    // newlines here -- the *full* trailing-newline count -- which double
+    // counted every trailing newline past the first and grew the string by
+    // one extra `\n` on every serialize/parse round trip.
     if s.ends_with('\n') {
-        // Count trailing newlines
-        let trailing = s.len() - s.trim_end_matches('\n').len();
-        // lines() already omits one trailing newline in default mode,
-        // so for "+" mode we need to emit all trailing newlines explicitly.
-        for _ in 0..trailing {
-            output.push('\n');
-        }
+        output.push('\n');
     }
 }
 
