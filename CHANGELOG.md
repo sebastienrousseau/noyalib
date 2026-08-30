@@ -43,6 +43,14 @@ pillars: the serde deserializer, the emitter, and the CST editors.
   A failed streaming parse is now re-run through the span-aware path
   and the caller sees the streaming message with the AST location.
 
+- **…and the field path** (#353). A rejection inside a nested value
+  prefixes its message with the path of the field it is about —
+  `server.port: invalid type: string "x", expected u16` — the way
+  `serde_yaml` reports it. Sequence indices are bracketed
+  (`a.groups[1].count`). Derived on the error path only, by walking
+  the parsed document once; errors at the root and errors from
+  `from_value` are unchanged, and `location()` is unaffected.
+
 - **Value/deserializer parity** (#360; #348, #349, #350, #351): `Number`'s `Display` agrees
   with the serializer on floats; the null document deserializes into
   an empty map or struct; a tagged scalar keeps its tag when `Value`

@@ -151,6 +151,12 @@ impl<'de> Deserializer<'de> {
             mismatch @ Error::TypeMismatch { .. } => mismatch.to_string(),
             other => return Err(other),
         };
+        // Only the innermost wrap reaches this line (an already-wrapped
+        // error returns through the `other` arm above), so the recorded
+        // node is the one the failure is about. `from_str` walks the
+        // root value to turn it into a field path (#353).
+        #[cfg(feature = "std")]
+        span_context::record_error_node(addr);
         Err(Error::deserialize_at(message, &ctx.source, span.0))
     }
 }

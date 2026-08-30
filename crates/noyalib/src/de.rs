@@ -46,7 +46,9 @@ pub(crate) use deserializer::{EmptyMapAccess, SpannedMapAccess, is_binary_tag};
 /// - `Error::Deserialize` — the document parses but does not
 ///   match `T`'s shape (wrong scalar type, missing required field
 ///   on a struct without `#[serde(default)]`, unknown enum
-///   variant, …).
+///   variant, …). A rejection inside a nested value names the
+///   field it is about — `server.port: invalid type: string "x",
+///   expected u16` — alongside the source location (#353).
 /// - `Error::DepthLimit` / `Error::DocumentTooLong` /
 ///   `Error::AliasLimit` — input exceeds the default
 ///   [`ParserConfig`] safety budgets. Use
@@ -225,7 +227,10 @@ where
         config.ignore_binary_tag_for_string,
         config.plain_scalar_strings,
     );
-    locate_streaming_error(T::deserialize(de), streaming_err)
+    attach_field_path(
+        locate_streaming_error(T::deserialize(de), streaming_err),
+        &value,
+    )
 }
 
 /// Strict deserialise: like [`from_str`] but errors if `s`
@@ -506,7 +511,10 @@ where
             config.ignore_binary_tag_for_string,
             config.plain_scalar_strings,
         );
-        locate_streaming_error(T::deserialize(de), streaming_err)
+        attach_field_path(
+            locate_streaming_error(T::deserialize(de), streaming_err),
+            &value,
+        )
     }
 
     #[cfg(not(feature = "std"))]
@@ -547,6 +555,110 @@ fn locate_streaming_error<T>(ast_result: Result<T>, streaming_err: Option<Error>
         }),
         (result, _) => result,
     }
+}
+
+/// Prefix a typed rejection's message with the path of the field it is
+/// about — `server.port: invalid type: …` — so an operator can search
+/// the config for the name, not just the line number (#353).
+///
+/// `wrap_err` records the failing node's address when it attaches a
+/// location; this resolves that address to a `a.b[2].c` path by walking
+/// `root` once, on the error path only. The happy path records and
+/// walks nothing. A failure at the document root keeps its message
+/// unprefixed (there is no path to name), as does any error shape that
+/// never went through `wrap_err`. `location()` is unaffected.
+#[cfg(feature = "std")]
+fn attach_field_path<T>(result: Result<T>, root: &Value) -> Result<T> {
+    // Always consume the slot: a rejection created and then swallowed
+    // (untagged-enum probing that ultimately succeeded) must not leak
+    // into a later error.
+    let recorded = span_context::take_error_node();
+    let err = match result {
+        Ok(v) => return Ok(v),
+        Err(err) => err,
+    };
+    let Some(addr) = recorded else {
+        return Err(err);
+    };
+    let mut segments = Vec::new();
+    if !find_value_path(root, addr, &mut segments) || segments.is_empty() {
+        return Err(err);
+    }
+    let path = format_value_path(&segments);
+    Err(match err {
+        Error::DeserializeWithLocation { message, location } => Error::DeserializeWithLocation {
+            message: format!("{path}: {message}"),
+            location,
+        },
+        Error::Deserialize(message) => Error::Deserialize(format!("{path}: {message}")),
+        Error::Custom(message) => Error::Custom(format!("{path}: {message}")),
+        other => other,
+    })
+}
+
+/// One step of a field path: a mapping key or a sequence index.
+#[cfg(feature = "std")]
+enum PathSegment<'a> {
+    Key(&'a str),
+    Index(usize),
+}
+
+/// Depth-first search for the node at address `addr`, pushing the
+/// mapping keys and sequence indices leading to it. Returns `true`
+/// when found, with `segments` holding the full path; on `false` the
+/// vector is back to its starting state. Tags are transparent — the
+/// path names the field, not the tag.
+#[cfg(feature = "std")]
+fn find_value_path<'a>(value: &'a Value, addr: usize, segments: &mut Vec<PathSegment<'a>>) -> bool {
+    if core::ptr::from_ref(value) as usize == addr {
+        return true;
+    }
+    match value {
+        Value::Mapping(map) => {
+            for (key, child) in map.iter() {
+                segments.push(PathSegment::Key(key));
+                if find_value_path(child, addr, segments) {
+                    return true;
+                }
+                let _ = segments.pop();
+            }
+        }
+        Value::Sequence(seq) => {
+            for (index, child) in seq.iter().enumerate() {
+                segments.push(PathSegment::Index(index));
+                if find_value_path(child, addr, segments) {
+                    return true;
+                }
+                let _ = segments.pop();
+            }
+        }
+        Value::Tagged(tagged) => return find_value_path(tagged.value(), addr, segments),
+        _ => {}
+    }
+    false
+}
+
+/// Render segments as `a.b[2].c`: keys joined with `.`, indices in
+/// brackets attached to the preceding segment (or leading, for a root
+/// sequence: `[2].name`).
+#[cfg(feature = "std")]
+fn format_value_path(segments: &[PathSegment<'_>]) -> String {
+    use core::fmt::Write as _;
+    let mut out = String::new();
+    for segment in segments {
+        match segment {
+            PathSegment::Key(key) => {
+                if !out.is_empty() {
+                    out.push('.');
+                }
+                out.push_str(key);
+            }
+            PathSegment::Index(index) => {
+                let _ = write!(out, "[{index}]");
+            }
+        }
+    }
+    out
 }
 
 /// Returns `true` when no `${KEY}` substitution table is active —
