@@ -1141,6 +1141,16 @@ impl<'a> Scanner<'a> {
             b'!' => self.fetch_tag(),
             b'|' if self.flow_level == 0 => self.fetch_block_scalar(true),
             b'>' if self.flow_level == 0 => self.fetch_block_scalar(false),
+            // `|` and `>` are indicators (YAML 1.2 §5.3), so neither can
+            // begin a plain scalar (§7.3.3, `ns-plain-first`), and block
+            // scalars exist only in block context (§8.1). Inside `[…]` /
+            // `{…}` the byte used to fall through to `fetch_plain_scalar`,
+            // which read `|-` and the folded lines as one plain string
+            // (#331). Mid-scalar `|` / `>` never reach this dispatch: the
+            // plain-scalar fetcher consumes them as ordinary characters.
+            b'|' | b'>' => Err(self.error(
+                "block scalar indicator (`|` or `>`) is not allowed inside a flow collection",
+            )),
             b'\'' => self.fetch_quoted_scalar(false),
             b'"' => self.fetch_quoted_scalar(true),
             b'%' if self.column() == 0 => self.fetch_directive(),
