@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 // Copyright (c) 2026 Noyalib. All rights reserved.
 
-use super::{Mapping, Number, TaggedValue, Value};
+use super::{Mapping, Number, Tag, TaggedValue, Value};
 use crate::prelude::*;
 use indexmap::map::Iter;
 
@@ -51,6 +51,27 @@ impl<'de> serde_core::Deserialize<'de> for Value {
 
             fn visit_unit<E>(self) -> Result<Value, E> {
                 Ok(Value::Null)
+            }
+
+            fn visit_enum<A>(self, data: A) -> Result<Value, A::Error>
+            where
+                A: serde_core::de::EnumAccess<'de>,
+            {
+                // The AST `Deserializer`'s `deserialize_any` routes a
+                // tagged node here (variant name = the YAML tag, payload
+                // = the untagged inner value) instead of transparently
+                // descending into it, so a `Value` reached through serde
+                // — nested inside a `Mapping`, a `Sequence`/`Vec<Value>`,
+                // or a struct field of type `Value` — keeps its tag the
+                // same way the top-level `Value` target already does.
+                // See #350.
+                use serde_core::de::VariantAccess as _;
+                let (tag, variant): (String, A::Variant) = data.variant()?;
+                let value: Value = variant.newtype_variant()?;
+                Ok(Value::Tagged(Box::new(TaggedValue::new(
+                    Tag::new(tag),
+                    value,
+                ))))
             }
 
             fn visit_seq<A>(self, mut seq: A) -> Result<Value, A::Error>

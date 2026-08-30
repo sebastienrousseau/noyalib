@@ -268,7 +268,45 @@ impl fmt::Display for Number {
             Self::Integer(n) => write!(f, "{n}"),
             #[cfg(feature = "lossless-u64")]
             Self::Unsigned(n) => write!(f, "{n}"),
-            Self::Float(n) => write!(f, "{n}"),
+            Self::Float(n) => write_float(f, *n),
+        }
+    }
+}
+
+/// Formats a float the same way the YAML emitter does: `.nan`, `.inf`,
+/// `-.inf` for the specials, and a float-preserving decimal form (`4.0`,
+/// never `4`) otherwise.
+///
+/// This is the single source of truth for float formatting, shared by
+/// [`Number`]'s `Display` impl and the serializer's value writer
+/// (`crate::ser::write_value`) so the two never drift apart again — see
+/// issue #348, where `Display` used `core::fmt`'s default `f64`
+/// formatting (which drops the trailing `.0` from whole floats) while the
+/// serializer already emitted `4.0`.
+///
+/// Generic over `W: fmt::Write` so it works both against a
+/// `fmt::Formatter` (`Display`) and a `String` output buffer
+/// (serializer).
+pub(crate) fn write_float<W: fmt::Write>(output: &mut W, n: f64) -> fmt::Result {
+    if n.is_nan() {
+        output.write_str(".nan")
+    } else if n.is_infinite() {
+        if n > 0.0 {
+            output.write_str(".inf")
+        } else {
+            output.write_str("-.inf")
+        }
+    } else {
+        #[cfg(feature = "fast-float")]
+        {
+            let mut buf = ryu::Buffer::new();
+            output.write_str(buf.format(n))
+        }
+        #[cfg(not(feature = "fast-float"))]
+        {
+            // `{:?}` preserves float-ness for whole numbers (`1.0` not
+            // `1`) so the value round-trips back as `Number::Float`.
+            write!(output, "{n:?}")
         }
     }
 }

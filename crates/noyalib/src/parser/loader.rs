@@ -186,6 +186,14 @@ pub(crate) fn load(
 }
 
 /// Load the first document from a YAML stream.
+///
+/// Silently discards any document past the first — used by consumers
+/// that only care about the first document by design, such as
+/// [`crate::cst::Document`]'s lazy typed-cache overlay (which reads
+/// path-shaped queries off the CST's raw text directly and does not
+/// need every document deserialised). Deserialise entry points that
+/// must reject a multi-document stream use [`load_exactly_one`]
+/// instead.
 #[cfg(feature = "std")]
 pub(crate) fn load_one(
     parser: &mut crate::parser::events::Parser<'_>,
@@ -195,6 +203,31 @@ pub(crate) fn load_one(
     let docs = load(parser, config, input)?;
     // An empty YAML stream (whitespace, comments, or `---` with no
     // content) is a valid document whose value is `null` per YAML 1.2.
+    Ok(docs
+        .into_iter()
+        .next()
+        .unwrap_or((Value::Null, SpanTree::Leaf(0, 0))))
+}
+
+/// Like [`load_one`], but errors if the stream carries more than one
+/// document.
+///
+/// Used by `from_str` / `from_str_with_config`'s AST path — a stream
+/// carrying more than one document is a caller error there
+/// (`from_str_multi` / `document::load_all` is the multi-document
+/// entry point). See #351. A single document with a leading `---` or
+/// trailing `...` marker is unaffected: it still produces exactly one
+/// entry in `docs`.
+#[cfg(feature = "std")]
+pub(crate) fn load_exactly_one(
+    parser: &mut crate::parser::events::Parser<'_>,
+    config: &ParseConfig,
+    input: &str,
+) -> Result<(Value, SpanTree)> {
+    let docs = load(parser, config, input)?;
+    if docs.len() > 1 {
+        return Err(Error::MoreThanOneDocument);
+    }
     Ok(docs
         .into_iter()
         .next()
@@ -868,16 +901,33 @@ fn estimate_value_size(v: &Value) -> usize {
 // populated correctly.
 
 /// Skip-span loader entry point: parse one document into `Value`
-/// without building a `SpanTree`. Available on every target —
-/// `std` builds use this from the [`from_str::<Value>`] fast path
-/// (`Value::deserialize` never consults the span context, so
-/// building one is pure waste). `no_std` builds use it
-/// exclusively.
+/// without building a `SpanTree`, silently discarding any document
+/// past the first.
+///
+/// The deserialise entry points use the checked
+/// [`load_exactly_one_no_spans`] instead; this unchecked form's sole
+/// remaining caller is `cst::document::decode_key_token`, `std`-only
+/// like the rest of the `cst` module.
+#[cfg(feature = "std")]
 pub(crate) fn load_one_no_spans(input: &str, config: &ParseConfig) -> Result<Value> {
     Ok(load_all_no_spans(input, config)?
         .into_iter()
         .next()
         .unwrap_or(Value::Null))
+}
+
+/// Like [`load_one_no_spans`], but errors if the stream carries more
+/// than one document.
+///
+/// Used by `from_str` / `from_str_with_config`'s `Value` bypass and
+/// its `no_std` AST path — see the matching [`load_exactly_one`] and
+/// #351.
+pub(crate) fn load_exactly_one_no_spans(input: &str, config: &ParseConfig) -> Result<Value> {
+    let docs = load_all_no_spans(input, config)?;
+    if docs.len() > 1 {
+        return Err(Error::MoreThanOneDocument);
+    }
+    Ok(docs.into_iter().next().unwrap_or(Value::Null))
 }
 
 /// Skip-span loader entry point: parse all documents into

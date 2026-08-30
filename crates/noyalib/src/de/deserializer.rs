@@ -173,13 +173,31 @@ impl<'de> serde_core::Deserializer<'de> for Deserializer<'de> {
             Value::Sequence(_) => self.deserialize_seq(visitor),
             Value::Mapping(_) => self.deserialize_map(visitor),
             Value::Tagged(tagged) => {
-                // Typed targets see through the tag transparently —
-                // `#[derive(serde::Deserialize)] struct Foo { x: i32 }` against
-                // `!Foo {x: 1}` yields `Foo { x: 1 }`. (Tag *preservation* for
-                // a `Value` target happens in the AST loader / `from_value`'s
-                // clone fast path, not here.)
-                let de = self.descend(tagged.value());
-                de.deserialize_any(visitor)
+                // `deserialize_any` is the "self-describing" entry point —
+                // reached by `Value`'s own `Deserialize` impl (directly, or
+                // nested inside `Mapping`, `Sequence`/`Vec<Value>`, or a
+                // struct field of type `Value`) and by serde's untagged-enum
+                // content buffering. Typed struct/map targets never reach
+                // here for a tagged node — `deserialize_map`/
+                // `deserialize_struct` have their own arm (below) that sees
+                // through the tag transparently, e.g.
+                // `#[derive(serde::Deserialize)] struct Foo { x: i32 }`
+                // against `!Foo {x: 1}` yields `Foo { x: 1 }`.
+                //
+                // So a tagged node reaching *this* arm is a `Value` being
+                // reconstructed, and it must keep its tag (see #350; the
+                // top-level `Value` target already did, via the AST
+                // loader's `parse_one_value` bypass in
+                // `from_str_with_config` / `from_value`'s clone fast path —
+                // this arm is what nested `Value`s go through instead).
+                // Hand the tag/inner-value pair to the visitor as an enum
+                // (variant name = tag, payload = the untagged value) —
+                // `ValueVisitor::visit_enum` reassembles `Value::Tagged`.
+                self.wrap_err(visitor.visit_enum(EnumAccess {
+                    variant: tagged.tag().as_str(),
+                    value: tagged.value(),
+                    span_ctx: self.span_ctx,
+                }))
             }
         }
     }
@@ -528,6 +546,10 @@ impl<'de> serde_core::Deserializer<'de> for Deserializer<'de> {
             Value::Mapping(map) => {
                 self.wrap_err(visitor.visit_map(ValueMapAccess::from_de(&self, map)))
             }
+            // The null document (empty / whitespace-only / comment-only
+            // input, or a bare `---`) has "no entries" for a map or
+            // `#[serde(default)]` struct target. See #349.
+            Value::Null => self.wrap_err(visitor.visit_map(EmptyMapAccess)),
             // Tagged values are transparent for typed
             // `deserialize_*` calls — `HashMap::deserialize`
             // against `!!set { Mark, Sammy }` (which now surfaces
@@ -706,6 +728,35 @@ impl<'de> serde_core::de::MapAccess<'de> for ValueMapAccess<'de> {
             }
             None => Err(serde_core::de::Error::custom("value is missing")),
         }
+    }
+}
+
+/// `MapAccess` that immediately reports "no entries".
+///
+/// An empty, whitespace-only, or comment-only document (and a bare
+/// `---` with no content) parses as the YAML null document
+/// (`Value::Null`). `Mapping` and `#[serde(default)]` struct targets
+/// treat that the same way `serde_yaml` does — as a map with no
+/// entries — instead of a type-mismatch error. `deserialize_any`
+/// still visits `Value::Null` as `None`; only the map/struct entry
+/// points route through here. See #349.
+pub(crate) struct EmptyMapAccess;
+
+impl<'de> serde_core::de::MapAccess<'de> for EmptyMapAccess {
+    type Error = Error;
+
+    fn next_key_seed<K>(&mut self, _seed: K) -> Result<Option<K::Value>>
+    where
+        K: serde_core::de::DeserializeSeed<'de>,
+    {
+        Ok(None)
+    }
+
+    fn next_value_seed<V>(&mut self, _seed: V) -> Result<V::Value>
+    where
+        V: serde_core::de::DeserializeSeed<'de>,
+    {
+        Err(serde_core::de::Error::custom("value is missing"))
     }
 }
 

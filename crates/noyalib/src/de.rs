@@ -25,7 +25,7 @@ mod config;
 mod deserializer;
 pub use config::{DuplicateKeyPolicy, MergeKeyPolicy, ParserConfig, RequireIndent, YamlVersion};
 pub use deserializer::Deserializer;
-pub(crate) use deserializer::{SpannedMapAccess, is_binary_tag};
+pub(crate) use deserializer::{EmptyMapAccess, SpannedMapAccess, is_binary_tag};
 
 /// Deserialize YAML from a `&str` into a typed `T`.
 ///
@@ -469,7 +469,7 @@ where
     // provably correct because `is_value_target::<T>()` already
     // verified `TypeId::of::<T>() == TypeId::of::<Value>()`.
     if is_value_target::<T>() {
-        let mut value = parser::parse_one_value(s, &parse_config)?;
+        let mut value = parser::parse_exactly_one_value(s, &parse_config)?;
         apply_includes(&mut value, config)?;
         apply_properties(&mut value, config)?;
         for p in &config.policies {
@@ -488,7 +488,7 @@ where
 
     #[cfg(feature = "std")]
     {
-        let (mut value, span_tree) = parser::parse_one(s, &parse_config)?;
+        let (mut value, span_tree) = parser::parse_exactly_one(s, &parse_config)?;
         apply_includes(&mut value, config)?;
         apply_properties(&mut value, config)?;
         for p in &config.policies {
@@ -511,7 +511,7 @@ where
 
     #[cfg(not(feature = "std"))]
     {
-        let value = parser::parse_one_value(s, &parse_config)?;
+        let value = parser::parse_exactly_one_value(s, &parse_config)?;
         let de = Deserializer::with_options(
             &value,
             None,

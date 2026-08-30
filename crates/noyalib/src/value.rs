@@ -12,6 +12,7 @@ mod mapping;
 mod number;
 mod serde_impl;
 pub use mapping::{Mapping, MappingAny};
+pub(crate) use number::write_float;
 pub use number::{Number, ParseNumberError};
 
 /// A YAML sequence (array/list).

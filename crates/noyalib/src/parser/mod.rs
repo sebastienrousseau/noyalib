@@ -46,22 +46,48 @@ pub(crate) fn parse(input: &str, config: &ParseConfig) -> Result<Vec<(Value, Spa
 }
 
 /// Parse a single YAML document from a string.
+///
+/// Silently discards any document past the first — see
+/// [`loader::load_one`]. Deserialise entry points use
+/// [`parse_exactly_one`] instead.
 #[cfg(feature = "std")]
 pub(crate) fn parse_one(input: &str, config: &ParseConfig) -> Result<(Value, SpanTree)> {
     let mut parser = Parser::new(input);
     loader::load_one(&mut parser, config, input)
 }
 
-/// Parse a single YAML document into a `Value` without building a `SpanTree`.
+/// Like [`parse_one`], but errors if the stream carries more than one
+/// document. Used by `from_str` / `from_str_with_config`'s AST path
+/// (see #351).
+#[cfg(feature = "std")]
+pub(crate) fn parse_exactly_one(input: &str, config: &ParseConfig) -> Result<(Value, SpanTree)> {
+    let mut parser = Parser::new(input);
+    loader::load_exactly_one(&mut parser, config, input)
+}
+
+/// Parse a single YAML document into a `Value` without building a
+/// `SpanTree`, silently discarding any document past the first.
 ///
-/// Available on every target. Callers that don't need span data
-/// (e.g. `from_str::<Value>` — `Value` has no span field, so spans
-/// are always discarded) should prefer this over [`parse_one`] to
-/// avoid the per-node `SpanTree` allocation and the subsequent
-/// `build_span_map` walk. `no_std` builds use this exclusively
-/// because `SpanTree` requires `std`-only types.
+/// The deserialise entry points (`from_str`, `from_str_with_config`)
+/// use the checked [`parse_exactly_one_value`] instead; this
+/// unchecked form's sole remaining caller is
+/// `cst::document::decode_key_token`, which only ever feeds it a
+/// single scalar token — `std`-only, like the rest of the `cst`
+/// module. See [`loader::load_one_no_spans`].
+#[cfg(feature = "std")]
 pub(crate) fn parse_one_value(input: &str, config: &ParseConfig) -> Result<Value> {
     loader::load_one_no_spans(input, config)
+}
+
+/// Parse a single YAML document into a `Value` without building a
+/// `SpanTree`, erroring if the stream carries more than one document.
+///
+/// Available on every target — `std` builds use this from
+/// `from_str::<Value>`'s fast path (`Value` has no span field, so a
+/// `SpanTree` would be pure waste) and from the `no_std` AST path;
+/// `no_std` builds use it exclusively. See #351.
+pub(crate) fn parse_exactly_one_value(input: &str, config: &ParseConfig) -> Result<Value> {
+    loader::load_exactly_one_no_spans(input, config)
 }
 
 /// Parse all YAML documents into `Value`s without building `SpanTree`s.
