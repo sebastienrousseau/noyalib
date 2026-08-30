@@ -1027,6 +1027,31 @@ fn write_block_scalar_body(output: &mut String, s: &str, indent: usize, config: 
     }
 }
 
+/// The explicit indentation indicator digit(s), if the block needs one.
+///
+/// YAML 1.2.2 §8.1.1.1: a literal/folded block scalar's indentation is
+/// normally *auto-detected* from its first non-empty content line. That
+/// detection breaks when the first content line itself starts with a
+/// space or a tab — the leading whitespace gets folded into the detected
+/// indentation, inflating it past what later, less-indented lines carry,
+/// which a parser then rejects as inconsistent indentation. The fix is an
+/// explicit indentation indicator between the block style character
+/// (`|`/`>`) and the chomping indicator, stating the indentation as a
+/// number of columns *beyond the parent node's own indentation*.
+///
+/// [`write_block_scalar_body`] always places content `config.indent`
+/// columns beyond the indentation this function's caller was handed for
+/// this value's slot (the parent node's own indentation) — so whenever an
+/// indicator is needed, its value is exactly `config.indent`, independent
+/// of nesting depth.
+fn block_scalar_indent_indicator(s: &str, config: &SerializerConfig) -> String {
+    let first_content_line = s.lines().find(|line| !line.is_empty());
+    match first_content_line {
+        Some(line) if line.starts_with(' ') || line.starts_with('\t') => config.indent.to_string(),
+        _ => String::new(),
+    }
+}
+
 fn write_block_scalar(output: &mut String, s: &str, indent: usize, config: &SerializerConfig) {
     // Determine chomping indicator based on trailing newlines
     let chomping = if s.ends_with('\n') {
@@ -1040,6 +1065,7 @@ fn write_block_scalar(output: &mut String, s: &str, indent: usize, config: &Seri
     };
 
     output.push('|');
+    output.push_str(&block_scalar_indent_indicator(s, config));
     output.push_str(chomping);
 
     write_block_scalar_body(output, s, indent, config);
@@ -1394,6 +1420,7 @@ fn write_literal_block(output: &mut String, s: &str, indent: usize, config: &Ser
     };
 
     output.push('|');
+    output.push_str(&block_scalar_indent_indicator(s, config));
     output.push_str(chomping);
 
     write_block_scalar_body(output, s, indent, config);
@@ -1407,6 +1434,7 @@ fn write_folded_block(output: &mut String, s: &str, indent: usize, config: &Seri
     };
 
     output.push('>');
+    output.push_str(&block_scalar_indent_indicator(s, config));
     output.push_str(chomping);
 
     write_block_scalar_body(output, s, indent, config);
