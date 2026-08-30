@@ -38,9 +38,17 @@ fn type_mismatch_from_str_carries_the_value_location() {
         text.contains("line 2") && text.contains("column"),
         "Display must include the position: {text}"
     );
+    // The streaming path's wording is serde's own (`invalid type: string
+    // "not-a-number", expected u16`); the AST path, which supplied the
+    // location, would have said `type mismatch: expected unsigned integer,
+    // found string`. The message must not depend on which path ran.
     assert!(
-        text.contains("expected unsigned integer") && text.contains("found string"),
-        "the original mismatch text is kept: {text}"
+        text.contains("invalid type") && text.contains("expected u16"),
+        "serde's wording from the streaming path is kept: {text}"
+    );
+    assert!(
+        !text.contains("type mismatch"),
+        "the AST path's wording must not replace the streaming message: {text}"
     );
 }
 

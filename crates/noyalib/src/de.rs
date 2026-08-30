@@ -191,18 +191,19 @@ where
     let stream_eligible = config.merge_key_policy == MergeKeyPolicy::Auto
         && !config.ignore_binary_tag_for_string
         && config.policies.is_empty();
+    let mut streaming_err = None;
     if stream_eligible {
         if let Some(res) = crate::streaming::from_str_streaming(s, config) {
             match res {
                 // A typed rejection the streaming walker cannot locate --
                 // serde's own visitor errors (`invalid type: ...`) and the
                 // typed `TypeMismatch` arms carry no position on this path.
-                // Fall through to the span-aware AST path below, which
-                // raises the same failure with its source location
-                // (`Deserializer::wrap_err`). Success, and parse errors that
-                // already carry a location, return as they are; the second
-                // parse is paid only on the error path.
-                Err(err) if err.location().is_none() => {}
+                // Keep it and fall through to the span-aware AST path
+                // below, which finds where the same failure is;
+                // `locate_streaming_error` joins the two. Success, and parse
+                // errors that already carry a location, return as they are;
+                // the second parse is paid only on the error path.
+                Err(err) if err.location().is_none() => streaming_err = Some(err),
                 other => return other,
             }
         }
@@ -223,7 +224,7 @@ where
         Some(_guard.as_ref()),
         config.ignore_binary_tag_for_string,
     );
-    T::deserialize(de)
+    locate_streaming_error(T::deserialize(de), streaming_err)
 }
 
 /// Strict deserialise: like [`from_str`] but errors if `s`
@@ -422,18 +423,19 @@ where
         && properties_inactive(config)
         && includes_inactive(config)
         && !value_target_bypass;
+    let mut streaming_err = None;
     if stream_eligible {
         if let Some(res) = crate::streaming::from_str_streaming(s, config) {
             match res {
                 // A typed rejection the streaming walker cannot locate --
                 // serde's own visitor errors (`invalid type: ...`) and the
                 // typed `TypeMismatch` arms carry no position on this path.
-                // Fall through to the span-aware AST path below, which
-                // raises the same failure with its source location
-                // (`Deserializer::wrap_err`). Success, and parse errors that
-                // already carry a location, return as they are; the second
-                // parse is paid only on the error path.
-                Err(err) if err.location().is_none() => {}
+                // Keep it and fall through to the span-aware AST path
+                // below, which finds where the same failure is;
+                // `locate_streaming_error` joins the two. Success, and parse
+                // errors that already carry a location, return as they are;
+                // the second parse is paid only on the error path.
+                Err(err) if err.location().is_none() => streaming_err = Some(err),
                 other => return other,
             }
         }
@@ -502,14 +504,41 @@ where
             Some(_guard.as_ref()),
             config.ignore_binary_tag_for_string,
         );
-        T::deserialize(de)
+        locate_streaming_error(T::deserialize(de), streaming_err)
     }
 
     #[cfg(not(feature = "std"))]
     {
         let value = parser::parse_one_value(s, &parse_config)?;
         let de = Deserializer::with_options(&value, None, config.ignore_binary_tag_for_string);
-        T::deserialize(de)
+        locate_streaming_error(T::deserialize(de), streaming_err)
+    }
+}
+
+/// Resolves a typed parse whose streaming attempt failed without a
+/// position.
+///
+/// The streaming walker raises serde's own wording (`invalid type:
+/// string "x", expected u16`) but cannot say where; the span-aware AST
+/// path finds the position but describes the same failure in its own
+/// words (`type mismatch: expected unsigned integer, found string`). A
+/// caller must see one wording whichever path ran, so the result keeps
+/// the streaming message and takes only the location from the AST
+/// attempt. An AST attempt that succeeds is returned as it is; one that
+/// fails without a location yields the streaming error unchanged.
+fn locate_streaming_error<T>(ast_result: Result<T>, streaming_err: Option<Error>) -> Result<T> {
+    match (ast_result, streaming_err) {
+        (Err(ast_err), Some(streaming_err)) => Err(match ast_err.location() {
+            Some(location) => {
+                let message = match streaming_err {
+                    Error::Custom(message) | Error::Deserialize(message) => message,
+                    other => other.to_string(),
+                };
+                Error::DeserializeWithLocation { message, location }
+            }
+            None => streaming_err,
+        }),
+        (result, _) => result,
     }
 }
 
