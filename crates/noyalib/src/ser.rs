@@ -891,6 +891,16 @@ static FIRST_CHAR_QUOTE: [bool; 128] = {
     t
 };
 
+/// A character only double-quoted style can carry faithfully: CR, NEL
+/// (U+0085), LS (U+2028), PS (U+2029). A literal block scalar
+/// normalises `\r` into the block's own line breaks, and the three
+/// Unicode separators pass through plain and single-quoted styles as
+/// raw bytes that 1.1-era parsers (and this crate's own reader) fold
+/// as line breaks, so a round trip changes the string (#335).
+fn needs_double_quoted_escape(s: &str) -> bool {
+    s.contains(['\r', '\u{0085}', '\u{2028}', '\u{2029}'])
+}
+
 fn write_string(output: &mut String, s: &str, indent: usize, config: &SerializerConfig) {
     let bytes = s.as_bytes();
 
@@ -904,9 +914,15 @@ fn write_string(output: &mut String, s: &str, indent: usize, config: &Serializer
         return;
     }
 
-    // Force-quote all strings when configured
+    // Force-quote all strings when configured. Single-quoted style has
+    // no escapes, so a string only double-quoted style can carry still
+    // falls back regardless of the setting.
     if config.quote_all {
-        write_single_quoted(output, s);
+        if needs_double_quoted_escape(s) {
+            write_double_quoted(output, s);
+        } else {
+            write_single_quoted(output, s);
+        }
         return;
     }
 
@@ -953,13 +969,22 @@ fn write_string(output: &mut String, s: &str, indent: usize, config: &Serializer
         }
     }
 
-    // Block scalar for multiline strings
-    if config.block_scalars {
+    // Block scalar for multiline strings -- unless the string carries a
+    // character a block scalar cannot represent: `str::lines` and the
+    // block's own line breaks erase a `\r` (#335).
+    if config.block_scalars && !needs_double_quoted_escape(s) {
         let newlines = bytes.iter().filter(|&&b| b == b'\n').count();
         if newlines >= config.block_scalar_threshold {
             write_block_scalar(output, s, indent, config);
             return;
         }
+    }
+
+    // CR and the Unicode line separators are representable only with
+    // double-quoted escapes (#335).
+    if needs_double_quoted_escape(s) {
+        write_double_quoted(output, s);
+        return;
     }
 
     // Single-pass quoting decision
@@ -1060,20 +1085,26 @@ fn write_single_quoted(output: &mut String, s: &str) {
 /// Write a double-quoted string with bulk-copy between escape points.
 fn write_double_quoted(output: &mut String, s: &str) {
     output.push('"');
-    let bytes = s.as_bytes();
     let mut start = 0;
-    for (i, &b) in bytes.iter().enumerate() {
-        let esc = match b {
-            b'"' => "\\\"",
-            b'\\' => "\\\\",
-            b'\n' => "\\n",
-            b'\r' => "\\r",
-            b'\t' => "\\t",
-            b'\0' => "\\0",
-            c if c < 0x20 && c != b'\t' => {
+    for (i, c) in s.char_indices() {
+        let esc = match c {
+            '"' => "\\\"",
+            '\\' => "\\\\",
+            '\n' => "\\n",
+            '\r' => "\\r",
+            '\t' => "\\t",
+            '\0' => "\\0",
+            // Named escapes for the non-ASCII line-break characters
+            // (YAML 1.2 section 5.7): emitted raw they read back as
+            // line breaks in 1.1-era parsers and in this crate's own
+            // reader (#335).
+            '\u{0085}' => "\\N",
+            '\u{2028}' => "\\L",
+            '\u{2029}' => "\\P",
+            c if (c as u32) < 0x20 => {
                 // Other control characters: flush and write hex escape
                 output.push_str(&s[start..i]);
-                let _ = write!(output, "\\x{c:02X}");
+                let _ = write!(output, "\\x{:02X}", c as u32);
                 start = i + 1;
                 continue;
             }
@@ -1081,7 +1112,7 @@ fn write_double_quoted(output: &mut String, s: &str) {
         };
         output.push_str(&s[start..i]);
         output.push_str(esc);
-        start = i + 1;
+        start = i + c.len_utf8();
     }
     output.push_str(&s[start..]);
     output.push('"');
