@@ -4977,6 +4977,14 @@ pub(super) fn format_number(n: &Number) -> String {
 }
 
 fn format_string_for_site(s: &str, ctx: &SiteContext) -> Result<String> {
+    // CR and the Unicode line separators survive only double-quoted,
+    // escaped: a literal block normalises `\r` into its own line
+    // breaks, and NEL/LS/PS pass through plain or single-quoted styles
+    // as raw bytes that read back as line breaks (#335).
+    if s.contains(['\r', '\u{0085}', '\u{2028}', '\u{2029}']) {
+        return Ok(format_double_quoted(s));
+    }
+
     // Multi-line string in a block context: prefer a literal block
     // scalar (`|` / `|-`) over `\n`-escaped double quotes — a
     // Renovate-style edit that lifts a one-line value into many
@@ -5148,6 +5156,11 @@ pub(super) fn is_plain_safe(s: &str) -> bool {
     if s.is_empty() {
         return false;
     }
+    // NEL/LS/PS read back as line breaks; only double-quoted escapes
+    // carry them (#335). A `\r` is caught by the control-byte loop.
+    if s.contains(['\u{0085}', '\u{2028}', '\u{2029}']) {
+        return false;
+    }
     // Reserved scalars that resolve to non-string types.
     if matches!(
         s,
@@ -5293,6 +5306,9 @@ pub(super) fn format_double_quoted(s: &str) -> String {
             '\n' => out.push_str("\\n"),
             '\r' => out.push_str("\\r"),
             '\t' => out.push_str("\\t"),
+            '\u{0085}' => out.push_str("\\N"),
+            '\u{2028}' => out.push_str("\\L"),
+            '\u{2029}' => out.push_str("\\P"),
             '\x08' => out.push_str("\\b"),
             '\x0c' => out.push_str("\\f"),
             c if (c as u32) < 0x20 => {
