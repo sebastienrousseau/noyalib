@@ -28,6 +28,7 @@ reference back. Nothing is silently rewritten.
 | [0003](./0003-zero-unsafe-policy.md) | `#![forbid(unsafe_code)]` workspace-wide | accepted |
 | [0004](./0004-lossless-u64-integers.md) | Opt in to lossless `u64` integers | proposed |
 | [0005](./0005-workspace-split.md) | Split workspace into 4 satellite repositories with strict-lockstep versioning | accepted |
+| [0007](./0007-prefer-single-quotes-option.md) | Add `prefer_single_quotes` as an opt-in serializer config flag | accepted |
 
 ## When to add an ADR
 
