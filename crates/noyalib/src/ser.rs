@@ -503,14 +503,18 @@ where
 /// (`Value::merge`, `Value::interpolate_properties`, …) before a
 /// final emit.
 ///
-/// **Note**: when `value` is itself a [`Value`] containing
-/// [`Value::Tagged`], the round-trip through `serialize` →
-/// `Value` is *lossy* on the tag — the standard `Serialize`
-/// pipeline routes `Tagged` through `serialize_map` (which is
-/// the right shape for serde-bridge interop with `serde_json`
-/// etc.) and the YAML-tag wire form is lost. Use
-/// [`to_string_value`] / [`to_writer_value`] for tag-preserving
-/// emission of a `Value` that may contain `Tagged`.
+/// **Note**: [`TaggedValue`]'s `Serialize` impl (and `Value::Tagged`'s own
+/// inline serialize arm) route through `serialize_map` with a single
+/// entry keyed by the tag string — the right shape for interop with a
+/// generic serializer that has no YAML-tag concept, `serde_json` and
+/// friends included. This crate's own [`Serializer`] *does* have a tag
+/// concept: it recognises that single-entry, `!`-prefixed-key shape when
+/// it builds the resulting [`Value`] and reconstructs [`Value::Tagged`],
+/// so `to_value`/`to_string` on a `Value` containing `Tagged` round-trips
+/// the tag rather than losing it to a degenerate one-entry mapping. Refs
+/// #350. For direct emission of a `Value` you already hold, without going
+/// through the `Serialize` pipeline at all, see [`to_string_value`] /
+/// [`to_writer_value`].
 ///
 /// # Errors
 ///
@@ -522,24 +526,24 @@ pub fn to_value<T>(value: &T) -> Result<Value>
 where
     T: ?Sized + serde_core::Serialize,
 {
-    // No tag-preserving fast-path here: the public `to_value` /
-    // `to_string` family keeps `T: ?Sized + serde_core::Serialize` so callers
-    // can serialise structs holding borrowed references. Users
-    // holding a [`Value`] who want lossless `Value::Tagged`
-    // round-trip should call [`to_string_value`] /
-    // [`to_string_value_with_config`] / [`to_writer_value`] —
-    // those skip the `Serialize` pipeline entirely.
+    // The public `to_value` / `to_string` family keeps
+    // `T: ?Sized + serde_core::Serialize` so callers can serialise structs
+    // holding borrowed references. `Value::Tagged`'s tag survives this path
+    // via `SerializeMap::end`'s single-entry-map reconstruction (see its
+    // doc comment); users who already hold a `Value` and want to skip the
+    // `Serialize` pipeline entirely can still call [`to_string_value`] /
+    // [`to_string_value_with_config`] / [`to_writer_value`].
     value.serialize(Serializer)
 }
 
 /// Serialize a [`Value`] directly to a YAML `String`, preserving
 /// [`Value::Tagged`] shape losslessly.
 ///
-/// Going through the generic `to_string<T: serde_core::Serialize>` path
-/// routes `Value::Tagged(...)` through `Serializer::serialize_map`
-/// (which emits a single-entry mapping for serde-bridge interop),
-/// which loses the YAML-tag wire form. This function bypasses the
-/// `Serialize` pipeline and writes the YAML-tag prefix directly.
+/// This function bypasses the `Serialize` pipeline entirely and writes
+/// the YAML-tag prefix directly. [`to_string`]/[`to_value`] also preserve
+/// `Value::Tagged` when `T` is (or contains) a `Value` — see the note on
+/// [`to_value`] — but this one skips the round trip through `Serializer`
+/// altogether.
 ///
 /// Use this whenever you hold a `Value` that may contain
 /// `Value::Tagged` and want the emitted YAML to round-trip back
@@ -735,10 +739,22 @@ fn write_value(
                     depth,
                 )?;
             } else {
-                // Write tag followed by value
+                // Write the tag, then its payload. A scalar payload sits on
+                // this same line after a space (`!tag value`); a non-empty
+                // mapping/sequence payload starts block layout on the next
+                // line instead, with no trailing space after the tag (that
+                // space would never be followed by anything, so it would
+                // survive only as trailing whitespace). `indent` here is
+                // already the slot this caller computed for the *whole*
+                // tagged value via `needs_block_layout`/`indicator_takes_a_space`
+                // above (see `write_mapping`/`write_sequence`), so the
+                // payload is written at that same `indent`, not one deeper.
                 output.push_str(tag_str);
-                output.push(' ');
-                write_value(output, tagged.value(), indent, false, config, depth + 1)?;
+                let inner = tagged.value();
+                if indicator_takes_a_space(inner) {
+                    output.push(' ');
+                }
+                write_value(output, inner, indent, false, config, depth + 1)?;
             }
         }
     }
@@ -1197,7 +1213,9 @@ fn write_sequence(
 ///
 /// The exception is an anchor-wrapped block value, which renders as
 /// `&idNNN\n  ...`: the `&` is on *this* line, so the space is real
-/// separation rather than leftovers.
+/// separation rather than leftovers. A regular (user) tag is the same
+/// story: `!tag\n  ...` also has visible text — the tag name — on this
+/// line, so the space is real separation there too.
 ///
 /// [`write_mapping`] has always applied this rule; [`write_sequence`] carried
 /// its own copy of the key-writing and did not, which is the whole of the bug
@@ -1207,12 +1225,16 @@ fn indicator_takes_a_space(value: &Value) -> bool {
         || matches!(
             value,
             Value::Tagged(t) if t.tag().as_str() == crate::fmt::MAGIC_ANCHOR_DEF
+                || !t.tag().as_str().starts_with("__noya_")
         )
 }
 
 /// Whether a value needs block-style layout (indented on the line after `:`)
 /// rather than inline scalar layout. Anchor-wrapped block collections must be
-/// treated like the inner collection.
+/// treated like the inner collection; a regular (user) tag likewise needs
+/// block layout exactly when *its* payload does (a tagged mapping/sequence
+/// under a key must be indented one level deeper, the same as an untagged
+/// one — see [`write_value`]'s `Value::Tagged` arm).
 fn needs_block_layout(v: &Value) -> bool {
     match v {
         Value::Mapping(m) => !m.is_empty(),
@@ -1224,6 +1246,9 @@ fn needs_block_layout(v: &Value) -> bool {
                 }
             }
             false
+        }
+        Value::Tagged(t) if !t.tag().as_str().starts_with("__noya_") => {
+            needs_block_layout(t.value())
         }
         _ => false,
     }
@@ -1888,6 +1913,32 @@ impl serde_core::ser::SerializeMap for SerializeMap {
     }
 
     fn end(self) -> Result<Value> {
+        // `TaggedValue::serialize` (and `Value::Tagged`'s own inline
+        // serialize arm) route through this exact `serialize_map(Some(1))`
+        // + one `serialize_entry` shape -- that single-entry-map wire form
+        // is the documented, unchanged shape for interop with a generic
+        // serializer that has no YAML-tag concept (`serde_json` and
+        // friends). Our own serializer *does* have a tag concept, so
+        // recognise that shape here and reconstruct `Value::Tagged`
+        // instead of losing the tag to a degenerate one-entry mapping.
+        // Refs #350.
+        let is_tag_shaped = self.map.len() == 1
+            && self
+                .map
+                .iter()
+                .next()
+                .is_some_and(|(k, _)| k.starts_with('!'));
+        if is_tag_shaped {
+            let (key, value) = self
+                .map
+                .into_iter()
+                .next()
+                .expect("is_tag_shaped confirmed exactly one entry");
+            return Ok(Value::Tagged(Box::new(TaggedValue::new(
+                Tag::new(key),
+                value,
+            ))));
+        }
         Ok(Value::Mapping(self.map))
     }
 }
