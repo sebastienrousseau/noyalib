@@ -674,8 +674,18 @@ impl Document {
     /// - `SingleQuotedScalar` — wrap in `'…'` (only string values).
     /// - `DoubleQuotedScalar` — wrap in `"…"` with standard escapes
     ///   (only string values).
-    /// - `LiteralScalar` / `FoldedScalar` — currently rejected; block
-    ///   scalar formatting is a follow-up.
+    /// - `LiteralScalar` / `FoldedScalar` — a single-line replacement is
+    ///   emitted plain (or quoted when unsafe); a multi-line one is
+    ///   re-emitted as a literal block when representable, and refused
+    ///   otherwise. Folded style is not yet reproduced — a changed value
+    ///   at a `>` site comes back `|` or plain.
+    ///
+    /// Setting a value equal to the one already loaded is a **no-op**:
+    /// the source is left byte-identical, so the author's spelling
+    /// (`1.10`, `0x1F`, `~`, an implicit null, a `>-` folded scalar)
+    /// survives a save that does not change the value. Equality is
+    /// [`Value`]'s own, so whether `1.0` over a loaded `1` is a no-op
+    /// follows `Number`'s `PartialEq` for the active features.
     ///
     /// Non-string values (numbers, booleans, null) are emitted plain
     /// regardless of the existing style — quoting them would change
@@ -742,9 +752,29 @@ impl Document {
     /// let mut doc = parse_document("name: noyalib\nversion: 0.0.1\n").unwrap();
     /// doc.set_value("version", &Value::String("0.0.2".into())).unwrap();
     /// assert_eq!(doc.to_string(), "name: noyalib\nversion: 0.0.2\n");
+    ///
+    /// // An equal value does not touch the bytes.
+    /// let mut doc = parse_document("ratio: 1.10\n").unwrap();
+    /// doc.set_value("ratio", &Value::from(1.1_f64)).unwrap();
+    /// assert_eq!(doc.to_string(), "ratio: 1.10\n");
     /// ```
     pub fn set_value(&mut self, path: &str, value: &Value) -> Result<()> {
         let (s, e) = self.write_span(path)?;
+        // A value equal to the one already there is a no-op, and a no-op
+        // must leave the bytes alone: re-rendering an equal value through
+        // the formatter rewrites spellings the author chose (`1.10` to
+        // `1.1`, `0x1F` to `31`, `+1` to `1`, `~` to `null`, a `>-`
+        // folded scalar to a plain one) without changing the loaded
+        // document (#337). `write_span` has already vetted the path, so
+        // alias refusals and path errors are unaffected.
+        {
+            self.ensure_cache();
+            let cache = self.cache.borrow();
+            let (root, _) = cache.as_ref().expect("ensure_cache populated");
+            if typed_value_at(root, &parse_query_path(path)) == Some(value) {
+                return Ok(());
+            }
+        }
         // An empty span is an implicit null's insertion point, not a value to
         // overwrite: there is no scalar leaf there to read a style from, and
         // no `: ` separator either, since the span starts right after the
@@ -4542,6 +4572,22 @@ fn shape_excluding(value: &Value, segments: &[QuerySegment]) -> String {
     let mut out = String::new();
     walk(value, segments, &mut out);
     out
+}
+
+/// The typed value at `segments`, walking mappings by key and sequences
+/// by index. `None` when the path does not resolve. Read-only sibling of
+/// [`expected_after_remove`]'s navigation loop; used by `set_value`'s
+/// no-op short-circuit.
+fn typed_value_at<'v>(value: &'v Value, segments: &[QuerySegment]) -> Option<&'v Value> {
+    let mut cur = value;
+    for seg in segments {
+        cur = match (seg, cur) {
+            (QuerySegment::Key(k), Value::Mapping(m)) => m.get(k)?,
+            (QuerySegment::Index(i), Value::Sequence(seq)) => seq.get(*i)?,
+            _ => return None,
+        };
+    }
+    Some(cur)
 }
 
 fn expected_after_remove(value: &Value, segments: &[QuerySegment]) -> Result<Value> {
