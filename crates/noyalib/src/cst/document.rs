@@ -3462,6 +3462,19 @@ fn column_of(source: &str, offset: usize) -> usize {
     offset.saturating_sub(line_start + bom)
 }
 
+/// The refusal for a `remove` path segment that names a key the mapping
+/// received through a `<<` merge key. Such a key is in the loaded
+/// `Value` but has no entry of its own in this mapping's source, so
+/// indexing the span-entry list by its position would run past the end
+/// (issue #334).
+fn merge_provided_key(k: &str) -> Error {
+    Error::Parse(format!(
+        "remove: key {k:?} was produced by a `<<` merge key and has no entry \
+         of its own to remove in this mapping — remove it at the anchor's \
+         definition, or override it here explicitly"
+    ))
+}
+
 fn entry_line_span(
     value: &Value,
     span_tree: &SpanTree,
@@ -3492,7 +3505,11 @@ fn entry_line_span(
                     .iter()
                     .position(|(mk, _)| mk == k)
                     .ok_or_else(|| Error::Parse(format!("path not found: missing key {k:?}")))?;
-                let ((key_start, _), child_tree) = &entries[pos];
+                // Keys past the span-entry list were provided by a `<<`
+                // merge key: they exist in the loaded mapping but own no
+                // bytes here, so there is nothing to descend into.
+                let ((key_start, _), child_tree) =
+                    entries.get(pos).ok_or_else(|| merge_provided_key(k))?;
                 (
                     m.iter().nth(pos).map(|(_, v)| v).expect("pos in range"),
                     child_tree,
@@ -3528,6 +3545,15 @@ fn entry_line_span(
                 .iter()
                 .position(|(mk, _)| mk == k)
                 .ok_or_else(|| Error::Parse(format!("path not found: missing key {k:?}")))?;
+            // The loaded mapping lists merge-provided keys after the
+            // explicit ones, and the span tree holds only the explicit
+            // entries, so a position past the entry list is a key that
+            // `<<` supplied. It owns no bytes in this mapping: refuse
+            // before the sole-entry arm below, which would otherwise
+            // read a merge-only mapping as "one entry" and replace the
+            // `<<` line itself with `{}`.
+            let ((key_start, _key_end), child_tree) =
+                entries.get(pos).ok_or_else(|| merge_provided_key(k))?;
             // Last entry: the collection itself becomes `{}`. Deleting the
             // bytes would leave a dangling `a:` that re-parses as null.
             if m.len() <= 1 {
@@ -3540,7 +3566,6 @@ fn entry_line_span(
                     indent,
                 });
             }
-            let ((key_start, _key_end), child_tree) = &entries[pos];
             // An alias value resolves *through* to its anchor, so the span
             // here belongs to the anchor's bytes on some other line — not
             // to this entry. Splicing it would edit a different key, which
