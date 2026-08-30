@@ -1075,6 +1075,17 @@ impl<'de> serde_core::Deserializer<'de> for &mut StreamingDeserializer<'de> {
         V: serde_core::de::Visitor<'de>,
     {
         self.skip_to_content()?;
+        // An empty / whitespace-only / comment-only document never opens
+        // a document at all — after `skip_to_content` the very next event
+        // is `StreamEnd`, with no `Scalar` to resolve. Treat it as the
+        // null document's "no entries" the same way the `Scalar` arm
+        // below handles an explicit `---` with nothing after it. Peeked,
+        // not consumed: the top-level drain loop in `from_str_streaming`
+        // expects to see `StreamEnd` itself once deserialisation is done.
+        // See #349.
+        if matches!(self.peek_event()?, Event::StreamEnd) {
+            return visitor.visit_map(crate::de::EmptyMapAccess);
+        }
         // Tagged mappings route through the AST fallback so the tag is
         // preserved on the resulting `Value::Tagged(...)`. The registry
         // opts a specific tag out of that behaviour.
@@ -1084,27 +1095,38 @@ impl<'de> serde_core::Deserializer<'de> for &mut StreamingDeserializer<'de> {
                 return Err(self.fallback());
             }
         }
-        if let Event::MappingStart { .. } = self.next_event()? {
-            self.depth += 1;
-            if self.depth > self.config.max_depth {
-                return Err(Error::RecursionLimitExceeded { depth: self.depth });
+        match self.next_event()? {
+            Event::MappingStart { .. } => {
+                self.depth += 1;
+                if self.depth > self.config.max_depth {
+                    return Err(Error::RecursionLimitExceeded { depth: self.depth });
+                }
+                let res = visitor.visit_map(StreamingMapAccess {
+                    de: self,
+                    finished: false,
+                    has_emitted_key: false,
+                    key_count: 0,
+                    seen_keys: FxHashSet::default(),
+                    seen_typed: FxHashMap::default(),
+                });
+                // Decrement on Ok and Err (issue #46).
+                self.depth = self.depth.saturating_sub(1);
+                res
             }
-            let res = visitor.visit_map(StreamingMapAccess {
-                de: self,
-                finished: false,
-                has_emitted_key: false,
-                key_count: 0,
-                seen_keys: FxHashSet::default(),
-                seen_typed: FxHashMap::default(),
-            });
-            // Decrement on Ok and Err (issue #46).
-            self.depth = self.depth.saturating_sub(1);
-            res
-        } else {
-            Err(Error::TypeMismatch {
+            // A bare `---` with nothing after it resolves to an implicit
+            // null scalar — the same null document as the truly-empty
+            // case above, just with an explicit document marker. Mirrors
+            // the AST path's `Value::Null` arm in `de::deserializer`.
+            // See #349.
+            Event::Scalar { value, style, .. }
+                if matches!(self.resolve_scalar(&value, style), Scalar::Null) =>
+            {
+                visitor.visit_map(crate::de::EmptyMapAccess)
+            }
+            _ => Err(Error::TypeMismatch {
                 expected: "mapping",
                 found: "other".into(),
-            })
+            }),
         }
     }
 

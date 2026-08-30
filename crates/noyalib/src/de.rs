@@ -25,7 +25,7 @@ mod config;
 mod deserializer;
 pub use config::{DuplicateKeyPolicy, MergeKeyPolicy, ParserConfig, RequireIndent, YamlVersion};
 pub use deserializer::Deserializer;
-pub(crate) use deserializer::{SpannedMapAccess, is_binary_tag};
+pub(crate) use deserializer::{EmptyMapAccess, SpannedMapAccess, is_binary_tag};
 
 /// Deserialize YAML from a `&str` into a typed `T`.
 ///
