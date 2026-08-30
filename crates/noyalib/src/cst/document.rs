@@ -453,6 +453,18 @@ impl Document {
         let delta = replacement.len() as isize - (end as isize - start as isize);
         let candidates = ancestor_candidates(&self.green, start, end);
 
+        // Flow content is kept flat in the green tree, so re-parsing a
+        // block ancestor does not validate the structure of a flow
+        // collection the edit landed in: `{a: x {y} z, b: 2}` passed the
+        // sub-parse and was committed as the document's source (#332).
+        // Only the full parse checks flow structure, so escalate to it.
+        if candidates
+            .iter()
+            .any(|c| matches!(c.kind, SyntaxKind::FlowMapping | SyntaxKind::FlowSequence))
+        {
+            return None;
+        }
+
         for cand in &candidates {
             // Phase A only owns block-collection and block-entry
             // re-parses. Other kinds (scalars, flow collections)
@@ -669,6 +681,23 @@ impl Document {
     /// regardless of the existing style — quoting them would change
     /// the parsed type round-trip.
     ///
+    /// Inside a `[…]` / `{…}` flow collection the same styles apply,
+    /// except that a plain spelling is also refused when the string
+    /// contains `,` `[` `]` `{` or `}` (structural anywhere in flow
+    /// context), and a multi-line string is double-quoted with `\n`
+    /// escapes, because block scalars do not exist in flow context:
+    ///
+    /// ```
+    /// use noyalib::cst::parse_document;
+    /// use noyalib::Value;
+    ///
+    /// let mut doc = parse_document("m: {a: 1, b: 2}\n").unwrap();
+    /// doc.set_value("m.a", &Value::String("x, y".into())).unwrap();
+    /// assert_eq!(doc.to_string(), "m: {a: \"x, y\", b: 2}\n");
+    /// doc.set_value("m.b", &Value::String("two\nlines".into())).unwrap();
+    /// assert_eq!(doc.to_string(), "m: {a: \"x, y\", b: \"two\\nlines\"}\n");
+    /// ```
+    ///
     /// # Filling in an implicit null
     ///
     /// An absent block-mapping value (`a:`) or empty sequence item (`- `) has
@@ -739,10 +768,12 @@ impl Document {
         let neighbour = sibling_dominant_scalar_kind(&self.green, s)
             .filter(|_| kind == SyntaxKind::PlainScalar);
         let entry_col = entry_indent_column(&self.source, s);
+        let in_flow = in_flow_collection(&self.green, s);
         let ctx = SiteContext {
             kind,
             neighbour,
             entry_col,
+            in_flow,
         };
         let fragment = format_value_for_site(value, &ctx)?;
         // A block literal owns every byte through the end of its last
@@ -5038,6 +5069,11 @@ struct SiteContext {
     /// owns the splice site. Used to decide block-scalar
     /// continuation indent.
     entry_col: usize,
+    /// Whether the leaf sits inside a `[…]` / `{…}` flow collection.
+    /// Flow context forbids block scalars and gives `,` `[` `]` `{`
+    /// `}` structural meaning anywhere in a plain scalar, so the
+    /// spelling rules differ from block context (#332).
+    in_flow: bool,
 }
 
 fn format_value_for_site(value: &Value, ctx: &SiteContext) -> Result<String> {
@@ -5062,6 +5098,9 @@ pub(super) fn format_number(n: &Number) -> String {
 }
 
 fn format_string_for_site(s: &str, ctx: &SiteContext) -> Result<String> {
+    if ctx.in_flow {
+        return Ok(format_string_in_flow(s, ctx.kind));
+    }
     // Multi-line string in a block context: prefer a literal block
     // scalar (`|` / `|-`) over `\n`-escaped double quotes — a
     // Renovate-style edit that lifts a one-line value into many
@@ -5119,6 +5158,51 @@ fn format_string_for_site(s: &str, ctx: &SiteContext) -> Result<String> {
             "set_value: target site is not a scalar leaf".into(),
         )),
     }
+}
+
+/// Spell `s` for a leaf inside a flow collection. Block scalars do
+/// not exist in flow context, so a multi-line value is double-quoted
+/// with `\n` escapes; a one-line value keeps the leaf's quoting style,
+/// and a plain leaf stays plain only when [`is_plain_safe_in_flow`]
+/// says the flow indicators cannot misread it (#332).
+fn format_string_in_flow(s: &str, kind: SyntaxKind) -> String {
+    if s.contains('\n') {
+        return format_double_quoted(s);
+    }
+    match kind {
+        SyntaxKind::SingleQuotedScalar => format_single_quoted(s),
+        SyntaxKind::DoubleQuotedScalar => format_double_quoted(s),
+        _ => {
+            if is_plain_safe_in_flow(s) {
+                s.to_string()
+            } else {
+                format_double_quoted(s)
+            }
+        }
+    }
+}
+
+/// Whether the leaf at byte `target` has a `FlowMapping` or
+/// `FlowSequence` ancestor. Block collections cannot nest inside flow
+/// ones, so any flow ancestor means the leaf is in flow context.
+fn in_flow_collection(node: &GreenNode, target: usize) -> bool {
+    let mut pos = 0;
+    for child in node.children() {
+        let len = child.text_len();
+        if pos <= target && target < pos + len {
+            return match child {
+                GreenChild::Token { .. } => false,
+                GreenChild::Node(inner) => {
+                    matches!(
+                        inner.kind(),
+                        SyntaxKind::FlowMapping | SyntaxKind::FlowSequence
+                    ) || in_flow_collection(inner, target - pos)
+                }
+            };
+        }
+        pos += len;
+    }
+    false
 }
 
 /// `true` when the existing leaf's syntax kind belongs to a
@@ -5223,6 +5307,18 @@ fn entry_indent_column(source: &str, pos: usize) -> usize {
         col += 1;
     }
     col - line_start
+}
+
+/// [`is_plain_safe`] for a leaf inside a flow collection, where `,`
+/// `[` `]` `{` `}` end or nest a collection wherever they appear in a
+/// plain scalar (YAML 1.2 §7.3.3, `ns-plain-safe(c)`), not only at
+/// the first byte. `m: {a: x, y}` written for the string `x, y` reads
+/// back as two entries; `{a: x {y}}` does not parse at all (#332).
+pub(super) fn is_plain_safe_in_flow(s: &str) -> bool {
+    is_plain_safe(s)
+        && !s
+            .bytes()
+            .any(|b| matches!(b, b',' | b'[' | b']' | b'{' | b'}'))
 }
 
 /// `true` if `s` can be safely emitted as a YAML plain scalar without
