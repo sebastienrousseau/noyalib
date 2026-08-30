@@ -29,6 +29,7 @@ reference back. Nothing is silently rewritten.
 | [0004](./0004-lossless-u64-integers.md) | Opt in to lossless `u64` integers | proposed |
 | [0005](./0005-workspace-split.md) | Split workspace into 4 satellite repositories with strict-lockstep versioning | accepted |
 | [0006](./0006-plain-scalar-strings-opt-in.md) | Opt in to literal text for a `String`/`char` target reading a plain scalar | proposed |
+| [0007](./0007-prefer-single-quotes-option.md) | Add `prefer_single_quotes` as an opt-in serializer config flag | accepted |
 
 ## When to add an ADR
 

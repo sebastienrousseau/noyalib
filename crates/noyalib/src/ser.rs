@@ -81,6 +81,15 @@ pub struct SerializerConfig {
     pub flow_threshold: usize,
     /// Force-quote all string scalars regardless of content (default: false).
     pub quote_all: bool,
+    /// Prefer single quotes over double quotes when a string scalar needs
+    /// quoting at all (default: false).
+    ///
+    /// A string that contains a character only double-quoted style can
+    /// carry -- a control character, a tab, or any other code point that
+    /// needs an escape sequence -- still gets double-quoted regardless of
+    /// this setting, since single-quoted style has no escape mechanism
+    /// beyond doubling an embedded `'`.
+    pub prefer_single_quotes: bool,
     /// Compact list indentation under mapping keys (default: false).
     ///
     /// When `true`, sequence items under a mapping key align with the key
@@ -106,6 +115,7 @@ impl Default for SerializerConfig {
             scalar_style: ScalarStyle::Auto,
             flow_threshold: 4,
             quote_all: false,
+            prefer_single_quotes: false,
             compact_list_indent: false,
             folded_wrap_chars: 80,
             min_fold_chars: 80,
@@ -195,6 +205,19 @@ impl SerializerConfig {
     #[must_use]
     pub fn quote_all(mut self, enabled: bool) -> Self {
         self.quote_all = enabled;
+        self
+    }
+
+    /// Prefer single quotes over double quotes when a string scalar needs
+    /// quoting at all.
+    ///
+    /// A string that needs a character only double-quoted style can carry
+    /// (a control character, a tab, or anything else that needs an escape
+    /// sequence) still gets double-quoted regardless of this setting.
+    /// Output is unchanged when this is left at its default (`false`).
+    #[must_use]
+    pub fn prefer_single_quotes(mut self, enabled: bool) -> Self {
+        self.prefer_single_quotes = enabled;
         self
     }
 
@@ -873,7 +896,11 @@ fn write_string(output: &mut String, s: &str, indent: usize, config: &Serializer
 
     // Empty string must be quoted
     if bytes.is_empty() {
-        output.push_str("\"\"");
+        if config.prefer_single_quotes {
+            output.push_str("''");
+        } else {
+            output.push_str("\"\"");
+        }
         return;
     }
 
@@ -993,9 +1020,28 @@ fn write_string(output: &mut String, s: &str, indent: usize, config: &Serializer
         return;
     }
 
+    if config.prefer_single_quotes && single_quote_safe(s) {
+        write_single_quoted(output, s);
+        return;
+    }
+
     // Use double quotes for all quoted strings
     let _ = has_control;
     write_double_quoted(output, s);
+}
+
+/// Whether `s` can be represented as a YAML single-quoted scalar with no
+/// escapes beyond doubling an embedded `'`.
+///
+/// Single-quoted style has no escape mechanism at all besides doubling the
+/// quote character itself — a literal backslash, double quote, `#`, `:`,
+/// and so on all pass straight through unescaped. What it *cannot* carry is
+/// a control character (tab, newline, carriage return, and the rest of the
+/// C0/C1 ranges) or any other non-printable code point: those need one of
+/// double-quoted style's escape sequences, so a string containing one must
+/// fall back to double-quoted even when `prefer_single_quotes` is set.
+fn single_quote_safe(s: &str) -> bool {
+    !s.chars().any(char::is_control)
 }
 
 /// Write a single-quoted string, escaping embedded single quotes.
