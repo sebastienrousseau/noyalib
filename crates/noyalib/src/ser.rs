@@ -858,11 +858,22 @@ fn write_string(output: &mut String, s: &str, indent: usize, config: &Serializer
 
     // Fast path: short ASCII strings that are clearly safe as plain scalars.
     // Avoids the full lookup table scan for the majority of mapping keys.
+    //
+    // The intent is: short, alnum-bounded, no newline. All four conditions
+    // below are ANDed — `||` binds looser than `&&`, and an earlier version
+    // of this guard read `a && b && c && !config.block_scalars ||
+    // no_newline`, which let *every* newline-free string take the fast path
+    // regardless of its first byte (`"-"` slipped through unquoted and
+    // re-parsed as a block sequence entry, not a scalar). The first/last
+    // alnum checks already exclude every `FIRST_CHAR_QUOTE` member (none of
+    // them are alphanumeric) and tab (also not alphanumeric), but the
+    // explicit `FIRST_CHAR_QUOTE` check is kept here too as defense in
+    // depth against the alnum check alone being loosened later.
     if bytes.len() <= 64
         && bytes[0].is_ascii_alphanumeric()
         && bytes[bytes.len() - 1].is_ascii_alphanumeric()
-        && !config.block_scalars
-        || bytes.iter().all(|&b| b != b'\n')
+        && bytes.iter().all(|&b| b != b'\n')
+        && !(bytes[0] < 128 && FIRST_CHAR_QUOTE[bytes[0] as usize])
     {
         let safe = bytes.iter().all(|&b| {
             b.is_ascii_alphanumeric() || b == b'_' || b == b'-' || b == b'.' || b == b'/'
@@ -903,6 +914,15 @@ fn write_string(output: &mut String, s: &str, indent: usize, config: &Serializer
 
     // Check first character
     if bytes[0] < 128 && FIRST_CHAR_QUOTE[bytes[0] as usize] {
+        needs_quotes = true;
+    }
+
+    // A leading or trailing tab must quote. `NEEDS_QUOTE_BYTE` deliberately
+    // excludes tab so an *interior* tab stays unescaped in a plain scalar,
+    // but YAML 1.2 still requires quoting when a plain scalar's content
+    // starts or ends in white space (tab included), or the boundary is
+    // lost on re-parse.
+    if bytes[0] == b'\t' || bytes[bytes.len() - 1] == b'\t' {
         needs_quotes = true;
     }
 
