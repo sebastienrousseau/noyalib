@@ -1380,15 +1380,31 @@ mod tests {
     }
 }
 
-/// Kani proof harnesses — machine-checked equivalence between the
-/// SWAR numeric parsers and a naive per-byte reference, over EVERY
-/// input (bounded only in slice length, where a bound exists at
-/// all). Run with `cargo kani` (the `kani-proofs` CI workflow);
-/// invisible to ordinary builds.
+/// Kani proof harnesses — machine-checked properties of the SWAR
+/// numeric parsers against a naive per-byte reference. Run with
+/// `cargo kani` (the `kani-proofs` CI workflow); invisible to
+/// ordinary builds. Every harness pins `kissat`: CBMC's default
+/// SAT solver did not finish the fold proof in an hour, kissat
+/// finishes it in ~16s.
 ///
-/// The tests above sample these properties; the proofs close them:
-/// `swar_8_digit_fold_matches_reference` covers all 2^64 byte
-/// patterns, where `proptest` draws a few hundred.
+/// What is proven, and what deliberately is not:
+///
+/// - the 8-digit fold: exhaustive over all 2^64 byte blocks —
+///   where `proptest` above draws a few hundred samples, this
+///   closes the property (and its first run found the cross-lane
+///   carry bug the fold's validation now guards against);
+/// - `parse_decimal_u64`: value equivalence on all-digit slices up
+///   to one chunk, and rejection of any non-digit anywhere in
+///   chunk-plus-tail;
+/// - `parse_decimal_i64`: sign handling over signed digit strings
+///   up to a sign plus one chunk.
+///
+/// Multi-chunk value composition and the 19-20-digit overflow
+/// boundaries are *not* proven: the accumulator multiplies push
+/// the SAT instance past any CI-sane budget (a 20-byte bound ran
+/// >10 min without terminating). Those stay covered by the unit
+/// tests and proptest above — they are plain `checked_mul` /
+/// `checked_add` arithmetic, not SWAR.
 #[cfg(kani)]
 mod proofs {
     use super::*;
@@ -1438,22 +1454,33 @@ mod proofs {
     /// on ALL 2^64 possible 8-byte blocks — every digit block
     /// parses to its decimal value, every block containing a
     /// non-digit byte is rejected, and no wraparound in the
-    /// validate/fold phases ever leaks a wrong answer.
+    /// validate/fold phases ever leaks a wrong answer. ~16s under
+    /// kissat.
     #[kani::proof]
+    #[kani::solver(kissat)]
     fn swar_8_digit_fold_matches_reference() {
         let arr: [u8; 8] = kani::any();
         assert_eq!(parse_8_digits(arr), reference_parse_u64(&arr));
     }
 
-    /// `parse_decimal_u64` agrees with the reference for every
-    /// slice up to 20 bytes — one past `u64::MAX`'s 20 digits, so
-    /// both sides of the overflow boundary are covered, and slices
-    /// of 8..=20 exercise the SWAR path plus its scalar tail.
+    /// `parse_decimal_u64` agrees with the reference on every
+    /// all-digit slice up to 8 bytes (the full single-chunk SWAR
+    /// path; verifies in ~26s under kissat). Split from the
+    /// rejection property below because full equivalence over
+    /// arbitrary bytes makes the solver enumerate every non-digit
+    /// exit path at every symbolic length, and value equivalence
+    /// past one chunk (a second chunk, or chunk + tail) adds
+    /// accumulator multiplies the solver did not finish inside any
+    /// CI-sane budget — those compositions, and the 20-digit
+    /// overflow boundary (`checked_mul`/`checked_add`'s job, not
+    /// SWAR's), stay with the unit tests and proptest.
     #[kani::proof]
-    #[kani::unwind(21)]
-    fn parse_decimal_u64_matches_reference() {
-        const MAX: usize = 20;
+    #[kani::solver(kissat)]
+    #[kani::unwind(9)]
+    fn parse_decimal_u64_value_matches_reference_on_digits() {
+        const MAX: usize = 8;
         let arr: [u8; MAX] = kani::any();
+        kani::assume(arr.iter().all(u8::is_ascii_digit));
         let len: usize = kani::any();
         kani::assume(len <= MAX);
         assert_eq!(
@@ -1462,15 +1489,38 @@ mod proofs {
         );
     }
 
-    /// `parse_decimal_i64` agrees with the signed reference for
-    /// every slice up to 21 bytes (a sign plus 20 digits) —
-    /// covering the `i64::MIN` special case, `+`/`-` handling, and
-    /// both overflow directions.
+    /// A slice holding ANY non-digit byte, anywhere in a chunk or
+    /// the tail, is rejected (up to 12 bytes — chunk plus tail;
+    /// ~3s under kissat). The other half of the documented
+    /// contract ("malformed input never produces a garbage
+    /// answer"), and exactly the property the carry-propagation
+    /// bug violated.
     #[kani::proof]
-    #[kani::unwind(22)]
-    fn parse_decimal_i64_matches_reference() {
-        const MAX: usize = 21;
+    #[kani::solver(kissat)]
+    #[kani::unwind(13)]
+    fn parse_decimal_u64_rejects_any_non_digit() {
+        const MAX: usize = 12;
         let arr: [u8; MAX] = kani::any();
+        let len: usize = kani::any();
+        kani::assume(len <= MAX);
+        kani::assume(arr[..len].iter().any(|b| !b.is_ascii_digit()));
+        assert_eq!(parse_decimal_u64(&arr[..len]), None);
+    }
+
+    /// The signed wrapper's sign handling agrees with the signed
+    /// reference on optionally-signed digit strings — `+`, `-`,
+    /// and the bare form, up to a sign plus 8 digits (~102s under
+    /// kissat). The `i64::MIN` / overflow boundary at 19-20 digits
+    /// stays with the unit tests for the same solver-budget reason
+    /// as above.
+    #[kani::proof]
+    #[kani::solver(kissat)]
+    #[kani::unwind(10)]
+    fn parse_decimal_i64_matches_reference_on_signed_digits() {
+        const MAX: usize = 9;
+        let arr: [u8; MAX] = kani::any();
+        kani::assume(arr[0] == b'-' || arr[0] == b'+' || arr[0].is_ascii_digit());
+        kani::assume(arr[1..].iter().all(u8::is_ascii_digit));
         let len: usize = kani::any();
         kani::assume(len <= MAX);
         assert_eq!(

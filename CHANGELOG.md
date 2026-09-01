@@ -99,11 +99,17 @@ uniformly (ADR-0011).
   parser itself was not affected: its only internal call site
   pre-validates every byte with `is_ascii_digit()` first. The
   validation is now two carry-free nibble checks, and the
-  `#[cfg(kani)]` harnesses in `simd.rs` prove the parsers
-  bit-for-bit equivalent to a naive per-byte reference — over all
-  2^64 blocks for the 8-digit fold, and over every slice up to
-  20/21 bytes (both sides of the `u64`/`i64` overflow boundary)
-  for the public functions.
+  `#[cfg(kani)]` harnesses in `simd.rs` prove, against a naive
+  per-byte reference: the 8-digit fold exhaustively over all 2^64
+  blocks; value equivalence on all-digit slices up to one chunk;
+  rejection of any non-digit anywhere in chunk-plus-tail; and sign
+  handling for the signed wrapper. (An earlier revision of this
+  entry claimed 20/21-byte equivalence proofs; the accumulator
+  multiplies past one chunk exceed any CI-sane solver budget, so
+  multi-chunk composition and the overflow boundaries stay with
+  the unit tests and proptest — they are `checked_mul` arithmetic,
+  not SWAR.) The `kani-proofs` workflow re-runs all four proofs
+  weekly under kissat, ~2.5 minutes of solving total.
 
 - **Five features did not compile without `std`** — found by the
   powerset sweep's first run. `ariadne`, `robotics`, `include`,

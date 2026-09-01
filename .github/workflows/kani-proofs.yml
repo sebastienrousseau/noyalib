@@ -1,0 +1,46 @@
+name: Kani proofs
+
+# Machine-checked properties of the SWAR numeric parsers — the
+# `#[cfg(kani)]` harnesses in `crates/noyalib/src/simd.rs`. Their
+# first run found a real bug (cross-byte-lane carry propagation let
+# `parse_decimal_u64` accept non-digit blocks), so these are a
+# regression gate on the proof level, not decoration.
+#
+# Scheduled, not per-PR: installing the Kani toolchain costs several
+# minutes and the four proofs ~2.5 minutes of kissat solving. Every
+# harness pins `#[kani::solver(kissat)]` — CBMC's default solver did
+# not finish the fold proof in an hour; kissat finishes it in ~16s.
+
+on:
+  schedule:
+    - cron: '0 7 * * 1' # Weekly Monday 07:00 UTC (staggered after ci.yml/powerset)
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  proofs:
+    name: cargo kani (simd proofs)
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install Kani
+        run: |
+          cargo install --locked kani-verifier
+          cargo kani setup
+
+      - name: Run proof harnesses
+        working-directory: crates/noyalib
+        run: |
+          cargo kani \
+            --harness swar_8_digit_fold_matches_reference \
+            --harness parse_decimal_u64_value_matches_reference_on_digits \
+            --harness parse_decimal_u64_rejects_any_non_digit \
+            --harness parse_decimal_i64_matches_reference_on_signed_digits
