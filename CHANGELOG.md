@@ -85,6 +85,20 @@ uniformly (ADR-0011).
   and attached to the GitHub Release alongside the human-readable
   `SBOM.txt`, which was never a machine-readable SBOM format.
 
+### Changed
+
+- **`robotics` is deprecated; `StrictFloat` is now
+  `lossless_float::LosslessFloat`** (feature `lossless-float`). The
+  refuse-to-lose-precision float was never robotics-specific — it is
+  the floating-point sibling of `lossless-u64`, and its new home
+  needs nothing beyond the mandatory `serde_core` (the old one
+  pulled `dep:serde` for derives). The `robotics` module and feature
+  survive one release as a deprecated compat surface (`robotics`
+  implies `lossless-float`; `StrictFloat`/`StrictFloatError` are
+  deprecated aliases), then go — along with the `Degrees`/`Radians`
+  unit newtypes, which are ~40 lines of domain code with no
+  dependence on noyalib and belong in the consumer's own tree.
+
 ### Fixed
 
 - **`simd::parse_decimal_u64` / `parse_decimal_i64` could accept a

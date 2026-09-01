@@ -176,7 +176,8 @@ the application needs.
 | `figment` | `figment` 0.10 | `noyalib::figment::Yaml` provider | `examples/figment.rs` |
 | `garde` | `garde` 0.22 | `Validated<T>` wrapper | `examples/validation_garde.rs` |
 | `validator` | `validator` 0.19 | `ValidatedValidator<T>` wrapper | `examples/validation_validator.rs` |
-| `robotics` | — | `Degrees`, `Radians`, `StrictFloat` newtypes | `examples/robotics_polymorphism.rs` |
+| `lossless-float` | — | `LosslessFloat` — refuse-to-lose-precision float, the floating-point sibling of `lossless-u64` | — |
+| `robotics` | — | **deprecated** (one release): aliases into `lossless-float`; `Degrees`/`Radians` leave with it | `examples/robotics_polymorphism.rs` |
 | `parallel` | `rayon` 1.10 | `noyalib::parallel::parse<T>` for `---`-separated streams | [Benchmarks](#benchmarks) |
 | `recovery` | — | `noyalib::recovery::parse_lenient` — best-effort tree + error list for LSP / IDE half-typed documents | `examples/recovery_lenient.rs`, `benches/v006_features.rs` |
 | `sval` | `sval` 2 | `impl sval::Value` for `Value` / `Number` / `Mapping` / `MappingAny` / `TaggedValue`, `noyalib::sval_adapter::to_sval_writer` | `examples/sval_streaming.rs`, `benches/v006_features.rs` |
@@ -1291,7 +1292,7 @@ cargo run --example all
 | | `validation_garde` | Declarative validation through `garde` + `Validated<T>` |
 | | `validation_validator` | Declarative validation through `validator` + `ValidatedValidator<T>` |
 | | `diagnostic_path` | `serde_path_to_error` — pinpoint the offending nested key |
-| | `robotics_polymorphism` | Tagged-enum dispatch with `Degrees` / `Radians` / `StrictFloat` |
+| | `robotics_polymorphism` | Tagged-enum dispatch with the deprecated `robotics` compat surface (final release) |
 
 </details>
 

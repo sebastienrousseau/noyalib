@@ -281,6 +281,9 @@ mod anchor_registry {
 // ── Feature 4: Robotics/Scientific Numeric Profile ──────────────────────
 
 #[cfg(feature = "robotics")]
+// Pins the deprecated `robotics` compat surface for its final release
+// (aliases into `lossless_float`, leaving `Degrees`/`Radians`).
+#[allow(deprecated)]
 mod robotics_types {
     use noyalib::robotics::{Degrees, Radians, StrictFloat};
 

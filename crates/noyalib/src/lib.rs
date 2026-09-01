@@ -216,7 +216,8 @@
 //! | `figment` | ⛔ | `figment 0.10` | [`figment::Yaml`](crate::figment) Provider | `std` |
 //! | `garde` | ⛔ | `garde 0.22` | [`Validated<T>`] | — |
 //! | `validator` | ⛔ | `validator 0.19` | [`ValidatedValidator<T>`] | — |
-//! | `robotics` | ⛔ | — | `Degrees` / `Radians` / `StrictFloat` newtypes | — |
+//! | `lossless-float` | ⛔ | — | [`lossless_float::LosslessFloat`] — refuse-to-lose-precision float, the floating-point sibling of `lossless-u64` | — |
+//! | `robotics` | ⛔ | — | **deprecated** (one release): aliases into `lossless-float` plus the leaving `Degrees` / `Radians` newtypes | `lossless-float` |
 //! | `parallel` | ⛔ | `rayon 1.10` | [`parallel::parse`], [`parallel::values`] | `std` |
 //! | `simd` | ⛔ | — | forward-compat no-op — `noyalib::simd::*` is always available; the hot path uses it unconditionally | — |
 //! | `nightly-simd` | ⛔ | nightly rustc | 32-byte `StructuralIter` | `simd` |
@@ -550,6 +551,12 @@ mod flattened;
 pub mod fmt;
 /// Key interning for memory-efficient repeated-key workloads.
 pub mod interner;
+/// A float that refuses to silently lose information (requires
+/// `lossless-float` feature) — the floating-point sibling of
+/// `lossless-u64`.
+#[cfg(feature = "lossless-float")]
+#[cfg_attr(docsrs, doc(cfg(feature = "lossless-float")))]
+pub mod lossless_float;
 /// Parallel multi-document YAML parsing via Rayon. Gated by the
 /// `parallel` feature.
 #[cfg(feature = "parallel")]
@@ -564,7 +571,11 @@ pub mod policy;
 #[cfg(feature = "recovery")]
 #[cfg_attr(docsrs, doc(cfg(feature = "recovery")))]
 pub mod recovery;
-/// Robotics and scientific numeric types (requires `robotics` feature).
+/// Deprecated (one release): aliases into [`lossless_float`] plus the
+/// leaving `Degrees` / `Radians` unit newtypes (requires `robotics`
+/// feature, itself deprecated). Every item inside carries its own
+/// `#[deprecated]`; the module itself does not, because a module-level
+/// deprecation also fires on the module's own internals.
 #[cfg(feature = "robotics")]
 #[cfg_attr(docsrs, doc(cfg(feature = "robotics")))]
 pub mod robotics;

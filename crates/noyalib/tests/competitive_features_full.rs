@@ -486,6 +486,9 @@ mod anchor_registry {
 // ════════════════════════════════════════════════════════════════════════
 
 #[cfg(feature = "robotics")]
+// Pins the deprecated `robotics` compat surface for its final release
+// (aliases into `lossless_float`, leaving `Degrees`/`Radians`).
+#[allow(deprecated)]
 mod robotics_tests {
     use noyalib::robotics::{Degrees, Radians, StrictFloat};
 

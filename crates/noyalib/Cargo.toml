@@ -568,7 +568,16 @@ std = [
 # this, caught by the feature-powerset sweep.
 miette = ["dep:miette", "std"]
 ariadne = ["dep:ariadne"]
-robotics = ["dep:serde"]
+# Opt-in `LosslessFloat` — deserialization rejects infinities, NaN,
+# and any value that loses precision as f64; the floating-point
+# sibling of `lossless-u64`. Needs nothing beyond the mandatory
+# `serde_core`.
+lossless-float = []
+# Deprecated (one release, since 0.0.29): the former home of
+# `StrictFloat` (renamed to `lossless_float::LosslessFloat`) plus the
+# `Degrees`/`Radians` unit newtypes, which leave the crate next
+# release. `dep:serde` is only needed for the leaving types' derives.
+robotics = ["lossless-float", "dep:serde"]
 # `!include` directive — post-parse walk that consults a
 # user-supplied `crate::include::IncludeResolver` for every
 # `Value::Tagged(!include, _)` node and substitutes the
