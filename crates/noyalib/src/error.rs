@@ -1715,6 +1715,11 @@ fn edit_distance(a: &str, b: &str) -> usize {
 #[cold]
 #[inline(never)]
 #[cfg_attr(noyalib_coverage, coverage(off))]
+// `cargo kani` swaps the panic macros for its own assertion
+// intrinsics, which drop the message formatting — under that
+// compiler `msg` counts as unused and the deny-level `unused`
+// lint would fail the proof build.
+#[cfg_attr(kani, allow(unused_variables))]
 pub(crate) fn invariant_violated(msg: &'static str) -> ! {
     unreachable!("invariant violated: {msg}")
 }
