@@ -751,7 +751,51 @@ fn write_value(
                 // tagged value via `needs_block_layout`/`indicator_takes_a_space`
                 // above (see `write_mapping`/`write_sequence`), so the
                 // payload is written at that same `indent`, not one deeper.
-                output.push_str(tag_str);
+                // A tag whose body holds characters the shorthand
+                // spelling cannot carry — flow indicators, blanks, or
+                // an interior `!` (a handle separator there) — is
+                // emitted in the verbatim form `!<...>`, which
+                // re-parses to exactly the stored tag (`!<!str>` is
+                // `!!str`). Emitting it raw produced YAML that split
+                // at the first such byte: `!<tag:example.com,2026:x>`
+                // re-emitted as shorthand died at the comma (found by
+                // fuzz_roundtrip).
+                // …and a tag body NO spelling can carry — a control
+                // character (the scanner rejects those in shorthand
+                // and verbatim forms alike; a tab is one) or a `>`
+                // (verbatim's terminator, rejected in shorthand as a
+                // non-URI char) — resolves the serde-model ambiguity
+                // the other way: in the serde data model a tagged
+                // value is indistinguishable from the single-entry
+                // mapping keyed by its `!`-leading spelling, so emit
+                // that mapping with a quoted key and let it re-parse
+                // as what it is (found by fuzz_roundtrip on the key
+                // `"!\t"`).
+                if tag_str.bytes().any(|b| b < 0x20 || b == 0x7f || b == b'>') {
+                    write_key_string(output, tag_str, indent, config);
+                    output.push(':');
+                    let inner = tagged.value();
+                    if indicator_takes_a_space(inner) {
+                        output.push(' ');
+                    }
+                    write_value(output, inner, indent, false, config, depth + 1)?;
+                    return Ok(());
+                }
+                let shorthand_body = tag_str
+                    .strip_prefix("!!")
+                    .or_else(|| tag_str.strip_prefix('!'));
+                let needs_verbatim = shorthand_body.is_some_and(|body| {
+                    body.bytes().any(|b| {
+                        matches!(b, b',' | b'[' | b']' | b'{' | b'}' | b'!' | b' ' | b'\t')
+                    })
+                });
+                if needs_verbatim {
+                    output.push_str("!<");
+                    output.push_str(&tag_str[1..]);
+                    output.push('>');
+                } else {
+                    output.push_str(tag_str);
+                }
                 let inner = tagged.value();
                 if indicator_takes_a_space(inner) {
                     output.push(' ');
@@ -892,13 +936,38 @@ static FIRST_CHAR_QUOTE: [bool; 128] = {
 };
 
 /// A character only double-quoted style can carry faithfully: CR, NEL
-/// (U+0085), LS (U+2028), PS (U+2029). A literal block scalar
-/// normalises `\r` into the block's own line breaks, and the three
-/// Unicode separators pass through plain and single-quoted styles as
-/// raw bytes that 1.1-era parsers (and this crate's own reader) fold
-/// as line breaks, so a round trip changes the string (#335).
+/// (U+0085), LS (U+2028), PS (U+2029) — and a BOM (U+FEFF). A literal
+/// block scalar normalises `\r` into the block's own line breaks, and
+/// the three Unicode separators pass through plain and single-quoted
+/// styles as raw bytes that 1.1-era parsers (and this crate's own
+/// reader) fold as line breaks, so a round trip changes the string
+/// (#335). A raw BOM is worse: the reader must not accept one inside
+/// a document at all (§5.2), and a string-leading BOM emitted plain
+/// is stream-skipped on re-parse, reinterpreting the rest of the
+/// scalar as markup (found by fuzz_roundtrip).
 fn needs_double_quoted_escape(s: &str) -> bool {
-    s.contains(['\r', '\u{0085}', '\u{2028}', '\u{2029}'])
+    s.chars().any(|c| {
+        matches!(
+            c,
+            '\r' | '\u{0085}' | '\u{2028}' | '\u{2029}' | '\u{feff}' | '\u{7f}'
+        ) || (c < '\u{20}' && c != '\t' && c != '\n')
+    })
+}
+
+/// Write a mapping key. Keys are implicit (`key: value`) in every
+/// form this serializer emits, and an implicit key must fit on one
+/// line — the block scalar styles are not grammar there at all — so
+/// a string the value writer would render as a `|`/`>` block (any
+/// string holding a line break) is written double-quoted with
+/// escapes instead. Found by fuzz_roundtrip: a multi-line key
+/// emitted as a `|-` block produced YAML that no longer parsed
+/// ("expected block mapping key or end").
+fn write_key_string(output: &mut String, s: &str, indent: usize, config: &SerializerConfig) {
+    if s.contains('\n') {
+        write_double_quoted(output, s);
+    } else {
+        write_string(output, s, indent, config);
+    }
 }
 
 fn write_string(output: &mut String, s: &str, indent: usize, config: &SerializerConfig) {
@@ -918,6 +987,20 @@ fn write_string(output: &mut String, s: &str, indent: usize, config: &Serializer
     // no escapes, so a string only double-quoted style can carry still
     // falls back regardless of the setting.
     if config.quote_all {
+        if needs_double_quoted_escape(s) {
+            write_double_quoted(output, s);
+        } else {
+            write_single_quoted(output, s);
+        }
+        return;
+    }
+
+    // A scalar starting with `...` emitted at the start of a line
+    // reads back as the document-end marker (explicit-key emission
+    // places keys at column 0), so it can never go plain — same
+    // family as the `-` first-byte rule below, which already covers
+    // `---` (found by fuzz_roundtrip on a `? ...` explicit key).
+    if s.starts_with("...") {
         if needs_double_quoted_escape(s) {
             write_double_quoted(output, s);
         } else {
@@ -1101,7 +1184,10 @@ fn write_double_quoted(output: &mut String, s: &str) {
             '\u{0085}' => "\\N",
             '\u{2028}' => "\\L",
             '\u{2029}' => "\\P",
-            c if (c as u32) < 0x20 => {
+            // A raw BOM must never reach the output stream — the
+            // reader rejects one inside a document (§5.2).
+            '\u{feff}' => "\\uFEFF",
+            c if (c as u32) < 0x20 || c == '\u{7f}' => {
                 // Other control characters: flush and write hex escape
                 output.push_str(&s[start..i]);
                 let _ = write!(output, "\\x{:02X}", c as u32);
@@ -1275,7 +1361,7 @@ fn write_sequence(
                         output.push('\n');
                         write_indent(output, config.indent * (indent + 1));
                     }
-                    write_string(output, k, indent + 1, config);
+                    write_key_string(output, k, indent + 1, config);
                     output.push(':');
                     if indicator_takes_a_space(v) {
                         output.push(' ');
@@ -1392,7 +1478,7 @@ fn write_mapping(
             output.push('\n');
             write_indent(output, config.indent * indent);
         }
-        write_string(output, key, indent, config);
+        write_key_string(output, key, indent, config);
 
         output.push(':');
         if indicator_takes_a_space(value) {
@@ -1553,7 +1639,7 @@ fn write_flow_mapping(
         if i > 0 {
             output.push_str(", ");
         }
-        write_string(output, key, 0, config);
+        write_key_string(output, key, 0, config);
         output.push_str(": ");
         write_value(output, value, 0, false, config, depth + 1)?;
     }

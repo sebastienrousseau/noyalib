@@ -1159,6 +1159,16 @@ impl<'a> Scanner<'a> {
                 self.advance_by(3);
                 Ok(())
             }
+            // A BOM anywhere else is an error, not content (§5.2: "a
+            // BOM must not appear inside a document"). Treating it as
+            // the first character of a plain scalar produced a value
+            // the serializer wrote back unquoted — on re-parse the
+            // leading BOM was stream-skipped and the rest of the
+            // scalar reinterpreted as markup (found by fuzz_roundtrip
+            // on `\u{feff}\n\u{feff}*'`).
+            0xEF if self.peek_at(1) == 0xBB && self.peek_at(2) == 0xBF => Err(self.error(
+                "byte order mark inside the stream — a BOM is only allowed at the very start",
+            )),
             _ => self.fetch_plain_scalar(),
         }
     }
@@ -1974,7 +1984,12 @@ impl<'a> Scanner<'a> {
         let suffix: Cow<'a, str>;
 
         if self.peek() == b'<' {
-            // Verbatim tag: !<...>
+            // Verbatim tag: !<...>. The spec allows `ns-uri-char+`
+            // between the brackets; enforcing the character class down
+            // to the URI grammar would reject benign real-world tags,
+            // but the *control* range must go: an accepted `\n`, NUL or
+            // DEL round-trips into emitted YAML that no longer parses
+            // (found by fuzz_roundtrip on `!<\x7f…\t>`).
             handle = Cow::Borrowed("!");
             self.advance(); // skip '<'
             let start = self.pos;
@@ -1982,7 +1997,19 @@ impl<'a> Scanner<'a> {
                 if self.pos - start > MAX_TAG_LEN {
                     return Err(self.error("tag URI exceeds maximum length of 1024 bytes"));
                 }
+                let b = self.peek();
+                if b < 0x20 || b == 0x7f {
+                    return Err(self.error(
+                        "verbatim tag contains a control character — tag URIs are \
+                         limited to printable characters",
+                    ));
+                }
                 self.advance();
+            }
+            if self.pos == start {
+                // `c-verbatim-tag ::= "!" "<" ns-uri-char+ ">"` — one
+                // or more.
+                return Err(self.error("verbatim tag must not be empty (`!<>`)"));
             }
             suffix = Cow::Borrowed(self.slice_str(start, self.pos));
             if self.peek() == b'>' {
@@ -2003,6 +2030,20 @@ impl<'a> Scanner<'a> {
             {
                 if self.pos - start > MAX_TAG_LEN {
                     return Err(self.error("tag suffix exceeds maximum length of 1024 bytes"));
+                }
+                let b = self.peek();
+                if b < 0x20 || b == 0x7f {
+                    return Err(self.error(
+                        "tag suffix contains a control character — tags are limited \
+                         to printable characters",
+                    ));
+                }
+                if b == b'>' {
+                    // Not a `ns-uri-char`, and unrepresentable in the
+                    // verbatim `!<...>` spelling the serializer falls
+                    // back to for shorthand-unsafe tags (found by
+                    // fuzz_roundtrip on `!!)!)>!`).
+                    return Err(self.error("tag suffix contains `>` — not a URI character"));
                 }
                 self.advance();
             }
@@ -2028,6 +2069,20 @@ impl<'a> Scanner<'a> {
                 }
                 if self.pos - start > MAX_TAG_LEN {
                     return Err(self.error("tag suffix exceeds maximum length of 1024 bytes"));
+                }
+                let b = self.peek();
+                if b < 0x20 || b == 0x7f {
+                    return Err(self.error(
+                        "tag suffix contains a control character — tags are limited \
+                         to printable characters",
+                    ));
+                }
+                if b == b'>' {
+                    // Not a `ns-uri-char`, and unrepresentable in the
+                    // verbatim `!<...>` spelling the serializer falls
+                    // back to for shorthand-unsafe tags (found by
+                    // fuzz_roundtrip on `!!)!)>!`).
+                    return Err(self.error("tag suffix contains `>` — not a URI character"));
                 }
                 self.advance();
             }

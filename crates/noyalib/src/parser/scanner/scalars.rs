@@ -166,6 +166,7 @@ impl Scanner<'_> {
                 }
                 if content_len > 0 {
                     let s = Cow::Borrowed(self.slice_str(self.pos, self.pos + content_len));
+                    self.check_scalar_printable(&s)?;
                     self.advance_by(len);
                     self.emit(TokenKind::Scalar(ScalarStyle::Plain, s));
                     self.last_token_opens_block = false;
@@ -356,8 +357,35 @@ impl Scanner<'_> {
         } else {
             Cow::Owned(string)
         };
+        self.check_scalar_printable(&value)?;
         self.emit(TokenKind::Scalar(ScalarStyle::Plain, value));
         self.last_token_opens_block = false;
+        Ok(())
+    }
+
+    /// Reject raw control characters in captured scalar content
+    /// (§5.1 `c-printable`: TAB is the only permitted ASCII control;
+    /// the line breaks are folded into `\n` before this runs, and DEL
+    /// is excluded like the tag scanner does). The scanner previously
+    /// accepted a raw NUL as scalar content (`a: b\0c` parsed), and a
+    /// value round-tripped through the serializer could then change
+    /// meaning (found by fuzz_roundtrip). Raw controls in
+    /// *double*-quoted scalars are deliberately not funnelled through
+    /// this check — their decoded text legitimately contains controls
+    /// produced by escapes.
+    ///
+    /// One pass over the finished text with a byte-level predicate —
+    /// branch-free enough for LLVM to vectorise, and outside the
+    /// scanner's per-byte hot loops.
+    fn check_scalar_printable(&self, s: &str) -> ScanResult<()> {
+        if s.bytes()
+            .any(|b| (b < 0x20 && b != b'\t' && b != b'\n') || b == 0x7f)
+        {
+            return Err(self.error(
+                "scalar contains a raw control character — YAML content is limited to \
+                 printable characters (use an escape in a double-quoted scalar)",
+            ));
+        }
         Ok(())
     }
 
@@ -370,7 +398,12 @@ impl Scanner<'_> {
         let string = if double {
             self.scan_double_quoted_scalar()?
         } else {
-            self.scan_single_quoted_scalar()?
+            let s = self.scan_single_quoted_scalar()?;
+            // Single-quoted style has no escapes ('' aside), so the
+            // decoded text mirrors the raw bytes — the printable rule
+            // applies to it exactly as to a plain scalar.
+            self.check_scalar_printable(&s)?;
+            s
         };
 
         let style = if double {

@@ -329,3 +329,17 @@ fn literal_block_scalar_with_explicit_indent() {
         assert!(s.contains("#!/bin/bash"));
     }
 }
+
+#[test]
+fn comment_shaped_line_is_block_scalar_content() {
+    // Found by fuzz_diff: serde_yaml_ng strips a `#` line inside a
+    // block scalar as if it were a comment and reads `>\n#` as the
+    // empty string. The spec reads it as content — the folded
+    // scalar's indentation auto-detects from its first non-empty
+    // line (`#` at column 0, valid content for a root node), and
+    // comments cannot occur inside scalar content.
+    let v: Value = from_str(">\n#").unwrap();
+    assert_eq!(v.as_str(), Some("#\n"));
+    let v: Value = from_str("|\n#x\n#y\n").unwrap();
+    assert_eq!(v.as_str(), Some("#x\n#y\n"));
+}

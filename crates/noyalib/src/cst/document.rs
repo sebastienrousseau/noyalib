@@ -6004,7 +6004,12 @@ fn format_string_for_site(s: &str, ctx: &SiteContext) -> Result<String> {
     // escaped: a literal block normalises `\r` into its own line
     // breaks, and NEL/LS/PS pass through plain or single-quoted styles
     // as raw bytes that read back as line breaks (#335).
-    if s.contains(['\r', '\u{0085}', '\u{2028}', '\u{2029}']) {
+    if s.chars().any(|c| {
+        matches!(
+            c,
+            '\r' | '\u{0085}' | '\u{2028}' | '\u{2029}' | '\u{feff}' | '\u{7f}'
+        ) || (c < '\u{20}' && c != '\t' && c != '\n')
+    }) {
         return Ok(format_double_quoted(s));
     }
 
@@ -6241,7 +6246,7 @@ pub(super) fn is_plain_safe(s: &str) -> bool {
     }
     // NEL/LS/PS read back as line breaks; only double-quoted escapes
     // carry them (#335). A `\r` is caught by the control-byte loop.
-    if s.contains(['\u{0085}', '\u{2028}', '\u{2029}']) {
+    if s.contains(['\u{0085}', '\u{2028}', '\u{2029}', '\u{feff}']) {
         return false;
     }
     // Reserved scalars that resolve to non-string types.
@@ -6273,6 +6278,12 @@ pub(super) fn is_plain_safe(s: &str) -> bool {
         return false;
     }
     if looks_like_number(s) {
+        return false;
+    }
+    // A scalar starting with `...` at column 0 reads as the
+    // document-end marker (`-`-leading strings are caught by the
+    // first-byte check below; `...` needs its own).
+    if s.starts_with("...") {
         return false;
     }
     let bytes = s.as_bytes();
@@ -6392,9 +6403,12 @@ pub(super) fn format_double_quoted(s: &str) -> String {
             '\u{0085}' => out.push_str("\\N"),
             '\u{2028}' => out.push_str("\\L"),
             '\u{2029}' => out.push_str("\\P"),
+            // A raw BOM must never reach the output — the reader
+            // rejects one inside a document (§5.2).
+            '\u{feff}' => out.push_str("\\uFEFF"),
             '\x08' => out.push_str("\\b"),
             '\x0c' => out.push_str("\\f"),
-            c if (c as u32) < 0x20 => {
+            c if (c as u32) < 0x20 || c == '\u{7f}' => {
                 let _ = write!(&mut out, "\\u{:04X}", c as u32);
             }
             c => out.push(c),

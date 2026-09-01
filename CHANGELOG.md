@@ -85,6 +85,54 @@ uniformly (ADR-0011).
   and attached to the GitHub Release alongside the human-readable
   `SBOM.txt`, which was never a machine-readable SBOM format.
 
+- **OSS-Fuzz integration and a YAML token dictionary.** The project
+  definition (`fuzz/oss-fuzz/`: project.yaml, Dockerfile, build.sh)
+  ships in-tree, verified end-to-end against the real
+  `base-builder-rust` image (`infra/helper.py build_fuzzers` with
+  local source: all 11 targets compiled under ASAN with corpora and
+  dictionaries staged). Submission to `google/oss-fuzz` is a
+  maintainer PR — see `fuzz/oss-fuzz/README.md`. `fuzz/yaml.dict`
+  gives libFuzzer the scanner's structural tokens whole; with it,
+  local sweeps found every round-trip bug below within minutes.
+
+### Fixed
+
+- **Round-trip integrity: seven emit/parse bugs found by fuzzing
+  with the new dictionary.** Every one produced output that parsed
+  to something else or not at all:
+  - verbatim tags accepted control characters (and line breaks, and
+    the empty `!<>`); shorthand tag suffixes accepted control
+    characters and the non-URI `>` — all rejected now, and a tag
+    body *no* spelling can carry (controls; `>`) is emitted as the
+    quoted-key single-entry mapping it is indistinguishable from in
+    the serde data model;
+  - tags whose body holds shorthand-unsafe characters (`,`, flow
+    indicators, an interior `!`, blanks) were emitted raw and split
+    at the first such byte — the verbatim `!<...>` form is used;
+  - a mid-document BOM was read as plain-scalar content and emitted
+    back unquoted, where re-parse stream-skips it and reinterprets
+    the scalar as markup — the scanner now rejects BOMs after the
+    stream start (§5.2), and both emitters force-quote strings
+    containing one (`﻿`);
+  - raw control characters (NUL, DEL, …) were accepted as plain and
+    single-quoted scalar content (`a: b\0c` parsed) — rejected per
+    §5.1 c-printable, and both emitters now escape DEL and the
+    sub-0x20 range so their own output stays parseable;
+  - a multi-line string used as a mapping *key* was emitted as a
+    `|-` block — not grammar in key position at all — and now emits
+    double-quoted;
+  - a scalar starting with `...` was emitted plain at column 0,
+    where it reads back as the document-end marker — quoted now,
+    like the `-`-leading family already was.
+  The `fuzz_diff` oracle also learned the verified ecosystem
+  divergences (serde_yaml_ng's 1.1-flavoured leading-zero and
+  signed-radix integers, merge-key literalism, block-scalar comment
+  stripping and chomping), with noyalib's spec-correct readings
+  pinned in `tests/competitor_bugs.rs`. Known-open at cut: minor
+  divergence classes still surface on long fuzz runs (e.g. a bare
+  `:`-shaped document, `null` vs `{"": null}`) — continuous
+  triage is what the OSS-Fuzz onboarding is for.
+
 ### Changed
 
 - **`robotics` is deprecated; `StrictFloat` is now

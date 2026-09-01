@@ -1,0 +1,73 @@
+# SPDX-FileCopyrightText: 2026 Noyalib
+# SPDX-License-Identifier: MIT OR Apache-2.0
+# YAML structural-token dictionary for libFuzzer (-dict=yaml.dict).
+# Tokens the scanner dispatches on; giving the fuzzer these whole
+# reduces the mutation distance to structurally interesting inputs.
+
+# Indicators
+kv_sep=": "
+seq_dash="- "
+comment="# "
+anchor="&a "
+alias="*a"
+tag="!!str "
+tag_custom="!include "
+merge_key="<<: "
+directive_yaml="%YAML 1.2"
+directive_tag="%TAG ! tag:example.com,2026:"
+doc_start="---"
+doc_end="..."
+
+# Flow collections
+flow_map_open="{"
+flow_map_close="}"
+flow_seq_open="["
+flow_seq_close="]"
+flow_sep=", "
+
+# Block scalars
+literal="|"
+literal_keep="|+"
+literal_strip="|-"
+folded=">"
+folded_keep=">+"
+folded_strip=">-"
+indent_indicator="|2"
+
+# Quoting and escapes
+dq="\""
+sq="'"
+sq_escape="''"
+esc_n="\\n"
+esc_unicode="\\u00e9"
+esc_hex="\\x41"
+esc_nel="\\N"
+esc_ls="\\L"
+esc_ps="\\P"
+
+# Scalars the resolver special-cases
+null_tilde="~"
+null_word="null"
+true_word="true"
+false_word="false"
+yes_word="yes"
+no_word="no"
+on_word="on"
+off_word="off"
+inf=".inf"
+neg_inf="-.inf"
+nan=".nan"
+octal="0o17"
+hex="0x1F"
+sexagesimal="1:20:30"
+big_u64="18446744073709551615"
+float_exp="1e308"
+
+# Line breaks and whitespace edge cases
+crlf="\x0d\x0a"
+cr="\x0d"
+tab="\x09"
+bom="\xef\xbb\xbf"
+
+# Explicit keys / complex mappings
+explicit_key="? "
