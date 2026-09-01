@@ -381,7 +381,7 @@ serde_json = { version = "1.0", optional = true }
 # `validate-schema` feature is on. Default features are disabled so
 # we don't drag in `reqwest` for HTTP `$ref` resolution; users who
 # need that can re-enable it via their own dep.
-jsonschema = { version = "0.50", optional = true, default-features = false }
+jsonschema = { version = "0.52", optional = true, default-features = false }
 # `figment` integration — drop-in `Provider` for the popular
 # layered-configuration crate. Pulled in only when the `figment`
 # feature is on so non-figment users don't pay for it.
