@@ -46,6 +46,12 @@ pub struct ParseConfig {
     pub no_schema: bool,
     pub legacy_octal_numbers: bool,
     pub legacy_sexagesimal: bool,
+    pub leading_zero_integer_strings: bool,
+    pub legacy_binary_numbers: bool,
+    pub float_overflow_strings: bool,
+    pub integer_overflow_errors: bool,
+    pub non_scalar_key_policy: crate::de::NonScalarKeyPolicy,
+    pub alias_jump_event_factor: Option<usize>,
     #[cfg(feature = "lossless-u64")]
     pub lossless_u64_integers: bool,
     /// Mirrors `ParserConfig::plain_scalar_strings`. When `true`, a
@@ -81,6 +87,12 @@ impl Default for ParseConfig {
             no_schema: false,
             legacy_octal_numbers: false,
             legacy_sexagesimal: false,
+            leading_zero_integer_strings: false,
+            legacy_binary_numbers: false,
+            float_overflow_strings: false,
+            integer_overflow_errors: false,
+            non_scalar_key_policy: crate::de::NonScalarKeyPolicy::Stringify,
+            alias_jump_event_factor: None,
             #[cfg(feature = "lossless-u64")]
             lossless_u64_integers: false,
             plain_scalar_strings: false,
@@ -133,6 +145,12 @@ impl From<&crate::de::ParserConfig> for ParseConfig {
             no_schema: c.no_schema,
             legacy_octal_numbers: c.legacy_octal_numbers,
             legacy_sexagesimal: c.legacy_sexagesimal,
+            leading_zero_integer_strings: c.leading_zero_integer_strings,
+            legacy_binary_numbers: c.legacy_binary_numbers,
+            float_overflow_strings: c.float_overflow_strings,
+            integer_overflow_errors: c.integer_overflow_errors,
+            non_scalar_key_policy: c.non_scalar_key_policy,
+            alias_jump_event_factor: c.alias_jump_event_factor,
             #[cfg(feature = "lossless-u64")]
             lossless_u64_integers: c.lossless_u64_integers,
             plain_scalar_strings: c.plain_scalar_strings,
@@ -315,6 +333,9 @@ struct Loader<'a> {
     anchor_count: usize,
     /// Merge-key occurrences (for `max_merge_keys`).
     merge_key_count: usize,
+    /// Cumulative node charge from alias expansions (for
+    /// `alias_jump_event_factor`).
+    alias_jump_charge: usize,
 }
 
 #[cfg(feature = "std")]
@@ -341,6 +362,7 @@ impl<'a> Loader<'a> {
             scalar_bytes: 0,
             anchor_count: 0,
             merge_key_count: 0,
+            alias_jump_charge: 0,
         }
     }
 
@@ -464,6 +486,19 @@ impl<'a> Loader<'a> {
                         }
                     })?;
 
+                // serde_yaml-profile transitive repetition budget:
+                // charge the expanded subtree's node count and refuse
+                // once the cumulative charge exceeds `events × factor`
+                // — the rule behind serde_yaml's "repetition limit
+                // exceeded" (it caps alias jumps at events × 100).
+                if let Some(factor) = self.config.alias_jump_event_factor {
+                    self.alias_jump_charge = self
+                        .alias_jump_charge
+                        .saturating_add(count_value_nodes(&value));
+                    if self.alias_jump_charge > self.event_count.saturating_mul(factor) {
+                        return Err(Error::RepetitionLimitExceeded);
+                    }
+                }
                 self.alias_bytes += estimate_value_size(&value);
                 // Bound cumulative alias expansion by the document length
                 // limit — a classic billion-laughs vector amplifies well
@@ -507,6 +542,25 @@ impl<'a> Loader<'a> {
                 // is still in hand — `resolve_untagged_scalar` returns a
                 // `Value::String("<<")` for a plain and a quoted `<<` alike.
                 let is_plain_merge_candidate = matches!(style, crate::parser::ScalarStyle::Plain);
+                // serde_yaml-profile: a plain decimal integer past
+                // `u64::MAX` is refused instead of degrading to an
+                // approximate f64.
+                if self.config.integer_overflow_errors
+                    && is_plain_merge_candidate
+                    && tag.is_none()
+                    && overflows_u64_decimal(&value)
+                {
+                    return Err(Error::IntegerOverflow {
+                        location: Some(crate::error::Location::from_index(input, span.start)),
+                        path: frames_path(self.stack.iter().map(|f| match f {
+                            Frame::MappingValue { key, .. } => Some(Cow::Borrowed(key.as_str())),
+                            Frame::Sequence { items, .. } => {
+                                Some(Cow::Owned(items.len().to_string()))
+                            }
+                            _ => None,
+                        })),
+                    });
+                }
                 let v =
                     if let Some(t) = tag {
                         if self.config.tag_registry.as_ref().is_some_and(|r| {
@@ -700,6 +754,26 @@ impl<'a> Loader<'a> {
                 } else {
                     value.clone()
                 };
+                // serde_yaml-profile: refuse a non-scalar key outright
+                // instead of stringifying it.
+                if matches!(
+                    self.config.non_scalar_key_policy,
+                    crate::de::NonScalarKeyPolicy::Error
+                ) && matches!(&value, Value::Sequence(_) | Value::Mapping(_))
+                {
+                    let kind = if matches!(&value, Value::Sequence(_)) {
+                        "sequence"
+                    } else {
+                        "mapping"
+                    };
+                    return Err(Error::NonScalarKey {
+                        kind,
+                        location: Some(crate::error::Location::from_index(
+                            input,
+                            span_tree_start(&span),
+                        )),
+                    });
+                }
                 // Coerce scalar keys to strings; complex keys (sequences,
                 // mappings) are stringified via their YAML serialization
                 // so the final `Mapping<String, Value>` can hold them.
@@ -954,9 +1028,16 @@ enum NoSpanFrame {
         items: Vec<Value>,
         anchor: Option<String>,
         tag: Option<(String, String)>,
+        /// Byte offset of the sequence's first byte — carried so a
+        /// completed composite used as a mapping key can locate a
+        /// `NonScalarKey` refusal.
+        start: usize,
     },
     MappingKey {
         map: Mapping,
+        /// Byte offset of the mapping's first byte (see
+        /// `Sequence::start`).
+        start: usize,
         // Parallel to `map`: retains the *typed* value that produced
         // each string key so the value-arm's collision check can tell
         // a distinct-typed collision (`1` vs `"1"`) apart from a
@@ -968,6 +1049,10 @@ enum NoSpanFrame {
     },
     MappingValue {
         map: Mapping,
+        /// The enclosing mapping's own first byte, riding along so the
+        /// key-state frame can be rebuilt with it (see
+        /// `MappingKey::start`).
+        start: usize,
         typed_keys: Vec<Value>,
         key: String,
         // The typed key value the current `key` string was derived
@@ -1005,6 +1090,9 @@ struct NoSpanLoader<'a> {
     scalar_bytes: usize,
     /// Anchors defined (denominator for the `alias_anchor_ratio` heuristic).
     anchor_count: usize,
+    /// Cumulative node charge from alias expansions (for
+    /// `alias_jump_event_factor`).
+    alias_jump_charge: usize,
     config: &'a ParseConfig,
     depth: usize,
     in_document: bool,
@@ -1024,6 +1112,7 @@ impl<'a> NoSpanLoader<'a> {
             node_count: 0,
             scalar_bytes: 0,
             anchor_count: 0,
+            alias_jump_charge: 0,
             config,
             depth: 0,
             in_document: false,
@@ -1150,6 +1239,16 @@ impl<'a> NoSpanLoader<'a> {
                         suggestion,
                     }
                 })?;
+                // serde_yaml-profile transitive repetition budget —
+                // see the span-full loader's twin for the rationale.
+                if let Some(factor) = self.config.alias_jump_event_factor {
+                    self.alias_jump_charge = self
+                        .alias_jump_charge
+                        .saturating_add(count_value_nodes(&value));
+                    if self.alias_jump_charge > self.event_count.saturating_mul(factor) {
+                        return Err(Error::RepetitionLimitExceeded);
+                    }
+                }
                 self.alias_bytes += estimate_value_size(&value);
                 // Bound cumulative alias expansion by both the crate-level
                 // hard cap and the caller-supplied `max_document_length`.
@@ -1160,7 +1259,7 @@ impl<'a> NoSpanLoader<'a> {
                 {
                     return Err(Error::RepetitionLimitExceeded);
                 }
-                self.push_value(value, false)?;
+                self.push_value(value, false, span.start, input)?;
             }
             Event::Scalar {
                 value,
@@ -1169,6 +1268,27 @@ impl<'a> NoSpanLoader<'a> {
                 tag,
                 span,
             } => {
+                // serde_yaml-profile: a plain decimal integer past
+                // `u64::MAX` is refused instead of degrading to an
+                // approximate f64.
+                if self.config.integer_overflow_errors
+                    && matches!(style, crate::parser::ScalarStyle::Plain)
+                    && tag.is_none()
+                    && overflows_u64_decimal(&value)
+                {
+                    return Err(Error::IntegerOverflow {
+                        location: Some(crate::error::Location::from_index(input, span.start)),
+                        path: frames_path(self.stack.iter().map(|f| match f {
+                            NoSpanFrame::MappingValue { key, .. } => {
+                                Some(Cow::Borrowed(key.as_str()))
+                            }
+                            NoSpanFrame::Sequence { items, .. } => {
+                                Some(Cow::Owned(items.len().to_string()))
+                            }
+                            _ => None,
+                        })),
+                    });
+                }
                 let v =
                     if let Some(t) = tag {
                         if self.config.tag_registry.as_ref().is_some_and(|r| {
@@ -1197,7 +1317,7 @@ impl<'a> NoSpanLoader<'a> {
                     let _ = self.anchor_def_spans.insert(name.clone(), span.start);
                     let _ = self.anchor_map.insert(name, v.clone());
                 }
-                self.push_value(v, is_plain_merge_candidate)?;
+                self.push_value(v, is_plain_merge_candidate, span.start, input)?;
             }
             Event::SequenceStart { anchor, tag, span } => {
                 self.depth += 1;
@@ -1211,17 +1331,24 @@ impl<'a> NoSpanLoader<'a> {
                     items: Vec::new(),
                     anchor,
                     tag,
+                    start: span.start,
                 });
             }
             Event::SequenceEnd { .. } => {
                 self.depth = self.depth.saturating_sub(1);
-                if let Some(NoSpanFrame::Sequence { items, anchor, tag }) = self.stack.pop() {
+                if let Some(NoSpanFrame::Sequence {
+                    items,
+                    anchor,
+                    tag,
+                    start,
+                }) = self.stack.pop()
+                {
                     let inner = Value::Sequence(items);
                     let v = wrap_with_tag(inner, tag.as_ref(), self.config.tag_registry.as_deref());
                     if let Some(name) = anchor {
                         let _ = self.anchor_map.insert(name, v.clone());
                     }
-                    self.push_value(v, false)?;
+                    self.push_value(v, false, start, input)?;
                 }
             }
             Event::MappingStart { anchor, tag, span } => {
@@ -1234,6 +1361,7 @@ impl<'a> NoSpanLoader<'a> {
                 }
                 self.stack.push(NoSpanFrame::MappingKey {
                     map: Mapping::new(),
+                    start: span.start,
                     typed_keys: Vec::new(),
                     anchor,
                     merge_values: Vec::new(),
@@ -1244,6 +1372,7 @@ impl<'a> NoSpanLoader<'a> {
                 self.depth = self.depth.saturating_sub(1);
                 if let Some(NoSpanFrame::MappingKey {
                     mut map,
+                    start,
                     typed_keys: _,
                     anchor,
                     merge_values,
@@ -1258,7 +1387,7 @@ impl<'a> NoSpanLoader<'a> {
                     if let Some(name) = anchor {
                         let _ = self.anchor_map.insert(name, v.clone());
                     }
-                    self.push_value(v, false)?;
+                    self.push_value(v, false, start, input)?;
                 }
             }
         }
@@ -1270,7 +1399,13 @@ impl<'a> NoSpanLoader<'a> {
     /// `may_be_merge_key` mirrors `push_node` on the span-tracking loader:
     /// only a **plain** `<<` scalar is a merge key, and by the time a value
     /// arrives here it is a `Value::String("<<")` however it was written.
-    fn push_value(&mut self, value: Value, may_be_merge_key: bool) -> Result<()> {
+    fn push_value(
+        &mut self,
+        value: Value,
+        may_be_merge_key: bool,
+        node_start: usize,
+        input: &str,
+    ) -> Result<()> {
         if self.stack.is_empty() {
             self.docs.push(value);
             return Ok(());
@@ -1287,6 +1422,7 @@ impl<'a> NoSpanLoader<'a> {
             }
             NoSpanFrame::MappingKey {
                 map,
+                start,
                 typed_keys,
                 anchor,
                 merge_values,
@@ -1306,6 +1442,23 @@ impl<'a> NoSpanLoader<'a> {
                 } else {
                     value.clone()
                 };
+                // serde_yaml-profile: refuse a non-scalar key outright
+                // instead of stringifying it.
+                if matches!(
+                    self.config.non_scalar_key_policy,
+                    crate::de::NonScalarKeyPolicy::Error
+                ) && matches!(&value, Value::Sequence(_) | Value::Mapping(_))
+                {
+                    let kind = if matches!(&value, Value::Sequence(_)) {
+                        "sequence"
+                    } else {
+                        "mapping"
+                    };
+                    return Err(Error::NonScalarKey {
+                        kind,
+                        location: Some(crate::error::Location::from_index(input, node_start)),
+                    });
+                }
                 if let Some(key) = value_to_key_string(value) {
                     let old_map = core::mem::take(map);
                     let old_typed_keys = core::mem::take(typed_keys);
@@ -1315,6 +1468,7 @@ impl<'a> NoSpanLoader<'a> {
                     *self.stack.last_mut().unwrap() = NoSpanFrame::MappingValue {
                         key_may_merge: may_be_merge_key,
                         map: old_map,
+                        start: *start,
                         typed_keys: old_typed_keys,
                         key,
                         key_value,
@@ -1326,6 +1480,7 @@ impl<'a> NoSpanLoader<'a> {
             }
             NoSpanFrame::MappingValue {
                 map,
+                start,
                 typed_keys,
                 key,
                 key_value,
@@ -1405,6 +1560,7 @@ impl<'a> NoSpanLoader<'a> {
                 let old_tag = tag.take();
                 *self.stack.last_mut().unwrap() = NoSpanFrame::MappingKey {
                     map: old_map,
+                    start: *start,
                     typed_keys: old_typed_keys,
                     anchor: old_anchor,
                     merge_values: old_merge_values,
@@ -1420,6 +1576,87 @@ impl<'a> NoSpanLoader<'a> {
 /// sequences and mappings use a deterministic inline YAML-like representation
 /// so the parser can still build a `Mapping<String, Value>` from YAML with
 /// complex keys (common in the official YAML Test Suite).
+/// `[-+]?0[0-9]+` — a decimal spelling with a leading zero (octal in
+/// YAML 1.1, decimal in 1.2; libyaml resolved it as neither).
+fn is_leading_zero_decimal(s: &str) -> bool {
+    let d = s.strip_prefix(['+', '-']).unwrap_or(s);
+    d.len() >= 2 && d.starts_with('0') && d.bytes().all(|b| b.is_ascii_digit())
+}
+
+/// YAML 1.1 binary integer: `[-+]?0b[0-1_]+`.
+fn parse_legacy_binary(s: &str) -> Option<i64> {
+    let (negative, rest) = match s.as_bytes().first() {
+        Some(b'-') => (true, &s[1..]),
+        Some(b'+') => (false, &s[1..]),
+        _ => (false, s),
+    };
+    let digits = rest
+        .strip_prefix("0b")
+        .or_else(|| rest.strip_prefix("0B"))?;
+    if digits.is_empty() || digits.bytes().all(|b| b == b'_') {
+        return None;
+    }
+    let mut n: i64 = 0;
+    for b in digits.bytes() {
+        match b {
+            b'_' => {}
+            b'0' | b'1' => {
+                n = n.checked_mul(2)?.checked_add(i64::from(b - b'0'))?;
+            }
+            _ => return None,
+        }
+    }
+    Some(if negative { -n } else { n })
+}
+
+/// One of the explicit infinity spellings the resolver accepts.
+fn is_inf_spelling(s: &str) -> bool {
+    matches!(
+        s,
+        ".inf" | ".Inf" | ".INF" | "+.inf" | "+.Inf" | "+.INF" | "-.inf" | "-.Inf" | "-.INF"
+    )
+}
+
+/// A plain decimal integer (optional `+`) that does not fit `u64`.
+fn overflows_u64_decimal(s: &str) -> bool {
+    let d = s.strip_prefix('+').unwrap_or(s);
+    !d.is_empty() && d.bytes().all(|b| b.is_ascii_digit()) && d.parse::<u64>().is_err()
+}
+
+/// Byte offset where a span tree's node begins.
+fn span_tree_start(span: &SpanTree) -> usize {
+    match span {
+        SpanTree::Leaf(s, _)
+        | SpanTree::Sequence { start: s, .. }
+        | SpanTree::Mapping { start: s, .. } => *s,
+        SpanTree::Alias(inner) => span_tree_start(inner),
+    }
+}
+
+/// Dotted path from a loader frame stack — the field the currently
+/// arriving value belongs to, for error messages that name it the
+/// way serde's own path tracking would (`server.port`, `items.3`).
+fn frames_path<'f>(segments: impl Iterator<Item = Option<Cow<'f, str>>>) -> Option<String> {
+    let parts: Vec<_> = segments.flatten().collect();
+    if parts.is_empty() {
+        None
+    } else {
+        Some(parts.join("."))
+    }
+}
+
+/// Total nodes in a value tree — the charge one alias expansion adds
+/// to the serde_yaml-style repetition budget
+/// (`ParserConfig::alias_jump_event_factor`).
+fn count_value_nodes(value: &Value) -> usize {
+    match value {
+        Value::Sequence(items) => 1 + items.iter().map(count_value_nodes).sum::<usize>(),
+        Value::Mapping(map) => 1 + map.values().map(count_value_nodes).sum::<usize>(),
+        Value::Tagged(t) => 1 + count_value_nodes(t.value()),
+        _ => 1,
+    }
+}
+
 pub(crate) fn value_to_key_string(value: Value) -> Option<String> {
     use core::fmt::Write as _;
     match value {
@@ -1571,6 +1808,17 @@ fn resolve_untagged_scalar(
         // schema resolution only applies to plain scalars.
         return Value::String(value.into_owned());
     }
+    // serde_yaml-profile scalar quirks (both loader paths; the shim
+    // configuration disqualifies the streaming fast path, and these
+    // flags are part of that disqualification):
+    if config.leading_zero_integer_strings && is_leading_zero_decimal(&value) {
+        return Value::String(value.into_owned());
+    }
+    if config.legacy_binary_numbers {
+        if let Some(n) = parse_legacy_binary(&value) {
+            return Value::Number(Number::Integer(n));
+        }
+    }
     match crate::streaming::resolve_plain_ext(
         &value,
         config.strict_booleans,
@@ -1585,7 +1833,16 @@ fn resolve_untagged_scalar(
         crate::streaming::Scalar::Int(i) => Value::Number(Number::Integer(i)),
         #[cfg(feature = "lossless-u64")]
         crate::streaming::Scalar::Uint(u) => Value::Number(Number::Unsigned(u)),
-        crate::streaming::Scalar::Float(f) => Value::Number(Number::Float(f)),
+        crate::streaming::Scalar::Float(f) => {
+            // serde_yaml-profile: a *literal* spelling that overflows
+            // f64 (`1e999`) stays a string; the explicit infinity
+            // spellings keep their float values.
+            if config.float_overflow_strings && f.is_infinite() && !is_inf_spelling(&value) {
+                Value::String(value.into_owned())
+            } else {
+                Value::Number(Number::Float(f))
+            }
+        }
         crate::streaming::Scalar::Str(s) => Value::String(s.into_owned()),
     }
 }

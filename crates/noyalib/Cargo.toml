@@ -598,7 +598,9 @@ noyavalidate = ["std", "miette", "miette/fancy", "validate-schema"]
 # every type the shim exposes is a noyalib-native type, not a
 # re-export of the archived upstream crate. Off by default so users
 # who do not need migration help do not see the extra surface.
-compat-serde-yaml = []
+# The shim needs `lossless-u64` for its integer-precision contract
+# (`u64::MAX` survives the serde_json path exactly, as upstream).
+compat-serde-yaml = ["lossless-u64"]
 # Opt-in unsigned integer model for YAML `!!int` scalars in the
 # `i64::MAX + 1..=u64::MAX` range. Dependency-free; off by default
 # because it exposes an additional public `Number` variant.

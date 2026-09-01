@@ -23,7 +23,10 @@ use std::io;
 
 mod config;
 mod deserializer;
-pub use config::{DuplicateKeyPolicy, MergeKeyPolicy, ParserConfig, RequireIndent, YamlVersion};
+pub use config::{
+    DuplicateKeyPolicy, MergeKeyPolicy, NonScalarKeyPolicy, ParserConfig, RequireIndent,
+    YamlVersion,
+};
 pub use deserializer::Deserializer;
 pub(crate) use deserializer::{EmptyMapAccess, SpannedMapAccess, is_binary_tag};
 

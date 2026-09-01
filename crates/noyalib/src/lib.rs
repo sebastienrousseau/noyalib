@@ -638,9 +638,9 @@ pub use anchors::{ArcRecursion, ArcRecursive, RcRecursion, RcRecursive};
 pub use comments::{Comment, CommentKind, load_comments};
 pub use de::RequireIndent;
 pub use de::{
-    Deserializer, DuplicateKeyPolicy, MergeKeyPolicy, ParserConfig, YamlVersion, from_slice,
-    from_slice_with_config, from_str, from_str_borrowing, from_str_borrowing_with_config,
-    from_str_with_config, from_value,
+    Deserializer, DuplicateKeyPolicy, MergeKeyPolicy, NonScalarKeyPolicy, ParserConfig,
+    YamlVersion, from_slice, from_slice_with_config, from_str, from_str_borrowing,
+    from_str_borrowing_with_config, from_str_with_config, from_value,
 };
 #[cfg(feature = "std")]
 pub use de::{from_reader, from_reader_with_config};

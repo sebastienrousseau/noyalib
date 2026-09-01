@@ -4,7 +4,8 @@
 //! "refuse to silently lose precision" float, and it now lives at
 //! [`crate::lossless_float::LosslessFloat`] behind the
 //! `lossless-float` feature (the floating-point sibling of
-//! `lossless-u64`). The aliases here, the [`Degrees`] / [`Radians`]
+//! `lossless-u64`). The aliases here, the [`Degrees`](crate::robotics::Degrees) /
+//! [`Radians`](crate::robotics::Radians)
 //! unit newtypes, and the `robotics` feature flag itself are
 //! deprecated and will be removed in the next release, per the
 //! crate's deprecation policy.

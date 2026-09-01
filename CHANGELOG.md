@@ -13,9 +13,41 @@ Thirteen fixes and seven additions, spanning all three pillars — the
 serde deserializer, the emitter, and the CST editors — closing every
 issue open at the start of the cycle (#327–#355). One documented
 behavioural change: writes inside aliased anchors now refuse
-uniformly (ADR-0011).
+uniformly (ADR-0011). **The headline: `compat-serde-yaml` became a
+behavioural shim** — drop-in now means behaviour, not just names.
 
 ### Added
+
+- **`compat-serde-yaml` is a behavioural shim, pinned by the
+  18-case `serde_yaml` contract suite.** The shim's entry points
+  now parse under `ParserConfig::serde_yaml_compat()` and its
+  `Error` (a newtype since this release, boxed like upstream's)
+  renders `serde_yaml` 0.9's wording and locations. Concretely:
+  `<<` merge keys stay literal entries with resolved alias values;
+  `0123` is a string and `0b11` is 3; a literal `1e999` stays a
+  string; `u64::MAX` keeps full precision on the `serde_json` path
+  and one past it refuses with `u64_over: JSON number out of range
+  at line 1 column 11`; `[a, b]:` refuses with `invalid type:
+  sequence, expected a string key` at `1:1:0`; transitive alias
+  expansion is budgeted exactly as upstream (`repetition limit
+  exceeded`, jumps ≤ events × 100 — the rule read out of upstream's
+  own source); parse errors adopt libyaml's phrasing for the
+  recognisable classes and its end-of-input location convention
+  (line after the last, column 1). The engine behind it: six new
+  `ParserConfig` knobs (`leading_zero_integer_strings`,
+  `legacy_binary_numbers`, `float_overflow_strings`,
+  `integer_overflow_errors`, `non_scalar_key_policy` with the new
+  `NonScalarKeyPolicy`, `alias_jump_event_factor`) and two new
+  error variants (`Error::IntegerOverflow` carrying the field
+  path, `Error::NonScalarKey`), all usable outside the shim.
+  `tests/serde_yaml_contract.rs` vendors the evaluation corpus a
+  real migration candidate built
+  (Takazudo/zudo-front-builder#2787, where noyalib 0.0.28 diverged
+  on 11 of 18 and was rejected) with expectations captured live
+  from `serde_yaml 0.9.34` — 18/18 pass; the one documented
+  partial is the custom-tag refusal anchoring its location at the
+  value rather than the tag. A `noyalib-serde-yaml` satellite
+  (Cargo package-rename drop-in: zero source changes) follows.
 
 - **`CompiledSchema`: compile a JSON Schema once, validate many**
   (#329, ADR-0008). `CompiledSchema::compile(&schema)?.validate(&v)`

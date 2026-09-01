@@ -190,6 +190,47 @@ pub struct ParserConfig {
     #[cfg(feature = "lossless-u64")]
     #[cfg_attr(docsrs, doc(cfg(feature = "lossless-u64")))]
     pub lossless_u64_integers: bool,
+    /// When `true`, a plain decimal integer with a leading zero
+    /// (`0123`, `+007`) resolves as a **string** instead of a
+    /// number. This is what `serde_yaml` 0.9 (libyaml) did — the
+    /// spelling is octal in YAML 1.1 and decimal in 1.2, and
+    /// libyaml sidestepped the ambiguity by resolving neither.
+    /// `0`, `0o755`, and `0x1F` are unaffected. Default `false`
+    /// (YAML 1.2: a decimal integer).
+    pub leading_zero_integer_strings: bool,
+    /// When `true`, accept YAML 1.1-style binary literals
+    /// (`0b11` → 3). Default `false` to honour the YAML 1.2
+    /// schema, which has no binary form.
+    pub legacy_binary_numbers: bool,
+    /// When `true`, a plain scalar float whose *literal* spelling
+    /// overflows `f64` (`1e999`) resolves as a **string** instead
+    /// of infinity. The explicit spellings `.inf` / `-.Inf` /
+    /// `.nan` still resolve to their float values. Matches
+    /// `serde_yaml` 0.9. Default `false` (overflow saturates to
+    /// infinity, the Rust float-parsing convention).
+    pub float_overflow_strings: bool,
+    /// When `true`, a plain decimal integer beyond `u64::MAX`
+    /// (`18446744073709551616`) aborts the parse with
+    /// [`ErrorKind::IntegerOverflow`](crate::ErrorKind) instead
+    /// of falling through to an approximate `f64`. Matches
+    /// `serde_yaml` 0.9's "JSON number out of range". Default
+    /// `false`.
+    pub integer_overflow_errors: bool,
+    /// What to do with a non-scalar mapping key (`[a, b]: v`,
+    /// `{k: v}: w`). See [`NonScalarKeyPolicy`]. Default
+    /// [`NonScalarKeyPolicy::Stringify`] — the key is converted
+    /// to its deterministic string form.
+    pub non_scalar_key_policy: NonScalarKeyPolicy,
+    /// Transitive alias-expansion budget as a multiple of the
+    /// document's own event count, mirroring `serde_yaml` 0.9's
+    /// rule (its deserializer refuses once alias jumps exceed
+    /// `events × 100` with "repetition limit exceeded"). Each
+    /// alias expansion charges the full node count of the anchored
+    /// subtree, so nested anchors multiply. `None` (default)
+    /// disables the factor check; the absolute
+    /// [`Self::max_alias_expansions`] and byte budgets still
+    /// apply.
+    pub alias_jump_event_factor: Option<usize>,
     /// Indentation-validation mode. See [`RequireIndent`].
     /// Default: [`RequireIndent::Unchecked`] — accept any
     /// well-formed YAML indent.
@@ -287,6 +328,12 @@ impl Default for ParserConfig {
             legacy_sexagesimal: false,
             #[cfg(feature = "lossless-u64")]
             lossless_u64_integers: false,
+            leading_zero_integer_strings: false,
+            legacy_binary_numbers: false,
+            float_overflow_strings: false,
+            integer_overflow_errors: false,
+            non_scalar_key_policy: NonScalarKeyPolicy::Stringify,
+            alias_jump_event_factor: None,
             require_indent: RequireIndent::Unchecked,
             policies: Vec::new(),
             #[cfg(feature = "std")]
@@ -353,6 +400,12 @@ impl ParserConfig {
             legacy_sexagesimal: false,
             #[cfg(feature = "lossless-u64")]
             lossless_u64_integers: false,
+            leading_zero_integer_strings: false,
+            legacy_binary_numbers: false,
+            float_overflow_strings: false,
+            integer_overflow_errors: false,
+            non_scalar_key_policy: NonScalarKeyPolicy::Stringify,
+            alias_jump_event_factor: None,
             require_indent: RequireIndent::Even,
             policies: Vec::new(),
             #[cfg(feature = "std")]
@@ -366,6 +419,55 @@ impl ParserConfig {
             // 128 → 64, max_alias_expansions 1024 → 100).
             #[cfg(feature = "include")]
             max_include_depth: 8,
+        }
+    }
+
+    /// Create the configuration the `compat-serde-yaml` shim uses:
+    /// noyalib's defaults with every knob turned to reproduce
+    /// `serde_yaml` 0.9's observable behaviour on the same input —
+    /// the behavioural half of being a drop-in replacement.
+    ///
+    /// Concretely, relative to [`ParserConfig::new`]:
+    ///
+    /// - `<<` merge keys stay ordinary entries whose alias values
+    ///   resolve ([`MergeKeyPolicy::AsOrdinary`]) — serde_yaml
+    ///   never implemented the merge;
+    /// - leading-zero integers (`0123`) resolve as strings and
+    ///   YAML 1.1 binary literals (`0b11`) as integers — libyaml's
+    ///   resolver, spec versions notwithstanding;
+    /// - a literal float overflow (`1e999`) is a string, not
+    ///   infinity;
+    /// - integers past `u64::MAX` error ("JSON number out of
+    ///   range" territory) instead of degrading to `f64`, and
+    ///   (with the `lossless-u64` feature the shim enables)
+    ///   `u64`-range integers keep full precision;
+    /// - a non-scalar mapping key is an error, not a stringified
+    ///   key;
+    /// - transitive alias expansion is budgeted at 100× the
+    ///   document's event count — the exact rule behind
+    ///   serde_yaml's "repetition limit exceeded".
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use noyalib::ParserConfig;
+    /// let cfg = ParserConfig::serde_yaml_compat();
+    /// assert!(cfg.leading_zero_integer_strings);
+    /// assert_eq!(cfg.alias_jump_event_factor, Some(100));
+    /// ```
+    #[must_use]
+    pub fn serde_yaml_compat() -> Self {
+        Self {
+            merge_key_policy: MergeKeyPolicy::AsOrdinary,
+            leading_zero_integer_strings: true,
+            legacy_binary_numbers: true,
+            float_overflow_strings: true,
+            integer_overflow_errors: true,
+            non_scalar_key_policy: NonScalarKeyPolicy::Error,
+            alias_jump_event_factor: Some(100),
+            #[cfg(feature = "lossless-u64")]
+            lossless_u64_integers: true,
+            ..Self::default()
         }
     }
 
@@ -1026,6 +1128,31 @@ pub enum MergeKeyPolicy {
     /// Reject any document that contains a `<<` key with
     /// [`crate::Error::Custom`]. Useful for schema-strict pipelines
     /// where merge keys are forbidden.
+    Error,
+}
+
+/// Policy for handling a non-scalar mapping key (`[a, b]: v`,
+/// `{k: v}: w`).
+///
+/// # Examples
+///
+/// ```
+/// use noyalib::NonScalarKeyPolicy;
+/// assert_eq!(NonScalarKeyPolicy::default(), NonScalarKeyPolicy::Stringify);
+/// ```
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[non_exhaustive]
+pub enum NonScalarKeyPolicy {
+    /// Convert the key to its deterministic string form
+    /// (`"[a, b]"`), reporting a `KeyCollision` when two distinct
+    /// keys stringify identically. Default.
+    #[default]
+    Stringify,
+    /// Abort the parse with
+    /// [`ErrorKind::NonScalarKey`](crate::ErrorKind) — the
+    /// behaviour `serde_yaml` 0.9 had when the target was a
+    /// string-keyed structure ("invalid type: sequence, expected a
+    /// string key").
     Error,
 }
 

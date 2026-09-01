@@ -1,6 +1,6 @@
 //! A float that refuses to silently lose information.
 //!
-//! [`LosslessFloat`] is the floating-point sibling of the
+//! [`LosslessFloat`](crate::lossless_float::LosslessFloat) is the floating-point sibling of the
 //! `lossless-u64` feature's integer guarantee: an opt-in "refuse to
 //! silently lose precision" number type. Deserialization rejects
 //! infinities, NaN, and any value that does not survive a
