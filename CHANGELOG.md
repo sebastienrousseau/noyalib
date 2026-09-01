@@ -181,6 +181,20 @@ behavioural shim** — drop-in now means behaviour, not just names.
 
 ### Fixed
 
+- **Three more spec-strictness gaps, found by the new
+  `fuzz_serde_yaml_compat` parity fuzzer** (the shim vs the real
+  archived `serde_yaml 0.9.34`, value-and-verdict differential):
+  block scalar *content* and raw double-quoted runs accepted
+  control characters (§5.1 c-printable now enforced uniformly —
+  escapes remain the way to carry controls); a block scalar header
+  accepted trailing content on its own line (`>-\n` read a literal
+  `\n` as content — §8.1.1 allows only blanks and a comment
+  there); and the reserved indicators `@` and `` ` `` could start a
+  plain scalar (§5.10 forbids exactly that). The fuzzer's
+  documented-divergence allowlist records where the spec and
+  libyaml legitimately part ways (anchor-name charsets, empty
+  implicit keys, tags/directives/explicit keys).
+
 - **`simd::parse_decimal_u64` / `parse_decimal_i64` could accept a
   non-digit block** — found by the new Kani proof harness on its
   first run, as a concrete counterexample. The SWAR validator's

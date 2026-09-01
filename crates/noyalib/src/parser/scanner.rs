@@ -1169,6 +1169,12 @@ impl<'a> Scanner<'a> {
             0xEF if self.peek_at(1) == 0xBB && self.peek_at(2) == 0xBF => Err(self.error(
                 "byte order mark inside the stream — a BOM is only allowed at the very start",
             )),
+            // §5.10: `@` and `` ` `` are reserved indicators — "must
+            // not be used to start a plain scalar" (found by the
+            // serde_yaml parity fuzzer; libyaml rejects them too).
+            b'@' | b'`' => {
+                Err(self.error("reserved indicator ('@' or '`') cannot start a plain scalar"))
+            }
             _ => self.fetch_plain_scalar(),
         }
     }

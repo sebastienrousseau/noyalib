@@ -17,12 +17,24 @@ serde = { version = "1.0", features = ["derive"] }
 serde_core = { version = "1.0", features = ["std"] }
 serde_json = "1.0"
 serde_yaml_ng = "0.10"
+# The archived upstream, used ONLY as the differential oracle for
+# fuzz_serde_yaml_compat — the behavioural-shim parity fuzzer. Its
+# advisory chain never touches the library: the fuzz crate is
+# excluded from the workspace.
+serde_yaml = "=0.9.34"
 saphyr = "0.0.6"
 
 [dependencies.noyalib]
 path = "../crates/noyalib"
+features = ["compat-serde-yaml"]
 
 # ── Fuzz Targets ─────────────────────────────────────────────────────
+
+[[bin]]
+name = "fuzz_serde_yaml_compat"
+path = "fuzz_targets/fuzz_serde_yaml_compat.rs"
+test = false
+doc = false
 
 [[bin]]
 name = "fuzz_parse"

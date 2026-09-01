@@ -253,9 +253,28 @@ You don't see it; your `Format` impl just works.
 
 ## Drop-in compatibility shim
 
-If you cannot afford the call-site changes above (e.g. you're
-migrating an in-flight `::serde_yaml::Value` from a module you
-don't own), enable the `compat-serde-yaml` feature:
+Two forms, both **behavioural** since v0.0.29 — the shim parses
+under `ParserConfig::serde_yaml_compat()` and its `Error` renders
+upstream's wording and locations, pinned by an 18-case contract
+suite whose expectations were captured live from `serde_yaml
+0.9.34` (`tests/serde_yaml_contract.rs`).
+
+**Zero source changes — the package rename.** The
+`noyalib-serde-yaml` crate re-exports the shim under a package name
+Cargo can substitute for `serde_yaml`:
+
+```toml
+[dependencies]
+serde_yaml = { package = "noyalib-serde-yaml", version = "=0.0.29" }
+```
+
+Every `use serde_yaml::…` keeps compiling and behaving — `<<` stays
+a literal key, `0123` stays a string, `u64::MAX` keeps precision,
+alias bombs fail with upstream's `repetition limit exceeded`, and
+the pinned error classes carry libyaml's phrasing and locations.
+
+**Two-line form.** If you prefer depending on noyalib directly,
+enable the `compat-serde-yaml` feature:
 
 ```toml
 [dependencies]
@@ -269,7 +288,10 @@ use noyalib::compat::serde_yaml::{from_str, to_string, Value, Mapping, Number};
 ```
 
 The shim is feature-gated so users who don't need migration help
-don't see the extra surface.
+don't see the extra surface. One documented partial in the error
+contract: a custom tag refused under `deserialize_any` anchors its
+location at the value where upstream anchors at the tag — message
+and refusal semantics are exact.
 
 ## Migration checklist
 

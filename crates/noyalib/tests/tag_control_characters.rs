@@ -77,3 +77,37 @@ fn unspellable_tag_bodies_emit_as_quoted_key_mappings() {
         noyalib::from_str(&emitted).unwrap_or_else(|e| panic!("must re-parse: {e} ({emitted:?})"));
     assert_eq!(v, back, "{emitted:?}");
 }
+
+#[test]
+fn block_scalar_content_rejects_raw_control_characters() {
+    // Found by the serde_yaml parity fuzzer (`>-\x07`): §5.1
+    // c-printable governs block scalar content too.
+    refused(">-\n \u{7}");
+    refused("a: |\n  x\u{1}y\n");
+    // Tabs inside content stay legal.
+    let v: Value = noyalib::from_str("a: |\n  x\ty\n").unwrap();
+    assert_eq!(v["a"].as_str(), Some("x\ty\n"));
+}
+
+#[test]
+fn double_quoted_rejects_raw_controls_but_keeps_escapes() {
+    refused("a: \"x\u{7}y\"\n");
+    refused("\"\u{1}\"");
+    // The escape spellings remain the way to carry controls.
+    let v: Value = noyalib::from_str("a: \"x\\x07y\\u0001\"\n").unwrap();
+    assert_eq!(v["a"].as_str(), Some("x\u{7}y\u{1}"));
+}
+
+#[test]
+fn block_scalar_header_line_carries_no_content() {
+    // §8.1.1: after `|`/`>` and its indicators, only blanks and a
+    // comment may precede the line break — a literal `\n` (or any
+    // text) on the header line is malformed, not content (found by
+    // the serde_yaml parity fuzzer on `>-\n`).
+    refused(">-\\n");
+    refused("a: |x\n  y\n");
+    refused("a: >2x\n  y\n");
+    // Comments and the indicators themselves remain fine.
+    let v: Value = noyalib::from_str("a: |- # note\n  x\n").unwrap();
+    assert_eq!(v["a"].as_str(), Some("x"));
+}

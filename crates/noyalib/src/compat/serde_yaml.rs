@@ -43,12 +43,21 @@
 //!
 //! ## Drop-in migration
 //!
+//! Zero source changes, via Cargo's package rename and the
+//! `noyalib-serde-yaml` companion crate:
+//!
+//! ```toml
+//! # Cargo.toml — the whole migration
+//! serde_yaml = { package = "noyalib-serde-yaml", version = "=0.0.29" }
+//! ```
+//!
+//! Or two lines, depending on noyalib directly:
 //!
 //! ```toml
 //! # Cargo.toml — before
 //! serde_yaml = "0.9"
 //! # Cargo.toml — after
-//! noyalib = { version = "0.0.7", features = ["compat-serde-yaml"] }
+//! noyalib = { version = "0.0", features = ["compat-serde-yaml"] }
 //! ```
 //!
 //! ```rust,ignore
@@ -200,6 +209,16 @@ pub use crate::value::{Mapping, Number, Sequence, Tag, TaggedValue, Value};
 
 /// Shim result type: [`Result<T, Error>`](core::result::Result) with
 /// the shim's own [`Error`].
+///
+/// # Examples
+///
+/// ```
+/// use noyalib::compat::serde_yaml as syml;
+/// fn parse(s: &str) -> syml::Result<syml::Value> {
+///     syml::from_str(s)
+/// }
+/// assert!(parse("a: 1\n").is_ok());
+/// ```
 pub type Result<T> = core::result::Result<T, Error>;
 
 /// The shim's error type: a [`crate::Error`] rendered the way
@@ -243,6 +262,17 @@ impl Error {
     /// Wrap a noyalib error, rendering it upstream-style against the
     /// input it came from (the input drives the EOF location
     /// convention and the flow-sequence context trailer).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use noyalib::compat::serde_yaml::Error;
+    /// let input = "title: [oops";
+    /// let inner = noyalib::from_str::<noyalib::Value>(input).unwrap_err();
+    /// let e = Error::from_noyalib_with_input(inner, input);
+    /// // libyaml's end-of-input convention: the line after the last.
+    /// assert_eq!(e.location().unwrap().line(), 2);
+    /// ```
     #[must_use]
     pub fn from_noyalib_with_input(inner: crate::error::Error, input: &str) -> Self {
         let mut location = inner.location();
@@ -265,18 +295,46 @@ impl Error {
     /// The upstream-shaped location, when the error has one.
     /// 1-based line and column, 0-based byte index — the exact
     /// `serde_yaml::Location` surface.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use noyalib::compat::serde_yaml as syml;
+    /// let err = syml::from_str::<syml::Value>("a: [unclosed").unwrap_err();
+    /// let loc = err.location().unwrap();
+    /// assert!(loc.line() >= 1 && loc.column() >= 1);
+    /// let _: usize = loc.index();
+    /// ```
     #[must_use]
     pub fn location(&self) -> Option<Location> {
         self.0.location
     }
 
     /// Borrow the underlying [`crate::Error`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use noyalib::compat::serde_yaml as syml;
+    /// let err = syml::from_str::<syml::Value>("a: [unclosed").unwrap_err();
+    /// assert!(matches!(err.inner().kind(), noyalib::ErrorKind::Syntax));
+    /// ```
     #[must_use]
     pub fn inner(&self) -> &crate::error::Error {
         &self.0.inner
     }
 
-    /// Unwrap into the underlying [`crate::Error`].
+    /// Unwrap into the underlying [`crate::Error`] — the way back to
+    /// noyalib's own diagnostics (miette/ariadne adapters included).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use noyalib::compat::serde_yaml as syml;
+    /// let err = syml::from_str::<syml::Value>("a: [unclosed").unwrap_err();
+    /// let inner: noyalib::Error = err.into_inner();
+    /// assert!(inner.location().is_some());
+    /// ```
     #[must_use]
     pub fn into_inner(self) -> crate::error::Error {
         self.0.inner

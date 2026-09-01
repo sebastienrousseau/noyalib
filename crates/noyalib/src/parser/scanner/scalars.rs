@@ -734,7 +734,23 @@ impl Scanner<'_> {
                             crate::simd::clean_prefix_len(&self.input[self.pos..], b"\"\\\n\r \t");
                         let len = if len == 0 { 1 } else { len };
                         self.advance_by(len);
-                        string.push_str(self.slice_str(start, self.pos));
+                        let run = self.slice_str(start, self.pos);
+                        // §5.1 c-printable governs the raw stream:
+                        // controls reach a double-quoted scalar via
+                        // escapes, never as raw bytes (matches the
+                        // plain/single-quoted/block enforcement; found
+                        // by the serde_yaml parity fuzzer — libyaml
+                        // rejects them everywhere).
+                        if run.bytes().any(|b| b < 0x20 || b == 0x7f) {
+                            return Err(ScanError {
+                                message: Cow::Borrowed(
+                                    "double-quoted scalar contains a raw control character — \
+                                     use an escape (\\x.., \\u....) instead",
+                                ),
+                                index: start,
+                            });
+                        }
+                        string.push_str(run);
                     }
                 }
             }
@@ -850,6 +866,11 @@ impl Scanner<'_> {
         self.mark = self.pos;
 
         let string = self.scan_block_scalar(literal)?;
+        // §5.1 c-printable applies to block scalar content too — the
+        // breaks are already folded to `\n` and tab is legal, so the
+        // shared printable check fits exactly (found by the
+        // serde_yaml parity fuzzer on `>-\x07`).
+        self.check_scalar_printable(&string)?;
         let style = if literal {
             ScalarStyle::Literal
         } else {
@@ -915,6 +936,17 @@ impl Scanner<'_> {
             while !self.is_eof() && !Self::is_break(self.peek()) {
                 self.advance();
             }
+        }
+
+        // Per §8.1.1 the header line ends here: anything left that is
+        // not a break (or end of input) is malformed — content starts
+        // on the NEXT line, never on the header's (found by the
+        // serde_yaml parity fuzzer on `>-\n`, where a literal `\n`
+        // after the header was silently read as content).
+        if !self.is_eof() && !Self::is_break(self.peek()) {
+            return Err(
+                self.error("block scalar header must be followed by a comment or a line break")
+            );
         }
 
         // Consume the line break.

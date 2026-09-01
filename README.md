@@ -184,7 +184,7 @@ the application needs.
 | `tokio` | `tokio`, `tokio-util`, `bytes` | `noyalib::tokio_async::from_async_reader` / `from_async_reader_multi` and `YamlDecoder` codec for `tokio_util::codec::Framed` pipelines | `examples/tokio_async_reader.rs`, `benches/v006_features.rs` |
 | `simd` | — | Forward-compat no-op — `noyalib::simd::*` is always available and the parser hot path uses it unconditionally | [Benchmarks](#benchmarks) |
 | `nightly-simd` | `simd` (nightly toolchain) | `core::simd`-backed `StructuralIter` (32-byte chunks) | [Benchmarks](#benchmarks) |
-| `compat-serde-yaml` | — | `noyalib::compat::serde_yaml` shim for migration | [When not to use noyalib](#when-not-to-use-noyalib) |
+| `compat-serde-yaml` | — | **behavioural** `serde_yaml` 0.9 shim (values, error text, and locations pinned by the live-captured 18-case contract suite); `noyalib-serde-yaml` packages it as a Cargo package-rename drop-in | [When not to use noyalib](#when-not-to-use-noyalib) |
 | `lossless-u64` | — | `Number::Unsigned(u64)` plus opt-in parser/serializer config for scalars in `(i64::MAX, u64::MAX]` | [`doc/adr/0004-lossless-u64-integers.md`](doc/adr/0004-lossless-u64-integers.md), `examples/lossless_u64.rs`, `benches/lossless_u64.rs` |
 | `compare-saphyr` | `serde-saphyr` *(dev only)* | Cross-library bench comparison arms | `benches/comparison.rs` |
 | `wasm-opt` | — | Build-time flag opting the `noyalib-wasm` bundle into `wasm-opt` size passes (no API surface) | [`sebastienrousseau/noyalib-wasm`](https://github.com/sebastienrousseau/noyalib-wasm) |
@@ -368,10 +368,23 @@ tables for each.
 | (n/a) | `noyalib::Spanned<T>` — source-location wrapper |
 | (n/a) | `noyalib::cst::Document` — lossless byte-faithful edits |
 
-If your call sites can't change at all, enable
+If your call sites can't change at all, rename the package in
+`Cargo.toml` and change **zero source lines**:
+
+```toml
+serde_yaml = { package = "noyalib-serde-yaml", version = "=0.0.29" }
+```
+
+or depend on noyalib directly with
 `features = ["compat-serde-yaml"]` and replace `use serde_yaml`
-with `use noyalib::compat::serde_yaml` — every type is
-noyalib-native, no transitive dep on the archived upstream.
+with `use noyalib::compat::serde_yaml`. Either way the shim is
+**behavioural** since v0.0.29: `<<` stays a literal key, `0123`
+stays a string, `u64::MAX` keeps precision, alias bombs fail with
+upstream's `repetition limit exceeded`, and the pinned error
+classes carry libyaml's phrasing and locations — verified by an
+18-case contract suite captured live from `serde_yaml 0.9.34`.
+Every type is noyalib-native; no transitive dep on the archived
+upstream.
 
 ### Coming from a different YAML crate?
 

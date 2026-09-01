@@ -553,10 +553,8 @@ impl<'a> Loader<'a> {
                     return Err(Error::IntegerOverflow {
                         location: Some(crate::error::Location::from_index(input, span.start)),
                         path: frames_path(self.stack.iter().map(|f| match f {
-                            Frame::MappingValue { key, .. } => Some(Cow::Borrowed(key.as_str())),
-                            Frame::Sequence { items, .. } => {
-                                Some(Cow::Owned(items.len().to_string()))
-                            }
+                            Frame::MappingValue { key, .. } => Some(key.clone()),
+                            Frame::Sequence { items, .. } => Some(items.len().to_string()),
                             _ => None,
                         })),
                     });
@@ -1279,12 +1277,8 @@ impl<'a> NoSpanLoader<'a> {
                     return Err(Error::IntegerOverflow {
                         location: Some(crate::error::Location::from_index(input, span.start)),
                         path: frames_path(self.stack.iter().map(|f| match f {
-                            NoSpanFrame::MappingValue { key, .. } => {
-                                Some(Cow::Borrowed(key.as_str()))
-                            }
-                            NoSpanFrame::Sequence { items, .. } => {
-                                Some(Cow::Owned(items.len().to_string()))
-                            }
+                            NoSpanFrame::MappingValue { key, .. } => Some(key.clone()),
+                            NoSpanFrame::Sequence { items, .. } => Some(items.len().to_string()),
                             _ => None,
                         })),
                     });
@@ -1624,6 +1618,7 @@ fn overflows_u64_decimal(s: &str) -> bool {
 }
 
 /// Byte offset where a span tree's node begins.
+#[cfg(feature = "std")]
 fn span_tree_start(span: &SpanTree) -> usize {
     match span {
         SpanTree::Leaf(s, _)
@@ -1636,7 +1631,7 @@ fn span_tree_start(span: &SpanTree) -> usize {
 /// Dotted path from a loader frame stack — the field the currently
 /// arriving value belongs to, for error messages that name it the
 /// way serde's own path tracking would (`server.port`, `items.3`).
-fn frames_path<'f>(segments: impl Iterator<Item = Option<Cow<'f, str>>>) -> Option<String> {
+fn frames_path(segments: impl Iterator<Item = Option<String>>) -> Option<String> {
     let parts: Vec<_> = segments.flatten().collect();
     if parts.is_empty() {
         None
