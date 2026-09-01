@@ -88,20 +88,22 @@ fn coverage_doc_set_value_path_not_found_errors() {
 
 #[test]
 fn coverage_doc_set_value_into_collection_target_rejects_collection_value() {
-    // Targeting a mapping value (collection leaf) should refuse to
-    // splice a Sequence/Mapping replacement.
+    // Since #328 a collection value replaces a collection target in
+    // the target's own style; the refusal now applies only to growing
+    // a *scalar* target into a collection.
     let mut doc = parse_document("outer:\n  k: 1\n").unwrap();
     let mut nested = Mapping::new();
     let _ = nested.insert("x", Value::Number(Number::Integer(7)));
-    let err = doc.set_value("outer", &Value::Mapping(nested)).unwrap_err();
+    doc.set_value("outer", &Value::Mapping(nested)).unwrap();
+    assert_eq!(doc.to_string(), "outer:\n  x: 7\n");
+
+    let mut doc = parse_document("leaf: 1\n").unwrap();
+    let mut nested = Mapping::new();
+    let _ = nested.insert("x", Value::Number(Number::Integer(7)));
+    let err = doc.set_value("leaf", &Value::Mapping(nested)).unwrap_err();
     let msg = format!("{err}");
-    // Either the leaf-kind lookup rejects (collection target) or
-    // format_value_for_site rejects (collection value); either error
-    // path is acceptable evidence of coverage.
-    assert!(
-        msg.contains("scalar") || msg.contains("collection"),
-        "{msg}"
-    );
+    assert!(msg.contains("collection"), "{msg}");
+    assert_eq!(doc.to_string(), "leaf: 1\n");
 }
 
 // ── parse_stream branches (L985-L994) ───────────────────────────────

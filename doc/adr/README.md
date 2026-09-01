@@ -32,6 +32,8 @@ reference back. Nothing is silently rewritten.
 | [0007](./0007-prefer-single-quotes-option.md) | Add `prefer_single_quotes` as an opt-in serializer config flag | accepted |
 | [0008](./0008-compiled-schema.md) | `CompiledSchema`: compile a JSON Schema once, validate many | accepted |
 | [0009](./0009-set-path-parent-creation.md) | `Document::set_path`: parent-creating writes in the CST editor | accepted |
+| [0010](./0010-typed-collection-set-value.md) | `set_value` accepts collections, emitted in the target node's style | accepted |
+| [0011](./0011-flow-inserts-and-anchor-policy.md) | Flow-collection inserts, flow renames, and one anchored-node policy | accepted |
 
 ## When to add an ADR
 

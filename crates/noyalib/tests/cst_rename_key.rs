@@ -253,13 +253,13 @@ fn rename_refuses_when_sibling_key_already_exists() {
 }
 
 #[test]
-fn rename_refuses_flow_mapping_entry() {
+fn rename_reaches_flow_mapping_entries() {
+    // A refusal until #338 (ADR-0011) brought flow mappings into the
+    // rename surface; `cst_flow_inserts.rs` pins the details.
     let src = "m: {a: 1, b: 2}\n";
     let mut doc = parse_document(src).unwrap();
-    let err = doc.rename_key("m.a", "c").unwrap_err();
-    let msg = err.to_string();
-    assert!(msg.contains("flow"), "got: {msg}");
-    assert_eq!(doc.to_string(), src);
+    doc.rename_key("m.a", "c").unwrap();
+    assert_eq!(doc.to_string(), "m: {c: 1, b: 2}\n");
 }
 
 #[test]

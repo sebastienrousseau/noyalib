@@ -147,12 +147,13 @@ fn missing_sequence_index_refuses() {
 }
 
 #[test]
-fn flow_parent_refuses_byte_identical() {
-    // Flow insertion is #338's scope; until then the refusal must be
-    // clean and the document untouched.
+fn flow_parent_creates_flow_members() {
+    // A refusal until #338 (ADR-0011) brought single-line flow
+    // mappings into the insert surface; the created parents adopt
+    // the site's flow style. `cst_flow_inserts.rs` pins the details.
     let src = "a: {x: 1}\n";
-    let (_err, out) = set(src, "a.b.c", &Value::Bool(true)).unwrap_err();
-    assert_eq!(out, src);
+    let out = set(src, "a.b.c", &Value::Bool(true)).unwrap();
+    assert_eq!(out, "a: {x: 1, b: {c: true}}\n");
 }
 
 #[test]
