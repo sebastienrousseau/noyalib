@@ -16,7 +16,12 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 // Copyright (c) 2026 Noyalib. All rights reserved.
 
-use core::fmt;
+// The glob, not `std` or piecemeal names: `robotics` without `std`
+// is a valid combination (checked by the weekly feature-powerset
+// sweep), and which prelude names the round-trip check needs shifts
+// with `fast-float` (`format!` without it, `ToOwned` with it) — a
+// glob import stays correct and warning-free under every pairing.
+use crate::prelude::*;
 
 /// A float that rejects values outside f64's precise representation range.
 ///

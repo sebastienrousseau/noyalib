@@ -562,7 +562,11 @@ std = [
     "rustc-hash/std",
     "memchr/std",
 ]
-miette = ["dep:miette"]
+# `miette` 7 requires `std` (its `Diagnostic` supertrait is
+# `std::error::Error`), so the feature implies it — the combination
+# `--no-default-features --features miette` never compiled without
+# this, caught by the feature-powerset sweep.
+miette = ["dep:miette", "std"]
 ariadne = ["dep:ariadne"]
 robotics = ["dep:serde"]
 # `!include` directive — post-parse walk that consults a
@@ -680,6 +684,9 @@ unexpected_cfgs = { level = "warn", check-cfg = [
     'cfg(noyalib_nightly)',
     'cfg(noyalib_coverage)',
     'cfg(docsrs)',
+    # `cargo kani` compiles with `--cfg kani`; the proof harnesses in
+    # `simd.rs` live behind it and are invisible to ordinary builds.
+    'cfg(kani)',
 ] }
 missing_copy_implementations = "warn"
 missing_docs = "warn"

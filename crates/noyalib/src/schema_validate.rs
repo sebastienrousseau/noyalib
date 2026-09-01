@@ -58,6 +58,11 @@
 //! ```
 
 use crate::error::{Error, Result};
+// Via the prelude, not `std`: `validate-schema` without `std` is a
+// valid combination (`jsonschema` is carried with
+// `default-features = false`), checked by the weekly feature-powerset
+// sweep.
+use crate::prelude::*;
 use crate::value::{Number, Value};
 
 /// Validate `value` against the JSON Schema 2020-12 document
@@ -132,8 +137,8 @@ pub struct CompiledSchema {
     validator: jsonschema::Validator,
 }
 
-impl core::fmt::Debug for CompiledSchema {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+impl fmt::Debug for CompiledSchema {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("CompiledSchema").finish_non_exhaustive()
     }
 }
@@ -289,11 +294,11 @@ pub struct CompiledSchemaBuilder {
     schema_json: core::result::Result<serde_json::Value, String>,
     validate_formats: Option<bool>,
     #[allow(clippy::type_complexity)]
-    formats: Vec<(String, std::sync::Arc<dyn Fn(&str) -> bool + Send + Sync>)>,
+    formats: Vec<(String, Arc<dyn Fn(&str) -> bool + Send + Sync>)>,
 }
 
-impl core::fmt::Debug for CompiledSchemaBuilder {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+impl fmt::Debug for CompiledSchemaBuilder {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("CompiledSchemaBuilder")
             .field("validate_formats", &self.validate_formats)
             .field(
@@ -323,7 +328,7 @@ impl CompiledSchemaBuilder {
         N: Into<String>,
         F: Fn(&str) -> bool + Send + Sync + 'static,
     {
-        self.formats.push((name.into(), std::sync::Arc::new(check)));
+        self.formats.push((name.into(), Arc::new(check)));
         self
     }
 

@@ -25,6 +25,10 @@
 //! ```
 
 use crate::error::{Error, Location};
+// Via the prelude, not `std`: `ariadne` without `std` is a valid
+// combination (`--no-default-features --features ariadne`), and the
+// weekly feature-powerset sweep checks it.
+use crate::prelude::format;
 use ariadne::{Color, Label, Report, ReportKind};
 
 /// Convert a noyalib [`Error`] into an [`ariadne::Report`].

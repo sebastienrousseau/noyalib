@@ -731,7 +731,10 @@ fn includes_inactive(_config: &ParserConfig) -> bool {
 fn apply_includes(value: &mut Value, config: &ParserConfig) -> Result<()> {
     if let Some(resolver) = config.include_resolver.as_ref() {
         let parse_config = parser::ParseConfig::from(config);
-        let mut visited: std::collections::HashSet<String> = std::collections::HashSet::new();
+        // Prelude set, not `std::collections`: `include` without `std`
+        // is a valid combination (the resolver trait is `no_std`; only
+        // `include_fs` implies `std`).
+        let mut visited: FxHashSet<String> = FxHashSet::default();
         let mut next_id: usize = 1;
         resolve_includes_recursive(
             value,
@@ -762,7 +765,7 @@ fn resolve_includes_recursive(
     max_depth: usize,
     depth: usize,
     from_id: usize,
-    visited: &mut std::collections::HashSet<String>,
+    visited: &mut FxHashSet<String>,
     next_id: &mut usize,
 ) -> Result<()> {
     if depth > max_depth {
@@ -793,7 +796,13 @@ fn resolve_includes_recursive(
                 let source = resolver.resolve(req)?;
                 let id = *next_id;
                 *next_id += 1;
-                let mut included = parser::parse_one_value(&source.bytes, parse_config)?;
+                // `parse_exactly_one_value`, not the `std`-only
+                // unchecked `parse_one_value`: available on every
+                // target, and a multi-document include is rejected
+                // instead of silently truncated to its first document
+                // — the same single-document policy `from_str` follows
+                // (#351).
+                let mut included = parser::parse_exactly_one_value(&source.bytes, parse_config)?;
                 // Recurse into the included document's own
                 // `!include` nodes — depth + 1.
                 resolve_includes_recursive(

@@ -135,8 +135,8 @@ impl IncludeResolver {
     }
 }
 
-impl core::fmt::Debug for IncludeResolver {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+impl fmt::Debug for IncludeResolver {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("IncludeResolver")
             .field("ptr", &Arc::as_ptr(&self.0))
             .finish()
