@@ -7,10 +7,13 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
-## [v0.0.29] - 2026-08-30
+## [v0.0.29] - 2026-08-31
 
-Thirteen fixes and two opt-in configuration flags, spanning all three
-pillars: the serde deserializer, the emitter, and the CST editors.
+Thirteen fixes and seven additions, spanning all three pillars — the
+serde deserializer, the emitter, and the CST editors — closing every
+issue open at the start of the cycle (#327–#355). One documented
+behavioural change: writes inside aliased anchors now refuse
+uniformly (ADR-0011).
 
 ### Added
 
@@ -24,16 +27,44 @@ pillars: the serde deserializer, the emitter, and the CST editors.
   is now compile-then-validate through the same type, so the
   external-`$ref` and recursion hardening covers both paths.
 
+- **`set_value` accepts collections, in the target node's style**
+  (#328, ADR-0010). `tags: [a, b]` set to `[a, c]` stays flow; a block
+  sequence stays block at its own column; nested mixed shapes render
+  through the serializer at the document's `indent_unit()`. The
+  candidate is parsed and compared against the expected typed value
+  before any byte moves. Replacing a *scalar* with a collection stays
+  refused — that layout decision belongs to `set`.
+
+- **Flow and empty collections in the insertion mutators, and flow
+  renames** (#338, ADR-0011). `insert_entry_value` splices
+  `, key: value` into single-line flow mappings (`{a: 1}`, `{}`, a
+  root-level `{…}` document); `push_back_value` and
+  `insert_after_value` do the same for flow sequences (`[]` included);
+  `rename_key` renames flow-mapping keys, double-quoting a new key
+  whose plain spelling would read as flow structure. Members render
+  flow-safe (`b, c` and multi-line strings double-quote). Multi-line
+  flow collections still refuse, byte-identically.
+
+- **One policy for writes inside anchored nodes** (#338, ADR-0011).
+  All mutators now refuse a write into a value that live `*name`
+  sites share, naming the anchor and pointing at
+  `materialise_aliases_of` — `set_value` and `remove` included, which
+  previously edited every alias and merge site silently. An
+  equal-value `set_value` stays a byte no-op. **Behavioural change**:
+  callers relying on the silent propagation must edit the anchor
+  deliberately or materialise the aliases first.
+
 - **`Document::set_path`: parent-creating writes in the CST editor**
   (#327, ADR-0009). `doc.set_path("menu.visible", &true.into())` on
   `title: x` creates the missing `menu:` level on the way; an empty
   document (comments, blank lines, or a bare `---` only) receives its
   first key with the header preserved. Missing levels indent at the
   document's `indent_unit()`, quoting stays with `Emit`, and every
-  byte goes through the existing oracle-guarded mutators. An existing
-  segment that resolves to a scalar, a non-root null, a flow ancestor
-  (#338), or a missing sequence index refuses cleanly with the source
-  byte-identical.
+  byte goes through the existing oracle-guarded mutators. A
+  single-line flow ancestor creates its missing levels as flow
+  members (#338); an existing segment that resolves to a scalar, a
+  non-root null, a multi-line flow ancestor, or a missing sequence
+  index refuses cleanly with the source byte-identical.
 
 - **`SerializerConfig::prefer_single_quotes`** (#361, #352). Opt-in: strings
   that must be quoted but need no escapes are written `'like this'`
@@ -46,7 +77,71 @@ pillars: the serde deserializer, the emitter, and the CST editors.
   text (`no` stays `"no"`, `1.0` stays `"1.0"`) instead of a type
   error, matching what most other YAML libraries do.
 
+- **Weekly feature-powerset sweep and a real SBOM.** A scheduled
+  `cargo hack --feature-powerset --depth 2` workflow checks every
+  feature pair (309 combinations; `nightly-simd` and the bench-only
+  `compare-saphyr` excluded), and the release pipeline now emits a
+  CycloneDX 1.5 `SBOM.cdx.json` — attested (SLSA), sigstore-signed,
+  and attached to the GitHub Release alongside the human-readable
+  `SBOM.txt`, which was never a machine-readable SBOM format.
+
 ### Fixed
+
+- **`simd::parse_decimal_u64` / `parse_decimal_i64` could accept a
+  non-digit block** — found by the new Kani proof harness on its
+  first run, as a concrete counterexample. The SWAR validator's
+  whole-register subtract/add propagated carries *between byte
+  lanes*, so an 8-byte block mixing bytes below `'0'` with bytes
+  above `'9'` (e.g. `[0x07, '+', '0', '9', '.', 0x07, 1, 1]`)
+  cancelled its own evidence and parsed as `Some(…)` — violating
+  the documented "malformed input never produces a garbage answer"
+  contract for direct callers of the public functions. The YAML
+  parser itself was not affected: its only internal call site
+  pre-validates every byte with `is_ascii_digit()` first. The
+  validation is now two carry-free nibble checks, and the
+  `#[cfg(kani)]` harnesses in `simd.rs` prove the parsers
+  bit-for-bit equivalent to a naive per-byte reference — over all
+  2^64 blocks for the 8-digit fold, and over every slice up to
+  20/21 bytes (both sides of the `u64`/`i64` overflow boundary)
+  for the public functions.
+
+- **Five features did not compile without `std`** — found by the
+  powerset sweep's first run. `ariadne`, `robotics`, `include`,
+  `schema`, and `validate-schema` alone (or paired with each other /
+  `fast-float`) failed on missing prelude imports or deny-level
+  qualification lints; all five now build `no_std`+alloc. `miette`
+  now *implies* `std` in the feature graph — miette 7's `Diagnostic`
+  supertrait is `std::error::Error`, so the combination never
+  compiled and no consumer could depend on it. Behavioural note: a
+  multi-document `!include` file is now rejected instead of silently
+  truncated to its first document (the include path parses through
+  the every-target checked entry point, matching `from_str`'s
+  single-document policy, #351).
+
+- **A GPG-less release could not publish.** The release workflow's
+  asset list relied on `nullglob` to drop the `.asc` entries when
+  GPG signing is skipped, but `artifacts/SBOM.txt.asc` was a literal
+  path — `nullglob` only removes unmatched *patterns* — so
+  `gh release create` failed on the missing file for any fork
+  without the signing key. The entries are spelled as real globs
+  now.
+
+- **CST: the verbatim inserters are containment-guarded** (#221
+  sub-ask 5, completing what the structural oracle started in
+  v0.0.21). `insert_entry`'s new-key splice ran with no oracle at
+  all: a lone `U+000D` in the fragment — a YAML line break the
+  `\n`-only branch test never saw — escaped into sibling territory,
+  and a key was spliced verbatim. The key half is now a *name*:
+  `<<` and non-printables refuse, a non-plain-safe spelling is
+  quoted automatically (as `rename_key` documents), and the
+  existing-key check reads the mapping's own entries, so
+  `insert_entry("m", "a.b", …)` adds the literal `a.b` key instead
+  of resolving `m.a.b` through the path syntax and overwriting a
+  nested entry. The `guarded_insert` oracle additionally pins the
+  container's growth to exactly the one entry asked for —
+  `push_back("s", "v\n  - w")` appended two items entirely inside
+  the container, where the outside-shape check could not see them —
+  covering `insert_entry`, `push_back` and `insert_after`.
 
 - **Typed rejections from `from_str` now carry the source location**
   (#356, #330). The streaming fast-path raises serde's own wording but
