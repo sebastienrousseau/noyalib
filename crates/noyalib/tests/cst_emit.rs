@@ -427,25 +427,32 @@ fn tagged_values_are_refused() {
 }
 
 #[test]
-fn an_empty_mapping_has_no_indent_anchor() {
+fn an_empty_mapping_takes_its_first_flow_entry() {
+    // `{}` is a flow mapping; since #338 it receives its first entry
+    // in place instead of refusing for want of an indent anchor.
     let mut doc = parse_document("m: {}\n").unwrap();
-    let before = doc.to_string();
-    assert!(doc.insert_entry_value("m", "a", "1").is_err());
-    assert_eq!(doc.to_string(), before);
+    doc.insert_entry_value("m", "a", "1").unwrap();
+    assert_eq!(doc.to_string(), "m: {a: \"1\"}\n");
 }
 
 #[test]
-fn an_empty_sequence_has_no_indent_anchor() {
+fn an_empty_sequence_takes_its_first_flow_member() {
+    // `[]` is a flow sequence; since #338 it receives its first
+    // member in place instead of refusing for want of an anchor.
     let mut doc = parse_document("items: []\n").unwrap();
-    let before = doc.to_string();
-    let err = doc.push_back_value("items", "one").unwrap_err();
-    assert!(err.to_string().contains("empty"), "{err}");
-    assert_eq!(doc.to_string(), before);
+    doc.push_back_value("items", "one").unwrap();
+    assert_eq!(doc.to_string(), "items: [one]\n");
 }
 
 #[test]
-fn a_flow_sequence_is_refused() {
+fn a_flow_sequence_takes_the_member_inline() {
+    // Since #338 a single-line flow sequence splices `, member`
+    // before its closing bracket; only the multi-line form refuses.
     let mut doc = parse_document("items: [one, two]\n").unwrap();
+    doc.push_back_value("items", "three").unwrap();
+    assert_eq!(doc.to_string(), "items: [one, two, three]\n");
+
+    let mut doc = parse_document("items: [one,\n  two]\n").unwrap();
     let before = doc.to_string();
     assert!(doc.push_back_value("items", "three").is_err());
     assert_eq!(doc.to_string(), before);

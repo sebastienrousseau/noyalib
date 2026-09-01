@@ -1,0 +1,61 @@
+name: Feature powerset
+
+# 26 additive features compile in three combinations on every PR
+# (none, default, all); the other 300-odd pairs only ever compile on
+# whichever downstream project happens to enable them together. This
+# sweep checks every pair (`--depth 2`) weekly so a feature-unification
+# break — a `cfg` that only holds when its neighbour is also on, an
+# `std` leak into a `no_std` combination — surfaces here rather than
+# in a consumer's build.
+#
+# Excluded from the sweep:
+#   - `nightly-simd` — needs a nightly toolchain; this job runs stable.
+#   - `compare-saphyr` — bench-only dep needing rustc 1.88+; it holds
+#     `--all-features` off the MSRV toolchain already (see the
+#     test-matrix note in ci.yml) and gates nothing in the library.
+#
+# `--no-dev-deps` keeps the sweep to the library graph (cargo-hack
+# temporarily rewrites Cargo.toml and restores it — fine in CI, the
+# checkout is disposable).
+#
+# Scheduled, not per-PR: ~310 checks. An hour off ci.yml's Monday
+# cron for the same reason its own two crons are staggered.
+
+on:
+  schedule:
+    - cron: '0 6 * * 1' # Weekly Monday 06:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  powerset:
+    name: cargo hack --feature-powerset --depth 2
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772
+        with:
+          toolchain: stable
+
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+        with:
+          key: feature-powerset
+
+      - name: Install cargo-hack
+        run: cargo install --locked cargo-hack
+
+      - name: Check every feature pair
+        run: >
+          cargo hack check -p noyalib
+          --feature-powerset --depth 2
+          --exclude-features nightly-simd,compare-saphyr
+          --no-dev-deps

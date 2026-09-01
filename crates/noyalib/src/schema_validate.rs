@@ -58,6 +58,11 @@
 //! ```
 
 use crate::error::{Error, Result};
+// Via the prelude, not `std`: `validate-schema` without `std` is a
+// valid combination (`jsonschema` is carried with
+// `default-features = false`), checked by the weekly feature-powerset
+// sweep.
+use crate::prelude::*;
 use crate::value::{Number, Value};
 
 /// Validate `value` against the JSON Schema 2020-12 document
@@ -94,36 +99,276 @@ use crate::value::{Number, Value};
 /// validate_against_schema(&v, &schema).unwrap();
 /// ```
 pub fn validate_against_schema(value: &Value, schema: &Value) -> Result<()> {
-    let schema_json = value_to_json(schema)
-        .map_err(|e| Error::Custom(format!("validate_against_schema: schema -> JSON: {e}")))?;
-    let instance_json = value_to_json(value)
-        .map_err(|e| Error::Parse(format!("validate_against_schema: value -> JSON: {e}")))?;
+    CompiledSchema::compile(schema)?.validate(value)
+}
 
-    let validator = jsonschema::validator_for(&schema_json).map_err(|e| {
-        Error::Custom(format!(
-            "validate_against_schema: schema is not a valid JSON Schema: {e}"
-        ))
-    })?;
+/// A JSON Schema 2020-12 document compiled once, for validating many
+/// instances without re-compiling the schema on every call (#329).
+///
+/// [`validate_against_schema`] compiles its schema argument on every
+/// invocation — the right trade-off for one-off checks, and a linear
+/// waste for a config pipeline that validates thousands of documents
+/// against a handful of schemas. `CompiledSchema` front-loads the
+/// compile:
+///
+/// ```
+/// use noyalib::{CompiledSchema, Value, from_str};
+///
+/// let schema: Value = from_str(
+///     "type: object\nrequired: [port]\nproperties:\n  port:\n    type: integer\n",
+/// ).unwrap();
+/// let compiled = CompiledSchema::compile(&schema).unwrap();
+///
+/// for doc in ["port: 1\n", "port: 2\n", "port: 3\n"] {
+///     let v: Value = from_str(doc).unwrap();
+///     compiled.validate(&v).unwrap(); // no per-call schema compile
+/// }
+/// ```
+///
+/// The hardening guarantees pinned by `tests/schema_hardening.rs`
+/// hold on this path too — [`validate_against_schema`] is a
+/// compile-then-validate through this type, so the external-`$ref`
+/// refusal and the bounded recursion are exercised by the same tests.
+///
+/// Format assertion (off by default under Draft 2020-12, where
+/// `format` is an annotation) and custom formats are opt-in through
+/// [`CompiledSchema::builder`].
+pub struct CompiledSchema {
+    validator: jsonschema::Validator,
+}
 
-    if validator.is_valid(&instance_json) {
-        return Ok(());
+impl fmt::Debug for CompiledSchema {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("CompiledSchema").finish_non_exhaustive()
+    }
+}
+
+impl CompiledSchema {
+    /// Compile `schema` with the same configuration
+    /// [`validate_against_schema`] uses: Draft 2020-12 semantics,
+    /// `format` as an annotation, no external `$ref` resolution.
+    ///
+    /// # Errors
+    ///
+    /// - The schema cannot be converted to JSON (YAML-only constructs
+    ///   like NaN keys).
+    /// - The schema is not a valid JSON Schema.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use noyalib::{CompiledSchema, Value, from_str};
+    ///
+    /// let schema: Value = from_str("type: object\n").unwrap();
+    /// let compiled = CompiledSchema::compile(&schema).unwrap();
+    /// assert!(compiled.validate(&from_str("a: 1\n").unwrap()).is_ok());
+    /// ```
+    pub fn compile(schema: &Value) -> Result<Self> {
+        Self::builder(schema).build()
     }
 
-    let mut messages: Vec<String> = Vec::new();
-    for err in validator.iter_errors(&instance_json) {
-        messages.push(format!("{} (at `{}`)", err, err.instance_path()));
+    /// Start a builder over `schema`, for turning on format assertion
+    /// or registering custom formats before compiling.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use noyalib::{CompiledSchema, Value, from_str};
+    ///
+    /// let schema: Value = from_str(
+    ///     "type: object\nproperties:\n  date: { type: string, format: date }\n",
+    /// ).unwrap();
+    /// let compiled = CompiledSchema::builder(&schema)
+    ///     .validate_formats(true)
+    ///     .build()
+    ///     .unwrap();
+    /// let bad: Value = from_str("date: 01/15/2024\n").unwrap();
+    /// assert!(compiled.validate(&bad).is_err());
+    /// ```
+    #[must_use]
+    pub fn builder(schema: &Value) -> CompiledSchemaBuilder {
+        CompiledSchemaBuilder {
+            schema_json: value_to_json(schema),
+            validate_formats: None,
+            formats: Vec::new(),
+        }
     }
-    let summary = if messages.len() == 1 {
-        format!("schema violation: {}", messages[0])
-    } else {
-        let joined = messages.join("\n  - ");
-        format!(
-            "schema violations ({} total):\n  - {}",
-            messages.len(),
-            joined
-        )
-    };
-    Err(Error::Custom(summary))
+
+    /// Validate `value`, aggregating every violation into one error
+    /// message with RFC 6901 instance paths — the same report
+    /// [`validate_against_schema`] produces.
+    ///
+    /// # Errors
+    ///
+    /// - The instance violates one or more schema constraints.
+    /// - The instance cannot be converted to JSON.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use noyalib::{CompiledSchema, Value, from_str};
+    ///
+    /// let schema: Value = from_str(
+    ///     "type: object\nproperties:\n  port: { type: integer }\n",
+    /// ).unwrap();
+    /// let compiled = CompiledSchema::compile(&schema).unwrap();
+    /// let err = compiled
+    ///     .validate(&from_str("port: hello\n").unwrap())
+    ///     .unwrap_err();
+    /// assert!(err.to_string().contains("/port"));
+    /// ```
+    pub fn validate(&self, value: &Value) -> Result<()> {
+        let instance_json = value_to_json(value)
+            .map_err(|e| Error::Parse(format!("validate_against_schema: value -> JSON: {e}")))?;
+
+        if self.validator.is_valid(&instance_json) {
+            return Ok(());
+        }
+
+        let mut messages: Vec<String> = Vec::new();
+        for err in self.validator.iter_errors(&instance_json) {
+            messages.push(format!("{} (at `{}`)", err, err.instance_path()));
+        }
+        let summary = if messages.len() == 1 {
+            format!("schema violation: {}", messages[0])
+        } else {
+            let joined = messages.join("\n  - ");
+            format!(
+                "schema violations ({} total):\n  - {}",
+                messages.len(),
+                joined
+            )
+        };
+        Err(Error::Custom(summary))
+    }
+
+    /// Every violation for `value`, structured: the RFC 6901 path of
+    /// the offending instance node, the schema keyword that raised it,
+    /// and the human-readable message. Empty when `value` conforms.
+    ///
+    /// # Errors
+    ///
+    /// The instance cannot be converted to JSON (vanishingly
+    /// unlikely — would indicate a noyalib serializer bug).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use noyalib::{CompiledSchema, Value, from_str};
+    ///
+    /// let schema: Value = from_str(
+    ///     "type: object\nrequired: [host]\nproperties:\n  port: { type: integer }\n",
+    /// ).unwrap();
+    /// let compiled = CompiledSchema::compile(&schema).unwrap();
+    /// let violations = compiled
+    ///     .iter_errors(&from_str("port: hello\n").unwrap())
+    ///     .unwrap();
+    /// assert_eq!(violations.len(), 2);
+    /// assert!(violations.iter().any(|v| v.instance_path == "/port"));
+    /// assert!(violations.iter().any(|v| v.keyword == "required"));
+    /// ```
+    pub fn iter_errors(&self, value: &Value) -> Result<Vec<SchemaViolation>> {
+        let instance_json = value_to_json(value)
+            .map_err(|e| Error::Parse(format!("iter_errors: value -> JSON: {e}")))?;
+        Ok(self
+            .validator
+            .iter_errors(&instance_json)
+            .map(|err| SchemaViolation {
+                instance_path: err.instance_path().to_string(),
+                keyword: err
+                    .schema_path()
+                    .to_string()
+                    .rsplit('/')
+                    .next()
+                    .unwrap_or_default()
+                    .to_string(),
+                message: err.to_string(),
+            })
+            .collect())
+    }
+}
+
+/// Configures a [`CompiledSchema`] before compilation. Created by
+/// [`CompiledSchema::builder`].
+pub struct CompiledSchemaBuilder {
+    schema_json: core::result::Result<serde_json::Value, String>,
+    validate_formats: Option<bool>,
+    #[allow(clippy::type_complexity)]
+    formats: Vec<(String, Arc<dyn Fn(&str) -> bool + Send + Sync>)>,
+}
+
+impl fmt::Debug for CompiledSchemaBuilder {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("CompiledSchemaBuilder")
+            .field("validate_formats", &self.validate_formats)
+            .field(
+                "formats",
+                &self.formats.iter().map(|(n, _)| n).collect::<Vec<_>>(),
+            )
+            .finish_non_exhaustive()
+    }
+}
+
+impl CompiledSchemaBuilder {
+    /// Assert `format` keywords instead of treating them as
+    /// annotations. Under Draft 2020-12 the default is annotation-only,
+    /// so `format: date` accepts `01/15/2024` unless this is on.
+    #[must_use]
+    pub fn validate_formats(mut self, yes: bool) -> Self {
+        self.validate_formats = Some(yes);
+        self
+    }
+
+    /// Register a custom format checker for `format: <name>`. Implies
+    /// nothing about assertion — combine with
+    /// [`Self::validate_formats`] to have the checker enforced.
+    #[must_use]
+    pub fn with_format<N, F>(mut self, name: N, check: F) -> Self
+    where
+        N: Into<String>,
+        F: Fn(&str) -> bool + Send + Sync + 'static,
+    {
+        self.formats.push((name.into(), Arc::new(check)));
+        self
+    }
+
+    /// Compile the schema with the accumulated configuration.
+    ///
+    /// # Errors
+    ///
+    /// As [`CompiledSchema::compile`].
+    pub fn build(self) -> Result<CompiledSchema> {
+        let schema_json = self
+            .schema_json
+            .map_err(|e| Error::Custom(format!("validate_against_schema: schema -> JSON: {e}")))?;
+        let mut options = jsonschema::options();
+        if let Some(yes) = self.validate_formats {
+            options = options.should_validate_formats(yes);
+        }
+        for (name, check) in self.formats {
+            options = options.with_format(name, move |s: &str| check(s));
+        }
+        let validator = options.build(&schema_json).map_err(|e| {
+            Error::Custom(format!(
+                "validate_against_schema: schema is not a valid JSON Schema: {e}"
+            ))
+        })?;
+        Ok(CompiledSchema { validator })
+    }
+}
+
+/// One schema violation from [`CompiledSchema::iter_errors`]:
+/// where in the instance, which keyword, and the message.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SchemaViolation {
+    /// RFC 6901 JSON pointer to the offending instance node
+    /// (`""` for the root, `/port`, `/items/0/name`).
+    pub instance_path: String,
+    /// The schema keyword that raised the violation (`type`,
+    /// `required`, `format`, …) — the last segment of the schema path.
+    pub keyword: String,
+    /// Human-readable description of the violation.
+    pub message: String,
 }
 
 /// Validate the YAML text in `yaml` against the JSON Schema

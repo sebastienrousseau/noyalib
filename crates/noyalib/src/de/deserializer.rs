@@ -30,6 +30,13 @@ pub struct Deserializer<'de> {
     /// `"ABCD"` (no base64 decode). Default `false` preserves YAML
     /// 1.2 semantics.
     pub(crate) ignore_binary_tag_for_string: bool,
+    /// Per-call flag mirroring
+    /// [`ParserConfig::plain_scalar_strings`] (refs #344). When
+    /// `true`, a `String`/`char` target accepts a non-string scalar
+    /// (`Value::Bool`, `Value::Null`, `Value::Number`) and receives
+    /// its formatted text. Default `false` preserves the historical
+    /// refusal.
+    pub(crate) plain_scalar_strings: bool,
 }
 
 impl<'de> Deserializer<'de> {
@@ -48,6 +55,7 @@ impl<'de> Deserializer<'de> {
             value,
             span_ctx: None,
             ignore_binary_tag_for_string: false,
+            plain_scalar_strings: false,
         }
     }
 
@@ -73,22 +81,26 @@ impl<'de> Deserializer<'de> {
             value,
             span_ctx: Some(span_ctx),
             ignore_binary_tag_for_string: false,
+            plain_scalar_strings: false,
         }
     }
 
     /// Pass-through constructor for the
-    /// [`crate::ParserConfig::ignore_binary_tag_for_string`] flag.
-    /// Used internally by [`from_str_with_config`] when the caller
-    /// has opted in to the migration helper.
+    /// [`crate::ParserConfig::ignore_binary_tag_for_string`] and
+    /// [`crate::ParserConfig::plain_scalar_strings`] flags. Used
+    /// internally by [`from_str_with_config`] when the caller has
+    /// opted in to either.
     pub(crate) fn with_options(
         value: &'de Value,
         span_ctx: Option<&'de span_context::SpanContext>,
         ignore_binary_tag_for_string: bool,
+        plain_scalar_strings: bool,
     ) -> Self {
         Deserializer {
             value,
             span_ctx,
             ignore_binary_tag_for_string,
+            plain_scalar_strings,
         }
     }
 
@@ -101,23 +113,51 @@ impl<'de> Deserializer<'de> {
             value,
             span_ctx: self.span_ctx,
             ignore_binary_tag_for_string: self.ignore_binary_tag_for_string,
+            plain_scalar_strings: self.plain_scalar_strings,
         }
     }
 
+    /// Attach the source location of the value being deserialized to an
+    /// error that does not carry one yet.
+    ///
+    /// Three error shapes reach this point without a location when a typed
+    /// target rejects a value: [`Error::Deserialize`] (noyalib's own
+    /// deserialization failures), [`Error::TypeMismatch`] (the catch-all
+    /// arms of the typed `deserialize_*` methods), and [`Error::Custom`]
+    /// (serde's `invalid_type` / `invalid_value` / `custom`, raised by the
+    /// caller's visitor -- the path a `#[serde(flatten)]` field or any
+    /// `deserialize_any` descent takes). All three are re-wrapped as
+    /// [`Error::DeserializeWithLocation`] when the deserializer was built
+    /// from text (`from_str`, which records a span per value); the message
+    /// is the original error's text. Deserializers built without a span
+    /// context (`from_value`, [`Deserializer::new`]) return the error as
+    /// is, so `matches!(err, Error::TypeMismatch { .. })` keeps holding on
+    /// that path.
     fn wrap_err<T>(&self, res: Result<T>) -> Result<T> {
-        match res {
-            Err(Error::Deserialize(msg)) => {
-                if let Some(ctx) = self.span_ctx {
-                    let ptr: *const Value = self.value;
-                    let addr = ptr as usize;
-                    if let Some(span) = ctx.spans.get(&addr) {
-                        return Err(Error::deserialize_at(msg, &ctx.source, span.0));
-                    }
-                }
-                Err(Error::Deserialize(msg))
-            }
-            _ => res,
-        }
+        let err = match res {
+            Ok(value) => return Ok(value),
+            Err(err) => err,
+        };
+        let Some(ctx) = self.span_ctx else {
+            return Err(err);
+        };
+        let ptr: *const Value = self.value;
+        let addr = ptr as usize;
+        let Some(span) = ctx.spans.get(&addr) else {
+            return Err(err);
+        };
+        let message = match err {
+            Error::Deserialize(msg) | Error::Custom(msg) => msg,
+            mismatch @ Error::TypeMismatch { .. } => mismatch.to_string(),
+            other => return Err(other),
+        };
+        // Only the innermost wrap reaches this line (an already-wrapped
+        // error returns through the `other` arm above), so the recorded
+        // node is the one the failure is about. `from_str` walks the
+        // root value to turn it into a field path (#353).
+        #[cfg(feature = "std")]
+        span_context::record_error_node(addr);
+        Err(Error::deserialize_at(message, &ctx.source, span.0))
     }
 }
 
@@ -139,13 +179,31 @@ impl<'de> serde_core::Deserializer<'de> for Deserializer<'de> {
             Value::Sequence(_) => self.deserialize_seq(visitor),
             Value::Mapping(_) => self.deserialize_map(visitor),
             Value::Tagged(tagged) => {
-                // Typed targets see through the tag transparently —
-                // `#[derive(serde::Deserialize)] struct Foo { x: i32 }` against
-                // `!Foo {x: 1}` yields `Foo { x: 1 }`. (Tag *preservation* for
-                // a `Value` target happens in the AST loader / `from_value`'s
-                // clone fast path, not here.)
-                let de = self.descend(tagged.value());
-                de.deserialize_any(visitor)
+                // `deserialize_any` is the "self-describing" entry point —
+                // reached by `Value`'s own `Deserialize` impl (directly, or
+                // nested inside `Mapping`, `Sequence`/`Vec<Value>`, or a
+                // struct field of type `Value`) and by serde's untagged-enum
+                // content buffering. Typed struct/map targets never reach
+                // here for a tagged node — `deserialize_map`/
+                // `deserialize_struct` have their own arm (below) that sees
+                // through the tag transparently, e.g.
+                // `#[derive(serde::Deserialize)] struct Foo { x: i32 }`
+                // against `!Foo {x: 1}` yields `Foo { x: 1 }`.
+                //
+                // So a tagged node reaching *this* arm is a `Value` being
+                // reconstructed, and it must keep its tag (see #350; the
+                // top-level `Value` target already did, via the AST
+                // loader's `parse_one_value` bypass in
+                // `from_str_with_config` / `from_value`'s clone fast path —
+                // this arm is what nested `Value`s go through instead).
+                // Hand the tag/inner-value pair to the visitor as an enum
+                // (variant name = tag, payload = the untagged value) —
+                // `ValueVisitor::visit_enum` reassembles `Value::Tagged`.
+                self.wrap_err(visitor.visit_enum(EnumAccess {
+                    variant: tagged.tag().as_str(),
+                    value: tagged.value(),
+                    span_ctx: self.span_ctx,
+                }))
             }
         }
     }
@@ -300,6 +358,20 @@ impl<'de> serde_core::Deserializer<'de> for Deserializer<'de> {
             Value::String(s) if s.chars().count() == 1 => {
                 self.wrap_err(visitor.visit_char(s.chars().next().unwrap()))
             }
+            // Opt-in (refs #344, `plain_scalar_strings`): a `char`
+            // field sees the same literal text a `String` field
+            // would for a number, bool, or null — see
+            // `scalar_as_text` — further constrained to exactly one
+            // character, same as the arm above. Off by default.
+            _ if self.plain_scalar_strings => match scalar_as_text(self.value) {
+                Some(text) if text.chars().count() == 1 => {
+                    self.wrap_err(visitor.visit_char(text.chars().next().unwrap()))
+                }
+                _ => self.wrap_err(Err(Error::TypeMismatch {
+                    expected: "char",
+                    found: type_name(self.value),
+                })),
+            },
             _ => self.wrap_err(Err(Error::TypeMismatch {
                 expected: "char",
                 found: type_name(self.value),
@@ -331,6 +403,20 @@ impl<'de> serde_core::Deserializer<'de> for Deserializer<'de> {
                     })),
                 }
             }
+            // Opt-in (refs #344, `plain_scalar_strings`): a `String`
+            // target receives a number/bool/null scalar's text —
+            // implicit typing is a fallback used by
+            // `deserialize_any` for untyped targets, not a
+            // constraint on an explicitly-typed `String` field. Off
+            // by default — the catch-all below is the historical
+            // refusal.
+            _ if self.plain_scalar_strings => match scalar_as_text(self.value) {
+                Some(text) => self.wrap_err(visitor.visit_str(&text)),
+                None => self.wrap_err(Err(Error::TypeMismatch {
+                    expected: "string",
+                    found: type_name(self.value),
+                })),
+            },
             _ => self.wrap_err(Err(Error::TypeMismatch {
                 expected: "string",
                 found: type_name(self.value),
@@ -466,6 +552,10 @@ impl<'de> serde_core::Deserializer<'de> for Deserializer<'de> {
             Value::Mapping(map) => {
                 self.wrap_err(visitor.visit_map(ValueMapAccess::from_de(&self, map)))
             }
+            // The null document (empty / whitespace-only / comment-only
+            // input, or a bare `---`) has "no entries" for a map or
+            // `#[serde(default)]` struct target. See #349.
+            Value::Null => self.wrap_err(visitor.visit_map(EmptyMapAccess)),
             // Tagged values are transparent for typed
             // `deserialize_*` calls — `HashMap::deserialize`
             // against `!!set { Mark, Sammy }` (which now surfaces
@@ -546,6 +636,7 @@ pub(crate) struct ValueSeqAccess<'de> {
     iter: core::slice::Iter<'de, Value>,
     span_ctx: Option<&'de span_context::SpanContext>,
     ignore_binary_tag_for_string: bool,
+    plain_scalar_strings: bool,
 }
 
 impl<'de> ValueSeqAccess<'de> {
@@ -554,6 +645,7 @@ impl<'de> ValueSeqAccess<'de> {
             iter: seq.iter(),
             span_ctx: de.span_ctx,
             ignore_binary_tag_for_string: de.ignore_binary_tag_for_string,
+            plain_scalar_strings: de.plain_scalar_strings,
         }
     }
 }
@@ -571,6 +663,7 @@ impl<'de> serde_core::de::SeqAccess<'de> for ValueSeqAccess<'de> {
                     value,
                     span_ctx: self.span_ctx,
                     ignore_binary_tag_for_string: self.ignore_binary_tag_for_string,
+                    plain_scalar_strings: self.plain_scalar_strings,
                 };
                 seed.deserialize(de).map(Some)
             }
@@ -584,6 +677,7 @@ pub(crate) struct ValueMapAccess<'de> {
     value: Option<&'de Value>,
     span_ctx: Option<&'de span_context::SpanContext>,
     ignore_binary_tag_for_string: bool,
+    plain_scalar_strings: bool,
 }
 
 impl<'de> ValueMapAccess<'de> {
@@ -593,6 +687,7 @@ impl<'de> ValueMapAccess<'de> {
             value: None,
             span_ctx: de.span_ctx,
             ignore_binary_tag_for_string: de.ignore_binary_tag_for_string,
+            plain_scalar_strings: de.plain_scalar_strings,
         }
     }
 
@@ -603,6 +698,7 @@ impl<'de> ValueMapAccess<'de> {
             value,
             span_ctx: self.span_ctx,
             ignore_binary_tag_for_string: self.ignore_binary_tag_for_string,
+            plain_scalar_strings: self.plain_scalar_strings,
         }
     }
 }
@@ -638,6 +734,35 @@ impl<'de> serde_core::de::MapAccess<'de> for ValueMapAccess<'de> {
             }
             None => Err(serde_core::de::Error::custom("value is missing")),
         }
+    }
+}
+
+/// `MapAccess` that immediately reports "no entries".
+///
+/// An empty, whitespace-only, or comment-only document (and a bare
+/// `---` with no content) parses as the YAML null document
+/// (`Value::Null`). `Mapping` and `#[serde(default)]` struct targets
+/// treat that the same way `serde_yaml` does — as a map with no
+/// entries — instead of a type-mismatch error. `deserialize_any`
+/// still visits `Value::Null` as `None`; only the map/struct entry
+/// points route through here. See #349.
+pub(crate) struct EmptyMapAccess;
+
+impl<'de> serde_core::de::MapAccess<'de> for EmptyMapAccess {
+    type Error = Error;
+
+    fn next_key_seed<K>(&mut self, _seed: K) -> Result<Option<K::Value>>
+    where
+        K: serde_core::de::DeserializeSeed<'de>,
+    {
+        Ok(None)
+    }
+
+    fn next_value_seed<V>(&mut self, _seed: V) -> Result<V::Value>
+    where
+        V: serde_core::de::DeserializeSeed<'de>,
+    {
+        Err(serde_core::de::Error::custom("value is missing"))
     }
 }
 
@@ -826,5 +951,66 @@ fn type_name(value: &Value) -> String {
         Value::Sequence(_) => "sequence".to_owned(),
         Value::Mapping(_) => "mapping".to_owned(),
         Value::Tagged(tagged) => format!("tagged value (!{})", tagged.tag().as_str()),
+    }
+}
+
+/// The literal text a scalar `Value` prints as, for the scalar kinds
+/// that are not already a `Value::String` — `bool`, `null`, and the
+/// `Number` variants. Returns `None` for `Value::String` (callers
+/// already hold the text directly), `Value::Sequence`,
+/// `Value::Mapping`, and `Value::Tagged` (handled at each call site).
+///
+/// Refs #344: a `String` (or one-character `char`) target receives a
+/// scalar's literal text even when it would otherwise resolve as a
+/// number, bool, or null for an untyped target — implicit typing is
+/// a fallback `deserialize_any` uses, not a constraint on an
+/// explicitly-typed field. Two caveats follow from `Value` no longer
+/// holding the original source text:
+///
+/// - `Value::Null` carries no text of its own, so this yields `""`.
+///   The *streaming* deserializer — which typed parses take by
+///   default — instead keeps a written `~`, `null`, or empty scalar
+///   verbatim; only a caller that forces the AST path (a non-default
+///   `ParserConfig`, or the `Value` target itself) sees `""` here.
+/// - An integer literal's original spelling is not preserved: `0x1F`
+///   parses to `Number::Integer(31)`, which formats back as `"31"`,
+///   not `"0x1F"`. The streaming path gives the byte-exact source
+///   text instead.
+fn scalar_as_text(value: &Value) -> Option<Cow<'_, str>> {
+    match value {
+        Value::Bool(b) => Some(Cow::Borrowed(if *b { "true" } else { "false" })),
+        Value::Null => Some(Cow::Borrowed("")),
+        Value::Number(Number::Integer(n)) => Some(Cow::Owned(n.to_string())),
+        #[cfg(feature = "lossless-u64")]
+        Value::Number(Number::Unsigned(n)) => Some(Cow::Owned(n.to_string())),
+        Value::Number(Number::Float(n)) => Some(Cow::Owned(format_float_for_string(*n))),
+        _ => None,
+    }
+}
+
+/// Format a float exactly as the emitter (`ser.rs`'s `write_value`)
+/// would print it as a YAML plain scalar — deliberately not
+/// `Number`'s own `Display` impl, which prints `4.0` as `4` (Rust's
+/// default float `Display` suppresses a redundant `.0`). Keeping the
+/// two in step means a `String` field reading a `Value::Number(Float)`
+/// back sees the same digits the value would serialize as.
+fn format_float_for_string(n: f64) -> String {
+    if n.is_nan() {
+        return ".nan".to_owned();
+    }
+    if n.is_infinite() {
+        return if n > 0.0 {
+            ".inf".to_owned()
+        } else {
+            "-.inf".to_owned()
+        };
+    }
+    #[cfg(feature = "fast-float")]
+    {
+        ryu::Buffer::new().format(n).to_owned()
+    }
+    #[cfg(not(feature = "fast-float"))]
+    {
+        format!("{n:?}")
     }
 }

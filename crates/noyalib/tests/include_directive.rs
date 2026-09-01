@@ -314,6 +314,21 @@ mod safe_file {
 }
 
 #[test]
+fn multi_document_include_is_rejected() {
+    // An included file holding several documents is refused, not
+    // silently truncated to its first — the same single-document
+    // policy `from_str` follows (#351). Also what made the include
+    // path `no_std`-clean: resolution now parses through the
+    // every-target `parse_exactly_one_value` instead of the
+    // `std`-only unchecked form.
+    let mut files = HashMap::new();
+    let _ = files.insert("multi.yaml", "a: 1\n---\nb: 2\n");
+    let cfg = ParserConfig::new().include_resolver(mem_resolver(files));
+    let res: Result<Value> = from_str_with_config("x: !include multi.yaml\n", &cfg);
+    assert!(res.is_err(), "multi-document include must be rejected");
+}
+
+#[test]
 fn fragment_on_non_mapping_document_errors() {
     let mut files = HashMap::new();
     let _ = files.insert("scalar.yaml", "42\n");

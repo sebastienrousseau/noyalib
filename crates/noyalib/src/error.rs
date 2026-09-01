@@ -312,6 +312,14 @@ pub enum ErrorKind {
     /// Two distinct-typed YAML keys collapsed to the same string
     /// key — see [`Error::KeyCollision`].
     KeyCollision,
+    /// A plain decimal integer beyond `u64::MAX` was refused under
+    /// [`crate::ParserConfig::integer_overflow_errors`] — see
+    /// [`Error::IntegerOverflow`].
+    IntegerOverflow,
+    /// A non-scalar mapping key was refused under
+    /// [`crate::NonScalarKeyPolicy::Error`] — see
+    /// [`Error::NonScalarKey`].
+    NonScalarKey,
     /// A genuine duplicate key was refused under
     /// [`crate::DuplicateKeyPolicy::Error`].
     DuplicateKey,
@@ -543,6 +551,45 @@ pub enum Error {
     /// let _e = noyalib::Error::RepetitionLimitExceeded;
     /// ```
     RepetitionLimitExceeded,
+
+    /// A plain decimal integer beyond `u64::MAX` was refused under
+    /// [`crate::ParserConfig::integer_overflow_errors`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use noyalib::{ParserConfig, Value, from_str_with_config};
+    /// let mut cfg = ParserConfig::new();
+    /// cfg.integer_overflow_errors = true;
+    /// let err = from_str_with_config::<Value>("18446744073709551616", &cfg).unwrap_err();
+    /// assert!(matches!(err, noyalib::Error::IntegerOverflow { .. }));
+    /// ```
+    IntegerOverflow {
+        /// Location of the overflowing literal's first byte.
+        location: Option<Location>,
+        /// Dotted path of the field holding the literal, when the
+        /// enclosing frames knew it (`server.port`, `items.3`).
+        path: Option<String>,
+    },
+
+    /// A non-scalar mapping key was refused under
+    /// [`crate::NonScalarKeyPolicy::Error`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use noyalib::{NonScalarKeyPolicy, ParserConfig, Value, from_str_with_config};
+    /// let mut cfg = ParserConfig::new();
+    /// cfg.non_scalar_key_policy = NonScalarKeyPolicy::Error;
+    /// let err = from_str_with_config::<Value>("[a]: v", &cfg).unwrap_err();
+    /// assert!(matches!(err, noyalib::Error::NonScalarKey { .. }));
+    /// ```
+    NonScalarKey {
+        /// `"sequence"` or `"mapping"` — the key's YAML kind.
+        kind: &'static str,
+        /// Location of the key's first byte.
+        location: Option<Location>,
+    },
 
     /// A configurable parser budget was exceeded.
     ///
@@ -829,6 +876,12 @@ impl fmt::Display for Error {
                  (e.g. `1` and `\"1\"`, or `true` and `\"true\"`)"
             ),
             Self::RepetitionLimitExceeded => f.write_str("alias expansion limit exceeded"),
+            Self::IntegerOverflow { .. } => {
+                f.write_str("integer does not fit in 64 bits (JSON number out of range)")
+            }
+            Self::NonScalarKey { kind, .. } => {
+                write!(f, "invalid type: {kind}, expected a string key")
+            }
             Self::Budget(breach) => write!(f, "{breach}"),
             Self::UnknownAnchor(name) => write!(f, "unknown anchor: {name}"),
             Self::UnknownAnchorAt { name, location, .. } => {
@@ -845,9 +898,9 @@ impl fmt::Display for Error {
             }
             Self::Shared(arc) => fmt::Display::fmt(arc.as_ref(), f),
             Self::EndOfStream => f.write_str("unexpected end of stream"),
-            Self::MoreThanOneDocument => {
-                f.write_str("multiple documents in stream; expected exactly one")
-            }
+            Self::MoreThanOneDocument => f.write_str(
+                "deserializing from YAML containing more than one document is not supported",
+            ),
             Self::ScalarInMerge => f.write_str("scalar in merge"),
             Self::EmptyTag => f.write_str("empty tag"),
             Self::FailedToParseNumber(msg) => write!(f, "failed to parse number: {msg}"),
@@ -897,6 +950,9 @@ impl Error {
             Self::ParseWithLocation { location, .. } => Some(*location),
             Self::DeserializeWithLocation { location, .. } => Some(*location),
             Self::UnknownAnchorAt { location, .. } => Some(*location),
+            Self::IntegerOverflow { location, .. } | Self::NonScalarKey { location, .. } => {
+                *location
+            }
             Self::Shared(arc) => arc.location(),
             _ => None,
         }
@@ -935,6 +991,8 @@ impl Error {
             Self::DuplicateKey(_) => ErrorKind::DuplicateKey,
             Self::KeyCollision(_) => ErrorKind::KeyCollision,
             Self::RepetitionLimitExceeded => ErrorKind::Budget,
+            Self::IntegerOverflow { .. } => ErrorKind::IntegerOverflow,
+            Self::NonScalarKey { .. } => ErrorKind::NonScalarKey,
             Self::Budget(_) => ErrorKind::Budget,
             Self::UnknownAnchor(_) | Self::UnknownAnchorAt { .. } => ErrorKind::Data,
             Self::MissingField(_) | Self::UnknownField(_) => ErrorKind::Data,
@@ -1561,6 +1619,8 @@ impl miette::Diagnostic for Error {
             Self::UnknownAnchor(_) | Self::UnknownAnchorAt { .. } => "noyalib::unknown_anchor",
             Self::DuplicateKey(_) => "noyalib::duplicate_key",
             Self::KeyCollision(_) => "noyalib::key_collision",
+            Self::IntegerOverflow { .. } => "noyalib::integer_overflow",
+            Self::NonScalarKey { .. } => "noyalib::non_scalar_key",
             Self::EndOfStream => "noyalib::eof",
             Self::MoreThanOneDocument => "noyalib::multi_document",
             Self::Io(_) => "noyalib::io",
@@ -1715,6 +1775,11 @@ fn edit_distance(a: &str, b: &str) -> usize {
 #[cold]
 #[inline(never)]
 #[cfg_attr(noyalib_coverage, coverage(off))]
+// `cargo kani` swaps the panic macros for its own assertion
+// intrinsics, which drop the message formatting — under that
+// compiler `msg` counts as unused and the deny-level `unused`
+// lint would fail the proof build.
+#[cfg_attr(kani, allow(unused_variables))]
 pub(crate) fn invariant_violated(msg: &'static str) -> ! {
     unreachable!("invariant violated: {msg}")
 }

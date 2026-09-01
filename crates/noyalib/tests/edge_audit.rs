@@ -98,36 +98,31 @@ fn typed_target_sees_through_tagged_collection() {
 
 // 6) Spanned<Value> wrapping a Tagged scalar.
 //
-// Known limitation: the tag-preserving fast path is only engaged
-// when the deserialise target is exactly `T = Value` (detected
-// via `TypeId`). Wrapper targets like `Spanned<Value>`,
-// `Vec<Value>`, `Option<Value>`, `HashMap<_, Value>` route the
-// inner `Value::deserialize` through the standard transparent-
-// unwrap path. Users who want both span info and tag preservation
-// should parse the document twice (once into `Value` for the
-// tag-aware view, once into `Spanned<T>` for the span-aware
-// view) or wrap `TaggedValue` directly.
-//
-// This test pins the *current* behaviour so a future
-// preserve-tags-through-wrapper change is visible. If the
-// underlying behaviour ever does change, update this assertion
-// (and document the new contract in the migration guide).
+// Former known limitation, fixed by #350: the AST deserializer's
+// `deserialize_any` used to see through a tag transparently for
+// *every* caller, so a `Value` reached indirectly through serde —
+// nested inside a wrapper like `Spanned<Value>`, `Vec<Value>`,
+// `Option<Value>`, `HashMap<_, Value>`, or a struct field of type
+// `Value` — silently lost its tag, unlike a top-level `T = Value`
+// target (which took the `parse_one_value` bypass and always kept
+// it). `deserialize_any`'s tagged arm now reconstructs
+// `Value::Tagged` for any caller via `ValueVisitor::visit_enum`, so
+// `Spanned<Value>` keeps both the span info and the tag.
 #[test]
-fn spanned_value_with_tagged_scalar_known_limitation() {
+fn spanned_value_with_tagged_scalar_keeps_the_tag() {
     #[derive(serde::Deserialize)]
     struct Cfg {
         value: Spanned<Value>,
     }
     let cfg: Cfg = from_str("value: !Custom 'hi'\n").unwrap();
     assert!(cfg.value.start.line() >= 1, "span info still works");
-    // Today: tag is unwrapped through the Spanned wrapper.
-    // Tomorrow: this assertion will flip and the comment above
-    // will need updating.
-    assert!(
-        matches!(cfg.value.value, Value::String(_)),
-        "current behaviour: Spanned<Value> unwraps the tag, got {:?}",
-        cfg.value.value
-    );
+    match &cfg.value.value {
+        Value::Tagged(t) => {
+            assert_eq!(t.tag().as_str(), "!Custom");
+            assert_eq!(t.value().as_str(), Some("hi"));
+        }
+        other => panic!("expected a Tagged value, got {other:?}"),
+    }
 }
 
 // 7) Anchor + alias on a tagged scalar — the alias should

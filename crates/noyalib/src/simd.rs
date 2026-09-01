@@ -835,16 +835,31 @@ pub fn parse_decimal_i64(bytes: &[u8]) -> Option<i64> {
 /// Returns `None` if any byte is outside `b'0'..=b'9'`.
 fn parse_8_digits(arr: [u8; 8]) -> Option<u64> {
     let chunk = u64::from_be_bytes(arr);
-    // Validate: every byte is in 0x30..=0x39 ('0'..='9'). Subtract
-    // 0x30 from each byte; result is 0..=9 if valid. To detect
-    // out-of-range, check the subtracted byte is < 10 by adding
-    // 0x76 (= 0x80 - 0x0A) and looking for high-bit propagation.
-    let sub = chunk.wrapping_sub(0x3030_3030_3030_3030);
-    let above_9 = sub.wrapping_add(0x7676_7676_7676_7676) & 0x8080_8080_8080_8080;
-    let below_0 = chunk & 0x8080_8080_8080_8080;
-    if above_9 != 0 || below_0 != 0 {
+    // Validate: every byte is in 0x30..=0x39 ('0'..='9'), in two
+    // carry-free steps. The previous form subtracted 0x30 and added
+    // 0x76 across the whole register, but a whole-register add or
+    // subtract propagates carries *between byte lanes*, so a block
+    // mixing bytes below '0' with bytes above '9' could cancel its
+    // own evidence and pass —
+    // `parse_decimal_u64(&[0x07, b'+', b'0', b'9', b'.', 0x07, 1, 1])`
+    // returned `Some(…)`. Found by the Kani harness
+    // `swar_8_digit_fold_matches_reference` (proofs module below),
+    // which proves the current form over all 2^64 blocks.
+    //
+    // (a) every high nibble is exactly 0x3 …
+    if chunk & 0xF0F0_F0F0_F0F0_F0F0 != 0x3030_3030_3030_3030 {
         return None;
     }
+    // … so every byte is 0x30..=0x3F, and (b) adding 0x06 pushes a
+    // low nibble of 10..=15 into the high nibble (0x3A + 0x06 =
+    // 0x40) without ever carrying into the neighbouring lane
+    // (max 0x3F + 0x06 = 0x45).
+    if chunk.wrapping_add(0x0606_0606_0606_0606) & 0xF0F0_F0F0_F0F0_F0F0 != 0x3030_3030_3030_3030 {
+        return None;
+    }
+    // All bytes verified '0'..='9': the digit value of each lane is
+    // its low nibble.
+    let sub = chunk & 0x0F0F_0F0F_0F0F_0F0F;
     // SWAR fold: three phases of pair-wise (high*N + low). The
     // big-endian `from_be_bytes` reading puts the leftmost digit
     // in the highest byte, which is exactly what the per-pair
@@ -1252,6 +1267,34 @@ mod tests {
     }
 
     #[test]
+    fn parse_decimal_u64_rejects_cross_lane_carry_blocks() {
+        // Kani counterexample for the original validation: the
+        // whole-register subtract/add propagated carries between
+        // byte lanes, so a block mixing bytes below '0' with bytes
+        // above '9' cancelled its own evidence and parsed as
+        // `Some(…)`. Proven impossible for the current form by the
+        // `swar_8_digit_fold_matches_reference` harness.
+        assert_eq!(
+            parse_decimal_u64(&[0x07, b'+', b'0', b'9', b'.', 0x07, 0x01, 0x01]),
+            None
+        );
+        // A few more shapes from the same class: a lane below '0'
+        // adjacent to a lane above '9'.
+        assert_eq!(
+            parse_decimal_u64(&[0xFF, b'0', b'0', b'0', b'0', b'0', b'0', b'0']),
+            None
+        );
+        assert_eq!(
+            parse_decimal_u64(&[b'0', 0x2F, b':', b'0', b'0', b'0', b'0', b'0']),
+            None
+        );
+        assert_eq!(
+            parse_decimal_i64(&[b'-', 0x07, b'+', b'0', b'9', b'.', 0x07, 0x01, 0x01]),
+            None
+        );
+    }
+
+    #[test]
     fn parse_decimal_u64_overflow_returns_none() {
         // u64::MAX + 1
         assert_eq!(parse_decimal_u64(b"18446744073709551616"), None);
@@ -1334,5 +1377,155 @@ mod tests {
             let s = n.to_string();
             assert_eq!(parse_decimal_i64(s.as_bytes()), Some(n), "n={n}");
         }
+    }
+}
+
+/// Kani proof harnesses — machine-checked properties of the SWAR
+/// numeric parsers against a naive per-byte reference. Run with
+/// `cargo kani` (the `kani-proofs` CI workflow); invisible to
+/// ordinary builds. Every harness pins `kissat`: CBMC's default
+/// SAT solver did not finish the fold proof in an hour, kissat
+/// finishes it in ~16s.
+///
+/// What is proven, and what deliberately is not:
+///
+/// - the 8-digit fold: exhaustive over all 2^64 byte blocks —
+///   where `proptest` above draws a few hundred samples, this
+///   closes the property (and its first run found the cross-lane
+///   carry bug the fold's validation now guards against);
+/// - `parse_decimal_u64`: value equivalence on all-digit slices up
+///   to one chunk, and rejection of any non-digit anywhere in
+///   chunk-plus-tail;
+/// - `parse_decimal_i64`: sign handling over signed digit strings
+///   up to a sign plus one chunk.
+///
+/// Multi-chunk value composition and the 19-20-digit overflow
+/// boundaries are *not* proven: the accumulator multiplies push
+/// the SAT instance past any CI-sane budget (a 20-byte bound ran
+/// >10 min without terminating). Those stay covered by the unit
+/// tests and proptest above — they are plain `checked_mul` /
+/// `checked_add` arithmetic, not SWAR.
+#[cfg(kani)]
+mod proofs {
+    use super::*;
+
+    /// Reference semantics: per-byte checked `* 10 + d` parse —
+    /// the loop the SWAR pipeline replaces. `None` on empty input,
+    /// any non-digit byte, or `u64` overflow.
+    fn reference_parse_u64(bytes: &[u8]) -> Option<u64> {
+        if bytes.is_empty() {
+            return None;
+        }
+        let mut acc: u64 = 0;
+        for &b in bytes {
+            if !b.is_ascii_digit() {
+                return None;
+            }
+            acc = acc.checked_mul(10)?.checked_add(u64::from(b - b'0'))?;
+        }
+        Some(acc)
+    }
+
+    /// Reference semantics for the signed form: optional sign,
+    /// then [`reference_parse_u64`], with `i64::MIN` representable
+    /// and `-0` equal to `0`.
+    fn reference_parse_i64(bytes: &[u8]) -> Option<i64> {
+        if bytes.is_empty() {
+            return None;
+        }
+        let (negative, digits) = match bytes[0] {
+            b'-' => (true, &bytes[1..]),
+            b'+' => (false, &bytes[1..]),
+            _ => (false, bytes),
+        };
+        let abs = reference_parse_u64(digits)?;
+        if negative {
+            if abs > (i64::MAX as u64) + 1 {
+                None
+            } else {
+                Some(0i64.wrapping_sub_unsigned(abs))
+            }
+        } else {
+            i64::try_from(abs).ok()
+        }
+    }
+
+    /// The wrapping-arithmetic SWAR fold agrees with the reference
+    /// on ALL 2^64 possible 8-byte blocks — every digit block
+    /// parses to its decimal value, every block containing a
+    /// non-digit byte is rejected, and no wraparound in the
+    /// validate/fold phases ever leaks a wrong answer. ~16s under
+    /// kissat.
+    #[kani::proof]
+    #[kani::solver(kissat)]
+    fn swar_8_digit_fold_matches_reference() {
+        let arr: [u8; 8] = kani::any();
+        assert_eq!(parse_8_digits(arr), reference_parse_u64(&arr));
+    }
+
+    /// `parse_decimal_u64` agrees with the reference on every
+    /// all-digit slice up to 8 bytes (the full single-chunk SWAR
+    /// path; verifies in ~26s under kissat). Split from the
+    /// rejection property below because full equivalence over
+    /// arbitrary bytes makes the solver enumerate every non-digit
+    /// exit path at every symbolic length, and value equivalence
+    /// past one chunk (a second chunk, or chunk + tail) adds
+    /// accumulator multiplies the solver did not finish inside any
+    /// CI-sane budget — those compositions, and the 20-digit
+    /// overflow boundary (`checked_mul`/`checked_add`'s job, not
+    /// SWAR's), stay with the unit tests and proptest.
+    #[kani::proof]
+    #[kani::solver(kissat)]
+    #[kani::unwind(9)]
+    fn parse_decimal_u64_value_matches_reference_on_digits() {
+        const MAX: usize = 8;
+        let arr: [u8; MAX] = kani::any();
+        kani::assume(arr.iter().all(u8::is_ascii_digit));
+        let len: usize = kani::any();
+        kani::assume(len <= MAX);
+        assert_eq!(
+            parse_decimal_u64(&arr[..len]),
+            reference_parse_u64(&arr[..len])
+        );
+    }
+
+    /// A slice holding ANY non-digit byte, anywhere in a chunk or
+    /// the tail, is rejected (up to 12 bytes — chunk plus tail;
+    /// ~3s under kissat). The other half of the documented
+    /// contract ("malformed input never produces a garbage
+    /// answer"), and exactly the property the carry-propagation
+    /// bug violated.
+    #[kani::proof]
+    #[kani::solver(kissat)]
+    #[kani::unwind(13)]
+    fn parse_decimal_u64_rejects_any_non_digit() {
+        const MAX: usize = 12;
+        let arr: [u8; MAX] = kani::any();
+        let len: usize = kani::any();
+        kani::assume(len <= MAX);
+        kani::assume(arr[..len].iter().any(|b| !b.is_ascii_digit()));
+        assert_eq!(parse_decimal_u64(&arr[..len]), None);
+    }
+
+    /// The signed wrapper's sign handling agrees with the signed
+    /// reference on optionally-signed digit strings — `+`, `-`,
+    /// and the bare form, up to a sign plus 8 digits (~102s under
+    /// kissat). The `i64::MIN` / overflow boundary at 19-20 digits
+    /// stays with the unit tests for the same solver-budget reason
+    /// as above.
+    #[kani::proof]
+    #[kani::solver(kissat)]
+    #[kani::unwind(10)]
+    fn parse_decimal_i64_matches_reference_on_signed_digits() {
+        const MAX: usize = 9;
+        let arr: [u8; MAX] = kani::any();
+        kani::assume(arr[0] == b'-' || arr[0] == b'+' || arr[0].is_ascii_digit());
+        kani::assume(arr[1..].iter().all(u8::is_ascii_digit));
+        let len: usize = kani::any();
+        kani::assume(len <= MAX);
+        assert_eq!(
+            parse_decimal_i64(&arr[..len]),
+            reference_parse_i64(&arr[..len])
+        );
     }
 }

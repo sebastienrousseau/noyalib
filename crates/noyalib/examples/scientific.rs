@@ -8,6 +8,12 @@
 //!
 //! Run: `cargo run --example scientific --features robotics`
 
+// The `robotics` module is deprecated (since 0.0.29) and leaves next
+// release: `StrictFloat` is now `lossless_float::LosslessFloat`, and
+// the `Degrees`/`Radians` newtypes go with the module. This example
+// exercises the compat surface for its final release.
+#![allow(deprecated)]
+
 #[path = "support.rs"]
 mod support;
 

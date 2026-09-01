@@ -43,12 +43,21 @@
 //!
 //! ## Drop-in migration
 //!
+//! Zero source changes, via Cargo's package rename and the
+//! `noyalib-serde-yaml` companion crate:
+//!
+//! ```toml
+//! # Cargo.toml — the whole migration
+//! serde_yaml = { package = "noyalib-serde-yaml", version = "=0.0.29" }
+//! ```
+//!
+//! Or two lines, depending on noyalib directly:
 //!
 //! ```toml
 //! # Cargo.toml — before
 //! serde_yaml = "0.9"
 //! # Cargo.toml — after
-//! noyalib = { version = "0.0.7", features = ["compat-serde-yaml"] }
+//! noyalib = { version = "0.0", features = ["compat-serde-yaml"] }
 //! ```
 //!
 //! ```rust,ignore
@@ -141,11 +150,28 @@
 //! assert_eq!(cfg, round);
 //! ```
 //!
-//! # Behavioural divergences from upstream `serde_yaml` 0.9
+//! # Behavioural parity with upstream `serde_yaml` 0.9
 //!
-//! The shim exposes the same surface but is backed by noyalib's
-//! deserialiser. Two behaviours differ from upstream — both
-//! changes that noyalib intentionally ships with safer defaults:
+//! Since v0.0.29 the shim is **behavioural**, not just
+//! name-compatible: its entry points parse under
+//! [`crate::ParserConfig::serde_yaml_compat`] and its [`Error`]
+//! renders upstream's wording and locations. The 18-case
+//! `serde_yaml` contract suite (`tests/serde_yaml_contract.rs`,
+//! expectations captured live from `serde_yaml 0.9.34`) pins:
+//! literal `<<` entries with resolved alias values, `0123` as a
+//! string and `0b11` as 3, `1e999` as a string, full `u64`
+//! precision with one-past-`u64::MAX` refused as
+//! `JSON number out of range`, non-scalar keys refused as
+//! `invalid type: sequence, expected a string key`, upstream's
+//! `repetition limit exceeded` alias budget, and libyaml's
+//! error phrasing and end-of-input location convention. One
+//! documented partial: a custom tag under `deserialize_any`
+//! refuses with upstream's message, anchored at the value rather
+//! than the tag.
+//!
+//! Callers who want noyalib's own spec-strict defaults use the
+//! direct API ([`crate::from_str`]); the differences below then
+//! apply:
 //!
 //! - **Custom-tag scalars surface as [`Value::Tagged`]**
 //!   instead of being
@@ -178,8 +204,280 @@ use crate::prelude::*;
 
 // ── Types — re-exported under the serde_yaml names ───────────────────
 
-pub use crate::error::{Error, Location, Result};
+pub use crate::error::Location;
 pub use crate::value::{Mapping, Number, Sequence, Tag, TaggedValue, Value};
+
+/// Shim result type: [`Result<T, Error>`](core::result::Result) with
+/// the shim's own [`Error`].
+///
+/// # Examples
+///
+/// ```
+/// use noyalib::compat::serde_yaml as syml;
+/// fn parse(s: &str) -> syml::Result<syml::Value> {
+///     syml::from_str(s)
+/// }
+/// assert!(parse("a: 1\n").is_ok());
+/// ```
+pub type Result<T> = core::result::Result<T, Error>;
+
+/// The shim's error type: a [`crate::Error`] rendered the way
+/// `serde_yaml` 0.9 worded and located it.
+///
+/// Since the behavioural-shim rework this is a newtype, not a
+/// re-export of [`crate::Error`] — the payoff is `Display` and
+/// [`Error::location`] parity with upstream on the error classes the
+/// `serde_yaml` contract exercises:
+///
+/// - budget refusals read `repetition limit exceeded` /
+///   `recursion limit exceeded`, unlocated, exactly as upstream;
+/// - a refused non-scalar key reads
+///   `invalid type: sequence, expected a string key` at the key's
+///   location;
+/// - parse errors adopt libyaml's phrasing where the class is
+///   recognisable (`did not find expected node content …, while
+///   parsing a flow node`; `did not find expected ',' or ']' …,
+///   while parsing a flow sequence at …`), and an error at
+///   end-of-input reports the line *after* the last one, column 1 —
+///   libyaml's EOF convention;
+/// - deserialization errors render suffix-style
+///   (`field: message at line L column C`).
+///
+/// Classes without an upstream equivalent keep noyalib's own
+/// wording. The inner [`crate::Error`] stays reachable via
+/// [`Error::into_inner`] / [`Error::inner`].
+#[derive(Debug)]
+pub struct Error(Box<ErrorImpl>);
+
+/// Boxed innards, mirroring upstream's own `Error(Box<ErrorImpl>)`
+/// shape — keeps `Result<T>` at pointer size on the Err side.
+#[derive(Debug)]
+struct ErrorImpl {
+    inner: crate::error::Error,
+    display: String,
+    location: Option<Location>,
+}
+
+impl Error {
+    /// Wrap a noyalib error, rendering it upstream-style against the
+    /// input it came from (the input drives the EOF location
+    /// convention and the flow-sequence context trailer).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use noyalib::compat::serde_yaml::Error;
+    /// let input = "title: [oops";
+    /// let inner = noyalib::from_str::<noyalib::Value>(input).unwrap_err();
+    /// let e = Error::from_noyalib_with_input(inner, input);
+    /// // libyaml's end-of-input convention: the line after the last.
+    /// assert_eq!(e.location().unwrap().line(), 2);
+    /// ```
+    #[must_use]
+    pub fn from_noyalib_with_input(inner: crate::error::Error, input: &str) -> Self {
+        let mut location = inner.location();
+        // libyaml reports an error at end-of-input on the line after
+        // the last one, column 1; noyalib says end-of-last-line.
+        if let Some(loc) = location {
+            let at_eof = loc.index() >= input.len();
+            if at_eof && loc.column() > 1 && parse_shaped(&inner) {
+                location = Some(Location::new(loc.line() + 1, 1, loc.index()));
+            }
+        }
+        let display = render_upstream_style(&inner, location, Some(input));
+        Self(Box::new(ErrorImpl {
+            inner,
+            display,
+            location,
+        }))
+    }
+
+    /// The upstream-shaped location, when the error has one.
+    /// 1-based line and column, 0-based byte index — the exact
+    /// `serde_yaml::Location` surface.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use noyalib::compat::serde_yaml as syml;
+    /// let err = syml::from_str::<syml::Value>("a: [unclosed").unwrap_err();
+    /// let loc = err.location().unwrap();
+    /// assert!(loc.line() >= 1 && loc.column() >= 1);
+    /// let _: usize = loc.index();
+    /// ```
+    #[must_use]
+    pub fn location(&self) -> Option<Location> {
+        self.0.location
+    }
+
+    /// Borrow the underlying [`crate::Error`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use noyalib::compat::serde_yaml as syml;
+    /// let err = syml::from_str::<syml::Value>("a: [unclosed").unwrap_err();
+    /// assert!(matches!(err.inner().kind(), noyalib::ErrorKind::Syntax));
+    /// ```
+    #[must_use]
+    pub fn inner(&self) -> &crate::error::Error {
+        &self.0.inner
+    }
+
+    /// Unwrap into the underlying [`crate::Error`] — the way back to
+    /// noyalib's own diagnostics (miette/ariadne adapters included).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use noyalib::compat::serde_yaml as syml;
+    /// let err = syml::from_str::<syml::Value>("a: [unclosed").unwrap_err();
+    /// let inner: noyalib::Error = err.into_inner();
+    /// assert!(inner.location().is_some());
+    /// ```
+    #[must_use]
+    pub fn into_inner(self) -> crate::error::Error {
+        self.0.inner
+    }
+}
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(&self.0.display)
+    }
+}
+
+impl core::error::Error for Error {
+    fn source(&self) -> Option<&(dyn core::error::Error + 'static)> {
+        Some(&self.0.inner)
+    }
+}
+
+impl From<crate::error::Error> for Error {
+    fn from(inner: crate::error::Error) -> Self {
+        let location = inner.location();
+        let display = render_upstream_style(&inner, location, None);
+        Self(Box::new(ErrorImpl {
+            inner,
+            display,
+            location,
+        }))
+    }
+}
+
+/// Is this a parse-shaped error (the family libyaml's EOF location
+/// convention applies to)?
+fn parse_shaped(e: &crate::error::Error) -> bool {
+    matches!(
+        e.kind(),
+        crate::ErrorKind::Syntax | crate::ErrorKind::EndOfStream
+    )
+}
+
+/// Render a noyalib error the way `serde_yaml` 0.9 would have worded
+/// it. Classes without an upstream analogue keep noyalib's wording.
+fn render_upstream_style(
+    e: &crate::error::Error,
+    location: Option<Location>,
+    input: Option<&str>,
+) -> String {
+    use crate::error::Error as E;
+    let at = |loc: Option<Location>| -> String {
+        loc.map(|l| format!(" at line {} column {}", l.line(), l.column()))
+            .unwrap_or_default()
+    };
+    match e {
+        // Upstream's resource-limit wordings, unlocated like upstream.
+        E::RepetitionLimitExceeded => "repetition limit exceeded".to_owned(),
+        E::Budget(crate::BudgetBreach::AliasAnchorRatio { .. }) => {
+            "repetition limit exceeded".to_owned()
+        }
+        E::RecursionLimitExceeded { .. } => "recursion limit exceeded".to_owned(),
+        // `invalid type: sequence, expected a string key` — noyalib's
+        // own wording already matches upstream, and upstream carries
+        // the position only in `location()`, not in `Display`.
+        E::NonScalarKey { .. } => e.to_string(),
+        E::IntegerOverflow { path, .. } => {
+            let prefix = path
+                .as_deref()
+                .map(|p| format!("{p}: "))
+                .unwrap_or_default();
+            format!("{prefix}JSON number out of range{}", at(location))
+        }
+        E::ParseWithLocation { message, .. } => {
+            if message.starts_with("expected a node but found Flow") {
+                format!(
+                    "did not find expected node content{}, while parsing a flow node",
+                    at(location)
+                )
+            } else if message == "expected ',' or ']' in flow sequence" {
+                let ctx = input
+                    .and_then(|inp| location.and_then(|l| unmatched_open_bracket(inp, l.index())))
+                    .map(|open| {
+                        let l = Location::from_index(input.unwrap_or(""), open);
+                        format!(
+                            ", while parsing a flow sequence at line {} column {}",
+                            l.line(),
+                            l.column()
+                        )
+                    })
+                    .unwrap_or_default();
+                format!("did not find expected ',' or ']'{}{ctx}", at(location))
+            } else if message.starts_with("inconsistent indentation") {
+                // libyaml reports a value indicator at an impossible
+                // column as a misplaced mapping value.
+                format!(
+                    "mapping values are not allowed in this context{}",
+                    at(location)
+                )
+            } else {
+                format!("{message}{}", at(location))
+            }
+        }
+        E::DeserializeWithLocation { message, .. } => {
+            // Upstream renders suffix-style: `field: message at line L
+            // column C`.
+            format!("{message}{}", at(location))
+        }
+        _ => e.to_string(),
+    }
+}
+
+/// Byte offset of the innermost `[` left unclosed at `upto` —
+/// the flow-sequence context libyaml names in its error trailer.
+/// A display aid only: quote-aware enough for real documents, and
+/// absent context simply omits the trailer.
+fn unmatched_open_bracket(input: &str, upto: usize) -> Option<usize> {
+    let mut stack: Vec<usize> = Vec::new();
+    let mut in_single = false;
+    let mut in_double = false;
+    let mut prev_backslash = false;
+    for (i, b) in input.bytes().enumerate().take(upto) {
+        if in_double {
+            if b == b'"' && !prev_backslash {
+                in_double = false;
+            }
+            prev_backslash = b == b'\\' && !prev_backslash;
+            continue;
+        }
+        if in_single {
+            if b == b'\'' {
+                in_single = false;
+            }
+            continue;
+        }
+        match b {
+            b'\'' => in_single = true,
+            b'"' => in_double = true,
+            b'[' => stack.push(i),
+            b']' => {
+                let _ = stack.pop();
+            }
+            _ => {}
+        }
+    }
+    stack.last().copied()
+}
 
 // ── `serde_yaml` low-level types ─────────────────────────────────────
 //
@@ -236,10 +534,18 @@ pub mod with {
 
 // ── Deserialization ──────────────────────────────────────────────────
 
-/// Deserialize a YAML document into the target type.
+/// Deserialize a YAML document into the target type — with
+/// **`serde_yaml` 0.9's observable behaviour**, not noyalib's
+/// defaults.
 ///
-/// Direct re-export of [`crate::from_str`] — same signature,
-/// same behaviour.
+/// The shim parses under [`crate::ParserConfig::serde_yaml_compat`]:
+/// `<<` merge keys stay literal entries (alias values resolved),
+/// leading-zero integers stay strings and `0b11` is 3, a literal
+/// float overflow stays a string, `u64`-range integers keep full
+/// precision and one past `u64::MAX` errors, non-scalar keys error,
+/// and transitive alias expansion is budgeted exactly as upstream
+/// ("repetition limit exceeded"). Callers who want noyalib's own
+/// (spec-strict) defaults should use [`crate::from_str`] directly.
 ///
 /// # Examples
 ///
@@ -252,7 +558,8 @@ pub fn from_str<T>(s: &str) -> Result<T>
 where
     T: serde_core::de::DeserializeOwned + 'static,
 {
-    crate::from_str(s)
+    crate::from_str_with_config(s, &crate::ParserConfig::serde_yaml_compat())
+        .map_err(|e| Error::from_noyalib_with_input(e, s))
 }
 
 /// Deserialize a YAML document from a byte slice.
@@ -268,7 +575,9 @@ pub fn from_slice<T>(bytes: &[u8]) -> Result<T>
 where
     T: serde_core::de::DeserializeOwned + 'static,
 {
-    crate::from_slice(bytes)
+    let s = core::str::from_utf8(bytes)
+        .map_err(|e| Error::from(crate::error::Error::Parse(format!("invalid UTF-8: {e}"))))?;
+    from_str(s)
 }
 
 /// Deserialize a YAML document from any [`std::io::Read`] source.
@@ -286,12 +595,16 @@ where
 /// assert_eq!(m["port"], 8080);
 /// ```
 #[cfg(feature = "std")]
-pub fn from_reader<R, T>(reader: R) -> Result<T>
+pub fn from_reader<R, T>(mut reader: R) -> Result<T>
 where
     R: std::io::Read,
     T: serde_core::de::DeserializeOwned + 'static,
 {
-    crate::from_reader(reader)
+    let mut buf = String::new();
+    let _ = reader
+        .read_to_string(&mut buf)
+        .map_err(|e| Error::from(crate::error::Error::Io(e)))?;
+    from_str(&buf)
 }
 
 /// Deserialize a typed value from a [`Value`].
@@ -313,7 +626,7 @@ pub fn from_value<T>(value: Value) -> Result<T>
 where
     T: serde_core::de::DeserializeOwned + 'static,
 {
-    crate::from_value(&value)
+    crate::from_value(&value).map_err(Error::from)
 }
 
 // ── Serialization ────────────────────────────────────────────────────
@@ -331,7 +644,7 @@ pub fn to_string<T>(value: &T) -> Result<String>
 where
     T: serde_core::Serialize,
 {
-    crate::to_string(value)
+    crate::to_string(value).map_err(Error::from)
 }
 
 /// Serialize a typed value to any [`std::io::Write`] sink.
@@ -350,7 +663,7 @@ where
     W: std::io::Write,
     T: serde_core::Serialize,
 {
-    crate::to_writer(writer, value)
+    crate::to_writer(writer, value).map_err(Error::from)
 }
 
 /// Serialize a typed value to a [`Value`].
@@ -369,7 +682,7 @@ pub fn to_value<T>(value: T) -> Result<Value>
 where
     T: serde_core::Serialize,
 {
-    crate::to_value(&value)
+    crate::to_value(&value).map_err(Error::from)
 }
 
 // ── Multi-document streams ───────────────────────────────────────────
@@ -395,7 +708,7 @@ pub fn from_str_multi<T>(s: &str) -> Result<Vec<T>>
 where
     T: serde_core::de::DeserializeOwned + 'static,
 {
-    crate::load_all_as::<T>(s)
+    crate::load_all_as::<T>(s).map_err(|e| Error::from_noyalib_with_input(e, s))
 }
 
 #[cfg(test)]
@@ -508,18 +821,37 @@ mod tests {
     }
 
     #[test]
-    fn error_type_re_export_is_noyalib_error() {
-        // Compile-time check: `serde_yaml::Error` and
-        // `noyalib::Error` are the same type, so callers' existing
-        // error-handling code keeps working.
-        #[allow(unused_qualifications)]
-        fn identity(e: super::Error) -> crate::error::Error {
-            e
-        }
-        // Exercise it at runtime so the coincidence of the two paths is
-        // observed, not merely compiled.
-        let e = identity(Error::Custom("compat".into()));
+    fn error_type_wraps_noyalib_error() {
+        // Since the behavioural-shim rework `serde_yaml::Error` is a
+        // newtype rendering upstream's wording; the underlying
+        // noyalib error stays reachable for callers that want it.
+        let e = Error::from(crate::error::Error::Custom("compat".into()));
         assert!(e.to_string().contains("compat"), "{e}");
+        assert!(matches!(e.inner(), crate::error::Error::Custom(_)));
+        let _inner: crate::error::Error = e.into_inner();
+    }
+
+    #[test]
+    fn behavioural_defaults_follow_serde_yaml() {
+        // The two spot checks migrants hit first: `<<` stays a
+        // literal key, and a leading-zero integer stays a string —
+        // both the opposite of noyalib's spec-strict defaults, both
+        // exactly what upstream did. The full 18-case contract lives
+        // in tests/serde_yaml_contract.rs.
+        let v: Value = from_str(
+            "a: &a {x: 1}
+b:
+  <<: *a
+",
+        )
+        .unwrap();
+        assert!(v["b"].as_mapping().unwrap().contains_key("<<"));
+        let v: Value = from_str(
+            "n: 0123
+",
+        )
+        .unwrap();
+        assert_eq!(v["n"].as_str(), Some("0123"));
     }
 
     #[test]

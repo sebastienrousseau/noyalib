@@ -119,7 +119,22 @@ jobs:
 
       - name: Generate SBOM
         run: |
+          set -euo pipefail
+          # Human-readable dependency listing (kept for reviewers) …
           cargo tree --edges normal --prefix depth --format '{p} {l}' > SBOM.txt
+          # … and the machine-readable SBOM procurement pipelines
+          # ingest. `cargo tree > txt` is not an SBOM format: EU CRA /
+          # NTIA guidance and every scanner (Grype, Trivy, Dependency-
+          # Track) expect CycloneDX or SPDX. `--all-features` records
+          # the superset graph so a vulnerability in an optional
+          # dependency is still visible to consumers who enable it.
+          cargo install --locked cargo-cyclonedx
+          cargo cyclonedx --format json --all-features --describe crate --spec-version 1.5
+          # cargo-cyclonedx writes next to each crate manifest; hoist
+          # the library's BOM to the repo root beside SBOM.txt so the
+          # attest / sign / upload steps reference one location.
+          mv crates/noyalib/noyalib.cdx.json SBOM.cdx.json
+          python3 -c "import json; d=json.load(open('SBOM.cdx.json')); print('CycloneDX', d['specVersion'], '—', d['metadata']['component']['name'], d['metadata']['component']['version'], '—', len(d.get('components', [])), 'components')"
 
       - name: Generate checksums
         run: |
@@ -157,6 +172,7 @@ jobs:
           subject-path: |
             target/package/*.crate
             SBOM.txt
+            SBOM.cdx.json
 
       # ── Keyless sigstore signing ──────────────────────────────────
       # `cosign sign-blob` with no `--key` triggers Fulcio keyless
@@ -186,6 +202,7 @@ jobs:
           done
           cd -
           cosign sign-blob --bundle "SBOM.txt.bundle" SBOM.txt
+          cosign sign-blob --bundle "SBOM.cdx.json.bundle" SBOM.cdx.json
 
       # ── Optional detached GPG signatures ──────────────────────────
       # Additive to the sigstore bundles above, not a replacement.
@@ -267,6 +284,7 @@ jobs:
 
           for f in target/package/*.crate; do sign "$f"; done
           sign SBOM.txt
+          sign SBOM.cdx.json
 
           gpgconf --kill all || true
           rm -rf "$GNUPGHOME"
@@ -282,8 +300,11 @@ jobs:
             target/package/SHA512SUMS.txt
             SBOM.txt
             SBOM.txt.bundle
+            SBOM.cdx.json
+            SBOM.cdx.json.bundle
             target/package/*.asc
             SBOM.txt.asc
+            SBOM.cdx.json.asc
           retention-days: 5
 
   # ── Cross-platform verification ─────────────────────────────────────
@@ -376,7 +397,16 @@ jobs:
             artifacts/target/package/SHA512SUMS.txt
             artifacts/SBOM.txt
             artifacts/SBOM.txt.bundle
-            artifacts/SBOM.txt.asc
+            # The `[c]` character class makes these actual globs:
+            # `nullglob` only removes unmatched *patterns*, so the
+            # previous literal spelling stayed in the array when GPG
+            # signing was skipped and failed `gh release create` on a
+            # missing file — exactly the fork-without-key case the
+            # comment above promises to survive.
+            artifacts/SBOM.txt.as[c]
+            artifacts/SBOM.cdx.json
+            artifacts/SBOM.cdx.json.bundle
+            artifacts/SBOM.cdx.json.as[c]
           )
           shopt -u nullglob
           printf 'attaching %s\n' "${assets[@]}"

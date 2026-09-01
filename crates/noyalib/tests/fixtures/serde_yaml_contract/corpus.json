@@ -1,0 +1,114 @@
+{
+  "schema_version": 1,
+  "cases": [
+    {
+      "name": "anchors-and-aliases",
+      "category": "anchors-aliases",
+      "yaml": "base: &base\n  name: zfb\n  labels:\n    - yaml\n    - serde\ncopy: *base\n"
+    },
+    {
+      "name": "merge-key-is-an-ordinary-json-key",
+      "category": "merge-keys",
+      "yaml": "defaults: &defaults\n  title: Default\n  draft: false\npost:\n  <<: *defaults\n  title: Override\n"
+    },
+    {
+      "name": "non-string-scalar-keys",
+      "category": "non-string-keys",
+      "yaml": "1: one\ntrue: yes\nnull: nil\n"
+    },
+    {
+      "name": "non-string-composite-key",
+      "category": "non-string-keys",
+      "yaml": "[a, b]: sequence\n"
+    },
+    {
+      "name": "yaml-11-boolean-spellings",
+      "category": "scalar-edge-cases",
+      "yaml": "y_value: y\nyes_value: yes\nn_value: n\nno_value: no\non_value: on\noff_value: off\ntrue_value: true\nfalse_value: FALSE\n"
+    },
+    {
+      "name": "octals-sexagesimals-and-numbers",
+      "category": "scalar-edge-cases",
+      "yaml": "octal_old: 0123\noctal_new: 0o123\nhex: 0x10\nbinary: 0b11\nsexagesimal: 1:20\nfloat: 1.20\nexp: 1e3\n"
+    },
+    {
+      "name": "null-and-date-scalars",
+      "category": "scalar-edge-cases",
+      "yaml": "tilde: ~\nnull_lower: null\nnull_upper: NULL\nempty:\ndate: 2024-01-02\ndatetime: 2024-01-02T03:04:05Z\n"
+    },
+    {
+      "name": "unicode-crlf-and-emoji",
+      "category": "unicode-bom-crlf-emoji",
+      "yaml": "title: \"日本語 😀\"\r\nitems:\r\n  - \"🍣\"\r\n",
+      "document": "\uFEFF---\r\ntitle: \"日本語 😀\"\r\nitems:\r\n  - \"🍣\"\r\n---\r\n本文 🌊\r\n",
+      "document_expect": {
+        "value": {
+          "items": ["🍣"],
+          "title": "日本語 😀"
+        },
+        "body": "本文 🌊\r\n",
+        "body_offset": 58
+      }
+    },
+    {
+      "name": "malformed-unicode-location",
+      "category": "malformed-input",
+      "yaml": "日本語😀: [}",
+      "document": "\uFEFF---\r\n日本語😀: [}\r\n---\r\n",
+      "document_location": {
+        "line": 2,
+        "column": 9
+      }
+    },
+    {
+      "name": "malformed-flow-sequence-at-eof",
+      "category": "malformed-input",
+      "yaml": "title: [oops",
+      "document": "---\ntitle: [oops\n---\nbody\n",
+      "document_location": {
+        "line": 3,
+        "column": 1
+      }
+    },
+    {
+      "name": "malformed-indentation",
+      "category": "malformed-input",
+      "yaml": "title: ok\n  nested: bad\n"
+    },
+    {
+      "name": "built-in-explicit-tags",
+      "category": "explicit-tags",
+      "yaml": "as_string: !!str 123\nas_int: !!int '123'\n"
+    },
+    {
+      "name": "custom-explicit-tag",
+      "category": "explicit-tags",
+      "yaml": "thing: !custom value\n"
+    },
+    {
+      "name": "duplicate-map-keys-last-wins",
+      "category": "duplicate-keys",
+      "yaml": "a: 1\na: 2\n"
+    },
+    {
+      "name": "non-finite-and-overflowing-numbers",
+      "category": "non-finite-overflowing-numbers",
+      "yaml": "nan: .nan\ninf: .inf\nneg_inf: -.Inf\noverflow: 1e999\n"
+    },
+    {
+      "name": "integer-boundaries",
+      "category": "non-finite-overflowing-numbers",
+      "yaml": "u64_max: 18446744073709551615\ni64_min: -9223372036854775808\n"
+    },
+    {
+      "name": "integer-overflow",
+      "category": "non-finite-overflowing-numbers",
+      "yaml": "u64_over: 18446744073709551616\n"
+    },
+    {
+      "name": "alias-anchor-repetition-limit",
+      "category": "alias-anchor-resource-limits",
+      "yaml": "leaf: &leaf lol\na: &a [*leaf, *leaf, *leaf, *leaf, *leaf, *leaf, *leaf, *leaf, *leaf, *leaf]\nb: &b [*a, *a, *a, *a, *a, *a, *a, *a, *a, *a]\nc: &c [*b, *b, *b, *b, *b, *b, *b, *b, *b, *b]\nd: &d [*c, *c, *c, *c, *c, *c, *c, *c, *c, *c]\nroot: *d\n"
+    }
+  ]
+}

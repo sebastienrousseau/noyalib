@@ -28,6 +28,12 @@ reference back. Nothing is silently rewritten.
 | [0003](./0003-zero-unsafe-policy.md) | `#![forbid(unsafe_code)]` workspace-wide | accepted |
 | [0004](./0004-lossless-u64-integers.md) | Opt in to lossless `u64` integers | proposed |
 | [0005](./0005-workspace-split.md) | Split workspace into 4 satellite repositories with strict-lockstep versioning | accepted |
+| [0006](./0006-plain-scalar-strings-opt-in.md) | Opt in to literal text for a `String`/`char` target reading a plain scalar | proposed |
+| [0007](./0007-prefer-single-quotes-option.md) | Add `prefer_single_quotes` as an opt-in serializer config flag | accepted |
+| [0008](./0008-compiled-schema.md) | `CompiledSchema`: compile a JSON Schema once, validate many | accepted |
+| [0009](./0009-set-path-parent-creation.md) | `Document::set_path`: parent-creating writes in the CST editor | accepted |
+| [0010](./0010-typed-collection-set-value.md) | `set_value` accepts collections, emitted in the target node's style | accepted |
+| [0011](./0011-flow-inserts-and-anchor-policy.md) | Flow-collection inserts, flow renames, and one anchored-node policy | accepted |
 
 ## When to add an ADR
 

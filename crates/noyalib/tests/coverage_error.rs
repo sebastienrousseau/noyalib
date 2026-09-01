@@ -235,8 +235,11 @@ fn error_end_of_stream() {
 
 #[test]
 fn error_more_than_one_document() {
+    // The message wording was changed (#351) to match serde_yaml's
+    // exact text, so downstream error messages line up; it no longer
+    // contains "multiple".
     let e = Error::MoreThanOneDocument;
-    assert!(e.to_string().contains("multiple"));
+    assert!(e.to_string().contains("more than one document"));
 }
 
 #[test]

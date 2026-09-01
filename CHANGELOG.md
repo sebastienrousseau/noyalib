@@ -7,6 +7,324 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+## [v0.0.29] - 2026-08-31
+
+Thirteen fixes and seven additions, spanning all three pillars — the
+serde deserializer, the emitter, and the CST editors — closing every
+issue open at the start of the cycle (#327–#355). One documented
+behavioural change: writes inside aliased anchors now refuse
+uniformly (ADR-0011). **The headline: `compat-serde-yaml` became a
+behavioural shim** — drop-in now means behaviour, not just names.
+
+### Added
+
+- **`compat-serde-yaml` is a behavioural shim, pinned by the
+  18-case `serde_yaml` contract suite.** The shim's entry points
+  now parse under `ParserConfig::serde_yaml_compat()` and its
+  `Error` (a newtype since this release, boxed like upstream's)
+  renders `serde_yaml` 0.9's wording and locations. Concretely:
+  `<<` merge keys stay literal entries with resolved alias values;
+  `0123` is a string and `0b11` is 3; a literal `1e999` stays a
+  string; `u64::MAX` keeps full precision on the `serde_json` path
+  and one past it refuses with `u64_over: JSON number out of range
+  at line 1 column 11`; `[a, b]:` refuses with `invalid type:
+  sequence, expected a string key` at `1:1:0`; transitive alias
+  expansion is budgeted exactly as upstream (`repetition limit
+  exceeded`, jumps ≤ events × 100 — the rule read out of upstream's
+  own source); parse errors adopt libyaml's phrasing for the
+  recognisable classes and its end-of-input location convention
+  (line after the last, column 1). The engine behind it: six new
+  `ParserConfig` knobs (`leading_zero_integer_strings`,
+  `legacy_binary_numbers`, `float_overflow_strings`,
+  `integer_overflow_errors`, `non_scalar_key_policy` with the new
+  `NonScalarKeyPolicy`, `alias_jump_event_factor`) and two new
+  error variants (`Error::IntegerOverflow` carrying the field
+  path, `Error::NonScalarKey`), all usable outside the shim.
+  `tests/serde_yaml_contract.rs` vendors the evaluation corpus a
+  real migration candidate built
+  (Takazudo/zudo-front-builder#2787, where noyalib 0.0.28 diverged
+  on 11 of 18 and was rejected) with expectations captured live
+  from `serde_yaml 0.9.34` — 18/18 pass; the one documented
+  partial is the custom-tag refusal anchoring its location at the
+  value rather than the tag. A `noyalib-serde-yaml` satellite
+  (Cargo package-rename drop-in: zero source changes) follows.
+
+- **`CompiledSchema`: compile a JSON Schema once, validate many**
+  (#329, ADR-0008). `CompiledSchema::compile(&schema)?.validate(&v)`
+  front-loads the schema compile that `validate_against_schema`
+  repeats per call; the builder opts in to `format` assertion
+  (annotation-only by default under Draft 2020-12) and registers
+  custom formats; `iter_errors` returns structured violations with
+  the instance path and offending keyword. `validate_against_schema`
+  is now compile-then-validate through the same type, so the
+  external-`$ref` and recursion hardening covers both paths.
+
+- **`set_value` accepts collections, in the target node's style**
+  (#328, ADR-0010). `tags: [a, b]` set to `[a, c]` stays flow; a block
+  sequence stays block at its own column; nested mixed shapes render
+  through the serializer at the document's `indent_unit()`. The
+  candidate is parsed and compared against the expected typed value
+  before any byte moves. Replacing a *scalar* with a collection stays
+  refused — that layout decision belongs to `set`.
+
+- **Flow and empty collections in the insertion mutators, and flow
+  renames** (#338, ADR-0011). `insert_entry_value` splices
+  `, key: value` into single-line flow mappings (`{a: 1}`, `{}`, a
+  root-level `{…}` document); `push_back_value` and
+  `insert_after_value` do the same for flow sequences (`[]` included);
+  `rename_key` renames flow-mapping keys, double-quoting a new key
+  whose plain spelling would read as flow structure. Members render
+  flow-safe (`b, c` and multi-line strings double-quote). Multi-line
+  flow collections still refuse, byte-identically.
+
+- **One policy for writes inside anchored nodes** (#338, ADR-0011).
+  All mutators now refuse a write into a value that live `*name`
+  sites share, naming the anchor and pointing at
+  `materialise_aliases_of` — `set_value` and `remove` included, which
+  previously edited every alias and merge site silently. An
+  equal-value `set_value` stays a byte no-op. **Behavioural change**:
+  callers relying on the silent propagation must edit the anchor
+  deliberately or materialise the aliases first.
+
+- **`Document::set_path`: parent-creating writes in the CST editor**
+  (#327, ADR-0009). `doc.set_path("menu.visible", &true.into())` on
+  `title: x` creates the missing `menu:` level on the way; an empty
+  document (comments, blank lines, or a bare `---` only) receives its
+  first key with the header preserved. Missing levels indent at the
+  document's `indent_unit()`, quoting stays with `Emit`, and every
+  byte goes through the existing oracle-guarded mutators. A
+  single-line flow ancestor creates its missing levels as flow
+  members (#338); an existing segment that resolves to a scalar, a
+  non-root null, a multi-line flow ancestor, or a missing sequence
+  index refuses cleanly with the source byte-identical.
+
+- **`SerializerConfig::prefer_single_quotes`** (#361, #352). Opt-in: strings
+  that must be quoted but need no escapes are written `'like this'`
+  instead of `"like this"`. Strings containing characters that only
+  double quotes can spell (line breaks, non-printables) still get
+  double quotes, unchanged by the flag.
+
+- **`ParserConfig::plain_scalar_strings`** (#359, #344, ADR-0006). Opt-in:
+  a `String`/`char` target reading a plain scalar receives the literal
+  text (`no` stays `"no"`, `1.0` stays `"1.0"`) instead of a type
+  error, matching what most other YAML libraries do.
+
+- **Weekly feature-powerset sweep and a real SBOM.** A scheduled
+  `cargo hack --feature-powerset --depth 2` workflow checks every
+  feature pair (309 combinations; `nightly-simd` and the bench-only
+  `compare-saphyr` excluded), and the release pipeline now emits a
+  CycloneDX 1.5 `SBOM.cdx.json` — attested (SLSA), sigstore-signed,
+  and attached to the GitHub Release alongside the human-readable
+  `SBOM.txt`, which was never a machine-readable SBOM format.
+
+- **OSS-Fuzz integration and a YAML token dictionary.** The project
+  definition (`fuzz/oss-fuzz/`: project.yaml, Dockerfile, build.sh)
+  ships in-tree, verified end-to-end against the real
+  `base-builder-rust` image (`infra/helper.py build_fuzzers` with
+  local source: all 11 targets compiled under ASAN with corpora and
+  dictionaries staged). Submission to `google/oss-fuzz` is a
+  maintainer PR — see `fuzz/oss-fuzz/README.md`. `fuzz/yaml.dict`
+  gives libFuzzer the scanner's structural tokens whole; with it,
+  local sweeps found every round-trip bug below within minutes.
+
+### Fixed
+
+- **Round-trip integrity: seven emit/parse bugs found by fuzzing
+  with the new dictionary.** Every one produced output that parsed
+  to something else or not at all:
+  - verbatim tags accepted control characters (and line breaks, and
+    the empty `!<>`); shorthand tag suffixes accepted control
+    characters and the non-URI `>` — all rejected now, and a tag
+    body *no* spelling can carry (controls; `>`) is emitted as the
+    quoted-key single-entry mapping it is indistinguishable from in
+    the serde data model;
+  - tags whose body holds shorthand-unsafe characters (`,`, flow
+    indicators, an interior `!`, blanks) were emitted raw and split
+    at the first such byte — the verbatim `!<...>` form is used;
+  - a mid-document BOM was read as plain-scalar content and emitted
+    back unquoted, where re-parse stream-skips it and reinterprets
+    the scalar as markup — the scanner now rejects BOMs after the
+    stream start (§5.2), and both emitters force-quote strings
+    containing one (`﻿`);
+  - raw control characters (NUL, DEL, …) were accepted as plain and
+    single-quoted scalar content (`a: b\0c` parsed) — rejected per
+    §5.1 c-printable, and both emitters now escape DEL and the
+    sub-0x20 range so their own output stays parseable;
+  - a multi-line string used as a mapping *key* was emitted as a
+    `|-` block — not grammar in key position at all — and now emits
+    double-quoted;
+  - a scalar starting with `...` was emitted plain at column 0,
+    where it reads back as the document-end marker — quoted now,
+    like the `-`-leading family already was.
+  The `fuzz_diff` oracle also learned the verified ecosystem
+  divergences (serde_yaml_ng's 1.1-flavoured leading-zero and
+  signed-radix integers, merge-key literalism, block-scalar comment
+  stripping and chomping), with noyalib's spec-correct readings
+  pinned in `tests/competitor_bugs.rs`. Known-open at cut: minor
+  divergence classes still surface on long fuzz runs (e.g. a bare
+  `:`-shaped document, `null` vs `{"": null}`) — continuous
+  triage is what the OSS-Fuzz onboarding is for.
+
+### Changed
+
+- **`robotics` is deprecated; `StrictFloat` is now
+  `lossless_float::LosslessFloat`** (feature `lossless-float`). The
+  refuse-to-lose-precision float was never robotics-specific — it is
+  the floating-point sibling of `lossless-u64`, and its new home
+  needs nothing beyond the mandatory `serde_core` (the old one
+  pulled `dep:serde` for derives). The `robotics` module and feature
+  survive one release as a deprecated compat surface (`robotics`
+  implies `lossless-float`; `StrictFloat`/`StrictFloatError` are
+  deprecated aliases), then go — along with the `Degrees`/`Radians`
+  unit newtypes, which are ~40 lines of domain code with no
+  dependence on noyalib and belong in the consumer's own tree.
+
+### Fixed
+
+- **Three more spec-strictness gaps, found by the new
+  `fuzz_serde_yaml_compat` parity fuzzer** (the shim vs the real
+  archived `serde_yaml 0.9.34`, value-and-verdict differential):
+  block scalar *content* and raw double-quoted runs accepted
+  control characters (§5.1 c-printable now enforced uniformly —
+  escapes remain the way to carry controls); a block scalar header
+  accepted trailing content on its own line (`>-\n` read a literal
+  `\n` as content — §8.1.1 allows only blanks and a comment
+  there); and the reserved indicators `@` and `` ` `` could start a
+  plain scalar (§5.10 forbids exactly that). The fuzzer's
+  documented-divergence allowlist records where the spec and
+  libyaml legitimately part ways (anchor-name charsets, empty
+  implicit keys, tags/directives/explicit keys).
+
+- **`simd::parse_decimal_u64` / `parse_decimal_i64` could accept a
+  non-digit block** — found by the new Kani proof harness on its
+  first run, as a concrete counterexample. The SWAR validator's
+  whole-register subtract/add propagated carries *between byte
+  lanes*, so an 8-byte block mixing bytes below `'0'` with bytes
+  above `'9'` (e.g. `[0x07, '+', '0', '9', '.', 0x07, 1, 1]`)
+  cancelled its own evidence and parsed as `Some(…)` — violating
+  the documented "malformed input never produces a garbage answer"
+  contract for direct callers of the public functions. The YAML
+  parser itself was not affected: its only internal call site
+  pre-validates every byte with `is_ascii_digit()` first. The
+  validation is now two carry-free nibble checks, and the
+  `#[cfg(kani)]` harnesses in `simd.rs` prove, against a naive
+  per-byte reference: the 8-digit fold exhaustively over all 2^64
+  blocks; value equivalence on all-digit slices up to one chunk;
+  rejection of any non-digit anywhere in chunk-plus-tail; and sign
+  handling for the signed wrapper. (An earlier revision of this
+  entry claimed 20/21-byte equivalence proofs; the accumulator
+  multiplies past one chunk exceed any CI-sane solver budget, so
+  multi-chunk composition and the overflow boundaries stay with
+  the unit tests and proptest — they are `checked_mul` arithmetic,
+  not SWAR.) The `kani-proofs` workflow re-runs all four proofs
+  weekly under kissat, ~2.5 minutes of solving total.
+
+- **Five features did not compile without `std`** — found by the
+  powerset sweep's first run. `ariadne`, `robotics`, `include`,
+  `schema`, and `validate-schema` alone (or paired with each other /
+  `fast-float`) failed on missing prelude imports or deny-level
+  qualification lints; all five now build `no_std`+alloc. `miette`
+  now *implies* `std` in the feature graph — miette 7's `Diagnostic`
+  supertrait is `std::error::Error`, so the combination never
+  compiled and no consumer could depend on it. Behavioural note: a
+  multi-document `!include` file is now rejected instead of silently
+  truncated to its first document (the include path parses through
+  the every-target checked entry point, matching `from_str`'s
+  single-document policy, #351).
+
+- **A GPG-less release could not publish.** The release workflow's
+  asset list relied on `nullglob` to drop the `.asc` entries when
+  GPG signing is skipped, but `artifacts/SBOM.txt.asc` was a literal
+  path — `nullglob` only removes unmatched *patterns* — so
+  `gh release create` failed on the missing file for any fork
+  without the signing key. The entries are spelled as real globs
+  now.
+
+- **CST: the verbatim inserters are containment-guarded** (#221
+  sub-ask 5, completing what the structural oracle started in
+  v0.0.21). `insert_entry`'s new-key splice ran with no oracle at
+  all: a lone `U+000D` in the fragment — a YAML line break the
+  `\n`-only branch test never saw — escaped into sibling territory,
+  and a key was spliced verbatim. The key half is now a *name*:
+  `<<` and non-printables refuse, a non-plain-safe spelling is
+  quoted automatically (as `rename_key` documents), and the
+  existing-key check reads the mapping's own entries, so
+  `insert_entry("m", "a.b", …)` adds the literal `a.b` key instead
+  of resolving `m.a.b` through the path syntax and overwriting a
+  nested entry. The `guarded_insert` oracle additionally pins the
+  container's growth to exactly the one entry asked for —
+  `push_back("s", "v\n  - w")` appended two items entirely inside
+  the container, where the outside-shape check could not see them —
+  covering `insert_entry`, `push_back` and `insert_after`.
+
+- **Typed rejections from `from_str` now carry the source location**
+  (#356, #330). The streaming fast-path raises serde's own wording but
+  cannot say where; the AST path knows where but words it differently.
+  A failed streaming parse is now re-run through the span-aware path
+  and the caller sees the streaming message with the AST location.
+
+- **…and the field path** (#353). A rejection inside a nested value
+  prefixes its message with the path of the field it is about —
+  `server.port: invalid type: string "x", expected u16` — the way
+  `serde_yaml` reports it. Sequence indices are bracketed
+  (`a.groups[1].count`). Derived on the error path only, by walking
+  the parsed document once; errors at the root and errors from
+  `from_value` are unchanged, and `location()` is unaffected.
+
+- **Value/deserializer parity** (#360; #348, #349, #350, #351): `Number`'s `Display` agrees
+  with the serializer on floats; the null document deserializes into
+  an empty map or struct; a tagged scalar keeps its tag when `Value`
+  is reached through serde; and a multi-document stream is rejected
+  by the single-document entry points instead of silently returning
+  the first document.
+
+- **Emitter round-trip fixes** (#357; #345, #346, #347, #354, #355): plain scalars at dash and tab
+  boundaries are quoted; space-leading block scalars carry an
+  indentation indicator; `|+` block scalars no longer gain a newline
+  every round trip; `Value::Tagged` is emitted as a tagged value, not
+  a map keyed by the tag; `compact_list_indent` applies at every
+  depth; and a colon or hash is quoted only where YAML gives it
+  meaning.
+
+- **Digit-leading strings are written plain when they read back as
+  strings** (#358, #339): `2026-12-31`, `1.2.3` and `3rd` no longer
+  acquire quotes they never needed; anything that would read back as
+  a number (`42`, `1e3`, `007`, `0x1F`) stays quoted.
+
+- **CR, NEL, LS and PS force double-quoted style** (#362, #335), in
+  `to_string` and the CST writers both, spelled with their named
+  escapes (`\r`, `\N`, `\L`, `\P`). Any other style either normalises
+  them into ordinary line breaks or emits raw bytes that read back as
+  line breaks.
+
+- **CST: `set_value` with an equal value leaves the bytes alone**
+  (#363, #337). A no-op write no longer reformats the scalar it did not
+  change.
+
+- **CST: `remove` handles entries that share their line with a
+  sequence dash** (`- name: x`), and implicit-null items (#364,
+  #336).
+
+- **CST: `remove` of a merge-provided key refuses with an error
+  instead of panicking** (#340, #334). A key supplied by `<<:` owns no
+  bytes in the mapping it lands in.
+
+- **CST: `set_value` spells strings for flow context** (#343, #332).
+  Inside `[…]` / `{…}`, characters like `,` and `]` are structural
+  anywhere in a plain scalar, so replacement values are quoted under
+  the flow rules and flow edits re-parse the whole collection.
+
+- **CST: a new block literal keeps a trailing comment out of the
+  scalar** (#342, #333). Lifting `key: x  # note` into a multi-line literal
+  no longer swallows `# note` into the block's content.
+
+- **Scanner: a block scalar indicator inside a flow collection is
+  rejected** (#341, #331). `[|`, `{>` and friends are not valid YAML; they
+  now fail to parse instead of producing a surprising document.
+
+No breaking API change: both new flags are opt-in and default off.
+No MSRV change (still 1.86.0).
+
 ## [v0.0.28] - 2026-08-23
 
 Two CST and scanner correctness fixes, both about an *implicit null* —

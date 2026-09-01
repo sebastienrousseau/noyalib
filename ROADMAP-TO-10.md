@@ -44,7 +44,7 @@ unchanged.
 | **API / functionality** | 9 | 488 public fns; lossless CST editors incl. `set`/`insert`/`remove`/`rename_key`/`rename_anchor`/`swap_items`/`move_item`/`set_comment`/`remove_comment`; streaming; async | #221 **closed** in v0.0.23 — flow-member and sole-entry removal completed sub-ask 4; sub-ask 5 was resolved in v0.0.21 by a structural oracle rather than auto-quoting |
 | **Correctness / testing** | 9.5 | 161 test files, 5 961 tests, coverage gate (95 fn / 94 line / 93 region), Miri, differential fuzz vs saphyr | Fuzz is a PR smoke, not continuous; no structured fuzzers for the *editors*; property-test breadth uneven |
 | **Performance** | 9 | 16 benches, SIMD, `fast-int`/`fast-float`, `parallel` | No published numbers; no CI regression gate; no criterion baselines |
-| **Security / supply-chain** | 9 | cargo-vet, cargo-deny, cargo-audit, CodeQL, OSSF scorecard, REUSE 850/850, `unsafe` forbidden except `simd`; schema-validator hardening pinned by test (v0.0.21) | No SBOM artifact; no SLSA provenance; no OpenSSF badge; depth bound not caller-configurable; `build.rs` unaudited |
+| **Security / supply-chain** | 9 | cargo-vet, cargo-deny, cargo-audit, CodeQL, OSSF scorecard, REUSE 850/850, `unsafe` forbidden except `simd`; schema-validator hardening pinned by test (v0.0.21); SLSA L3 attestation + keyless sigstore in release.yml; `build.rs` contract CI-enforced (`build-script-contract`); CycloneDX SBOM signed + attested per release (v0.0.29); weekly `cargo hack --feature-powerset --depth 2` sweep (v0.0.29, found the `ariadne`-without-`std` break on day one) | No OpenSSF badge; the schema validator's recursion bound is the `jsonschema` crate's fixed 129 (pinned by test, not caller-configurable — upstream limitation; parser/serializer `max_depth` ARE caller-configurable). Earlier revisions of this row claimed no SBOM, no SLSA, unaudited `build.rs`, and an unconfigurable depth bound generally — all four were stale. |
 | **Documentation** | 9 | rustdoc-strict + broken-intra-doc-link gate, `USER-GUIDE.md`, ADRs, 79 examples | No docs.rs feature-matrix proof; no cookbook; no competitive comparison page |
 | **no_std / portability** | **10** | `no_std`+alloc; wasm32 and bare-metal `thumbv7em` / `riscv32imac` / `aarch64-unknown-none` build (v0.0.20) **and are gated in CI** (v0.0.21) | — |
 | **DX / ergonomics** | 8.5 | miette/ariadne diagnostics, typed path API, recovery | No derive helpers/builders; fix-hints not uniform across the error taxonomy |
@@ -65,13 +65,18 @@ unchanged.
   - **(4) Extended `remove`** — multi-line values, nested collections and
     nested sequence items *do* work. Sole entries and flow-collection
     members are refused; `remove_subtree` does not exist.
-  - **(5) Quoting-aware fragment emit** — the *`_value`* inserters
-    (`insert_entry_value`, `push_back_value`, `insert_after_value`) already
-    quote via `Emit`. The plain fragment mutators (`set`, `insert_entry`,
-    `push_back`) still splice verbatim, so a fragment containing `:` or a
-    leading `-` can restructure a document into something *valid but
-    different* — which the re-parse guard cannot catch. **This is the last
-    correctness hazard in the edit API.**
+  - **(5) Quoting-aware fragment emit** — **closed in v0.0.29.**
+    The *`_value`* inserters already quoted via `Emit`; `set` gained a
+    structural oracle in v0.0.21; and v0.0.29 closed the remainder:
+    `insert_entry` runs under the same oracle (its new-key splice was
+    entirely unguarded — a lone `U+000D` in the fragment escaped, and
+    the key half spliced verbatim), keys refuse `<<`/non-printables and
+    auto-quote like `rename_key`, and `guarded_insert` pins container
+    growth to exactly one entry, so `push_back("s", "v\n  - w")` can no
+    longer append two items *inside* the elided container. Pinned by
+    `tests/cst_insert_containment.rs`. The lesson from the v0.0.21
+    `remove` bug applied: every fast path now has an oracle, not an
+    intuition.
 - **#210 — bare-metal `no_std`.** **Closed in v0.0.20.**
 
 ### 2.2 Analysis-surfaced
@@ -90,9 +95,11 @@ unchanged.
   have removed either silently. **Fixed in v0.0.21** by
   `tests/schema_hardening.rs`, which pins both. An earlier revision of this
   roadmap claimed the bounds were missing; they were merely unguarded.
-- **`build.rs` unaudited.** Build scripts execute at compile time, before
-  any application code. 2026 supply-chain guidance treats them as a
-  first-class risk surface; ours has no documented contract.
+- **`build.rs` unaudited — stale; closed before this revision.** The
+  `build-script-contract` CI job greps the script for network /
+  filesystem / process capability and fails on any reach beyond its
+  documented contract (declare cfgs, read `$RUSTC --version`, read one
+  env var).
 - **Fuzzing is a PR smoke.** No corpus accretion, no continuous run, and
   no structured fuzzers for the editors — only the parser is differentially
   fuzzed against saphyr.

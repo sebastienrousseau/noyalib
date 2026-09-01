@@ -2736,9 +2736,20 @@ fn test_tagged_value_deserialize() {
 
 #[test]
 fn test_tagged_value_roundtrip() {
+    // Refs #350 (serializer half): `to_string` now emits a `TaggedValue`
+    // as a real YAML tag scalar (`!mytype 42`), not the old
+    // single-entry-map wire form (`"!mytype": 42`) that only
+    // `TaggedValue::deserialize` understood. Reparse through `Value`
+    // (which understands both the tag-scalar shape and the map shape)
+    // instead of `from_str::<TaggedValue>`, which still only accepts a
+    // map -- the deserializer-side follow-up for #350 is tracked
+    // separately.
     let original = TaggedValue::new(Tag::new("!mytype"), Value::from(42));
     let yaml = to_string(&original).unwrap();
-    let deserialized: TaggedValue = from_str(&yaml).unwrap();
+    let deserialized: Value = from_str(&yaml).unwrap();
+    let Value::Tagged(deserialized) = deserialized else {
+        panic!("expected a Value::Tagged, got {deserialized:?}");
+    };
     assert_eq!(deserialized.tag(), original.tag());
 }
 

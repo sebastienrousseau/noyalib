@@ -60,10 +60,31 @@ pub struct SpanContext {
 #[cfg(feature = "std")]
 mod tls {
     use super::{RefCell, SpanContext};
+    use core::cell::Cell;
 
     thread_local! {
         pub(super) static SPAN_CONTEXT: RefCell<Option<SpanContext>> = const { RefCell::new(None) };
+        /// Address of the `Value` node whose typed rejection
+        /// `Deserializer::wrap_err` most recently located (refs #353).
+        /// `from_str` reads it after a failed deserialize to derive the
+        /// field path (`server.port`) by walking the root value; a
+        /// success consumes and discards it, so a rejection swallowed
+        /// mid-parse (untagged-enum probing) cannot leak into the next
+        /// document's error.
+        pub(super) static ERROR_NODE: Cell<Option<usize>> = const { Cell::new(None) };
     }
+}
+
+/// Record the address of the node whose error `wrap_err` just wrapped.
+#[cfg(feature = "std")]
+pub(crate) fn record_error_node(addr: usize) {
+    tls::ERROR_NODE.with(|cell| cell.set(Some(addr)));
+}
+
+/// Take (and clear) the most recently recorded failing-node address.
+#[cfg(feature = "std")]
+pub(crate) fn take_error_node() -> Option<usize> {
+    tls::ERROR_NODE.with(core::cell::Cell::take)
 }
 
 /// RAII guard that owns the span context and clears the thread-local on
@@ -87,6 +108,10 @@ impl Drop for SpanContextGuard {
         tls::SPAN_CONTEXT.with(|cell| {
             *cell.borrow_mut() = None;
         });
+        // A rejection created and then swallowed during this parse
+        // (untagged-enum probing that ultimately succeeded) must not
+        // survive into the next parse's error handling.
+        tls::ERROR_NODE.with(|cell| cell.set(None));
     }
 }
 

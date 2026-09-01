@@ -44,6 +44,10 @@
 //! ```
 
 use crate::error::{Error, Result};
+// Via the prelude, not `std`: `schema` without `std` is a valid
+// combination (schemars and serde_json both build on alloc), checked
+// by the weekly feature-powerset sweep.
+use crate::prelude::{Cow, String, format};
 use crate::value::Value;
 
 /// Re-export of the `schemars` derive macro and trait. Deriving
@@ -181,12 +185,12 @@ pub fn schema_for_yaml<T: JsonSchema>() -> Result<String> {
 /// assert!(matches!(schema["properties"]["payload"], Value::Mapping(_)));
 /// ```
 impl JsonSchema for Value {
-    fn schema_name() -> std::borrow::Cow<'static, str> {
-        std::borrow::Cow::Borrowed("YamlValue")
+    fn schema_name() -> Cow<'static, str> {
+        Cow::Borrowed("YamlValue")
     }
 
-    fn schema_id() -> std::borrow::Cow<'static, str> {
-        std::borrow::Cow::Borrowed("noyalib::Value")
+    fn schema_id() -> Cow<'static, str> {
+        Cow::Borrowed("noyalib::Value")
     }
 
     fn json_schema(_generator: &mut schemars::SchemaGenerator) -> schemars::Schema {

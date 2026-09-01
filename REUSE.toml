@@ -128,6 +128,13 @@ precedence = "aggregate"
 SPDX-FileCopyrightText = "2026 Noyalib"
 SPDX-License-Identifier = "MIT OR Apache-2.0"
 
+# ── Test fixtures (JSON cannot carry comment headers) ─────────────
+[[annotations]]
+path = ["crates/noyalib/tests/fixtures/**"]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 Noyalib"
+SPDX-License-Identifier = "MIT OR Apache-2.0"
+
 # ── Fuzz corpora ──────────────────────────────────────────────────
 [[annotations]]
 path = [

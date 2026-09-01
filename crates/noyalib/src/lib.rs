@@ -212,11 +212,12 @@
 //! | `minimal` | ⛔ | — | meta-alias for `std` only (drops the three above) | `std` |
 //! | `miette` | ⛔ | `miette 7` | rich terminal diagnostics | — |
 //! | `schema` | ⛔ | `schemars`, `serde_json` | [`schema_for`] / [`schema_for_yaml`] **+** consumer must also depend on `schemars = "1.2"` to derive [`JsonSchema`] | — |
-//! | `validate-schema` | ⛔ | `schema` + `jsonschema` | [`validate_against_schema`], [`coerce_to_schema`] | `schema` |
+//! | `validate-schema` | ⛔ | `schema` + `jsonschema` | [`validate_against_schema`], [`coerce_to_schema`], [`CompiledSchema`] | `schema` |
 //! | `figment` | ⛔ | `figment 0.10` | [`figment::Yaml`](crate::figment) Provider | `std` |
 //! | `garde` | ⛔ | `garde 0.22` | [`Validated<T>`] | — |
 //! | `validator` | ⛔ | `validator 0.19` | [`ValidatedValidator<T>`] | — |
-//! | `robotics` | ⛔ | — | `Degrees` / `Radians` / `StrictFloat` newtypes | — |
+//! | `lossless-float` | ⛔ | — | [`lossless_float::LosslessFloat`] — refuse-to-lose-precision float, the floating-point sibling of `lossless-u64` | — |
+//! | `robotics` | ⛔ | — | **deprecated** (one release): aliases into `lossless-float` plus the leaving `Degrees` / `Radians` newtypes | `lossless-float` |
 //! | `parallel` | ⛔ | `rayon 1.10` | [`parallel::parse`], [`parallel::values`] | `std` |
 //! | `simd` | ⛔ | — | forward-compat no-op — `noyalib::simd::*` is always available; the hot path uses it unconditionally | — |
 //! | `nightly-simd` | ⛔ | nightly rustc | 32-byte `StructuralIter` | `simd` |
@@ -550,6 +551,12 @@ mod flattened;
 pub mod fmt;
 /// Key interning for memory-efficient repeated-key workloads.
 pub mod interner;
+/// A float that refuses to silently lose information (requires
+/// `lossless-float` feature) — the floating-point sibling of
+/// `lossless-u64`.
+#[cfg(feature = "lossless-float")]
+#[cfg_attr(docsrs, doc(cfg(feature = "lossless-float")))]
+pub mod lossless_float;
 /// Parallel multi-document YAML parsing via Rayon. Gated by the
 /// `parallel` feature.
 #[cfg(feature = "parallel")]
@@ -564,7 +571,11 @@ pub mod policy;
 #[cfg(feature = "recovery")]
 #[cfg_attr(docsrs, doc(cfg(feature = "recovery")))]
 pub mod recovery;
-/// Robotics and scientific numeric types (requires `robotics` feature).
+/// Deprecated (one release): aliases into [`lossless_float`] plus the
+/// leaving `Degrees` / `Radians` unit newtypes (requires `robotics`
+/// feature, itself deprecated). Every item inside carries its own
+/// `#[deprecated]`; the module itself does not, because a module-level
+/// deprecation also fires on the module's own internals.
 #[cfg(feature = "robotics")]
 #[cfg_attr(docsrs, doc(cfg(feature = "robotics")))]
 pub mod robotics;
@@ -627,9 +638,9 @@ pub use anchors::{ArcRecursion, ArcRecursive, RcRecursion, RcRecursive};
 pub use comments::{Comment, CommentKind, load_comments};
 pub use de::RequireIndent;
 pub use de::{
-    Deserializer, DuplicateKeyPolicy, MergeKeyPolicy, ParserConfig, YamlVersion, from_slice,
-    from_slice_with_config, from_str, from_str_borrowing, from_str_borrowing_with_config,
-    from_str_with_config, from_value,
+    Deserializer, DuplicateKeyPolicy, MergeKeyPolicy, NonScalarKeyPolicy, ParserConfig,
+    YamlVersion, from_slice, from_slice_with_config, from_str, from_str_borrowing,
+    from_str_borrowing_with_config, from_str_with_config, from_value,
 };
 #[cfg(feature = "std")]
 pub use de::{from_reader, from_reader_with_config};
@@ -651,7 +662,10 @@ pub use schema::{
 pub use schema_codegen::{JsonSchema, schema_for, schema_for_yaml};
 #[cfg(feature = "validate-schema")]
 #[cfg_attr(docsrs, doc(cfg(feature = "validate-schema")))]
-pub use schema_validate::{coerce_to_schema, validate_against_schema, validate_against_schema_str};
+pub use schema_validate::{
+    CompiledSchema, CompiledSchemaBuilder, SchemaViolation, coerce_to_schema,
+    validate_against_schema, validate_against_schema_str,
+};
 pub use ser::{
     FlowStyle, ScalarStyle, Serializer, SerializerConfig, to_fmt_writer, to_fmt_writer_with_config,
     to_string, to_string_multi, to_string_multi_with_config, to_string_value,

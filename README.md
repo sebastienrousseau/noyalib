@@ -62,7 +62,7 @@
 
 ```toml
 [dependencies]
-noyalib = "0.0.28"
+noyalib = "0.0.29"
 ```
 
 ### As a CLI tool
@@ -106,7 +106,7 @@ maintainer runbook.
 
 ```toml
 [dependencies]
-noyalib = { version = "0.0.28", default-features = false }
+noyalib = { version = "0.0.29", default-features = false }
 ```
 
 Requires `alloc`. Core data binding (`from_str`, `to_string`, `Value`,
@@ -176,14 +176,15 @@ the application needs.
 | `figment` | `figment` 0.10 | `noyalib::figment::Yaml` provider | `examples/figment.rs` |
 | `garde` | `garde` 0.22 | `Validated<T>` wrapper | `examples/validation_garde.rs` |
 | `validator` | `validator` 0.19 | `ValidatedValidator<T>` wrapper | `examples/validation_validator.rs` |
-| `robotics` | — | `Degrees`, `Radians`, `StrictFloat` newtypes | `examples/robotics_polymorphism.rs` |
+| `lossless-float` | — | `LosslessFloat` — refuse-to-lose-precision float, the floating-point sibling of `lossless-u64` | — |
+| `robotics` | — | **deprecated** (one release): aliases into `lossless-float`; `Degrees`/`Radians` leave with it | `examples/robotics_polymorphism.rs` |
 | `parallel` | `rayon` 1.10 | `noyalib::parallel::parse<T>` for `---`-separated streams | [Benchmarks](#benchmarks) |
 | `recovery` | — | `noyalib::recovery::parse_lenient` — best-effort tree + error list for LSP / IDE half-typed documents | `examples/recovery_lenient.rs`, `benches/v006_features.rs` |
 | `sval` | `sval` 2 | `impl sval::Value` for `Value` / `Number` / `Mapping` / `MappingAny` / `TaggedValue`, `noyalib::sval_adapter::to_sval_writer` | `examples/sval_streaming.rs`, `benches/v006_features.rs` |
 | `tokio` | `tokio`, `tokio-util`, `bytes` | `noyalib::tokio_async::from_async_reader` / `from_async_reader_multi` and `YamlDecoder` codec for `tokio_util::codec::Framed` pipelines | `examples/tokio_async_reader.rs`, `benches/v006_features.rs` |
 | `simd` | — | Forward-compat no-op — `noyalib::simd::*` is always available and the parser hot path uses it unconditionally | [Benchmarks](#benchmarks) |
 | `nightly-simd` | `simd` (nightly toolchain) | `core::simd`-backed `StructuralIter` (32-byte chunks) | [Benchmarks](#benchmarks) |
-| `compat-serde-yaml` | — | `noyalib::compat::serde_yaml` shim for migration | [When not to use noyalib](#when-not-to-use-noyalib) |
+| `compat-serde-yaml` | — | **behavioural** `serde_yaml` 0.9 shim (values, error text, and locations pinned by the live-captured 18-case contract suite); `noyalib-serde-yaml` packages it as a Cargo package-rename drop-in | [When not to use noyalib](#when-not-to-use-noyalib) |
 | `lossless-u64` | — | `Number::Unsigned(u64)` plus opt-in parser/serializer config for scalars in `(i64::MAX, u64::MAX]` | [`doc/adr/0004-lossless-u64-integers.md`](doc/adr/0004-lossless-u64-integers.md), `examples/lossless_u64.rs`, `benches/lossless_u64.rs` |
 | `compare-saphyr` | `serde-saphyr` *(dev only)* | Cross-library bench comparison arms | `benches/comparison.rs` |
 | `wasm-opt` | — | Build-time flag opting the `noyalib-wasm` bundle into `wasm-opt` size passes (no API surface) | [`sebastienrousseau/noyalib-wasm`](https://github.com/sebastienrousseau/noyalib-wasm) |
@@ -192,7 +193,7 @@ the application needs.
 ```toml
 # Example: rich diagnostics + schema validation
 [dependencies]
-noyalib = { version = "0.0.28", features = ["miette", "validate-schema"] }
+noyalib = { version = "0.0.29", features = ["miette", "validate-schema"] }
 ```
 
 **Optional features:** `lossless-u64` preserves YAML integer scalars above
@@ -338,7 +339,7 @@ tables for each.
 -[dependencies]
 -serde_yaml = "0.9"
 +[dependencies]
-+noyalib = "0.0.28"
++noyalib = "0.0.29"
 ```
 
 ```diff
@@ -367,10 +368,23 @@ tables for each.
 | (n/a) | `noyalib::Spanned<T>` — source-location wrapper |
 | (n/a) | `noyalib::cst::Document` — lossless byte-faithful edits |
 
-If your call sites can't change at all, enable
+If your call sites can't change at all, rename the package in
+`Cargo.toml` and change **zero source lines**:
+
+```toml
+serde_yaml = { package = "noyalib-serde-yaml", version = "=0.0.29" }
+```
+
+or depend on noyalib directly with
 `features = ["compat-serde-yaml"]` and replace `use serde_yaml`
-with `use noyalib::compat::serde_yaml` — every type is
-noyalib-native, no transitive dep on the archived upstream.
+with `use noyalib::compat::serde_yaml`. Either way the shim is
+**behavioural** since v0.0.29: `<<` stays a literal key, `0123`
+stays a string, `u64::MAX` keeps precision, alias bombs fail with
+upstream's `repetition limit exceeded`, and the pinned error
+classes carry libyaml's phrasing and locations — verified by an
+18-case contract suite captured live from `serde_yaml 0.9.34`.
+Every type is noyalib-native; no transitive dep on the archived
+upstream.
 
 ### Coming from a different YAML crate?
 
@@ -1291,7 +1305,7 @@ cargo run --example all
 | | `validation_garde` | Declarative validation through `garde` + `Validated<T>` |
 | | `validation_validator` | Declarative validation through `validator` + `ValidatedValidator<T>` |
 | | `diagnostic_path` | `serde_path_to_error` — pinpoint the offending nested key |
-| | `robotics_polymorphism` | Tagged-enum dispatch with `Degrees` / `Radians` / `StrictFloat` |
+| | `robotics_polymorphism` | Tagged-enum dispatch with the deprecated `robotics` compat surface (final release) |
 
 </details>
 
@@ -1320,7 +1334,7 @@ disagreement on priorities.
 - **You have a hard dependency budget that cannot tolerate a
   Grisu / Ryu float formatter and a hash-randomised lookup
   table.** Default profile carries 8 runtime deps. `noyalib =
-  { version = "0.0.28", default-features = false, features =
+  { version = "0.0.29", default-features = false, features =
   ["std"] }` (or the equivalent `features = ["minimal"]`) drops
   to 5 — `itoa`, `ryu`, and `serde_ignored` become opt-in via
   the `fast-int` / `fast-float` / `strict-deserialise` features.

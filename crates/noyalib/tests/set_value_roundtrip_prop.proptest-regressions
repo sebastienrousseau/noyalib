@@ -1,0 +1,9 @@
+# SPDX-FileCopyrightText: 2026 Noyalib
+# SPDX-License-Identifier: MIT OR Apache-2.0
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 9b2392a1c237ab1ceb3c1bb2538810b30d4bea32b834c6039dde5233fe6f9393 # shrinks to s = "\u{feff}"

@@ -1141,6 +1141,16 @@ impl<'a> Scanner<'a> {
             b'!' => self.fetch_tag(),
             b'|' if self.flow_level == 0 => self.fetch_block_scalar(true),
             b'>' if self.flow_level == 0 => self.fetch_block_scalar(false),
+            // `|` and `>` are indicators (YAML 1.2 §5.3), so neither can
+            // begin a plain scalar (§7.3.3, `ns-plain-first`), and block
+            // scalars exist only in block context (§8.1). Inside `[…]` /
+            // `{…}` the byte used to fall through to `fetch_plain_scalar`,
+            // which read `|-` and the folded lines as one plain string
+            // (#331). Mid-scalar `|` / `>` never reach this dispatch: the
+            // plain-scalar fetcher consumes them as ordinary characters.
+            b'|' | b'>' => Err(self.error(
+                "block scalar indicator (`|` or `>`) is not allowed inside a flow collection",
+            )),
             b'\'' => self.fetch_quoted_scalar(false),
             b'"' => self.fetch_quoted_scalar(true),
             b'%' if self.column() == 0 => self.fetch_directive(),
@@ -1148,6 +1158,22 @@ impl<'a> Scanner<'a> {
             0xEF if self.pos == 0 && self.peek_at(1) == 0xBB && self.peek_at(2) == 0xBF => {
                 self.advance_by(3);
                 Ok(())
+            }
+            // A BOM anywhere else is an error, not content (§5.2: "a
+            // BOM must not appear inside a document"). Treating it as
+            // the first character of a plain scalar produced a value
+            // the serializer wrote back unquoted — on re-parse the
+            // leading BOM was stream-skipped and the rest of the
+            // scalar reinterpreted as markup (found by fuzz_roundtrip
+            // on `\u{feff}\n\u{feff}*'`).
+            0xEF if self.peek_at(1) == 0xBB && self.peek_at(2) == 0xBF => Err(self.error(
+                "byte order mark inside the stream — a BOM is only allowed at the very start",
+            )),
+            // §5.10: `@` and `` ` `` are reserved indicators — "must
+            // not be used to start a plain scalar" (found by the
+            // serde_yaml parity fuzzer; libyaml rejects them too).
+            b'@' | b'`' => {
+                Err(self.error("reserved indicator ('@' or '`') cannot start a plain scalar"))
             }
             _ => self.fetch_plain_scalar(),
         }
@@ -1964,7 +1990,12 @@ impl<'a> Scanner<'a> {
         let suffix: Cow<'a, str>;
 
         if self.peek() == b'<' {
-            // Verbatim tag: !<...>
+            // Verbatim tag: !<...>. The spec allows `ns-uri-char+`
+            // between the brackets; enforcing the character class down
+            // to the URI grammar would reject benign real-world tags,
+            // but the *control* range must go: an accepted `\n`, NUL or
+            // DEL round-trips into emitted YAML that no longer parses
+            // (found by fuzz_roundtrip on `!<\x7f…\t>`).
             handle = Cow::Borrowed("!");
             self.advance(); // skip '<'
             let start = self.pos;
@@ -1972,7 +2003,19 @@ impl<'a> Scanner<'a> {
                 if self.pos - start > MAX_TAG_LEN {
                     return Err(self.error("tag URI exceeds maximum length of 1024 bytes"));
                 }
+                let b = self.peek();
+                if b < 0x20 || b == 0x7f {
+                    return Err(self.error(
+                        "verbatim tag contains a control character — tag URIs are \
+                         limited to printable characters",
+                    ));
+                }
                 self.advance();
+            }
+            if self.pos == start {
+                // `c-verbatim-tag ::= "!" "<" ns-uri-char+ ">"` — one
+                // or more.
+                return Err(self.error("verbatim tag must not be empty (`!<>`)"));
             }
             suffix = Cow::Borrowed(self.slice_str(start, self.pos));
             if self.peek() == b'>' {
@@ -1993,6 +2036,20 @@ impl<'a> Scanner<'a> {
             {
                 if self.pos - start > MAX_TAG_LEN {
                     return Err(self.error("tag suffix exceeds maximum length of 1024 bytes"));
+                }
+                let b = self.peek();
+                if b < 0x20 || b == 0x7f {
+                    return Err(self.error(
+                        "tag suffix contains a control character — tags are limited \
+                         to printable characters",
+                    ));
+                }
+                if b == b'>' {
+                    // Not a `ns-uri-char`, and unrepresentable in the
+                    // verbatim `!<...>` spelling the serializer falls
+                    // back to for shorthand-unsafe tags (found by
+                    // fuzz_roundtrip on `!!)!)>!`).
+                    return Err(self.error("tag suffix contains `>` — not a URI character"));
                 }
                 self.advance();
             }
@@ -2018,6 +2075,20 @@ impl<'a> Scanner<'a> {
                 }
                 if self.pos - start > MAX_TAG_LEN {
                     return Err(self.error("tag suffix exceeds maximum length of 1024 bytes"));
+                }
+                let b = self.peek();
+                if b < 0x20 || b == 0x7f {
+                    return Err(self.error(
+                        "tag suffix contains a control character — tags are limited \
+                         to printable characters",
+                    ));
+                }
+                if b == b'>' {
+                    // Not a `ns-uri-char`, and unrepresentable in the
+                    // verbatim `!<...>` spelling the serializer falls
+                    // back to for shorthand-unsafe tags (found by
+                    // fuzz_roundtrip on `!!)!)>!`).
+                    return Err(self.error("tag suffix contains `>` — not a URI character"));
                 }
                 self.advance();
             }

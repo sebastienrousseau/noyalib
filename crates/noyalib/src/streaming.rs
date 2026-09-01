@@ -932,6 +932,19 @@ impl<'de> serde_core::Deserializer<'de> for &mut StreamingDeserializer<'de> {
                             Cow::Owned(s) => visitor.visit_string(s),
                         };
                     }
+                    // Opt-in (refs #344,
+                    // `ParserConfig::plain_scalar_strings`): a `String`
+                    // target receives a plain scalar's literal text
+                    // unchanged, even where the resolver below would
+                    // classify it as a number, bool, or null. Off by
+                    // default — see the non-string-scalar refusal a
+                    // few lines down, which is the historical contract.
+                    if self.config.plain_scalar_strings {
+                        return match value {
+                            Cow::Borrowed(s) => visitor.visit_borrowed_str(s),
+                            Cow::Owned(s) => visitor.visit_string(s),
+                        };
+                    }
                     match value {
                         Cow::Borrowed(s) => match self.resolve_scalar(s, style) {
                             Scalar::Str(Cow::Borrowed(b)) => visitor.visit_borrowed_str(b),
@@ -969,6 +982,24 @@ impl<'de> serde_core::Deserializer<'de> for &mut StreamingDeserializer<'de> {
         V: serde_core::de::Visitor<'de>,
     {
         self.deserialize_str(visitor)
+    }
+
+    fn deserialize_char<V>(self, visitor: V) -> Result<V::Value>
+    where
+        V: serde_core::de::Visitor<'de>,
+    {
+        // Opt-in (refs #344): with `plain_scalar_strings` on, `char`'s
+        // `Visitor` accepts a one-character string via `visit_str`
+        // (falling back from `visit_char`), so routing through
+        // `deserialize_str` gives it the same literal-text treatment
+        // as a `String` target — a single-digit plain scalar is a
+        // valid one-character string. Off by default: fall back to
+        // `deserialize_any`, the historical (`forward_to_deserialize_any`)
+        // behaviour.
+        if self.config.plain_scalar_strings {
+            return self.deserialize_str(visitor);
+        }
+        self.deserialize_any(visitor)
     }
 
     fn deserialize_option<V>(self, visitor: V) -> Result<V::Value>
@@ -1075,6 +1106,17 @@ impl<'de> serde_core::Deserializer<'de> for &mut StreamingDeserializer<'de> {
         V: serde_core::de::Visitor<'de>,
     {
         self.skip_to_content()?;
+        // An empty / whitespace-only / comment-only document never opens
+        // a document at all — after `skip_to_content` the very next event
+        // is `StreamEnd`, with no `Scalar` to resolve. Treat it as the
+        // null document's "no entries" the same way the `Scalar` arm
+        // below handles an explicit `---` with nothing after it. Peeked,
+        // not consumed: the top-level drain loop in `from_str_streaming`
+        // expects to see `StreamEnd` itself once deserialisation is done.
+        // See #349.
+        if matches!(self.peek_event()?, Event::StreamEnd) {
+            return visitor.visit_map(crate::de::EmptyMapAccess);
+        }
         // Tagged mappings route through the AST fallback so the tag is
         // preserved on the resulting `Value::Tagged(...)`. The registry
         // opts a specific tag out of that behaviour.
@@ -1084,27 +1126,38 @@ impl<'de> serde_core::Deserializer<'de> for &mut StreamingDeserializer<'de> {
                 return Err(self.fallback());
             }
         }
-        if let Event::MappingStart { .. } = self.next_event()? {
-            self.depth += 1;
-            if self.depth > self.config.max_depth {
-                return Err(Error::RecursionLimitExceeded { depth: self.depth });
+        match self.next_event()? {
+            Event::MappingStart { .. } => {
+                self.depth += 1;
+                if self.depth > self.config.max_depth {
+                    return Err(Error::RecursionLimitExceeded { depth: self.depth });
+                }
+                let res = visitor.visit_map(StreamingMapAccess {
+                    de: self,
+                    finished: false,
+                    has_emitted_key: false,
+                    key_count: 0,
+                    seen_keys: FxHashSet::default(),
+                    seen_typed: FxHashMap::default(),
+                });
+                // Decrement on Ok and Err (issue #46).
+                self.depth = self.depth.saturating_sub(1);
+                res
             }
-            let res = visitor.visit_map(StreamingMapAccess {
-                de: self,
-                finished: false,
-                has_emitted_key: false,
-                key_count: 0,
-                seen_keys: FxHashSet::default(),
-                seen_typed: FxHashMap::default(),
-            });
-            // Decrement on Ok and Err (issue #46).
-            self.depth = self.depth.saturating_sub(1);
-            res
-        } else {
-            Err(Error::TypeMismatch {
+            // A bare `---` with nothing after it resolves to an implicit
+            // null scalar — the same null document as the truly-empty
+            // case above, just with an explicit document marker. Mirrors
+            // the AST path's `Value::Null` arm in `de::deserializer`.
+            // See #349.
+            Event::Scalar { value, style, .. }
+                if matches!(self.resolve_scalar(&value, style), Scalar::Null) =>
+            {
+                visitor.visit_map(crate::de::EmptyMapAccess)
+            }
+            _ => Err(Error::TypeMismatch {
                 expected: "mapping",
                 found: "other".into(),
-            })
+            }),
         }
     }
 
@@ -1275,7 +1328,7 @@ impl<'de> serde_core::Deserializer<'de> for &mut StreamingDeserializer<'de> {
     }
 
     serde_core::forward_to_deserialize_any! {
-        i8 i16 i32 u8 u16 u32 f32 char
+        i8 i16 i32 u8 u16 u32 f32
         tuple tuple_struct
     }
 }
@@ -1735,10 +1788,16 @@ where
             // fetched. Stop *at* `StreamEnd` (querying past it would
             // return a benign "parser has already finished" error);
             // propagate any error encountered before that.
+            //
+            // A second `DocumentStart` here means the stream carries more
+            // than one document — `from_str`/`from_str_with_config` only
+            // support exactly one (`from_str_multi` is the multi-document
+            // entry point). See #351.
             loop {
                 match de.next_event() {
                     Ok(Event::StreamEnd) => break,
                     Ok(Event::DocumentEnd | Event::StreamStart) => continue,
+                    Ok(Event::DocumentStart) => return Some(Err(Error::MoreThanOneDocument)),
                     Ok(_) => break,
                     Err(e) => return Some(Err(e)),
                 }

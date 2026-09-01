@@ -1,6 +1,6 @@
 [package]
 name = "noyalib"
-version = "0.0.28"
+version = "0.0.29"
 edition = "2024"
 rust-version = "1.86.0"
 license = "MIT OR Apache-2.0"
@@ -234,6 +234,11 @@ path = "examples/flattened.rs"
 [[example]]
 name = "schema_validation"
 path = "examples/schema_validation.rs"
+required-features = ["validate-schema"]
+
+[[example]]
+name = "schema_compiled"
+path = "examples/schema_compiled.rs"
 required-features = ["validate-schema"]
 
 [[example]]
@@ -557,9 +562,22 @@ std = [
     "rustc-hash/std",
     "memchr/std",
 ]
-miette = ["dep:miette"]
+# `miette` 7 requires `std` (its `Diagnostic` supertrait is
+# `std::error::Error`), so the feature implies it — the combination
+# `--no-default-features --features miette` never compiled without
+# this, caught by the feature-powerset sweep.
+miette = ["dep:miette", "std"]
 ariadne = ["dep:ariadne"]
-robotics = ["dep:serde"]
+# Opt-in `LosslessFloat` — deserialization rejects infinities, NaN,
+# and any value that loses precision as f64; the floating-point
+# sibling of `lossless-u64`. Needs nothing beyond the mandatory
+# `serde_core`.
+lossless-float = []
+# Deprecated (one release, since 0.0.29): the former home of
+# `StrictFloat` (renamed to `lossless_float::LosslessFloat`) plus the
+# `Degrees`/`Radians` unit newtypes, which leave the crate next
+# release. `dep:serde` is only needed for the leaving types' derives.
+robotics = ["lossless-float", "dep:serde"]
 # `!include` directive — post-parse walk that consults a
 # user-supplied `crate::include::IncludeResolver` for every
 # `Value::Tagged(!include, _)` node and substitutes the
@@ -580,7 +598,9 @@ noyavalidate = ["std", "miette", "miette/fancy", "validate-schema"]
 # every type the shim exposes is a noyalib-native type, not a
 # re-export of the archived upstream crate. Off by default so users
 # who do not need migration help do not see the extra surface.
-compat-serde-yaml = []
+# The shim needs `lossless-u64` for its integer-precision contract
+# (`u64::MAX` survives the serde_json path exactly, as upstream).
+compat-serde-yaml = ["lossless-u64"]
 # Opt-in unsigned integer model for YAML `!!int` scalars in the
 # `i64::MAX + 1..=u64::MAX` range. Dependency-free; off by default
 # because it exposes an additional public `Number` variant.
@@ -675,6 +695,9 @@ unexpected_cfgs = { level = "warn", check-cfg = [
     'cfg(noyalib_nightly)',
     'cfg(noyalib_coverage)',
     'cfg(docsrs)',
+    # `cargo kani` compiles with `--cfg kani`; the proof harnesses in
+    # `simd.rs` live behind it and are invisible to ordinary builds.
+    'cfg(kani)',
 ] }
 missing_copy_implementations = "warn"
 missing_docs = "warn"
