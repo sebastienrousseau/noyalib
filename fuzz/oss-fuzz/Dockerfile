@@ -17,7 +17,13 @@
 #
 ################################################################################
 
-FROM gcr.io/oss-fuzz-base/base-builder-rust
+# Digest-pinned in THIS repo's copy (OpenSSF Scorecard
+# Pinned-Dependencies); the copy submitted to google/oss-fuzz stays
+# tag-based per their policy: OSS-Fuzz rebuilds base images
+# continuously and requires projects to track them. Refresh the digest
+# when re-syncing with upstream:
+#   docker buildx imagetools inspect gcr.io/oss-fuzz-base/base-builder-rust
+FROM gcr.io/oss-fuzz-base/base-builder-rust@sha256:433319ea1a6bbea6c1db1915a5d385021908cc62026d9f0efda2270ef6060de3
 RUN git clone --depth 1 https://github.com/sebastienrousseau/noyalib noyalib
 WORKDIR noyalib
 COPY build.sh $SRC/
