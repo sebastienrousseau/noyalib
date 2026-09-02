@@ -39,6 +39,23 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Fixed
 
+- **`Spanned<T>` and error locations for tagged/anchored nodes now
+  anchor at the node's properties** (`!tag` / `&anchor`), not at the
+  content — a node's span includes its properties, matching
+  serde_yaml/libyaml marks. This closes the final partial in the
+  18-case serde_yaml contract: `custom-explicit-tag` now reports
+  `1:8:7` / Display column 8 exactly as upstream, the pin
+  Takazudo/zudo-front-builder#2755 names as its re-evaluation
+  trigger. CST reads and edits are unaffected: `resolve_span`
+  strips leading property tokens back to the content, so
+  `set_value` never splices over an anchor and `span_at` semantics
+  are unchanged. Two of zfb's protected assertions are also ported
+  as contract pins: the EOF one-past-the-flow-sequence location
+  convention (single- and multi-line) and the column-counts-
+  characters / index-counts-bytes contract their UTF-16 conversion
+  depends on.
+
+
 - `fuzz_no_span_loader` now encodes the documented v0.0.29
   asymmetry from #351: `from_str` refuses a multi-document stream
   while `cst::parse_document` reads the first document — that
