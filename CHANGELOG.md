@@ -35,6 +35,18 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   `CITATION.cff`, and `AGENTS.md` stating the invariants an
   AI-assisted contribution must respect.
 
+### Fixed
+
+- **A comment edit can no longer break the document** (found by
+  `fuzz_editors` the moment the v0.0.31 branch ran it): comment text
+  containing a carriage return ended the comment token in YAML, so
+  the remainder leaked into the document. `set_comment` now refuses
+  line-breaking text (inline comments take a single line; `Before`
+  still splits on `\n` by documented design) and leaves the
+  document byte-identical. The `-0b0` differential finding is
+  pinned spec-side: YAML 1.2 has no binary resolution, the compat
+  shim keeps the 1.1 reading.
+
 ### Changed
 
 - **Repository layout, Phase 1 of the structure plan.** `doc/` is

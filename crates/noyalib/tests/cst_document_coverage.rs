@@ -1112,14 +1112,12 @@ fn set_comment_refuses_line_breaking_text() {
     ] {
         let mut doc = parse_document(src).unwrap();
         let err = doc.set_comment("z", pos, text).expect_err("must refuse");
-        assert!(
-            err.to_string().contains("line break"),
-            "wrong error: {err}"
-        );
+        assert!(err.to_string().contains("line break"), "wrong error: {err}");
         assert_eq!(doc.to_string(), src, "document must be unchanged");
     }
     // Multi-line Before text via `\n` stays supported by design.
     let mut doc = parse_document(src).unwrap();
-    doc.set_comment("z", CommentPosition::Before, "a\nb").unwrap();
+    doc.set_comment("z", CommentPosition::Before, "a\nb")
+        .unwrap();
     assert_eq!(doc.to_string(), "# a\n# b\nz: 1\n");
 }
