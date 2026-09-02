@@ -358,3 +358,16 @@ fn anchor_name_may_contain_colon() {
     let v: Value = from_str("&a: 1").unwrap();
     assert_eq!(v.as_i64(), Some(1));
 }
+
+#[test]
+fn signed_binary_literal_is_a_string_in_yaml_12() {
+    // Found by fuzz_diff (input `-0b0`): serde_yaml_ng resolves the
+    // YAML 1.1 binary form with a sign to the integer 0. YAML 1.2's
+    // core schema has no `0b` binary resolution at all, so noyalib
+    // reads a plain string. The compat shim opts back into the 1.1
+    // reading (`-0b101` is -5 there), pinned by the contract suite.
+    let v: Value = from_str("-0b0").unwrap();
+    assert_eq!(v.as_str(), Some("-0b0"));
+    let v: Value = from_str("0b11").unwrap();
+    assert_eq!(v.as_str(), Some("0b11"));
+}

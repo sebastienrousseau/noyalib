@@ -532,6 +532,25 @@ impl Document {
         position: CommentPosition,
         text: &str,
     ) -> Result<()> {
+        // A comment body cannot contain a line break: a bare `\r` (or
+        // `\r\n`) ends the comment token in YAML, so the remainder of
+        // the text would land *outside* the comment and change — or
+        // break — the document (found by fuzz_editors: an inline text
+        // of "t[[\r---" split the document in two). `Before` accepts
+        // `\n` by documented design (one `#` line per line) but the
+        // same carriage-return breakout applies to each line.
+        let breaking = match position {
+            CommentPosition::Inline => text.contains('\n') || text.contains('\r'),
+            CommentPosition::Before => text.contains('\r'),
+        };
+        if breaking {
+            return Err(Error::Parse(format!(
+                "set_comment: comment text for `{path}` contains a line \
+                 break that would end the comment token and leak into the \
+                 document; inline comments take a single line, and Before \
+                 comments split on `\n` only"
+            )));
+        }
         let Some((start, end)) = self.span_at(path) else {
             return Err(Error::Parse(format!(
                 "set_comment: path `{path}` does not resolve"
