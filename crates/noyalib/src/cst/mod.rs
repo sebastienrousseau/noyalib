@@ -65,6 +65,19 @@
 //! assert_eq!(doc.to_string(), src);
 //! ```
 //!
+//! # Parser configuration
+//!
+//! [`parse_document`](crate::cst::parse_document) and
+//! [`parse_stream`](crate::cst::parse_stream) run under the default
+//! [`ParserConfig`](crate::ParserConfig), the same limits as
+//! [`from_str`](crate::from_str).
+//! [`parse_document_with_config`](crate::cst::parse_document_with_config)
+//! and [`parse_stream_with_config`](crate::cst::parse_stream_with_config)
+//! take one, mirroring [`from_str_with_config`](crate::from_str_with_config);
+//! the returned [`Document`](crate::cst::Document) keeps it for every
+//! later re-parse of its own source, so an edit never falls back to
+//! the defaults.
+//!
 //! # Multi-document streams
 //!
 //! Use [`parse_stream`](crate::cst::parse_stream) for inputs

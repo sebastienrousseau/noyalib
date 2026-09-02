@@ -10,15 +10,15 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ### Added
 
 - **`cst::parse_document_with_config` / `cst::parse_stream_with_config`**
-  (#372): the lossless CST now honors a caller-supplied
-  `ParserConfig`, mirroring `from_str_with_config`. The `Document`
-  keeps the configuration for every internal re-parse (the lazy
-  value cache, `validate`, the `replace_span` safety net, and the
-  edit oracles), so a merge-heavy values file that only trips the
+  (#372, #373 — implemented by @zoosky): the lossless CST honors a
+  caller-supplied `ParserConfig`, mirroring `from_str_with_config`.
+  The `Document` keeps the configuration for every re-parse of its
+  own source — the typed cache behind `as_value`, `validate`, the
+  `replace_span` safety net, the comment-edit value guard, and
+  schema coercion — so a merge-heavy values file that only trips the
   `alias_anchor_ratio` heuristic gets its byte-preserving path back
   and stays readable and editable after edits. Disabling the ratio
-  does not loosen the absolute amplification budgets:
-  `max_alias_expansions` still bounds the same file shape. The
+  does not loosen the absolute amplification budgets, and the
   default entry points are unchanged.
 - **The rendered User Manual (Phase 3).** `docs/` is an mdBook root
   whose chapters are the existing Markdown files in place; `docs.yml`
@@ -50,6 +50,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   `EXPECTED_MIN_BASELINE` floor (725s, reason documented inline)
   covers intentional job-set changes like the v0.0.30 gates, while
   accidental regressions still fire against the rolling median.
+||||||| e33ba3c
 
 ## [v0.0.30] - 2026-09-02
 

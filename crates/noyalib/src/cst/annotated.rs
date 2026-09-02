@@ -654,13 +654,18 @@ impl Document {
     where
         F: FnOnce(&mut Self) -> Result<()>,
     {
-        let before = crate::from_str::<crate::Value>(self.source()).ok();
+        // Both loads run under the document's own configuration, so a
+        // document that only opens with a relaxed budget is guarded
+        // too instead of silently skipping the check.
+        let before = crate::parser::parse_one_value(self.source(), self.config()).ok();
         let snapshot = self.clone();
         edit(self)?;
 
         if let Some(before) = before {
-            let unchanged =
-                matches!(crate::from_str::<crate::Value>(self.source()), Ok(a) if a == before);
+            let unchanged = matches!(
+                crate::parser::parse_one_value(self.source(), self.config()),
+                Ok(a) if a == before
+            );
             if !unchanged {
                 *self = snapshot;
                 return Err(Error::Parse(format!(

@@ -308,7 +308,8 @@ The CST exposes:
 
 | API | Use |
 |---|---|
-| `parse_document(s)` / `parse_stream(s)` | Read |
+| `parse_document(s)` / `parse_stream(s)` | Read, under the default `ParserConfig` |
+| `parse_document_with_config(s, &cfg)` / `parse_stream_with_config(s, &cfg)` | Read under a `ParserConfig` (budgets, the alias-to-anchor ratio, key policies); the document keeps it for every later re-parse |
 | `doc.set(path, fragment)` | Write a literal scalar |
 | `doc.set_value(path, &Value)` | Write any `Value` |
 | `doc.entry(path)` | Chainable mutable handle (18 methods, smart `items[0]` paths) |

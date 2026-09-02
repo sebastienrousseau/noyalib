@@ -88,7 +88,7 @@ pub fn coerce_to_schema(doc: &mut Document, schema: &Value) -> Result<usize> {
         // validator which paths fail. Cloning the Value is `O(n)`
         // but the loop terminates the moment no coercion applies,
         // so the typical cost is one or two passes.
-        let value: Value = crate::from_str(&doc.to_string())?;
+        let value: Value = crate::parser::parse_one_value(&doc.to_string(), doc.config())?;
         let instance_json = crate::schema_validate::value_to_json(&value)
             .map_err(|e| Error::Parse(format!("cst::coerce_to_schema: value -> JSON: {e}")))?;
 
