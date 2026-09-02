@@ -7,6 +7,21 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Changed
+
+- **README accuracy and ecosystem coverage.** The ecosystem section
+  now lists all six crates including the new `noyalib-serde-yaml`
+  drop-in (with its one-line migration snippet), states the
+  own-repos + lockstep model instead of "five crates ship from this
+  workspace", and adds the crate to the MSRV table. The install
+  table sheds six channels that do not exist yet (Homebrew, AUR,
+  Scoop, Nix, VS Code Marketplace, Open VSX are distribution-phase
+  work; npm and GHCR were verified real and stay), and fixes a dead
+  monorepo source-install path. "Capabilities in 0.0.1" is retitled
+  to "Capabilities at a glance" with its stale shim description
+  updated to the v0.0.29 behavioural contract. The release version
+  gate now also checks the drop-in snippet's `=0.0.X` pin.
+
 ### Added
 
 - **Two regression gates in per-push CI.** `fuzz-regression` builds

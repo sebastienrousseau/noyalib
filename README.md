@@ -30,13 +30,13 @@
 
 **The noyalib ecosystem** (library + four satellite crates)
 
-- [The noyalib ecosystem](#the-noyalib-ecosystem) — `noyalib`, `noya-cli`, `noyalib-lsp`, `noyalib-mcp`, `noyalib-wasm` at a glance
+- [The noyalib ecosystem](#the-noyalib-ecosystem) — `noyalib`, `noya-cli`, `noyalib-lsp`, `noyalib-mcp`, `noyalib-wasm`, `noyalib-serde-yaml` at a glance
 
 **Library reference**
 
 - [One-minute migration from `serde_yaml` (and the wider ecosystem)](#one-minute-migration-from-serde_yaml-and-the-wider-ecosystem) — name-for-name mapping for `serde_yaml` 0.9, `serde_yml`, `yaml_serde`, `serde-yaml-ng`, `serde-norway`, `serde-yaml-bw`, `serde-saphyr`, `yaml-spanned`
 - [Why this approach?](#why-this-approach) — design rationale
-- [Capabilities in 0.0.1](#capabilities-in-001) — release inventory
+- [Capabilities at a glance](#capabilities-at-a-glance) — the current surface by theme
 - [Two APIs, one parser](#two-apis-one-parser) — data binding vs. tooling
 - [Ecosystem comparison](#ecosystem-comparison) — short matrix; full table at [`doc/COMPARISON.md`](doc/COMPARISON.md)
 - [Benchmarks](#benchmarks) — headline numbers; full table at [`doc/BENCHMARKS.md`](doc/BENCHMARKS.md)
@@ -76,16 +76,14 @@ library's dependency graph for downstream embedders).
 | Channel | Install |
 |---|---|
 | Cargo (crates.io) | `cargo install noya-cli --locked` |
-| Cargo (from source) | `cargo install --locked --path crates/noya-cli` |
-| Homebrew (personal tap) | `brew tap sebastienrousseau/tap && brew install noyalib` |
-| Arch Linux (AUR) | `yay -S noyalib-bin` (binary) or `yay -S noyalib` (source) |
-| Scoop (Windows) | `scoop bucket add sebastienrousseau https://github.com/sebastienrousseau/scoop-bucket && scoop install noyalib` |
-| Nix / NixOS | `nix run github:sebastienrousseau/noyalib` |
+| Cargo (from source) | `git clone https://github.com/sebastienrousseau/noya-cli && cargo install --locked --path noya-cli` |
 | Container (GHCR) | `docker run --rm ghcr.io/sebastienrousseau/noyafmt:latest --version` |
 | npm (WASM) | `npm install @sebastienrousseau/noyalib-wasm` |
 | npm (MCP) | `npx @sebastienrousseau/noyalib-mcp` (no Rust toolchain needed) |
-| VS Code | search `noyalib` in the Marketplace |
-| Open VSX | search `noyalib` in [open-vsx.org](https://open-vsx.org) |
+
+Homebrew, AUR, Scoop, Nix, and editor-marketplace packages land with
+the distribution phase of the repository plan; a channel is only
+listed here once it actually exists.
 
 `cargo install noya-cli --locked` builds both binaries by default
 (via the `noyavalidate` Cargo feature). To install only the
@@ -135,6 +133,7 @@ downstream users pinned to the core's floor.
 | `noya-cli` (binaries) | 1.86.0 | Lockstep with the core floor; `clap_builder 4.6` (a transitive of `clap = "4.5"`) ships in edition 2024. |
 | `noyalib-lsp` | 1.86.0 | Lockstep with the core floor; LSP transport-stack transitives (`litemap`, `uuid`) require recent stables. |
 | `noyalib-wasm` | 1.86.0 | Lockstep with the core floor; the `wasm-bindgen` 0.2 ecosystem floors at 1.86. |
+| `noyalib-serde-yaml` | 1.86.0 | Lockstep with the core floor; a pure re-export crate with no extra dependencies. |
 
 As of v0.0.16 the whole lockstep set shares one floor, 1.86.0 —
 the historical split (core at a lower floor than the satellites)
@@ -171,7 +170,7 @@ the application needs.
 | `ariadne` | `ariadne` | Alternative `ariadne`-rendered diagnostics | `examples/ariadne_diagnostic.rs` |
 | `include` | — | `$include` directive resolution via an in-memory resolver | `examples/include_directive.rs` |
 | `include_fs` | `include` + `std` | Filesystem include resolver (`SafeFileResolver`) | `examples/include_directive.rs` |
-| `schema` | `schemars`, `serde_json` | `JsonSchema` derive + `schema_for::<T>()`. **Downstream callers that derive `JsonSchema` must add `schemars = "1.2"` to their own `Cargo.toml`** — the proc-macro emits `::schemars::*` paths that need to resolve in the call-site dep graph. | [Capabilities in 0.0.1](#capabilities-in-001) |
+| `schema` | `schemars`, `serde_json` | `JsonSchema` derive + `schema_for::<T>()`. **Downstream callers that derive `JsonSchema` must add `schemars = "1.2"` to their own `Cargo.toml`** — the proc-macro emits `::schemars::*` paths that need to resolve in the call-site dep graph. | [Capabilities at a glance](#capabilities-at-a-glance) |
 | `validate-schema` | `schema` + `jsonschema` | `validate_against_schema`, `coerce_to_schema` | [Governance: schema-driven autofix](#governance-schema-driven-autofix) |
 | `figment` | `figment` 0.10 | `noyalib::figment::Yaml` provider | `examples/figment.rs` |
 | `garde` | `garde` 0.22 | `Validated<T>` wrapper | `examples/validation_garde.rs` |
@@ -240,8 +239,11 @@ features:
 
 ## The noyalib ecosystem
 
-Five crates ship from this workspace. The library is the core;
-the four satellites wrap it for specific delivery surfaces.
+Six crates make up the family. The library is the core; five
+satellites wrap it for specific delivery surfaces, each in its own
+repository, all releasing in lockstep at the identical `=0.0.X`
+([ADR-0005](doc/adr/0005-workspace-split.md)) — the version number
+is the compatibility contract.
 
 | Crate | What it is | Use case |
 |---|---|---|
@@ -250,8 +252,9 @@ the four satellites wrap it for specific delivery surfaces.
 | **`noyalib-lsp`** ([own repo](https://github.com/sebastienrousseau/noyalib-lsp)) | Language Server Protocol server | Editor integration — VS Code, Neovim, Helix, Emacs, Zed, Sublime, IntelliJ. |
 | **`noyalib-mcp`** ([own repo](https://github.com/sebastienrousseau/noyalib-mcp)) | Model Context Protocol server | LLM agent tooling — Claude Desktop, Cursor, Continue.dev, Zed assistant, mcp.run. |
 | **`noyalib-wasm`** ([own repo](https://github.com/sebastienrousseau/noyalib-wasm)) | `wasm-bindgen` wrapper around the library | Browser, Node, Cloudflare Workers, Deno, any WASM-capable host. |
+| **`noyalib-serde-yaml`** ([own repo](https://github.com/sebastienrousseau/noyalib-serde-yaml)) | Drop-in `serde_yaml` replacement — a Cargo package rename over the behavioural shim | Migrate off archived `serde_yaml` 0.9 by changing one manifest line and zero source lines. |
 
-### Install the binaries
+### Install the pieces
 
 ```bash
 # CLI tools (noyafmt + noyavalidate)
@@ -265,6 +268,11 @@ cargo install noyalib-mcp
 
 # WASM bundle
 npm install @sebastienrousseau/noyalib-wasm
+```
+
+```toml
+# serde_yaml drop-in — the whole migration is this one line:
+serde_yaml = { package = "noyalib-serde-yaml", version = "=0.0.29" }
 ```
 
 Per-crate READMEs cover the surface specific to each artifact:
@@ -473,23 +481,23 @@ every push.
 
 ---
 
-## Capabilities in 0.0.1
+## Capabilities at a glance
 
-The 0.0.1 release covers a complete YAML 1.2 stack. See
-[`CHANGELOG.md`](CHANGELOG.md) for the detailed inventory; the
-table below groups the inventory by capability theme.
+The library has covered a complete YAML 1.2 stack since its first
+release. See [`CHANGELOG.md`](CHANGELOG.md) for the per-release
+inventory; the table below groups the current surface by theme.
 
 | Theme | Headline deliverables |
 | :--- | :--- |
 | Spec compliance | YAML 1.2 official test suite at 100% strict (406/406 attempted, 0 failures, 0 skips — verified by `tests/yaml_compliance_report.rs`); YAML 1.1 opt-in compatibility for the "Norway problem"; multi-document streams |
-| Migration from `serde_yaml` | `compat-serde-yaml` feature with name-for-name re-exports; `From`/`TryFrom` parity for `Value`/`Mapping`/`Number`; `Document::validate`; comment-aware reads via `load_comments` |
+| Migration from `serde_yaml` | **behavioural** `compat-serde-yaml` shim since v0.0.29 — parses under `ParserConfig::serde_yaml_compat()` and renders upstream-style errors, pinned by the live-captured 18-case contract suite; `noyalib-serde-yaml` packages it as a one-line package-rename drop-in; `From`/`TryFrom` parity for `Value`/`Mapping`/`Number` |
 | Binary scalars | First-class `!!binary` tag; RFC 4648 base64 round-trip with `serde_bytes::ByteBuf`/`Bytes`; non-UTF-8 payloads supported |
 | Flatten guard | `Spanned<Value>` in `#[serde(flatten)]` returns an actionable error pointing at the working alternative |
 | Lossless editing | Side-table CST with byte-faithful round-trip; `Document::entry(path)` chainable mutable handle (19 methods); `rename_key` / `rename_anchor` / `swap_items` / `move_item` and the auto-formatting `*_value` inserts; `set_comment` / `remove_comment` for inline and leading comments; automatic indent detection (2/3/4-space) |
 | Anchor management | `Document::anchors()` / `aliases()` / `aliases_of(name)`; `materialise_alias_at(byte_pos)` and `materialise_aliases_of(name)` for breaking aliases |
 | Schema codegen | `schema` feature: `JsonSchema` derive re-export; `schema_for::<T>()` and `schema_for_yaml::<T>()`; honours `#[doc]`, `#[serde(default)]`, `#[serde(rename)]` |
 | Schema validation | `validate-schema` feature: `validate_against_schema(value, schema)`; aggregated violations with RFC 6901 paths |
-| Tooling | `noyavalidate` (with `--schema` and `--fix`), `noyafmt`, `noyalib-mcp`, `noyalib-wasm` |
+| Tooling | `noyavalidate` (with `--schema` and `--fix`), `noyafmt`, `noyalib-lsp`, `noyalib-mcp`, `noyalib-wasm`, `noyalib-serde-yaml` |
 | Performance | `noyalib::simd` primitives — `find_any_of`, `clean_prefix_len`, `ByteBitmap`; parser hot path integrated; ~58× and ~5.4× over byte-by-byte at arities 3 and 8 |
 | Supply chain | SLSA L3 provenance, sigstore signing, OpenSSF Scorecard, REUSE.software 3.3 compliance, signed commits, `cargo-deny` / `cargo-vet` / `cargo-semver-checks` gates, differential and soak fuzz |
 
