@@ -158,6 +158,11 @@ for rel in ("README.md", f"crates/{name}/README.md"):
     for line in f.read_text(encoding="utf-8").splitlines():
         if re.search(rf"\b{re.escape(name)}\s*=\s*[\"{{]", line):
             stale.update(v for v in re.findall(r"\d+\.\d+\.\d+", line) if v != version)
+        # The noyalib-serde-yaml drop-in snippet carries its own
+        # `=0.0.X` pin (lockstep: must equal this release). Only the
+        # pin syntax is checked so prose/MSRV mentions do not trip it.
+        if "noyalib-serde-yaml" in line:
+            stale.update(v for v in re.findall(r"=(\d+\.\d+\.\d+)", line) if v != version)
     if stale:
         bad(rel, "mentions " + ", ".join(sorted(stale)))
     else:

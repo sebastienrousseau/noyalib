@@ -28,8 +28,15 @@ not cover:
 
 ### Raising the MSRV
 
-- A raise is a **minor** version bump while pre-1.0, and is called out in
-  the changelog under its own heading. It is never a patch-level change.
+- A raise ships only on the **breaking-change axis** — during the
+  `0.0.x` series that is the patch number (the same axis every
+  breaking change uses; see the SemVer section of the crate docs),
+  and from `0.x` onward the minor number. It is always called out in
+  the changelog under its own heading and never happens silently in
+  a compatible release. (Earlier wording said "minor version bump,
+  never patch-level", which is unsatisfiable while the release
+  number only moves in the patch position — the v0.0.16 raise from
+  1.85 to 1.86 shipped exactly this way.)
 - A raise needs a reason recorded in the changelog entry: which API, and
   why the alternative was rejected. "It was more convenient" is not a
   reason; "the alternative allocates on a hot path" is.

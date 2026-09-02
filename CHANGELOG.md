@@ -7,6 +7,75 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+## [v0.0.30] - 2026-09-02
+
+### Changed
+
+- **README accuracy and ecosystem coverage.** The ecosystem section
+  now lists all six crates including the new `noyalib-serde-yaml`
+  drop-in (with its one-line migration snippet), states the
+  own-repos + lockstep model instead of "five crates ship from this
+  workspace", and adds the crate to the MSRV table. The install
+  table sheds six channels that do not exist yet (Homebrew, AUR,
+  Scoop, Nix, VS Code Marketplace, Open VSX are distribution-phase
+  work; npm and GHCR were verified real and stay), and fixes a dead
+  monorepo source-install path. "Capabilities in 0.0.1" is retitled
+  to "Capabilities at a glance" with its stale shim description
+  updated to the v0.0.29 behavioural contract. The release version
+  gate now also checks the drop-in snippet's `=0.0.X` pin.
+
+### Added
+
+- **Two regression gates in per-push CI.** `fuzz-regression` builds
+  all twelve fuzz targets and replays the seed corpus plus
+  `fuzz/regressions/` — a new tracked corpus of fifteen minimized
+  crash inputs from previously-fixed fuzz findings — with `-runs=0`,
+  so a fixed crash staying fixed is now checked on every push
+  instead of at the weekly soak. `each-feature` runs
+  `cargo hack check --each-feature`, catching a single broken
+  feature at PR time instead of at the weekly powerset run.
+- One deliberate `fuzz_diff` divergence promoted to a unit pin:
+  `&a:` is an anchor named `a:` on a null document (YAML 1.2
+  §6.9.2 allows `:` in anchor names); serde_yaml_ng reads a mapping
+  with an empty key. Pinned in `tests/competitor_bugs.rs`.
+
+### Fixed
+
+- **`Spanned<T>` and error locations for tagged/anchored nodes now
+  anchor at the node's properties** (`!tag` / `&anchor`), not at the
+  content — a node's span includes its properties, matching
+  serde_yaml/libyaml marks. This closes the final partial in the
+  18-case serde_yaml contract: `custom-explicit-tag` now reports
+  `1:8:7` / Display column 8 exactly as upstream, the pin
+  Takazudo/zudo-front-builder#2755 names as its re-evaluation
+  trigger. CST reads and edits are unaffected: `resolve_span`
+  strips leading property tokens back to the content, so
+  `set_value` never splices over an anchor and `span_at` semantics
+  are unchanged. Two of zfb's protected assertions are also ported
+  as contract pins: the EOF one-past-the-flow-sequence location
+  convention (single- and multi-line) and the column-counts-
+  characters / index-counts-bytes contract their UTF-16 conversion
+  depends on.
+
+- `fuzz_no_span_loader` now encodes the documented v0.0.29
+  asymmetry from #351: `from_str` refuses a multi-document stream
+  while `cst::parse_document` reads the first document — that
+  refusal is exempt from its loader-parity rule (the seed corpus
+  was tripping the stale invariant).
+
+### Removed
+
+- **The `robotics` module and feature**, completing the one-release
+  deprecation cycle started in v0.0.29. `StrictFloat` /
+  `StrictFloatError` live on as
+  `lossless_float::{LosslessFloat, LosslessFloatError}` (feature
+  `lossless-float`); the `Degrees` / `Radians` unit newtypes leave
+  the crate — they have no dependence on noyalib, and
+  `examples/scientific.rs` shows the copy-into-your-own-code
+  migration. The behavioural pins from the robotics test suites are
+  ported to `lossless-float` tests, and the
+  `robotics_polymorphism` example is gone with the module.
+
 ## [v0.0.29] - 2026-08-31
 
 Thirteen fixes and seven additions, spanning all three pillars — the
@@ -165,22 +234,6 @@ behavioural shim** — drop-in now means behaviour, not just names.
   `:`-shaped document, `null` vs `{"": null}`) — continuous
   triage is what the OSS-Fuzz onboarding is for.
 
-### Changed
-
-- **`robotics` is deprecated; `StrictFloat` is now
-  `lossless_float::LosslessFloat`** (feature `lossless-float`). The
-  refuse-to-lose-precision float was never robotics-specific — it is
-  the floating-point sibling of `lossless-u64`, and its new home
-  needs nothing beyond the mandatory `serde_core` (the old one
-  pulled `dep:serde` for derives). The `robotics` module and feature
-  survive one release as a deprecated compat surface (`robotics`
-  implies `lossless-float`; `StrictFloat`/`StrictFloatError` are
-  deprecated aliases), then go — along with the `Degrees`/`Radians`
-  unit newtypes, which are ~40 lines of domain code with no
-  dependence on noyalib and belong in the consumer's own tree.
-
-### Fixed
-
 - **Three more spec-strictness gaps, found by the new
   `fuzz_serde_yaml_compat` parity fuzzer** (the shim vs the real
   archived `serde_yaml 0.9.34`, value-and-verdict differential):
@@ -325,6 +378,20 @@ behavioural shim** — drop-in now means behaviour, not just names.
 No breaking API change: both new flags are opt-in and default off.
 No MSRV change (still 1.86.0).
 
+### Changed
+
+- **`robotics` is deprecated; `StrictFloat` is now
+  `lossless_float::LosslessFloat`** (feature `lossless-float`). The
+  refuse-to-lose-precision float was never robotics-specific — it is
+  the floating-point sibling of `lossless-u64`, and its new home
+  needs nothing beyond the mandatory `serde_core` (the old one
+  pulled `dep:serde` for derives). The `robotics` module and feature
+  survive one release as a deprecated compat surface (`robotics`
+  implies `lossless-float`; `StrictFloat`/`StrictFloatError` are
+  deprecated aliases), then go — along with the `Degrees`/`Radians`
+  unit newtypes, which are ~40 lines of domain code with no
+  dependence on noyalib and belong in the consumer's own tree.
+
 ## [v0.0.28] - 2026-08-23
 
 Two CST and scanner correctness fixes, both about an *implicit null* —
@@ -445,7 +512,6 @@ consumers pointing a real workload at a published release.
   shadowing shell alias and the probe's fallback read that as zero
   advisories. That probe was fixed in v0.0.26; this is the first
   scorecard where those rows are earned.
-
 
 ## [v0.0.26] - 2026-08-20
 
@@ -719,7 +785,6 @@ testing a library cannot do for itself.
 
 - Version → 0.0.25.
 
-
 ## [v0.0.24] - 2026-08-18
 
 ### Fixed
@@ -776,7 +841,6 @@ testing a library cannot do for itself.
   - `hashbrown` 0.15.5 → 0.17.1
   - `github/codeql-action/{analyze,init,upload-sarif}` 4.37.6 → 4.37.7
   - `taiki-e/install-action` 2.85.10 → 2.86.1
-
 
 ## [v0.0.23] - 2026-08-16
 
@@ -2139,7 +2203,6 @@ that confirmed every `MapAccess` / `SeqAccess` /
 or uses an iterator that naturally returns `None` on
 exhaustion. No further iterator-state-leak bugs in the same
 family remain.
-
 
 ### Security & hardening pass on the v0.0.6 surface
 

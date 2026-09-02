@@ -80,7 +80,6 @@ const EXAMPLES: &[&str] = &[
 //   cargo run --example figment               --features figment
 //   cargo run --example validation_garde      --features garde
 //   cargo run --example validation_validator  --features validator
-//   cargo run --example robotics_polymorphism --features robotics
 //   cargo run --example ariadne_diagnostic    --features ariadne
 //   cargo run --example validated_miette      --features miette,garde
 //   cargo run --example include_directive     --features include_fs

@@ -343,3 +343,18 @@ fn comment_shaped_line_is_block_scalar_content() {
     let v: Value = from_str("|\n#x\n#y\n").unwrap();
     assert_eq!(v.as_str(), Some("#x\n#y\n"));
 }
+
+#[test]
+fn anchor_name_may_contain_colon() {
+    // Found by fuzz_diff (artifact `&a:`): serde_yaml_ng ends the
+    // anchor at the colon and reads a block mapping with an empty
+    // key ({"": null}). Per YAML 1.2 §6.9.2, ns-anchor-char is
+    // ns-char minus the flow indicators, so `:` is a legal anchor
+    // character: `&a:` anchors the (empty) document node under the
+    // name `a:` and the document itself is null.
+    let v: Value = from_str("&a:").unwrap();
+    assert!(v.is_null());
+    // The anchored node can still be a scalar that follows.
+    let v: Value = from_str("&a: 1").unwrap();
+    assert_eq!(v.as_i64(), Some(1));
+}

@@ -1,6 +1,6 @@
 [package]
 name = "noyalib"
-version = "0.0.29"
+version = "0.0.30"
 edition = "2024"
 rust-version = "1.86.0"
 license = "MIT OR Apache-2.0"
@@ -271,11 +271,6 @@ name = "diagnostic_path"
 path = "examples/diagnostic_path.rs"
 
 [[example]]
-name = "robotics_polymorphism"
-path = "examples/robotics_polymorphism.rs"
-required-features = ["robotics"]
-
-[[example]]
 name = "zero_copy_borrow"
 path = "examples/zero_copy_borrow.rs"
 
@@ -342,7 +337,6 @@ required-features = ["simd"]
 
 [dependencies]
 serde_core = { version = "1.0", default-features = false, features = ["alloc"] }
-serde = { version = "1.0", optional = true, default-features = false, features = ["derive", "alloc"] }
 indexmap = { version = ">=2, <3", default-features = false, features = ["serde"] }
 rustc-hash = { version = ">=2, <3", default-features = false }
 # `rustc_hash::FxHashMap`/`FxHashSet` are std-only aliases. On
@@ -381,7 +375,7 @@ serde_json = { version = "1.0", optional = true }
 # `validate-schema` feature is on. Default features are disabled so
 # we don't drag in `reqwest` for HTTP `$ref` resolution; users who
 # need that can re-enable it via their own dep.
-jsonschema = { version = "0.50", optional = true, default-features = false }
+jsonschema = { version = "0.52", optional = true, default-features = false }
 # `figment` integration — drop-in `Provider` for the popular
 # layered-configuration crate. Pulled in only when the `figment`
 # feature is on so non-figment users don't pay for it.
@@ -551,7 +545,6 @@ minimal = ["std"]
 # no_std and serde's de::Error does not require `std::error::Error`.
 std = [
     "serde_core/std",
-    "serde?/std",
     # These three are declared `default-features = false` so bare-metal
     # targets can build (#210). Hosted builds turn their std back on
     # here, which keeps `rustc_hash::FxHashMap`/`FxHashSet` available
@@ -573,11 +566,6 @@ ariadne = ["dep:ariadne"]
 # sibling of `lossless-u64`. Needs nothing beyond the mandatory
 # `serde_core`.
 lossless-float = []
-# Deprecated (one release, since 0.0.29): the former home of
-# `StrictFloat` (renamed to `lossless_float::LosslessFloat`) plus the
-# `Degrees`/`Radians` unit newtypes, which leave the crate next
-# release. `dep:serde` is only needed for the leaving types' derives.
-robotics = ["lossless-float", "dep:serde"]
 # `!include` directive — post-parse walk that consults a
 # user-supplied `crate::include::IncludeResolver` for every
 # `Value::Tagged(!include, _)` node and substitutes the

@@ -359,6 +359,26 @@ impl<'a> Parser<'a> {
             }
         }
 
+        // A node's span includes its properties: `span` above is the
+        // first token of the node, which is the anchor/tag token when
+        // properties are present — so widening the emitted span back
+        // to `span.start` anchors Spanned<T> and error locations at
+        // the `!tag`/`&anchor`, matching serde_yaml/libyaml marks
+        // (the serde_yaml contract's custom-explicit-tag case pins
+        // this at 1:8:7).
+        let props_start = if anchor.is_some() || tag.is_some() {
+            Some(span.start)
+        } else {
+            None
+        };
+        let widen = |s: Span| match props_start {
+            Some(p) if p < s.start => Span {
+                start: p,
+                end: s.end,
+            },
+            _ => s,
+        };
+
         // Alias — take() moves the Cow; convert to owned for the Event.
         if self.peek_is(|k| matches!(k, TokenKind::Alias(_)))? {
             let (kind, alias_span) = self.take()?;
@@ -389,7 +409,7 @@ impl<'a> Parser<'a> {
                         style,
                         anchor,
                         tag,
-                        span: scalar_span,
+                        span: widen(scalar_span),
                     })
                 } else {
                     crate::error::invariant_violated(
@@ -403,7 +423,7 @@ impl<'a> Parser<'a> {
                 Ok(Event::SequenceStart {
                     anchor,
                     tag,
-                    span: tok_span,
+                    span: widen(tok_span),
                 })
             }
             TokenKind::FlowMappingStart => {
@@ -412,7 +432,7 @@ impl<'a> Parser<'a> {
                 Ok(Event::MappingStart {
                     anchor,
                     tag,
-                    span: tok_span,
+                    span: widen(tok_span),
                 })
             }
             TokenKind::BlockSequenceStart if block => {
@@ -421,7 +441,7 @@ impl<'a> Parser<'a> {
                 Ok(Event::SequenceStart {
                     anchor,
                     tag,
-                    span: tok_span,
+                    span: widen(tok_span),
                 })
             }
             TokenKind::BlockMappingStart if block => {
@@ -430,7 +450,7 @@ impl<'a> Parser<'a> {
                 Ok(Event::MappingStart {
                     anchor,
                     tag,
-                    span: tok_span,
+                    span: widen(tok_span),
                 })
             }
             // Indentless block sequence: `BlockEntry` without a preceding
@@ -441,7 +461,7 @@ impl<'a> Parser<'a> {
                 Ok(Event::SequenceStart {
                     anchor,
                     tag,
-                    span: tok_span,
+                    span: widen(tok_span),
                 })
             }
             _ => {

@@ -9,7 +9,8 @@
 //!
 //! Formerly `noyalib::robotics::StrictFloat` — the mechanism was
 //! never robotics-specific, only the label; the `robotics` module
-//! carries deprecated aliases for one release.
+//! carried deprecated aliases for one release (v0.0.29) and was
+//! removed in v0.0.30.
 //!
 //! # Examples
 //!

@@ -4,7 +4,7 @@
 //! Comprehensive integration tests for all 4 competitive features.
 //!
 //! Covers all permutations of anchor replay, AnchorRegistry,
-//! robotics numeric types, and miette diagnostic bridge.
+//! lossless-float numeric types, and miette diagnostic bridge.
 
 use std::collections::BTreeMap;
 
@@ -482,167 +482,82 @@ mod anchor_registry {
 }
 
 // ════════════════════════════════════════════════════════════════════════
-// Feature 3: Robotics / Scientific Numeric Types (10+ tests)
+// Feature 3: Lossless Float (strict numeric profile)
 // ════════════════════════════════════════════════════════════════════════
 
-#[cfg(feature = "robotics")]
-// Pins the deprecated `robotics` compat surface for its final release
-// (aliases into `lossless_float`, leaving `Degrees`/`Radians`).
-#[allow(deprecated)]
-mod robotics_tests {
-    use noyalib::robotics::{Degrees, Radians, StrictFloat};
-
-    // ── StrictFloat ─────────────────────────────────────────────────
+#[cfg(feature = "lossless-float")]
+// Pins the `lossless_float` surface (formerly `robotics::StrictFloat`;
+// the `robotics` module and its `Degrees`/`Radians` newtypes were
+// removed in v0.0.30 per the one-release deprecation).
+mod lossless_float_tests {
+    use noyalib::lossless_float::LosslessFloat;
 
     #[test]
-    fn strict_float_valid_zero() {
-        let sf: StrictFloat = noyalib::from_str("0.0").unwrap();
+    fn lossless_float_valid_zero() {
+        let sf: LosslessFloat = noyalib::from_str("0.0").unwrap();
         assert!((sf.get()).abs() < 1e-15);
     }
 
     #[test]
-    fn strict_float_valid_positive() {
-        let sf: StrictFloat = noyalib::from_str("1.0").unwrap();
+    fn lossless_float_valid_positive() {
+        let sf: LosslessFloat = noyalib::from_str("1.0").unwrap();
         assert!((sf.get() - 1.0).abs() < 1e-15);
     }
 
     #[test]
-    fn strict_float_valid_negative() {
-        let sf: StrictFloat = noyalib::from_str("-1.0").unwrap();
+    fn lossless_float_valid_negative() {
+        let sf: LosslessFloat = noyalib::from_str("-1.0").unwrap();
         assert!((sf.get() + 1.0).abs() < 1e-15);
     }
 
     #[test]
-    fn strict_float_valid_large() {
-        let sf: StrictFloat = noyalib::from_str("1.0e10").unwrap();
+    fn lossless_float_valid_large() {
+        let sf: LosslessFloat = noyalib::from_str("1.0e10").unwrap();
         assert!((sf.get() - 1.0e10).abs() < 1.0);
     }
 
     #[test]
-    fn strict_float_reject_nan() {
-        let result: Result<StrictFloat, _> = noyalib::from_str(".nan");
+    fn lossless_float_reject_nan() {
+        let result: Result<LosslessFloat, _> = noyalib::from_str(".nan");
         assert!(result.is_err());
     }
 
     #[test]
-    fn strict_float_reject_infinity() {
-        let result: Result<StrictFloat, _> = noyalib::from_str(".inf");
+    fn lossless_float_reject_infinity() {
+        let result: Result<LosslessFloat, _> = noyalib::from_str(".inf");
         assert!(result.is_err());
     }
 
     #[test]
-    fn strict_float_reject_neg_infinity() {
-        let result: Result<StrictFloat, _> = noyalib::from_str("-.inf");
+    fn lossless_float_reject_neg_infinity() {
+        let result: Result<LosslessFloat, _> = noyalib::from_str("-.inf");
         assert!(result.is_err());
     }
 
     #[test]
-    fn strict_float_precision_roundtrip() {
-        let sf: StrictFloat = noyalib::from_str("1.23456789012345").unwrap();
+    fn lossless_float_precision_roundtrip() {
+        let sf: LosslessFloat = noyalib::from_str("1.23456789012345").unwrap();
         let yaml = noyalib::to_string(&sf).unwrap();
-        let restored: StrictFloat = noyalib::from_str(yaml.trim()).unwrap();
+        let restored: LosslessFloat = noyalib::from_str(yaml.trim()).unwrap();
         assert!((sf.get() - restored.get()).abs() < 1e-15);
     }
 
     #[test]
-    fn strict_float_try_from_valid() {
-        let sf = StrictFloat::try_from(2.5).unwrap();
+    fn lossless_float_try_from_valid() {
+        let sf = LosslessFloat::try_from(2.5).unwrap();
         assert!((sf.get() - 2.5).abs() < 1e-15);
     }
 
     #[test]
-    fn strict_float_try_from_nan_fails() {
-        let result = StrictFloat::try_from(f64::NAN);
+    fn lossless_float_try_from_nan_fails() {
+        let result = LosslessFloat::try_from(f64::NAN);
         assert!(result.is_err());
     }
 
     #[test]
-    fn strict_float_try_from_inf_fails() {
-        let result = StrictFloat::try_from(f64::INFINITY);
+    fn lossless_float_try_from_inf_fails() {
+        let result = LosslessFloat::try_from(f64::INFINITY);
         assert!(result.is_err());
-    }
-
-    // ── Radians ─────────────────────────────────────────────────────
-
-    #[test]
-    fn radians_zero_degrees() {
-        let r: Radians = noyalib::from_str("0.0").unwrap();
-        assert!((r.0).abs() < 1e-15);
-    }
-
-    #[test]
-    fn radians_90_degrees() {
-        let r: Radians = noyalib::from_str("90.0").unwrap();
-        assert!((r.0 - core::f64::consts::FRAC_PI_2).abs() < 1e-10);
-    }
-
-    #[test]
-    fn radians_180_degrees() {
-        let r: Radians = noyalib::from_str("180.0").unwrap();
-        assert!((r.0 - core::f64::consts::PI).abs() < 1e-10);
-    }
-
-    #[test]
-    fn radians_360_degrees() {
-        let r: Radians = noyalib::from_str("360.0").unwrap();
-        assert!((r.0 - core::f64::consts::TAU).abs() < 1e-10);
-    }
-
-    #[test]
-    fn radians_negative_degrees() {
-        let r: Radians = noyalib::from_str("-90.0").unwrap();
-        assert!((r.0 + core::f64::consts::FRAC_PI_2).abs() < 1e-10);
-    }
-
-    #[test]
-    fn radians_to_degrees_roundtrip() {
-        let r: Radians = noyalib::from_str("45.0").unwrap();
-        let d = r.to_degrees();
-        assert!((d.0 - 45.0).abs() < 1e-10);
-    }
-
-    // ── Degrees ─────────────────────────────────────────────────────
-
-    #[test]
-    fn degrees_from_yaml() {
-        let d: Degrees = noyalib::from_str("90.0").unwrap();
-        assert!((d.0 - 90.0).abs() < 1e-15);
-    }
-
-    #[test]
-    fn degrees_to_radians() {
-        let d: Degrees = noyalib::from_str("180.0").unwrap();
-        let r = d.to_radians();
-        assert!((r.0 - core::f64::consts::PI).abs() < 1e-10);
-    }
-
-    // ── Struct with Radians fields ──────────────────────────────────
-
-    #[test]
-    fn struct_with_radians_fields() {
-        let yaml = r"
-joint1: 90.0
-joint2: -45.0
-joint3: 180.0
-";
-        #[derive(Debug, serde::Deserialize)]
-        struct Arm {
-            joint1: Radians,
-            joint2: Radians,
-            joint3: Radians,
-        }
-        let arm: Arm = noyalib::from_str(yaml).unwrap();
-        assert!((arm.joint1.0 - core::f64::consts::FRAC_PI_2).abs() < 1e-10);
-        assert!((arm.joint2.0 + core::f64::consts::FRAC_PI_4).abs() < 1e-10);
-        assert!((arm.joint3.0 - core::f64::consts::PI).abs() < 1e-10);
-    }
-
-    #[test]
-    fn radians_serialize_roundtrip() {
-        let r = Radians(core::f64::consts::PI);
-        let yaml = noyalib::to_string(&r).unwrap();
-        let parsed: f64 = noyalib::from_str(yaml.trim()).unwrap();
-        assert!((parsed - core::f64::consts::PI).abs() < 1e-10);
     }
 }
 

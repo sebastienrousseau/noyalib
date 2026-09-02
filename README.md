@@ -17,6 +17,8 @@
   <a href="https://docs.rs/noyalib"><img src="https://img.shields.io/badge/docs.rs-noyalib-66c2a5?style=for-the-badge&labelColor=555555&logo=docs.rs" alt="Docs.rs" /></a>
   <a href="https://lib.rs/crates/noyalib"><img src="https://img.shields.io/badge/lib.rs-noyalib-orange.svg?style=for-the-badge" alt="lib.rs" /></a>
   <a href="https://scorecard.dev/viewer/?uri=github.com/sebastienrousseau/noyalib"><img src="https://img.shields.io/ossf-scorecard/github.com/sebastienrousseau/noyalib?style=for-the-badge&label=OpenSSF%20Scorecard&logo=openssf" alt="OpenSSF Scorecard" /></a>
+  <a href="LICENSE-APACHE"><img src="https://img.shields.io/badge/license-Apache--2.0%20OR%20MIT-blue.svg?style=for-the-badge" alt="License: Apache-2.0 OR MIT" /></a>
+  <a href="https://github.com/sebastienrousseau/noyalib/blob/main/doc/MSRV-AND-DEPRECATION.md"><img src="https://img.shields.io/badge/MSRV-1.86.0-93450a.svg?style=for-the-badge&logo=rust" alt="MSRV 1.86.0" /></a>
 </p>
 
 ---
@@ -30,13 +32,13 @@
 
 **The noyalib ecosystem** (library + four satellite crates)
 
-- [The noyalib ecosystem](#the-noyalib-ecosystem) — `noyalib`, `noya-cli`, `noyalib-lsp`, `noyalib-mcp`, `noyalib-wasm` at a glance
+- [The noyalib ecosystem](#the-noyalib-ecosystem) — `noyalib`, `noya-cli`, `noyalib-lsp`, `noyalib-mcp`, `noyalib-wasm`, `noyalib-serde-yaml` at a glance
 
 **Library reference**
 
 - [One-minute migration from `serde_yaml` (and the wider ecosystem)](#one-minute-migration-from-serde_yaml-and-the-wider-ecosystem) — name-for-name mapping for `serde_yaml` 0.9, `serde_yml`, `yaml_serde`, `serde-yaml-ng`, `serde-norway`, `serde-yaml-bw`, `serde-saphyr`, `yaml-spanned`
 - [Why this approach?](#why-this-approach) — design rationale
-- [Capabilities in 0.0.1](#capabilities-in-001) — release inventory
+- [Capabilities at a glance](#capabilities-at-a-glance) — the current surface by theme
 - [Two APIs, one parser](#two-apis-one-parser) — data binding vs. tooling
 - [Ecosystem comparison](#ecosystem-comparison) — short matrix; full table at [`doc/COMPARISON.md`](doc/COMPARISON.md)
 - [Benchmarks](#benchmarks) — headline numbers; full table at [`doc/BENCHMARKS.md`](doc/BENCHMARKS.md)
@@ -52,6 +54,7 @@
 - [Development](#development) — make targets, fuzzing, CI
 - [Security](#security) — guarantees and compliance
 - [Documentation](#documentation) — all reference docs
+- [Stability guarantees](#stability-guarantees) — SemVer axis, output stability, MSRV discipline
 - [License](#license)
 
 ---
@@ -62,7 +65,7 @@
 
 ```toml
 [dependencies]
-noyalib = "0.0.29"
+noyalib = "0.0.30"
 ```
 
 ### As a CLI tool
@@ -76,16 +79,10 @@ library's dependency graph for downstream embedders).
 | Channel | Install |
 |---|---|
 | Cargo (crates.io) | `cargo install noya-cli --locked` |
-| Cargo (from source) | `cargo install --locked --path crates/noya-cli` |
-| Homebrew (personal tap) | `brew tap sebastienrousseau/tap && brew install noyalib` |
-| Arch Linux (AUR) | `yay -S noyalib-bin` (binary) or `yay -S noyalib` (source) |
-| Scoop (Windows) | `scoop bucket add sebastienrousseau https://github.com/sebastienrousseau/scoop-bucket && scoop install noyalib` |
-| Nix / NixOS | `nix run github:sebastienrousseau/noyalib` |
+| Cargo (from source) | `git clone https://github.com/sebastienrousseau/noya-cli && cargo install --locked --path noya-cli` |
 | Container (GHCR) | `docker run --rm ghcr.io/sebastienrousseau/noyafmt:latest --version` |
 | npm (WASM) | `npm install @sebastienrousseau/noyalib-wasm` |
 | npm (MCP) | `npx @sebastienrousseau/noyalib-mcp` (no Rust toolchain needed) |
-| VS Code | search `noyalib` in the Marketplace |
-| Open VSX | search `noyalib` in [open-vsx.org](https://open-vsx.org) |
 
 `cargo install noya-cli --locked` builds both binaries by default
 (via the `noyavalidate` Cargo feature). To install only the
@@ -106,7 +103,7 @@ maintainer runbook.
 
 ```toml
 [dependencies]
-noyalib = { version = "0.0.29", default-features = false }
+noyalib = { version = "0.0.30", default-features = false }
 ```
 
 Requires `alloc`. Core data binding (`from_str`, `to_string`, `Value`,
@@ -135,6 +132,7 @@ downstream users pinned to the core's floor.
 | `noya-cli` (binaries) | 1.86.0 | Lockstep with the core floor; `clap_builder 4.6` (a transitive of `clap = "4.5"`) ships in edition 2024. |
 | `noyalib-lsp` | 1.86.0 | Lockstep with the core floor; LSP transport-stack transitives (`litemap`, `uuid`) require recent stables. |
 | `noyalib-wasm` | 1.86.0 | Lockstep with the core floor; the `wasm-bindgen` 0.2 ecosystem floors at 1.86. |
+| `noyalib-serde-yaml` | 1.86.0 | Lockstep with the core floor; a pure re-export crate with no extra dependencies. |
 
 As of v0.0.16 the whole lockstep set shares one floor, 1.86.0 —
 the historical split (core at a lower floor than the satellites)
@@ -171,13 +169,12 @@ the application needs.
 | `ariadne` | `ariadne` | Alternative `ariadne`-rendered diagnostics | `examples/ariadne_diagnostic.rs` |
 | `include` | — | `$include` directive resolution via an in-memory resolver | `examples/include_directive.rs` |
 | `include_fs` | `include` + `std` | Filesystem include resolver (`SafeFileResolver`) | `examples/include_directive.rs` |
-| `schema` | `schemars`, `serde_json` | `JsonSchema` derive + `schema_for::<T>()`. **Downstream callers that derive `JsonSchema` must add `schemars = "1.2"` to their own `Cargo.toml`** — the proc-macro emits `::schemars::*` paths that need to resolve in the call-site dep graph. | [Capabilities in 0.0.1](#capabilities-in-001) |
+| `schema` | `schemars`, `serde_json` | `JsonSchema` derive + `schema_for::<T>()`. **Downstream callers that derive `JsonSchema` must add `schemars = "1.2"` to their own `Cargo.toml`** — the proc-macro emits `::schemars::*` paths that need to resolve in the call-site dep graph. | [Capabilities at a glance](#capabilities-at-a-glance) |
 | `validate-schema` | `schema` + `jsonschema` | `validate_against_schema`, `coerce_to_schema` | [Governance: schema-driven autofix](#governance-schema-driven-autofix) |
 | `figment` | `figment` 0.10 | `noyalib::figment::Yaml` provider | `examples/figment.rs` |
 | `garde` | `garde` 0.22 | `Validated<T>` wrapper | `examples/validation_garde.rs` |
 | `validator` | `validator` 0.19 | `ValidatedValidator<T>` wrapper | `examples/validation_validator.rs` |
 | `lossless-float` | — | `LosslessFloat` — refuse-to-lose-precision float, the floating-point sibling of `lossless-u64` | — |
-| `robotics` | — | **deprecated** (one release): aliases into `lossless-float`; `Degrees`/`Radians` leave with it | `examples/robotics_polymorphism.rs` |
 | `parallel` | `rayon` 1.10 | `noyalib::parallel::parse<T>` for `---`-separated streams | [Benchmarks](#benchmarks) |
 | `recovery` | — | `noyalib::recovery::parse_lenient` — best-effort tree + error list for LSP / IDE half-typed documents | `examples/recovery_lenient.rs`, `benches/v006_features.rs` |
 | `sval` | `sval` 2 | `impl sval::Value` for `Value` / `Number` / `Mapping` / `MappingAny` / `TaggedValue`, `noyalib::sval_adapter::to_sval_writer` | `examples/sval_streaming.rs`, `benches/v006_features.rs` |
@@ -193,7 +190,7 @@ the application needs.
 ```toml
 # Example: rich diagnostics + schema validation
 [dependencies]
-noyalib = { version = "0.0.29", features = ["miette", "validate-schema"] }
+noyalib = { version = "0.0.30", features = ["miette", "validate-schema"] }
 ```
 
 **Optional features:** `lossless-u64` preserves YAML integer scalars above
@@ -241,8 +238,11 @@ features:
 
 ## The noyalib ecosystem
 
-Five crates ship from this workspace. The library is the core;
-the four satellites wrap it for specific delivery surfaces.
+Six crates make up the family. The library is the core; five
+satellites wrap it for specific delivery surfaces, each in its own
+repository, all releasing in lockstep at the identical `=0.0.X`
+([ADR-0005](doc/adr/0005-workspace-split.md)) — the version number
+is the compatibility contract.
 
 | Crate | What it is | Use case |
 |---|---|---|
@@ -251,8 +251,9 @@ the four satellites wrap it for specific delivery surfaces.
 | **`noyalib-lsp`** ([own repo](https://github.com/sebastienrousseau/noyalib-lsp)) | Language Server Protocol server | Editor integration — VS Code, Neovim, Helix, Emacs, Zed, Sublime, IntelliJ. |
 | **`noyalib-mcp`** ([own repo](https://github.com/sebastienrousseau/noyalib-mcp)) | Model Context Protocol server | LLM agent tooling — Claude Desktop, Cursor, Continue.dev, Zed assistant, mcp.run. |
 | **`noyalib-wasm`** ([own repo](https://github.com/sebastienrousseau/noyalib-wasm)) | `wasm-bindgen` wrapper around the library | Browser, Node, Cloudflare Workers, Deno, any WASM-capable host. |
+| **`noyalib-serde-yaml`** ([own repo](https://github.com/sebastienrousseau/noyalib-serde-yaml)) | Drop-in `serde_yaml` replacement — a Cargo package rename over the behavioural shim | Migrate off archived `serde_yaml` 0.9 by changing one manifest line and zero source lines. |
 
-### Install the binaries
+### Install the pieces
 
 ```bash
 # CLI tools (noyafmt + noyavalidate)
@@ -266,6 +267,11 @@ cargo install noyalib-mcp
 
 # WASM bundle
 npm install @sebastienrousseau/noyalib-wasm
+```
+
+```toml
+# serde_yaml drop-in — the whole migration is this one line:
+serde_yaml = { package = "noyalib-serde-yaml", version = "=0.0.30" }
 ```
 
 Per-crate READMEs cover the surface specific to each artifact:
@@ -339,7 +345,7 @@ tables for each.
 -[dependencies]
 -serde_yaml = "0.9"
 +[dependencies]
-+noyalib = "0.0.29"
++noyalib = "0.0.30"
 ```
 
 ```diff
@@ -372,7 +378,7 @@ If your call sites can't change at all, rename the package in
 `Cargo.toml` and change **zero source lines**:
 
 ```toml
-serde_yaml = { package = "noyalib-serde-yaml", version = "=0.0.29" }
+serde_yaml = { package = "noyalib-serde-yaml", version = "=0.0.30" }
 ```
 
 or depend on noyalib directly with
@@ -474,23 +480,23 @@ every push.
 
 ---
 
-## Capabilities in 0.0.1
+## Capabilities at a glance
 
-The 0.0.1 release covers a complete YAML 1.2 stack. See
-[`CHANGELOG.md`](CHANGELOG.md) for the detailed inventory; the
-table below groups the inventory by capability theme.
+The library has covered a complete YAML 1.2 stack since its first
+release. See [`CHANGELOG.md`](CHANGELOG.md) for the per-release
+inventory; the table below groups the current surface by theme.
 
 | Theme | Headline deliverables |
 | :--- | :--- |
 | Spec compliance | YAML 1.2 official test suite at 100% strict (406/406 attempted, 0 failures, 0 skips — verified by `tests/yaml_compliance_report.rs`); YAML 1.1 opt-in compatibility for the "Norway problem"; multi-document streams |
-| Migration from `serde_yaml` | `compat-serde-yaml` feature with name-for-name re-exports; `From`/`TryFrom` parity for `Value`/`Mapping`/`Number`; `Document::validate`; comment-aware reads via `load_comments` |
+| Migration from `serde_yaml` | **behavioural** `compat-serde-yaml` shim since v0.0.29 — parses under `ParserConfig::serde_yaml_compat()` and renders upstream-style errors, pinned by the live-captured 18-case contract suite; `noyalib-serde-yaml` packages it as a one-line package-rename drop-in; `From`/`TryFrom` parity for `Value`/`Mapping`/`Number` |
 | Binary scalars | First-class `!!binary` tag; RFC 4648 base64 round-trip with `serde_bytes::ByteBuf`/`Bytes`; non-UTF-8 payloads supported |
 | Flatten guard | `Spanned<Value>` in `#[serde(flatten)]` returns an actionable error pointing at the working alternative |
 | Lossless editing | Side-table CST with byte-faithful round-trip; `Document::entry(path)` chainable mutable handle (19 methods); `rename_key` / `rename_anchor` / `swap_items` / `move_item` and the auto-formatting `*_value` inserts; `set_comment` / `remove_comment` for inline and leading comments; automatic indent detection (2/3/4-space) |
 | Anchor management | `Document::anchors()` / `aliases()` / `aliases_of(name)`; `materialise_alias_at(byte_pos)` and `materialise_aliases_of(name)` for breaking aliases |
 | Schema codegen | `schema` feature: `JsonSchema` derive re-export; `schema_for::<T>()` and `schema_for_yaml::<T>()`; honours `#[doc]`, `#[serde(default)]`, `#[serde(rename)]` |
 | Schema validation | `validate-schema` feature: `validate_against_schema(value, schema)`; aggregated violations with RFC 6901 paths |
-| Tooling | `noyavalidate` (with `--schema` and `--fix`), `noyafmt`, `noyalib-mcp`, `noyalib-wasm` |
+| Tooling | `noyavalidate` (with `--schema` and `--fix`), `noyafmt`, `noyalib-lsp`, `noyalib-mcp`, `noyalib-wasm`, `noyalib-serde-yaml` |
 | Performance | `noyalib::simd` primitives — `find_any_of`, `clean_prefix_len`, `ByteBitmap`; parser hot path integrated; ~58× and ~5.4× over byte-by-byte at arities 3 and 8 |
 | Supply chain | SLSA L3 provenance, sigstore signing, OpenSSF Scorecard, REUSE.software 3.3 compliance, signed commits, `cargo-deny` / `cargo-vet` / `cargo-semver-checks` gates, differential and soak fuzz |
 
@@ -1305,7 +1311,6 @@ cargo run --example all
 | | `validation_garde` | Declarative validation through `garde` + `Validated<T>` |
 | | `validation_validator` | Declarative validation through `validator` + `ValidatedValidator<T>` |
 | | `diagnostic_path` | `serde_path_to_error` — pinpoint the offending nested key |
-| | `robotics_polymorphism` | Tagged-enum dispatch with the deprecated `robotics` compat surface (final release) |
 
 </details>
 
@@ -1334,7 +1339,7 @@ disagreement on priorities.
 - **You have a hard dependency budget that cannot tolerate a
   Grisu / Ryu float formatter and a hash-randomised lookup
   table.** Default profile carries 8 runtime deps. `noyalib =
-  { version = "0.0.29", default-features = false, features =
+  { version = "0.0.30", default-features = false, features =
   ["std"] }` (or the equivalent `features = ["minimal"]`) drops
   to 5 — `itoa`, `ryu`, and `serde_ignored` become opt-in via
   the `fast-int` / `fast-float` / `strict-deserialise` features.
@@ -1364,7 +1369,13 @@ make clean        # remove build artifacts
 
 ### Fuzzing
 
-Nine `cargo-fuzz` targets ship under `fuzz/fuzz_targets/`:
+Twelve `cargo-fuzz` targets ship under `fuzz/fuzz_targets/`,
+including differential targets that compare noyalib against other
+ecosystem parsers. Every push replays the seed corpus plus the
+minimized crash inputs of previously-fixed findings
+(`fuzz/regressions/`), so a fixed crash cannot silently return;
+onboarding to Google's OSS-Fuzz is in review
+([google/oss-fuzz#16093](https://github.com/google/oss-fuzz/pull/16093)).
 
 ```bash
 # Generic surface
@@ -1423,6 +1434,10 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for signed commits and PR guidelines.
 ---
 
 ## Security
+
+**Reporting:** never open a public issue for a vulnerability — see
+[`SECURITY.md`](SECURITY.md) for the private reporting channel and
+disclosure policy.
 
 YAML parsers are notorious attack surface — `libyaml`-based wrappers
 have shipped multiple critical CVEs over the years (deserialisation
@@ -1637,6 +1652,25 @@ rather than assertion.
 Thanks also to [@kshpytsya](https://github.com/kshpytsya) and
 [@EdJoPaTo](https://github.com/EdJoPaTo) for reports and clippy
 follow-ups.
+
+## Stability guarantees
+
+- **Versioning.** Strict [SemVer](https://semver.org). Pre-1.0 the
+  breaking-change axis is the patch number during the `0.0.x`
+  series; every breaking change is marked with `!` in its commit
+  and CHANGELOG entry, and `cargo semver-checks` gates every PR
+  against the last release.
+- **Output stability.** For a parser, output *is* API: a change to
+  how a document parses (scalar resolution, error-vs-accept, the
+  resulting `Value` shape) is treated as a breaking change even
+  when no Rust signature moves — spec-alignment fixes ship as
+  `fix(spec)!:` on the breaking axis, never in a compatible
+  release.
+- **MSRV.** Raised only on the breaking axis with the reason
+  recorded in the CHANGELOG, never silently — policy and history
+  in [`doc/MSRV-AND-DEPRECATION.md`](doc/MSRV-AND-DEPRECATION.md).
+- **Deprecations** live for at least two releases with a
+  `#[deprecated]` note naming the replacement before removal.
 
 ## License
 

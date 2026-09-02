@@ -100,6 +100,87 @@ jobs:
     # `fuzz_diff` fuzz target for 10 seconds per push.
     uses: ./.github/workflows/shared-fuzz-diff.yml
 
+  fuzz-regression:
+    # Regression gate over the whole fuzz surface. Two guarantees the
+    # 10s fuzz-diff smoke cannot give:
+    #
+    # 1. Every fuzz target BUILDS. Only fuzz_diff/fuzz_editors run per
+    #    push otherwise, so the other ten can bit-rot silently until
+    #    the weekly soak or an OSS-Fuzz build (the v0.0.29 cycle
+    #    caught a corpus-packaging break only by manual verification).
+    # 2. Every fixed fuzz finding STAYS fixed: fuzz/regressions/<t>/
+    #    holds the minimized crash artifacts of previously-fixed bugs
+    #    and each target replays them plus the seed corpus with
+    #    -runs=0 (pure replay, deterministic, seconds per target).
+    #
+    # A crash here is always a real regression: known
+    # differences-of-opinion never enter fuzz/regressions (they are
+    # pinned as unit tests instead, e.g. anchor_name_may_contain_colon
+    # in tests/competitor_bugs.rs).
+    name: fuzz-regression
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-latest
+    env:
+      CARGO_TARGET_DIR: ${{ github.workspace }}/target-fuzz
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # master
+        with:
+          toolchain: nightly
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+        with:
+          workspaces: ". -> target-fuzz"
+          key: fuzz-regression
+      # Installed from source like shared-fuzz-diff.yml, deliberately
+      # NOT via install-action: its prebuilt cargo-fuzz is a static
+      # musl binary, and cargo-fuzz infers the fuzz target triple from
+      # its own build triple, so the prebuilt one tries to build
+      # sanitized fuzzers for x86_64-unknown-linux-musl and dies on
+      # "sanitizer is incompatible with statically linked libc".
+      - run: cargo install --locked cargo-fuzz
+      - name: Build every fuzz target
+        run: cargo +nightly fuzz build
+      - name: Replay seed corpus and fixed-bug regressions
+        run: |
+          set -euo pipefail
+          cd fuzz
+          for f in fuzz_targets/*.rs; do
+            t=$(basename "$f" .rs)
+            dirs="corpus/seed"
+            [ -d "regressions/$t" ] && dirs="$dirs regressions/$t"
+            echo "── replaying $t against: $dirs"
+            cargo +nightly fuzz run "$t" $dirs -- -runs=0
+          done
+
+  each-feature:
+    # Single-feature build gate on every push and PR. The weekly
+    # feature-powerset workflow covers the 309 pairwise combinations;
+    # this catches the common case (one feature broken on its own,
+    # usually a missing import or gate) before merge instead of at
+    # the next weekly run.
+    name: each-feature
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # master
+        with:
+          toolchain: stable
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+        with:
+          key: each-feature
+      - uses: taiki-e/install-action@742a3317eac7bd62f91cd888b4eead5e784ba833 # v2.87.1
+        with:
+          tool: cargo-hack
+      - name: cargo check each feature in isolation
+        # --exclude-features mirrors feature-powerset.yml: nightly-simd
+        # needs a nightly compiler and compare-saphyr is a dev-only
+        # bench arm.
+        run: |
+          cargo hack check -p noyalib --each-feature \
+            --exclude-features nightly-simd,compare-saphyr \
+            --no-dev-deps
+
   cargo-semver-checks:
     name: cargo-semver-checks
     # On every PR, compare the public API of the proposed change

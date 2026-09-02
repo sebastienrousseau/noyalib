@@ -1,42 +1,68 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 // Copyright (c) 2026 Noyalib. All rights reserved.
 
-//! Robotics/scientific numeric profile: StrictFloat, Radians, Degrees.
+//! Scientific numeric profile: LosslessFloat plus a domain newtype.
 //!
-//! Demonstrates precise numeric types for robotics, simulation, and
-//! scientific computing pipelines that deserialize from YAML.
+//! Demonstrates precise numeric types for simulation and scientific
+//! computing pipelines that deserialize from YAML. The `Radians`
+//! newtype below is defined in this example: domain unit types left
+//! the crate with the `robotics` module (v0.0.30), and the intended
+//! migration is to copy the handful of lines into your own code.
 //!
-//! Run: `cargo run --example scientific --features robotics`
-
-// The `robotics` module is deprecated (since 0.0.29) and leaves next
-// release: `StrictFloat` is now `lossless_float::LosslessFloat`, and
-// the `Degrees`/`Radians` newtypes go with the module. This example
-// exercises the compat surface for its final release.
-#![allow(deprecated)]
+//! Run: `cargo run --example scientific --features lossless-float`
 
 #[path = "support.rs"]
 mod support;
 
 fn main() {
-    support::header("noyalib -- scientific (robotics numeric profile)");
+    support::header("noyalib -- scientific (lossless numeric profile)");
 
-    #[cfg(not(feature = "robotics"))]
+    #[cfg(not(feature = "lossless-float"))]
     {
-        println!("  This example requires the 'robotics' feature.");
-        println!("  Run: cargo run --example scientific --features robotics");
+        println!("  This example requires the 'lossless-float' feature.");
+        println!("  Run: cargo run --example scientific --features lossless-float");
         println!();
     }
 
-    #[cfg(feature = "robotics")]
-    run_robotics_examples();
+    #[cfg(feature = "lossless-float")]
+    run_examples();
 }
 
-#[cfg(feature = "robotics")]
-fn run_robotics_examples() {
-    use noyalib::robotics::{Degrees, Radians, StrictFloat};
+/// An angle stored in radians but deserialized from degrees in YAML.
+/// Serialization emits the raw radian value. This is the former
+/// `noyalib::robotics::Radians`, copied here per its migration note.
+#[cfg(feature = "lossless-float")]
+#[derive(Debug, Clone, Copy, PartialEq)]
+struct Radians(pub f64);
 
-    // ── StrictFloat: valid values ────────────────────────────────────
-    support::task_with_output("StrictFloat: valid values", || {
+#[cfg(feature = "lossless-float")]
+impl Radians {
+    fn to_degrees(self) -> f64 {
+        self.0.to_degrees()
+    }
+}
+
+#[cfg(feature = "lossless-float")]
+impl<'de> serde::Deserialize<'de> for Radians {
+    fn deserialize<D: serde::Deserializer<'de>>(de: D) -> Result<Self, D::Error> {
+        let degrees = f64::deserialize(de)?;
+        Ok(Self(degrees.to_radians()))
+    }
+}
+
+#[cfg(feature = "lossless-float")]
+impl serde::Serialize for Radians {
+    fn serialize<S: serde::Serializer>(&self, ser: S) -> Result<S::Ok, S::Error> {
+        ser.serialize_f64(self.0)
+    }
+}
+
+#[cfg(feature = "lossless-float")]
+fn run_examples() {
+    use noyalib::lossless_float::LosslessFloat;
+
+    // ── LosslessFloat: valid values ─────────────────────────────────
+    support::task_with_output("LosslessFloat: valid values", || {
         let cases: &[(&str, f64)] = &[
             ("0.0", 0.0),
             ("1.0", 1.0),
@@ -46,25 +72,25 @@ fn run_robotics_examples() {
         ];
         let mut lines = Vec::new();
         for &(yaml, expected) in cases {
-            let sf: StrictFloat = noyalib::from_str(yaml).unwrap();
+            let sf: LosslessFloat = noyalib::from_str(yaml).unwrap();
             assert!((sf.get() - expected).abs() < 1e-10);
             lines.push(format!("{yaml:>12} -> {}", sf.get()));
         }
         lines
     });
 
-    // ── StrictFloat: rejection of NaN/Infinity ──────────────────────
-    support::task_with_output("StrictFloat: rejects NaN and Infinity", || {
+    // ── LosslessFloat: rejection of NaN/Infinity ────────────────────
+    support::task_with_output("LosslessFloat: rejects NaN and Infinity", || {
         let mut lines = Vec::new();
         for yaml in &[".nan", ".inf", "-.inf"] {
-            let result: Result<StrictFloat, _> = noyalib::from_str(yaml);
+            let result: Result<LosslessFloat, _> = noyalib::from_str(yaml);
             assert!(result.is_err());
             lines.push(format!("{yaml:>8} -> rejected ({})", result.unwrap_err()));
         }
         lines
     });
 
-    // ── Radians: degree-to-radian conversion ─────────────────────────
+    // ── Radians: degree-to-radian conversion via a local newtype ────
     support::task_with_output("Radians: degrees in YAML -> radians in Rust", || {
         let cases: &[(&str, f64)] = &[
             ("0.0", 0.0),
@@ -82,21 +108,7 @@ fn run_robotics_examples() {
         lines
     });
 
-    // ── Degrees: transparent wrapper ─────────────────────────────────
-    support::task_with_output("Degrees: transparent wrapper and conversion", || {
-        let d: Degrees = noyalib::from_str("45.0").unwrap();
-        assert!((d.0 - 45.0).abs() < 1e-15);
-        let r = d.to_radians();
-        assert!((r.0 - core::f64::consts::FRAC_PI_4).abs() < 1e-10);
-        let back = r.to_degrees();
-        assert!((back.0 - 45.0).abs() < 1e-10);
-        vec![
-            format!("Degrees(45.0) -> Radians({:.6})", r.0),
-            format!("Radians({:.6}) -> Degrees({:.1}) (roundtrip)", r.0, back.0),
-        ]
-    });
-
-    // ── Sensor calibration use case ──────────────────────────────────
+    // ── Sensor calibration use case ─────────────────────────────────
     support::task_with_output("Sensor calibration: joint angles from YAML", || {
         let yaml = r"
 joint1: 90.0
@@ -125,13 +137,13 @@ joint6: 135.0
                 "joint{}: {:.4} rad ({:.1} deg)",
                 i + 1,
                 j.0,
-                j.to_degrees().0
+                j.to_degrees()
             ));
         }
         lines
     });
 
-    // ── Round-trip: serialize Radians back to YAML ───────────────────
+    // ── Round-trip: serialize Radians back to YAML ──────────────────
     support::task_with_output("Round-trip: serialize Radians back to YAML", || {
         let r = Radians(core::f64::consts::PI);
         let yaml = noyalib::to_string(&r).unwrap();
@@ -143,8 +155,8 @@ joint6: 135.0
         ]
     });
 
-    // ── StrictFloat in a struct ──────────────────────────────────────
-    support::task_with_output("StrictFloat in a calibration struct", || {
+    // ── LosslessFloat in a struct ───────────────────────────────────
+    support::task_with_output("LosslessFloat in a calibration struct", || {
         let yaml = r"
 offset_x: 0.001
 offset_y: -0.002
@@ -152,9 +164,9 @@ scale: 1.00015
 ";
         #[derive(Debug, serde::Deserialize)]
         struct Calibration {
-            offset_x: StrictFloat,
-            offset_y: StrictFloat,
-            scale: StrictFloat,
+            offset_x: LosslessFloat,
+            offset_y: LosslessFloat,
+            scale: LosslessFloat,
         }
         let cal: Calibration = noyalib::from_str(yaml).unwrap();
         vec![
@@ -164,5 +176,5 @@ scale: 1.00015
         ]
     });
 
-    support::summary(7);
+    support::summary(6);
 }
