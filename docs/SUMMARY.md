@@ -34,6 +34,7 @@
 - [MSRV and deprecation](MSRV-AND-DEPRECATION.md)
 - [CII best practices](CII-BEST-PRACTICES.md)
 - [Pre-commit hooks](pre-commit.md)
+- [Packaging for distributions](packaging.md)
 
 # The ecosystem
 

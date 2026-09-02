@@ -9,6 +9,16 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Added
 
+- **Phase 4/5 groundwork and contributor DX** (with the noya-cli
+  half in its own repository): `docs/packaging.md` addressed to
+  distro maintainers (licensing, MSRV policy, the lockstep pin
+  model, offline builds, artefact verification), a manual chapter
+  for it, `.devcontainer/`, `.pre-commit-config.yaml`,
+  `CITATION.cff`, and `AGENTS.md` stating the invariants an
+  AI-assisted contribution must respect.
+
+### Added
+
 - **Phase 3: the rendered User Manual.** `docs/` is now an mdBook
   root (`book.toml` + `SUMMARY.md` + an introduction page) whose
   chapters are the existing Markdown files in place — no file moved,
