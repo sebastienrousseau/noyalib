@@ -7,6 +7,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+## [v0.0.30] - 2026-09-02
+
 ### Changed
 
 - **README accuracy and ecosystem coverage.** The ecosystem section
@@ -54,7 +56,6 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   convention (single- and multi-line) and the column-counts-
   characters / index-counts-bytes contract their UTF-16 conversion
   depends on.
-
 
 - `fuzz_no_span_loader` now encodes the documented v0.0.29
   asymmetry from #351: `from_str` refuses a multi-document stream
@@ -233,22 +234,6 @@ behavioural shim** — drop-in now means behaviour, not just names.
   `:`-shaped document, `null` vs `{"": null}`) — continuous
   triage is what the OSS-Fuzz onboarding is for.
 
-### Changed
-
-- **`robotics` is deprecated; `StrictFloat` is now
-  `lossless_float::LosslessFloat`** (feature `lossless-float`). The
-  refuse-to-lose-precision float was never robotics-specific — it is
-  the floating-point sibling of `lossless-u64`, and its new home
-  needs nothing beyond the mandatory `serde_core` (the old one
-  pulled `dep:serde` for derives). The `robotics` module and feature
-  survive one release as a deprecated compat surface (`robotics`
-  implies `lossless-float`; `StrictFloat`/`StrictFloatError` are
-  deprecated aliases), then go — along with the `Degrees`/`Radians`
-  unit newtypes, which are ~40 lines of domain code with no
-  dependence on noyalib and belong in the consumer's own tree.
-
-### Fixed
-
 - **Three more spec-strictness gaps, found by the new
   `fuzz_serde_yaml_compat` parity fuzzer** (the shim vs the real
   archived `serde_yaml 0.9.34`, value-and-verdict differential):
@@ -393,6 +378,20 @@ behavioural shim** — drop-in now means behaviour, not just names.
 No breaking API change: both new flags are opt-in and default off.
 No MSRV change (still 1.86.0).
 
+### Changed
+
+- **`robotics` is deprecated; `StrictFloat` is now
+  `lossless_float::LosslessFloat`** (feature `lossless-float`). The
+  refuse-to-lose-precision float was never robotics-specific — it is
+  the floating-point sibling of `lossless-u64`, and its new home
+  needs nothing beyond the mandatory `serde_core` (the old one
+  pulled `dep:serde` for derives). The `robotics` module and feature
+  survive one release as a deprecated compat surface (`robotics`
+  implies `lossless-float`; `StrictFloat`/`StrictFloatError` are
+  deprecated aliases), then go — along with the `Degrees`/`Radians`
+  unit newtypes, which are ~40 lines of domain code with no
+  dependence on noyalib and belong in the consumer's own tree.
+
 ## [v0.0.28] - 2026-08-23
 
 Two CST and scanner correctness fixes, both about an *implicit null* —
@@ -513,7 +512,6 @@ consumers pointing a real workload at a published release.
   shadowing shell alias and the probe's fallback read that as zero
   advisories. That probe was fixed in v0.0.26; this is the first
   scorecard where those rows are earned.
-
 
 ## [v0.0.26] - 2026-08-20
 
@@ -787,7 +785,6 @@ testing a library cannot do for itself.
 
 - Version → 0.0.25.
 
-
 ## [v0.0.24] - 2026-08-18
 
 ### Fixed
@@ -844,7 +841,6 @@ testing a library cannot do for itself.
   - `hashbrown` 0.15.5 → 0.17.1
   - `github/codeql-action/{analyze,init,upload-sarif}` 4.37.6 → 4.37.7
   - `taiki-e/install-action` 2.85.10 → 2.86.1
-
 
 ## [v0.0.23] - 2026-08-16
 
@@ -2207,7 +2203,6 @@ that confirmed every `MapAccess` / `SeqAccess` /
 or uses an iterator that naturally returns `None` on
 exhaustion. No further iterator-state-leak bugs in the same
 family remain.
-
 
 ### Security & hardening pass on the v0.0.6 surface
 
