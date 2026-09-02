@@ -381,14 +381,14 @@ impl Sha256Lite {
                 .wrapping_add(s1);
         }
         let [mut a, mut b, mut c, mut d, mut e, mut f, mut g, mut h] = self.state;
-        for i in 0..64 {
+        for (wi, ki) in w.iter().zip(Self::K.iter()) {
             let s1 = e.rotate_right(6) ^ e.rotate_right(11) ^ e.rotate_right(25);
             let ch = (e & f) ^ (!e & g);
             let t1 = h
                 .wrapping_add(s1)
                 .wrapping_add(ch)
-                .wrapping_add(Self::K[i])
-                .wrapping_add(w[i]);
+                .wrapping_add(*ki)
+                .wrapping_add(*wi);
             let s0 = a.rotate_right(2) ^ a.rotate_right(13) ^ a.rotate_right(22);
             let maj = (a & b) ^ (a & c) ^ (b & c);
             let t2 = s0.wrapping_add(maj);
