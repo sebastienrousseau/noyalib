@@ -7,6 +7,29 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Added
+
+- **Two regression gates in per-push CI.** `fuzz-regression` builds
+  all twelve fuzz targets and replays the seed corpus plus
+  `fuzz/regressions/` — a new tracked corpus of fifteen minimized
+  crash inputs from previously-fixed fuzz findings — with `-runs=0`,
+  so a fixed crash staying fixed is now checked on every push
+  instead of at the weekly soak. `each-feature` runs
+  `cargo hack check --each-feature`, catching a single broken
+  feature at PR time instead of at the weekly powerset run.
+- One deliberate `fuzz_diff` divergence promoted to a unit pin:
+  `&a:` is an anchor named `a:` on a null document (YAML 1.2
+  §6.9.2 allows `:` in anchor names); serde_yaml_ng reads a mapping
+  with an empty key. Pinned in `tests/competitor_bugs.rs`.
+
+### Fixed
+
+- `fuzz_no_span_loader` now encodes the documented v0.0.29
+  asymmetry from #351: `from_str` refuses a multi-document stream
+  while `cst::parse_document` reads the first document — that
+  refusal is exempt from its loader-parity rule (the seed corpus
+  was tripping the stale invariant).
+
 ### Removed
 
 - **The `robotics` module and feature**, completing the one-release

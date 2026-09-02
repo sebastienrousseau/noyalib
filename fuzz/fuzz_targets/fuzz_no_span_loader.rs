@@ -35,6 +35,16 @@ fuzz_target!(|data: &[u8]| {
     let value_res = noyalib::from_str::<Value>(s);
     let cst_res = noyalib::cst::parse_document(s);
 
+    // Documented asymmetry since v0.0.29 (#351): `from_str` refuses a
+    // multi-document stream outright, while `cst::parse_document`
+    // reads the first document of one. Only that specific refusal is
+    // exempt from the parity rule.
+    if let Err(e) = &value_res {
+        if e.to_string().contains("more than one document") {
+            return;
+        }
+    }
+
     match (value_res.is_ok(), cst_res.is_ok()) {
         (true, true) | (false, false) => {}
         (true, false) => {
