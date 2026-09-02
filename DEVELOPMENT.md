@@ -9,6 +9,18 @@ documentation lives in [`docs/`](docs/) and the
 expectations live in [`CONTRIBUTING.md`](CONTRIBUTING.md). This file
 is the *how*: toolchain, tasks, and reproducing every CI gate locally.
 
+## Why `crates/noyalib` and not `src/` at the root
+
+A deliberate relic. Before ADR-0005 every satellite lived in this
+workspace under `crates/*`; they moved to their own repositories and
+the core stayed where it was. Flattening would touch ~190 path
+references (shared workflows the satellites pin by SHA, coverage
+regexes, REUSE annotations, the OSS-Fuzz project files, and the
+source links baked into every published rustdoc), so the directory
+stays until a flattening is worth its own structure-only cycle.
+Treat `crates/noyalib/` as the crate root and the repository root as
+the workspace root, and nothing else needs to be known about it.
+
 ## Toolchain
 
 | What | Version | Why |
