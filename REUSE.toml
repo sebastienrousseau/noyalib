@@ -12,6 +12,9 @@ version = 1
 path = [
     ".editorconfig",
     ".codespellrc",
+    ".pre-commit-config.yaml",
+    ".devcontainer/devcontainer.json",
+    "CITATION.cff",
     ".markdownlint.yaml",
     ".gitattributes",
     ".gitignore",
@@ -51,6 +54,7 @@ path = [
     "CONTRIBUTING.md",
     "GETTING_STARTED.md",
     "GLOSSARY.md",
+    "AGENTS.md",
     "GOVERNANCE.md",
     "PLAN.md",
     "SECURITY.md",
