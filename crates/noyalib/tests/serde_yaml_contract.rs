@@ -359,15 +359,19 @@ impl Sha256Lite {
         while self.buf.len() >= 64 {
             let block: [u8; 64] = self.buf[..64].try_into().unwrap();
             self.compress(&block);
-            self.buf.drain(..64);
+            let _ = self.buf.drain(..64);
         }
     }
 
     fn compress(&mut self, block: &[u8; 64]) {
         let mut w = [0u32; 64];
-        for (i, c) in block.chunks_exact(4).enumerate() {
-            w[i] = u32::from_be_bytes(c.try_into().unwrap());
+        for (slot, c) in w.iter_mut().zip(block.chunks_exact(4)) {
+            *slot = u32::from_be_bytes(c.try_into().unwrap());
         }
+        // Index-based on purpose: the SHA-256 message schedule reads
+        // relative offsets (i-2, i-7, i-15, i-16), which iterator
+        // adapters only obscure.
+        #[allow(clippy::needless_range_loop)]
         for i in 16..64 {
             let s0 = w[i - 15].rotate_right(7) ^ w[i - 15].rotate_right(18) ^ (w[i - 15] >> 3);
             let s1 = w[i - 2].rotate_right(17) ^ w[i - 2].rotate_right(19) ^ (w[i - 2] >> 10);
