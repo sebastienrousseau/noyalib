@@ -17,8 +17,6 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   `CITATION.cff`, and `AGENTS.md` stating the invariants an
   AI-assisted contribution must respect.
 
-### Added
-
 - **Phase 3: the rendered User Manual.** `docs/` is now an mdBook
   root (`book.toml` + `SUMMARY.md` + an introduction page) whose
   chapters are the existing Markdown files in place — no file moved,
@@ -86,7 +84,6 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   convention (single- and multi-line) and the column-counts-
   characters / index-counts-bytes contract their UTF-16 conversion
   depends on.
-
 
 - `fuzz_no_span_loader` now encodes the documented v0.0.29
   asymmetry from #351: `from_str` refuses a multi-document stream
@@ -265,7 +262,6 @@ behavioural shim** — drop-in now means behaviour, not just names.
   `:`-shaped document, `null` vs `{"": null}`) — continuous
   triage is what the OSS-Fuzz onboarding is for.
 
-
 - **Three more spec-strictness gaps, found by the new
   `fuzz_serde_yaml_compat` parity fuzzer** (the shim vs the real
   archived `serde_yaml 0.9.34`, value-and-verdict differential):
@@ -424,7 +420,6 @@ No MSRV change (still 1.86.0).
   unit newtypes, which are ~40 lines of domain code with no
   dependence on noyalib and belong in the consumer's own tree.
 
-
 ## [v0.0.28] - 2026-08-23
 
 Two CST and scanner correctness fixes, both about an *implicit null* —
@@ -545,7 +540,6 @@ consumers pointing a real workload at a published release.
   shadowing shell alias and the probe's fallback read that as zero
   advisories. That probe was fixed in v0.0.26; this is the first
   scorecard where those rows are earned.
-
 
 ## [v0.0.26] - 2026-08-20
 
@@ -819,7 +813,6 @@ testing a library cannot do for itself.
 
 - Version → 0.0.25.
 
-
 ## [v0.0.24] - 2026-08-18
 
 ### Fixed
@@ -876,7 +869,6 @@ testing a library cannot do for itself.
   - `hashbrown` 0.15.5 → 0.17.1
   - `github/codeql-action/{analyze,init,upload-sarif}` 4.37.6 → 4.37.7
   - `taiki-e/install-action` 2.85.10 → 2.86.1
-
 
 ## [v0.0.23] - 2026-08-16
 
@@ -2239,7 +2231,6 @@ that confirmed every `MapAccess` / `SeqAccess` /
 or uses an iterator that naturally returns `None` on
 exhaustion. No further iterator-state-leak bugs in the same
 family remain.
-
 
 ### Security & hardening pass on the v0.0.6 surface
 
