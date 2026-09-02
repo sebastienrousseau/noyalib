@@ -24,3 +24,4 @@ MD038: false  # spaces in code spans — YAML examples need them
 MD012: false  # consecutive blank lines
 MD053: false  # unused link definitions — used as footnote stores
 MD031: false  # blanks around fences
+MD028: false  # blank lines between adjacent, deliberately-separate blockquotes
