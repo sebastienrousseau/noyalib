@@ -17,6 +17,8 @@
   <a href="https://docs.rs/noyalib"><img src="https://img.shields.io/badge/docs.rs-noyalib-66c2a5?style=for-the-badge&labelColor=555555&logo=docs.rs" alt="Docs.rs" /></a>
   <a href="https://lib.rs/crates/noyalib"><img src="https://img.shields.io/badge/lib.rs-noyalib-orange.svg?style=for-the-badge" alt="lib.rs" /></a>
   <a href="https://scorecard.dev/viewer/?uri=github.com/sebastienrousseau/noyalib"><img src="https://img.shields.io/ossf-scorecard/github.com/sebastienrousseau/noyalib?style=for-the-badge&label=OpenSSF%20Scorecard&logo=openssf" alt="OpenSSF Scorecard" /></a>
+  <a href="LICENSE-APACHE"><img src="https://img.shields.io/badge/license-Apache--2.0%20OR%20MIT-blue.svg?style=for-the-badge" alt="License: Apache-2.0 OR MIT" /></a>
+  <a href="https://github.com/sebastienrousseau/noyalib/blob/main/doc/MSRV-AND-DEPRECATION.md"><img src="https://img.shields.io/badge/MSRV-1.86.0-93450a.svg?style=for-the-badge&logo=rust" alt="MSRV 1.86.0" /></a>
 </p>
 
 ---
@@ -52,6 +54,7 @@
 - [Development](#development) — make targets, fuzzing, CI
 - [Security](#security) — guarantees and compliance
 - [Documentation](#documentation) — all reference docs
+- [Stability guarantees](#stability-guarantees) — SemVer axis, output stability, MSRV discipline
 - [License](#license)
 
 ---
@@ -1366,7 +1369,13 @@ make clean        # remove build artifacts
 
 ### Fuzzing
 
-Nine `cargo-fuzz` targets ship under `fuzz/fuzz_targets/`:
+Twelve `cargo-fuzz` targets ship under `fuzz/fuzz_targets/`,
+including differential targets that compare noyalib against other
+ecosystem parsers. Every push replays the seed corpus plus the
+minimized crash inputs of previously-fixed findings
+(`fuzz/regressions/`), so a fixed crash cannot silently return;
+onboarding to Google's OSS-Fuzz is in review
+([google/oss-fuzz#16093](https://github.com/google/oss-fuzz/pull/16093)).
 
 ```bash
 # Generic surface
@@ -1425,6 +1434,10 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for signed commits and PR guidelines.
 ---
 
 ## Security
+
+**Reporting:** never open a public issue for a vulnerability — see
+[`SECURITY.md`](SECURITY.md) for the private reporting channel and
+disclosure policy.
 
 YAML parsers are notorious attack surface — `libyaml`-based wrappers
 have shipped multiple critical CVEs over the years (deserialisation
@@ -1639,6 +1652,25 @@ rather than assertion.
 Thanks also to [@kshpytsya](https://github.com/kshpytsya) and
 [@EdJoPaTo](https://github.com/EdJoPaTo) for reports and clippy
 follow-ups.
+
+## Stability guarantees
+
+- **Versioning.** Strict [SemVer](https://semver.org). Pre-1.0 the
+  breaking-change axis is the patch number during the `0.0.x`
+  series; every breaking change is marked with `!` in its commit
+  and CHANGELOG entry, and `cargo semver-checks` gates every PR
+  against the last release.
+- **Output stability.** For a parser, output *is* API: a change to
+  how a document parses (scalar resolution, error-vs-accept, the
+  resulting `Value` shape) is treated as a breaking change even
+  when no Rust signature moves — spec-alignment fixes ship as
+  `fix(spec)!:` on the breaking axis, never in a compatible
+  release.
+- **MSRV.** Raised only on the breaking axis with the reason
+  recorded in the CHANGELOG, never silently — policy and history
+  in [`doc/MSRV-AND-DEPRECATION.md`](doc/MSRV-AND-DEPRECATION.md).
+- **Deprecations** live for at least two releases with a
+  `#[deprecated]` note naming the replacement before removal.
 
 ## License
 
