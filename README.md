@@ -81,10 +81,6 @@ library's dependency graph for downstream embedders).
 | npm (WASM) | `npm install @sebastienrousseau/noyalib-wasm` |
 | npm (MCP) | `npx @sebastienrousseau/noyalib-mcp` (no Rust toolchain needed) |
 
-Homebrew, AUR, Scoop, Nix, and editor-marketplace packages land with
-the distribution phase of the repository plan; a channel is only
-listed here once it actually exists.
-
 `cargo install noya-cli --locked` builds both binaries by default
 (via the `noyavalidate` Cargo feature). To install only the
 formatter and skip the schema-validation toolchain, use
