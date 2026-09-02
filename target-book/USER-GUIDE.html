@@ -1,0 +1,843 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>User guide - The noyalib Manual</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="YAML 1.2 for Rust: parsing, serialization, lossless editing, schema validation, and the six-crate ecosystem.">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="favicon-8114d1fc.png">
+        <link rel="stylesheet" href="css/variables-8adf115d.css">
+        <link rel="stylesheet" href="css/general-e96d0476.css">
+        <link rel="stylesheet" href="css/chrome-d279d366.css">
+        <link rel="stylesheet" href="css/print-9e4910d8.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "searchindex-3efd43c8.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="toc-244b1f9c.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="mdbook-body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+            </noscript>
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="mdbook-page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        </label>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        </button>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                        </ul>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">The noyalib Manual</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/sebastienrousseau/noyalib" title="Git repository" aria-label="Git repository">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/sebastienrousseau/noyalib/edit/main/docs/./USER-GUIDE.md" title="Suggest an edit" aria-label="Suggest an edit" rel="edit">
+                            <span class=fa-svg id="git-edit-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M421.7 220.3l-11.3 11.3-22.6 22.6-205 205c-6.6 6.6-14.8 11.5-23.8 14.1L30.8 511c-8.4 2.5-17.5 .2-23.7-6.1S-1.5 489.7 1 481.2L38.7 353.1c2.6-9 7.5-17.2 14.1-23.8l205-205 22.6-22.6 11.3-11.3 33.9 33.9 62.1 62.1 33.9 33.9zM96 353.9l-9.3 9.3c-.9 .9-1.6 2.1-2 3.4l-25.3 86 86-25.3c1.3-.4 2.5-1.1 3.4-2l9.3-9.3H112c-8.8 0-16-7.2-16-16V353.9zM453.3 19.3l39.4 39.4c25 25 25 65.5 0 90.5l-14.5 14.5-22.6 22.6-11.3 11.3-33.9-33.9-62.1-62.1L314.3 67.7l11.3-11.3 22.6-22.6 14.5-14.5c25-25 65.5-25 90.5 0z"/></svg></span>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="mdbook-content" class="content">
+                    <main>
+                        <!-- SPDX-FileCopyrightText: 2026 Noyalib -->
+<!-- SPDX-License-Identifier: MIT OR Apache-2.0 -->
+<h1 id="noyalib-user-guide"><a class="header" href="#noyalib-user-guide"><code>noyalib</code> user guide</a></h1>
+<p>A long-form companion to the README. The README is the elevator
+pitch and reference; this guide walks through every public-facing
+surface in the order you typically encounter it.</p>
+<p>If you’ve used <code>serde_yaml</code> 0.9 before, also see
+<a href="MIGRATION-FROM-SERDE-YAML.html"><code>MIGRATION-FROM-SERDE-YAML.md</code></a> —
+most call sites are mechanical to update.</p>
+<h2 id="contents"><a class="header" href="#contents">Contents</a></h2>
+<ol>
+<li><a href="#1-reading-yaml">Reading YAML</a></li>
+<li><a href="#2-writing-yaml">Writing YAML</a></li>
+<li><a href="#3-the-dynamic-value-tree">The dynamic <code>Value</code> tree</a></li>
+<li><a href="#4-source-spans-spannedt">Source spans (<code>Spanned&lt;T&gt;</code>)</a></li>
+<li><a href="#5-strict-deserialise-typo-detection">Strict deserialise (typo detection)</a></li>
+<li><a href="#6-parser-policies-defence-in-depth">Parser policies (defence in depth)</a></li>
+<li><a href="#7-diagnostics-miette-friendly-errors">Diagnostics (<code>miette</code>-friendly errors)</a></li>
+<li><a href="#8-lossless-edits-cstdocument">Lossless edits (<code>cst::Document</code>)</a></li>
+<li><a href="#9-schema-validation-and-autofix">Schema validation and autofix</a></li>
+<li><a href="#10-multi-document-streams--parallel-parse">Multi-document streams + parallel parse</a></li>
+<li><a href="#11-the-cli-tools-noyafmt-noyavalidate">The CLI tools (<code>noyafmt</code>, <code>noyavalidate</code>)</a></li>
+<li><a href="#12-wasm-mcp-and-lsp">WASM, MCP, and LSP</a></li>
+</ol>
+<h2 id="1-reading-yaml"><a class="header" href="#1-reading-yaml">1. Reading YAML</a></h2>
+<p>The simplest case — read into a typed struct via <code>serde</code>:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use noyalib::from_str;
+
+#[derive(Debug, serde::Deserialize)]
+struct Server {
+    host: String,
+    port: u16,
+}
+
+let yaml = r#"
+host: api.example.com
+port: 8080
+"#;
+let s: Server = from_str(yaml)?;
+assert_eq!(s.port, 8080);
+<span class="boring">}</span></code></pre>
+<p>Every input shape <code>serde_yaml</code> supports has a noyalib equivalent:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Source</th><th>API</th><th>Returns</th></tr>
+</thead>
+<tbody>
+<tr><td><code>&amp;str</code></td><td><code>from_str::&lt;T&gt;(s)</code></td><td><code>Result&lt;T&gt;</code></td></tr>
+<tr><td><code>&amp;[u8]</code></td><td><code>from_slice::&lt;T&gt;(b)</code></td><td><code>Result&lt;T&gt;</code></td></tr>
+<tr><td><code>impl io::Read</code></td><td><code>from_reader::&lt;R, T&gt;(r)</code></td><td><code>Result&lt;T&gt;</code></td></tr>
+<tr><td><code>&amp;noyalib::Value</code></td><td><code>from_value::&lt;T&gt;(&amp;v)</code></td><td><code>Result&lt;T&gt;</code></td></tr>
+</tbody>
+</table>
+</div>
+<p>Each has a <code>_with_config(input, &amp;ParserConfig)</code> variant for when
+you need to tighten parser limits or opt into legacy behaviours
+(see <a href="#6-parser-policies-defence-in-depth">section 6</a>).</p>
+<h2 id="2-writing-yaml"><a class="header" href="#2-writing-yaml">2. Writing YAML</a></h2>
+<p>Mirror surface for the write side:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use noyalib::to_string;
+
+#[derive(serde::Serialize)]
+struct Server { host: String, port: u16 }
+
+let yaml = to_string(&amp;Server {
+    host: "api.example.com".into(),
+    port: 8080,
+})?;
+println!("{yaml}");
+// host: api.example.com
+// port: 8080
+<span class="boring">}</span></code></pre>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Sink</th><th>API</th></tr>
+</thead>
+<tbody>
+<tr><td><code>String</code></td><td><code>to_string(&amp;v)</code></td></tr>
+<tr><td><code>impl io::Write</code></td><td><code>to_writer(&amp;mut w, &amp;v)</code></td></tr>
+<tr><td><code>impl fmt::Write</code></td><td><code>to_fmt_writer(&amp;mut w, &amp;v)</code></td></tr>
+<tr><td><code>noyalib::Value</code></td><td><code>to_value(&amp;v)</code></td></tr>
+</tbody>
+</table>
+</div>
+<p><code>to_string_with_config(&amp;v, &amp;cfg)</code> accepts a <code>SerializerConfig</code>
+that tunes indent, flow style, scalar style, document markers,
+and block-scalar thresholds. See
+<a href="../crates/noyalib/examples/emit.rs"><code>crates/noyalib/examples/emit.rs</code></a>
+for every option in action.</p>
+<h2 id="3-the-dynamic-value-tree"><a class="header" href="#3-the-dynamic-value-tree">3. The dynamic <code>Value</code> tree</a></h2>
+<p>When the schema isn’t fixed at compile time, work with <code>Value</code>:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use noyalib::{from_str, Value};
+
+let v: Value = from_str(yaml)?;
+
+// Dot-path traversal.
+let port = v.get_path("server.port").and_then(|n| n.as_u64());
+
+// Sequence indexing.
+let first = v.get("items").and_then(|s| s.get(0));
+
+// Path queries — wildcards and recursive descent.
+let names = v.query("items[*].name");          // every name in the list
+let any   = v.query("..debug");                // every `debug` at any depth
+
+// Mutation.
+let mut v = v;
+v["server"]["port"] = Value::from(9090u16);
+<span class="boring">}</span></code></pre>
+<p>Missing keys return <code>None</code>; never panic on lookup.</p>
+<p>For lower-overhead reads, the borrowed AST shares scalar bytes
+with the input:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use noyalib::borrowed::from_str_borrowed;
+
+let yaml  = "host: localhost\nport: 8080\n";
+let v     = from_str_borrowed(yaml)?;
+let host  = v.as_mapping().unwrap().get("host").unwrap().as_str();
+// host points into `yaml` — no String allocation for the scalar.
+<span class="boring">}</span></code></pre>
+<p><code>BorrowedValue&lt;'a&gt;</code> doesn’t follow YAML aliases (<code>*name</code>); use
+the owned path for documents that anchor.</p>
+<h2 id="4-source-spans-spannedt"><a class="header" href="#4-source-spans-spannedt">4. Source spans (<code>Spanned&lt;T&gt;</code>)</a></h2>
+<p>Wrap any deserialise target in <code>Spanned&lt;T&gt;</code> to record where in
+the input it came from:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use noyalib::{from_str, Spanned};
+
+#[derive(serde::Deserialize)]
+struct Cfg {
+    port: Spanned&lt;u16&gt;,
+    host: Spanned&lt;String&gt;,
+}
+
+let cfg: Cfg = from_str("port: 8080\nhost: api\n")?;
+assert_eq!(cfg.port.value, 8080);
+assert_eq!(cfg.port.start.line(), 1);
+assert_eq!(cfg.port.start.column(), 6);
+<span class="boring">}</span></code></pre>
+<p><code>Spanned&lt;T&gt;</code> round-trips through <code>serde::Serialize</code> as <code>T</code> —
+the span info is read-side only. Combine with <code>miette</code> to render
+the exact offending region:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let report = noyalib::diagnostic::spanned_error(
+    yaml,
+    &amp;cfg.port,
+    "port must be &gt;= 1024 (privileged ports not allowed)",
+);
+eprintln!("{report:?}");
+<span class="boring">}</span></code></pre>
+<p>See <a href="../crates/noyalib/examples/validation.rs"><code>crates/noyalib/examples/validation.rs</code></a>.</p>
+<h2 id="5-strict-deserialise-typo-detection"><a class="header" href="#5-strict-deserialise-typo-detection">5. Strict deserialise (typo detection)</a></h2>
+<p>The single biggest config-file footgun: a typo in a key name
+silently deserialises into the field’s <code>Default</code>. <code>from_str</code> is
+lenient by design (extras are ignored), <code>from_str_strict</code> errors
+out:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>#[derive(serde::Deserialize)]
+struct Cfg { port: u16, host: String }
+
+let yaml = "port: 8080\nhost: api\nporrt: 9090\n";
+
+// Lenient: silently drops the typo.
+let c: Cfg = noyalib::from_str(yaml)?;
+assert_eq!(c.port, 8080);
+
+// Strict: typed error pointing at `porrt`.
+let err = noyalib::from_str_strict::&lt;Cfg&gt;(yaml).unwrap_err();
+assert!(err.to_string().contains("porrt"));
+<span class="boring">}</span></code></pre>
+<p>The strict path walks nested structs — a typo at
+<code>server.unknown</code> is reported with its parent path. Available on
+every input shape:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Input</th><th>Strict variant</th></tr>
+</thead>
+<tbody>
+<tr><td><code>&amp;str</code></td><td><code>from_str_strict::&lt;T&gt;(s)</code></td></tr>
+<tr><td><code>&amp;[u8]</code></td><td><code>from_slice_strict::&lt;T&gt;(b)</code></td></tr>
+<tr><td><code>impl io::Read</code></td><td><code>from_reader_strict::&lt;R, T&gt;(r)</code></td></tr>
+</tbody>
+</table>
+</div>
+<p>Strictness is opt-in <strong>per call site</strong>, not global — be strict
+about config you own and lenient about a third party’s payload in
+the same program. Runnable walk-through:
+<a href="../crates/noyalib/examples/strict_deserialise.rs"><code>crates/noyalib/examples/strict_deserialise.rs</code></a>
+(<code>cargo run --example strict_deserialise --features strict-deserialise</code>).</p>
+<h2 id="6-parser-policies-defence-in-depth"><a class="header" href="#6-parser-policies-defence-in-depth">6. Parser policies (defence in depth)</a></h2>
+<p>YAML’s anchor / merge-key / custom-tag features have historically
+been amplification vectors (billion-laughs) and remote-code-
+execution vectors (<code>!!python/object</code>). <code>noyalib</code> doesn’t
+instantiate arbitrary objects via tags, but you may still want
+to reject documents that abuse the spec at parse time:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use noyalib::{from_str_with_config, ParserConfig};
+use noyalib::policy::{DenyAnchors, DenyTags, MaxScalarLength};
+
+let cfg = ParserConfig::new()
+    .with_policy(DenyAnchors)             // no `&amp;name` / `*name`
+    .with_policy(DenyTags)                // reject custom !tag scalars
+    .with_policy(MaxScalarLength(64_000)) // cap individual scalar size
+    .max_alias_expansions(100)            // billion-laughs guard
+    .max_depth(64);
+
+let res: Result&lt;noyalib::Value, _&gt; =
+    from_str_with_config(input, &amp;cfg);
+<span class="boring">}</span></code></pre>
+<p><code>ParserConfig::strict()</code> enables a sane “untrusted-input”
+preset; tweak from there if you need to relax specific dials.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Dial</th><th>Default</th><th><code>strict()</code></th><th>Protects against</th></tr>
+</thead>
+<tbody>
+<tr><td><code>max_depth</code></td><td>128</td><td>64</td><td>Stack-blowing nested structures</td></tr>
+<tr><td><code>max_document_length</code></td><td>64 MiB</td><td>1 MiB</td><td>Oversized payloads</td></tr>
+<tr><td><code>max_nodes</code></td><td>250 K</td><td>25 K</td><td>AST node-count floods (empty-collection bombs)</td></tr>
+<tr><td><code>max_alias_expansions</code></td><td>1024</td><td>100</td><td>Billion-laughs amplification</td></tr>
+<tr><td><code>max_mapping_keys</code></td><td>64 K</td><td>1024</td><td>Hash-collision DoS</td></tr>
+<tr><td><code>max_sequence_length</code></td><td>64 K</td><td>1024</td><td>Memory-spike DoS</td></tr>
+<tr><td><code>duplicate_key_policy</code></td><td><code>Last</code></td><td><code>Error</code></td><td>Silent data loss</td></tr>
+<tr><td><code>strict_booleans</code></td><td>off</td><td>on</td><td>Norway problem</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="7-diagnostics-miette-friendly-errors"><a class="header" href="#7-diagnostics-miette-friendly-errors">7. Diagnostics (<code>miette</code>-friendly errors)</a></h2>
+<p>Every parse error carries <code>(line, column, byte_offset)</code> plus a
+machine-readable error code. The minimum, no-feature path
+renders a rustc-style snippet:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let err = noyalib::from_str::&lt;Value&gt;("port: [unclosed").unwrap_err();
+println!("{}", err.format_with_source(input));
+// error: expected ',' or ']'
+//   --&gt; input.yaml:1:7
+//    |
+//  1 | port: [unclosed
+//    |       ^^^^^^^^^ here
+<span class="boring">}</span></code></pre>
+<p>Enable <code>--features miette</code> to surface this through the
+<code>miette::Diagnostic</code> interface — <code>cargo</code> / <code>rustc</code>-style ANSI
+output, error codes, help text, source-span underlining:</p>
+<pre class="playground"><code class="language-rust">fn main() -&gt; miette::Result&lt;()&gt; {
+    let cfg: Config = noyalib::from_str(yaml)
+        .map_err(|e| miette::Report::new(e)
+            .with_source_code(yaml.to_owned()))?;
+    Ok(())
+}</code></pre>
+<p>See <a href="../crates/noyalib/examples/diagnostic.rs"><code>crates/noyalib/examples/diagnostic.rs</code></a>.</p>
+<h2 id="8-lossless-edits-cstdocument"><a class="header" href="#8-lossless-edits-cstdocument">8. Lossless edits (<code>cst::Document</code>)</a></h2>
+<p><code>from_str</code> → <code>to_string</code> round-tripping discards comments and
+exact whitespace by design — the YAML data model excludes
+both. When you need byte-faithful editing (Renovate-style
+version bumps, manifest patchers, formatters), use the lossless
+CST instead:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use noyalib::cst::parse_document;
+
+let mut doc = parse_document(r#"
+<span class="boring">Production config
+</span>server:
+  host: api.example.com
+  port: 8080      # bind to public IP
+"#)?;
+
+// Surgical edit — only the touched span is rewritten.
+doc.set("server.port", "9090")?;
+println!("{doc}");
+//
+// # Production config
+// server:
+//   host: api.example.com
+//   port: 9090      # bind to public IP
+//
+// (Comment and trailing whitespace preserved byte-for-byte.)
+<span class="boring">}</span></code></pre>
+<p>The CST exposes:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>API</th><th>Use</th></tr>
+</thead>
+<tbody>
+<tr><td><code>parse_document(s)</code> / <code>parse_stream(s)</code></td><td>Read</td></tr>
+<tr><td><code>doc.set(path, fragment)</code></td><td>Write a literal scalar</td></tr>
+<tr><td><code>doc.set_value(path, &amp;Value)</code></td><td>Write any <code>Value</code></td></tr>
+<tr><td><code>doc.entry(path)</code></td><td>Chainable mutable handle (18 methods, smart <code>items[0]</code> paths)</td></tr>
+<tr><td><code>doc.remove(path)</code></td><td>Delete a key or sequence item, including multi-line / nested block values (guarded)</td></tr>
+<tr><td><code>doc.rename_key(path, new_key)</code></td><td>Rename a mapping key, value untouched (new key spelled in the old key’s style)</td></tr>
+<tr><td><code>doc.key_span(path)</code></td><td>Read-only byte span of an entry’s key token (companion to <code>span_at</code>; powers duplicate-key diagnostics)</td></tr>
+<tr><td><code>doc.swap_items(path, i, j)</code></td><td>Exchange two block-sequence items, structure preserved (guarded + rollback)</td></tr>
+<tr><td><code>doc.move_item(path, from, to)</code></td><td>Move a block-sequence item to a new index, atomic (built on <code>swap_items</code>)</td></tr>
+<tr><td><code>doc.set_inline_comment(path, text)</code></td><td>Set/replace the trailing <code>#</code> comment on a single-line node (guarded)</td></tr>
+<tr><td><code>doc.remove_inline_comment(path)</code></td><td>Remove the trailing <code>#</code> comment on a node (no-op if absent)</td></tr>
+<tr><td><code>doc.set_leading_comment(path, text)</code></td><td>Set/replace the leading <code>#</code> comment block above a single-line mapping key</td></tr>
+<tr><td><code>doc.remove_leading_comment(path)</code></td><td>Remove the leading comment block above a mapping key (no-op if absent)</td></tr>
+<tr><td><code>doc.push_back(path, fragment)</code></td><td>Append to a sequence</td></tr>
+<tr><td><code>doc.insert_entry_value(map, key, &amp;v)</code> / <code>push_back_value(path, &amp;v)</code> / <code>insert_after_value(item, &amp;v)</code></td><td>Insert a typed value auto-formatted via <code>cst::Emit</code> — quoted so it re-parses as data, not YAML syntax (guarded + rollback)</td></tr>
+<tr><td><code>doc.rename_anchor(old, new)</code></td><td>Rename an <code>&amp;anchor</code> and every <code>*alias</code> (incl. <code>&lt;&lt;</code> merges) in one atomic edit; refuses a name that collides with another anchor (guarded + rollback)</td></tr>
+<tr><td><code>doc.materialise_aliases_of(name)</code></td><td>Inline every <code>*name</code> reference</td></tr>
+<tr><td><code>doc.indent_unit()</code></td><td>Detect 2- / 3- / 4-space conventions</td></tr>
+<tr><td><code>doc.dominant_quote_style()</code></td><td><code>"</code>, <code>'</code>, or plain</td></tr>
+</tbody>
+</table>
+</div>
+<p>See <a href="../crates/noyalib/examples/lossless_edit.rs"><code>crates/noyalib/examples/lossless_edit.rs</code></a>
+and <a href="../crates/noyalib/examples/entry_api.rs"><code>crates/noyalib/examples/entry_api.rs</code></a>.</p>
+<h2 id="9-schema-validation-and-autofix"><a class="header" href="#9-schema-validation-and-autofix">9. Schema validation and autofix</a></h2>
+<p>Under <code>--features validate-schema</code>:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use noyalib::{from_str, schema_for, validate_against_schema, JsonSchema};
+
+#[derive(serde::Serialize, serde::Deserialize, JsonSchema)]
+struct ServerConfig {
+    /// Port the server binds on.
+    port: u16,
+    /// Hostname or IP literal.
+    host: String,
+}
+
+let schema = schema_for::&lt;ServerConfig&gt;()?;
+let data: noyalib::Value = from_str("port: 8080\nhost: api")?;
+validate_against_schema(&amp;data, &amp;schema)?;
+<span class="boring">}</span></code></pre>
+<p>The matching <code>coerce_to_schema(&amp;mut data, &amp;schema)</code> engine
+rewrites obvious type slips — e.g. <code>port: "8080"</code> (quoted string
+where the schema declares integer) — back to the schema’s
+expected type, then re-validates. This is the library engine
+behind <code>noyavalidate --fix</code>. See
+<a href="../crates/noyalib/examples/schema_validation.rs"><code>crates/noyalib/examples/schema_validation.rs</code></a>.</p>
+<h2 id="9b-custom-yaml-tags-valuetagged"><a class="header" href="#9b-custom-yaml-tags-valuetagged">9b. Custom YAML tags (<code>Value::Tagged</code>)</a></h2>
+<p>YAML lets any node carry a “tag” — a type label like <code>!Color</code>,
+<code>!Celsius</code>, <code>!!python/object</code>. noyalib surfaces these on the
+default <code>from_str::&lt;Value&gt;</code> path so downstream code can dispatch
+on them safely (no global type registry, no runtime code
+lookup, no attacker-controlled instantiation):</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use noyalib::{from_str, Value};
+
+let v: Value = from_str("!Color '#ff8800'\n")?;
+match &amp;v {
+    Value::Tagged(t) =&gt; {
+        println!("tag: {}", t.tag().as_str());          // "!Color"
+        println!("inner: {:?}", t.value().as_str());    // Some("#ff8800")
+    }
+    _ =&gt; unreachable!(),
+}
+<span class="boring">Ok::&lt;(), noyalib::Error&gt;(())
+</span><span class="boring">}</span></code></pre>
+<p>This contract holds for all three tag-bearing shapes:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">YAML</th><th style="text-align: left">Resulting <code>Value</code></th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left"><code>!Custom 'hello'</code></td><td style="text-align: left"><code>Value::Tagged(t)</code>, <code>t.tag() == "!Custom"</code>, <code>t.value() == Value::String("hello")</code></td></tr>
+<tr><td style="text-align: left"><code>!List [a, b]</code></td><td style="text-align: left"><code>Value::Tagged(t)</code>, <code>t.tag() == "!List"</code>, <code>t.value() == Value::Sequence(...)</code></td></tr>
+<tr><td style="text-align: left"><code>!Map {k: v}</code></td><td style="text-align: left"><code>Value::Tagged(t)</code>, <code>t.tag() == "!Map"</code>, <code>t.value() == Value::Mapping(...)</code></td></tr>
+<tr><td style="text-align: left"><code>!!str 42</code></td><td style="text-align: left"><code>Value::String("42")</code> <em>(core tag — resolves)</em></td></tr>
+<tr><td style="text-align: left"><code>!!int 42</code></td><td style="text-align: left"><code>Value::Number(Integer(42))</code> <em>(core tag — resolves)</em></td></tr>
+</tbody>
+</table>
+</div>
+<p>With the <code>lossless-u64</code> feature enabled and
+<code>ParserConfig::lossless_u64_integers(true)</code>, <code>!!int</code> scalars in
+<code>(i64::MAX, u64::MAX]</code> resolve as <code>Value::Number(Unsigned(_))</code>.</p>
+<p><strong>Reading through the wrapper.</strong> Two helpers on <code>Value</code> step
+through the tag for transparent reads:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span><span class="boring">use noyalib::{from_str, Value};
+</span>let v: Value = from_str("!Color '#ff8800'\n")?;
+assert_eq!(v.untag_ref().as_str(), Some("#ff8800"));    // borrow-friendly
+let owned = v.untag();                                  // consumes
+<span class="boring">Ok::&lt;(), noyalib::Error&gt;(())
+</span><span class="boring">}</span></code></pre>
+<p><strong>Typed targets see through tags transparently.</strong> A
+<code>#[derive(serde::Deserialize)] struct Foo { ... }</code> against
+<code>!Foo {x: 1}</code> yields <code>Foo { x: 1 }</code> — the typed visitor never
+observes the tag string. This is what lets schema-tagged YAML
+inputs deserialise into bare structs.</p>
+<p><strong>Opt out via <code>TagRegistry</code>.</strong> When you want noyalib to strip
+known tags inline on the streaming path (no AST detour, no
+wrapper to step through), register them:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use std::sync::Arc;
+use noyalib::{from_str_with_config, ParserConfig, TagRegistry};
+
+let cfg = ParserConfig::new()
+    .tag_registry(Arc::new(TagRegistry::new().with("!Color")));
+// Now `!Color "#ff8800"` deserialises directly into a String,
+// no Tagged wrapper, no AST fallback.
+<span class="boring">}</span></code></pre>
+<p><strong>Reject custom tags entirely.</strong> For schema-strict contexts —
+audit pipelines, security-sensitive ingest — <code>policy::DenyTags</code>
+fails any document carrying a non-core tag at parse time:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use noyalib::{from_str_with_config, ParserConfig, Value};
+use noyalib::policy::DenyTags;
+
+let cfg = ParserConfig::new().with_policy(DenyTags);
+let bad: Result&lt;Value, _&gt; = from_str_with_config("k: !Foo 1\n", &amp;cfg);
+assert!(bad.is_err());
+<span class="boring">}</span></code></pre>
+<p><strong>Round-trip a Tagged value back to YAML.</strong> The generic
+<a href="https://docs.rs/noyalib/latest/noyalib/fn.to_string.html"><code>to_string</code></a>
+serialises through serde, which routes <code>Value::Tagged(...)</code> as
+a single-entry map (the right shape for <code>serde_json</code> interop)
+— losing the YAML-tag wire form. For lossless emit, the
+dedicated <a href="https://docs.rs/noyalib/latest/noyalib/fn.to_string_value.html"><code>to_string_value</code></a>
+/ <a href="https://docs.rs/noyalib/latest/noyalib/fn.to_writer_value.html"><code>to_writer_value</code></a>
+family bypasses the serde pipeline:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span><span class="boring">use noyalib::{from_str, to_string_value, Value};
+</span>let v: Value = from_str("!Color '#ff8800'\n")?;
+let yaml = to_string_value(&amp;v)?;
+// `yaml` re-parses into an equivalent `Value::Tagged`.
+assert!(matches!(noyalib::from_str::&lt;Value&gt;(&amp;yaml)?, Value::Tagged(_)));
+<span class="boring">Ok::&lt;(), noyalib::Error&gt;(())
+</span><span class="boring">}</span></code></pre>
+<p><strong>Known limitation</strong>: the tag-preserving fast path on the
+deserialise side is engaged only when the target is exactly
+<code>T = Value</code> (detected via [<code>std::any::TypeId</code>]). Wrapper targets
+like <code>Spanned&lt;Value&gt;</code>, <code>Vec&lt;Value&gt;</code>, <code>Option&lt;Value&gt;</code>,
+<code>HashMap&lt;_, Value&gt;</code> route the inner deserialise through the
+standard transparent-unwrap path. If you need both spans and
+tag preservation, parse twice (once into <code>Value</code> for tag-aware
+queries, once into <code>Spanned&lt;T&gt;</code> for the span-aware view).</p>
+<h2 id="10-multi-document-streams--parallel-parse"><a class="header" href="#10-multi-document-streams--parallel-parse">10. Multi-document streams + parallel parse</a></h2>
+<p>YAML’s <code>---</code> document separator lets one file carry many
+independent documents (Kubernetes manifests, audit-event
+streams). The eager API:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use noyalib::{load_all, load_all_as};
+
+// `load_all` yields a lazy iterator of `Result&lt;Value&gt;`; collect it.
+let docs: Vec&lt;Value&gt;      = load_all(stream)?.collect::&lt;Result&lt;_, _&gt;&gt;()?;
+// `load_all_as` deserializes every document and returns a `Vec&lt;T&gt;` directly.
+let typed: Vec&lt;MyConfig&gt;  = load_all_as::&lt;MyConfig&gt;(stream)?;
+<span class="boring">}</span></code></pre>
+<p>For large streams, the <code>parallel</code> feature unlocks linear-with-
+cores throughput:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Drop-in for `load_all_as`. Pre-scans `---` boundaries on a
+// single thread, then deserialises each document concurrently.
+let docs: Vec&lt;MyConfig&gt; = noyalib::parallel::parse(stream)?;
+<span class="boring">}</span></code></pre>
+<p>The pre-scan is <code>O(input_len)</code>; the per-document work
+parallelises across the Rayon thread pool.</p>
+<h2 id="10b-error-recovering-parser-for-lsp--ide-recovery-feature"><a class="header" href="#10b-error-recovering-parser-for-lsp--ide-recovery-feature">10b. Error-recovering parser for LSP / IDE (<code>recovery</code> feature)</a></h2>
+<p>The default <code>from_str</code> family returns <code>Err</code> at the first syntax
+violation. LSP / IDE consumers need the opposite contract: keep
+going past errors, build a best-effort partial tree, collect
+every error encountered so the editor can show a complete
+diagnostics list and offer autocomplete on the recoverable
+subtrees.</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Cargo.toml: noyalib = { version = "0.0.29", features = ["recovery"] }
+use noyalib::recovery::parse_lenient;
+
+let half_typed = "name: noyalib\nfeatures: [recovery, sval\n# ^ unclosed\n";
+let r = parse_lenient(half_typed);
+assert!(!r.is_complete);
+println!("errors: {}", r.errors.len());
+// r.value is the best-effort recovered tree.
+<span class="boring">}</span></code></pre>
+<p>Three-pass recovery: strict pass → <code>DuplicateKeyPolicy::Last</code>
+retry → line-truncation retry. Multi-document input split on
+<code>---</code>; each document recovered independently. Error collection
+bounded by <code>LenientConfig::max_errors</code>.</p>
+<p>See <a href="../crates/noyalib/examples/recovery_lenient.rs"><code>crates/noyalib/examples/recovery_lenient.rs</code></a>.</p>
+<h2 id="10c-native-async-parsing-on-tokio-tokio-feature"><a class="header" href="#10c-native-async-parsing-on-tokio-tokio-feature">10c. Native async parsing on tokio (<code>tokio</code> feature)</a></h2>
+<p>For high-concurrency services parsing YAML from network sources,
+the <code>tokio</code> feature lets you skip <code>spawn_blocking</code>:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Cargo.toml: noyalib = { version = "0.0.29", features = ["tokio"] }
+use noyalib::tokio_async::{from_async_reader_multi, YamlDecoder};
+
+// Pattern 1: drain-and-parse
+let docs: Vec&lt;MyDoc&gt; = from_async_reader_multi(&amp;mut reader).await?;
+
+// Pattern 2: streaming codec — for tower middleware pipelines
+let framed = tokio_util::codec::FramedRead::new(reader, YamlDecoder::&lt;MyDoc&gt;::new());
+<span class="boring">}</span></code></pre>
+<p>Per-document boundaries follow the YAML 1.2.2 §9.1.2 <code>---</code>
+grammar — column-0 marker followed by whitespace or EOL.</p>
+<p>See <a href="../crates/noyalib/examples/tokio_async_reader.rs"><code>crates/noyalib/examples/tokio_async_reader.rs</code></a>.</p>
+<h2 id="10d-sval-streaming-adapter-sval-feature"><a class="header" href="#10d-sval-streaming-adapter-sval-feature">10d. <code>sval</code> streaming adapter (<code>sval</code> feature)</a></h2>
+<p>Alternative to the default serde route for callers wanting to
+skip <code>serde_derive</code>’s compile-time overhead or the binary-size
+cost of serde monomorphisation. The adapter implements
+<code>sval::Value</code> for the noyalib value graph so any
+<code>sval::Stream</code> consumer can read it:</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Cargo.toml: noyalib = { version = "0.0.29", features = ["sval"] }
+let value: noyalib::Value = noyalib::from_str("name: noyalib")?;
+sval::Value::stream(&amp;value, &amp;mut my_stream)?;
+<span class="boring">}</span></code></pre>
+<p>serde remains the default route; sval is opt-in.</p>
+<p>See <a href="../crates/noyalib/examples/sval_streaming.rs"><code>crates/noyalib/examples/sval_streaming.rs</code></a>.</p>
+<h2 id="11-the-cli-tools-noyafmt-noyavalidate"><a class="header" href="#11-the-cli-tools-noyafmt-noyavalidate">11. The CLI tools (<code>noyafmt</code>, <code>noyavalidate</code>)</a></h2>
+<p>Two command-line companions ship from the split-out
+<a href="https://github.com/sebastienrousseau/noya-cli"><code>sebastienrousseau/noya-cli</code></a>
+repo (split at v0.0.13, ADR-0005; released in strict lockstep):</p>
+<pre><code class="language-bash"># Format YAML in-place via the lossless CST.
+noyafmt --write config.yaml
+
+# Verify formatting without writing — for CI gates.
+noyafmt --check ci/*.yaml
+
+# Validate syntax + (optionally) JSON Schema 2020-12.
+noyavalidate --schema schema.yaml in.yaml
+
+# Validate + auto-fix obvious type slips.
+noyavalidate --schema schema.yaml --fix in.yaml
+</code></pre>
+<p>Both use the same <code>noyalib::cst::format</code> + <code>coerce_to_schema</code>
+engines exposed to library callers. Distro-installable via
+crates.io (<code>cargo install noya-cli --locked</code>), Homebrew, AUR, and the
+other channels in <a href="../pkg/PUBLISH.html"><code>pkg/PUBLISH.md</code></a>.</p>
+<h2 id="12-wasm-mcp-and-lsp"><a class="header" href="#12-wasm-mcp-and-lsp">12. WASM, MCP, and LSP</a></h2>
+<p>Three satellite crates — each split to its own repo (ADR-0005)
+and released in strict lockstep with this library — target
+specific deployment shapes:</p>
+<ul>
+<li>
+<p><strong><code>noyalib-wasm</code></strong> (<a href="https://github.com/sebastienrousseau/noyalib-wasm"><code>sebastienrousseau/noyalib-wasm</code></a>).
+<code>wasm-pack</code> output published to npm as
+<code>@sebastienrousseau/noyalib-wasm</code>. Browser IDEs use it for live YAML
+formatting / validation; the bundle is ~338 KB after LTO.
+Split to its own repo in v0.0.12 (ADR-0005); releases in
+strict lockstep with this workspace.</p>
+</li>
+<li>
+<p><strong><code>noyalib-mcp</code></strong> (<a href="https://github.com/sebastienrousseau/noyalib-mcp"><code>sebastienrousseau/noyalib-mcp</code></a>).
+Model Context Protocol server speaking JSON-RPC over stdio.
+AI agents (Claude Code, GitHub Copilot, …) call <code>parse</code>,
+<code>format</code>, <code>get</code>, <code>set</code>, <code>validate</code> tools without needing a
+Rust toolchain. Available as
+<code>npx @sebastienrousseau/noyalib-mcp</code> (the wrapper bootstraps
+the binary) and as a GHCR container image
+<code>ghcr.io/sebastienrousseau/noyalib-mcp</code>. Split to its own
+repo in v0.0.13 (ADR-0005); releases in strict lockstep with
+this workspace.</p>
+</li>
+<li>
+<p><strong><code>noyalib-lsp</code></strong> (<a href="https://github.com/sebastienrousseau/noyalib-lsp"><code>sebastienrousseau/noyalib-lsp</code></a>).
+Language Server
+Protocol implementation. Editors get format-on-save,
+inline diagnostics, schema-driven hover docs. Bundled into
+the noyalib VS Code / Open VSX extension (<code>pkg/vscode/</code>).</p>
+</li>
+</ul>
+<h2 id="where-next"><a class="header" href="#where-next">Where next</a></h2>
+<ul>
+<li><strong>Source spans + miette diagnostics</strong>:
+<a href="../crates/noyalib/examples/diagnostic.rs"><code>crates/noyalib/examples/diagnostic.rs</code></a></li>
+<li><strong>Anchor manipulation</strong>:
+<a href="../crates/noyalib/examples/anchor_shared.rs"><code>crates/noyalib/examples/anchor_shared.rs</code></a></li>
+<li><strong>Schema codegen</strong>:
+<a href="../crates/noyalib/examples/schema_validation.rs"><code>crates/noyalib/examples/schema_validation.rs</code></a></li>
+<li><strong>Figment / garde / validator integration</strong>:
+<a href="../crates/noyalib/examples/figment.rs"><code>crates/noyalib/examples/figment.rs</code></a>,
+<a href="../crates/noyalib/examples/validation_garde.rs"><code>crates/noyalib/examples/validation_garde.rs</code></a>,
+<a href="../crates/noyalib/examples/validation_validator.rs"><code>crates/noyalib/examples/validation_validator.rs</code></a></li>
+<li><strong>CST architecture</strong>:
+<a href="ARCHITECTURE.html"><code>ARCHITECTURE.md</code></a></li>
+<li><strong>Migrating from <code>serde_yaml</code></strong>:
+<a href="MIGRATION-FROM-SERDE-YAML.html"><code>MIGRATION-FROM-SERDE-YAML.md</code></a></li>
+</ul>
+<h2 id="reporting-issues--sending-prs"><a class="header" href="#reporting-issues--sending-prs">Reporting issues / sending PRs</a></h2>
+<p>Filed at <a href="https://github.com/sebastienrousseau/noyalib">https://github.com/sebastienrousseau/noyalib</a>.
+Reproducer YAML + the parser config you used together is the
+fastest path to a fix.</p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="index.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
+
+                            <a rel="next prefetch" href="COMPARISON.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="index.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
+
+                    <a rel="next prefetch" href="COMPARISON.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                    </a>
+            </nav>
+
+        </div>
+
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr-ef4e11c1.min.js"></script>
+        <script src="mark-09e88c2c.min.js"></script>
+        <script src="searcher-09f2665d.js"></script>
+
+        <script src="clipboard-1626706a.min.js"></script>
+        <script src="highlight-abc7f01d.js"></script>
+        <script src="book-609e4cb8.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+
+    </div>
+    </body>
+</html>
