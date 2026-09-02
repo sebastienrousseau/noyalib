@@ -54,13 +54,19 @@ fn external_http_ref_is_refused_not_fetched() {
 fn external_ref_refusal_is_fast() {
     // A network attempt would take orders of magnitude longer than a
     // local refusal. This is the canary for accidental resolution.
+    // The load-bearing guard is external_refs_are_not_resolved above,
+    // which asserts the refusal *message*: a fetch to example.com can
+    // complete quickly, so time alone cannot prove no request left.
+    // This budget only catches hangs, and is wide enough that a
+    // stalled shared CI runner cannot false-positive it (observed:
+    // a 2s budget tripped on a loaded runner with no network involved).
     let schema = r#"{"$ref": "https://example.com/schema.json"}"#;
     let start = std::time::Instant::now();
     let _ = validate_against_schema_str("x: 1", schema);
     let elapsed = start.elapsed();
     assert!(
-        elapsed < std::time::Duration::from_secs(2),
-        "refusing an external $ref took {elapsed:?}; that suggests a network attempt"
+        elapsed < std::time::Duration::from_secs(15),
+        "refusing an external $ref took {elapsed:?}; that suggests a hang on a network attempt"
     );
 }
 

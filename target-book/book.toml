@@ -1,0 +1,24 @@
+# SPDX-FileCopyrightText: 2026 Noyalib
+# SPDX-License-Identifier: MIT OR Apache-2.0
+#
+# mdBook configuration for the noyalib User Manual. The sources are
+# the Markdown files that already live in docs/ — the book is an
+# organized rendering of them, never a second copy (Phase 3 of the
+# repository-structure plan: no content exists only in the book).
+
+[book]
+title = "The noyalib Manual"
+description = "YAML 1.2 for Rust: parsing, serialization, lossless editing, schema validation, and the six-crate ecosystem."
+authors = ["Sebastien Rousseau"]
+language = "en"
+src = "."
+
+[build]
+build-dir = "../target-book"
+create-missing = false
+
+[output.html]
+git-repository-url = "https://github.com/sebastienrousseau/noyalib"
+edit-url-template = "https://github.com/sebastienrousseau/noyalib/edit/main/docs/{path}"
+site-url = "/noyalib/manual/"
+

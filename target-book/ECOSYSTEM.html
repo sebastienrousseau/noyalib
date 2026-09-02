@@ -1,0 +1,672 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Ecosystem map and scorecard - The noyalib Manual</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="YAML 1.2 for Rust: parsing, serialization, lossless editing, schema validation, and the six-crate ecosystem.">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="favicon-8114d1fc.png">
+        <link rel="stylesheet" href="css/variables-8adf115d.css">
+        <link rel="stylesheet" href="css/general-e96d0476.css">
+        <link rel="stylesheet" href="css/chrome-d279d366.css">
+        <link rel="stylesheet" href="css/print-9e4910d8.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "searchindex-3efd43c8.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="toc-244b1f9c.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="mdbook-body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+            </noscript>
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="mdbook-page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        </label>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        </button>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                        </ul>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">The noyalib Manual</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/sebastienrousseau/noyalib" title="Git repository" aria-label="Git repository">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/sebastienrousseau/noyalib/edit/main/docs/./ECOSYSTEM.md" title="Suggest an edit" aria-label="Suggest an edit" rel="edit">
+                            <span class=fa-svg id="git-edit-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M421.7 220.3l-11.3 11.3-22.6 22.6-205 205c-6.6 6.6-14.8 11.5-23.8 14.1L30.8 511c-8.4 2.5-17.5 .2-23.7-6.1S-1.5 489.7 1 481.2L38.7 353.1c2.6-9 7.5-17.2 14.1-23.8l205-205 22.6-22.6 11.3-11.3 33.9 33.9 62.1 62.1 33.9 33.9zM96 353.9l-9.3 9.3c-.9 .9-1.6 2.1-2 3.4l-25.3 86 86-25.3c1.3-.4 2.5-1.1 3.4-2l9.3-9.3H112c-8.8 0-16-7.2-16-16V353.9zM453.3 19.3l39.4 39.4c25 25 25 65.5 0 90.5l-14.5 14.5-22.6 22.6-11.3 11.3-33.9-33.9-62.1-62.1L314.3 67.7l11.3-11.3 22.6-22.6 14.5-14.5c25-25 65.5-25 90.5 0z"/></svg></span>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="mdbook-content" class="content">
+                    <main>
+                        <!-- SPDX-FileCopyrightText: 2026 Noyalib -->
+<!-- SPDX-License-Identifier: MIT OR Apache-2.0 -->
+<h1 id="the-noyalib-ecosystem"><a class="header" href="#the-noyalib-ecosystem">The noyalib ecosystem</a></h1>
+<p>This document does two things. It describes what the ecosystem is
+today, and it states — with numbers anyone can reproduce — how good it
+actually is. The second part is the harder one, and the reason
+<code>scripts/ecosystem-scorecard.sh</code> exists.</p>
+<h2 id="why-a-harness-instead-of-a-claim"><a class="header" href="#why-a-harness-instead-of-a-claim">Why a harness instead of a claim</a></h2>
+<p>A rating is worth something only if it can be shown to be wrong. Most
+“production-ready / battle-tested / enterprise-grade” language in this
+corner of the industry cannot be, because nothing is attached to it. So
+every number below is produced by a command, and the command is printed
+next to the number.</p>
+<p>Three rules govern the harness:</p>
+<ol>
+<li><strong>Falsifiable.</strong> Each metric names the exact command and the exact
+threshold. “Docs are good” is not a metric. “rustdoc emits 0 warnings
+under <code>-D warnings</code>” is — run it and see.</li>
+<li><strong>No credit for unmeasured work.</strong> A probe that cannot run scores
+<code>N/A</code> and is removed from the denominator. It never scores 0, and it
+never silently scores 1. The report states what fraction of the
+rubric actually executed, because a perfect score over a third of the
+rubric is not a perfect score.</li>
+<li><strong>Reproducible.</strong> The header records rustc/cargo versions, host
+triple, each repo’s commit SHA, and whether the worktree was dirty.</li>
+</ol>
+<p>Run it:</p>
+<pre><code class="language-sh">scripts/ecosystem-scorecard.sh                  # local probes
+scripts/ecosystem-scorecard.sh --network        # + crates.io, GitHub, OpenSSF
+scripts/ecosystem-scorecard.sh --deep           # + all-features build probes
+scripts/ecosystem-scorecard.sh --with-coverage  # + cargo-llvm-cov
+scripts/ecosystem-scorecard.sh --json out.json
+</code></pre>
+<p>It exits non-zero below <code>SCORE_FLOOR</code> (default 0.90), so the rating can
+be a CI gate rather than a boast.</p>
+<h3 id="what-it-deliberately-does-not-measure"><a class="header" href="#what-it-deliberately-does-not-measure">What it deliberately does not measure</a></h3>
+<ul>
+<li><strong>Adoption.</strong> Downloads are recorded as context below, not scored.
+Popularity is not quality, and scoring it would let the rating drift
+with marketing rather than engineering.</li>
+<li><strong>Benchmark numbers.</strong> The harness checks that <code>docs/BENCHMARKS.md</code>
+discloses host, toolchain and repro command — the things that make a
+speed claim falsifiable — but does not re-run criterion. Timing a
+laptop under variable load and calling the delta a score would be
+measurement theatre.</li>
+<li><strong>Code review.</strong> OpenSSF scores this 0 across every repo in the
+family, correctly: these are single-maintainer repos with squash
+merges. That is a real limitation and is left visible rather than
+excluded.</li>
+</ul>
+<h2 id="the-competitive-landscape-2026"><a class="header" href="#the-competitive-landscape-2026">The competitive landscape, 2026</a></h2>
+<p>YAML tooling is not one market. It is five, and each has a different
+incumbent in a different language.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Surface</th><th>Incumbent</th><th>Language</th><th>noyalib’s answer</th></tr>
+</thead>
+<tbody>
+<tr><td>Library</td><td><code>serde_yaml</code> (archived 2024)</td><td>Rust</td><td><code>noyalib</code></td></tr>
+<tr><td>CLI query / transform</td><td><code>yq</code></td><td>Go</td><td><strong>nothing</strong></td></tr>
+<tr><td>Style linter</td><td><code>yamllint</code></td><td>Python</td><td><strong>nothing</strong></td></tr>
+<tr><td>Language server</td><td><code>yaml-language-server</code> (Red Hat)</td><td>TypeScript</td><td><code>noyalib-lsp</code></td></tr>
+<tr><td>Agent tooling (MCP)</td><td>no incumbent</td><td>—</td><td><code>noyalib-mcp</code></td></tr>
+<tr><td>Browser / JS</td><td><code>yaml</code> (eemeli), <code>js-yaml</code></td><td>JavaScript</td><td><code>noyalib-wasm</code></td></tr>
+</tbody>
+</table>
+</div>
+<p>The Rust library tier alone has fragmented since <code>serde_yaml</code> was
+archived. Recent-download counts from the crates.io API:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Crate</th><th style="text-align: right">Recent downloads</th><th>Status</th></tr>
+</thead>
+<tbody>
+<tr><td><code>serde_yaml</code></td><td style="text-align: right">87.1M</td><td>archived upstream</td></tr>
+<tr><td><code>yaml-rust2</code></td><td style="text-align: right">13.9M</td><td>maintained, no serde layer</td></tr>
+<tr><td><code>serde_yml</code></td><td style="text-align: right">6.4M</td><td>description begins “DEPRECATED”</td></tr>
+<tr><td><code>serde_yaml_ng</code></td><td style="text-align: right">5.0M</td><td>maintained fork</td></tr>
+<tr><td><code>serde-saphyr</code></td><td style="text-align: right">3.6M</td><td>maintained, newer</td></tr>
+<tr><td><code>serde_norway</code></td><td style="text-align: right">2.7M</td><td>maintained fork</td></tr>
+<tr><td><strong><code>noyalib</code></strong></td><td style="text-align: right"><strong>0.247M</strong></td><td>maintained</td></tr>
+</tbody>
+</table>
+</div>
+<p>The honest reading: noyalib is roughly <strong>0.3%</strong> of the deprecated
+incumbent and <strong>6.8%</strong> of <code>serde-saphyr</code>. On measured capability it
+leads; on measured reach it does not. The constraint is distribution,
+not engineering — which is exactly where the gaps below sit.</p>
+<p>For a feature-by-feature comparison of the Rust libraries — and
+instructions for verifying any row of it yourself — see
+<a href="COMPARISON.html"><code>COMPARISON.md</code></a>. This document is about the <em>suite</em>,
+not the library.</p>
+<p>The structural advantage is that noyalib is the only one of these that
+spans all five surfaces from a single core. <code>yq</code>, <code>yamllint</code> and
+<code>yaml-language-server</code> are three unrelated codebases in three languages
+with three different YAML parsers and three different sets of edge-case
+behaviour. A team that adopts them gets three answers to “is this
+document valid?”.</p>
+<h2 id="measured-gaps"><a class="header" href="#measured-gaps">Measured gaps</a></h2>
+<p>Every row below was produced by a filesystem or API probe on
+2026-08-20, not by judgement.</p>
+<h3 id="capability-the-suite-cannot-express-today"><a class="header" href="#capability-the-suite-cannot-express-today">Capability the suite cannot express today</a></h3>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Missing</th><th>Evidence</th><th>Incumbent</th></tr>
+</thead>
+<tbody>
+<tr><td>Query / transform tool</td><td><code>noya-cli</code> declares exactly two <code>[[bin]]</code>: <code>noyafmt</code>, <code>noyavalidate</code></td><td><code>yq</code></td></tr>
+<tr><td>Style linter</td><td><code>noyavalidate</code> is schema validation; no line-length, key-duplication, indentation or quote-consistency rules</td><td><code>yamllint</code></td></tr>
+</tbody>
+</table>
+</div>
+<p>Both are surfacing work, not engine work. The lossless CST already
+tracks every span these rules need, and already backs <code>remove</code>/<code>set</code>.</p>
+<h3 id="distribution"><a class="header" href="#distribution">Distribution</a></h3>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Missing</th><th>Evidence</th></tr>
+</thead>
+<tbody>
+<tr><td>GitHub Action</td><td>no <code>action.yml</code> in any of the five repos</td></tr>
+<tr><td>Hosted pre-commit hook</td><td>no <code>.pre-commit-hooks.yaml</code> in <code>noya-cli</code> — <code>docs/pre-commit.md</code> documents only <code>repo: local</code>, which needs <code>noyafmt</code> already installed</td></tr>
+<tr><td>VS Code extension</td><td>no <code>editors/vscode</code> in <code>noyalib-lsp</code> — the server exists but nobody can install it from the marketplace</td></tr>
+<tr><td>Homebrew formula</td><td>no <code>Formula/</code></td></tr>
+<tr><td>CLI container image</td><td><code>Dockerfile</code> exists in <code>noyalib</code> and <code>noyalib-mcp</code>, not in <code>noya-cli</code></td></tr>
+<tr><td>Python bindings</td><td>no <code>bindings/python</code></td></tr>
+<tr><td>Native Node bindings</td><td>wasm only; no napi</td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="supply-chain-posture"><a class="header" href="#supply-chain-posture">Supply-chain posture</a></h3>
+<p>OpenSSF Scorecard, scans taken the same day at the current HEAD of each
+repo:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Repo</th><th style="text-align: right">Score</th></tr>
+</thead>
+<tbody>
+<tr><td><code>noyalib</code></td><td style="text-align: right">8.0</td></tr>
+<tr><td><code>noya-cli</code></td><td style="text-align: right">6.5</td></tr>
+<tr><td><code>noyalib-lsp</code></td><td style="text-align: right">6.5</td></tr>
+<tr><td><code>noyalib-mcp</code></td><td style="text-align: right">6.4</td></tr>
+<tr><td><code>noyalib-wasm</code></td><td style="text-align: right">6.4</td></tr>
+</tbody>
+</table>
+</div>
+<p>The satellite deficit is concentrated in four checks:</p>
+<ul>
+<li><strong>Fuzzing 10 -&gt; 0.</strong> No satellite has a <code>fuzz/</code> directory. Worth about
+a point each and cheap to fix.</li>
+<li><strong>CII-Best-Practices 5 -&gt; 0.</strong> The badge is registered for the core
+only.</li>
+<li><strong>Contributors 3 -&gt; 0</strong>, <strong>Signed-Releases 3 -&gt; 1.</strong></li>
+</ul>
+<p><code>Code-Review</code> is 0 on all five, including the core — single-maintainer
+squash merges. Honest, and not something a script can fix.</p>
+<h3 id="the-credibility-gap"><a class="header" href="#the-credibility-gap">The credibility gap</a></h3>
+<p>Three crates in the same portfolio still depend on YAML libraries their
+own authors have marked dead:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Repo</th><th>Dependency</th><th>Upstream status</th></tr>
+</thead>
+<tbody>
+<tr><td><code>libmake</code></td><td><code>serde_yml 0.0.13</code></td><td>crates.io description begins “DEPRECATED”</td></tr>
+<tr><td><code>nucleusflow</code></td><td><code>serde_yml 0.0.13</code></td><td>same</td></tr>
+<tr><td><code>wiserone</code></td><td><code>serde_yaml 0.9.31</code></td><td>archived</td></tr>
+<tr><td><code>metadata-gen</code></td><td><code>noyalib</code> <strong>and</strong> <code>yaml-rust2</code></td><td>half-migrated</td></tr>
+</tbody>
+</table>
+</div>
+<p>Already migrated: <code>frontmatter-gen</code>, <code>html-generator</code>,
+<code>static-site-generator</code>, and the four satellites.</p>
+<p>Shipping a YAML library while three of your own crates depend on an
+archived one is the most falsifiable credibility claim in the set, and
+the cheapest to close.</p>
+<h2 id="proposed-additions"><a class="header" href="#proposed-additions">Proposed additions</a></h2>
+<p>Ranked by measured gap times incumbent strength.</p>
+<h3 id="tier-1--capability"><a class="header" href="#tier-1--capability">Tier 1 — capability</a></h3>
+<ol>
+<li><strong><code>noyaq</code></strong> (new bin in <code>noya-cli</code>) — query and in-place transform
+with a <code>yq</code>-compatible expression subset.</li>
+<li><strong><code>noyalint</code></strong> (new bin in <code>noya-cli</code>) — <code>yamllint</code>’s rule set over
+the CST.</li>
+<li><strong><code>noyalib-rules</code></strong> (new crate) — the rule engine behind <code>noyalint</code>,
+reused by the LSP for diagnostics and by the MCP server as an
+agent-facing lint tool, so three surfaces do not re-implement the
+same checks.</li>
+</ol>
+<h3 id="tier-2--distribution"><a class="header" href="#tier-2--distribution">Tier 2 — distribution</a></h3>
+<ol start="4">
+<li>First-party <strong>GitHub Action</strong>. CI is where YAML tooling is actually
+consumed; this is the highest-leverage single artefact on the list.</li>
+<li><strong><code>.pre-commit-hooks.yaml</code></strong> — one file, unlocks the entire
+pre-commit user base.</li>
+<li><strong>VS Code extension</strong> wrapping <code>noyalib-lsp</code>.</li>
+<li><strong>Homebrew tap</strong> and a <strong>CLI container image</strong>.</li>
+</ol>
+<h3 id="tier-3--reach-beyond-rust"><a class="header" href="#tier-3--reach-beyond-rust">Tier 3 — reach beyond Rust</a></h3>
+<ol start="8">
+<li><strong><code>noyalib-py</code></strong> (PyO3) — the linting and round-trip audience is
+Python-native.</li>
+<li><strong><code>noyalib-node</code></strong> (napi-rs) — native throughput where WASM loses.</li>
+</ol>
+<h3 id="tier-4--cheap-credibility"><a class="header" href="#tier-4--cheap-credibility">Tier 4 — cheap credibility</a></h3>
+<ol start="10">
+<li>Fuzz targets in each satellite.</li>
+<li>OpenSSF Best Practices badge for the four satellites.</li>
+<li>Migrate <code>libmake</code>, <code>nucleusflow</code>, <code>wiserone</code>; finish <code>metadata-gen</code>.</li>
+</ol>
+<h2 id="rating"><a class="header" href="#rating">Rating</a></h2>
+<!-- SCORECARD:BEGIN — generated by scripts/ecosystem-scorecard.sh.
+**Rating: A+ (98.4% weighted)** — 110 executed probes, 9 scored N/A.
+
+Measured 2026-08-24T10:39:39Z on `aarch64-apple-darwin`, rustc 1.97.1 (8bab26f4f 2026-07-14). Rubric executed: 92%.
+
+| Repo | Metric | Measured | Score | Probe |
+|---|---|---|---:|---|
+| `noyalib` | tests | 5754 passed / 0 failed | 1.00 | `cargo test --workspace --locked --default-features` |
+| `noyalib` | spec_conformance | 406/406 cases | 1.00 | `cargo test -p noyalib --test yaml_compliance_report` |
+| `noyalib` | clippy | 0 diagnostics (rc=0) | 1.00 | `cargo clippy --workspace --all-targets --locked --default-features -- -D warnings` |
+| `noyalib` | rustfmt | clean | 1.00 | `cargo fmt --all --check` |
+| `noyalib` | unsafe_forbidden | 1/1 crate roots | 1.00 | `grep -l 'forbid(unsafe_code)' on every lib.rs/main.rs` |
+| `noyalib` | msrv_declared | 1.86.0 | 1.00 | `grep rust-version Cargo.toml` |
+| `noyalib` | rustdoc_strict | 0 warnings | 1.00 | `RUSTDOCFLAGS=-D warnings cargo doc --workspace --no-deps --all-features (matches CI + docs.rs)` |
+| `noyalib` | missing_docs_lint | 1/1 roots deny missing_docs | 1.00 | `grep for deny/warn(missing_docs) in crate roots` |
+| `noyalib` | readme_examples | compile | 1.00 | `scripts/check-readme-examples.sh` |
+| `noyalib` | bench_methodology | 3/3 disclosed (host, toolchain, command) | 1.00 | `grep host/toolchain/repro-command in docs/BENCHMARKS.md` |
+| `noyalib` | audit_vulnerabilities | 0 advisories | 1.00 | `cargo-audit audit --json | .vulnerabilities.count` |
+| `noyalib` | deny_check | pass | 1.00 | `cargo deny check (advisories, bans, licenses, sources)` |
+| `noyalib` | vet_audited | pass | 1.00 | `cargo vet --locked` |
+| `noyalib` | reuse_compliance | compliant | 1.00 | `reuse lint (REUSE 3.3)` |
+| `noyalib` | dependency_closure | 12 unique runtime crates | 1.00 | `cargo tree -e normal --prefix none --no-dedupe | sort -u (library budget 60; propagates to consumers)` |
+| `noyalib` | actions_sha_pinned | 107/107 external uses pinned | 1.00 | `grep 'uses:.*@<40-hex>' .github/workflows` |
+| `noyalib` | fuzz_targets | 11 libFuzzer targets | 1.00 | `find fuzz/fuzz_targets -name '*.rs' (floor 2)` |
+| `noyalib` | line_coverage | not run | n/a | `pass --with-coverage to measure` |
+| `noyalib` | release_gpg_signed | 2 .asc assets | 1.00 | `gh release view --json assets | grep '\.asc$'` |
+| `noyalib` | release_sigstore | 2 .bundle assets | 1.00 | `gh release view --json assets | grep '\.bundle$'` |
+| `noyalib` | release_sbom | 3 sbom assets | 1.00 | `gh release view --json assets | grep -i sbom` |
+| `noyalib` | dependabot_open | 0 open alerts | 1.00 | `gh api /repos/sebastienrousseau/noyalib/dependabot/alerts?state=open` |
+| `noyalib` | ci_main_green | success | 1.00 | `gh run list --branch main --limit 1 --json conclusion` |
+| `noyalib` | crates_io_current | tree 0.0.28 / crates.io 0.0.28 | 1.00 | `crates.io/api/v1/crates/noyalib .max_stable_version` |
+| `noyalib` | openssf_scorecard | 8.2/10 | 0.82 | `api.securityscorecards.dev/projects/github.com/sebastienrousseau/noyalib .score` |
+| `noya-cli` | tests | 81 passed / 0 failed | 1.00 | `cargo test --workspace --locked --default-features` |
+| `noya-cli` | clippy | 0 diagnostics (rc=0) | 1.00 | `cargo clippy --workspace --all-targets --locked --default-features -- -D warnings` |
+| `noya-cli` | rustfmt | clean | 1.00 | `cargo fmt --all --check` |
+| `noya-cli` | unsafe_forbidden | 1/1 crate roots | 1.00 | `grep -l 'forbid(unsafe_code)' on every lib.rs/main.rs` |
+| `noya-cli` | msrv_declared | 1.86.0 | 1.00 | `grep rust-version Cargo.toml` |
+| `noya-cli` | rustdoc_strict | 0 warnings | 1.00 | `RUSTDOCFLAGS=-D warnings cargo doc --workspace --no-deps --all-features (matches CI + docs.rs)` |
+| `noya-cli` | missing_docs_lint | 1/1 roots deny missing_docs | 1.00 | `grep for deny/warn(missing_docs) in crate roots` |
+| `noya-cli` | readme_examples | compile | 1.00 | `scripts/check-readme-examples.sh` |
+| `noya-cli` | audit_vulnerabilities | 0 advisories | 1.00 | `cargo-audit audit --json | .vulnerabilities.count` |
+| `noya-cli` | deny_check | pass | 1.00 | `cargo deny check (advisories, bans, licenses, sources)` |
+| `noya-cli` | vet_audited | pass | 1.00 | `cargo vet --locked` |
+| `noya-cli` | reuse_compliance | compliant | 1.00 | `reuse lint (REUSE 3.3)` |
+| `noya-cli` | dependency_closure | 130 unique runtime crates (leaf, not scored) | n/a | `cargo tree -e normal --prefix none --no-dedupe | sort -u — recorded, not scored: a leaf binary's tree is not inherited` |
+| `noya-cli` | actions_sha_pinned | 34/34 external uses pinned | 1.00 | `grep 'uses:.*@<40-hex>' .github/workflows` |
+| `noya-cli` | fuzz_targets | 2 libFuzzer targets | 1.00 | `find fuzz/fuzz_targets -name '*.rs' (floor 2)` |
+| `noya-cli` | line_coverage | not run | n/a | `pass --with-coverage to measure` |
+| `noya-cli` | release_gpg_signed | 2 .asc assets | 1.00 | `gh release view --json assets | grep '\.asc$'` |
+| `noya-cli` | release_sigstore | 2 .bundle assets | 1.00 | `gh release view --json assets | grep '\.bundle$'` |
+| `noya-cli` | release_sbom | 3 sbom assets | 1.00 | `gh release view --json assets | grep -i sbom` |
+| `noya-cli` | dependabot_open | 0 open alerts | 1.00 | `gh api /repos/sebastienrousseau/noya-cli/dependabot/alerts?state=open` |
+| `noya-cli` | ci_main_green | success | 1.00 | `gh run list --branch main --limit 1 --json conclusion` |
+| `noya-cli` | crates_io_current | tree 0.0.28 / crates.io 0.0.28 | 1.00 | `crates.io/api/v1/crates/noya-cli .max_stable_version` |
+| `noya-cli` | openssf_scorecard | 6.6/10 | 0.66 | `api.securityscorecards.dev/projects/github.com/sebastienrousseau/noya-cli .score` |
+| `noyalib-lsp` | tests | 59 passed / 0 failed | 1.00 | `cargo test --workspace --locked --default-features` |
+| `noyalib-lsp` | clippy | 0 diagnostics (rc=0) | 1.00 | `cargo clippy --workspace --all-targets --locked --default-features -- -D warnings` |
+| `noyalib-lsp` | rustfmt | clean | 1.00 | `cargo fmt --all --check` |
+| `noyalib-lsp` | unsafe_forbidden | 2/2 crate roots | 1.00 | `grep -l 'forbid(unsafe_code)' on every lib.rs/main.rs` |
+| `noyalib-lsp` | msrv_declared | 1.86.0 | 1.00 | `grep rust-version Cargo.toml` |
+| `noyalib-lsp` | rustdoc_strict | 0 warnings | 1.00 | `RUSTDOCFLAGS=-D warnings cargo doc --workspace --no-deps --all-features (matches CI + docs.rs)` |
+| `noyalib-lsp` | missing_docs_lint | 2/2 roots deny missing_docs | 1.00 | `grep for deny/warn(missing_docs) in crate roots` |
+| `noyalib-lsp` | readme_examples | compile | 1.00 | `scripts/check-readme-examples.sh` |
+| `noyalib-lsp` | audit_vulnerabilities | 0 advisories | 1.00 | `cargo-audit audit --json | .vulnerabilities.count` |
+| `noyalib-lsp` | deny_check | pass | 1.00 | `cargo deny check (advisories, bans, licenses, sources)` |
+| `noyalib-lsp` | vet_audited | pass | 1.00 | `cargo vet --locked` |
+| `noyalib-lsp` | reuse_compliance | compliant | 1.00 | `reuse lint (REUSE 3.3)` |
+| `noyalib-lsp` | dependency_closure | 96 unique runtime crates (leaf, not scored) | n/a | `cargo tree -e normal --prefix none --no-dedupe | sort -u — recorded, not scored: a leaf binary's tree is not inherited` |
+| `noyalib-lsp` | actions_sha_pinned | 34/34 external uses pinned | 1.00 | `grep 'uses:.*@<40-hex>' .github/workflows` |
+| `noyalib-lsp` | fuzz_targets | 2 libFuzzer targets | 1.00 | `find fuzz/fuzz_targets -name '*.rs' (floor 2)` |
+| `noyalib-lsp` | line_coverage | not run | n/a | `pass --with-coverage to measure` |
+| `noyalib-lsp` | release_gpg_signed | 2 .asc assets | 1.00 | `gh release view --json assets | grep '\.asc$'` |
+| `noyalib-lsp` | release_sigstore | 2 .bundle assets | 1.00 | `gh release view --json assets | grep '\.bundle$'` |
+| `noyalib-lsp` | release_sbom | 3 sbom assets | 1.00 | `gh release view --json assets | grep -i sbom` |
+| `noyalib-lsp` | dependabot_open | 0 open alerts | 1.00 | `gh api /repos/sebastienrousseau/noyalib-lsp/dependabot/alerts?state=open` |
+| `noyalib-lsp` | ci_main_green | success | 1.00 | `gh run list --branch main --limit 1 --json conclusion` |
+| `noyalib-lsp` | crates_io_current | tree 0.0.28 / crates.io 0.0.28 | 1.00 | `crates.io/api/v1/crates/noyalib-lsp .max_stable_version` |
+| `noyalib-lsp` | openssf_scorecard | 6.6/10 | 0.66 | `api.securityscorecards.dev/projects/github.com/sebastienrousseau/noyalib-lsp .score` |
+| `noyalib-mcp` | tests | 62 passed / 0 failed | 1.00 | `cargo test --workspace --locked --default-features` |
+| `noyalib-mcp` | clippy | 0 diagnostics (rc=0) | 1.00 | `cargo clippy --workspace --all-targets --locked --default-features -- -D warnings` |
+| `noyalib-mcp` | rustfmt | clean | 1.00 | `cargo fmt --all --check` |
+| `noyalib-mcp` | unsafe_forbidden | 2/2 crate roots | 1.00 | `grep -l 'forbid(unsafe_code)' on every lib.rs/main.rs` |
+| `noyalib-mcp` | msrv_declared | 1.86.0 | 1.00 | `grep rust-version Cargo.toml` |
+| `noyalib-mcp` | rustdoc_strict | 0 warnings | 1.00 | `RUSTDOCFLAGS=-D warnings cargo doc --workspace --no-deps --all-features (matches CI + docs.rs)` |
+| `noyalib-mcp` | missing_docs_lint | 2/2 roots deny missing_docs | 1.00 | `grep for deny/warn(missing_docs) in crate roots` |
+| `noyalib-mcp` | readme_examples | compile | 1.00 | `scripts/check-readme-examples.sh` |
+| `noyalib-mcp` | audit_vulnerabilities | 0 advisories | 1.00 | `cargo-audit audit --json | .vulnerabilities.count` |
+| `noyalib-mcp` | deny_check | pass | 1.00 | `cargo deny check (advisories, bans, licenses, sources)` |
+| `noyalib-mcp` | vet_audited | pass | 1.00 | `cargo vet --locked` |
+| `noyalib-mcp` | reuse_compliance | compliant | 1.00 | `reuse lint (REUSE 3.3)` |
+| `noyalib-mcp` | dependency_closure | 19 unique runtime crates (leaf, not scored) | n/a | `cargo tree -e normal --prefix none --no-dedupe | sort -u — recorded, not scored: a leaf binary's tree is not inherited` |
+| `noyalib-mcp` | actions_sha_pinned | 51/51 external uses pinned | 1.00 | `grep 'uses:.*@<40-hex>' .github/workflows` |
+| `noyalib-mcp` | fuzz_targets | 2 libFuzzer targets | 1.00 | `find fuzz/fuzz_targets -name '*.rs' (floor 2)` |
+| `noyalib-mcp` | line_coverage | not run | n/a | `pass --with-coverage to measure` |
+| `noyalib-mcp` | release_gpg_signed | 2 .asc assets | 1.00 | `gh release view --json assets | grep '\.asc$'` |
+| `noyalib-mcp` | release_sigstore | 2 .bundle assets | 1.00 | `gh release view --json assets | grep '\.bundle$'` |
+| `noyalib-mcp` | release_sbom | 3 sbom assets | 1.00 | `gh release view --json assets | grep -i sbom` |
+| `noyalib-mcp` | dependabot_open | 0 open alerts | 1.00 | `gh api /repos/sebastienrousseau/noyalib-mcp/dependabot/alerts?state=open` |
+| `noyalib-mcp` | ci_main_green | success | 1.00 | `gh run list --branch main --limit 1 --json conclusion` |
+| `noyalib-mcp` | crates_io_current | tree 0.0.28 / crates.io 0.0.28 | 1.00 | `crates.io/api/v1/crates/noyalib-mcp .max_stable_version` |
+| `noyalib-mcp` | openssf_scorecard | 6.6/10 | 0.66 | `api.securityscorecards.dev/projects/github.com/sebastienrousseau/noyalib-mcp .score` |
+| `noyalib-wasm` | tests | 42 passed / 0 failed | 1.00 | `cargo test --workspace --locked --default-features` |
+| `noyalib-wasm` | clippy | 0 diagnostics (rc=0) | 1.00 | `cargo clippy --workspace --all-targets --locked --default-features -- -D warnings` |
+| `noyalib-wasm` | rustfmt | clean | 1.00 | `cargo fmt --all --check` |
+| `noyalib-wasm` | unsafe_forbidden | 1/1 crate roots | 1.00 | `grep -l 'forbid(unsafe_code)' on every lib.rs/main.rs` |
+| `noyalib-wasm` | msrv_declared | 1.86.0 | 1.00 | `grep rust-version Cargo.toml` |
+| `noyalib-wasm` | rustdoc_strict | 0 warnings | 1.00 | `RUSTDOCFLAGS=-D warnings cargo doc --workspace --no-deps --all-features (matches CI + docs.rs)` |
+| `noyalib-wasm` | missing_docs_lint | 1/1 roots deny missing_docs | 1.00 | `grep for deny/warn(missing_docs) in crate roots` |
+| `noyalib-wasm` | readme_examples | compile | 1.00 | `scripts/check-readme-examples.sh` |
+| `noyalib-wasm` | audit_vulnerabilities | 0 advisories | 1.00 | `cargo-audit audit --json | .vulnerabilities.count` |
+| `noyalib-wasm` | deny_check | pass | 1.00 | `cargo deny check (advisories, bans, licenses, sources)` |
+| `noyalib-wasm` | vet_audited | pass | 1.00 | `cargo vet --locked` |
+| `noyalib-wasm` | reuse_compliance | compliant | 1.00 | `reuse lint (REUSE 3.3)` |
+| `noyalib-wasm` | dependency_closure | 33 unique runtime crates (leaf, not scored) | n/a | `cargo tree -e normal --prefix none --no-dedupe | sort -u — recorded, not scored: a leaf binary's tree is not inherited` |
+| `noyalib-wasm` | actions_sha_pinned | 42/42 external uses pinned | 1.00 | `grep 'uses:.*@<40-hex>' .github/workflows` |
+| `noyalib-wasm` | fuzz_targets | 2 libFuzzer targets | 1.00 | `find fuzz/fuzz_targets -name '*.rs' (floor 2)` |
+| `noyalib-wasm` | line_coverage | not run | n/a | `pass --with-coverage to measure` |
+| `noyalib-wasm` | release_gpg_signed | 2 .asc assets | 1.00 | `gh release view --json assets | grep '\.asc$'` |
+| `noyalib-wasm` | release_sigstore | 2 .bundle assets | 1.00 | `gh release view --json assets | grep '\.bundle$'` |
+| `noyalib-wasm` | release_sbom | 3 sbom assets | 1.00 | `gh release view --json assets | grep -i sbom` |
+| `noyalib-wasm` | dependabot_open | 0 open alerts | 1.00 | `gh api /repos/sebastienrousseau/noyalib-wasm/dependabot/alerts?state=open` |
+| `noyalib-wasm` | ci_main_green | success | 1.00 | `gh run list --branch main --limit 1 --json conclusion` |
+| `noyalib-wasm` | crates_io_current | tree 0.0.28 / crates.io 0.0.28 | 1.00 | `crates.io/api/v1/crates/noyalib-wasm .max_stable_version` |
+| `noyalib-wasm` | openssf_scorecard | 6.6/10 | 0.66 | `api.securityscorecards.dev/projects/github.com/sebastienrousseau/noyalib-wasm .score` |
+| `ecosystem` | version_lockstep | 4/4 pin =0.0.28 | 1.00 | `grep the noyalib pin in each satellite Cargo.toml (ADR-0005); all aligned` |
+| `ecosystem` | host_coverage | 5/5 hosts present | 1.00 | `directory presence for noyalib noya-cli noyalib-lsp noyalib-mcp noyalib-wasm` |
+
+<sub>Generated by `scripts/ecosystem-scorecard.sh` v1.0.0. Regenerate rather than edit.</sub>
+<!-- SCORECARD:END -->
+<h3 id="how-to-disagree-with-this-rating"><a class="header" href="#how-to-disagree-with-this-rating">How to disagree with this rating</a></h3>
+<p>Pick the row you doubt and run its probe. If the number differs, the
+harness is wrong and should be fixed — open an issue with the command
+output. That is the entire contract.</p>
+<p>Two caveats the harness prints about itself and this document repeats,
+because a score that hides its own limits is a marketing number:</p>
+<ul>
+<li><strong>Rubric coverage.</strong> The percentage of probes that actually executed
+is reported alongside the score. Network and coverage probes are
+opt-in; with them off, a large slice of the rubric is <code>N/A</code>, and the
+headline is correspondingly less meaningful.</li>
+<li><strong>Worktree state.</strong> The header records whether each repo was dirty. A
+score measured against uncommitted changes describes those changes,
+not the published artefact.</li>
+</ul>
+<h3 id="known-weaknesses-of-the-harness-itself"><a class="header" href="#known-weaknesses-of-the-harness-itself">Known weaknesses of the harness itself</a></h3>
+<ul>
+<li>
+<p><strong>A timed-out probe used to score 0, asserting a failure it had not
+observed.</strong> The run recorded above shows
+<code>noyalib · tests · timeout after 3600s · 0.00</code>, which dragged
+<code>correctness</code> to 83.3%. That is an artefact of the ceiling firing on a
+cold target dir, not a test failure: the same suite run directly on the
+same commit passed <strong>5739 / 0</strong>, and <code>spec_conformance</code> in this very run
+reports 406/406. It also contradicted rule 2 above — an unmeasured probe
+is supposed to score N/A and never 0. Fixed: a timeout now records N/A,
+which keeps it visible (N/A rows print, and they lower the reported
+rubric coverage) without claiming a failure that did not happen. The
+next regeneration will show N/A here rather than a false ✗.</p>
+</li>
+<li>
+<p>It measures the <em>presence</em> of fuzz targets, not fuzzing effort. Two
+targets that have never found anything score the same as two that
+have.</p>
+</li>
+<li>
+<p><strong><code>dependency_closure</code> used one flat budget of 60 for every repo.</strong> That
+is why <code>noya-cli</code> scored 0 at 130 crates. The obvious fix — a per-repo
+budget — turned out to be the wrong one: any number picked now would be
+a number picked so the current value clears it. The rule that survived
+scrutiny is about <em>propagation</em>. A library’s dependencies are inherited
+by every downstream consumer, so their size is a cost imposed on other
+people and belongs in the score; <code>noyalib</code> sits at 12. A leaf binary’s
+are not inherited, and 130 of <code>noya-cli</code>’s crates are <code>miette</code>’s <code>fancy</code>
+renderer giving <code>noyavalidate</code> source excerpts and carets — which for a
+validator is the job, not bloat. Leaves are therefore <strong>recorded and not
+scored</strong>: the count stays in the table and the JSON, so a leaf that
+doubles its tree is obvious, but it is not judged against a line nobody
+can defend.</p>
+</li>
+<li>
+<p><code>Code-Review</code> cannot be fixed by any script, and no probe pretends
+otherwise.</p>
+</li>
+<li>
+<p>Test <em>pass ratio</em> is scored, but not test <em>quality</em>. A suite of 4,000
+trivial assertions scores the same as 4,000 sharp ones. Coverage
+(<code>--with-coverage</code>) partly compensates and is off by default because
+it is slow.</p>
+</li>
+</ul>
+<h2 id="family-layout"><a class="header" href="#family-layout">Family layout</a></h2>
+<p>Every repository in the family carries the same skeleton, enforced
+per push by the <code>Family layout contract</code> step of
+<code>shared-docs-lint.yml</code> — a repo that drops one of these files fails
+its own CI:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">File</th><th style="text-align: left">Role</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left"><code>README.md</code></td><td style="text-align: left">identity, install, quick start, the four documentation links</td></tr>
+<tr><td style="text-align: left"><code>CHANGELOG.md</code></td><td style="text-align: left">Keep-a-Changelog, one heading per lockstep release</td></tr>
+<tr><td style="text-align: left"><code>SECURITY.md</code></td><td style="text-align: left">private reporting channel</td></tr>
+<tr><td style="text-align: left"><code>CONTRIBUTING.md</code></td><td style="text-align: left">family process (satellites point at the core’s)</td></tr>
+<tr><td style="text-align: left"><code>DEVELOPMENT.md</code></td><td style="text-align: left">developer entry point (satellites point at the core’s)</td></tr>
+<tr><td style="text-align: left"><code>REUSE.toml</code></td><td style="text-align: left">machine-readable licensing for headerless files</td></tr>
+<tr><td style="text-align: left"><code>docs/</code></td><td style="text-align: left">documentation root (never <code>doc/</code>)</td></tr>
+<tr><td style="text-align: left"><code>.editorconfig</code>, <code>.markdownlint.yaml</code>, <code>.codespellrc</code></td><td style="text-align: left">shared editor + docs-lint configs</td></tr>
+</tbody>
+</table>
+</div>
+<p>Satellites additionally carry <code>scripts/verify-release-versions.sh</code>
+and <code>supply-chain/</code>; the core additionally carries the <code>shared-*.yml</code>
+workflows the family consumes by SHA.</p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="pre-commit.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
+
+                            <a rel="next prefetch" href="adr/index.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="pre-commit.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
+
+                    <a rel="next prefetch" href="adr/index.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                    </a>
+            </nav>
+
+        </div>
+
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr-ef4e11c1.min.js"></script>
+        <script src="mark-09e88c2c.min.js"></script>
+        <script src="searcher-09f2665d.js"></script>
+
+        <script src="clipboard-1626706a.min.js"></script>
+        <script src="highlight-abc7f01d.js"></script>
+        <script src="book-609e4cb8.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+
+    </div>
+    </body>
+</html>
