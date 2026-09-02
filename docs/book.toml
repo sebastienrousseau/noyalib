@@ -22,9 +22,3 @@ git-repository-url = "https://github.com/sebastienrousseau/noyalib"
 edit-url-template = "https://github.com/sebastienrousseau/noyalib/edit/main/docs/{path}"
 site-url = "/noyalib/manual/"
 
-[output.linkcheck]
-# Links that climb out of docs/ (../README.md, source files) are
-# validated against the repository tree; they degrade to GitHub
-# links in the rendered site but must exist on disk.
-traverse-parent-directories = true
-follow-web-links = false

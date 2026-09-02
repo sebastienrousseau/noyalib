@@ -7,6 +7,20 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Added
+
+- **Phase 3: the rendered User Manual.** `docs/` is now an mdBook
+  root (`book.toml` + `SUMMARY.md` + an introduction page) whose
+  chapters are the existing Markdown files in place — no file moved,
+  no content forked. `docs.yml` builds it beside the strict rustdoc
+  into one Pages site (landing at `/`, API at `/noyalib/` with old
+  links preserved, manual at `/manual/`).
+  `scripts/check-docs-links.sh` gates every chapter and relative
+  link in CI (mdbook-linkcheck lags mdBook 0.5, so the gate is
+  self-contained). Every README in the family now opens its
+  Documentation section with the same four entry points: User
+  Manual, API reference, Developer docs, Ecosystem map.
+
 ### Changed
 
 - **Repository layout, Phase 1 of the structure plan.** `doc/` is

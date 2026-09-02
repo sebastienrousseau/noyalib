@@ -1599,6 +1599,13 @@ value.interpolate_properties_lossy(&map);
 
 ## Documentation
 
+The four entry points, identical across every repo in the family:
+
+- **[User Manual](https://sebastienrousseau.github.io/noyalib/manual/)** — the rendered book: user guide, migrations, architecture, policies, ADRs
+- **[API reference](https://docs.rs/noyalib)** — rustdoc on docs.rs
+- **[Developer docs](DEVELOPMENT.md)** — toolchain, task map, reproducing every CI gate locally
+- **[Ecosystem map](docs/ECOSYSTEM.md)** — the six crates, the lockstep model, the scorecard
+
 | Document | Covers |
 |---|---|
 | [`docs/POLICIES.md`](docs/POLICIES.md) | MSRV, SemVer & API stability, security & audit pipeline, performance & algorithmic complexity, concurrency guarantees, platform support, the full feature-flag matrix, panic policy, error model, dependency policy, release & changelog policy. **Single source of truth** for engineering posture. |
