@@ -42,3 +42,21 @@ jobs:
             !crates/*/tests/yaml-test-suite/**
       - name: codespell
         uses: codespell-project/actions-codespell@8f01853be192eb0f849a5c7d721450e7a467c579 # v2.2
+      - name: Family layout contract
+        # The canonical layout every family repo carries (Phase 1;
+        # documented in the core's docs/ECOSYSTEM.md §Family layout).
+        # A repo that drops one of these files fails its own CI, so
+        # the layout cannot silently drift per repo.
+        run: |
+          set -euo pipefail
+          missing=""
+          for f in README.md CHANGELOG.md SECURITY.md DEVELOPMENT.md \
+                   CONTRIBUTING.md REUSE.toml .editorconfig \
+                   .markdownlint.yaml .codespellrc docs; do
+            [ -e "$f" ] || missing="$missing $f"
+          done
+          if [ -n "$missing" ]; then
+            echo "::error::family layout contract violated — missing:$missing"
+            exit 1
+          fi
+          echo "family layout contract satisfied"

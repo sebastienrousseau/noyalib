@@ -392,3 +392,25 @@ because a score that hides its own limits is a marketing number:
   trivial assertions scores the same as 4,000 sharp ones. Coverage
   (`--with-coverage`) partly compensates and is off by default because
   it is slow.
+
+## Family layout
+
+Every repository in the family carries the same skeleton, enforced
+per push by the `Family layout contract` step of
+`shared-docs-lint.yml` — a repo that drops one of these files fails
+its own CI:
+
+| File | Role |
+| :--- | :--- |
+| `README.md` | identity, install, quick start, the four documentation links |
+| `CHANGELOG.md` | Keep-a-Changelog, one heading per lockstep release |
+| `SECURITY.md` | private reporting channel |
+| `CONTRIBUTING.md` | family process (satellites point at the core's) |
+| `DEVELOPMENT.md` | developer entry point (satellites point at the core's) |
+| `REUSE.toml` | machine-readable licensing for headerless files |
+| `docs/` | documentation root (never `doc/`) |
+| `.editorconfig`, `.markdownlint.yaml`, `.codespellrc` | shared editor + docs-lint configs |
+
+Satellites additionally carry `scripts/verify-release-versions.sh`
+and `supply-chain/`; the core additionally carries the `shared-*.yml`
+workflows the family consumes by SHA.
