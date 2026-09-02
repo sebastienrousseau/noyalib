@@ -251,8 +251,8 @@ fn eof_reports_one_line_past_the_flow_sequence() {
     assert_eq!(loc, Some((2, 1, 13)));
 
     // Multi-line body: still one past the last line, column 1.
-    let err =
-        syml::from_str::<syml::Value>("title: [unclosed, broken\nother: ok\n").expect_err("unclosed");
+    let err = syml::from_str::<syml::Value>("title: [unclosed, broken\nother: ok\n")
+        .expect_err("unclosed");
     let loc = err.location().map(|l| (l.line(), l.column(), l.index()));
     assert_eq!(loc, Some((3, 1, 35)));
 }
@@ -265,7 +265,9 @@ fn columns_count_characters_and_index_counts_bytes() {
     // `é` is one character and two bytes: same column, shifted index.
     let multibyte = syml::from_str::<syml::Value>("t: \"é\" x\n").expect_err("trailing");
     let ascii = syml::from_str::<syml::Value>("t: \"e\" x\n").expect_err("trailing");
-    let m = multibyte.location().map(|l| (l.line(), l.column(), l.index()));
+    let m = multibyte
+        .location()
+        .map(|l| (l.line(), l.column(), l.index()));
     let a = ascii.location().map(|l| (l.line(), l.column(), l.index()));
     assert_eq!(m, Some((1, 8, 8)), "column is character-based");
     assert_eq!(a, Some((1, 8, 7)));

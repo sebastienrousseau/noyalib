@@ -372,7 +372,10 @@ impl<'a> Parser<'a> {
             None
         };
         let widen = |s: Span| match props_start {
-            Some(p) if p < s.start => Span { start: p, end: s.end },
+            Some(p) if p < s.start => Span {
+                start: p,
+                end: s.end,
+            },
             _ => s,
         };
 
