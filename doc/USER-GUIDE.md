@@ -621,8 +621,6 @@ specific deployment shapes:
   [`crates/noyalib/examples/anchor_shared.rs`](../crates/noyalib/examples/anchor_shared.rs)
 - **Schema codegen**:
   [`crates/noyalib/examples/schema_validation.rs`](../crates/noyalib/examples/schema_validation.rs)
-- **Tagged-enum dispatch**:
-  [`crates/noyalib/examples/robotics_polymorphism.rs`](../crates/noyalib/examples/robotics_polymorphism.rs)
 - **Figment / garde / validator integration**:
   [`crates/noyalib/examples/figment.rs`](../crates/noyalib/examples/figment.rs),
   [`crates/noyalib/examples/validation_garde.rs`](../crates/noyalib/examples/validation_garde.rs),

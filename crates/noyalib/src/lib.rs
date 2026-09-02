@@ -217,7 +217,6 @@
 //! | `garde` | ⛔ | `garde 0.22` | [`Validated<T>`] | — |
 //! | `validator` | ⛔ | `validator 0.19` | [`ValidatedValidator<T>`] | — |
 //! | `lossless-float` | ⛔ | — | [`lossless_float::LosslessFloat`] — refuse-to-lose-precision float, the floating-point sibling of `lossless-u64` | — |
-//! | `robotics` | ⛔ | — | **deprecated** (one release): aliases into `lossless-float` plus the leaving `Degrees` / `Radians` newtypes | `lossless-float` |
 //! | `parallel` | ⛔ | `rayon 1.10` | [`parallel::parse`], [`parallel::values`] | `std` |
 //! | `simd` | ⛔ | — | forward-compat no-op — `noyalib::simd::*` is always available; the hot path uses it unconditionally | — |
 //! | `nightly-simd` | ⛔ | nightly rustc | 32-byte `StructuralIter` | `simd` |
@@ -571,14 +570,6 @@ pub mod policy;
 #[cfg(feature = "recovery")]
 #[cfg_attr(docsrs, doc(cfg(feature = "recovery")))]
 pub mod recovery;
-/// Deprecated (one release): aliases into [`lossless_float`] plus the
-/// leaving `Degrees` / `Radians` unit newtypes (requires `robotics`
-/// feature, itself deprecated). Every item inside carries its own
-/// `#[deprecated]`; the module itself does not, because a module-level
-/// deprecation also fires on the module's own internals.
-#[cfg(feature = "robotics")]
-#[cfg_attr(docsrs, doc(cfg(feature = "robotics")))]
-pub mod robotics;
 mod schema;
 /// JSON Schema codegen via [`schemars`] — derive
 /// [`schemars::JsonSchema`] for a Rust type and call

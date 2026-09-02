@@ -559,7 +559,6 @@ When in `no_std` mode:
 | `parallel` | no | `parallel::parse::<T>` on rayon | `rayon` |
 | `simd` | no | optional explicit SIMD acceleration | (none — uses portable_simd / std::simd via cfg) |
 | `compat-serde-yaml` | no | name-for-name shim under `noyalib::compat::serde_yaml` | (none) |
-| `robotics` | no | ROS-style overlay/redaction helpers | (none) |
 | `noyavalidate` | no | meta — pulls validate-schema + miette/fancy | (transitive) |
 | `wasm-opt` | no | post-build wasm-opt pass marker (used by `noyalib-wasm`) | (none) |
 | `nightly-simd` | no | enables nightly-only `std::simd` paths in `simd.rs`; gracefully no-ops on stable | (none — gated by `cfg(noyalib_nightly)`) |

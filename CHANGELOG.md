@@ -7,6 +7,19 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Removed
+
+- **The `robotics` module and feature**, completing the one-release
+  deprecation cycle started in v0.0.29. `StrictFloat` /
+  `StrictFloatError` live on as
+  `lossless_float::{LosslessFloat, LosslessFloatError}` (feature
+  `lossless-float`); the `Degrees` / `Radians` unit newtypes leave
+  the crate — they have no dependence on noyalib, and
+  `examples/scientific.rs` shows the copy-into-your-own-code
+  migration. The behavioural pins from the robotics test suites are
+  ported to `lossless-float` tests, and the
+  `robotics_polymorphism` example is gone with the module.
+
 ## [v0.0.29] - 2026-08-31
 
 Thirteen fixes and seven additions, spanning all three pillars — the
