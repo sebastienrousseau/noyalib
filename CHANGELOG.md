@@ -35,6 +35,21 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   `CITATION.cff`, and `AGENTS.md` stating the invariants an
   AI-assisted contribution must respect.
 
+- **Automation resilience, adapted from zfb's harness** (the project
+  whose evaluation gated the serde_yaml migration): self-tests for
+  the release gate scripts (`scripts/tests/run.sh`, CI job
+  `gate-selftests` — each gate proven against known-good and
+  known-bad fixtures); corpus integrity and category-coverage
+  meta-tests pinning the 18-case contract by sha256; a shipped-size
+  monitor with declared budgets (`scripts/size-budgets.toml`); a
+  whole-tree span-invariant suite (`tests/span_tree_invariants.rs`),
+  which immediately surfaced the long-standing #375 block-sequence
+  span quirk, now carved out and tracked; `actionlint` for every
+  workflow file (shared, satellite-consumable); a weekly
+  registry drift net installing every published crate and npm
+  package clean-room; and a bare-container musl smoke in the
+  noya-cli release matrix.
+
 ### Fixed
 
 - **A comment edit can no longer break the document** (found by

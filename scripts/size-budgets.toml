@@ -1,0 +1,14 @@
+# SPDX-FileCopyrightText: 2026 Noyalib
+# SPDX-License-Identifier: MIT OR Apache-2.0
+#
+# Declared size budgets, enforced by scripts/size-monitor.sh (the
+# shipped-sizes pattern from Takazudo/zudo-front-builder). A commit
+# that intentionally grows an artifact raises its budget in the same
+# commit, with the reason beside it — the same declared-budget
+# contract as the CI duration monitor. Budgets are ceilings with
+# deliberate headroom, not targets.
+
+# The crates.io package. 1,056,772 bytes at v0.0.30 (the vendored
+# YAML test suite dominates); ceiling gives ~20% headroom.
+[crate-package]
+max_bytes = 1300000

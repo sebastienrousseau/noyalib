@@ -1,0 +1,71 @@
+# SPDX-FileCopyrightText: 2026 Noyalib
+# SPDX-License-Identifier: MIT OR Apache-2.0
+
+name: Registry drift net
+
+# Weekly clean-room verification of the PUBLISHED artefacts, adapted
+# from Takazudo/zudo-front-builder's drift-net: the release pipeline
+# proves the registry path once, on release day — between releases,
+# registry-side rot (a yanked dependency of a published version, an
+# npm tarball that stopped propagating, an index regression) is
+# invisible. This job installs everything a consumer would, from the
+# registries only, with no repository checkout involved in the build.
+
+on:
+  schedule:
+    - cron: '0 6 * * 3'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  crates-io:
+    name: clean-room installs (crates.io)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # master
+        with:
+          toolchain: stable
+      - name: Library consumes from the registry
+        run: |
+          set -euo pipefail
+          cargo new probe && cd probe
+          cargo add noyalib
+          printf 'fn main() { let v: noyalib::Value = noyalib::from_str("a: 1").unwrap(); println!("{v:?}"); }\n' > src/main.rs
+          cargo run --release
+      - name: Drop-in shim consumes from the registry
+        run: |
+          set -euo pipefail
+          cargo new probe-shim && cd probe-shim
+          cargo add serde_yaml --rename serde_yaml --package noyalib-serde-yaml 2>/dev/null || \
+            printf '\n[dependencies]\nserde_yaml = { package = "noyalib-serde-yaml", version = "*" }\n' >> Cargo.toml
+          printf 'fn main() { let v: serde_yaml::Value = serde_yaml::from_str("a: 1").unwrap(); println!("{v:?}"); }\n' > src/main.rs
+          cargo run --release
+      - name: CLI installs from the registry
+        run: |
+          set -euo pipefail
+          cargo install noya-cli --locked
+          noyafmt --version
+          printf 'a: 1\n' | noyafmt --stdin
+          noyavalidate --version
+
+  npm:
+    name: clean-room installs (npm)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: '22'
+      - name: WASM package installs and parses
+        run: |
+          set -euo pipefail
+          mkdir probe && cd probe && npm init -y >/dev/null
+          npm install @sebastienrousseau/noyalib-wasm
+          node -e "const y = require('@sebastienrousseau/noyalib-wasm'); console.log('wasm package loads')"
+      - name: MCP package installs
+        run: |
+          set -euo pipefail
+          mkdir probe-mcp && cd probe-mcp && npm init -y >/dev/null
+          npm install @sebastienrousseau/noyalib-mcp
+          node -e "require.resolve('@sebastienrousseau/noyalib-mcp'); console.log('mcp package resolves')"
