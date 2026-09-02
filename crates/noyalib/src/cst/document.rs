@@ -11,8 +11,10 @@ use crate::cst::builder::{
 use crate::cst::emit::{Emit, EmitCtx, emit_key};
 use crate::cst::green::{GreenChild, GreenNode};
 use crate::cst::syntax::SyntaxKind;
+use crate::de::ParserConfig;
 use crate::doc_boundary::strip_bom;
 use crate::error::{Error, Result};
+use crate::parser::ParseConfig;
 use crate::path::{QuerySegment, parse_query_path};
 use crate::prelude::*;
 use crate::span_context::SpanTree;
@@ -67,6 +69,15 @@ pub struct Document {
     /// `None` for a freshly-parsed document or after a full
     /// re-parse fallback.
     last_repair_scope: core::cell::Cell<Option<RepairScope>>,
+    /// The parser configuration this document was opened with.
+    /// Every re-parse of the source — the typed-cache refresh behind
+    /// [`Document::as_value`], [`Document::validate`], the full
+    /// re-parse safety net behind [`Document::replace_span`], and
+    /// the value guard on comment edits — runs under the same
+    /// limits, so a document that only opens with a relaxed budget
+    /// (see [`parse_document_with_config`]) stays readable and
+    /// editable after its first edit.
+    config: ParseConfig,
 }
 
 impl Clone for Document {
@@ -76,6 +87,7 @@ impl Clone for Document {
             green: self.green.clone(),
             cache: core::cell::RefCell::new(self.cache.borrow().clone()),
             last_repair_scope: core::cell::Cell::new(self.last_repair_scope.get()),
+            config: self.config.clone(),
         }
     }
 }
@@ -113,6 +125,13 @@ impl Document {
     #[must_use]
     pub fn syntax(&self) -> &GreenNode {
         &self.green
+    }
+
+    /// The parser configuration this document was opened with, for
+    /// sibling modules that load the source again (the comment-edit
+    /// value guard, schema coercion).
+    pub(crate) fn config(&self) -> &ParseConfig {
+        &self.config
     }
 
     /// Borrow the typed [`Value`] view of the document.
@@ -280,8 +299,7 @@ impl Document {
         if self.cache.borrow().is_some() {
             return;
         }
-        let cfg = crate::parser::ParseConfig::default();
-        let parsed = crate::parser::parse_one(&self.source, &cfg)
+        let parsed = crate::parser::parse_one(&self.source, &self.config)
             .expect("Document source must always parse — local repair invariant violated");
         *self.cache.borrow_mut() = Some(parsed);
     }
@@ -337,8 +355,7 @@ impl Document {
         if self.cache.borrow().is_some() {
             return Ok(());
         }
-        let cfg = crate::parser::ParseConfig::default();
-        let parsed = crate::parser::parse_one(&self.source, &cfg)?;
+        let parsed = crate::parser::parse_one(&self.source, &self.config)?;
         *self.cache.borrow_mut() = Some(parsed);
         Ok(())
     }
@@ -422,7 +439,7 @@ impl Document {
 
         // Safety net — full re-parse. Validates the new source and
         // populates everything eagerly.
-        let parsed = parse_full(&new_source)?;
+        let parsed = parse_full(&new_source, &self.config)?;
         self.last_repair_scope.set(Some(RepairScope::Document));
         self.source = parsed.source;
         self.green = parsed.green;
@@ -3108,6 +3125,10 @@ impl fmt::Display for Document {
 
 /// Parse a YAML stream into an editable [`Document`].
 ///
+/// Runs under the default parser configuration — the same limits
+/// as [`crate::from_str`]. Use [`parse_document_with_config`] to
+/// change them.
+///
 /// # Errors
 ///
 /// Returns the same parse errors as [`crate::from_str`] — the green
@@ -3122,7 +3143,64 @@ impl fmt::Display for Document {
 /// assert_eq!(parse_document("a: 1\n").unwrap().to_string(), "a: 1\n");
 /// ```
 pub fn parse_document(input: &str) -> Result<Document> {
-    let parsed = parse_full(input)?;
+    parse_document_inner(input, ParseConfig::default())
+}
+
+/// Parse a YAML stream into an editable [`Document`] under `config`,
+/// mirroring [`crate::from_str_with_config`].
+///
+/// The document keeps the configuration: every later re-parse of
+/// its source — the typed view behind [`Document::as_value`],
+/// [`Document::validate`], the safety-net re-parse an edit falls
+/// back to, and the value guard on comment edits — runs under the
+/// same limits. A document that only opens with a relaxed budget
+/// therefore stays readable and editable after its first edit
+/// instead of tripping the default limits on the next read.
+///
+/// Every knob of [`ParserConfig`] applies: the resource budgets,
+/// the alias-to-anchor ratio heuristic, the duplicate-key and
+/// merge-key policies, the schema toggles, and any policies.
+///
+/// # Errors
+///
+/// Returns the same parse errors as [`crate::from_str_with_config`]
+/// under the same configuration.
+///
+/// # Examples
+///
+/// A values file that reuses each anchored default block more than
+/// ten times trips the default alias-to-anchor ratio heuristic
+/// (`Some(10.0)`) even though it is ordinary, valid YAML. Disable
+/// the heuristic and keep every absolute budget:
+///
+/// ```
+/// use noyalib::cst::{parse_document, parse_document_with_config};
+/// use noyalib::{BudgetBreach, Error, ParserConfig};
+///
+/// let mut src = String::from("base: &b\n  k: v\ntenants:\n");
+/// for i in 0..11 {
+///     src.push_str(&format!("  t{i}:\n    <<: *b\n"));
+/// }
+///
+/// assert!(matches!(
+///     parse_document(&src),
+///     Err(Error::Budget(BudgetBreach::AliasAnchorRatio { .. }))
+/// ));
+///
+/// let cfg = ParserConfig::new().alias_anchor_ratio(None);
+/// let doc = parse_document_with_config(&src, &cfg).unwrap();
+/// assert_eq!(doc.to_string(), src);
+/// assert_eq!(doc.as_value()["tenants"]["t10"]["k"].as_str(), Some("v"));
+/// ```
+pub fn parse_document_with_config(input: &str, config: &ParserConfig) -> Result<Document> {
+    parse_document_inner(input, ParseConfig::from(config))
+}
+
+/// Shared body of [`parse_document`] and
+/// [`parse_document_with_config`]: parse under `config` and hand the
+/// configuration to the document for its own re-parses.
+fn parse_document_inner(input: &str, config: ParseConfig) -> Result<Document> {
+    let parsed = parse_full(input, &config)?;
     Ok(Document {
         source: parsed.source,
         green: parsed.green,
@@ -3130,6 +3208,7 @@ pub fn parse_document(input: &str) -> Result<Document> {
         // cache so the first read after a fresh parse is free.
         cache: core::cell::RefCell::new(Some((parsed.value, parsed.span_tree))),
         last_repair_scope: core::cell::Cell::new(None),
+        config,
     })
 }
 
@@ -3175,16 +3254,49 @@ pub fn parse_document(input: &str) -> Result<Document> {
 /// assert_eq!(joined, src);
 /// ```
 pub fn parse_stream(input: &str) -> Result<Vec<Document>> {
+    parse_stream_inner(input, &ParseConfig::default())
+}
+
+/// Parse a YAML stream into one [`Document`] per logical document
+/// under `config`, mirroring [`crate::load_all_with_config`].
+///
+/// Boundaries are found exactly as in [`parse_stream`]; each
+/// document is then parsed as by [`parse_document_with_config`] and
+/// keeps the configuration for its own re-parses.
+///
+/// # Errors
+///
+/// Same as [`parse_document_with_config`].
+///
+/// # Examples
+///
+/// ```
+/// use noyalib::cst::{parse_stream_with_config, Document};
+/// use noyalib::ParserConfig;
+///
+/// let cfg = ParserConfig::new().alias_anchor_ratio(None);
+/// let src = "---\nfoo: 1\n---\nbar: 2\n";
+/// let docs = parse_stream_with_config(src, &cfg).unwrap();
+/// assert_eq!(docs.len(), 2);
+/// let joined: String = docs.iter().map(Document::source).collect();
+/// assert_eq!(joined, src);
+/// ```
+pub fn parse_stream_with_config(input: &str, config: &ParserConfig) -> Result<Vec<Document>> {
+    parse_stream_inner(input, &ParseConfig::from(config))
+}
+
+/// Shared body of [`parse_stream`] and [`parse_stream_with_config`].
+fn parse_stream_inner(input: &str, config: &ParseConfig) -> Result<Vec<Document>> {
     let bounds = document_boundaries(input)?;
     if bounds.len() <= 1 {
-        return Ok(vec![parse_document(input)?]);
+        return Ok(vec![parse_document_inner(input, config.clone())?]);
     }
     let mut out = Vec::with_capacity(bounds.len());
     for (s, e) in bounds {
         if s == e {
             continue;
         }
-        out.push(parse_document(&input[s..e])?);
+        out.push(parse_document_inner(&input[s..e], config.clone())?);
     }
     Ok(out)
 }
@@ -4668,7 +4780,7 @@ fn decode_key_token(raw: &str, kind: SyntaxKind) -> Option<String> {
         // scalar parser; the token is self-delimiting, so loading it
         // as a bare scalar document yields exactly the decoded key.
         SyntaxKind::DoubleQuotedScalar => {
-            let cfg = crate::parser::ParseConfig::default();
+            let cfg = ParseConfig::default();
             match crate::parser::parse_one_value(raw, &cfg).ok()? {
                 Value::String(s) => Some(s),
                 _ => None,

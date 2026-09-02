@@ -7,6 +7,37 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Added
+
+- **`cst::parse_document_with_config` and `cst::parse_stream_with_config`.**
+  The lossless CST entry points take a `ParserConfig`, mirroring
+  `from_str_with_config` / `load_all_with_config`. Until now
+  `parse_document` and `parse_stream` ran under a hardcoded default
+  configuration, so a document that needed one knob changed could be
+  read through `from_str_with_config` but never through the CST, and
+  no byte-preserving edit of it was possible. The motivating case is a
+  Helm-style values file whose 22 anchored default blocks are merged
+  into 221 tenants with `<<: *anchor` — ratio 10.05 against the
+  default `alias_anchor_ratio` cap of 10, with every absolute budget
+  passing. Every knob applies: the resource budgets, the ratio
+  heuristic, the duplicate-key and merge-key policies, the schema
+  toggles, and policies. Disabling the ratio leaves
+  `max_alias_expansions` in force, pinned by a test. (#372)
+
+### Changed
+
+- **A `cst::Document` keeps the configuration it was opened with.**
+  The typed-cache refresh behind `as_value`, `validate`, the full
+  re-parse safety net behind `replace_span`, the value guard on
+  comment edits, and the per-pass snapshot in `cst::coerce_to_schema`
+  now re-parse under the opening configuration instead of the
+  defaults. Documents opened with `parse_document` / `parse_stream`
+  behave exactly as before, since their configuration is the default.
+  For a document opened under a relaxed budget this is what makes it
+  editable at all: the cache refresh after a local-repair edit would
+  otherwise refuse the source and hit the local-repair invariant.
+  (#372)
+
 ## [v0.0.30] - 2026-09-02
 
 ### Changed
