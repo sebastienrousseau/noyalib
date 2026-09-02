@@ -102,7 +102,10 @@ pub use annotated::{CommentBundle, CommentPosition};
 #[cfg(feature = "validate-schema")]
 #[cfg_attr(docsrs, doc(cfg(feature = "validate-schema")))]
 pub use coerce::coerce_to_schema;
-pub use document::{Document, RepairScope, parse_document, parse_stream};
+pub use document::{
+    Document, RepairScope, parse_document, parse_document_with_config, parse_stream,
+    parse_stream_with_config,
+};
 pub use emit::{Emit, EmitCtx};
 pub use entry::Entry;
 pub use format::{FormatConfig, format, format_with_config};

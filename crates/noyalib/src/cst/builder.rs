@@ -35,8 +35,8 @@ pub(crate) struct ParsedDocument {
 /// Parse `input` once for `Value` + `SpanTree` and once for the green
 /// tree. Returns both — the caller wraps them in a `Document`.
 #[cfg(feature = "std")]
-pub(crate) fn parse_full(input: &str) -> Result<ParsedDocument> {
-    let cfg = ParseConfig::default();
+pub(crate) fn parse_full(input: &str, config: &crate::ParserConfig) -> Result<ParsedDocument> {
+    let cfg = ParseConfig::from(config);
     let (value, span_tree) = crate::parser::parse_one(input, &cfg)?;
     let source: Arc<str> = Arc::from(input);
     let green = build_green_tree(&source)?;

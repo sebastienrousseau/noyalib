@@ -67,6 +67,14 @@ pub struct Document {
     /// `None` for a freshly-parsed document or after a full
     /// re-parse fallback.
     last_repair_scope: core::cell::Cell<Option<RepairScope>>,
+    /// The parser configuration this document was opened with
+    /// (#372). Every internal re-parse — the lazy cache,
+    /// [`Document::validate`], the `replace_span` safety net, and
+    /// the edit oracles — runs under the same configuration, so a
+    /// document that only opens under a relaxed limit stays
+    /// readable and editable instead of panicking on its second
+    /// read.
+    config: crate::ParserConfig,
 }
 
 impl Clone for Document {
@@ -76,6 +84,7 @@ impl Clone for Document {
             green: self.green.clone(),
             cache: core::cell::RefCell::new(self.cache.borrow().clone()),
             last_repair_scope: core::cell::Cell::new(self.last_repair_scope.get()),
+            config: self.config.clone(),
         }
     }
 }
@@ -280,7 +289,7 @@ impl Document {
         if self.cache.borrow().is_some() {
             return;
         }
-        let cfg = crate::parser::ParseConfig::default();
+        let cfg = crate::parser::ParseConfig::from(&self.config);
         let parsed = crate::parser::parse_one(&self.source, &cfg)
             .expect("Document source must always parse — local repair invariant violated");
         *self.cache.borrow_mut() = Some(parsed);
@@ -337,7 +346,7 @@ impl Document {
         if self.cache.borrow().is_some() {
             return Ok(());
         }
-        let cfg = crate::parser::ParseConfig::default();
+        let cfg = crate::parser::ParseConfig::from(&self.config);
         let parsed = crate::parser::parse_one(&self.source, &cfg)?;
         *self.cache.borrow_mut() = Some(parsed);
         Ok(())
@@ -422,7 +431,7 @@ impl Document {
 
         // Safety net — full re-parse. Validates the new source and
         // populates everything eagerly.
-        let parsed = parse_full(&new_source)?;
+        let parsed = parse_full(&new_source, &self.config)?;
         self.last_repair_scope.set(Some(RepairScope::Document));
         self.source = parsed.source;
         self.green = parsed.green;
@@ -619,7 +628,8 @@ impl Document {
         // documented behaviour. An unparseable result cannot be
         // smuggling extra entries anyway, so there is nothing for this
         // oracle to check.
-        let Ok(after_value) = crate::from_str::<Value>(&self.source) else {
+        let Ok(after_value) = crate::from_str_with_config::<Value>(&self.source, &self.config)
+        else {
             return Ok(());
         };
         let after_shape = shape_excluding(&after_value, &segments);
@@ -1128,12 +1138,13 @@ impl Document {
         let mut candidate = String::with_capacity(self.source.len() + fragment.len());
         candidate.push_str(&self.source);
         candidate.push_str(&fragment);
-        let candidate_value: Value = crate::from_str(&candidate).map_err(|e| {
-            Error::Parse(format!(
-                "set_path: `{path}` cannot be created here — the document's root is not a \
+        let candidate_value: Value = crate::from_str_with_config(&candidate, &self.config)
+            .map_err(|e| {
+                Error::Parse(format!(
+                    "set_path: `{path}` cannot be created here — the document's root is not a \
                  mapping and not empty ({e}); the document was left unchanged"
-            ))
-        })?;
+                ))
+            })?;
         if candidate_value != expected {
             return Err(Error::Parse(format!(
                 "set_path: `{path}` cannot be created here — the document's root already \
@@ -3122,7 +3133,30 @@ impl fmt::Display for Document {
 /// assert_eq!(parse_document("a: 1\n").unwrap().to_string(), "a: 1\n");
 /// ```
 pub fn parse_document(input: &str) -> Result<Document> {
-    let parsed = parse_full(input)?;
+    parse_document_with_config(input, &crate::ParserConfig::default())
+}
+
+/// [`parse_document`] under a caller-supplied [`ParserConfig`]
+/// (#372), mirroring [`from_str_with_config`](crate::from_str_with_config).
+///
+/// The document keeps the configuration for its whole life: the
+/// lazy value cache, [`Document::validate`], the `replace_span`
+/// safety net, and the edit oracles all re-parse under it. A
+/// values file that only trips the `alias_anchor_ratio` heuristic
+/// gets its lossless path back without loosening the absolute
+/// amplification budgets:
+///
+/// ```
+/// use noyalib::ParserConfig;
+/// use noyalib::cst::parse_document_with_config;
+///
+/// let src = "a: &d {k: v}\nb:\n  <<: *d\n";
+/// let cfg = ParserConfig::new().alias_anchor_ratio(None);
+/// let doc = parse_document_with_config(src, &cfg).unwrap();
+/// assert_eq!(doc.to_string(), src);
+/// ```
+pub fn parse_document_with_config(input: &str, config: &crate::ParserConfig) -> Result<Document> {
+    let parsed = parse_full(input, config)?;
     Ok(Document {
         source: parsed.source,
         green: parsed.green,
@@ -3130,6 +3164,7 @@ pub fn parse_document(input: &str) -> Result<Document> {
         // cache so the first read after a fresh parse is free.
         cache: core::cell::RefCell::new(Some((parsed.value, parsed.span_tree))),
         last_repair_scope: core::cell::Cell::new(None),
+        config: config.clone(),
     })
 }
 
@@ -3175,16 +3210,25 @@ pub fn parse_document(input: &str) -> Result<Document> {
 /// assert_eq!(joined, src);
 /// ```
 pub fn parse_stream(input: &str) -> Result<Vec<Document>> {
+    parse_stream_with_config(input, &crate::ParserConfig::default())
+}
+
+/// [`parse_stream`] under a caller-supplied [`ParserConfig`]
+/// (#372); every returned [`Document`] keeps the configuration.
+pub fn parse_stream_with_config(
+    input: &str,
+    config: &crate::ParserConfig,
+) -> Result<Vec<Document>> {
     let bounds = document_boundaries(input)?;
     if bounds.len() <= 1 {
-        return Ok(vec![parse_document(input)?]);
+        return Ok(vec![parse_document_with_config(input, config)?]);
     }
     let mut out = Vec::with_capacity(bounds.len());
     for (s, e) in bounds {
         if s == e {
             continue;
         }
-        out.push(parse_document(&input[s..e])?);
+        out.push(parse_document_with_config(&input[s..e], config)?);
     }
     Ok(out)
 }
@@ -5198,7 +5242,8 @@ impl Document {
         // Fallible parse: an invalid splice commits optimistically by
         // design and surfaces via `validate`, and cannot be smuggling
         // entries anyway.
-        let Ok(after_value) = crate::from_str::<Value>(&self.source) else {
+        let Ok(after_value) = crate::from_str_with_config::<Value>(&self.source, &self.config)
+        else {
             return Ok(());
         };
         if shape_excluding(&after_value, &segments) != before_shape {
