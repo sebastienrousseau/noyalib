@@ -131,9 +131,13 @@ jobs:
         with:
           workspaces: ". -> target-fuzz"
           key: fuzz-regression
-      - uses: taiki-e/install-action@742a3317eac7bd62f91cd888b4eead5e784ba833 # v2.87.1
-        with:
-          tool: cargo-fuzz
+      # Installed from source like shared-fuzz-diff.yml, deliberately
+      # NOT via install-action: its prebuilt cargo-fuzz is a static
+      # musl binary, and cargo-fuzz infers the fuzz target triple from
+      # its own build triple, so the prebuilt one tries to build
+      # sanitized fuzzers for x86_64-unknown-linux-musl and dies on
+      # "sanitizer is incompatible with statically linked libc".
+      - run: cargo install --locked cargo-fuzz
       - name: Build every fuzz target
         run: cargo +nightly fuzz build
       - name: Replay seed corpus and fixed-bug regressions
