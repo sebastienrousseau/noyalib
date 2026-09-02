@@ -19,7 +19,7 @@ use proptest::prelude::*;
 fn paths(value: &Value, prefix: &str, out: &mut Vec<String>) {
     match value {
         Value::Mapping(m) => {
-            for (k, v) in m.iter() {
+            for (k, v) in m {
                 let key: &str = k;
                 // Path syntax cannot address every key spelling;
                 // stick to plain identifiers.
@@ -136,14 +136,14 @@ proptest! {
                     let mut cur = Value::String("leaf".into());
                     for d in 0..nest {
                         let mut wrap = noyalib::Mapping::new();
-                        wrap.insert(format!("level{d}"), cur);
+                        let _ = wrap.insert(format!("level{d}"), cur);
                         cur = Value::Mapping(wrap);
                     }
-                    inner.insert("nested", cur);
+                    let _ = inner.insert("nested", cur);
                     Value::Mapping(inner)
                 }
             };
-            m.insert(k.clone(), v);
+            let _ = m.insert(k.clone(), v);
         }
         let src = noyalib::to_string(&Value::Mapping(m)).unwrap();
         check(&src);

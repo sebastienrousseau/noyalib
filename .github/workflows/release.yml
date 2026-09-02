@@ -158,7 +158,7 @@ jobs:
           done
           # Surface the list of crate files for downstream cosign /
           # upload steps that want to reference each one explicitly.
-          ls *.crate > CRATE_FILES.txt
+          ls ./*.crate > CRATE_FILES.txt
           echo "CRATE_COUNT=$(wc -l < CRATE_FILES.txt)" >> "$GITHUB_ENV"
 
       # ── SLSA L3 build provenance ───────────────────────────────────
