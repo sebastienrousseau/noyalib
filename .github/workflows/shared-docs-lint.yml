@@ -40,6 +40,7 @@ jobs:
             !fuzz/target/**
             !LICENSES/**
             !crates/*/tests/yaml-test-suite/**
+            !docs/SUMMARY.md
       - name: codespell
         uses: codespell-project/actions-codespell@8f01853be192eb0f849a5c7d721450e7a467c579 # v2.2
       - name: Family layout contract
