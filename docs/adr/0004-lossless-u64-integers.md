@@ -121,8 +121,8 @@ Rejected because it is the bug this ADR addresses.
 ## References
 
 - YAML 1.2.2 core schema: <https://yaml.org/spec/1.2.2/#102-tags>
-- `doc/POLICIES.md` — SemVer, feature, and zero-unsafe policies.
-- `doc/adr/0002-yaml-1.2-default.md` — precedent for explicit runtime
+- `docs/POLICIES.md` — SemVer, feature, and zero-unsafe policies.
+- `docs/adr/0002-yaml-1.2-default.md` — precedent for explicit runtime
   opt-in when compatibility and correctness trade off.
-- `doc/adr/0003-zero-unsafe-policy.md` — safe numeric parsing
+- `docs/adr/0003-zero-unsafe-policy.md` — safe numeric parsing
   requirement.

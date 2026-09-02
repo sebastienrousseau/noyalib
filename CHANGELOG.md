@@ -7,6 +7,19 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Changed
+
+- **Repository layout, Phase 1 of the structure plan.** `doc/` is
+  now `docs/` (a `doc/README.md` tombstone catches deep links from
+  pre-v0.0.31 published documentation); the `noyafmt.1` /
+  `noyavalidate.1` manpages and the shell completions moved to the
+  noya-cli repository beside their generator; `DEVELOPMENT.md` at
+  the root is the single developer entry point; `.editorconfig`,
+  `.markdownlint.yaml` and `.codespellrc` land with a per-push
+  `docs-lint` CI gate (shared-docs-lint.yml, consumable by the
+  satellites). The gate immediately caught and fixed a duplicated
+  `### Fixed` section in the v0.0.29 release notes.
+
 ### Added
 
 - **Two regression gates in per-push CI.** `fuzz-regression` builds
@@ -201,21 +214,6 @@ behavioural shim** — drop-in now means behaviour, not just names.
   `:`-shaped document, `null` vs `{"": null}`) — continuous
   triage is what the OSS-Fuzz onboarding is for.
 
-### Changed
-
-- **`robotics` is deprecated; `StrictFloat` is now
-  `lossless_float::LosslessFloat`** (feature `lossless-float`). The
-  refuse-to-lose-precision float was never robotics-specific — it is
-  the floating-point sibling of `lossless-u64`, and its new home
-  needs nothing beyond the mandatory `serde_core` (the old one
-  pulled `dep:serde` for derives). The `robotics` module and feature
-  survive one release as a deprecated compat surface (`robotics`
-  implies `lossless-float`; `StrictFloat`/`StrictFloatError` are
-  deprecated aliases), then go — along with the `Degrees`/`Radians`
-  unit newtypes, which are ~40 lines of domain code with no
-  dependence on noyalib and belong in the consumer's own tree.
-
-### Fixed
 
 - **Three more spec-strictness gaps, found by the new
   `fuzz_serde_yaml_compat` parity fuzzer** (the shim vs the real
@@ -361,6 +359,21 @@ behavioural shim** — drop-in now means behaviour, not just names.
 No breaking API change: both new flags are opt-in and default off.
 No MSRV change (still 1.86.0).
 
+### Changed
+
+- **`robotics` is deprecated; `StrictFloat` is now
+  `lossless_float::LosslessFloat`** (feature `lossless-float`). The
+  refuse-to-lose-precision float was never robotics-specific — it is
+  the floating-point sibling of `lossless-u64`, and its new home
+  needs nothing beyond the mandatory `serde_core` (the old one
+  pulled `dep:serde` for derives). The `robotics` module and feature
+  survive one release as a deprecated compat surface (`robotics`
+  implies `lossless-float`; `StrictFloat`/`StrictFloatError` are
+  deprecated aliases), then go — along with the `Degrees`/`Radians`
+  unit newtypes, which are ~40 lines of domain code with no
+  dependence on noyalib and belong in the consumer's own tree.
+
+
 ## [v0.0.28] - 2026-08-23
 
 Two CST and scanner correctness fixes, both about an *implicit null* —
@@ -475,7 +488,7 @@ consumers pointing a real workload at a published release.
 
 ### Changed
 
-- `doc/ECOSYSTEM.md` and `doc/scorecard.json` regenerated against this
+- `docs/ECOSYSTEM.md` and `docs/scorecard.json` regenerated against this
   release. The previous scorecard's `audit_vulnerabilities` rows were
   never actually measured — `cargo audit` was exiting 101 under a
   shadowing shell alias and the probe's fallback read that as zero
@@ -747,8 +760,8 @@ testing a library cannot do for itself.
 ### Changed
 
 - Per-release notes moved from the repository root to
-  [`doc/release-notes/`](doc/release-notes/README.md), renamed to match
-  their tags exactly (`doc/release-notes/v0.0.17.md` documents
+  [`docs/release-notes/`](docs/release-notes/README.md), renamed to match
+  their tags exactly (`docs/release-notes/v0.0.17.md` documents
   `v0.0.17`). Moved with `git mv`, so history follows. Links that
   pointed at the old root paths were updated; deep links to
   `RELEASE-NOTES-v0.0.N.md` on `main` will need adjusting.
@@ -940,8 +953,8 @@ testing a library cannot do for itself.
 ### Changed
 
 - Install snippets across `README.md`, `crates/noyalib/README.md`,
-  `MIGRATION.md`, `GETTING_STARTED.md`, `doc/USER-GUIDE.md` and
-  `doc/pre-commit.md` now read `0.0.22`. They had been left on `0.0.18` —
+  `MIGRATION.md`, `GETTING_STARTED.md`, `docs/USER-GUIDE.md` and
+  `docs/pre-commit.md` now read `0.0.22`. They had been left on `0.0.18` —
   never bumped for 0.0.19, 0.0.20 or 0.0.21 — so this clears three
   releases of drift.
 
@@ -997,7 +1010,7 @@ never tagged and so never reached crates.io. The published sequence goes
 - **Schema-validator hardening tests** — external `$ref` was already
   refused and recursion already bounded, but nothing asserted either.
 
-- **`doc/MSRV-AND-DEPRECATION.md`** — the MSRV and deprecation policy,
+- **`docs/MSRV-AND-DEPRECATION.md`** — the MSRV and deprecation policy,
   previously applied from memory.
 
 ### Fixed
@@ -1133,8 +1146,8 @@ removal remain. They now refuse safely rather than corrupting.
 Two consolidation waves, 19 Dependabot pull requests. serde-saphyr
 0.0.29 → 1.0.1, bytes 1.12.0 → 1.12.1, jsonschema 0.49.2 → 0.49.6,
 validator 0.19.0 → 0.21.0, sval 2.20.0 → 2.21.0, schemars 1.2.1 →
-1.2.2, the tokio-stack group, and the workflow action groups (#257,
-#238). serde-saphyr's major bump is bench-only — optional, gated behind
+1.2.2, the tokio-stack group, and the workflow action groups
+(#257, #238). serde-saphyr's major bump is bench-only — optional, gated behind
 `compare-saphyr`, and the benches were verified to compile against
 1.0.1 rather than the API being assumed stable.
 
@@ -1332,7 +1345,7 @@ under `--all-targets` by a feature-gated import, and the dependency set
 had drifted. No public API change (`cargo-semver-checks` green); two
 deserialiser error-message strings change wording — see *Fixed*.
 
-Full narrative: [`doc/release-notes/v0.0.16.md`](doc/release-notes/v0.0.16.md).
+Full narrative: [`docs/release-notes/v0.0.16.md`](docs/release-notes/v0.0.16.md).
 
 Lockstep versioning: `noyalib` bumps `0.0.15` → `0.0.16`.
 Satellites publish `=0.0.16` from their own repos:
@@ -1396,12 +1409,12 @@ Satellites publish `=0.0.16` from their own repos:
   dependency raising its floor, or a language feature we adopt — and
   never for tidiness or "headroom". As a standing guarantee, noyalib
   will not require a rustc newer than 12 months old at release time
-  (1.86.0 shipped 2025-04-03). Recorded in `doc/POLICIES.md` §1.
+  (1.86.0 shipped 2025-04-03). Recorded in `docs/POLICIES.md` §1.
 - **The historical split MSRV is gone.** Docs previously claimed the
   core library floored at 1.75 while satellites sat at 1.85 — an
   inconsistency that had already drifted out of sync with the actual
   `rust-version` (1.85). The whole lockstep set now shares one floor,
-  1.86.0, recorded in `doc/POLICIES.md`.
+  1.86.0, recorded in `docs/POLICIES.md`.
 - The MSRV CI job was renamed `msrv-1-85-core` → `msrv-core` so future
   bumps do not churn the job (and required-status-check) name.
   **Action required:** if `msrv-1-85-core` is a required status check in
@@ -1411,7 +1424,7 @@ Satellites publish `=0.0.16` from their own repos:
 ### Changed — MSRV bump policy
 
 - **An MSRV bump is now a patch, not a minor-version event, while the
-  project is on `0.0.x`.** `doc/POLICIES.md` previously declared a core
+  project is on `0.0.x`.** `docs/POLICIES.md` previously declared a core
   MSRV bump a *minor-version event*; taken literally, this release
   would have had to be `0.1.0`. That rule was written when `0.1.0` was
   the next planned cut, but §2 of the same document commits to
@@ -1421,7 +1434,7 @@ Satellites publish `=0.0.16` from their own repos:
   ship as patches, in lockstep, and must be called out under an
   explicit `### Changed — MSRV` heading (as here).
 - This reverts to a genuine minor-version event at `1.0`, per the gates
-  in `PLAN.md`. Recorded in `doc/POLICIES.md` §1 with the superseded
+  in `PLAN.md`. Recorded in `docs/POLICIES.md` §1 with the superseded
   rule quoted in full rather than deleted.
 - The opt-in, bench-only `compare-saphyr` feature remains outside the
   MSRV gate — `serde-saphyr` uses let-chains and needs rustc 1.88+.
@@ -1470,7 +1483,7 @@ Satellites publish `=0.0.16` from their own repos:
 ### Documentation
 
 - **Corrected a `no_std` instruction that verified nothing.**
-  `doc/POLICIES.md` recommended `--no-default-features --features
+  `docs/POLICIES.md` recommended `--no-default-features --features
   minimal`, but `minimal = ["std"]` — it is a *dependency-budget* alias
   that turns `std` back on while dropping `itoa`, `ryu` and
   `serde_ignored`. That command silently produced a `std` build. The
@@ -1483,18 +1496,18 @@ Satellites publish `=0.0.16` from their own repos:
   pre-existing and are now documented as a deliberate non-goal.
 - **`src/lib.rs`'s MSRV section** still declared 1.85 and a third,
   different bump policy ("ships a major version") that matched neither
-  `doc/POLICIES.md` before this release nor after it. Rewritten to match
-  §1 of `doc/POLICIES.md`, which is the single source of truth.
-- **`cargo-vet` exemption conventions** documented in `doc/POLICIES.md`
+  `docs/POLICIES.md` before this release nor after it. Rewritten to match
+  §1 of `docs/POLICIES.md`, which is the single source of truth.
+- **`cargo-vet` exemption conventions** documented in `docs/POLICIES.md`
   §10 — including what `suggest = false` means and why exemptions are
   never added in bulk. They live there rather than inline because
   `cargo vet fmt` strips comments from `supply-chain/config.toml`.
-- Added `doc/release-notes/v0.0.16.md`, matching the per-release file
-  `doc/CII-BEST-PRACTICES.md` claims for every tagged release. No CI gate
+- Added `docs/release-notes/v0.0.16.md`, matching the per-release file
+  `docs/CII-BEST-PRACTICES.md` claims for every tagged release. No CI gate
   asserts this; noted as a follow-up.
 - Added `examples/strict_deserialise.rs` — the default-on
   `strict-deserialise` feature had no example. Linked from
-  `doc/USER-GUIDE.md` §5.
+  `docs/USER-GUIDE.md` §5.
 
 ### Testing (no behavioural change)
 
@@ -1741,7 +1754,7 @@ All four satellites publish `=0.0.13` from their own repos:
   `shared-coverage.yml`, and `coverage-gap-report.sh` no
   longer references `crates/noyalib-mcp/`.
 - README ecosystem table + per-crate README pointers link to
-  the satellite. `doc/USER-GUIDE.md` and `doc/ARCHITECTURE.md`
+  the satellite. `docs/USER-GUIDE.md` and `docs/ARCHITECTURE.md`
   reflect the split.
 
 ## [v0.0.12] - 2026-07-02
@@ -1749,7 +1762,7 @@ All four satellites publish `=0.0.13` from their own repos:
 Three threads land together in this cut:
 
 1. **`noyalib-wasm` split** — first satellite to leave the
-   monorepo under [ADR-0005](doc/adr/0005-workspace-split.md).
+   monorepo under [ADR-0005](docs/adr/0005-workspace-split.md).
    Moves to
    [`sebastienrousseau/noyalib-wasm`](https://github.com/sebastienrousseau/noyalib-wasm)
    with 11 commits of history preserved. Strict-lockstep
@@ -1802,8 +1815,8 @@ convention.
   `shared-coverage.yml`, and `scripts/coverage-gap-report.sh`
   no longer references `crates/noyalib-wasm/src/lib.rs`.
 - README ecosystem table + per-crate README pointers link to
-  the satellite repo. `doc/USER-GUIDE.md` and
-  `doc/ARCHITECTURE.md` reflect the split.
+  the satellite repo. `docs/USER-GUIDE.md` and
+  `docs/ARCHITECTURE.md` reflect the split.
 
 ### Added — MCP registry work (noyalib-mcp only)
 
@@ -1858,7 +1871,7 @@ Reviewed via separate PRs #135–#139:
   `scripts/check-crates-io-ownership.sh` — ownership drift harness.
 - `scripts/shared-workflow-propagation-monitor.sh` — shared-workflow
   propagation SLA monitor.
-- `doc/adr/0005-workspace-split.md` — architecture decision record
+- `docs/adr/0005-workspace-split.md` — architecture decision record
   for the workspace-split refactor.
 
 ### Changed
@@ -2247,9 +2260,9 @@ Surface additions on the sval adapter:
 
 Documentation:
 
-* `SECURITY.md` and `doc/POLICIES.md` document the new
+* `SECURITY.md` and `docs/POLICIES.md` document the new
   resource-limit knobs and their threat model.
-* CHANGELOG, READMEs, and `doc/release-notes/v0.0.6.md` cross-reference
+* CHANGELOG, READMEs, and `docs/release-notes/v0.0.6.md` cross-reference
   the new safe-by-default contracts.
 * MSRV inconsistency (workspace claimed 1.75 in some places,
   Cargo.toml says 1.85 since v0.0.5) resolved on both axes.
@@ -2552,7 +2565,7 @@ incremental byte chunks.
   `from_str_with_config`; falls back to the AST loader only when
   the caller's config disables streaming-eligible features.
   Measured **30% faster** than the AST path (14.0 vs 19.4 µs;
-  see [`doc/BENCHMARKS.md`](doc/BENCHMARKS.md#architecture-validation)).
+  see [`docs/BENCHMARKS.md`](docs/BENCHMARKS.md#architecture-validation)).
 - **#27 — Path query API.** `Value::query` /
   `BorrowedValue::query` ship dot notation, array indexing,
   wildcards (`*`), and recursive descent (`..`). Filter
@@ -2609,7 +2622,7 @@ needles are ASCII, so slicing on a needle hit is char-boundary safe.
 New `scripts/pgo.sh` drives the full LLVM PGO pipeline:
 instrumented build → train against `bench_corpus/` and the YAML
 test suite → `llvm-profdata merge` → optimised rebuild. Documented
-in `doc/PGO.md` and surfaced in `doc/POLICIES.md` §4 as an opt-in
+in `docs/PGO.md` and surfaced in `docs/POLICIES.md` §4 as an opt-in
 5–15% extra speedup path on top of the default `cargo build
 --release` numbers. Loader Vec/Mapping pre-sizing via
 `Value::deserialize`'s `SeqAccess`/`MapAccess` `size_hint()` cuts
@@ -2709,9 +2722,9 @@ Two refinements:
 
 - **Extracted** the full Benchmarks tables (deserialise /
   serialise / SIMD / SWAR / parallel / architecture-validation /
-  project-metrics) into [`doc/BENCHMARKS.md`](doc/BENCHMARKS.md),
+  project-metrics) into [`docs/BENCHMARKS.md`](docs/BENCHMARKS.md),
   and the full Ecosystem-comparison feature matrix into
-  [`doc/COMPARISON.md`](doc/COMPARISON.md). The README keeps a
+  [`docs/COMPARISON.md`](docs/COMPARISON.md). The README keeps a
   ~10-line summary table for each, with a link to the full
   doc. Reading-the-table notes and the SWAR pipeline
   walkthrough live in the extracted files.
@@ -2738,16 +2751,16 @@ migration guide with the same shape as the original
 behavioural notes, checklist). Crates.io state verified
 **2026-05-08**:
 
-- [`MIGRATION-FROM-SERDE-YML.md`](doc/MIGRATION-FROM-SERDE-YML.md) — `serde_yml` 0.0.12 (archived 2025-09)
-- [`MIGRATION-FROM-YAML-SERDE.md`](doc/MIGRATION-FROM-YAML-SERDE.md) — `yaml_serde` 0.10.4 (active fork)
-- [`MIGRATION-FROM-SERDE-YAML-NG.md`](doc/MIGRATION-FROM-SERDE-YAML-NG.md) — `serde-yaml-ng` 0.10.0 (active drop-in fork)
-- [`MIGRATION-FROM-SERDE-NORWAY.md`](doc/MIGRATION-FROM-SERDE-NORWAY.md) — `serde-norway` 0.9.42 (hard-fork)
-- [`MIGRATION-FROM-SERDE-YAML-BW.md`](doc/MIGRATION-FROM-SERDE-YAML-BW.md) — `serde-yaml-bw` 2.5.6 (non-drop-in 2.x)
-- [`MIGRATION-FROM-SERDE-SAPHYR.md`](doc/MIGRATION-FROM-SERDE-SAPHYR.md) — `serde-saphyr` 0.0.26 (no `Value` DOM)
-- [`MIGRATION-FROM-YAML-SPANNED.md`](doc/MIGRATION-FROM-YAML-SPANNED.md) — `yaml-spanned` 0.0.3 (parser-only)
+- [`MIGRATION-FROM-SERDE-YML.md`](docs/MIGRATION-FROM-SERDE-YML.md) — `serde_yml` 0.0.12 (archived 2025-09)
+- [`MIGRATION-FROM-YAML-SERDE.md`](docs/MIGRATION-FROM-YAML-SERDE.md) — `yaml_serde` 0.10.4 (active fork)
+- [`MIGRATION-FROM-SERDE-YAML-NG.md`](docs/MIGRATION-FROM-SERDE-YAML-NG.md) — `serde-yaml-ng` 0.10.0 (active drop-in fork)
+- [`MIGRATION-FROM-SERDE-NORWAY.md`](docs/MIGRATION-FROM-SERDE-NORWAY.md) — `serde-norway` 0.9.42 (hard-fork)
+- [`MIGRATION-FROM-SERDE-YAML-BW.md`](docs/MIGRATION-FROM-SERDE-YAML-BW.md) — `serde-yaml-bw` 2.5.6 (non-drop-in 2.x)
+- [`MIGRATION-FROM-SERDE-SAPHYR.md`](docs/MIGRATION-FROM-SERDE-SAPHYR.md) — `serde-saphyr` 0.0.26 (no `Value` DOM)
+- [`MIGRATION-FROM-YAML-SPANNED.md`](docs/MIGRATION-FROM-YAML-SPANNED.md) — `yaml-spanned` 0.0.3 (parser-only)
 
 The umbrella index lives at
-[`doc/MIGRATION.md`](doc/MIGRATION.md) and points at all eight
+[`docs/MIGRATION.md`](docs/MIGRATION.md) and points at all eight
 guides via a compatibility matrix. The workspace README and the
 `noyalib` crate README both link into the per-crate guides.
 
@@ -2854,7 +2867,7 @@ non-breaking for typed deserialise; they affect only the
    either a wrapper unwrap (`value.untag_ref().as_str()`), a
    typed deserialise (`#[derive(serde::Deserialize)] struct Foo`), or a
    tag-aware `match`. See the migration recipe in
-   [`doc/MIGRATION-FROM-SERDE-YAML.md`](doc/MIGRATION-FROM-SERDE-YAML.md#1-valuetagged-is-a-7th-variant--and-noyalib-preserves-scalar-tags-too).
+   [`docs/MIGRATION-FROM-SERDE-YAML.md`](docs/MIGRATION-FROM-SERDE-YAML.md#1-valuetagged-is-a-7th-variant--and-noyalib-preserves-scalar-tags-too).
 2. **`T: 'static` bound** on the public `from_str` /
    `from_str_with_config` / `from_slice*` / `from_reader*` /
    `from_value` family. Every real-world `DeserializeOwned` type
@@ -3332,7 +3345,7 @@ non-breaking for typed deserialise; they affect only the
 
 The launch release. Sections below catalogue every capability the
 library ships at launch, grouped by theme. See
-[`doc/design/`](doc/design/) for the architecture rationale and
+[`docs/design/`](docs/design/) for the architecture rationale and
 the commit history on `main` for per-change context.
 
 ### Added — Property interpolation

@@ -47,7 +47,7 @@ be a CI gate rather than a boast.
 - **Adoption.** Downloads are recorded as context below, not scored.
   Popularity is not quality, and scoring it would let the rating drift
   with marketing rather than engineering.
-- **Benchmark numbers.** The harness checks that `doc/BENCHMARKS.md`
+- **Benchmark numbers.** The harness checks that `docs/BENCHMARKS.md`
   discloses host, toolchain and repro command — the things that make a
   speed claim falsifiable — but does not re-run criterion. Timing a
   laptop under variable load and calling the delta a score would be
@@ -121,7 +121,7 @@ tracks every span these rules need, and already backs `remove`/`set`.
 | Missing | Evidence |
 |---|---|
 | GitHub Action | no `action.yml` in any of the five repos |
-| Hosted pre-commit hook | no `.pre-commit-hooks.yaml` in `noya-cli` — `doc/pre-commit.md` documents only `repo: local`, which needs `noyafmt` already installed |
+| Hosted pre-commit hook | no `.pre-commit-hooks.yaml` in `noya-cli` — `docs/pre-commit.md` documents only `repo: local`, which needs `noyafmt` already installed |
 | VS Code extension | no `editors/vscode` in `noyalib-lsp` — the server exists but nobody can install it from the marketplace |
 | Homebrew formula | no `Formula/` |
 | CLI container image | `Dockerfile` exists in `noyalib` and `noyalib-mcp`, not in `noya-cli` |
@@ -225,7 +225,7 @@ Measured 2026-08-24T10:39:39Z on `aarch64-apple-darwin`, rustc 1.97.1 (8bab26f4f
 | `noyalib` | rustdoc_strict | 0 warnings | 1.00 | `RUSTDOCFLAGS=-D warnings cargo doc --workspace --no-deps --all-features (matches CI + docs.rs)` |
 | `noyalib` | missing_docs_lint | 1/1 roots deny missing_docs | 1.00 | `grep for deny/warn(missing_docs) in crate roots` |
 | `noyalib` | readme_examples | compile | 1.00 | `scripts/check-readme-examples.sh` |
-| `noyalib` | bench_methodology | 3/3 disclosed (host, toolchain, command) | 1.00 | `grep host/toolchain/repro-command in doc/BENCHMARKS.md` |
+| `noyalib` | bench_methodology | 3/3 disclosed (host, toolchain, command) | 1.00 | `grep host/toolchain/repro-command in docs/BENCHMARKS.md` |
 | `noyalib` | audit_vulnerabilities | 0 advisories | 1.00 | `cargo-audit audit --json | .vulnerabilities.count` |
 | `noyalib` | deny_check | pass | 1.00 | `cargo deny check (advisories, bans, licenses, sources)` |
 | `noyalib` | vet_audited | pass | 1.00 | `cargo vet --locked` |

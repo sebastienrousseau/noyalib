@@ -39,7 +39,7 @@ separate files; see the changelog for those releases.
 
 ## Conventions
 
-- **Filename equals tag.** `doc/release-notes/<tag>.md`. The mapping is
+- **Filename equals tag.** `docs/release-notes/<tag>.md`. The mapping is
   one-to-one with git tags and GitHub releases, so a link can be
   constructed from a version alone.
 - **Notes are immutable.** A published file records what was true at

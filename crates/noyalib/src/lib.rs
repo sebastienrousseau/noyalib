@@ -179,7 +179,7 @@
 //!   incompatible version, so the patch position is the only one
 //!   that moves; there is no minor slot to spend. This becomes a
 //!   genuine minor-version event at `1.0`. See
-//!   [`doc/POLICIES.md`](https://github.com/sebastienrousseau/noyalib/blob/main/doc/POLICIES.md)
+//!   [`docs/POLICIES.md`](https://github.com/sebastienrousseau/noyalib/blob/main/docs/POLICIES.md)
 //!   §1, which is the single source of truth for the floor.
 //! - **Companion crates** ([`noya-cli`], [`noyalib-lsp`]) share
 //!   the same `1.86.0` floor — as of v0.0.16 the whole lockstep

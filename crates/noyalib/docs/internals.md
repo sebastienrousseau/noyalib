@@ -2,7 +2,7 @@
 
 A contributor-facing map of how the noyalib core library is laid
 out. This is distinct from the workspace-level
-[`doc/ARCHITECTURE.md`](../../../doc/ARCHITECTURE.md), which covers
+[`docs/ARCHITECTURE.md`](../../../docs/ARCHITECTURE.md), which covers
 the *why* — this file covers the *where*. If you're trying to figure
 out which file to open to make a change, start here.
 
@@ -87,7 +87,7 @@ graph LR
 - **CST path** (used by `cst::Document`): tokens build the
   byte-faithful green tree. Comments, whitespace, and indent are
   preserved. Distinct from the data paths — see
-  [ADR 0001](../../../doc/adr/0001-cst-rowan-shape.md).
+  [ADR 0001](../../../docs/adr/0001-cst-rowan-shape.md).
 
 ## Where YAML 1.1 vs 1.2 resolves
 

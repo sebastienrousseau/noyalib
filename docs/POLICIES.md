@@ -375,7 +375,7 @@ ship the binaries to a wide audience can run
 `scripts/pgo.sh` to produce a PGO'd binary. The full
 pipeline (instrumented build → train against representative
 corpus → optimised rebuild via `llvm-profdata merge`) is
-documented at [`doc/PGO.md`](PGO.md).
+documented at [`docs/PGO.md`](PGO.md).
 
 Per-host-triple training is required — a Mac-trained
 `merged.profdata` cannot be reused on Linux x86_64.

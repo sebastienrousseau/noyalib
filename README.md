@@ -38,8 +38,8 @@
 - [Why this approach?](#why-this-approach) — design rationale
 - [Capabilities in 0.0.1](#capabilities-in-001) — release inventory
 - [Two APIs, one parser](#two-apis-one-parser) — data binding vs. tooling
-- [Ecosystem comparison](#ecosystem-comparison) — short matrix; full table at [`doc/COMPARISON.md`](doc/COMPARISON.md)
-- [Benchmarks](#benchmarks) — headline numbers; full table at [`doc/BENCHMARKS.md`](doc/BENCHMARKS.md)
+- [Ecosystem comparison](#ecosystem-comparison) — short matrix; full table at [`docs/COMPARISON.md`](docs/COMPARISON.md)
+- [Benchmarks](#benchmarks) — headline numbers; full table at [`docs/BENCHMARKS.md`](docs/BENCHMARKS.md)
 - [Features](#features) — module-level capability list
 - [Custom tags ("just data")](#custom-tags-just-data) — `Value::Tagged`, untag, registry
 - [Library Usage](#library-usage) — deserialise, serialise, values, spans
@@ -147,7 +147,7 @@ requires 1.86, so no test, bench or coverage run can execute
 there. We do not advertise an MSRV that CI cannot exercise. We
 also guarantee never to require a rustc newer than 12 months old
 at release time — see
-[`doc/POLICIES.md` §1](doc/POLICIES.md#1-msrv-minimum-supported-rust-version).
+[`docs/POLICIES.md` §1](docs/POLICIES.md#1-msrv-minimum-supported-rust-version).
 
 The one surface still above the floor is the opt-in, bench-only
 `compare-saphyr` feature: `serde-saphyr` uses let-chains and needs
@@ -184,10 +184,10 @@ the application needs.
 | `simd` | — | Forward-compat no-op — `noyalib::simd::*` is always available and the parser hot path uses it unconditionally | [Benchmarks](#benchmarks) |
 | `nightly-simd` | `simd` (nightly toolchain) | `core::simd`-backed `StructuralIter` (32-byte chunks) | [Benchmarks](#benchmarks) |
 | `compat-serde-yaml` | — | **behavioural** `serde_yaml` 0.9 shim (values, error text, and locations pinned by the live-captured 18-case contract suite); `noyalib-serde-yaml` packages it as a Cargo package-rename drop-in | [When not to use noyalib](#when-not-to-use-noyalib) |
-| `lossless-u64` | — | `Number::Unsigned(u64)` plus opt-in parser/serializer config for scalars in `(i64::MAX, u64::MAX]` | [`doc/adr/0004-lossless-u64-integers.md`](doc/adr/0004-lossless-u64-integers.md), `examples/lossless_u64.rs`, `benches/lossless_u64.rs` |
+| `lossless-u64` | — | `Number::Unsigned(u64)` plus opt-in parser/serializer config for scalars in `(i64::MAX, u64::MAX]` | [`docs/adr/0004-lossless-u64-integers.md`](docs/adr/0004-lossless-u64-integers.md), `examples/lossless_u64.rs`, `benches/lossless_u64.rs` |
 | `compare-saphyr` | `serde-saphyr` *(dev only)* | Cross-library bench comparison arms | `benches/comparison.rs` |
 | `wasm-opt` | — | Build-time flag opting the `noyalib-wasm` bundle into `wasm-opt` size passes (no API surface) | [`sebastienrousseau/noyalib-wasm`](https://github.com/sebastienrousseau/noyalib-wasm) |
-| `noyavalidate` | `std` + `miette` + `validate-schema` | Enables the schema-validation surface the `noyavalidate` CLI is built on | [`doc/USER-GUIDE.md` §11](doc/USER-GUIDE.md) |
+| `noyavalidate` | `std` + `miette` + `validate-schema` | Enables the schema-validation surface the `noyavalidate` CLI is built on | [`docs/USER-GUIDE.md` §11](docs/USER-GUIDE.md) |
 
 ```toml
 # Example: rich diagnostics + schema validation
@@ -201,7 +201,7 @@ useful for distributed-system IDs, content hashes, and timestamp fields.
 Enable the Cargo feature, then opt in at runtime with
 `ParserConfig::lossless_u64_integers(true)` and
 `SerializerConfig::lossless_u64_integers(true)`. See
-[`doc/adr/0004-lossless-u64-integers.md`](doc/adr/0004-lossless-u64-integers.md)
+[`docs/adr/0004-lossless-u64-integers.md`](docs/adr/0004-lossless-u64-integers.md)
 for rationale and migration notes.
 
 ---
@@ -271,7 +271,7 @@ Per-crate READMEs cover the surface specific to each artifact:
 
 - **CLI**: [`noya-cli`](https://github.com/sebastienrousseau/noya-cli#readme) — flags, exit codes, recipes.
 - **LSP**: [`noyalib-lsp`](https://github.com/sebastienrousseau/noyalib-lsp#readme) — capabilities, editor configs.
-- **MCP**: [`sebastienrousseau/noyalib-mcp`](https://github.com/sebastienrousseau/noyalib-mcp) — tools, host configs (split repo since v0.0.13; strict lockstep per [ADR-0005](doc/adr/0005-workspace-split.md)).
+- **MCP**: [`sebastienrousseau/noyalib-mcp`](https://github.com/sebastienrousseau/noyalib-mcp) — tools, host configs (split repo since v0.0.13; strict lockstep per [ADR-0005](docs/adr/0005-workspace-split.md)).
 - **WASM**: [`sebastienrousseau/noyalib-wasm`](https://github.com/sebastienrousseau/noyalib-wasm) — JS API, bundling (split repo since v0.0.12).
 
 ### Per-host quick links
@@ -281,7 +281,7 @@ Per-crate READMEs cover the surface specific to each artifact:
 | **VS Code / JetBrains / Neovim / Helix / Emacs / Zed / Sublime** | [editor configs in `noyalib-lsp/examples/`](https://github.com/sebastienrousseau/noyalib-lsp/tree/main/examples) |
 | **Claude Desktop / Cursor / Continue.dev / Zed assistant / hosted MCP** | [client configs (noyalib-mcp repo)](https://github.com/sebastienrousseau/noyalib-mcp/tree/main/examples) |
 | **GitHub Actions / pre-commit / Helm / Compose / pyproject-adjacent YAML** | [validation gates in `noya-cli/examples/`](https://github.com/sebastienrousseau/noya-cli/tree/main/examples) |
-| **Vite / Webpack / Next.js / Cloudflare Workers / Deno / Bun** | [bundling guide (noyalib-wasm repo)](https://github.com/sebastienrousseau/noyalib-wasm/blob/main/doc/bundling.md) |
+| **Vite / Webpack / Next.js / Cloudflare Workers / Deno / Bun** | [bundling guide (noyalib-wasm repo)](https://github.com/sebastienrousseau/noyalib-wasm/blob/main/docs/bundling.md) |
 
 ### How good is this, really?
 
@@ -314,7 +314,7 @@ of decorating a README.
 
 Full methodology, the competitive landscape, and the measured gaps —
 including the ones that do not flatter this project — are in
-[`doc/ECOSYSTEM.md`](doc/ECOSYSTEM.md).
+[`docs/ECOSYSTEM.md`](docs/ECOSYSTEM.md).
 
 The rest of this README covers the **library** surface
 (`noyalib` itself). For the satellite crates, jump straight to
@@ -327,7 +327,7 @@ their READMEs above.
 Most call sites are mechanical to update. The full guide —
 covering `serde_yaml` 0.9 plus every actively-published fork
 and adjacent crate — is
-[`doc/MIGRATION-FROM-SERDE-YAML.md`](doc/MIGRATION-FROM-SERDE-YAML.md).
+[`docs/MIGRATION-FROM-SERDE-YAML.md`](docs/MIGRATION-FROM-SERDE-YAML.md).
 The headline mapping for `serde_yaml` 0.9 is below; the same
 guide has per-crate sections for `serde_yml`, `yaml_serde`,
 `serde-yaml-ng`, `serde-norway`, `serde-yaml-bw`,
@@ -393,21 +393,21 @@ Crates.io state verified **2026-05-08**:
 
 | Crate | Version | Drop-in for `serde_yaml`? | Migration guide |
 |---|---|---|---|
-| [`serde_yml`](https://crates.io/crates/serde_yml) | `0.0.12` (archived 2025-09) | mostly | [`MIGRATION-FROM-SERDE-YML.md`](doc/MIGRATION-FROM-SERDE-YML.md) |
-| [`yaml_serde`](https://crates.io/crates/yaml_serde) | `0.10.4` | yes (Cargo `package =` rename) | [`MIGRATION-FROM-YAML-SERDE.md`](doc/MIGRATION-FROM-YAML-SERDE.md) |
-| [`serde-yaml-ng`](https://crates.io/crates/serde-yaml-ng) | `0.10.0` | yes | [`MIGRATION-FROM-SERDE-YAML-NG.md`](doc/MIGRATION-FROM-SERDE-YAML-NG.md) |
-| [`serde-norway`](https://crates.io/crates/serde-norway) | `0.9.42` | yes | [`MIGRATION-FROM-SERDE-NORWAY.md`](doc/MIGRATION-FROM-SERDE-NORWAY.md) |
-| [`serde-yaml-bw`](https://crates.io/crates/serde-yaml-bw) | `2.5.6` | **no** (breaking 2.x; 8-variant `Value` with `Alias`) | [`MIGRATION-FROM-SERDE-YAML-BW.md`](doc/MIGRATION-FROM-SERDE-YAML-BW.md) |
-| [`serde-saphyr`](https://crates.io/crates/serde-saphyr) | `0.0.27` | **no** (no `Value` DOM, streaming-only) | [`MIGRATION-FROM-SERDE-SAPHYR.md`](doc/MIGRATION-FROM-SERDE-SAPHYR.md) |
-| [`yaml-spanned`](https://crates.io/crates/yaml-spanned) | `0.0.3` | **no** (parser-only, no `to_string`) | [`MIGRATION-FROM-YAML-SPANNED.md`](doc/MIGRATION-FROM-YAML-SPANNED.md) |
+| [`serde_yml`](https://crates.io/crates/serde_yml) | `0.0.12` (archived 2025-09) | mostly | [`MIGRATION-FROM-SERDE-YML.md`](docs/MIGRATION-FROM-SERDE-YML.md) |
+| [`yaml_serde`](https://crates.io/crates/yaml_serde) | `0.10.4` | yes (Cargo `package =` rename) | [`MIGRATION-FROM-YAML-SERDE.md`](docs/MIGRATION-FROM-YAML-SERDE.md) |
+| [`serde-yaml-ng`](https://crates.io/crates/serde-yaml-ng) | `0.10.0` | yes | [`MIGRATION-FROM-SERDE-YAML-NG.md`](docs/MIGRATION-FROM-SERDE-YAML-NG.md) |
+| [`serde-norway`](https://crates.io/crates/serde-norway) | `0.9.42` | yes | [`MIGRATION-FROM-SERDE-NORWAY.md`](docs/MIGRATION-FROM-SERDE-NORWAY.md) |
+| [`serde-yaml-bw`](https://crates.io/crates/serde-yaml-bw) | `2.5.6` | **no** (breaking 2.x; 8-variant `Value` with `Alias`) | [`MIGRATION-FROM-SERDE-YAML-BW.md`](docs/MIGRATION-FROM-SERDE-YAML-BW.md) |
+| [`serde-saphyr`](https://crates.io/crates/serde-saphyr) | `0.0.27` | **no** (no `Value` DOM, streaming-only) | [`MIGRATION-FROM-SERDE-SAPHYR.md`](docs/MIGRATION-FROM-SERDE-SAPHYR.md) |
+| [`yaml-spanned`](https://crates.io/crates/yaml-spanned) | `0.0.3` | **no** (parser-only, no `to_string`) | [`MIGRATION-FROM-YAML-SPANNED.md`](docs/MIGRATION-FROM-YAML-SPANNED.md) |
 
 The umbrella index is
-[`doc/MIGRATION.md`](doc/MIGRATION.md) — start there if you're
+[`docs/MIGRATION.md`](docs/MIGRATION.md) — start there if you're
 not sure which guide applies, or pick the row above.
 
 The three behavioural differences worth knowing about
 (YAML 1.2 strict booleans, `Tagged` variant, multi-doc API):
-[`MIGRATION-FROM-SERDE-YAML.md`](doc/MIGRATION-FROM-SERDE-YAML.md)
+[`MIGRATION-FROM-SERDE-YAML.md`](docs/MIGRATION-FROM-SERDE-YAML.md)
 covers each in detail.
 
 ---
@@ -535,7 +535,7 @@ in one workspace.
 
 The full feature matrix — every row, every column, with the
 reading-the-table notes — lives at
-**[`doc/COMPARISON.md`](doc/COMPARISON.md)** so the README
+**[`docs/COMPARISON.md`](docs/COMPARISON.md)** so the README
 stays fast to scan.
 
 Quick orientation:
@@ -549,7 +549,7 @@ Quick orientation:
 | `yaml-spanned` | no (read-only) | no serializer, no CST, no LSP / MCP / WASM |
 
 Per-crate migration guides at
-[`doc/MIGRATION.md`](doc/MIGRATION.md).
+[`docs/MIGRATION.md`](docs/MIGRATION.md).
 
 ---
 
@@ -603,11 +603,11 @@ for production deployments.
 The full breakdown — every workload, every comparison library,
 the SWAR pipeline explanation, parallel multi-doc scaling, and
 the project-metrics table — lives at
-**[`doc/BENCHMARKS.md`](doc/BENCHMARKS.md)**.
+**[`docs/BENCHMARKS.md`](docs/BENCHMARKS.md)**.
 
 Algorithmic-complexity guarantees (`O(n)` parser, `O(d)`
 stack, etc.) live in
-[`POLICIES.md` §4](doc/POLICIES.md#4-performance--algorithmic-complexity).
+[`POLICIES.md` §4](docs/POLICIES.md#4-performance--algorithmic-complexity).
 
 ---
 
@@ -1563,7 +1563,7 @@ value.interpolate_properties_lossy(&map);
   tokens to least privilege, pinning every GitHub Action by
   SHA, wiring Dependabot, and retiring the unmaintained
   `serde_yml` / `libyml` bench dev-deps. See
-  [`doc/POLICIES.md` § OpenSSF Scorecard posture](doc/POLICIES.md#openssf-scorecard-posture)
+  [`docs/POLICIES.md` § OpenSSF Scorecard posture](docs/POLICIES.md#openssf-scorecard-posture)
   for the per-check breakdown.
 - `SLSA L3` build provenance + sigstore signing on every release.
 - `REUSE.software` 3.3 compliant — every source file carries
@@ -1584,17 +1584,17 @@ value.interpolate_properties_lossy(&map);
 
 | Document | Covers |
 |---|---|
-| [`doc/POLICIES.md`](doc/POLICIES.md) | MSRV, SemVer & API stability, security & audit pipeline, performance & algorithmic complexity, concurrency guarantees, platform support, the full feature-flag matrix, panic policy, error model, dependency policy, release & changelog policy. **Single source of truth** for engineering posture. |
-| [`doc/MIGRATION.md`](doc/MIGRATION.md) | Umbrella index of migration guides for `serde_yaml` 0.9, `serde_yml`, `yaml_serde`, `serde-yaml-ng`, `serde-norway`, `serde-yaml-bw`, `serde-saphyr`, `yaml-spanned`. Each linked guide is a per-crate function-mapping table + behavioural-difference notes + checklist. |
+| [`docs/POLICIES.md`](docs/POLICIES.md) | MSRV, SemVer & API stability, security & audit pipeline, performance & algorithmic complexity, concurrency guarantees, platform support, the full feature-flag matrix, panic policy, error model, dependency policy, release & changelog policy. **Single source of truth** for engineering posture. |
+| [`docs/MIGRATION.md`](docs/MIGRATION.md) | Umbrella index of migration guides for `serde_yaml` 0.9, `serde_yml`, `yaml_serde`, `serde-yaml-ng`, `serde-norway`, `serde-yaml-bw`, `serde-saphyr`, `yaml-spanned`. Each linked guide is a per-crate function-mapping table + behavioural-difference notes + checklist. |
 | [`SECURITY.md`](SECURITY.md) | Disclosure policy, supported versions, contact, security design summary. |
 | [`CONTRIBUTING.md`](CONTRIBUTING.md) | Signed-commit policy, PR guidelines, local-test recipe. |
 | [`CHANGELOG.md`](CHANGELOG.md) | Per-release notes following Keep a Changelog 1.1.0. **The complete record** — every release appears here. |
-| [`doc/release-notes/`](doc/release-notes/README.md) | Narrative notes for v0.0.1–v0.0.17, one file per tag. Complements the changelog rather than duplicating it. |
-| [`doc/USER-GUIDE.md`](doc/USER-GUIDE.md) | Long-form usage guide with worked examples for every major feature. |
-| [`doc/ARCHITECTURE.md`](doc/ARCHITECTURE.md) | Module map, hot-path notes, design decisions. |
-| [`doc/GLOSSARY.md`](GLOSSARY.md) | YAML / serde terminology reference. |
-| [`crates/noyalib/doc/internals.md`](crates/noyalib/doc/internals.md) | Library internals (parser stages, loader frames, CST green tree). |
-| [`crates/noyalib/doc/errors.md`](crates/noyalib/doc/errors.md) | Error reference — every variant, when it fires, how to handle it. |
+| [`docs/release-notes/`](docs/release-notes/README.md) | Narrative notes for v0.0.1–v0.0.17, one file per tag. Complements the changelog rather than duplicating it. |
+| [`docs/USER-GUIDE.md`](docs/USER-GUIDE.md) | Long-form usage guide with worked examples for every major feature. |
+| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Module map, hot-path notes, design decisions. |
+| [`docs/GLOSSARY.md`](GLOSSARY.md) | YAML / serde terminology reference. |
+| [`crates/noyalib/docs/internals.md`](crates/noyalib/docs/internals.md) | Library internals (parser stages, loader frames, CST green tree). |
+| [`crates/noyalib/docs/errors.md`](crates/noyalib/docs/errors.md) | Error reference — every variant, when it fires, how to handle it. |
 
 The per-crate READMEs at
 [`crates/noyalib`](crates/noyalib/README.md),

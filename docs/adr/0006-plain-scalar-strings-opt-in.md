@@ -19,8 +19,8 @@ receives the scalar's literal text (`"123456"`, `"~"`, `""`, …)
 regardless of what an untyped `deserialize_any` would have inferred.
 
 Implicit typing is a fallback for untyped targets, not a constraint on
-an explicitly-typed field, so the refusal is arguably a bug (issue
-#344). But `String` fields silently accepting any scalar shape is also
+an explicitly-typed field, so the refusal is arguably a bug
+(issue #344). But `String` fields silently accepting any scalar shape is also
 an observable behaviour change for every existing caller — a config
 loader that relied on the refusal to catch a misquoted key
 (`timeout: 30` where `"30"` was intended) would stop erroring. Two
@@ -115,7 +115,7 @@ third-party struct).
 ## References
 
 - Issue #344.
-- `doc/adr/0004-lossless-u64-integers.md` — precedent for an opt-in
+- `docs/adr/0004-lossless-u64-integers.md` — precedent for an opt-in
   runtime flag that keeps the default model stable.
 - `crates/noyalib/tests/string_target_plain_scalar.rs` — the
   acceptance/guard test suite for this flag.

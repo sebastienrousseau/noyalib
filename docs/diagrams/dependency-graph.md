@@ -111,4 +111,4 @@ cargo depgraph --workspace-only --dedup-transitive-deps | dot -Tsvg > /tmp/deps.
 `cargo-depgraph` is in `[dev-dependencies]` for the workspace; its
 output is the source of truth for the Mermaid above. When the graph
 shape changes (new crate added, dep direction reversed) update both
-this file and [`doc/ARCHITECTURE.md`](../ARCHITECTURE.md).
+this file and [`docs/ARCHITECTURE.md`](../ARCHITECTURE.md).

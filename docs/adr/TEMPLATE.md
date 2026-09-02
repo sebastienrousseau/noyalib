@@ -48,4 +48,4 @@ without re-doing the analysis from scratch.
 ## References
 
 Links to issues, PRs, prior art in other projects, design notes
-in `doc/design/`, or external papers.
+in `docs/design/`, or external papers.

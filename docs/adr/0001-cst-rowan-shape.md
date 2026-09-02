@@ -119,7 +119,7 @@ full fidelity.
 
 ## References
 
-- Detailed design note: [`doc/design/green-tree.md`](../design/green-tree.md)
+- Detailed design note: [`docs/design/green-tree.md`](../design/green-tree.md)
   (~480 lines, written 2026-04-30)
 - `rowan` source-of-truth implementation:
   https://github.com/rust-analyzer/rowan

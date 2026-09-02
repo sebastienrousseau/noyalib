@@ -70,7 +70,7 @@ that made `from_str::<Value>` falsely report
 `RecursionLimitExceeded` on shallow `pnpm-lock.yaml` inputs,
 and one in the no-span loader path that incremented depth
 without ever checking the limit. See
-[`doc/POLICIES.md` § Resource-limit gates](doc/POLICIES.md#resource-limit-gates)
+[`docs/POLICIES.md` § Resource-limit gates](docs/POLICIES.md#resource-limit-gates)
 for the full treatment.
 
 ### Supply Chain

@@ -139,4 +139,4 @@ guarantees:
 
 For the full migration mapping from `serde_yaml::Error` to
 `noyalib::Error` see
-[`doc/MIGRATION-FROM-SERDE-YAML.md`](../../../doc/MIGRATION-FROM-SERDE-YAML.md).
+[`docs/MIGRATION-FROM-SERDE-YAML.md`](../../../docs/MIGRATION-FROM-SERDE-YAML.md).

@@ -95,6 +95,12 @@ jobs:
     # takes it via `uses: sebastienrousseau/noyalib/.github/workflows/shared-cargo-deny.yml@<sha>`.
     uses: ./.github/workflows/shared-cargo-deny.yml
 
+  docs-lint:
+    # Dogfooded from shared-docs-lint.yml: markdownlint + codespell
+    # over the caller's .markdownlint.yaml / .codespellrc. Part of
+    # the Phase-1 layout normalization (docs/ECOSYSTEM.md).
+    uses: ./.github/workflows/shared-docs-lint.yml
+
   fuzz-diff:
     # Dogfooded from shared-fuzz-diff.yml. Runs the caller's
     # `fuzz_diff` fuzz target for 10 seconds per push.
@@ -441,7 +447,7 @@ jobs:
   # artefact set from the default-feature build cannot serve as a
   # passing fingerprint for the feature-on build. Same
   # cache-poisoning guard rule as `no-std` (v0.0.11 CI-integrity
-  # cut). See doc/adr/0004-lossless-u64-integers.md.
+  # cut). See docs/adr/0004-lossless-u64-integers.md.
   #
   # Runs 2 legs (a 3rd `minimal + lossless-u64` leg was considered
   # but drops `strict-deserialise` which several tests already

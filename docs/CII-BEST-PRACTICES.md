@@ -30,7 +30,7 @@ artefact that satisfies it.
 | Stable URL for the project | The GitHub repo URL above |
 | Discussion mechanism | GitHub Issues + Discussions enabled |
 | License is OSI-approved | `MIT OR Apache-2.0` — see `LICENSE-MIT`, `LICENSE-APACHE` |
-| Project provides documentation | `README.md`, `doc/USER-GUIDE.md`, `doc/ARCHITECTURE.md`, `doc/POLICIES.md`, `doc/BENCHMARKS.md` |
+| Project provides documentation | `README.md`, `docs/USER-GUIDE.md`, `docs/ARCHITECTURE.md`, `docs/POLICIES.md`, `docs/BENCHMARKS.md` |
 | Documentation includes "Quick Start" | `README.md` §"Quick Start", `crates/noyalib/README.md`, `GETTING_STARTED.md` |
 | Documentation has a security policy | `SECURITY.md` |
 | Maintainer-direct contact | `sebastian.rousseau@gmail.com` (per `SECURITY.md`) |
@@ -43,7 +43,7 @@ artefact that satisfies it.
 | :--- | :--- |
 | Source under version control | Git, GitHub-hosted |
 | Unique version identifier per release | SemVer tags `v0.0.x` |
-| Release notes per version | `doc/release-notes/v0.0.X.md` for each tagged release, indexed by [`doc/release-notes/README.md`](release-notes/README.md) |
+| Release notes per version | `docs/release-notes/v0.0.X.md` for each tagged release, indexed by [`docs/release-notes/README.md`](release-notes/README.md) |
 | Standardised file structure | Cargo workspace conventions; `crates/`, `doc/`, `pkg/` |
 | Changelog kept | `CHANGELOG.md` (Keep-a-Changelog format) |
 
@@ -54,7 +54,7 @@ artefact that satisfies it.
 | Bug reports tracked | GitHub Issues, with templates in `.github/ISSUE_TEMPLATE/` |
 | Bug report responses ≤ 14 days | Issue-response SLA documented in `SECURITY.md` (48 h initial response) |
 | Vulnerability report channel | `SECURITY.md` — disclosure via `sebastian.rousseau@gmail.com`, 48 h response |
-| Security audit log | Audit reports tracked in `doc/POLICIES.md` § "Audit pipeline" |
+| Security audit log | Audit reports tracked in `docs/POLICIES.md` § "Audit pipeline" |
 
 ### Quality
 
@@ -77,7 +77,7 @@ artefact that satisfies it.
 | Inputs validated before use | Parser enforces `ParserConfig` limits (`max_depth`, `max_document_length`, `max_alias_expansions`, …) |
 | Hardened against vulnerabilities | `#![forbid(unsafe_code)]` workspace-wide, fuzz suite (10 targets) + Miri soak runs in `.github/workflows/security.yml` |
 | Vulnerability disclosure tested | One historical CVE-equivalent (issue #46 RecursionLimitExceeded false-positive) — patched in v0.0.6 within the same release cycle |
-| Security expertise consulted | Audit pipeline: `cargo-deny`, `cargo-vet`, `cargo-audit`, `cargo-machete`, CodeQL — see `doc/POLICIES.md` |
+| Security expertise consulted | Audit pipeline: `cargo-deny`, `cargo-vet`, `cargo-audit`, `cargo-machete`, CodeQL — see `docs/POLICIES.md` |
 
 ### Analysis
 
