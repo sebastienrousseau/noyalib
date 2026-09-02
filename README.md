@@ -18,7 +18,7 @@
   <a href="https://lib.rs/crates/noyalib"><img src="https://img.shields.io/badge/lib.rs-noyalib-orange.svg?style=for-the-badge" alt="lib.rs" /></a>
   <a href="https://scorecard.dev/viewer/?uri=github.com/sebastienrousseau/noyalib"><img src="https://img.shields.io/ossf-scorecard/github.com/sebastienrousseau/noyalib?style=for-the-badge&label=OpenSSF%20Scorecard&logo=openssf" alt="OpenSSF Scorecard" /></a>
   <a href="LICENSE-APACHE"><img src="https://img.shields.io/badge/license-Apache--2.0%20OR%20MIT-blue.svg?style=for-the-badge" alt="License: Apache-2.0 OR MIT" /></a>
-  <a href="https://github.com/sebastienrousseau/noyalib/blob/main/doc/MSRV-AND-DEPRECATION.md"><img src="https://img.shields.io/badge/MSRV-1.86.0-93450a.svg?style=for-the-badge&logo=rust" alt="MSRV 1.86.0" /></a>
+  <a href="https://github.com/sebastienrousseau/noyalib/blob/main/docs/MSRV-AND-DEPRECATION.md"><img src="https://img.shields.io/badge/MSRV-1.86.0-93450a.svg?style=for-the-badge&logo=rust" alt="MSRV 1.86.0" /></a>
 </p>
 
 ---
@@ -1668,7 +1668,7 @@ follow-ups.
   release.
 - **MSRV.** Raised only on the breaking axis with the reason
   recorded in the CHANGELOG, never silently — policy and history
-  in [`doc/MSRV-AND-DEPRECATION.md`](doc/MSRV-AND-DEPRECATION.md).
+  in [`doc/MSRV-AND-DEPRECATION.md`](docs/MSRV-AND-DEPRECATION.md).
 - **Deprecations** live for at least two releases with a
   `#[deprecated]` note naming the replacement before removal.
 
