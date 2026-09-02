@@ -46,7 +46,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   which immediately surfaced the long-standing #375 block-sequence
   span quirk, now carved out and tracked; `actionlint` for every
   workflow file (shared, satellite-consumable); a weekly
-  registry drift net installing every published crate and npm
+  registry drift net (registry-drift-net.yml) installing every published crate and npm
   package clean-room; and a bare-container musl smoke in the
   noya-cli release matrix.
 

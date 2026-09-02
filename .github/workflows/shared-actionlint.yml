@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: 2026 Noyalib
 # SPDX-License-Identifier: MIT OR Apache-2.0
 
-name: shared / actionlint
+name: shared / Actionlint (workflow files)
 
 # Reusable workflow-file lint (rhysd/actionlint via the raven-actions
 # wrapper): expression typos, shellcheck on run blocks, invalid
@@ -23,7 +23,7 @@ permissions:
 
 jobs:
   check:
-    name: actionlint
+    name: workflow lint (actionlint)
     if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
     steps:

@@ -101,22 +101,23 @@ jobs:
     # mistake hand-edited workflows accumulate.
     uses: ./.github/workflows/shared-actionlint.yml
 
-  gate-selftests:
+  gate-scripts-contract:
     # The gate scripts are load-bearing; a silent bug weakens every
     # release. scripts/tests/run.sh exercises each against known-good
-    # and known-bad fixtures (adapted from zfb's scripts/__tests__).
-    name: gate-selftests
+    # and known-bad fixtures — the same contract-test shape as
+    # build-script-contract, applied to the release gates.
+    name: Gate-scripts contract
     if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - run: ./scripts/tests/run.sh
 
-  shipped-size:
+  size-gate:
     # Declared size budgets for shipped artefacts (scripts/
-    # size-budgets.toml): the duration-monitor contract applied to
-    # bytes. Intentional growth raises the ceiling in the same commit.
-    name: shipped-size
+    # size-budgets.toml): the coverage-gate pattern applied to bytes.
+    # Intentional growth raises the ceiling in the same commit.
+    name: Size gate (declared budgets)
     if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
     steps:
