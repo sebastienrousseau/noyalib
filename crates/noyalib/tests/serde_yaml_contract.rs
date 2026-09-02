@@ -160,17 +160,16 @@ fn malformed_indentation() {
 
 #[test]
 fn custom_explicit_tag_is_refused() {
-    // KNOWN PARTIAL: upstream anchors the location at the tag
-    // (`1:8:7`); the shim's deserialization error anchors at the
-    // value (`1:16:15`). The message format matches.
-    let yaml = corpus_yaml("custom-explicit-tag");
-    let err = syml::from_str::<serde_json::Value>(&yaml).expect_err("must refuse");
-    assert_eq!(
-        err.to_string(),
-        "thing: invalid type: enum, expected any valid JSON value at line 1 column 16",
-        "custom-explicit-tag: display"
+    // Exact upstream parity since v0.0.30: the location anchors at
+    // the tag (`1:8:7`), because a node's span includes its
+    // properties. This was the final partial in the 18-case
+    // contract — Takazudo/zudo-front-builder#2755 names this exact
+    // pin as its re-evaluation trigger.
+    expect_err(
+        "custom-explicit-tag",
+        "thing: invalid type: enum, expected any valid JSON value at line 1 column 8",
+        Some((1, 8, 7)),
     );
-    assert!(err.location().is_some(), "custom-explicit-tag: location");
 }
 
 // ── The 7 cases that already matched at 0.0.28 ─────────────────────
@@ -228,4 +227,48 @@ fn built_in_explicit_tags() {
 #[test]
 fn duplicate_map_keys_last_wins() {
     expect_ok("duplicate-map-keys-last-wins", r#"{"a":2}"#);
+}
+
+// ── Ports of zfb's protected assertions ────────────────────────────
+// Takazudo/zudo-front-builder's evaluation harness protects a set of
+// location-convention pins beyond the 18-case corpus (their
+// crates/zfb-md-wasm/tests/api.rs and error_messages.rs). The
+// primitives those assertions reduce to are pinned here so a noyalib
+// change can never silently break their arithmetic.
+
+#[test]
+fn eof_reports_one_line_past_the_flow_sequence() {
+    // zfb: "serde_yaml reports the interruption one line past the
+    // flow sequence" — their frontmatter layer then adds +1 for the
+    // opening `---`. The primitive: EOF inside a flow sequence lands
+    // at (last line + 1, column 1).
+    let err = syml::from_str::<syml::Value>("title: [oops\n").expect_err("unclosed");
+    assert_eq!(
+        err.to_string(),
+        "did not find expected ',' or ']' at line 2 column 1, while parsing a flow sequence at line 1 column 8"
+    );
+    let loc = err.location().map(|l| (l.line(), l.column(), l.index()));
+    assert_eq!(loc, Some((2, 1, 13)));
+
+    // Multi-line body: still one past the last line, column 1.
+    let err = syml::from_str::<syml::Value>("title: [unclosed, broken\nother: ok\n")
+        .expect_err("unclosed");
+    let loc = err.location().map(|l| (l.line(), l.column(), l.index()));
+    assert_eq!(loc, Some((3, 1, 35)));
+}
+
+#[test]
+fn columns_count_characters_and_index_counts_bytes() {
+    // zfb's md-wasm layer converts noyalib columns to UTF-16 columns
+    // against the original source; that conversion is only correct
+    // while columns count characters and `index()` counts bytes.
+    // `é` is one character and two bytes: same column, shifted index.
+    let multibyte = syml::from_str::<syml::Value>("t: \"é\" x\n").expect_err("trailing");
+    let ascii = syml::from_str::<syml::Value>("t: \"e\" x\n").expect_err("trailing");
+    let m = multibyte
+        .location()
+        .map(|l| (l.line(), l.column(), l.index()));
+    let a = ascii.location().map(|l| (l.line(), l.column(), l.index()));
+    assert_eq!(m, Some((1, 8, 8)), "column is character-based");
+    assert_eq!(a, Some((1, 8, 7)));
 }

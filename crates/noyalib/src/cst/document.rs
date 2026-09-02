@@ -212,6 +212,7 @@ impl Document {
         // Reads resolve an alias through to its anchor (issue #149); the
         // through-alias flag only matters for writes (see `write_span`).
         let ((s, e), _through_alias) = resolve_span(value, span_tree, &segments)?;
+        let s = content_start(&self.source, s, e);
         // A zero-width span is an implicit null, which has no bytes to read
         // (#165). The resolver now hands the position over for the write
         // paths' benefit; discarding it is this reader's job.
@@ -652,6 +653,7 @@ impl Document {
         let (value, span_tree) = cache.as_ref().expect("ensure_cache populated");
         let ((s, e), through_alias) = resolve_span(value, span_tree, &segments)
             .ok_or_else(|| Error::Parse(format!("path not found: {path}")))?;
+        let s = content_start(&self.source, s, e);
         if through_alias {
             return Err(Error::Parse(format!(
                 "cannot set `{path}`: its value is (or resolves through) an alias \
@@ -911,7 +913,8 @@ impl Document {
                 Some(slot) => *slot = value.clone(),
                 None => return Err(Error::Parse(format!("path not found: {path}"))),
             }
-            let tree_span = resolve_span(root, span_tree, &segments).map(|(span, _)| span);
+            let tree_span = resolve_span(root, span_tree, &segments)
+                .map(|((s, e), _)| (content_start(&self.source, s, e), e));
             (expected, tree_span)
         };
         // The green resolver mis-spans an indentless block sequence
@@ -2870,6 +2873,7 @@ impl Document {
         let (value, span_tree) = cache.as_ref().expect("caller validated the document");
         let segments = parse_query_path(path);
         let ((s, e), _) = resolve_span(value, span_tree, &segments)?;
+        let s = content_start(&self.source, s, e);
         let (s, e) = trim_value_span(&self.source, s, e);
         let s = s + self.source[s..e].bytes().take_while(|&b| b == b' ').count();
         let close = if open == b'{' { b'}' } else { b']' };
@@ -3880,6 +3884,41 @@ fn resolve_tree<'a>(
 /// is `true` when resolution passed *through* an alias reference (the span
 /// then belongs to the anchor, not the addressed key) — correct to return for
 /// a read, but a write must refuse it.
+/// A node's [`SpanTree`] span starts at its properties (`&anchor`,
+/// `!tag`) since v0.0.30 — the span model anchors error locations at
+/// the property, matching serde_yaml/libyaml marks. CST reads and
+/// edits target the *content*: plain scalars can never begin with
+/// `&` or `!` (indicator characters), so leading property tokens are
+/// unambiguous and skipped here. A props-only node (an empty tagged
+/// scalar) keeps its original span so implicit-null handling is
+/// unchanged.
+fn content_start(source: &str, start: usize, end: usize) -> usize {
+    let bytes = source.as_bytes();
+    let mut i = start;
+    while i < end {
+        match bytes[i] {
+            b'!' if i + 1 < end && bytes[i + 1] == b'<' => {
+                while i < end && bytes[i] != b'>' {
+                    i += 1;
+                }
+                if i < end {
+                    i += 1;
+                }
+            }
+            b'&' | b'!' => {
+                while i < end && !bytes[i].is_ascii_whitespace() {
+                    i += 1;
+                }
+            }
+            _ => return i,
+        }
+        while i < end && bytes[i].is_ascii_whitespace() {
+            i += 1;
+        }
+    }
+    start
+}
+
 fn resolve_span(
     value: &Value,
     span_tree: &SpanTree,
