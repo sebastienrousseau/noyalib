@@ -21,6 +21,19 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   Documentation section with the same four entry points: User
   Manual, API reference, Developer docs, Ecosystem map.
 
+- **Two regression gates in per-push CI.** `fuzz-regression` builds
+  all twelve fuzz targets and replays the seed corpus plus
+  `fuzz/regressions/` — a new tracked corpus of fifteen minimized
+  crash inputs from previously-fixed fuzz findings — with `-runs=0`,
+  so a fixed crash staying fixed is now checked on every push
+  instead of at the weekly soak. `each-feature` runs
+  `cargo hack check --each-feature`, catching a single broken
+  feature at PR time instead of at the weekly powerset run.
+- One deliberate `fuzz_diff` divergence promoted to a unit pin:
+  `&a:` is an anchor named `a:` on a null document (YAML 1.2
+  §6.9.2 allows `:` in anchor names); serde_yaml_ng reads a mapping
+  with an empty key. Pinned in `tests/competitor_bugs.rs`.
+
 ### Changed
 
 - **Repository layout, Phase 1 of the structure plan.** `doc/` is
@@ -45,21 +58,6 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   to "Capabilities at a glance" with its stale shim description
   updated to the v0.0.29 behavioural contract. The release version
   gate now also checks the drop-in snippet's `=0.0.X` pin.
-
-### Added
-
-- **Two regression gates in per-push CI.** `fuzz-regression` builds
-  all twelve fuzz targets and replays the seed corpus plus
-  `fuzz/regressions/` — a new tracked corpus of fifteen minimized
-  crash inputs from previously-fixed fuzz findings — with `-runs=0`,
-  so a fixed crash staying fixed is now checked on every push
-  instead of at the weekly soak. `each-feature` runs
-  `cargo hack check --each-feature`, catching a single broken
-  feature at PR time instead of at the weekly powerset run.
-- One deliberate `fuzz_diff` divergence promoted to a unit pin:
-  `&a:` is an anchor named `a:` on a null document (YAML 1.2
-  §6.9.2 allows `:` in anchor names); serde_yaml_ng reads a mapping
-  with an empty key. Pinned in `tests/competitor_bugs.rs`.
 
 ### Fixed
 
