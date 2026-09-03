@@ -10,7 +10,7 @@ wants to *use* the library. The full reference is the
 
 ```toml
 [dependencies]
-noyalib = "0.0.30"
+noyalib = "0.0.31"
 ```
 
 `no_std` (alloc-only) and lean profiles are documented in the
@@ -68,8 +68,8 @@ features:
 
 | If you want to… | Read |
 |---|---|
-| Migrate from `serde_yaml` 0.9 | [doc/MIGRATION-FROM-SERDE-YAML.md](./doc/MIGRATION-FROM-SERDE-YAML.md) |
-| Understand the architecture | [doc/ARCHITECTURE.md](./doc/ARCHITECTURE.md) |
+| Migrate from `serde_yaml` 0.9 | [docs/MIGRATION-FROM-SERDE-YAML.md](./docs/MIGRATION-FROM-SERDE-YAML.md) |
+| Understand the architecture | [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) |
 | Edit YAML lossy-free (preserving comments and layout) | [crates/noyalib/README.md § CST](./crates/noyalib/README.md) and `noyalib::cst::Document` |
 | Validate YAML against a JSON Schema | `noyavalidate --schema schema.yaml input.yaml` |
 | Format YAML | `noyafmt --write file.yaml` |
@@ -80,6 +80,9 @@ features:
 | Contribute code | [CONTRIBUTING.md](./CONTRIBUTING.md) |
 
 ## Building from source
+
+The full developer guide (toolchain, task map, reproducing every CI
+gate locally) is [`DEVELOPMENT.md`](DEVELOPMENT.md).
 
 ```sh
 git clone https://github.com/sebastienrousseau/noyalib.git
@@ -110,4 +113,4 @@ cargo run --example figment --features figment
 
 - **Bug reports / feature requests:** [GitHub Issues](https://github.com/sebastienrousseau/noyalib/issues)
 - **Security issues:** see [SECURITY.md](./SECURITY.md) for the disclosure process — do not file public issues for vulnerabilities
-- **Migration questions:** [doc/MIGRATION-FROM-SERDE-YAML.md](./doc/MIGRATION-FROM-SERDE-YAML.md) covers the common gotchas
+- **Migration questions:** [docs/MIGRATION-FROM-SERDE-YAML.md](./docs/MIGRATION-FROM-SERDE-YAML.md) covers the common gotchas

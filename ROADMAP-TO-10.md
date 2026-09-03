@@ -236,7 +236,7 @@ VEX are what auditors now ask for.
   capability means a future edit has to defeat CI rather than a reader's
   attention.
 - ~~**E6. MSRV & deprecation policy**~~ — **done, v0.0.21.**
-  `doc/MSRV-AND-DEPRECATION.md`. The clause that mattered: a dev-dependency
+  `docs/MSRV-AND-DEPRECATION.md`. The clause that mattered: a dev-dependency
   outrunning the floor is a *decision*, not a mechanical fix — raising a
   user-facing promise to accommodate a test tool should be deliberate, not
   a way to turn a job green.

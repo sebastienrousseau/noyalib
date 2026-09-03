@@ -1,23 +1,26 @@
+# EditorConfig — https://editorconfig.org
+# Keep in sync across the noyalib family (Phase 1, docs/ECOSYSTEM.md).
 root = true
 
 [*]
+charset = utf-8
 end_of_line = lf
 insert_final_newline = true
-charset = utf-8
 trim_trailing_whitespace = true
 
 [*.rs]
 indent_style = space
 indent_size = 4
+max_line_length = 100
 
-[*.{toml,yml,yaml}]
+[*.{yml,yaml,toml,json,md,sh}]
 indent_style = space
 indent_size = 2
-
-[*.md]
-indent_style = space
-indent_size = 2
-trim_trailing_whitespace = false
 
 [Makefile]
 indent_style = tab
+
+[*.1]
+# roff manpages: generated, leave formatting alone
+insert_final_newline = false
+trim_trailing_whitespace = false

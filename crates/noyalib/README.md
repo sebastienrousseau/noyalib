@@ -44,14 +44,14 @@
 
 ```toml
 [dependencies]
-noyalib = "0.0.30"
+noyalib = "0.0.31"
 ```
 
 `no_std` (alloc-only) builds:
 
 ```toml
 [dependencies]
-noyalib = { version = "0.0.30", default-features = false }
+noyalib = { version = "0.0.31", default-features = false }
 ```
 
 Core data binding (`from_str`, `to_string`, `Value`, schemas) and
@@ -381,7 +381,7 @@ The deeper guide also covers `serde_yml`, `yaml_serde`,
 `serde-saphyr`, and `yaml-spanned` — per-crate function tables,
 behavioural-difference notes, the drop-in shim, and a
 migration checklist:
-[`doc/MIGRATION-FROM-SERDE-YAML.md`](https://github.com/sebastienrousseau/noyalib/blob/main/doc/MIGRATION-FROM-SERDE-YAML.md).
+[`docs/MIGRATION-FROM-SERDE-YAML.md`](https://github.com/sebastienrousseau/noyalib/blob/main/docs/MIGRATION-FROM-SERDE-YAML.md).
 
 ---
 
@@ -389,19 +389,19 @@ migration checklist:
 
 - **API reference**: <https://docs.rs/noyalib>
 - **Engineering policies** (MSRV, SemVer, security, performance, concurrency, platform support, feature flags):
-  [`doc/POLICIES.md`](https://github.com/sebastienrousseau/noyalib/blob/main/doc/POLICIES.md)
+  [`docs/POLICIES.md`](https://github.com/sebastienrousseau/noyalib/blob/main/docs/POLICIES.md)
 - **Migration guides** (`serde_yaml` and 7 other YAML crates):
-  [`doc/MIGRATION.md`](https://github.com/sebastienrousseau/noyalib/blob/main/doc/MIGRATION.md)
+  [`docs/MIGRATION.md`](https://github.com/sebastienrousseau/noyalib/blob/main/docs/MIGRATION.md)
 - **Security policy**:
   [`SECURITY.md`](https://github.com/sebastienrousseau/noyalib/blob/main/SECURITY.md)
 - **Internals (module map, hot paths)**:
-  [`doc/internals.md`](https://github.com/sebastienrousseau/noyalib/blob/main/crates/noyalib/doc/internals.md)
+  [`docs/internals.md`](https://github.com/sebastienrousseau/noyalib/blob/main/crates/noyalib/docs/internals.md)
 - **Error reference**:
-  [`doc/errors.md`](https://github.com/sebastienrousseau/noyalib/blob/main/crates/noyalib/doc/errors.md)
+  [`docs/errors.md`](https://github.com/sebastienrousseau/noyalib/blob/main/crates/noyalib/docs/errors.md)
 - **User guide**:
-  [`doc/USER-GUIDE.md`](https://github.com/sebastienrousseau/noyalib/blob/main/doc/USER-GUIDE.md)
+  [`docs/USER-GUIDE.md`](https://github.com/sebastienrousseau/noyalib/blob/main/docs/USER-GUIDE.md)
 - **Architecture overview**:
-  [`doc/ARCHITECTURE.md`](https://github.com/sebastienrousseau/noyalib/blob/main/doc/ARCHITECTURE.md)
+  [`docs/ARCHITECTURE.md`](https://github.com/sebastienrousseau/noyalib/blob/main/docs/ARCHITECTURE.md)
 - **Workspace README**:
   <https://github.com/sebastienrousseau/noyalib#readme>
 

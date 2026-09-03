@@ -1,0 +1,14 @@
+{
+  "name": "noyalib",
+  "image": "mcr.microsoft.com/devcontainers/rust:1",
+  "postCreateCommand": "rustup toolchain install nightly --component miri && cargo install --locked cargo-hack cargo-deny cargo-vet mdbook && pip3 install --user codespell reuse && make",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "rust-lang.rust-analyzer",
+        "tamasfe.even-better-toml",
+        "DavidAnson.vscode-markdownlint"
+      ]
+    }
+  }
+}

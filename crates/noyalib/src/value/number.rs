@@ -15,7 +15,7 @@ use core::str::FromStr;
 /// include a `_ => { … }` wildcard when pattern-matching. Adding
 /// `Unsigned(u64)` behind `feature = "lossless-u64"` is the first
 /// use of this contract; see
-/// [ADR-0004](https://github.com/sebastienrousseau/noyalib/blob/main/doc/adr/0004-lossless-u64-integers.md).
+/// [ADR-0004](https://github.com/sebastienrousseau/noyalib/blob/main/docs/adr/0004-lossless-u64-integers.md).
 #[derive(Debug, Clone, Copy)]
 #[non_exhaustive]
 pub enum Number {

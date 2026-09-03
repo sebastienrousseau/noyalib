@@ -11,6 +11,11 @@ version = 1
 [[annotations]]
 path = [
     ".editorconfig",
+    ".codespellrc",
+    ".pre-commit-config.yaml",
+    ".devcontainer/devcontainer.json",
+    "CITATION.cff",
+    ".markdownlint.yaml",
     ".gitattributes",
     ".gitignore",
     ".rustfmt.toml",
@@ -49,15 +54,17 @@ path = [
     "CONTRIBUTING.md",
     "GETTING_STARTED.md",
     "GLOSSARY.md",
+    "AGENTS.md",
     "GOVERNANCE.md",
     "PLAN.md",
     "SECURITY.md",
     "SUPPORT.md",
-    "doc/**",
+    "docs/**",
+    "doc/README.md",
     "MIGRATION.md",
     "crates/noyalib/README.md",
     "crates/noyalib/tests/README.md",
-    "crates/noyalib/doc/**",
+    "crates/noyalib/docs/**",
     # All four satellites carry their own REUSE.toml:
     #   - noyalib-wasm → https://github.com/sebastienrousseau/noyalib-wasm (v0.0.12)
     #   - noyalib-mcp  → https://github.com/sebastienrousseau/noyalib-mcp  (v0.0.13)
@@ -99,22 +106,6 @@ path = "crates/noyalib/tests/yaml-test-suite/**"
 precedence = "aggregate"
 SPDX-FileCopyrightText = "yaml-test-suite contributors"
 SPDX-License-Identifier = "MIT"
-
-# ── Generated CLI artefacts ───────────────────────────────────────
-# `complete/*` and `doc/*.1` are regenerated from the clap Command
-# tree by `cargo xtask {completions,manpages}` (and from the
-# build script when NOYA_GEN_ASSETS=1). Files are tracked because
-# distro packagers prefer pre-built artefacts; they remain
-# bit-reproducible from source.
-[[annotations]]
-path = [
-    "complete/**",
-    "doc/noyafmt.1",
-    "doc/noyavalidate.1",
-]
-precedence = "aggregate"
-SPDX-FileCopyrightText = "2026 Noyalib"
-SPDX-License-Identifier = "MIT OR Apache-2.0"
 
 # ── Distro packaging templates (pkg/) ─────────────────────────────
 # Hand-written per-channel packaging metadata consumed by

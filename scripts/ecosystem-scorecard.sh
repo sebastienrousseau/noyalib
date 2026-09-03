@@ -372,13 +372,13 @@ probe_repo() {
 
   # A published speed claim is only falsifiable if the reader is told the
   # machine, the toolchain and the command. Check the doc actually says.
-  if [ -f doc/BENCHMARKS.md ]; then
+  if [ -f docs/BENCHMARKS.md ]; then
     local disc=0
-    grep -qiE 'aarch64|x86_64|apple|linux' doc/BENCHMARKS.md && disc=$((disc+1))
-    grep -qiE 'rust [0-9]+\.[0-9]+|rustc [0-9]+\.[0-9]+' doc/BENCHMARKS.md && disc=$((disc+1))
-    grep -qiE 'cargo bench' doc/BENCHMARKS.md && disc=$((disc+1))
+    grep -qiE 'aarch64|x86_64|apple|linux' docs/BENCHMARKS.md && disc=$((disc+1))
+    grep -qiE 'rust [0-9]+\.[0-9]+|rustc [0-9]+\.[0-9]+' docs/BENCHMARKS.md && disc=$((disc+1))
+    grep -qiE 'cargo bench' docs/BENCHMARKS.md && disc=$((disc+1))
     record "$repo" bench_methodology docs 2 "$disc/3 disclosed (host, toolchain, command)" \
-      "$(fdiv "$disc" 3)" "grep host/toolchain/repro-command in doc/BENCHMARKS.md"
+      "$(fdiv "$disc" 3)" "grep host/toolchain/repro-command in docs/BENCHMARKS.md"
   fi
 
   # ---- SUPPLY CHAIN ----------------------------------------------------

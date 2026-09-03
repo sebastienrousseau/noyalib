@@ -142,6 +142,17 @@ for fname in ("server.json", "glama.json"):
         (ok if ref.rsplit(":", 1)[1] == version else bad)(f"{fname} image tag", ref)
 
 # The changelog must have promoted this version out of [Unreleased].
+# CITATION.cff carries its own version field (added in the v0.0.31
+# cycle); a release prep that skips it ships a stale citation.
+citation = root / "CITATION.cff"
+if citation.is_file():
+    text = citation.read_text(encoding="utf-8")
+    m = re.search(r"^version: (\S+)$", text, re.M)
+    if m and m.group(1) == version:
+        ok("CITATION.cff", f"version {m.group(1)}")
+    else:
+        bad("CITATION.cff", f"says {m.group(1) if m else 'nothing'} — update the version field")
+
 changelog = root / "CHANGELOG.md"
 if changelog.is_file():
     if re.search(rf"^## \[v?{re.escape(version)}\]", changelog.read_text(encoding="utf-8"), re.M):

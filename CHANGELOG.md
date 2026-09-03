@@ -7,6 +7,80 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+## [v0.0.31] - 2026-09-03
+
+### Added
+
+- **`cst::parse_document_with_config` / `cst::parse_stream_with_config`**
+  (#372, #373 — implemented by @zoosky): the lossless CST honors a
+  caller-supplied `ParserConfig`, mirroring `from_str_with_config`.
+  The `Document` keeps the configuration for every re-parse of its
+  own source — the typed cache behind `as_value`, `validate`, the
+  `replace_span` safety net, the comment-edit value guard, and
+  schema coercion — so a merge-heavy values file that only trips the
+  `alias_anchor_ratio` heuristic gets its byte-preserving path back
+  and stays readable and editable after edits. Disabling the ratio
+  does not loosen the absolute amplification budgets, and the
+  default entry points are unchanged.
+- **The rendered User Manual (Phase 3).** `docs/` is an mdBook root
+  whose chapters are the existing Markdown files in place; `docs.yml`
+  builds it beside the strict rustdoc into one Pages site (landing at
+  `/`, API at `/noyalib/`, manual at `/manual/`);
+  `scripts/check-docs-links.sh` gates every chapter and relative
+  link. Every README in the family opens Documentation with the same
+  four entry points.
+- **Phase 4/5 groundwork and contributor DX** (with the noya-cli
+  half in its own repository): `docs/packaging.md` addressed to
+  distro maintainers (licensing, MSRV policy, the lockstep pin
+  model, offline builds, artefact verification), a manual chapter
+  for it, `.devcontainer/`, `.pre-commit-config.yaml`,
+  `CITATION.cff`, and `AGENTS.md` stating the invariants an
+  AI-assisted contribution must respect.
+
+- **Automation resilience, adapted from zfb's harness** (the project
+  whose evaluation gated the serde_yaml migration): self-tests for
+  the release gate scripts (`scripts/tests/run.sh`, CI job
+  `gate-selftests` — each gate proven against known-good and
+  known-bad fixtures); corpus integrity and category-coverage
+  meta-tests pinning the 18-case contract by sha256; a shipped-size
+  monitor with declared budgets (`scripts/size-budgets.toml`); a
+  whole-tree span-invariant suite (`tests/span_tree_invariants.rs`),
+  which immediately surfaced the long-standing #375 block-sequence
+  span quirk, now carved out and tracked; `actionlint` for every
+  workflow file (shared, satellite-consumable); a weekly
+  registry drift net (registry-drift-net.yml) installing every published crate and npm
+  package clean-room; and a bare-container musl smoke in the
+  noya-cli release matrix.
+
+### Fixed
+
+- **A comment edit can no longer break the document** (found by
+  `fuzz_editors` the moment the v0.0.31 branch ran it): comment text
+  containing a carriage return ended the comment token in YAML, so
+  the remainder leaked into the document. `set_comment` now refuses
+  line-breaking text (inline comments take a single line; `Before`
+  still splits on `\n` by documented design) and leaves the
+  document byte-identical. The `-0b0` differential finding is
+  pinned spec-side: YAML 1.2 has no binary resolution, the compat
+  shim keeps the 1.1 reading.
+
+### Changed
+
+- **Repository layout, Phase 1 of the structure plan.** `doc/` is
+  now `docs/` (a `doc/README.md` tombstone catches deep links from
+  pre-v0.0.31 published documentation); the `noyafmt.1` /
+  `noyavalidate.1` manpages and the shell completions moved to the
+  noya-cli repository beside their generator; `DEVELOPMENT.md` at
+  the root is the single developer entry point; `.editorconfig`,
+  `.markdownlint.yaml` and `.codespellrc` land with a per-push
+  `docs-lint` CI gate (shared-docs-lint.yml, consumable by the
+  satellites) enforcing the family layout contract.
+- **The CI duration monitor learns declared budgets**: an
+  `EXPECTED_MIN_BASELINE` floor (725s, reason documented inline)
+  covers intentional job-set changes like the v0.0.30 gates, while
+  accidental regressions still fire against the rolling median.
+||||||| e33ba3c
+
 ## [v0.0.30] - 2026-09-02
 
 ### Changed
@@ -1161,8 +1235,8 @@ removal remain. They now refuse safely rather than corrupting.
 Two consolidation waves, 19 Dependabot pull requests. serde-saphyr
 0.0.29 → 1.0.1, bytes 1.12.0 → 1.12.1, jsonschema 0.49.2 → 0.49.6,
 validator 0.19.0 → 0.21.0, sval 2.20.0 → 2.21.0, schemars 1.2.1 →
-1.2.2, the tokio-stack group, and the workflow action groups (#257,
-#238). serde-saphyr's major bump is bench-only — optional, gated behind
+1.2.2, the tokio-stack group, and the workflow action groups
+(#257, #238). serde-saphyr's major bump is bench-only — optional, gated behind
 `compare-saphyr`, and the benches were verified to compile against
 1.0.1 rather than the API being assumed stable.
 

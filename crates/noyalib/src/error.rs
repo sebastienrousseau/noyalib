@@ -1348,7 +1348,7 @@ impl Error {
 ///
 /// Construct directly with a struct literal — both fields are
 /// public. Future field additions are tracked as a minor-version
-/// event per the [SemVer policy](https://github.com/sebastienrousseau/noyalib/blob/main/doc/POLICIES.md#2-semver--api-stability).
+/// event per the [SemVer policy](https://github.com/sebastienrousseau/noyalib/blob/main/docs/POLICIES.md#2-semver--api-stability).
 ///
 /// # Examples
 ///

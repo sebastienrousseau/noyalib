@@ -1096,3 +1096,28 @@ fn coverage_doc_explicit_null_and_quoted_empty_are_replacements_not_fills() {
     doc.set_value("a", &Value::from(9)).unwrap();
     assert_eq!(doc.to_string(), "a: 9\nb: 2\n");
 }
+
+/// fuzz_editors: comment text containing a carriage return ended the
+/// comment token and split the document (`set_comment("", Inline,
+/// "t[[\r---")` on `z` produced a two-document stream). Line-breaking
+/// text is refused and the document left byte-identical.
+#[test]
+fn set_comment_refuses_line_breaking_text() {
+    use noyalib::cst::CommentPosition;
+    let src = "z: 1\n";
+    for (pos, text) in [
+        (CommentPosition::Inline, "t[[\r---"),
+        (CommentPosition::Inline, "two\nlines"),
+        (CommentPosition::Before, "sneaky\r---"),
+    ] {
+        let mut doc = parse_document(src).unwrap();
+        let err = doc.set_comment("z", pos, text).expect_err("must refuse");
+        assert!(err.to_string().contains("line break"), "wrong error: {err}");
+        assert_eq!(doc.to_string(), src, "document must be unchanged");
+    }
+    // Multi-line Before text via `\n` stays supported by design.
+    let mut doc = parse_document(src).unwrap();
+    doc.set_comment("z", CommentPosition::Before, "a\nb")
+        .unwrap();
+    assert_eq!(doc.to_string(), "# a\n# b\nz: 1\n");
+}

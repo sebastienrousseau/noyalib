@@ -150,6 +150,20 @@ BASELINE_AVG=$(printf '%s\n' "${BASELINE_LIST}" | sort -n | awk '
         else       printf "%.1f", (v[n/2 - 1] + v[n/2]) / 2
     }')
 
+# A commit that INTENTIONALLY slows CI (a new per-push gate) declares
+# its budget here: the effective baseline is the larger of the rolling
+# median and this floor, so the alarm keeps firing for accidental
+# regressions but not for a declared one while the median catches up.
+# Update the value in the same commit that changes the job set, with
+# the reason beside it.
+#
+# 725s since v0.0.30: the fuzz-regression gate (builds all 12
+# sanitized fuzz targets + corpus replay) and the each-feature gate
+# (26 cargo checks) were added deliberately; pre-gate median was
+# ~515s, observed gated runs 724-921s.
+EXPECTED_MIN_BASELINE="${EXPECTED_MIN_BASELINE:-725}"
+BASELINE_AVG=$(awk -v m="${BASELINE_AVG}" -v e="${EXPECTED_MIN_BASELINE}" 'BEGIN {printf "%.1f", (m > e) ? m : e}')
+
 # Threshold in seconds.
 THRESHOLD_SEC=$(awk -v b="${BASELINE_AVG}" -v t="${THRESHOLD_RATIO}" 'BEGIN {printf "%.1f", b * t}')
 

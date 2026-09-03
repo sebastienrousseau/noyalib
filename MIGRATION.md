@@ -5,7 +5,7 @@
 
 This guide covers what changed for consumers when the noyalib
 workspace was split into satellite repositories under
-[ADR-0005](doc/adr/0005-workspace-split.md). It's aimed at:
+[ADR-0005](docs/adr/0005-workspace-split.md). It's aimed at:
 
 - **Rust developers** who `cargo add noyalib*` or ship binaries
   that depend on the workspace.
@@ -45,7 +45,7 @@ to crates.io as before:
 
 ```toml
 [dependencies]
-noyalib = "0.0.30"
+noyalib = "0.0.31"
 ```
 
 ### Consuming a satellite crate
@@ -56,11 +56,11 @@ version pin:
 
 ```toml
 [dependencies]
-noyalib-wasm = "0.0.30"   # crates.io — repo doesn't matter to Cargo
-noyalib-mcp  = "0.0.30"
+noyalib-wasm = "0.0.31"   # crates.io — repo doesn't matter to Cargo
+noyalib-mcp  = "0.0.31"
 ```
 
-The [ADR-0005 strict-lockstep contract](doc/adr/0005-workspace-split.md#versioning-contract)
+The [ADR-0005 strict-lockstep contract](docs/adr/0005-workspace-split.md#versioning-contract)
 guarantees these versions move in lockstep with `noyalib`.
 
 ### Filing issues + reading source
@@ -195,7 +195,7 @@ If you were also depending on `pkg/npm-mcp-wrapper/` or
 ## Rollback
 
 If any split turns out to be problematic during the 14-day soak
-review, the [ADR-0005 rollback recipe](doc/adr/0005-workspace-split.md#rollback-recipe)
+review, the [ADR-0005 rollback recipe](docs/adr/0005-workspace-split.md#rollback-recipe)
 restores the pre-split monorepo shape in ≤ 5 minutes of cargo
 compilation on a warm cache. Rollback yanks the satellite
 crate versions on crates.io so the monorepo re-takes precedence

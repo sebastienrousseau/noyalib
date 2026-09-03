@@ -184,7 +184,7 @@
 //!   [`Value::untag`](crate::Value::untag) /
 //!   [`Value::untag_ref`](crate::Value::untag_ref) before the
 //!   match. See
-//!   [`doc/MIGRATION-FROM-SERDE-YAML.md`](https://github.com/sebastienrousseau/noyalib/blob/main/doc/MIGRATION-FROM-SERDE-YAML.md#1-valuetagged-is-a-7th-variant--and-noyalib-preserves-scalar-tags-too)
+//!   [`docs/MIGRATION-FROM-SERDE-YAML.md`](https://github.com/sebastienrousseau/noyalib/blob/main/docs/MIGRATION-FROM-SERDE-YAML.md#1-valuetagged-is-a-7th-variant--and-noyalib-preserves-scalar-tags-too)
 //!   §1 for the recipe.
 //! - **YAML 1.2 strict booleans by default.** `country: NO`
 //!   stays `"NO"` (the YAML 1.2 fix to the "Norway problem")

@@ -1,0 +1,33 @@
+# SPDX-FileCopyrightText: 2026 Noyalib
+# SPDX-License-Identifier: MIT OR Apache-2.0
+
+name: shared / Actionlint (workflow files)
+
+# Reusable workflow-file lint (rhysd/actionlint via the raven-actions
+# wrapper): expression typos, shellcheck on run blocks, invalid
+# needs/if references — the class of mistake hand-edited workflows
+# accumulate. Adapted from Takazudo/zudo-front-builder's actionlint
+# gate. Cheap enough to run per push; callers may path-filter.
+#
+# Consumers pin by SHA:
+#
+#   jobs:
+#     actionlint:
+#       uses: sebastienrousseau/noyalib/.github/workflows/shared-actionlint.yml@<sha>
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: workflow lint (actionlint)
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: raven-actions/actionlint@3d39aea434753780c3b3d4a1a31c854b4dbf49d7 # v2.2.0
+        with:
+          flags: '-ignore SC2086'

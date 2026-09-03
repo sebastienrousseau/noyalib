@@ -584,7 +584,7 @@ impl<'a> Scanner<'a> {
     ///
     /// On well-formed input the clamping is a no-op (zero overhead).
     ///
-    /// [`POLICIES.md` §8]: https://github.com/sebastienrousseau/noyalib/blob/main/doc/POLICIES.md#8-panic-policy
+    /// [`POLICIES.md` §8]: https://github.com/sebastienrousseau/noyalib/blob/main/docs/POLICIES.md#8-panic-policy
     #[inline]
     fn slice_str(&self, start: usize, end: usize) -> &'a str {
         let len = self.input_str.len();

@@ -1,6 +1,6 @@
 [package]
 name = "noyalib"
-version = "0.0.30"
+version = "0.0.31"
 edition = "2024"
 rust-version = "1.86.0"
 license = "MIT OR Apache-2.0"
@@ -423,7 +423,7 @@ rust-yaml = "1.0.1"
 # Bench-only competitor surface. None of these ship transitively
 # in any release artefact — they are dev-deps used exclusively by
 # `crates/noyalib/benches/comparison.rs` for head-to-head Rust
-# YAML benchmarks. See `doc/BENCHMARKS.md` for measured numbers.
+# YAML benchmarks. See `docs/BENCHMARKS.md` for measured numbers.
 #
 # `yaml-spanned` is the closest other span-tracking parser
 # in the ecosystem. (`serde_yml` — the maintainer's prior crate
