@@ -413,4 +413,7 @@ its own CI:
 
 Satellites additionally carry `scripts/verify-release-versions.sh`
 and `supply-chain/`; the core additionally carries the `shared-*.yml`
-workflows the family consumes by SHA.
+workflows the family consumes by SHA, and — deliberately at core
+level only — `CITATION.cff`, `AGENTS.md`, and `.devcontainer/`
+(one citation record and one contributor environment for the
+family; satellite DEVELOPMENT.md files point here).
