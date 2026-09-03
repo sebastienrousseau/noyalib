@@ -3716,6 +3716,15 @@ fn entry_value(
                     // `!Tag` / `&anchor` prefix — remember the earliest
                     // start and keep scanning for the scalar that follows.
                     let _ = prefix_start.get_or_insert(child_start);
+                } else if *kind == SyntaxKind::DashIndicator {
+                    // An indentless block sequence: the green tree keeps
+                    // its `-` items as entry-level tokens rather than a
+                    // nested BlockSequence node, so this walker cannot
+                    // see the sequence's true extent (#375 reported the
+                    // resulting indicator-only span). Bail to the typed
+                    // cache, whose SpanTree seals block sequences at
+                    // their last item.
+                    return None;
                 } else if !is_trivia_kind(*kind) {
                     let start = prefix_start.unwrap_or(child_start);
                     return Some((*kind, (start, child_end), None));

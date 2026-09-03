@@ -60,7 +60,6 @@ path = [
     "SECURITY.md",
     "SUPPORT.md",
     "docs/**",
-    "doc/README.md",
     "MIGRATION.md",
     "crates/noyalib/README.md",
     "crates/noyalib/tests/README.md",
