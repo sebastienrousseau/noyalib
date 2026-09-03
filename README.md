@@ -65,7 +65,7 @@
 
 ```toml
 [dependencies]
-noyalib = "0.0.31"
+noyalib = "0.0.32"
 ```
 
 ### As a CLI tool
@@ -103,7 +103,7 @@ maintainer runbook.
 
 ```toml
 [dependencies]
-noyalib = { version = "0.0.31", default-features = false }
+noyalib = { version = "0.0.32", default-features = false }
 ```
 
 Requires `alloc`. Core data binding (`from_str`, `to_string`, `Value`,
@@ -190,7 +190,7 @@ the application needs.
 ```toml
 # Example: rich diagnostics + schema validation
 [dependencies]
-noyalib = { version = "0.0.31", features = ["miette", "validate-schema"] }
+noyalib = { version = "0.0.32", features = ["miette", "validate-schema"] }
 ```
 
 **Optional features:** `lossless-u64` preserves YAML integer scalars above
@@ -271,7 +271,7 @@ npm install @sebastienrousseau/noyalib-wasm
 
 ```toml
 # serde_yaml drop-in — the whole migration is this one line:
-serde_yaml = { package = "noyalib-serde-yaml", version = "=0.0.31" }
+serde_yaml = { package = "noyalib-serde-yaml", version = "=0.0.32" }
 ```
 
 Per-crate READMEs cover the surface specific to each artifact:
@@ -345,7 +345,7 @@ tables for each.
 -[dependencies]
 -serde_yaml = "0.9"
 +[dependencies]
-+noyalib = "0.0.31"
++noyalib = "0.0.32"
 ```
 
 ```diff
@@ -378,7 +378,7 @@ If your call sites can't change at all, rename the package in
 `Cargo.toml` and change **zero source lines**:
 
 ```toml
-serde_yaml = { package = "noyalib-serde-yaml", version = "=0.0.31" }
+serde_yaml = { package = "noyalib-serde-yaml", version = "=0.0.32" }
 ```
 
 or depend on noyalib directly with
@@ -1339,7 +1339,7 @@ disagreement on priorities.
 - **You have a hard dependency budget that cannot tolerate a
   Grisu / Ryu float formatter and a hash-randomised lookup
   table.** Default profile carries 8 runtime deps. `noyalib =
-  { version = "0.0.31", default-features = false, features =
+  { version = "0.0.32", default-features = false, features =
   ["std"] }` (or the equivalent `features = ["minimal"]`) drops
   to 5 — `itoa`, `ryu`, and `serde_ignored` become opt-in via
   the `fast-int` / `fast-float` / `strict-deserialise` features.
