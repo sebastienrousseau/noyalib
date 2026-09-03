@@ -16,14 +16,20 @@ bad() { fail=$((fail+1)); echo "  [FAIL] $1" >&2; }
 # Derive the tree's own version so this fixture survives every bump
 # (it went stale at the v0.0.31 bump when hardcoded).
 CUR="v$(grep -m1 '^version = ' crates/noyalib/Cargo.toml | cut -d'"' -f2)"
-# Current tree at its own version: must pass.
-if ./scripts/verify-release-versions.sh "$CUR" >/dev/null 2>&1; then ok; else bad "gate rejects the tree's own version ($CUR)"; fi
+# A branch carries its version from creation; the dated CHANGELOG
+# heading is the one release-time step. So mid-cycle the gate may
+# fail ONLY on the missing heading — verify the positive path by
+# inserting a temporary heading, then restoring.
+perl -0pi -e "s/^## \[Unreleased\]\n/## [Unreleased]\n\n## [$CUR] - 2099-01-01\n/m" CHANGELOG.md
+if ./scripts/verify-release-versions.sh "$CUR" >/dev/null 2>&1; then ok; else bad "gate rejects the tree's own version ($CUR) even with a heading"; fi
+git checkout -q -- CHANGELOG.md
 # A version nothing agrees on: must fail.
 if ./scripts/verify-release-versions.sh v9.9.9 >/dev/null 2>&1; then bad "gate accepted v9.9.9"; else ok; fi
 # Stale CITATION.cff must fail (restored via git checkout).
+perl -0pi -e "s/^## \[Unreleased\]\n/## [Unreleased]\n\n## [$CUR] - 2099-01-01\n/m" CHANGELOG.md
 perl -pi -e 's/^version: .*/version: 0.0.1/' CITATION.cff
 if ./scripts/verify-release-versions.sh "$CUR" >/dev/null 2>&1; then bad "gate missed a stale CITATION.cff"; else ok; fi
-git checkout -q -- CITATION.cff
+git checkout -q -- CITATION.cff CHANGELOG.md
 
 # ── check-docs-links ───────────────────────────────────────────────
 if ./scripts/check-docs-links.sh >/dev/null 2>&1; then ok; else bad "link gate rejects the clean tree"; fi
