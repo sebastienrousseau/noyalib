@@ -7,6 +7,23 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Fixed
+
+- **`span_at` for a block sequence in value position reports the
+  sequence's full extent** (#375, breaking on the spans axis): the
+  loader seals a block sequence's span at its last item (a block
+  shape has no end token, and the end event carries the next
+  token's span), flow sequences keep their `]`, and the green-tree
+  fast path defers indentless sequences to the typed cache it
+  cannot measure structurally. Anchored flow sequences keep their
+  closing bracket via property-aware flow detection. The whole-tree
+  span invariant suite now asserts parent containment strictly,
+  with no carve-outs.
+
+### Removed
+
+- The `doc/` tombstone directory (the v0.0.31 transition pointer).
+
 ## [v0.0.31] - 2026-09-03
 
 ### Added

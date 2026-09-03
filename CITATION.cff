@@ -9,7 +9,7 @@ authors:
 repository-code: "https://github.com/sebastienrousseau/noyalib"
 url: "https://github.com/sebastienrousseau/noyalib"
 license: "Apache-2.0 OR MIT"
-version: 0.0.31
+version: 0.0.32
 date-released: "2026-09-03"
 abstract: >-
   A YAML 1.2 library for Rust: pure safe code, full serde

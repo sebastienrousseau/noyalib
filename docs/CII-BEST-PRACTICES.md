@@ -3,17 +3,13 @@
 
 # OpenSSF Best Practices Badge — self-assessment
 
-The CII-Best-Practices check on
-[`scorecard.dev`](https://scorecard.dev/viewer/?uri=github.com/sebastienrousseau/noyalib)
-scores `0/10` until the project is registered at
-<https://www.bestpractices.dev/> and the self-assessment is
-filled in. This file is the maintainer's prefilled checklist
-so the application takes minutes rather than hours.
-
-## Application URL
-
-<https://www.bestpractices.dev/en/projects/new>
-project URL = `https://github.com/sebastienrousseau/noyalib`
+noyalib holds the passing-level badge: project
+[**13057**](https://www.bestpractices.dev/projects/13057),
+100% of the 65 passing criteria, achieved 2026-05-31. The badge
+is embedded in the workspace `README.md` header. This file is
+the maintenance record: each criterion mapped to the artefact
+that satisfies it, so answers can be re-verified when the
+project changes and the Silver application can start from it.
 
 ## Passing-level criteria — prefilled answers
 
@@ -92,20 +88,6 @@ artefact that satisfies it.
 
 The "Silver" badge adds 30+ more criteria around release
 process maturity and "Gold" 30 more around supply-chain
-transparency. noyalib already exceeds the passing-level bar
-on all 65 items; tracking Silver for the v0.1.0 milestone.
-
-## How to apply
-
-1. Visit <https://www.bestpractices.dev/en/projects/new>.
-2. Enter the repo URL `https://github.com/sebastienrousseau/noyalib`.
-3. Walk through the form using the answers above. Most criteria
-   accept a URL → paste the corresponding `doc/` link or
-   `https://github.com/sebastienrousseau/noyalib/blob/main/<path>`.
-4. Submit. Badge typically issues within 24 h.
-5. Once issued, the OpenSSF Scorecard refresh (Monday 06:00 UTC)
-   lifts the `CII-Best-Practices` check from 0 → 10.
-
-The badge URL will be `https://www.bestpractices.dev/projects/<id>`;
-add it to the workspace `README.md` header alongside the other
-badges once issued.
+transparency. The passing entry is complete; tracking Silver
+for the v0.1.0 milestone via
+<https://www.bestpractices.dev/en/projects/13057/silver/edit>.

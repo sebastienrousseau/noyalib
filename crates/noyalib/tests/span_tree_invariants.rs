@@ -71,23 +71,14 @@ fn check(src: &str) {
             "{path}: span {s}..{e} splits a character"
         );
         // Containment: a child's span sits inside its parent's.
-        //
-        // KNOWN QUIRK (pre-dates v0.0.30, reproduced on the published
-        // crate; tracked in #375): a block sequence appearing as a
-        // mapping value records only its first `-` indicator as its
-        // span (`seq:` in `seq:\n- 1` reports 5..6), while nested
-        // block sequences record their full extent. Until that is
-        // fixed on the breaking axis, containment is only asserted
-        // against parents whose span actually covers their first
-        // child - the degenerate indicator-only shape is tolerated
-        // but everything else must nest.
+        // Strict since the #375 fix — block sequences seal their
+        // span at their last item, so nothing escapes any more.
         if let Some(dot) = path.rfind(['.', '[']) {
             let parent = &path[..dot];
             if !parent.is_empty() {
                 if let Some((ps, pe)) = doc.span_at(parent) {
-                    let degenerate_block_seq = pe <= s && pe - ps <= 2;
                     assert!(
-                        (s >= ps && e <= pe) || degenerate_block_seq,
+                        s >= ps && e <= pe,
                         "{path} span {s}..{e} escapes parent {parent} span {ps}..{pe}"
                     );
                 }
