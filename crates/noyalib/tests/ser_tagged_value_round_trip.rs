@@ -8,9 +8,10 @@
 //! generic serializer with no YAML-tag concept, like `serde_json`, needs
 //! for interop), and nothing on the way back into a `Value` recognised
 //! that shape as a tag. This crate's own [`Serializer`](noyalib) now
-//! reconstructs `Value::Tagged` from that single-entry, `!`-prefixed-key
-//! shape, so `to_string` agrees with the tag-preserving
-//! [`to_string_value`].
+//! reconstructs `Value::Tagged` from the marker newtype
+//! `TaggedValue::serialize` wraps that single-entry map in (never from
+//! the shape alone, see #377), so `to_string` agrees with the
+//! tag-preserving [`to_string_value`].
 
 // SPDX-License-Identifier: MIT OR Apache-2.0
 // Copyright (c) 2026 Noyalib. All rights reserved.

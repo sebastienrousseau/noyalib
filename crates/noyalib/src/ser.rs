@@ -526,16 +526,18 @@ where
 /// (`Value::merge`, `Value::interpolate_properties`, …) before a
 /// final emit.
 ///
-/// **Note**: [`TaggedValue`]'s `Serialize` impl (and `Value::Tagged`'s own
-/// inline serialize arm) route through `serialize_map` with a single
-/// entry keyed by the tag string — the right shape for interop with a
-/// generic serializer that has no YAML-tag concept, `serde_json` and
-/// friends included. This crate's own [`Serializer`] *does* have a tag
-/// concept: it recognises that single-entry, `!`-prefixed-key shape when
-/// it builds the resulting [`Value`] and reconstructs [`Value::Tagged`],
-/// so `to_value`/`to_string` on a `Value` containing `Tagged` round-trips
-/// the tag rather than losing it to a degenerate one-entry mapping. Refs
-/// #350. For direct emission of a `Value` you already hold, without going
+/// **Note**: [`TaggedValue`]'s `Serialize` impl (which `Value::Tagged`
+/// delegates to) routes through `serialize_map` with a single entry keyed
+/// by the tag string — the right shape for interop with a generic
+/// serializer that has no YAML-tag concept, `serde_json` and friends
+/// included — wrapped in a newtype struct carrying a private marker name.
+/// This crate's own [`Serializer`] *does* have a tag concept: it
+/// recognises the marker (never the map's shape) when it builds the
+/// resulting [`Value`] and reconstructs [`Value::Tagged`], so
+/// `to_value`/`to_string` on a `Value` containing `Tagged` round-trips the
+/// tag rather than losing it to a degenerate one-entry mapping, while a
+/// genuine one-entry mapping keyed by a `!`-string stays a mapping. Refs
+/// #350, #377. For direct emission of a `Value` you already hold, without going
 /// through the `Serialize` pipeline at all, see [`to_string_value`] /
 /// [`to_writer_value`].
 ///
@@ -1918,6 +1920,26 @@ impl serde_core::ser::Serializer for Serializer {
                     inner,
                 ))))
             }
+            crate::fmt::MAGIC_TAGGED => {
+                // `TaggedValue::serialize`'s wire form: a single-entry map
+                // keyed by the tag string (#350). The marker name, not the
+                // map's shape, is what rebuilds `Value::Tagged` here, so a
+                // genuine one-entry mapping keyed by a `!`-string reaches
+                // `SerializeMap::end` below and stays a mapping (#377).
+                match value.serialize(Self)? {
+                    Value::Mapping(map) if map.len() == 1 => {
+                        let (tag, inner) = map
+                            .into_iter()
+                            .next()
+                            .expect("length checked to be exactly one entry");
+                        Ok(Value::Tagged(Box::new(TaggedValue::new(
+                            Tag::new(tag),
+                            inner,
+                        ))))
+                    }
+                    other => Ok(other),
+                }
+            }
             _ => value.serialize(self),
         }
     }
@@ -2115,32 +2137,6 @@ impl serde_core::ser::SerializeMap for SerializeMap {
     }
 
     fn end(self) -> Result<Value> {
-        // `TaggedValue::serialize` (and `Value::Tagged`'s own inline
-        // serialize arm) route through this exact `serialize_map(Some(1))`
-        // + one `serialize_entry` shape -- that single-entry-map wire form
-        // is the documented, unchanged shape for interop with a generic
-        // serializer that has no YAML-tag concept (`serde_json` and
-        // friends). Our own serializer *does* have a tag concept, so
-        // recognise that shape here and reconstruct `Value::Tagged`
-        // instead of losing the tag to a degenerate one-entry mapping.
-        // Refs #350.
-        let is_tag_shaped = self.map.len() == 1
-            && self
-                .map
-                .iter()
-                .next()
-                .is_some_and(|(k, _)| k.starts_with('!'));
-        if is_tag_shaped {
-            let (key, value) = self
-                .map
-                .into_iter()
-                .next()
-                .expect("is_tag_shaped confirmed exactly one entry");
-            return Ok(Value::Tagged(Box::new(TaggedValue::new(
-                Tag::new(key),
-                value,
-            ))));
-        }
         Ok(Value::Mapping(self.map))
     }
 }
