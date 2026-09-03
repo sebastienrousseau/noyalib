@@ -613,13 +613,7 @@ impl<'a> Loader<'a> {
                     start: span.start,
                     anchor,
                     tag,
-                    // The span may start at properties (`!t`/`&a`);
-                    // scan past them the same way the CST does.
-                    flow: input.as_bytes()[span.start..span.end.min(input.len())]
-                        .iter()
-                        .find(|b| !b.is_ascii_whitespace())
-                        .is_some_and(|b| *b == b'[')
-                        || input.as_bytes().get(span.start) == Some(&b'['),
+                    flow: starts_with_flow_bracket(input, span.start),
                 });
             }
             Event::SequenceEnd { span } => {
@@ -1651,6 +1645,36 @@ fn span_tree_start(span: &SpanTree) -> usize {
         | SpanTree::Mapping { start: s, .. } => *s,
         SpanTree::Alias(inner) => span_tree_start(inner),
     }
+}
+
+/// `true` when the node beginning at `start` opens with `[` once
+/// its properties are skipped. Since v0.0.30 a node's event span
+/// starts at its `&anchor`/`!tag` properties, so flow detection has
+/// to scan past them: property tokens run to whitespace (verbatim
+/// tags to `>`), and a plain scalar can never begin with `&` or
+/// `!`, so the scan is unambiguous.
+#[cfg(feature = "std")]
+fn starts_with_flow_bracket(input: &str, start: usize) -> bool {
+    let bytes = input.as_bytes();
+    let mut i = start;
+    while i < bytes.len() {
+        match bytes[i] {
+            b'!' if bytes.get(i + 1) == Some(&b'<') => {
+                while i < bytes.len() && bytes[i] != b'>' {
+                    i += 1;
+                }
+                i += 1;
+            }
+            b'&' | b'!' => {
+                while i < bytes.len() && !bytes[i].is_ascii_whitespace() {
+                    i += 1;
+                }
+            }
+            b if b.is_ascii_whitespace() => i += 1,
+            b => return b == b'[',
+        }
+    }
+    false
 }
 
 /// Byte offset where a span tree's node ends.
