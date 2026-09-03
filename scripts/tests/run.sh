@@ -13,13 +13,16 @@ ok()  { pass=$((pass+1)); }
 bad() { fail=$((fail+1)); echo "  [FAIL] $1" >&2; }
 
 # ── verify-release-versions ────────────────────────────────────────
-# Current tree at the released version: must pass.
-if ./scripts/verify-release-versions.sh v0.0.30 >/dev/null 2>&1; then ok; else bad "gate rejects the correct current version"; fi
+# Derive the tree's own version so this fixture survives every bump
+# (it went stale at the v0.0.31 bump when hardcoded).
+CUR="v$(grep -m1 '^version = ' crates/noyalib/Cargo.toml | cut -d'"' -f2)"
+# Current tree at its own version: must pass.
+if ./scripts/verify-release-versions.sh "$CUR" >/dev/null 2>&1; then ok; else bad "gate rejects the tree's own version ($CUR)"; fi
 # A version nothing agrees on: must fail.
 if ./scripts/verify-release-versions.sh v9.9.9 >/dev/null 2>&1; then bad "gate accepted v9.9.9"; else ok; fi
 # Stale CITATION.cff must fail (restored via git checkout).
 perl -pi -e 's/^version: .*/version: 0.0.1/' CITATION.cff
-if ./scripts/verify-release-versions.sh v0.0.30 >/dev/null 2>&1; then bad "gate missed a stale CITATION.cff"; else ok; fi
+if ./scripts/verify-release-versions.sh "$CUR" >/dev/null 2>&1; then bad "gate missed a stale CITATION.cff"; else ok; fi
 git checkout -q -- CITATION.cff
 
 # ── check-docs-links ───────────────────────────────────────────────
