@@ -4636,14 +4636,15 @@ fn parse_rename_path(path: &str) -> Result<Vec<QuerySegment>> {
 
 /// The first character of `key` outside YAML's printable set
 /// (§5.1 `c-printable`): any control character other than tab,
-/// including `U+007F` and the `U+0080..=U+009F` C1 block.
+/// including `U+007F` and the `U+0080..=U+009F` C1 block, and the
+/// two non-characters `U+FFFE` and `U+FFFF` (#379).
 ///
 /// [`Document::rename_key`] refuses such a key rather than trying to
-/// spell it: the double-quoted formatter escapes only `< U+0020`, so
-/// a `U+007F` would be spliced raw and the document would carry
-/// bytes the YAML spec does not admit.
+/// spell it: a key is meant to be read by people and tools alike, and
+/// a hex escape in key position helps neither.
 fn first_non_printable(key: &str) -> Option<char> {
-    key.chars().find(|&c| c != '\t' && c.is_control())
+    key.chars()
+        .find(|&c| c != '\t' && (c.is_control() || matches!(c, '\u{fffe}' | '\u{ffff}')))
 }
 
 /// Decode a mapping-key token's source text to the string it
@@ -6042,12 +6043,15 @@ fn format_string_for_site(s: &str, ctx: &SiteContext) -> Result<String> {
     // CR and the Unicode line separators survive only double-quoted,
     // escaped: a literal block normalises `\r` into its own line
     // breaks, and NEL/LS/PS pass through plain or single-quoted styles
-    // as raw bytes that read back as line breaks (#335).
+    // as raw bytes that read back as line breaks (#335). The C1 block
+    // and the non-characters U+FFFE/U+FFFF are outside `c-printable`
+    // (§5.1), so they take the same route with a hex escape (#379).
     if s.chars().any(|c| {
         matches!(
             c,
-            '\r' | '\u{0085}' | '\u{2028}' | '\u{2029}' | '\u{feff}' | '\u{7f}'
-        ) || (c < '\u{20}' && c != '\t' && c != '\n')
+            '\r' | '\u{2028}' | '\u{2029}' | '\u{feff}' | '\u{fffe}' | '\u{ffff}'
+        ) || ('\u{7f}'..='\u{9f}').contains(&c)
+            || (c < '\u{20}' && c != '\t' && c != '\n')
     }) {
         return Ok(format_double_quoted(s));
     }
@@ -6285,7 +6289,14 @@ pub(super) fn is_plain_safe(s: &str) -> bool {
     }
     // NEL/LS/PS read back as line breaks; only double-quoted escapes
     // carry them (#335). A `\r` is caught by the control-byte loop.
-    if s.contains(['\u{0085}', '\u{2028}', '\u{2029}', '\u{feff}']) {
+    // The rest of the C1 block and the non-characters are outside
+    // `c-printable` and need a double-quoted hex escape (#379).
+    if s.chars().any(|c| {
+        matches!(
+            c,
+            '\u{2028}' | '\u{2029}' | '\u{feff}' | '\u{fffe}' | '\u{ffff}'
+        ) || ('\u{80}'..='\u{9f}').contains(&c)
+    }) {
         return false;
     }
     // Reserved scalars that resolve to non-string types.
@@ -6447,7 +6458,14 @@ pub(super) fn format_double_quoted(s: &str) -> String {
             '\u{feff}' => out.push_str("\\uFEFF"),
             '\x08' => out.push_str("\\b"),
             '\x0c' => out.push_str("\\f"),
-            c if (c as u32) < 0x20 || c == '\u{7f}' => {
+            // C0, DEL, the C1 block (NEL is matched above) and the two
+            // non-characters: none is in `c-printable` (§5.1), and
+            // this crate's reader takes them raw while libyaml-based
+            // tools refuse the document (#379).
+            c if (c as u32) < 0x20
+                || ('\u{7f}'..='\u{9f}').contains(&c)
+                || matches!(c, '\u{fffe}' | '\u{ffff}') =>
+            {
                 let _ = write!(&mut out, "\\u{:04X}", c as u32);
             }
             c => out.push(c),

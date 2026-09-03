@@ -947,12 +947,18 @@ static FIRST_CHAR_QUOTE: [bool; 128] = {
 /// a document at all (§5.2), and a string-leading BOM emitted plain
 /// is stream-skipped on re-parse, reinterpreting the rest of the
 /// scalar as markup (found by fuzz_roundtrip).
+///
+/// The C1 block (U+0080 to U+009F, NEL included) and the non-characters
+/// U+FFFE and U+FFFF sit outside `c-printable` (§5.1): this crate's
+/// reader takes them raw, but libyaml-based tools reject the document,
+/// so they force the same style with a hex escape (#379).
 fn needs_double_quoted_escape(s: &str) -> bool {
     s.chars().any(|c| {
         matches!(
             c,
-            '\r' | '\u{0085}' | '\u{2028}' | '\u{2029}' | '\u{feff}' | '\u{7f}'
-        ) || (c < '\u{20}' && c != '\t' && c != '\n')
+            '\r' | '\u{2028}' | '\u{2029}' | '\u{feff}' | '\u{fffe}' | '\u{ffff}'
+        ) || ('\u{7f}'..='\u{9f}').contains(&c)
+            || (c < '\u{20}' && c != '\t' && c != '\n')
     })
 }
 
@@ -1151,7 +1157,8 @@ fn write_string(output: &mut String, s: &str, indent: usize, config: &Serializer
 /// double-quoted style's escape sequences, so a string containing one must
 /// fall back to double-quoted even when `prefer_single_quotes` is set.
 fn single_quote_safe(s: &str) -> bool {
-    !s.chars().any(char::is_control)
+    !s.chars()
+        .any(|c| c.is_control() || matches!(c, '\u{fffe}' | '\u{ffff}'))
 }
 
 /// Write a single-quoted string, escaping embedded single quotes.
@@ -1189,11 +1196,22 @@ fn write_double_quoted(output: &mut String, s: &str) {
             // A raw BOM must never reach the output stream — the
             // reader rejects one inside a document (§5.2).
             '\u{feff}' => "\\uFEFF",
-            c if (c as u32) < 0x20 || c == '\u{7f}' => {
-                // Other control characters: flush and write hex escape
+            // The two non-characters sit outside `c-printable` (§5.1)
+            // and have no named escape (#379).
+            '\u{fffe}' | '\u{ffff}' => {
+                output.push_str(&s[start..i]);
+                let _ = write!(output, "\\u{:04X}", c as u32);
+                start = i + c.len_utf8();
+                continue;
+            }
+            c if (c as u32) < 0x20 || ('\u{7f}'..='\u{9f}').contains(&c) => {
+                // Other control characters -- C0, DEL and the C1 block
+                // (#379; NEL is matched above): flush and write the
+                // two-digit hex escape. A C1 character is two bytes in
+                // UTF-8, so advance by its width, not by one.
                 output.push_str(&s[start..i]);
                 let _ = write!(output, "\\x{:02X}", c as u32);
-                start = i + 1;
+                start = i + c.len_utf8();
                 continue;
             }
             _ => continue,
