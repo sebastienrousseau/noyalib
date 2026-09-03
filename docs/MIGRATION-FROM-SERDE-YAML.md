@@ -265,7 +265,7 @@ Cargo can substitute for `serde_yaml`:
 
 ```toml
 [dependencies]
-serde_yaml = { package = "noyalib-serde-yaml", version = "=0.0.30" }
+serde_yaml = { package = "noyalib-serde-yaml", version = "=0.0.31" }
 ```
 
 Every `use serde_yaml::…` keeps compiling and behaving — `<<` stays

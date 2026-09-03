@@ -7,6 +7,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+## [v0.0.31] - 2026-09-03
+
 ### Added
 
 - **`cst::parse_document_with_config` / `cst::parse_stream_with_config`**
