@@ -123,7 +123,7 @@ tracks every span these rules need, and already backs `remove`/`set`.
 | GitHub Action | no `action.yml` in any of the five repos |
 | Hosted pre-commit hook | no `.pre-commit-hooks.yaml` in `noya-cli` — `docs/pre-commit.md` documents only `repo: local`, which needs `noyafmt` already installed |
 | VS Code extension | no `editors/vscode` in `noyalib-lsp` — the server exists but nobody can install it from the marketplace |
-| Homebrew formula | no `Formula/` |
+| ~~Homebrew formula~~ | shipped: [`homebrew-tap/Formula/noya-cli.rb`](https://github.com/sebastienrousseau/homebrew-tap/blob/main/Formula/noya-cli.rb), with Scoop and AUR (`noyalib-bin`) beside it |
 | CLI container image | `Dockerfile` exists in `noyalib` and `noyalib-mcp`, not in `noya-cli` |
 | Python bindings | no `bindings/python` |
 | Native Node bindings | wasm only; no napi |
@@ -193,7 +193,8 @@ Ranked by measured gap times incumbent strength.
 5. **`.pre-commit-hooks.yaml`** — one file, unlocks the entire
    pre-commit user base.
 6. **VS Code extension** wrapping `noyalib-lsp`.
-7. **Homebrew tap** and a **CLI container image**.
+7. ~~Homebrew tap~~ (shipped, with Scoop and AUR) and a **CLI
+   container image**.
 
 ### Tier 3 — reach beyond Rust
 
