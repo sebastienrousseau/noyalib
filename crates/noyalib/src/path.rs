@@ -516,10 +516,10 @@ pub fn push_key(path: &mut String, key: &str) {
 /// assert_eq!(join_keys(Vec::<&str>::new()), "");
 /// ```
 #[must_use]
-pub fn join_keys<'a>(keys: impl IntoIterator<Item = &'a str>) -> String {
+pub fn join_keys<K: AsRef<str>>(keys: impl IntoIterator<Item = K>) -> String {
     let mut path = String::new();
     for key in keys {
-        push_key(&mut path, key);
+        push_key(&mut path, key.as_ref());
     }
     path
 }

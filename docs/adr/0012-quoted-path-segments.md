@@ -25,7 +25,7 @@ removes `a`; `set_path("a.")` drops the trailing separator and writes
 `a`; `insert_entry_value` on an existing `*` appends a second `*`
 entry, because its existing-key guard covered `.` and `[` only.
 
-#288 met this from the insert side. It fixed the insert anchor by
+Issue #288 met this from the insert side. It fixed the insert anchor by
 reading the span tree directly and explicitly deferred the rest: "that
 is the wider question of whether the path grammar should grow an
 escape or quoting form". Issue #388 asks that question.
