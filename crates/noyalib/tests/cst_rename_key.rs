@@ -305,7 +305,14 @@ fn rename_refuses_bracket_segment_that_is_not_an_index() {
     let err = doc.rename_key("servers[web]", "hosts").unwrap_err();
     let msg = err.to_string();
     assert!(msg.contains("[web]"), "got: {msg}");
-    assert!(msg.contains("not a sequence index"), "got: {msg}");
+    assert!(
+        msg.contains("neither a sequence index nor a quoted key"),
+        "got: {msg}"
+    );
+    assert!(
+        msg.contains(r#"["web"]"#),
+        "names the quoted spelling: {msg}"
+    );
     assert_eq!(doc.to_string(), src);
 }
 

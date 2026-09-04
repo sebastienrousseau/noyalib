@@ -217,9 +217,13 @@ form (`!!str` and `tag:yaml.org,2002:str` both compare equal).
 
 Path queries (`Value::query("items[*].name")`) implement a
 small subset of the JSONPath grammar — wildcards (`*`),
-recursive descent (`..`), index ranges (`[0:3]`). See
+recursive descent (`..`), bracket-quoted keys
+(`labels["app.kubernetes.io/name"]`, for a key the grammar would
+otherwise read as structure). The same grammar is behind every
+path-taking `cst::Document` method. See
 [`crates/noyalib/src/path.rs`](../crates/noyalib/src/path.rs)
-for the full grammar.
+for the full grammar and the `quote_key` / `push_key` /
+`join_keys` spelling helpers.
 
 ## Spans
 

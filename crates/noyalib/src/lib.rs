@@ -562,7 +562,9 @@ pub mod lossless_float;
 #[cfg_attr(docsrs, doc(cfg(feature = "parallel")))]
 pub mod parallel;
 mod parser;
-mod path;
+/// Structure locations for diagnostics, and the query-path grammar every
+/// `get_path` / `query` / `cst::Document` path shares.
+pub mod path;
 /// Pluggable parser policies for "Safe YAML" enforcement.
 pub mod policy;
 /// Error-recovering parser for LSP / IDE partial parsing. Gated

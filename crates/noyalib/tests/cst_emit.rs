@@ -388,14 +388,14 @@ fn a_dotted_key_does_not_collide_with_the_path_it_looks_like() {
 }
 
 #[test]
-fn replacing_an_existing_dotted_key_is_refused() {
+fn replacing_an_existing_dotted_key_is_an_upsert() {
+    // Refused before #388, when the path syntax could not address
+    // `app.io/name`; the key is now addressed as `labels["app.io/name"]`
+    // and rewritten in place like any other existing key.
     let mut doc = parse_document("labels:\n  app.io/name: web\n").unwrap();
-    let before = doc.to_string();
-    let err = doc
-        .insert_entry_value("labels", "app.io/name", "api")
-        .unwrap_err();
-    assert!(err.to_string().contains("cannot be addressed"), "{err}");
-    assert_eq!(doc.to_string(), before);
+    doc.insert_entry_value("labels", "app.io/name", "api")
+        .unwrap();
+    assert_eq!(doc.to_string(), "labels:\n  app.io/name: api\n");
 }
 
 // ── Documents whose last line has no terminator ────────────────────

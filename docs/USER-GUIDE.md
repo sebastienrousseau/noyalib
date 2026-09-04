@@ -111,6 +111,11 @@ let first = v.get("items").and_then(|s| s.get(0));
 let names = v.query("items[*].name");          // every name in the list
 let any   = v.query("..debug");                // every `debug` at any depth
 
+// A key the grammar would read as structure is bracket-quoted;
+// `join_keys` spells the path from literal keys.
+let app = v.get_path(r#"labels["app.kubernetes.io/name"]"#);
+let same = v.get_path(&noyalib::path::join_keys(["labels", "app.kubernetes.io/name"]));
+
 // Mutation.
 let mut v = v;
 v["server"]["port"] = Value::from(9090u16);

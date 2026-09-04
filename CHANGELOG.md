@@ -7,6 +7,31 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Added
+
+- **Bracket-quoted key segments in the path grammar** (#388,
+  ADR-0012): `labels["app.kubernetes.io/name"]` or `['a[0]']`
+  addresses a mapping key the grammar would otherwise read as
+  structure (`.`, `[`, `]`, `*`), in every path-taking API at once --
+  `Value::get_path` and `query`, the borrowed reads, and every
+  `cst::Document` mutator and locator (`set`, `set_value`, `set_path`,
+  `remove`, `rename_key`, `span_at`, `key_span`, the comment editors,
+  `Entry`). `\` escapes the next character inside the quotes. The
+  `path` module is public and spells such paths: `quote_key` for one
+  segment, `push_key` to append a key in whichever form reads back as
+  that key, `join_keys` for a whole path from literal keys.
+
+### Fixed
+
+- **`insert_entry` and `insert_entry_value` upsert a key holding `.`,
+  `[`, `]`, or `*`** instead of refusing it, and the upsert of an
+  existing `*` no longer appends a second `*` entry (the existing-key
+  guard covered `.` and `[` only). The `.`/`[` refusal from #288 is
+  gone. `set_path` re-spells a quoted ancestor when it creates a
+  missing level under one, and `rename_key`'s bracket check accepts a
+  quoted segment while still refusing an unquoted non-index one
+  (`servers[web]`), now naming the quoted spelling in the error.
+
 ## [v0.0.32] - 2026-09-03
 
 ### Fixed

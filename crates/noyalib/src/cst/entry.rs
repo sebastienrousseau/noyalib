@@ -232,7 +232,10 @@ impl<'a> Entry<'a> {
     }
 
     /// Drill down to a child path. The returned [`Entry`] represents
-    /// `self.path + "." + child`, holding the same mutable borrow.
+    /// `self.path + "." + child`, holding the same mutable borrow. A
+    /// child that begins with `[` — an index, or the quoted segment
+    /// [`crate::path::quote_key`] spells for a key holding `.`, `[`,
+    /// `]`, or `*` — is appended without the separator.
     ///
     /// # Examples
     ///
