@@ -170,7 +170,7 @@ own authors have marked dead:
 | `metadata-gen` | `noyalib` **and** `yaml-rust2` | half-migrated |
 
 Already migrated: `frontmatter-gen`, `html-generator`,
-`static-site-generator`, and the four satellites.
+`static-site-generator`, and the five satellites.
 
 Shipping a YAML library while three of your own crates depend on an
 archived one is the most falsifiable credibility claim in the set, and
@@ -210,7 +210,7 @@ Ranked by measured gap times incumbent strength.
 ### Tier 4 — cheap credibility
 
 10. Fuzz targets in each satellite.
-11. OpenSSF Best Practices badge for the four satellites.
+11. OpenSSF Best Practices badge for the five satellites.
 12. Migrate `libmake`, `nucleusflow`, `wiserone`; finish `metadata-gen`.
 
 ## Rating
