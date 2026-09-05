@@ -176,12 +176,12 @@ fn value_target_with_registry_detects_distinct_typed_key_collision() {
     let cfg = cfg(&["!Celsius"]);
     let res: Result<Value, _> = from_str_with_config("1: a\n\"1\": b\n", &cfg);
     assert!(
-        matches!(res, Err(Error::KeyCollision(_))),
+        matches!(&res, Err(e) if e.kind() == noyalib::ErrorKind::KeyCollision),
         "Value+registry must detect the 1 vs \"1\" collision, got {res:?}"
     );
     // Parity with the no-registry Value path, which already errored.
     let res2: Result<Value, _> = from_str_with_config("1: a\n\"1\": b\n", &ParserConfig::new());
-    assert!(matches!(res2, Err(Error::KeyCollision(_))));
+    assert!(matches!(&res2, Err(e) if e.kind() == noyalib::ErrorKind::KeyCollision));
 }
 
 #[test]

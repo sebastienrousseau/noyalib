@@ -35,9 +35,10 @@ fn from_str_value_refuses_distinct_typed_key_collision() {
     ] {
         let err = from_str::<Value>(src)
             .expect_err("distinct-typed collision must error on the Value fast path");
+        // Located since #378 (the fast path keeps the key's offset for it).
         assert!(
-            matches!(err, Error::KeyCollision(_)),
-            "expected KeyCollision for {src:?}, got {err:?}"
+            matches!(err, Error::KeyCollisionAt { .. }),
+            "expected a located key collision for {src:?}, got {err:?}"
         );
     }
 }

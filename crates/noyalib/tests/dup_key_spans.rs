@@ -189,9 +189,11 @@ fn distinct_typed_keys_collide_loudly() {
         "~: a\n\"null\": b\n",       // null vs string
     ] {
         let err = parse_document(src).expect_err("distinct-typed collision must error");
-        assert!(
-            matches!(err, noyalib::Error::KeyCollision(_)),
-            "expected KeyCollision for {src:?}, got {err:?}"
+        // Located since #378; `kind()` is the stable way to tell.
+        assert_eq!(
+            err.kind(),
+            noyalib::ErrorKind::KeyCollision,
+            "expected a key collision for {src:?}, got {err:?}"
         );
         assert!(format!("{err}").contains("collide"), "{err}");
     }

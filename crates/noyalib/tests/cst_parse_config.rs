@@ -88,9 +88,10 @@ fn parse_document_with_config_honours_every_knob_not_just_the_ratio() {
     );
     // ...and refused when the configuration says so.
     let cfg = ParserConfig::new().duplicate_key_policy(DuplicateKeyPolicy::Error);
+    // The located form since #378; the kind is what the policy promises.
     assert!(matches!(
         parse_document_with_config(src, &cfg),
-        Err(Error::DuplicateKey(_))
+        Err(Error::DuplicateKeyAt { .. })
     ));
 }
 
