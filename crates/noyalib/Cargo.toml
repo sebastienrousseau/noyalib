@@ -404,6 +404,8 @@ serde_ignored = { version = "0.1", optional = true }
 # to serde for the `sval` feature. Pulled in only when the
 # `sval` feature is enabled.
 sval = { version = "2", optional = true, default-features = false }
+# `Arbitrary` for Value, Number, Tag, TaggedValue, Mapping (feature `arbitrary`).
+arbitrary = { version = "1", optional = true }
 # `tokio` async runtime — required by the `tokio` feature for
 # native `AsyncRead` parsing and the `YamlDecoder` codec. Default
 # features off; we only need the I/O bits.
@@ -637,6 +639,9 @@ tokio = ["dep:tokio", "dep:tokio-util", "dep:bytes", "std"]
 # entry point. serde remains the default; this is opt-in for
 # callers that want to skip serde monomorphisation overhead.
 sval = ["dep:sval"]
+# Structure-aware fuzzing and property testing: `arbitrary::Arbitrary`
+# for every public value type. The arbitrary crate needs std.
+arbitrary = ["dep:arbitrary", "std"]
 # Error-recovering parser for LSP / IDE partial parsing. Adds
 # the `noyalib::recovery` module with `parse_lenient` /
 # `parse_lenient_with` entry points returning a `ParseResult`

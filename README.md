@@ -142,6 +142,7 @@ the application needs.
 | `lossless-float` | — | `LosslessFloat` — refuse-to-lose-precision float, the floating-point sibling of `lossless-u64` | — |
 | `parallel` | `rayon` 1.10 | `noyalib::parallel::parse<T>` for `---`-separated streams | [Benchmarks](#benchmarks) |
 | `recovery` | — | `noyalib::recovery::parse_lenient` — best-effort tree + error list for LSP / IDE half-typed documents | `examples/recovery_lenient.rs`, `benches/v006_features.rs` |
+| `arbitrary` | `arbitrary` 1 | `arbitrary::Arbitrary` for `Value`, `Number`, `Tag`, `TaggedValue`, `Mapping`: structure-aware fuzz targets and property tests build valid trees from one generator | `fuzz/fuzz_targets/fuzz_value_roundtrip.rs` |
 | `sval` | `sval` 2 | `impl sval::Value` for `Value` / `Number` / `Mapping` / `MappingAny` / `TaggedValue`, `noyalib::sval_adapter::to_sval_writer` | `examples/sval_streaming.rs`, `benches/v006_features.rs` |
 | `tokio` | `tokio`, `tokio-util`, `bytes` | `noyalib::tokio_async::from_async_reader` / `from_async_reader_multi` and `YamlDecoder` codec for `tokio_util::codec::Framed` pipelines | `examples/tokio_async_reader.rs`, `benches/v006_features.rs` |
 | `simd` | — | Forward-compat no-op — `noyalib::simd::*` is always available and the parser hot path uses it unconditionally | [Benchmarks](#benchmarks) |
@@ -1393,9 +1394,13 @@ make clean        # remove build artifacts
 
 ### Fuzzing
 
-Twelve `cargo-fuzz` targets ship under `fuzz/fuzz_targets/`,
+Thirteen `cargo-fuzz` targets ship under `fuzz/fuzz_targets/`,
 including differential targets that compare noyalib against other
-ecosystem parsers. Every push replays the seed corpus plus the
+ecosystem parsers and a structure-aware target that builds `Value`
+trees with `Arbitrary` and proves round-trip, CST agreement, and
+alias-budget invariants rather than only surviving input. Two more
+under `fuzz-nostd/` drive the `core` + `alloc` build, so the
+`no_std` code shape is fuzzed and not only compiled. Every push replays the seed corpus plus the
 minimized crash inputs of previously-fixed findings
 (`fuzz/regressions/`), so a fixed crash cannot silently return;
 onboarding to Google's OSS-Fuzz is in review
@@ -1405,6 +1410,7 @@ onboarding to Google's OSS-Fuzz is in review
 # Generic surface
 cargo +nightly fuzz run fuzz_parse              # arbitrary YAML parsing
 cargo +nightly fuzz run fuzz_roundtrip          # parse → serialize → re-parse
+cargo +nightly fuzz run fuzz_value_roundtrip    # Arbitrary Value → emit → parse == Value; alias budget oracle
 cargo +nightly fuzz run fuzz_from_value         # Value → typed deserialise
 cargo +nightly fuzz run fuzz_multi_doc          # multi-document streams
 cargo +nightly fuzz run fuzz_strict             # tight security limits
@@ -1416,7 +1422,11 @@ cargo +nightly fuzz run fuzz_double_quoted      # double-quoted scalar escapes
 cargo +nightly fuzz run fuzz_yaml_v1_1          # YAML 1.1 resolver toggle
 ```
 
-Seed corpus included in `fuzz/corpus/seed/`.
+Seed corpus included in `fuzz/corpus/seed/`. The alloc-only crate:
+
+```bash
+cargo +nightly fuzz run --fuzz-dir fuzz-nostd fuzz_roundtrip_alloc_only
+```
 
 ### Miri (UB / aliasing / leak verification)
 
@@ -1438,6 +1448,9 @@ make miri-bigendian    # focused suite simulated on mips64 big-endian
 ./scripts/miri.sh                    # full focused suite
 ./scripts/miri.sh simd               # subset
 MIRI_TARGET=mips64-unknown-linux-gnuabi64 ./scripts/miri.sh
+MIRI_MODEL=tree ./scripts/miri.sh    # Tree Borrows (weekly in CI)
+MIRI_ALIGN=1 ./scripts/miri.sh simd  # symbolic alignment check on the SWAR module (weekly in CI)
+MIRI_FEATURES=--no-default-features ./scripts/miri.sh   # the alloc-only code shape
 ```
 
 The CI matrix runs the focused suite on every PR (`miri-focused`)
