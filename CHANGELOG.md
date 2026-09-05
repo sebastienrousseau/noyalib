@@ -123,7 +123,6 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   `EXPECTED_MIN_BASELINE` floor (725s, reason documented inline)
   covers intentional job-set changes like the v0.0.30 gates, while
   accidental regressions still fire against the rolling median.
-||||||| e33ba3c
 
 ## [v0.0.30] - 2026-09-02
 
