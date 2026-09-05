@@ -9,6 +9,10 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Fixed
 
+- **CodeQL runs on `feat/**` pushes and pull requests**, not only on
+  main, so a commit that reaches main through a release branch is
+  scanned; OpenSSF Scorecard's SAST check had flagged commits merged
+  into feat/v0.0.33 as unscanned.
 - **An unterminated verbatim tag is refused.** `!<` at end of input with
   no closing `>` was accepted with whatever followed as the tag name
   (`!<<` gave the tag `!<`), and the emitter then wrote it as `!< ""`,
