@@ -15,7 +15,7 @@ use crate::de::ParserConfig;
 use crate::doc_boundary::strip_bom;
 use crate::error::{Error, Result};
 use crate::parser::ParseConfig;
-use crate::path::{QuerySegment, parse_query_path};
+use crate::path::{QuerySegment, parse_query_path, push_key};
 use crate::prelude::*;
 use crate::span_context::SpanTree;
 use crate::value::{Mapping, Number, Value};
@@ -31,6 +31,11 @@ use crate::value::{Mapping, Number, Value};
 /// [`Document::set`] (the path-shaped wrapper); untouched bytes —
 /// indentation, comments, blank lines, sibling entries — are
 /// preserved verbatim.
+///
+/// Every path-taking method reads the grammar described in
+/// [`crate::path`]: `server.port`, `items[0].name`, and, for a key the
+/// grammar would otherwise read as structure, a bracket-quoted segment
+/// such as `labels["app.kubernetes.io/name"]`.
 ///
 /// # Examples
 ///
@@ -1403,10 +1408,11 @@ impl Document {
     ///
     /// - Path not found, or it does not address a mapping entry
     ///   (e.g. it ends in a sequence index).
-    /// - `path` contains a bracket segment that is not a
-    ///   non-negative integer (`servers[web]`) — the shared path
-    ///   parser drops such a segment, which would rename the
-    ///   *parent* key, so `rename_key` refuses it outright.
+    /// - `path` contains a bracket segment that is neither a
+    ///   non-negative integer nor a quoted key (`servers[web]`) — the
+    ///   shared path parser drops such a segment, which would rename
+    ///   the *parent* key, so `rename_key` refuses it outright. A key
+    ///   the grammar would misread is addressed as `servers["web"]`.
     /// - `new_key` is `<<`: the loader treats a `<<` key as a merge
     ///   directive whatever its quote style, so the rename cannot
     ///   round-trip.
@@ -2178,17 +2184,12 @@ impl Document {
         }
 
         // Existing-key upsert, decided on the mapping's own entries
-        // rather than on a composed path: `"{path}.{key}"` means
-        // something else entirely for a key holding `.` or `[`
-        // (`app.io/name`, ubiquitous in Kubernetes labels), and used
-        // to overwrite whatever *nested* entry the composition
-        // happened to resolve.
-        let child_path = if mapping_path.is_empty() {
-            key.to_owned()
-        } else {
-            format!("{mapping_path}.{key}")
-        };
-        let addressable = !key.contains('.') && !key.contains('[');
+        // and addressed through `push_key`, which quotes a key holding
+        // `.`, `[`, `]`, or `*` (`app.io/name`, ubiquitous in Kubernetes
+        // labels) so the composed path resolves to that entry and never
+        // to whatever *nested* entry a plain `"{path}.{key}"` happened
+        // to name.
+        let child_path = child_path_of(mapping_path, key);
         self.ensure_cache();
         let in_mapping = {
             let cache = self.cache.borrow();
@@ -2200,13 +2201,6 @@ impl Document {
             };
             matches!(target, Some(Value::Mapping(m)) if m.get(key).is_some())
         };
-        if in_mapping && !addressable {
-            return Err(Error::Parse(format!(
-                "insert_entry: `{mapping_path}` already has a key `{key}`, and a key containing \
-                 `.` or `[` cannot be addressed by the path syntax to replace its value — \
-                 `remove` the entry and insert it afresh, or splice it with `set`"
-            )));
-        }
         // A key token of its own means the entry is here (an implicit
         // null included); a key present in the typed view *without*
         // one is inherited through a `<<` merge, and the insert
@@ -2542,12 +2536,7 @@ impl Document {
             expected_after_insert_entry(doc_value, mapping_path, key, &expected_child)?
         };
 
-        // Does the mapping already carry this key, and can the path
-        // syntax address it? A key holding `.` or `[` — `app.io/name`,
-        // ubiquitous in Kubernetes labels — composes into a path that
-        // means something else entirely, so it is only safe to *add*
-        // one (which needs no path), never to resolve one.
-        let addressable = !key.contains('.') && !key.contains('[');
+        // Does the mapping already carry this key?
         let in_mapping = {
             let cache = self.cache.borrow();
             let (doc_value, _) = cache.as_ref().expect("validate populated the cache");
@@ -2558,13 +2547,6 @@ impl Document {
             };
             matches!(target, Some(Value::Mapping(m)) if m.get(key).is_some())
         };
-        if in_mapping && !addressable {
-            return Err(Error::Parse(format!(
-                "insert_entry_value: `{mapping_path}` already has a key `{key}`, and a key \
-                 containing `.` or `[` cannot be addressed by the path syntax to replace its \
-                 value — `remove` the entry and insert it afresh, or splice it with `set`"
-            )));
-        }
         // A key present in the typed view but with no *value* span used to be
         // read as inherited through a `<<` merge — nothing to replace, so an
         // explicit entry overrides it. Since #165 that no longer identifies a
@@ -2572,13 +2554,11 @@ impl Document {
         // and appending there produced a second `a` key at `Ok`. The key token
         // separates them. A merged-in key has none, because it is not in this
         // mapping's source at all; an implicit null has one, so the entry is
-        // already here and `set` writes into it.
-        let child_path = if mapping_path.is_empty() {
-            key.to_owned()
-        } else {
-            format!("{mapping_path}.{key}")
-        };
-        let existing = if in_mapping && addressable {
+        // already here and `set` writes into it. The path is spelled by
+        // `push_key`, so a key holding `.`, `[`, `]`, or `*` addresses
+        // itself.
+        let child_path = child_path_of(mapping_path, key);
+        let existing = if in_mapping {
             self.span_at(&child_path).or_else(|| {
                 self.key_span(&child_path)
                     .and_then(|_| self.write_span(&child_path).ok())
@@ -4741,18 +4721,43 @@ fn parse_rename_path(path: &str) -> Result<Vec<QuerySegment>> {
     let mut rest = path;
     while let Some(open) = rest.find('[') {
         let after = &rest[open + 1..];
+        if after.starts_with(['"', '\'']) {
+            // A quoted key segment: skip its body, `\` escapes included,
+            // so a `]` inside the quotes does not end the segment.
+            rest = after_quoted_key(after);
+            continue;
+        }
         let close = after.find(']').unwrap_or(after.len());
         let content = &after[..close];
         if content.parse::<usize>().is_err() {
             return Err(Error::Parse(format!(
-                "rename_key: `{path}` contains the bracket segment `[{content}]`, which is not \
-                 a sequence index — a bracket segment must hold a non-negative integer, and a \
-                 mapping key is addressed with dot notation (`parent.child`)"
+                "rename_key: `{path}` contains the bracket segment `[{content}]`, which is \
+                 neither a sequence index nor a quoted key — a bracket segment must hold a \
+                 non-negative integer or a quoted key (`[\"{content}\"]`), and a plain mapping \
+                 key is addressed with dot notation (`parent.child`)"
             )));
         }
         rest = &after[close..];
     }
     Ok(parse_query_path(path))
+}
+
+/// The remainder of `s` after the quoted key it begins with (its first
+/// byte is the opening quote): everything past the closing quote, `\`
+/// escapes honoured. An unterminated key leaves nothing.
+fn after_quoted_key(s: &str) -> &str {
+    let mut chars = s.char_indices();
+    let Some((_, quote)) = chars.next() else {
+        return "";
+    };
+    while let Some((i, c)) = chars.next() {
+        if c == '\\' {
+            let _ = chars.next();
+        } else if c == quote {
+            return &s[i + c.len_utf8()..];
+        }
+    }
+    ""
 }
 
 /// The first character of `key` outside YAML's printable set
@@ -5593,20 +5598,15 @@ fn first_missing_segment(root: &Value, segments: &[QuerySegment], path: &str) ->
     Ok(segments.len())
 }
 
-/// Render `segments` back into the dotted/bracketed path syntax
-/// (`a.b[2].c`) so an ancestor prefix can be handed to the existing
-/// path-addressed mutators.
+/// Render `segments` back into the path syntax (`a.b[2].c`,
+/// `a["x.y"]`) so an ancestor prefix can be handed to the existing
+/// path-addressed mutators. A key the grammar would read as structure
+/// is re-spelled as the quoted segment it was parsed from.
 fn format_query_prefix(segments: &[QuerySegment]) -> String {
-    use core::fmt::Write as _;
     let mut out = String::new();
     for segment in segments {
         match segment {
-            QuerySegment::Key(key) => {
-                if !out.is_empty() {
-                    out.push('.');
-                }
-                out.push_str(key);
-            }
+            QuerySegment::Key(key) => push_key(&mut out, key),
             QuerySegment::Index(index) => {
                 let _ = write!(out, "[{index}]");
             }
@@ -5614,6 +5614,14 @@ fn format_query_prefix(segments: &[QuerySegment]) -> String {
         }
     }
     out
+}
+
+/// Address the entry `key` of the mapping at `mapping_path`, in the
+/// spelling the path grammar reads back as that key.
+fn child_path_of(mapping_path: &str, key: &str) -> String {
+    let mut path = mapping_path.to_owned();
+    push_key(&mut path, key);
+    path
 }
 
 /// Walk backward from `value_start` past inline whitespace and find

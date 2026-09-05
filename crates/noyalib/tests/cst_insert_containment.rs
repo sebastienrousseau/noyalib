@@ -123,16 +123,19 @@ fn a_dotted_key_adds_a_literal_entry_not_a_nested_edit() {
 }
 
 #[test]
-fn a_dotted_key_that_already_exists_is_refused_not_duplicated() {
-    // The path syntax cannot address `a.b` to replace its value, and
-    // splicing a second entry would give the document duplicate keys.
-    // Same refusal `insert_entry_value` gives.
+fn a_dotted_key_that_already_exists_is_upserted_not_duplicated() {
+    // Before #388 the path syntax could not address `a.b` to replace
+    // its value, so this was refused; a second entry would have given
+    // the document duplicate keys. The key is now addressed as the
+    // quoted segment `m["a.b"]`, and the insert is the same upsert any
+    // other existing key gets. Same for `insert_entry_value`.
     let src = "m:\n  a.b: 1\nz: 9\n";
     let mut doc = parse_document(src).expect("parse");
-    let err = doc
-        .insert_entry("m", "a.b", "2")
-        .expect_err("re-inserting an unaddressable key must be refused");
-    assert_eq!(doc.source(), src, "untouched after refusal ({err})");
+    doc.insert_entry("m", "a.b", "2").expect("upsert");
+    assert_eq!(doc.source(), "m:\n  a.b: 2\nz: 9\n");
+    doc.insert_entry_value("m", "a.b", &Value::from(3_i64))
+        .expect("typed upsert");
+    assert_eq!(doc.source(), "m:\n  a.b: 3\nz: 9\n");
 }
 
 // ── the sequence inserters: growth inside the container ────────────
