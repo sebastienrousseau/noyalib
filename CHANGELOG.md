@@ -7,6 +7,14 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Removed
+
+- **`pkg/docker/Dockerfile.full`.** It built the CLI binaries from
+  monorepo paths that no longer exist, and the `noyafmt` and `noyalib`
+  images it once produced (last built at v0.0.8) are deleted from GHCR.
+  The CLI image is published by noya-cli as
+  `ghcr.io/sebastienrousseau/noya-cli`; the MCP image by noyalib-mcp.
+
 ### Fixed
 
 - **CodeQL runs on `feat/**` pushes and pull requests**, not only on

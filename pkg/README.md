@@ -24,7 +24,7 @@ Per-target packaging artefacts.
 | `windows/scoop/` | Windows Scoop | `noyalib.json` | `scoop-bump` job pushes to `sebastienrousseau/scoop-bucket` |
 | `snap/` | Snap Store | `snapcraft.yaml` | Future v0.1.x — scaffold only for now |
 | `flatpak/` | Flathub | `io.noyalib.noyafmt.yaml` | Future v0.1.x — scaffold only for now |
-| [`docker/`](docker/) | GHCR container images | `Dockerfile` (distroless), `Dockerfile.full`, `Dockerfile.mcp` | `container-publish` job, multi-arch via buildx |
+| container images | published by the crates that ship binaries | `ghcr.io/sebastienrousseau/noya-cli` from [noya-cli](https://github.com/sebastienrousseau/noya-cli) (`pkg/docker/Dockerfile`), `ghcr.io/sebastienrousseau/noyalib-mcp` from [noyalib-mcp](https://github.com/sebastienrousseau/noyalib-mcp) | each repo's `container-publish` job |
 | `vscode/` | VS Code Marketplace + Open VSX | `.vsix` extension that bundles `noyalib-lsp` | `vscode-extension` job |
 | `npm-mcp-wrapper/` | npm | `noyalib-mcp` package — `npx`-runnable wrapper that bootstraps the binary from a GitHub Release on first run | `npm-publish` job |
 | [`PUBLISH.md`](PUBLISH.md) | — | Per-channel runbook: bootstrap, secrets, first publish, ongoing maintenance for every distribution channel above | — |
