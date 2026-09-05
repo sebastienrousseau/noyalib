@@ -70,7 +70,7 @@ binding even when not restated in a section.
 | Examples surface coverage | 56 examples | every public module | 5 modules uncovered |
 | Benchmark coverage | 10 benches | every hot path | 4 paths uncovered |
 | Release pipeline | crates.io + sigstore | crates.io + npm + VS Code + 14 binary targets + .deb + .rpm + .msi + Homebrew + AUR + container | major rewrite |
-| Repo layout | flat | `crates/` + `pkg/` + `doc/` + `ci/` + `complete/` | restructure |
+| Repo layout | flat | `crates/` + `pkg/` + `docs/` + `ci/` + `complete/` | restructure |
 
 ## Phase 0 — Pre-flight
 
@@ -114,7 +114,7 @@ noyalib/
 │   ├── noyalib-mcp/          # already exists, moved under crates/
 │   ├── noyalib-wasm/         # already exists, moved under crates/
 │   └── xtask/                # cargo xtask runner (new)
-├── doc/                      # documentation (new)
+├── docs/                      # documentation (new)
 │   ├── noyafmt.1, noyafmt.1.adoc
 │   ├── noyavalidate.1, noyavalidate.1.adoc
 │   ├── USER-GUIDE.md, MIGRATION-FROM-SERDE-YAML.md, ARCHITECTURE.md
@@ -158,7 +158,7 @@ git mv crates/noyalib/src/bin/*.rs crates/noya-cli/src/bin/
 rmdir crates/noyalib/src/bin
 
 # 4. Move design docs
-git mv docs/design doc/design
+git mv docs/design docs/design
 
 # 5. Edit workspace Cargo.toml + crate manifests (members, paths, [[example]] paths,
 #    workspace inheritance via [workspace.package]/[workspace.dependencies])
@@ -185,7 +185,7 @@ cargo deny check
 > workspace. The edition, floor and member list below are the v0.0.1-era
 > values — the live values are edition 2024, `rust-version = "1.86.0"`,
 > `members = ["crates/noyalib"]`. See the root `Cargo.toml` and
-> [`doc/POLICIES.md`](doc/POLICIES.md) §1, which is the source of truth
+> [`docs/POLICIES.md`](docs/POLICIES.md) §1, which is the source of truth
 > for the MSRV.
 
 ```toml
@@ -292,7 +292,7 @@ A short shim `ci/extract-assets.sh` finds and copies them to a stable location.
 
 ```bash
 cargo xtask completions   # writes complete/*.{bash,fish,zsh,ps1}
-cargo xtask manpages      # writes doc/*.1
+cargo xtask manpages      # writes docs/*.1
 cargo xtask sbom          # writes SBOM.txt
 cargo xtask notice        # writes NOTICE
 ```
@@ -307,7 +307,7 @@ Both entry points call into the same `noya_cli::codegen::*` functions, so output
 
 ### 2.3 Asciidoc man pages
 
-`doc/noyafmt.1.adoc` (hand-written prose) + the clap-derived flag dump (auto-generated) → `doc/noyafmt.1` (committed). Generated via `asciidoctor` invoked from `cargo xtask manpages`.
+`docs/noyafmt.1.adoc` (hand-written prose) + the clap-derived flag dump (auto-generated) → `docs/noyafmt.1` (committed). Generated via `asciidoctor` invoked from `cargo xtask manpages`.
 
 **Phase 2 deliverables:** 1 PR. ~6 new files. **Effort: 1.5 days.**
 
@@ -465,7 +465,7 @@ on:
    done
    ```
 7. **Verify** binary type via `file`.
-8. **Stage tarball** (or zip on Windows) including `README.md`, `CHANGELOG.md`, `LICENSE-*`, `COPYING`, `doc/*.1`, `complete/*`, `NOTICE`.
+8. **Stage tarball** (or zip on Windows) including `README.md`, `CHANGELOG.md`, `LICENSE-*`, `COPYING`, `docs/*.1`, `complete/*`, `NOTICE`.
 9. **Generate SHA256 + SHA512** sidecars.
 10. **Build .deb** via `cargo deb --target $TARGET --no-build`.
 11. **Build .rpm** via `cargo generate-rpm` (x86_64-gnu + aarch64-gnu).
@@ -560,10 +560,10 @@ Documented in `pkg/README.md` for new maintainers.
 
 | File | Content | Effort |
 |---|---|---|
-| `doc/USER-GUIDE.md` | Long-form tutorial complementing README. | 1 d |
-| `doc/MIGRATION-FROM-SERDE-YAML.md` | Name-by-name mapping. | 0.5 d |
-| `doc/ARCHITECTURE.md` | Parser → AST → CST → output. | 1 d |
-| `doc/noyafmt.1.adoc`, `doc/noyavalidate.1.adoc` | Asciidoc man pages. | 1 d |
+| `docs/USER-GUIDE.md` | Long-form tutorial complementing README. | 1 d |
+| `docs/MIGRATION-FROM-SERDE-YAML.md` | Name-by-name mapping. | 0.5 d |
+| `docs/ARCHITECTURE.md` | Parser → AST → CST → output. | 1 d |
+| `docs/noyafmt.1.adoc`, `docs/noyavalidate.1.adoc` | Asciidoc man pages. | 1 d |
 | `pkg/VERIFY.md` | cosign + SLSA + vendoring cookbook. | 0.5 d |
 | `SECURITY.md` extension | Verification commands. | 0.25 d |
 | `CONTRIBUTING.md` extension | "How to add a new packaging target". | 0.5 d |
@@ -630,7 +630,7 @@ for crate in crates/*/; do
 done
 ```
 
-CI job `msrv-per-crate` runs this on every PR. It reads `rust-version` from each manifest rather than hard-coding a number, so it catches drift if e.g. `noyalib-lsp` adopts a feature requiring a newer rustc than the declared floor — which would silently break distros pinned to the lower rustc. The current floor is **1.86.0** across all five crates (see [`doc/POLICIES.md`](doc/POLICIES.md) §1).
+CI job `msrv-per-crate` runs this on every PR. It reads `rust-version` from each manifest rather than hard-coding a number, so it catches drift if e.g. `noyalib-lsp` adopts a feature requiring a newer rustc than the declared floor — which would silently break distros pinned to the lower rustc. The current floor is **1.86.0** across all five crates (see [`docs/POLICIES.md`](docs/POLICIES.md) §1).
 
 ### 7.6 Intra-doc link strictness
 
@@ -729,7 +729,7 @@ After every phase, the following must be true:
 | 15 | 7.5 | `msrv-per-crate.sh` + CI job | 1 |
 | 16 | 7.6 | strengthened RUSTDOCFLAGS in docs job | 1 |
 | 17 | 7.7 | `cargo about` + `NOTICE` shipping | 1 |
-| 18 | 6 | doc/USER-GUIDE.md, doc/MIGRATION-FROM-SERDE-YAML.md, doc/ARCHITECTURE.md | 3 |
+| 18 | 6 | docs/USER-GUIDE.md, docs/MIGRATION-FROM-SERDE-YAML.md, docs/ARCHITECTURE.md | 3 |
 | 19 | 6 | man-page asciidoc sources | 1 |
 | 20 | 5 | distro PRs (per distro, ad-hoc) | many |
 

@@ -33,11 +33,13 @@ pub(crate) struct ParsedDocument {
 }
 
 /// Parse `input` once for `Value` + `SpanTree` and once for the green
-/// tree. Returns both — the caller wraps them in a `Document`.
+/// tree, under `cfg`. Returns both — the caller wraps them in a
+/// `Document`, which keeps `cfg` so every later re-parse of the same
+/// source (typed-cache refresh, `validate`, the edit safety net) runs
+/// under the limits the document was opened with.
 #[cfg(feature = "std")]
-pub(crate) fn parse_full(input: &str) -> Result<ParsedDocument> {
-    let cfg = ParseConfig::default();
-    let (value, span_tree) = crate::parser::parse_one(input, &cfg)?;
+pub(crate) fn parse_full(input: &str, cfg: &ParseConfig) -> Result<ParsedDocument> {
+    let (value, span_tree) = crate::parser::parse_one(input, cfg)?;
     let source: Arc<str> = Arc::from(input);
     let green = build_green_tree(&source)?;
     Ok(ParsedDocument {

@@ -95,6 +95,47 @@ jobs:
     # takes it via `uses: sebastienrousseau/noyalib/.github/workflows/shared-cargo-deny.yml@<sha>`.
     uses: ./.github/workflows/shared-cargo-deny.yml
 
+  actionlint:
+    # Dogfooded from shared-actionlint.yml: lints every workflow file
+    # (expression typos, shellcheck in run blocks) — the class of
+    # mistake hand-edited workflows accumulate.
+    uses: ./.github/workflows/shared-actionlint.yml
+
+  gate-scripts-contract:
+    # The gate scripts are load-bearing; a silent bug weakens every
+    # release. scripts/tests/run.sh exercises each against known-good
+    # and known-bad fixtures — the same contract-test shape as
+    # build-script-contract, applied to the release gates.
+    name: Gate-scripts contract
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: ./scripts/tests/run.sh
+
+  size-gate:
+    # Declared size budgets for shipped artefacts (scripts/
+    # size-budgets.toml): the coverage-gate pattern applied to bytes.
+    # Intentional growth raises the ceiling in the same commit.
+    name: Size gate (declared budgets)
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # master
+        with:
+          toolchain: stable
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+        with:
+          key: shipped-size
+      - run: ./scripts/size-monitor.sh
+
+  docs-lint:
+    # Dogfooded from shared-docs-lint.yml: markdownlint + codespell
+    # over the caller's .markdownlint.yaml / .codespellrc. Part of
+    # the Phase-1 layout normalization (docs/ECOSYSTEM.md).
+    uses: ./.github/workflows/shared-docs-lint.yml
+
   fuzz-diff:
     # Dogfooded from shared-fuzz-diff.yml. Runs the caller's
     # `fuzz_diff` fuzz target for 10 seconds per push.
@@ -441,7 +482,7 @@ jobs:
   # artefact set from the default-feature build cannot serve as a
   # passing fingerprint for the feature-on build. Same
   # cache-poisoning guard rule as `no-std` (v0.0.11 CI-integrity
-  # cut). See doc/adr/0004-lossless-u64-integers.md.
+  # cut). See docs/adr/0004-lossless-u64-integers.md.
   #
   # Runs 2 legs (a 3rd `minimal + lossless-u64` leg was considered
   # but drops `strict-deserialise` which several tests already

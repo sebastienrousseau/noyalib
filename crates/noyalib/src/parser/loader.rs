@@ -267,6 +267,13 @@ enum Frame {
         /// surface as [`Value::Tagged`] on the deserialise return
         /// path. See [`crate::de::Deserializer::preserve_tags`].
         tag: Option<(String, String)>,
+        /// `true` when the start token is `[` — a flow sequence's
+        /// end span comes from its `]` token; a block sequence has
+        /// no end token, so its span is sealed at its last item
+        /// (#375: the SequenceEnd event carries the *next* token's
+        /// span for block shapes, which produced indicator-only
+        /// spans for value-position sequences).
+        flow: bool,
     },
     MappingKey {
         map: Mapping,
@@ -606,6 +613,7 @@ impl<'a> Loader<'a> {
                     start: span.start,
                     anchor,
                     tag,
+                    flow: starts_with_flow_bracket(input, span.start),
                 });
             }
             Event::SequenceEnd { span } => {
@@ -616,13 +624,24 @@ impl<'a> Loader<'a> {
                     start,
                     anchor,
                     tag,
+                    flow,
                 }) = self.stack.pop()
                 {
                     let inner = Value::Sequence(items);
                     let v = wrap_with_tag(inner, tag.as_ref(), self.config.tag_registry.as_deref());
+                    // #375: a block sequence has no end token — the
+                    // event's span belongs to whatever token follows
+                    // the dedent — so its span is sealed at its last
+                    // item. Flow keeps the `]` from the event; an
+                    // empty block sequence keeps the event span.
+                    let end = if flow {
+                        span.end
+                    } else {
+                        span_items.last().map_or(span.end, span_tree_end).max(start)
+                    };
                     let st = SpanTree::Sequence {
                         start,
-                        end: span.end,
+                        end,
                         items: span_items,
                     };
                     if let Some(name) = anchor {
@@ -1625,6 +1644,47 @@ fn span_tree_start(span: &SpanTree) -> usize {
         | SpanTree::Sequence { start: s, .. }
         | SpanTree::Mapping { start: s, .. } => *s,
         SpanTree::Alias(inner) => span_tree_start(inner),
+    }
+}
+
+/// `true` when the node beginning at `start` opens with `[` once
+/// its properties are skipped. Since v0.0.30 a node's event span
+/// starts at its `&anchor`/`!tag` properties, so flow detection has
+/// to scan past them: property tokens run to whitespace (verbatim
+/// tags to `>`), and a plain scalar can never begin with `&` or
+/// `!`, so the scan is unambiguous.
+#[cfg(feature = "std")]
+fn starts_with_flow_bracket(input: &str, start: usize) -> bool {
+    let bytes = input.as_bytes();
+    let mut i = start;
+    while i < bytes.len() {
+        match bytes[i] {
+            b'!' if bytes.get(i + 1) == Some(&b'<') => {
+                while i < bytes.len() && bytes[i] != b'>' {
+                    i += 1;
+                }
+                i += 1;
+            }
+            b'&' | b'!' => {
+                while i < bytes.len() && !bytes[i].is_ascii_whitespace() {
+                    i += 1;
+                }
+            }
+            b if b.is_ascii_whitespace() => i += 1,
+            b => return b == b'[',
+        }
+    }
+    false
+}
+
+/// Byte offset where a span tree's node ends.
+#[cfg(feature = "std")]
+fn span_tree_end(span: &SpanTree) -> usize {
+    match span {
+        SpanTree::Leaf(_, e)
+        | SpanTree::Sequence { end: e, .. }
+        | SpanTree::Mapping { end: e, .. } => *e,
+        SpanTree::Alias(inner) => span_tree_end(inner),
     }
 }
 

@@ -1,0 +1,63 @@
+# SPDX-FileCopyrightText: 2026 Noyalib
+# SPDX-License-Identifier: MIT OR Apache-2.0
+
+name: shared / Docs lint
+
+# Reusable documentation-hygiene gate: markdownlint (structural rules
+# from the caller's .markdownlint.yaml) plus codespell (config from
+# the caller's .codespellrc). Cheap (<1 min), runs per push, and keeps
+# the family's Markdown from drifting per repo.
+#
+# The caller ships `.markdownlint.yaml` and `.codespellrc` at its
+# root — both configs are part of the canonical family layout
+# (docs/ECOSYSTEM.md, Phase 1).
+#
+# Consumers pin by SHA:
+#
+#   jobs:
+#     docs-lint:
+#       uses: sebastienrousseau/noyalib/.github/workflows/shared-docs-lint.yml@<sha>
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: markdownlint + codespell
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: markdownlint
+        uses: DavidAnson/markdownlint-cli2-action@21c1be1b93ad9ed58fa840aacc3f279cde2a72ff # v24.2.0
+        with:
+          globs: |
+            **/*.md
+            !target/**
+            !fuzz/target/**
+            !LICENSES/**
+            !crates/*/tests/yaml-test-suite/**
+            !docs/SUMMARY.md
+      - name: codespell
+        uses: codespell-project/actions-codespell@8f01853be192eb0f849a5c7d721450e7a467c579 # v2.2
+      - name: Family layout contract
+        # The canonical layout every family repo carries (Phase 1;
+        # documented in the core's docs/ECOSYSTEM.md §Family layout).
+        # A repo that drops one of these files fails its own CI, so
+        # the layout cannot silently drift per repo.
+        run: |
+          set -euo pipefail
+          missing=""
+          for f in README.md CHANGELOG.md SECURITY.md DEVELOPMENT.md \
+                   CONTRIBUTING.md REUSE.toml .editorconfig \
+                   .markdownlint.yaml .codespellrc docs; do
+            [ -e "$f" ] || missing="$missing $f"
+          done
+          if [ -n "$missing" ]; then
+            echo "::error::family layout contract violated — missing:$missing"
+            exit 1
+          fi
+          echo "family layout contract satisfied"

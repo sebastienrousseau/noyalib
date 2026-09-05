@@ -9,7 +9,7 @@ Thanks for using noyalib. Here is where to go for each kind of help.
   is the best first stop and keeps answers searchable for others.
 - **Docs** — [`README.md`](README.md),
   [`GETTING_STARTED.md`](GETTING_STARTED.md),
-  [`doc/USER-GUIDE.md`](doc/USER-GUIDE.md), the
+  [`docs/USER-GUIDE.md`](docs/USER-GUIDE.md), the
   [`GLOSSARY.md`](GLOSSARY.md), and the API docs on
   [docs.rs/noyalib](https://docs.rs/noyalib).
 

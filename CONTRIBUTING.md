@@ -7,7 +7,7 @@ Contributions are welcome. This guide covers the essentials.
 - **Rust 1.86.0+** for the core `noyalib` crate
 - Same **1.86.0** floor for `noya-cli` and `noyalib-lsp`
   (their dep trees include edition-2024 transitives — see
-  [`doc/diagrams/dependency-graph.md`](./doc/diagrams/dependency-graph.md))
+  [`docs/diagrams/dependency-graph.md`](./docs/diagrams/dependency-graph.md))
 - Git with [commit signing](https://docs.github.com/en/authentication/managing-commit-signature-verification/signing-commits) configured
 
 ## Getting Started
@@ -104,13 +104,13 @@ merged. Set up GPG or SSH signing per the
 - CI must be green: clippy `-D warnings`, all tests, formatter,
   REUSE compliance, supply-chain audit, MSRV per-crate, Miri
   focused pass, coverage gate, fuzz smoke. See
-  [`doc/TESTING.md`](./doc/TESTING.md) for the full layer breakdown.
+  [`docs/TESTING.md`](./docs/TESTING.md) for the full layer breakdown.
 - One approval is required to merge.
 
 ## Code standards
 
 - `#![forbid(unsafe_code)]` workspace-wide. **No `unsafe` blocks,
-  ever.** See [ADR 0003](./doc/adr/0003-zero-unsafe-policy.md).
+  ever.** See [ADR 0003](./docs/adr/0003-zero-unsafe-policy.md).
 - All public items require documentation (`#![warn(missing_docs)]`).
 - Public docstring rule: lead with one-line summary; include
   `# Examples` with working code; include `# Errors` for fallible
@@ -127,8 +127,8 @@ merged. Set up GPG or SSH signing per the
 
 For changes that touch the parse output shape, the public API
 surface, the dependency floor, or core invariants like the unsafe
-policy: write an [ADR](./doc/adr/) before opening the PR. The
-template lives at [`doc/adr/TEMPLATE.md`](./doc/adr/TEMPLATE.md).
+policy: write an [ADR](./docs/adr/) before opening the PR. The
+template lives at [`docs/adr/TEMPLATE.md`](./docs/adr/TEMPLATE.md).
 
 The bar is "would I want a future contributor to read this before
 proposing the opposite?" — if yes, ADR. If no, commit message

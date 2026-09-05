@@ -4,7 +4,7 @@
 //! Panic-free property tests.
 //!
 //! Formalises the contract from
-//! [`POLICIES.md` §8 — Panic policy](../../../doc/POLICIES.md#8-panic-policy)
+//! [`POLICIES.md` §8 — Panic policy](../../../docs/POLICIES.md#8-panic-policy)
 //! that the public `from_*` family **never panics on input**,
 //! regardless of how malformed. Every entry point handles
 //! malformed input by returning `Err(Error)`, never by

@@ -152,13 +152,13 @@ jobs:
           # checksum line in SHA256SUMS.txt / SHA512SUMS.txt.
           : > SHA256SUMS.txt
           : > SHA512SUMS.txt
-          for f in *.crate; do
+          for f in ./*.crate; do
             sha256sum "$f" >> SHA256SUMS.txt
             sha512sum "$f" >> SHA512SUMS.txt
           done
           # Surface the list of crate files for downstream cosign /
           # upload steps that want to reference each one explicitly.
-          ls *.crate > CRATE_FILES.txt
+          ls ./*.crate > CRATE_FILES.txt
           echo "CRATE_COUNT=$(wc -l < CRATE_FILES.txt)" >> "$GITHUB_ENV"
 
       # ── SLSA L3 build provenance ───────────────────────────────────
@@ -364,15 +364,17 @@ jobs:
           else
             RANGE="${TAG}"
           fi
-          echo "## What's Changed" > RELEASE_NOTES.md
-          echo "" >> RELEASE_NOTES.md
-          git log "$RANGE" --pretty=format:"- %s (%h)" --no-merges >> RELEASE_NOTES.md
-          echo "" >> RELEASE_NOTES.md
-          echo "" >> RELEASE_NOTES.md
-          echo "## Checksums" >> RELEASE_NOTES.md
-          echo '```' >> RELEASE_NOTES.md
-          cat artifacts/target/package/SHA256SUMS.txt >> RELEASE_NOTES.md
-          echo '```' >> RELEASE_NOTES.md
+          {
+            echo "## What's Changed"
+            echo ""
+            git log "$RANGE" --pretty=format:"- %s (%h)" --no-merges
+            echo ""
+            echo ""
+            echo "## Checksums"
+            echo '```'
+            cat artifacts/target/package/SHA256SUMS.txt
+            echo '```'
+          } > RELEASE_NOTES.md
 
       - name: Create GitHub Release
         env:
