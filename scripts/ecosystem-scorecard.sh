@@ -600,7 +600,14 @@ bold "── ecosystem"
 # exactly, and that pin equals the core's own version. This is the single
 # invariant that makes a five-crate release atomic.
 CORE_VER="${REPO_VERSION[noyalib]:-}"
-if [ -n "$CORE_VER" ]; then
+# A release branch carries the next version before it publishes, and the
+# satellites cannot pin a version that is not on crates.io. Until the
+# core's tag exists the invariant is pending, not broken, so it scores
+# N/A (rule 2: no credit, no blame, for what cannot be measured).
+if [ -n "$CORE_VER" ] && ! git -C "$ECOSYSTEM_ROOT/noyalib" tag -l "v$CORE_VER" 2>/dev/null | grep -q .; then
+  record ecosystem version_lockstep integrity 5 "core $CORE_VER not tagged yet" NA \
+    "git tag -l v$CORE_VER in noyalib (pending release; satellites pin only published versions)"
+elif [ -n "$CORE_VER" ]; then
   matched=0; total=0
   detail=""
   for r in noya-cli noyalib-lsp noyalib-mcp noyalib-wasm noyalib-serde-yaml; do

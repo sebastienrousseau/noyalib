@@ -48,25 +48,18 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           path: noyalib
+          fetch-tags: true # the lockstep probe asks whether v<core version> exists
 
-      # A release branch carries the next version before it publishes,
-      # and the satellites carry the matching pin on a branch of the same
-      # name (the lockstep contract). Measure that branch where it
-      # exists so the version_lockstep probe compares like with like;
-      # fall back to main.
+      # Satellites are measured on main. A satellite's release branch
+      # carries a [patch.crates-io] git source until the core publishes,
+      # which cargo-deny forbids by design; and the harness scores the
+      # lockstep probe N/A while the core version is untagged, so main is
+      # both the stable and the honest thing to measure.
       - name: Check out the satellites
-        env:
-          CORE_REF: ${{ github.head_ref || github.ref_name }}
         run: |
           set -euo pipefail
           for repo in noya-cli noyalib-lsp noyalib-mcp noyalib-wasm noyalib-serde-yaml; do
-            url="https://github.com/sebastienrousseau/${repo}.git"
-            ref=main
-            if git ls-remote --exit-code --heads "$url" "$CORE_REF" >/dev/null 2>&1; then
-              ref="$CORE_REF"
-            fi
-            echo "${repo}: ${ref}"
-            git clone --depth 1 --branch "$ref" "$url" "${repo}"
+            git clone --depth 1 "https://github.com/sebastienrousseau/${repo}.git" "${repo}"
           done
 
       - name: Install Rust
@@ -90,7 +83,12 @@ jobs:
       # keeps the measured fraction of the rubric honest.
       - uses: taiki-e/install-action@742a3317eac7bd62f91cd888b4eead5e784ba833 # v2.87.1
         with:
-          tool: cargo-deny,cargo-vet,cargo-audit
+          tool: cargo-deny,cargo-audit
+      # Same install as shared-cargo-vet.yml: the prebuilt cargo-vet is
+      # older than the audit-file format the family uses and fails to
+      # parse imports.lock, scoring every repo 0 on vet_audited.
+      - name: Install cargo-vet
+        run: cargo install --locked cargo-vet
       - name: Install reuse
         run: pipx install reuse
 
