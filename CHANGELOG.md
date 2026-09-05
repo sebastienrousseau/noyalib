@@ -43,13 +43,14 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   writes `|v: Value|` and gets every variant, number kind, tag, and
   nested collection from one generator. Recursion is bounded by the
   remaining entropy; NaN is generated and left to the harness.
-- **Miri covers the alloc-only build per PR and Tree Borrows weekly.**
-  The per-PR job runs Stacked Borrows on the default and the
-  `--no-default-features` builds; the weekly sweep adds Tree Borrows on
-  the focused suite and `-Zmiri-symbolic-alignment-check` on the simd
-  module, each too slow for a PR (together they exceeded two hours on
-  simd alone). `scripts/miri.sh` takes `MIRI_MODEL`, `MIRI_FEATURES`,
-  and `MIRI_ALIGN`.
+- **Miri runs Tree Borrows and the alignment check weekly.** The
+  per-PR job keeps Stacked Borrows on the default build; the weekly
+  sweep adds Tree Borrows on the focused suite and
+  `-Zmiri-symbolic-alignment-check` on the simd module, each too slow
+  for a PR (together they exceeded two hours on simd alone).
+  `scripts/miri.sh` takes `MIRI_MODEL`, `MIRI_FEATURES`, and
+  `MIRI_ALIGN`. The alloc-only build is not a Miri leg: the library's
+  unit tests are std-only, so that shape is covered by `fuzz-nostd`.
 
 ## [v0.0.33] - 2026-09-05
 

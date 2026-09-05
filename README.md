@@ -1450,7 +1450,6 @@ make miri-bigendian    # focused suite simulated on mips64 big-endian
 MIRI_TARGET=mips64-unknown-linux-gnuabi64 ./scripts/miri.sh
 MIRI_MODEL=tree ./scripts/miri.sh    # Tree Borrows (weekly in CI)
 MIRI_ALIGN=1 ./scripts/miri.sh simd  # symbolic alignment check on the SWAR module (weekly in CI)
-MIRI_FEATURES=--no-default-features ./scripts/miri.sh   # the alloc-only code shape
 ```
 
 The CI matrix runs the focused suite on every PR (`miri-focused`)

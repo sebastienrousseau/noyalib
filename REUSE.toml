@@ -134,6 +134,7 @@ path = [
     "fuzz-nostd/Cargo.toml",
     "fuzz-nostd/Cargo.lock",
     "fuzz-nostd/corpus/**",
+    "fuzz-nostd/regressions/**",
 ]
 precedence = "aggregate"
 SPDX-FileCopyrightText = "2026 Noyalib"
