@@ -349,15 +349,39 @@ their READMEs above.
 
 ## One-minute migration from `serde_yaml` (and the wider ecosystem)
 
-Most call sites are mechanical to update. The full guide —
-covering `serde_yaml` 0.9 plus every actively-published fork
-and adjacent crate — is
+The one-minute version is a package rename. Change **zero source
+lines**:
+
+```toml
+[dependencies]
+serde_yaml = { package = "noyalib-serde-yaml", version = "=0.0.33" }
+```
+
+[`noyalib-serde-yaml`](https://github.com/sebastienrousseau/noyalib-serde-yaml)
+re-exports noyalib's `serde_yaml` 0.9 shim and releases in lockstep
+with the core, so the exact pin is the compatibility contract. The
+shim is **behavioural** since v0.0.29: `<<` stays a literal key,
+`0123` stays a string, `u64::MAX` keeps precision, alias bombs fail
+with upstream's `repetition limit exceeded`, and the pinned error
+classes carry libyaml's phrasing and locations, verified by an
+18-case contract suite captured live from `serde_yaml 0.9.34`.
+Every type is noyalib-native; there is no transitive dependency on
+the archived upstream. The same shim is available without the
+rename: depend on `noyalib` with `features = ["compat-serde-yaml"]`
+and replace `use serde_yaml` with `use noyalib::compat::serde_yaml`.
+
+### Moving to the native API
+
+Take this route when you want what the shim does not expose:
+`from_str_strict`, `Spanned<T>`, the `Tagged` variant, and the
+lossless CST. Most call sites are mechanical to update. The full
+guide, covering `serde_yaml` 0.9 plus every actively published fork
+and adjacent crate, is
 [`docs/MIGRATION-FROM-SERDE-YAML.md`](docs/MIGRATION-FROM-SERDE-YAML.md).
-The headline mapping for `serde_yaml` 0.9 is below; the same
-guide has per-crate sections for `serde_yml`, `yaml_serde`,
-`serde-yaml-ng`, `serde-norway`, `serde-yaml-bw`,
-`serde-saphyr`, and `yaml-spanned` with verified function
-tables for each.
+The headline mapping for `serde_yaml` 0.9 is below; the same guide
+has per-crate sections for `serde_yml`, `yaml_serde`,
+`serde-yaml-ng`, `serde-norway`, `serde-yaml-bw`, `serde-saphyr`,
+and `yaml-spanned` with verified function tables for each.
 
 ```diff
 -[dependencies]
@@ -392,38 +416,20 @@ tables for each.
 | (n/a) | `noyalib::Spanned<T>` — source-location wrapper |
 | (n/a) | `noyalib::cst::Document` — lossless byte-faithful edits |
 
-If your call sites can't change at all, rename the package in
-`Cargo.toml` and change **zero source lines**:
-
-```toml
-serde_yaml = { package = "noyalib-serde-yaml", version = "=0.0.33" }
-```
-
-or depend on noyalib directly with
-`features = ["compat-serde-yaml"]` and replace `use serde_yaml`
-with `use noyalib::compat::serde_yaml`. Either way the shim is
-**behavioural** since v0.0.29: `<<` stays a literal key, `0123`
-stays a string, `u64::MAX` keeps precision, alias bombs fail with
-upstream's `repetition limit exceeded`, and the pinned error
-classes carry libyaml's phrasing and locations — verified by an
-18-case contract suite captured live from `serde_yaml 0.9.34`.
-Every type is noyalib-native; no transitive dep on the archived
-upstream.
-
 ### Coming from a different YAML crate?
 
 Each crate has a standalone migration guide with TL;DR diff,
 function-mapping table, behavioural notes, and a checklist.
-Crates.io state verified **2026-05-08**:
+Crates.io state verified **2026-09-05**:
 
 | Crate | Version | Drop-in for `serde_yaml`? | Migration guide |
 |---|---|---|---|
-| [`serde_yml`](https://crates.io/crates/serde_yml) | `0.0.12` (archived 2025-09) | mostly | [`MIGRATION-FROM-SERDE-YML.md`](docs/MIGRATION-FROM-SERDE-YML.md) |
-| [`yaml_serde`](https://crates.io/crates/yaml_serde) | `0.10.4` | yes (Cargo `package =` rename) | [`MIGRATION-FROM-YAML-SERDE.md`](docs/MIGRATION-FROM-YAML-SERDE.md) |
+| [`serde_yml`](https://crates.io/crates/serde_yml) | `0.0.13` (repo archived) | mostly | [`MIGRATION-FROM-SERDE-YML.md`](docs/MIGRATION-FROM-SERDE-YML.md) |
+| [`yaml_serde`](https://crates.io/crates/yaml_serde) | `0.10.7` | yes (Cargo `package =` rename) | [`MIGRATION-FROM-YAML-SERDE.md`](docs/MIGRATION-FROM-YAML-SERDE.md) |
 | [`serde-yaml-ng`](https://crates.io/crates/serde-yaml-ng) | `0.10.0` | yes | [`MIGRATION-FROM-SERDE-YAML-NG.md`](docs/MIGRATION-FROM-SERDE-YAML-NG.md) |
 | [`serde-norway`](https://crates.io/crates/serde-norway) | `0.9.42` | yes | [`MIGRATION-FROM-SERDE-NORWAY.md`](docs/MIGRATION-FROM-SERDE-NORWAY.md) |
-| [`serde-yaml-bw`](https://crates.io/crates/serde-yaml-bw) | `2.5.6` | **no** (breaking 2.x; 8-variant `Value` with `Alias`) | [`MIGRATION-FROM-SERDE-YAML-BW.md`](docs/MIGRATION-FROM-SERDE-YAML-BW.md) |
-| [`serde-saphyr`](https://crates.io/crates/serde-saphyr) | `0.0.27` | **no** (no `Value` DOM, streaming-only) | [`MIGRATION-FROM-SERDE-SAPHYR.md`](docs/MIGRATION-FROM-SERDE-SAPHYR.md) |
+| [`serde-yaml-bw`](https://crates.io/crates/serde-yaml-bw) | `2.5.7` | **no** (breaking 2.x; 8-variant `Value` with `Alias`) | [`MIGRATION-FROM-SERDE-YAML-BW.md`](docs/MIGRATION-FROM-SERDE-YAML-BW.md) |
+| [`serde-saphyr`](https://crates.io/crates/serde-saphyr) | `1.2.0` | **no** (no `Value` DOM, streaming-only) | [`MIGRATION-FROM-SERDE-SAPHYR.md`](docs/MIGRATION-FROM-SERDE-SAPHYR.md) |
 | [`yaml-spanned`](https://crates.io/crates/yaml-spanned) | `0.0.3` | **no** (parser-only, no `to_string`) | [`MIGRATION-FROM-YAML-SPANNED.md`](docs/MIGRATION-FROM-YAML-SPANNED.md) |
 
 The umbrella index is
