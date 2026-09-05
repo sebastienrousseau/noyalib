@@ -7,6 +7,22 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+## [v0.0.34] - 2026-09-05
+
+### Added (family)
+
+- **The official YAML test suite runs through every companion crate's own
+  entry point.** A shared `yaml-test-suite` workflow checks the vendored
+  suite out at the pinned core commit and runs each satellite's
+  `tests/yaml_test_suite.rs`: the CLI's exit code, the language server's
+  diagnostics, the MCP tool result, the `serde_yaml` shim and the
+  WebAssembly JSON model. Its first run found and fixed two defects (a
+  false "more than one document" error in `noyalib-lsp`, an implicit-null
+  value reported as missing by `noyalib-mcp`).
+- **Dependabot bumps folded in:** serde-saphyr 1.2.0, sval 2.22.0,
+  smallvec 1.16.0, jsonschema 0.52.1, indexmap 2.14.1 and the pinned
+  actions groups, with `cargo-vet` exemptions regenerated.
+
 ### Changed
 
 - **Two regression gates run on every push in every family repo.** The
@@ -32,6 +48,11 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Fixed
 
+- **The Dependabot configuration was broken in two ways:** the docker
+  block's trailer had survived the Dockerfile removal and, as a duplicate
+  key, relabelled every github-actions PR `deps(docker)`; the npm block
+  pointed at `pkg/npm-mcp-wrapper`, which lives in `noyalib-mcp` now, so
+  every Dependabot run errored. Both removed.
 - **CodeQL runs on `feat/**` pushes and pull requests**, not only on
   main, so a commit that reaches main through a release branch is
   scanned; OpenSSF Scorecard's SAST check had flagged commits merged
