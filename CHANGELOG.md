@@ -7,6 +7,17 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Fixed
+
+- **A literal block scalar with an explicit indentation indicator
+  accepts a leading line of spaces only** (#384). The rule that a
+  leading empty line must not hold more spaces than the content
+  indentation belongs to auto-detection (YAML 1.2.2 §8.1.1.1); with an
+  indicator the level is given, so the line's surplus spaces are
+  content, as PyYAML reads them. The serializer writes exactly this
+  shape for a string that begins with a space-only line (`" \n"`), and
+  its own parser refused it.
+
 ## [v0.0.32] - 2026-09-03
 
 ### Fixed
