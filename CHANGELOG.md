@@ -7,6 +7,29 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Fixed
+
+- **Block scalars the serializer wrote in a shape its own parser read
+  back differently** (#383, #385, #387), and the CST insert that the
+  same layout made fail its integrity check (#386):
+  - A text with no content line (`"\n"`) takes keep chomping (`|+`);
+    under clip a block with no content line has no final break to
+    keep, and the value read back as the empty string (#383).
+  - A collection entry that follows a block scalar starts on the line
+    after it instead of after a blank line. Under keep chomping the
+    blank line was counted into the scalar, which grew by one newline
+    per round trip whenever a sibling followed (#385); under clip the
+    blank line was only cosmetic and is gone too.
+  - A block scalar as a bare sequence item puts its body one indent
+    step past the dash, the column its indentation indicator counts
+    from; it sat two steps past, and under a `|2` indicator the surplus
+    read back as content (#387).
+  - The CST's collection emission strips only the line break that
+    terminates its last line, not every trailing break, so a
+    keep-chomped item keeps the empty lines that are its value and
+    `set_path` / `insert_entry_value` accept a sequence item that needs
+    an indicator or keep chomping (#386).
+
 ## [v0.0.32] - 2026-09-03
 
 ### Fixed
