@@ -51,7 +51,7 @@ criteria = "safe-to-deploy"
 suggest = false
 
 [[exemptions.granit-parser]]
-version = "1.1.0"
+version = "1.2.0"
 criteria = "safe-to-deploy"
 
 [[exemptions.hashlink]]
@@ -90,13 +90,16 @@ criteria = "safe-to-deploy"
 suggest = false
 
 [[exemptions.serde-saphyr]]
-version = "1.1.0"
+version = "1.2.0"
+criteria = "safe-to-deploy"
+
+[[exemptions.smallvec]]
+version = "1.16.0"
 criteria = "safe-to-deploy"
 
 [[exemptions.sval]]
-version = "2.21.1"
+version = "2.22.0"
 criteria = "safe-to-deploy"
-suggest = false
 
 [[exemptions.tokio]]
 version = "1.52.3"
