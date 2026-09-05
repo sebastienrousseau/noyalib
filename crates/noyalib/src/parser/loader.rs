@@ -252,6 +252,78 @@ pub(crate) fn load_exactly_one(
         .unwrap_or((Value::Null, SpanTree::Leaf(0, 0))))
 }
 
+/// What the key-collision check needs to remember about a key.
+///
+/// Introduced in v0.0.14 as `Vec<Value>`, cloning every mapping key so that
+/// two keys which stringify identically (`1` and `"1"`) could still be told
+/// apart. That clone was one `String` allocation per key on every document —
+/// measured at +39% total heap on a frontmatter corpus — and for string keys
+/// it recorded nothing the check could use: two string keys that collide on
+/// their string form are equal by definition.
+///
+/// So a string key stores only the fact that it was a string. Anything else
+/// keeps the full value, which for scalars is a cheap copy and for compound
+/// keys is rare (and rejected outright under `NonScalarKeyPolicy::Error`).
+#[derive(Debug, Clone, PartialEq, Default)]
+enum KeyShape {
+    /// Placeholder left behind by `mem::take`; never compared.
+    #[default]
+    /// A `Value::String` key. Content deliberately not stored.
+    Str,
+    /// Any other key, kept whole for the typed comparison.
+    ///
+    /// Boxed so the enum is pointer-sized rather than `Value`-sized. This
+    /// lives in every mapping frame, and the per-parse frame stack takes
+    /// its first allocation at four frames: v0.0.14 grew `NoSpanFrame`
+    /// from 176 to 280 bytes, pushing that allocation from the 1 KiB size
+    /// class to 2 KiB. Boxing the rare arm gives most of that back.
+    Other(Box<Value>),
+}
+
+/// Sentinel returned by [`KeyShape::at`] for an unmaterialised index.
+///
+/// A `static` rather than a `const` inside the method: a `const` item in a
+/// function body is an outer item, where `Self` is not in scope, and the
+/// lint that forbids naming the type inside its own impl applies there.
+static KEY_SHAPE_STR: KeyShape = KeyShape::Str;
+
+impl KeyShape {
+    fn of(value: &Value) -> Self {
+        match value {
+            Value::String(_) => Self::Str,
+            other => Self::Other(Box::new(other.clone())),
+        }
+    }
+
+    /// The shape recorded for map index `idx`.
+    ///
+    /// `typed_keys` is materialised lazily: while every key seen so far is
+    /// a string, it stays empty and every index reads as `Str`. That is
+    /// what makes the collision check free for the ordinary document — the
+    /// eager `Vec` grew through four reallocations per mapping (256 → 512
+    /// → 1024 → 2048 bytes) and was the whole of a +39% heap regression
+    /// measured against v0.0.13, on documents that never had a non-string
+    /// key to record.
+    fn at(typed_keys: &[Self], idx: usize) -> &Self {
+        typed_keys.get(idx).unwrap_or(&KEY_SHAPE_STR)
+    }
+
+    /// Records `shape` as the entry for the key just inserted at `idx`.
+    ///
+    /// Stays empty for as long as it can. The first non-string key back-
+    /// fills `Str` for every earlier index so positions stay parallel to
+    /// the map from that point on.
+    fn record(typed_keys: &mut Vec<Self>, idx: usize, shape: Self) {
+        if typed_keys.is_empty() && shape == Self::Str {
+            return;
+        }
+        if typed_keys.len() < idx {
+            typed_keys.resize(idx, Self::Str);
+        }
+        typed_keys.push(shape);
+    }
+}
+
 /// Stack frame for the tree builder.
 #[cfg(feature = "std")]
 #[derive(Debug)]
@@ -282,7 +354,7 @@ enum Frame {
         /// order (parallel to `map`). Retained to tell a genuine YAML
         /// duplicate (`1`/`1`) apart from a distinct-typed collision
         /// (`1`/`"1"`) once both collapse to the same string key.
-        typed_keys: Vec<Value>,
+        typed_keys: Vec<KeyShape>,
         start: usize,
         anchor: Option<String>,
         merge_values: Vec<Value>,
@@ -294,10 +366,10 @@ enum Frame {
     MappingValue {
         map: Mapping,
         span_entries: Vec<((usize, usize), SpanTree)>,
-        typed_keys: Vec<Value>,
+        typed_keys: Vec<KeyShape>,
         key: String,
         /// The typed key that produced `key`, kept for the collision check.
-        key_value: Value,
+        key_value: KeyShape,
         /// Whether `key` is eligible to be read as a `<<` merge key.
         ///
         /// Only a **plain** `<<` scalar is: the YAML merge type gives
@@ -790,10 +862,13 @@ impl<'a> Loader<'a> {
                 let is_buffered_merge_key = may_be_merge_key
                     && matches!(&value, Value::String(s) if s == MERGE_KEY)
                     && !matches!(self.config.merge_key_policy, MergeKeyPolicy::AsOrdinary);
+                // A buffered merge key is recorded as a `null` shape, exactly
+                // as it was recorded as `Value::Null` before, so a merge key
+                // and a literal `null` key still compare equal here.
                 let key_value = if is_buffered_merge_key {
-                    Value::Null
+                    KeyShape::Other(Box::new(Value::Null))
                 } else {
-                    value.clone()
+                    KeyShape::of(&value)
                 };
                 // serde_yaml-profile: refuse a non-scalar key outright
                 // instead of stringifying it.
@@ -909,7 +984,7 @@ impl<'a> Loader<'a> {
                     if let Some(idx) = map.get_index_of(&key) {
                         // Nested (not a `let`-chain) to keep the crate's
                         // 1.86 MSRV: `let`-chains stabilized in 1.88.
-                        if typed_keys[idx] != key_value {
+                        if *KeyShape::at(typed_keys, idx) != key_value {
                             let key_start = key_span.0;
                             return Err(self.key_collision_at(key, key_start, input));
                         }
@@ -919,7 +994,7 @@ impl<'a> Loader<'a> {
                             if !map.contains_key(&key) {
                                 let _ = map.insert(key, value);
                                 span_entries.push((*key_span, span));
-                                typed_keys.push(key_value);
+                                KeyShape::record(typed_keys, map.len() - 1, key_value);
                             }
                         }
                         DuplicateKeyPolicy::Last => {
@@ -938,7 +1013,7 @@ impl<'a> Loader<'a> {
                             } else {
                                 let _ = map.insert(key, value);
                                 span_entries.push((*key_span, span));
-                                typed_keys.push(key_value);
+                                KeyShape::record(typed_keys, map.len() - 1, key_value);
                             }
                         }
                         DuplicateKeyPolicy::Error => {
@@ -948,7 +1023,7 @@ impl<'a> Loader<'a> {
                             }
                             let _ = map.insert(key, value);
                             span_entries.push((*key_span, span));
-                            typed_keys.push(key_value);
+                            KeyShape::record(typed_keys, map.len() - 1, key_value);
                         }
                     }
                 }
@@ -1085,7 +1160,7 @@ enum NoSpanFrame {
         // each string key so the value-arm's collision check can tell
         // a distinct-typed collision (`1` vs `"1"`) apart from a
         // genuine duplicate (`1` twice). Mirrors the span-full loader.
-        typed_keys: Vec<Value>,
+        typed_keys: Vec<KeyShape>,
         anchor: Option<String>,
         merge_values: Vec<Value>,
         tag: Option<(String, String)>,
@@ -1096,11 +1171,11 @@ enum NoSpanFrame {
         /// key-state frame can be rebuilt with it (see
         /// `MappingKey::start`).
         start: usize,
-        typed_keys: Vec<Value>,
+        typed_keys: Vec<KeyShape>,
         key: String,
         // The typed key value the current `key` string was derived
         // from; consumed by the collision check in the value arm.
-        key_value: Value,
+        key_value: KeyShape,
         /// Whether `key` may be read as a `<<` merge key — see the same
         /// field on [`Frame::MappingValue`].
         key_may_merge: bool,
@@ -1502,10 +1577,13 @@ impl<'a> NoSpanLoader<'a> {
                 let is_buffered_merge_key = may_be_merge_key
                     && matches!(&value, Value::String(s) if s == MERGE_KEY)
                     && !matches!(self.config.merge_key_policy, MergeKeyPolicy::AsOrdinary);
+                // A buffered merge key is recorded as a `null` shape, exactly
+                // as it was recorded as `Value::Null` before, so a merge key
+                // and a literal `null` key still compare equal here.
                 let key_value = if is_buffered_merge_key {
-                    Value::Null
+                    KeyShape::Other(Box::new(Value::Null))
                 } else {
-                    value.clone()
+                    KeyShape::of(&value)
                 };
                 // serde_yaml-profile: refuse a non-scalar key outright
                 // instead of stringifying it.
@@ -1594,7 +1672,7 @@ impl<'a> NoSpanLoader<'a> {
                     // DuplicateKeyPolicy so the fast `Value` path has
                     // the same guard as the span-full loader.
                     if let Some(idx) = map.get_index_of(&key) {
-                        if typed_keys[idx] != key_value {
+                        if *KeyShape::at(typed_keys, idx) != key_value {
                             let key_start = *key_start;
                             return Err(self.key_collision_at(key, key_start, input));
                         }
@@ -1614,12 +1692,11 @@ impl<'a> NoSpanLoader<'a> {
                         }
                     } else {
                         let _ = map.insert(key, value);
-                        typed_keys.push(key_value);
+                        KeyShape::record(typed_keys, map.len() - 1, key_value);
                     }
-                    debug_assert_eq!(
-                        map.len(),
-                        typed_keys.len(),
-                        "typed_keys must remain parallel to map"
+                    debug_assert!(
+                        typed_keys.is_empty() || typed_keys.len() == map.len(),
+                        "typed_keys must be empty or parallel to map"
                     );
                 }
                 let old_map = core::mem::take(map);
@@ -2156,6 +2233,59 @@ fn run_event_policies(
 
 #[cfg(test)]
 mod tests {
+    /// Mapping frames must not grow past the size class they occupy.
+    ///
+    /// The per-parse frame stack takes its first allocation at four
+    /// frames. v0.0.14 grew `NoSpanFrame` from 176 to 280 bytes, which
+    /// pushed that allocation from the 1 KiB class into 2 KiB and was the
+    /// last piece of a +39% heap regression measured against v0.0.13.
+    /// Boxing `KeyShape::Other` brought it back under. These bounds fail
+    /// the build the next time a field is added without thinking about
+    /// where it lands.
+    #[test]
+    fn mapping_frames_stay_within_their_size_class() {
+        let no_span = size_of::<NoSpanFrame>();
+        let span = size_of::<Frame>();
+        assert!(
+            no_span * 4 <= 1024,
+            "NoSpanFrame is {no_span} bytes; four frames = {} > 1 KiB",
+            no_span * 4
+        );
+        assert!(span <= 280, "Frame is {span} bytes (bound 280)");
+    }
+
+    /// The typed-key record stays unallocated while every key is a string.
+    ///
+    /// This is what makes the key-collision check free for the ordinary
+    /// document. Before it, every key was cloned into a `Vec<Value>` that
+    /// grew through four reallocations per mapping.
+    #[test]
+    fn typed_keys_stay_empty_for_string_keys() {
+        let mut keys: Vec<KeyShape> = Vec::new();
+        for idx in 0..64 {
+            KeyShape::record(&mut keys, idx, KeyShape::Str);
+        }
+        assert!(keys.is_empty(), "string keys must not materialise the vec");
+        assert_eq!(keys.capacity(), 0, "no allocation may have happened");
+        assert_eq!(*KeyShape::at(&keys, 17), KeyShape::Str);
+    }
+
+    /// The first non-string key back-fills so indices stay parallel.
+    #[test]
+    fn first_typed_key_backfills_earlier_positions() {
+        let mut keys: Vec<KeyShape> = Vec::new();
+        for idx in 0..3 {
+            KeyShape::record(&mut keys, idx, KeyShape::Str);
+        }
+        let one = KeyShape::Other(Box::new(Value::Number(1.into())));
+        KeyShape::record(&mut keys, 3, one.clone());
+        assert_eq!(keys.len(), 4);
+        assert_eq!(*KeyShape::at(&keys, 0), KeyShape::Str);
+        assert_eq!(*KeyShape::at(&keys, 3), one);
+        // A string key that collides on text with the typed key differs.
+        assert_ne!(*KeyShape::at(&keys, 3), KeyShape::Str);
+    }
+
     use super::*;
 
     // Regression (v0.0.14 review): NoSpanLoader must zero the alias budget
