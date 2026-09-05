@@ -57,7 +57,8 @@ jobs:
                    .editorconfig .markdownlint.yaml .codespellrc \
                    .pre-commit-config.yaml .devcontainer/devcontainer.json \
                    docs docs/ARCHITECTURE.md docs/book.toml docs/SUMMARY.md \
-                   scripts/verify-release-versions.sh fuzz/corpus/seed; do
+                   scripts/verify-release-versions.sh \
+                   scripts/check-docs-links.sh fuzz/corpus/seed; do
             [ -e "$f" ] || missing="$missing $f"
           done
           if [ -n "$missing" ]; then
@@ -65,3 +66,16 @@ jobs:
             exit 1
           fi
           echo "family layout contract satisfied"
+      - name: Documentation links
+        # Every relative link in docs/ and SUMMARY.md must resolve on
+        # disk. Until 2026-09-05 this ran only in the Pages deploy on
+        # main, so a link that resolved on a maintainer's disk merged
+        # and broke the first deploy (noya-cli docs/recipes.md).
+        run: |
+          set -euo pipefail
+          if [ -x scripts/check-docs-links.sh ]; then
+            ./scripts/check-docs-links.sh
+          else
+            echo "::error::scripts/check-docs-links.sh is part of the family layout"
+            exit 1
+          fi

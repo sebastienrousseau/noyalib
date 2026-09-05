@@ -9,6 +9,13 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Changed
 
+- **Two regression gates run on every push in every family repo.** The
+  shared docs-lint workflow checks that every relative documentation
+  link resolves (it ran only in the Pages deploy on main before, so a
+  link that resolved on a maintainer's disk merged and broke a deploy),
+  and `scripts/verify-release-versions.sh` reads the install snippets
+  under `docs/` as well as the READMEs (three pages carried snippets the
+  gate never read).
 - **The family layout contract covers the community files, the
   citation record, the agent invariants, the devcontainer, the manual,
   the version gate, and the seed corpus.** Every satellite carries them
