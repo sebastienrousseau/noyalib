@@ -78,7 +78,7 @@ which is the single source of truth.
 > than reserving a semantic that the `0.0.x` scheme cannot express.
 > **This changes at 1.0:** once the crate is `1.x`, an MSRV bump
 > becomes a genuine minor-version event again, per the `1.0` gates
-> in [`PLAN.md`](../PLAN.md).
+> in [`PLAN.md`](PLAN.md).
 
 CI matrix verifies the MSRV per-crate via the
 `Per-crate MSRV` workflow job — no change to that job is

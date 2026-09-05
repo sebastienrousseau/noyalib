@@ -4,10 +4,12 @@
 
 # Using noyalib
 
+- [Getting started](GETTING_STARTED.md)
 - [User guide](USER-GUIDE.md)
 - [Choosing a YAML library](COMPARISON.md)
 - [Benchmarks](BENCHMARKS.md)
 - [Profile-guided optimisation](PGO.md)
+- [Glossary](GLOSSARY.md)
 
 # Migrating to noyalib
 
@@ -20,6 +22,7 @@
 - [From serde-yaml-bw](MIGRATION-FROM-SERDE-YAML-BW.md)
 - [From yaml-serde](MIGRATION-FROM-YAML-SERDE.md)
 - [From yaml-spanned](MIGRATION-FROM-YAML-SPANNED.md)
+- [The v0.0.12 workspace split](MIGRATION-WORKSPACE-SPLIT.md)
 
 # Under the hood
 
@@ -35,6 +38,8 @@
 - [CII best practices](CII-BEST-PRACTICES.md)
 - [Pre-commit hooks](pre-commit.md)
 - [Packaging for distributions](packaging.md)
+- [Production-readiness plan](PLAN.md)
+- [Road to 10/10](ROADMAP-TO-10.md)
 
 # The ecosystem
 

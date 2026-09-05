@@ -410,4 +410,4 @@ the weekly Miri-full job.
 - **Design notes** (historical):
   [`design/`](design/)
 - **Releases / phase work plan**:
-  [`../PLAN.md`](../PLAN.md)
+  [`PLAN.md`](PLAN.md)

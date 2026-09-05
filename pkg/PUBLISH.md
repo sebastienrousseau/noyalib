@@ -3,7 +3,7 @@
 
 # `pkg/PUBLISH.md` — distribution-channel runbook
 
-The companion to `PLAN.md`'s Phase 5. Covers every external
+The companion to `docs/PLAN.md`'s Phase 5. Covers every external
 channel `release-binaries.yml` ships to: prerequisites, account
 creation, secret population, first publish, ongoing maintenance.
 

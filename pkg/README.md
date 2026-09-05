@@ -7,7 +7,7 @@ Per-target packaging artefacts.
 
 > **Status.** Only `docker/` is present in this repository today. The
 > other rows below are the planned channels from Phase 4 of
-> [`PLAN.md`](../PLAN.md); their directories and the
+> [`docs/PLAN.md`](../docs/PLAN.md); their directories and the
 > `release-binaries.yml` workflow that would read them do not exist yet,
 > so those names are deliberately not links. The container image is built
 > and pushed by the `ghcr` job in

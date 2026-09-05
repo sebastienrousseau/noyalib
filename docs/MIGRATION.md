@@ -26,6 +26,10 @@ table, behavioural notes, and migration checklist.
 | [`serde-saphyr`](https://crates.io/crates/serde-saphyr) `0.0.26` | **no** (no `Value` DOM, streaming-only) | [`MIGRATION-FROM-SERDE-SAPHYR.md`](MIGRATION-FROM-SERDE-SAPHYR.md) |
 | [`yaml-spanned`](https://crates.io/crates/yaml-spanned) `0.0.3` | **no** (read-only, no `to_string`) | [`MIGRATION-FROM-YAML-SPANNED.md`](MIGRATION-FROM-YAML-SPANNED.md) |
 
+Already on `noyalib` from before the v0.0.12 workspace split? That
+move is covered separately in
+[`MIGRATION-WORKSPACE-SPLIT.md`](MIGRATION-WORKSPACE-SPLIT.md).
+
 ## What to expect from `noyalib` regardless of source crate
 
 Across every guide, three behavioural notes recur. They each

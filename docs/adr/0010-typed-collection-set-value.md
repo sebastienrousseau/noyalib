@@ -14,7 +14,7 @@ block style and splicing `- a\n- c` over `tags: [a, b]` fails the
 re-parse guard (`block sequence entries are not allowed in this
 context`, #328). Every consumer re-derived what the emitter owns.
 
-`ROADMAP-TO-10.md` A4 deliberately keeps `set` verbatim; this is the
+`docs/ROADMAP-TO-10.md` A4 deliberately keeps `set` verbatim; this is the
 **typed** path, not a change to `set`.
 
 ## Decision

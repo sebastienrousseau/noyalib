@@ -8,9 +8,9 @@ Thanks for using noyalib. Here is where to go for each kind of help.
   — usage questions, "how do I…", design ideas, and show-and-tell. This
   is the best first stop and keeps answers searchable for others.
 - **Docs** — [`README.md`](README.md),
-  [`GETTING_STARTED.md`](GETTING_STARTED.md),
+  [`docs/GETTING_STARTED.md`](docs/GETTING_STARTED.md),
   [`docs/USER-GUIDE.md`](docs/USER-GUIDE.md), the
-  [`GLOSSARY.md`](GLOSSARY.md), and the API docs on
+  [`docs/GLOSSARY.md`](docs/GLOSSARY.md), and the API docs on
   [docs.rs/noyalib](https://docs.rs/noyalib).
 
 ## Bugs
@@ -37,7 +37,7 @@ prompt, confidential response.
 - The library is in its `0.x` line: under Cargo's SemVer rules a patch
   may carry breaking changes. Pin a specific `0.0.x` and read
   [`CHANGELOG.md`](CHANGELOG.md) before upgrading. The path to a stable
-  `1.0` is described in [`PLAN.md`](PLAN.md) → *Road to 1.0*.
+  `1.0` is described in [`docs/PLAN.md`](docs/PLAN.md) → *Road to 1.0*.
 - Minimum supported Rust version (MSRV): **1.86**.
 
 ## Response expectations
