@@ -1,0 +1,20 @@
+plain: hello world
+single: 'can''t stop'
+double: "line1\nline2\ttab"
+literal: |
+  first line
+  second line
+folded: >
+  paragraph one
+  continues here
+
+  paragraph two
+hex: 0xFF
+octal: 0o77
+float: 3.14e10
+infinity: .inf
+nan: .nan
+null_val: ~
+bool_true: true
+bool_false: false
+empty: ''

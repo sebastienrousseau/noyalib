@@ -1,0 +1,43 @@
+# SPDX-FileCopyrightText: 2026 Noyalib
+# SPDX-License-Identifier: MIT OR Apache-2.0
+#
+# The alloc-only fuzz crate. `fuzz/` enables the core's default features,
+# so `std` is always on there and the `core` + `alloc` code shape was
+# never fuzzed. This crate's only dependency edge disables defaults; the
+# harness binary still links std for libFuzzer, but nothing in the
+# targets may reach the library through a std-only API.
+[package]
+name = "noyalib-fuzz-nostd"
+version = "0.0.0"
+publish = false
+edition = "2021"
+license = "MIT OR Apache-2.0"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+
+[dependencies.noyalib]
+path = "../crates/noyalib"
+default-features = false
+
+[features]
+# Never enabled. Exists so a stray `--features std`, or a dependency
+# unifying it in, trips the compile_error! in every target.
+std = ["noyalib/std"]
+
+[[bin]]
+name = "fuzz_parse_alloc_only"
+path = "fuzz_targets/fuzz_parse_alloc_only.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fuzz_roundtrip_alloc_only"
+path = "fuzz_targets/fuzz_roundtrip_alloc_only.rs"
+test = false
+doc = false
+bench = false

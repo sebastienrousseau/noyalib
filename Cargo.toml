@@ -19,7 +19,7 @@ members = ["crates/noyalib"]
 # `xtask` was internal tooling; the parts that need to keep
 # running (release-prep automation, bench runner) migrate
 # into `noya-cli` at #134 (release notes for v0.0.14).
-exclude = ["crates/noyalib/examples/wasm", "fuzz"]
+exclude = ["crates/noyalib/examples/wasm", "fuzz", "fuzz-nostd"]
 
 [profile.dev]
 codegen-units = 256

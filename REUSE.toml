@@ -130,6 +130,10 @@ path = [
     "fuzz/Cargo.lock",
     "fuzz/corpus/**",
     "fuzz/regressions/**",
+    "fuzz-nostd/.gitignore",
+    "fuzz-nostd/Cargo.toml",
+    "fuzz-nostd/Cargo.lock",
+    "fuzz-nostd/corpus/**",
 ]
 precedence = "aggregate"
 SPDX-FileCopyrightText = "2026 Noyalib"

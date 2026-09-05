@@ -34,9 +34,23 @@ permissions:
 
 jobs:
   check:
-    name: Miri (focused, per-PR)
+    # Two legs per PR: Stacked Borrows on the default build and on the
+    # alloc-only build. The Stacked Borrows leg alone takes ~55 minutes;
+    # Tree Borrows and the symbolic alignment check are slower still and
+    # run in the weekly sweep (shared-miri-full.yml).
+    name: Miri (focused, per-PR, ${{ matrix.leg }})
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - leg: stacked-borrows
+            model: stacked
+            features: ""
+          - leg: alloc-only
+            model: stacked
+            features: "--no-default-features"
     # Wall-clock measurements (noyalib):
     #   Local M-series Mac (aarch64 NEON): ~32 min on a fresh sysroot.
     #   GitHub ubuntu-latest (x86_64, 2 vCPU): ~45+ min.
@@ -79,4 +93,7 @@ jobs:
           key: miri-focused
           save-if: false
       - name: Run focused Miri suite
+        env:
+          MIRI_MODEL: ${{ matrix.model }}
+          MIRI_FEATURES: ${{ matrix.features }}
         run: ./scripts/miri.sh
