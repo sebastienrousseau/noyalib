@@ -347,6 +347,30 @@ struct Loader<'a> {
 
 #[cfg(feature = "std")]
 impl<'a> Loader<'a> {
+    /// The dotted path of the mapping being filled, from the frames that
+    /// enclose it: the key of each open mapping and the index of each
+    /// open sequence. The innermost frame is the one being filled; its
+    /// key has been taken by the caller, which appends it itself.
+    fn parent_path(&self) -> Option<String> {
+        let enclosing = &self.stack[..self.stack.len().saturating_sub(1)];
+        frames_path(enclosing.iter().map(|f| match f {
+            Frame::MappingValue { key, .. } => Some(key.clone()),
+            Frame::Sequence { items, .. } => Some(items.len().to_string()),
+            _ => None,
+        }))
+    }
+
+    /// The located duplicate-key refusal for `key`, which begins at
+    /// `key_start` in `input` (#378).
+    fn duplicate_key_at(&self, key: String, key_start: usize, input: &str) -> Error {
+        duplicate_key_at(key, self.parent_path(), key_start, input)
+    }
+
+    /// The located key-collision refusal for `key` (#378).
+    fn key_collision_at(&self, key: String, key_start: usize, input: &str) -> Error {
+        key_collision_at(key, self.parent_path(), key_start, input)
+    }
+
     fn new(config: &'a ParseConfig) -> Self {
         // Pre-size the loader's mutable buffers with conservative
         // capacity hints so the typical YAML document parses
@@ -886,7 +910,8 @@ impl<'a> Loader<'a> {
                         // Nested (not a `let`-chain) to keep the crate's
                         // 1.86 MSRV: `let`-chains stabilized in 1.88.
                         if typed_keys[idx] != key_value {
-                            return Err(Error::KeyCollision(key));
+                            let key_start = key_span.0;
+                            return Err(self.key_collision_at(key, key_start, input));
                         }
                     }
                     match self.config.duplicate_key_policy {
@@ -918,7 +943,8 @@ impl<'a> Loader<'a> {
                         }
                         DuplicateKeyPolicy::Error => {
                             if map.contains_key(&key) {
-                                return Err(Error::DuplicateKey(key));
+                                let key_start = key_span.0;
+                                return Err(self.duplicate_key_at(key, key_start, input));
                             }
                             let _ = map.insert(key, value);
                             span_entries.push((*key_span, span));
@@ -1078,6 +1104,10 @@ enum NoSpanFrame {
         /// Whether `key` may be read as a `<<` merge key — see the same
         /// field on [`Frame::MappingValue`].
         key_may_merge: bool,
+        /// Byte offset of the key, so a duplicate or a collision can be
+        /// reported where it is (#378); the only position this loader
+        /// keeps.
+        key_start: usize,
         anchor: Option<String>,
         merge_values: Vec<Value>,
         tag: Option<(String, String)>,
@@ -1116,6 +1146,28 @@ struct NoSpanLoader<'a> {
 }
 
 impl<'a> NoSpanLoader<'a> {
+    /// The dotted path of the mapping being filled; see
+    /// [`Loader::parent_path`].
+    fn parent_path(&self) -> Option<String> {
+        let enclosing = &self.stack[..self.stack.len().saturating_sub(1)];
+        frames_path(enclosing.iter().map(|f| match f {
+            NoSpanFrame::MappingValue { key, .. } => Some(key.clone()),
+            NoSpanFrame::Sequence { items, .. } => Some(items.len().to_string()),
+            _ => None,
+        }))
+    }
+
+    /// The located duplicate-key refusal (#378); see
+    /// [`Loader::duplicate_key_at`].
+    fn duplicate_key_at(&self, key: String, key_start: usize, input: &str) -> Error {
+        duplicate_key_at(key, self.parent_path(), key_start, input)
+    }
+
+    /// The located key-collision refusal (#378).
+    fn key_collision_at(&self, key: String, key_start: usize, input: &str) -> Error {
+        key_collision_at(key, self.parent_path(), key_start, input)
+    }
+
     fn new(config: &'a ParseConfig) -> Self {
         NoSpanLoader {
             docs: Vec::new(),
@@ -1485,6 +1537,7 @@ impl<'a> NoSpanLoader<'a> {
                         typed_keys: old_typed_keys,
                         key,
                         key_value,
+                        key_start: node_start,
                         anchor: old_anchor,
                         merge_values: old_merge_values,
                         tag: old_tag,
@@ -1498,6 +1551,7 @@ impl<'a> NoSpanLoader<'a> {
                 key,
                 key_value,
                 key_may_merge,
+                key_start,
                 anchor,
                 merge_values,
                 tag,
@@ -1541,7 +1595,8 @@ impl<'a> NoSpanLoader<'a> {
                     // the same guard as the span-full loader.
                     if let Some(idx) = map.get_index_of(&key) {
                         if typed_keys[idx] != key_value {
-                            return Err(Error::KeyCollision(key));
+                            let key_start = *key_start;
+                            return Err(self.key_collision_at(key, key_start, input));
                         }
                         // Genuine duplicate: apply the caller's
                         // policy. Mirrors the span-full loader arms.
@@ -1553,7 +1608,8 @@ impl<'a> NoSpanLoader<'a> {
                                 let _ = map.insert(key, value);
                             }
                             DuplicateKeyPolicy::Error => {
-                                return Err(Error::DuplicateKey(key));
+                                let key_start = *key_start;
+                                return Err(self.duplicate_key_at(key, key_start, input));
                             }
                         }
                     } else {
@@ -1697,6 +1753,35 @@ fn frames_path(segments: impl Iterator<Item = Option<String>>) -> Option<String>
         None
     } else {
         Some(parts.join("."))
+    }
+}
+
+/// The dotted path of the entry `key` under the mapping at `parent`.
+fn entry_path(parent: Option<String>, key: &str) -> String {
+    match parent {
+        Some(parent) => format!("{parent}.{key}"),
+        None => key.to_owned(),
+    }
+}
+
+/// The located duplicate-key refusal (#378): the entry's dotted path,
+/// the enclosing mapping's path with `key` appended, and the key's
+/// position in `input`.
+fn duplicate_key_at(key: String, parent: Option<String>, key_start: usize, input: &str) -> Error {
+    Error::DuplicateKeyAt {
+        path: entry_path(parent, &key),
+        location: crate::error::Location::from_index(input, key_start),
+        key,
+    }
+}
+
+/// The located key-collision refusal (#378), shaped like
+/// [`duplicate_key_at`].
+fn key_collision_at(key: String, parent: Option<String>, key_start: usize, input: &str) -> Error {
+    Error::KeyCollisionAt {
+        path: entry_path(parent, &key),
+        location: crate::error::Location::from_index(input, key_start),
+        key,
     }
 }
 
