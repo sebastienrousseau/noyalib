@@ -21,6 +21,14 @@ on:
         description: 'Commit to analyse (default: the dispatched ref)'
         required: false
         type: string
+      ref:
+        description: >-
+          Ref the results are uploaded against (default: the dispatched
+          branch). GitHub creates the CodeQL check run on the commit only
+          for a pull-request ref, e.g. refs/pull/395/head, which is what
+          Scorecard's SAST check reads for a merged commit.
+        required: false
+        type: string
   schedule:
     - cron: '0 6 * * 1'  # Weekly Monday 06:00 UTC
 
@@ -68,7 +76,7 @@ jobs:
         with:
           # On a dispatch with a sha, results (and the check run) attach
           # to that commit; the ref must contain it.
-          ref: ${{ inputs.sha && github.ref || '' }}
+          ref: ${{ inputs.ref || (inputs.sha && github.ref) || '' }}
           sha: ${{ inputs.sha || '' }}
 
   # ── Soak fuzz (weekly) ─────────────────────────────────────────────
