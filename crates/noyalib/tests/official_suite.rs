@@ -308,8 +308,10 @@ fn official_suite() {
     eprintln!("  Compliance: {compliance:.1}%");
     eprintln!();
 
+    // The README, CITATION.cff, and the crate description all claim
+    // 406/406; the gate is the claim. A single failure is a regression.
     assert!(
-        compliance >= 94.0,
-        "Compliance dropped below 94% threshold: {compliance:.1}%"
+        fail == 0,
+        "official YAML test suite: {fail} failing case(s), compliance {compliance:.1}%"
     );
 }

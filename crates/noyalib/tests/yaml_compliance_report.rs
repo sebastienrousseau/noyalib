@@ -21,7 +21,7 @@
 
 #![allow(missing_docs)]
 
-use noyalib::{Value, from_str};
+use noyalib::{Value, from_str, load_all_as};
 use std::collections::BTreeMap;
 use std::fs;
 use std::path::Path;
@@ -207,7 +207,10 @@ fn classify(case: &TestCase, skip: &[&str]) -> (Outcome, Option<String>) {
     if skip.contains(&base) {
         return (Outcome::Skip, None);
     }
-    let parsed: Result<Value, _> = from_str(&case.yaml);
+    // Score through the multi-document loader, as `official_suite.rs`
+    // does: since v0.0.29 (#351) `from_str` refuses a stream of more
+    // than one document by design, and 19 suite cases are streams.
+    let parsed: Result<Vec<Value>, _> = load_all_as::<Value>(&case.yaml);
     if case.should_fail {
         return match parsed {
             Err(_) => (Outcome::Pass, None),
@@ -226,20 +229,26 @@ fn classify(case: &TestCase, skip: &[&str]) -> (Outcome, Option<String>) {
                 (Outcome::FailParseError, Some(msg))
             }
         }
-        Ok(value) => match case.json.as_deref() {
+        Ok(values) => match case.json.as_deref() {
             None => (Outcome::Pass, None),
-            Some(json_str) => match serde_json::from_str::<serde_json::Value>(json_str) {
-                Err(_) => (Outcome::Pass, None),
-                Ok(expected) => {
-                    let actual = yaml_to_json(&value);
-                    if actual == expected {
-                        (Outcome::Pass, None)
-                    } else {
-                        let detail = format!("expected {expected}, got {actual}");
-                        (Outcome::FailValueMismatch, Some(detail))
-                    }
+            Some(json_str) => {
+                // The expected JSON is a stream, one value per document.
+                let expected: Vec<serde_json::Value> = serde_json::Deserializer::from_str(json_str)
+                    .into_iter::<serde_json::Value>()
+                    .map(|v| v.unwrap_or(serde_json::Value::Null))
+                    .collect();
+                let actual: Vec<serde_json::Value> = values.iter().map(yaml_to_json).collect();
+                if actual == expected {
+                    (Outcome::Pass, None)
+                } else {
+                    let detail = format!(
+                        "expected {}, got {}",
+                        serde_json::Value::Array(expected),
+                        serde_json::Value::Array(actual)
+                    );
+                    (Outcome::FailValueMismatch, Some(detail))
                 }
-            },
+            }
         },
     }
 }

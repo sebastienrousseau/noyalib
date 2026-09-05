@@ -72,6 +72,12 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Fixed
 
+- **The compliance report scores multi-document cases through
+  `load_all_as`**, as the regression net always has; since v0.0.29 it had
+  been feeding streams to `from_str`, which refuses them by design, and
+  reporting 387/406 while `official_suite` and the README said 406/406.
+  Both now agree, and the suite asserts zero failures rather than a 94%
+  floor.
 - **`insert_entry` and `insert_entry_value` upsert a key holding `.`,
   `[`, `]`, or `*`** instead of refusing it, and the upsert of an
   existing `*` no longer appends a second `*` entry (the existing-key
