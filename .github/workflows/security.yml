@@ -10,6 +10,17 @@ on:
     branches: [main, "feat/**"]
   pull_request:
     branches: [main, "feat/**"]
+  # Scan one specific commit. A commit that reached main through a
+  # pull request against a release branch has no CodeQL check run of
+  # its own, and OpenSSF Scorecard's SAST check counts it as unscanned
+  # until it leaves the 30-commit window. Dispatching with its sha runs
+  # the same analysis at that commit and attaches the check run there.
+  workflow_dispatch:
+    inputs:
+      sha:
+        description: 'Commit to analyse (default: the dispatched ref)'
+        required: false
+        type: string
   schedule:
     - cron: '0 6 * * 1'  # Weekly Monday 06:00 UTC
 
@@ -44,6 +55,8 @@ jobs:
       security-events: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.sha || github.sha }}
 
       - name: Initialize CodeQL
         uses: github/codeql-action/init@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4.37.4
@@ -52,6 +65,11 @@ jobs:
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4.37.4
+        with:
+          # On a dispatch with a sha, results (and the check run) attach
+          # to that commit; the ref must contain it.
+          ref: ${{ inputs.sha && github.ref || '' }}
+          sha: ${{ inputs.sha || '' }}
 
   # ── Soak fuzz (weekly) ─────────────────────────────────────────────
   # Long-running fuzz campaigns that don't fit the per-push budget.
@@ -65,7 +83,8 @@ jobs:
     # `fuzz_strict`) has its own sanitiser-instrumented artefact
     # set. Sharing target/ across fuzz configurations is exactly
     # how a stale cache could hide a fuzz regression.
-    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    # A dispatch that names a sha is a targeted CodeQL scan, not a soak.
+    if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && !inputs.sha)
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -111,7 +130,8 @@ jobs:
     name: Soak Miri (full suite)
     # CACHE-POISONING GUARD: isolated CARGO_TARGET_DIR — Miri's
     # interpreter fingerprint is distinct from every other job.
-    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    # A dispatch that names a sha is a targeted CodeQL scan, not a soak.
+    if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && !inputs.sha)
     runs-on: ubuntu-latest
     permissions:
       contents: read
