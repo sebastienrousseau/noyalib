@@ -7,6 +7,14 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Changed
+
+- **The family layout contract covers the community files, the
+  citation record, the agent invariants, the devcontainer, the manual,
+  the version gate, and the seed corpus.** Every satellite carries them
+  since 2026-09-05; docs/ECOSYSTEM.md gains a table of where each crate
+  is published (crates.io, npm, ghcr.io).
+
 ### Removed
 
 - **`pkg/docker/Dockerfile.full`.** It built the CLI binaries from

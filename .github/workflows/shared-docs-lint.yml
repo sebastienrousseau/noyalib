@@ -52,8 +52,12 @@ jobs:
           set -euo pipefail
           missing=""
           for f in README.md CHANGELOG.md SECURITY.md DEVELOPMENT.md \
-                   CONTRIBUTING.md REUSE.toml .editorconfig \
-                   .markdownlint.yaml .codespellrc docs; do
+                   CONTRIBUTING.md CODE_OF_CONDUCT.md GOVERNANCE.md \
+                   SUPPORT.md AGENTS.md CITATION.cff REUSE.toml \
+                   .editorconfig .markdownlint.yaml .codespellrc \
+                   .pre-commit-config.yaml .devcontainer/devcontainer.json \
+                   docs docs/ARCHITECTURE.md docs/book.toml docs/SUMMARY.md \
+                   scripts/verify-release-versions.sh fuzz/corpus/seed; do
             [ -e "$f" ] || missing="$missing $f"
           done
           if [ -n "$missing" ]; then

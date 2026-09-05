@@ -129,7 +129,7 @@ tracks every span these rules need, and already backs `remove`/`set`.
 | Hosted pre-commit hook | no `.pre-commit-hooks.yaml` in `noya-cli` — `docs/pre-commit.md` documents only `repo: local`, which needs `noyafmt` already installed |
 | VS Code extension | no `editors/vscode` in `noyalib-lsp` — the server exists but nobody can install it from the marketplace |
 | ~~Homebrew formula~~ | shipped: [`homebrew-tap/Formula/noya-cli.rb`](https://github.com/sebastienrousseau/homebrew-tap/blob/main/Formula/noya-cli.rb), with Scoop and AUR (`noyalib-bin`) beside it |
-| CLI container image | `Dockerfile` exists in `noyalib` and `noyalib-mcp`, not in `noya-cli` |
+| ~~CLI container image~~ | shipped: `noya-cli/pkg/docker/Dockerfile` publishes `ghcr.io/sebastienrousseau/noya-cli` from its release workflow (first image with v0.0.34); the core's dead monorepo-era Dockerfile is gone |
 | Python bindings | no `bindings/python` |
 | Native Node bindings | wasm only; no napi |
 
@@ -437,12 +437,34 @@ its own CI:
 | `CONTRIBUTING.md` | family process (satellites point at the core's) |
 | `DEVELOPMENT.md` | developer entry point (satellites point at the core's) |
 | `REUSE.toml` | machine-readable licensing for headerless files |
-| `docs/` | documentation root (never `doc/`) |
+| `CODE_OF_CONDUCT.md`, `GOVERNANCE.md`, `SUPPORT.md` | community files; satellites point at the core's governance model |
+| `AGENTS.md` | the invariants an AI-assisted contributor must respect (lockstep, signing, CI green) |
+| `CITATION.cff` | one citation record per crate, at the crate's version |
+| `.pre-commit-config.yaml`, `.devcontainer/` | pre-commit hooks; a container that boots to a working `make` |
+| `docs/` | documentation root (never `doc/`), with `ARCHITECTURE.md` and an mdBook (`book.toml`, `SUMMARY.md`) deployed to Pages |
+| `scripts/verify-release-versions.sh` | the version gate, run before every tag |
+| `fuzz/corpus/seed` | a seed corpus replayed by CI on every push |
 | `.editorconfig`, `.markdownlint.yaml`, `.codespellrc` | shared editor + docs-lint configs |
 
-Satellites additionally carry `scripts/verify-release-versions.sh`
-and `supply-chain/`; the core additionally carries the `shared-*.yml`
-workflows the family consumes by SHA, and — deliberately at core
-level only — `CITATION.cff`, `AGENTS.md`, and `.devcontainer/`
-(one citation record and one contributor environment for the
-family; satellite DEVELOPMENT.md files point here).
+Satellites additionally carry `supply-chain/`; the core additionally
+carries the `shared-*.yml` workflows the family consumes by SHA and
+the manual for the library itself. Until 2026-09-05 the citation
+record, `AGENTS.md`, and the devcontainer lived in the core only;
+every satellite now carries its own, so the contract lists them.
+
+### Where the family is published
+
+| Crate | crates.io | npm | ghcr.io |
+| :--- | :--- | :--- | :--- |
+| `noyalib` | `noyalib` | | |
+| `noya-cli` | `noya-cli` | | `sebastienrousseau/noya-cli` (from v0.0.34) |
+| `noyalib-lsp` | `noyalib-lsp` | | |
+| `noyalib-mcp` | `noyalib-mcp` | `@sebastienrousseau/noyalib-mcp` | `sebastienrousseau/noyalib-mcp` |
+| `noyalib-wasm` | `noyalib-wasm` | `@sebastienrousseau/noyalib-wasm` | |
+| `noyalib-serde-yaml` | `noyalib-serde-yaml` | | |
+
+All six crates release in lockstep at the identical `=0.0.X`; the npm
+packages and container images carry the same version. Homebrew,
+Scoop, and AUR carry `noya-cli` (see its `pkg/`). A repository's
+GitHub Packages sidebar counts only GitHub-hosted registries, so it
+is not the map; this table is.
