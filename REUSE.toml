@@ -105,7 +105,7 @@ SPDX-License-Identifier = "MIT"
 
 # ── Distro packaging templates (pkg/) ─────────────────────────────
 # Hand-written per-channel packaging metadata consumed by
-# `.github/workflows/release-binaries.yml` (Phase 4 of PLAN.md).
+# `.github/workflows/release-binaries.yml` (Phase 4 of docs/PLAN.md).
 # Files in this tree are templates — `__VERSION__` / `__SHA256__`
 # placeholders rewritten per release — or inert config files
 # without inline SPDX headers.

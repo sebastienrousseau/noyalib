@@ -39,6 +39,11 @@ scripts/ecosystem-scorecard.sh --with-coverage  # + cargo-llvm-cov
 scripts/ecosystem-scorecard.sh --json out.json
 ```
 
+CI runs the same harness weekly and on every change to it or to this
+page (`.github/workflows/ecosystem-scorecard.yml`), against fresh
+checkouts of all six repos; the workflow fails below the 0.90 floor,
+and the JSON report is attached to the run.
+
 It exits non-zero below `SCORE_FLOOR` (default 0.90), so the rating can
 be a CI gate rather than a boast.
 

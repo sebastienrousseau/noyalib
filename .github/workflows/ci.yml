@@ -48,8 +48,8 @@ jobs:
     secrets: inherit
 
   test-matrix:
-    # Dogfooded from shared-test-matrix.yml. Matrix (os × toolchain)
-    # comes from the shared workflow's defaults. Satellites can
+    # Dogfooded from shared-test-matrix.yml. Matrix (os × toolchain:
+    # stable, beta, nightly) comes from the shared workflow's defaults. Satellites can
     # trim OSes / toolchains they don't support by passing custom
     # JSON to the `os-list` / `toolchain-list` inputs.
     # NOTE: MSRV-1.86 lives in msrv-core (below) — the opt-in

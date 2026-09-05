@@ -35,6 +35,13 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Changed
 
+- **`GETTING_STARTED.md`, `GLOSSARY.md`, `PLAN.md`, `ROADMAP-TO-10.md`, and
+  the workspace-split guide moved under `docs/`** (the split guide is now
+  `docs/MIGRATION-WORKSPACE-SPLIT.md`); `docs/` is the single documentation
+  root and the pages are part of the rendered manual. Old root links 404.
+- **CI runs the test matrix on beta as well as stable and nightly**, and a
+  weekly `ecosystem-scorecard` workflow measures all six repos with
+  `scripts/ecosystem-scorecard.sh`, failing below its 0.90 floor.
 - **`to_string` no longer writes a blank line between a clip-chomped
   block scalar and the entry that follows it** (#385, part of the
   block-scalar fix below). Files written by earlier versions still

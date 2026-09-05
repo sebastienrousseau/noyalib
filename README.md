@@ -29,9 +29,10 @@
 **Getting started**
 
 - [Install](#install) — Cargo, source
+- [Requirements](#requirements) — toolchain floor, platforms, `no_std`
 - [Quick Start](#quick-start) — parse and serialise in ten lines
 
-**The noyalib ecosystem** (library + four satellite crates)
+**The noyalib ecosystem** (library + five satellite crates)
 
 - [The noyalib ecosystem](#the-noyalib-ecosystem) — `noyalib`, `noya-cli`, `noyalib-lsp`, `noyalib-mcp`, `noyalib-wasm`, `noyalib-serde-yaml` at a glance
 
@@ -121,43 +122,6 @@ cd noyalib
 make          # check + clippy + test
 ```
 
-**MSRV by crate.** Each workspace crate carries its own
-`rust-version`; CI's `msrv-per-crate` job (Phase 7) gates each
-crate independently so a satellite never silently breaks
-downstream users pinned to the core's floor.
-
-| Crate | MSRV | Why |
-|---|---|---|
-| `noyalib` (core lib) | **1.86.0** | The lowest toolchain the project builds *and tests* on — `criterion 0.8` (dev-dependency) requires 1.86, so tests, benches and coverage cannot run below it. Enforced by the dedicated MSRV CI job. |
-| `noyalib-mcp` | 1.86.0 | Lockstep with the core floor; small dep tree, no transitives requiring more. |
-| `noya-cli` (binaries) | 1.86.0 | Lockstep with the core floor; `clap_builder 4.6` (a transitive of `clap = "4.5"`) ships in edition 2024. |
-| `noyalib-lsp` | 1.86.0 | Lockstep with the core floor; LSP transport-stack transitives (`litemap`, `uuid`) require recent stables. |
-| `noyalib-wasm` | 1.86.0 | Lockstep with the core floor; the `wasm-bindgen` 0.2 ecosystem floors at 1.86. |
-| `noyalib-serde-yaml` | 1.86.0 | Lockstep with the core floor; a pure re-export crate with no extra dependencies. |
-
-As of v0.0.16 the whole lockstep set shares one floor, 1.86.0 —
-the historical split (core at a lower floor than the satellites)
-is gone.
-
-The number is the floor we **verify**, not the floor the library
-happens to reach: `cargo +1.85.0 check --lib` still succeeds, but
-`cargo +1.85.0 check --all-targets` fails because `criterion 0.8`
-requires 1.86, so no test, bench or coverage run can execute
-there. We do not advertise an MSRV that CI cannot exercise. We
-also guarantee never to require a rustc newer than 12 months old
-at release time — see
-[`docs/POLICIES.md` §1](docs/POLICIES.md#1-msrv-minimum-supported-rust-version).
-
-The one surface still above the floor is the opt-in, bench-only
-`compare-saphyr` feature: `serde-saphyr` uses let-chains and needs
-rustc 1.88+, so `--all-features` requires a newer toolchain than
-the MSRV and is excluded from the MSRV gate.
-
-`rust-toolchain.toml` itself selects `stable` for local
-development; the 1.86.0 floor on the core surface is enforced
-by the dedicated `msrv-core` CI job (Ubuntu,
-no-default-features + default-features build paths).
-
 ### Cargo features
 
 All optional integrations are off by default. Enable only what
@@ -202,6 +166,59 @@ Enable the Cargo feature, then opt in at runtime with
 `SerializerConfig::lossless_u64_integers(true)`. See
 [`docs/adr/0004-lossless-u64-integers.md`](docs/adr/0004-lossless-u64-integers.md)
 for rationale and migration notes.
+
+---
+
+## Requirements
+
+- **Rust 1.86.0 or newer.** Every crate manifest carries `rust-version`,
+  and CI enforces the floor on every push: `msrv-core` builds the core
+  surface on 1.86.0, and `msrv-per-crate` checks each satellite
+  against its own declared floor.
+- **Any tier-1 platform.** The test matrix runs on Linux, macOS, and
+  Windows with the stable, beta, and nightly toolchains; stable is the
+  gate, beta and nightly are early warning.
+- **`std` is optional.** With `default-features = false` the core builds
+  on `core` + `alloc`; CI checks `wasm32-unknown-unknown`,
+  `thumbv7em-none-eabihf`, `riscv32imac-unknown-none-elf`, and
+  `aarch64-unknown-none` on every push.
+
+**MSRV by crate.** Each workspace crate carries its own
+`rust-version`; CI's `msrv-per-crate` job (Phase 7) gates each
+crate independently so a satellite never silently breaks
+downstream users pinned to the core's floor.
+
+| Crate | MSRV | Why |
+|---|---|---|
+| `noyalib` (core lib) | **1.86.0** | The lowest toolchain the project builds *and tests* on — `criterion 0.8` (dev-dependency) requires 1.86, so tests, benches and coverage cannot run below it. Enforced by the dedicated MSRV CI job. |
+| `noyalib-mcp` | 1.86.0 | Lockstep with the core floor; small dep tree, no transitives requiring more. |
+| `noya-cli` (binaries) | 1.86.0 | Lockstep with the core floor; `clap_builder 4.6` (a transitive of `clap = "4.5"`) ships in edition 2024. |
+| `noyalib-lsp` | 1.86.0 | Lockstep with the core floor; LSP transport-stack transitives (`litemap`, `uuid`) require recent stables. |
+| `noyalib-wasm` | 1.86.0 | Lockstep with the core floor; the `wasm-bindgen` 0.2 ecosystem floors at 1.86. |
+| `noyalib-serde-yaml` | 1.86.0 | Lockstep with the core floor; a pure re-export crate with no extra dependencies. |
+
+As of v0.0.16 the whole lockstep set shares one floor, 1.86.0 —
+the historical split (core at a lower floor than the satellites)
+is gone.
+
+The number is the floor we **verify**, not the floor the library
+happens to reach: `cargo +1.85.0 check --lib` still succeeds, but
+`cargo +1.85.0 check --all-targets` fails because `criterion 0.8`
+requires 1.86, so no test, bench or coverage run can execute
+there. We do not advertise an MSRV that CI cannot exercise. We
+also guarantee never to require a rustc newer than 12 months old
+at release time — see
+[`docs/POLICIES.md` §1](docs/POLICIES.md#1-msrv-minimum-supported-rust-version).
+
+The one surface still above the floor is the opt-in, bench-only
+`compare-saphyr` feature: `serde-saphyr` uses let-chains and needs
+rustc 1.88+, so `--all-features` requires a newer toolchain than
+the MSRV and is excluded from the MSRV gate.
+
+`rust-toolchain.toml` itself selects `stable` for local
+development; the 1.86.0 floor on the core surface is enforced
+by the dedicated `msrv-core` CI job (Ubuntu,
+no-default-features + default-features build paths).
 
 ---
 

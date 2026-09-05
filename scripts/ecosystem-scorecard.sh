@@ -32,8 +32,9 @@
 #   scripts/ecosystem-scorecard.sh --json out.json
 #
 # Exit status: 0 if the weighted score is >= SCORE_FLOOR (default 0.90),
-# 1 otherwise, 2 on harness error. Wire it into CI to make the rating a
-# gate rather than a boast.
+# 1 otherwise, 2 on harness error. `.github/workflows/ecosystem-scorecard.yml`
+# runs it weekly and on every change to the harness or docs/ECOSYSTEM.md,
+# so the rating is a gate rather than a boast.
 # ─────────────────────────────────────────────────────────────────────────
 
 # Deliberately no `-e`: a probe failing IS the measurement. The harness
@@ -47,7 +48,7 @@ HERE=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 ECOSYSTEM_ROOT="${ECOSYSTEM_ROOT:-$(cd "$HERE/../.." && pwd)}"
 OWNER="${OWNER:-sebastienrousseau}"
 
-ALL_REPOS=(noyalib noya-cli noyalib-lsp noyalib-mcp noyalib-wasm)
+ALL_REPOS=(noyalib noya-cli noyalib-lsp noyalib-mcp noyalib-wasm noyalib-serde-yaml)
 
 WITH_NETWORK=0
 WITH_COVERAGE=0
@@ -592,7 +593,7 @@ CORE_VER="${REPO_VERSION[noyalib]:-}"
 if [ -n "$CORE_VER" ]; then
   matched=0; total=0
   detail=""
-  for r in noya-cli noyalib-lsp noyalib-mcp noyalib-wasm; do
+  for r in noya-cli noyalib-lsp noyalib-mcp noyalib-wasm noyalib-serde-yaml; do
     d="$ECOSYSTEM_ROOT/$r"; [ -d "$d" ] || continue
     total=$((total+1))
     pin=$(grep -rhoE 'noyalib *= *\{?[^}]*version *= *"=?[0-9.]+"|noyalib *= *"=?[0-9.]+"' \
