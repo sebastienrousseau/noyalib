@@ -1270,17 +1270,45 @@ fn block_scalar_indent_indicator(s: &str, config: &SerializerConfig) -> String {
     }
 }
 
-fn write_block_scalar(output: &mut String, s: &str, indent: usize, config: &SerializerConfig) {
-    // Determine chomping indicator based on trailing newlines
-    let chomping = if s.ends_with('\n') {
-        if s.ends_with("\n\n") {
-            "+" // Keep all trailing newlines
-        } else {
-            "" // Keep single trailing newline (default)
-        }
+/// The chomping indicator for a block scalar holding `s` (YAML 1.2.2
+/// §8.1.1.2): strip when the text has no trailing line break, keep when
+/// it has more than one, clip otherwise -- except that a text with **no
+/// content line at all** (`"\n"`) also takes keep.
+///
+/// Clip preserves the final break of the last content line, and a block
+/// with no content line has none, so `k: |` followed by one empty line
+/// read back as the empty string and the value was lost on the first
+/// round trip (#383). Under keep the empty line is the value.
+///
+/// One function for the three block writers: the rule had three copies
+/// and the no-content case was missing from all of them.
+fn block_chomping(s: &str) -> &'static str {
+    if !s.ends_with('\n') {
+        "-"
+    } else if s.ends_with("\n\n") || s.lines().all(str::is_empty) {
+        "+"
     } else {
-        "-" // Strip trailing newlines
-    };
+        ""
+    }
+}
+
+/// Begin an entry's line: a line break, unless the output already ends
+/// with one, then the indentation.
+///
+/// A block scalar closes its own last line, so a break written blindly
+/// after one opens a blank line. Under clip chomping that was cosmetic;
+/// under keep chomping (`|+`) the parser keeps the blank line, and a
+/// keep-chomped value grew by one newline per round trip whenever a
+/// sibling entry followed it (#385).
+fn start_line(output: &mut String, indent_spaces: usize) {
+    if !output.ends_with('\n') {
+        output.push('\n');
+    }
+    write_indent(output, indent_spaces);
+}
+
+fn write_block_scalar(output: &mut String, s: &str, indent: usize, config: &SerializerConfig) {
+    let chomping = block_chomping(s);
 
     output.push('|');
     output.push_str(&block_scalar_indent_indicator(s, config));
@@ -1365,8 +1393,7 @@ fn write_sequence(
 
     for (i, value) in seq.iter().enumerate() {
         if i > 0 || !is_root {
-            output.push('\n');
-            write_indent(output, config.indent * indent);
+            start_line(output, config.indent * indent);
         }
         output.push('-');
 
@@ -1378,8 +1405,7 @@ fn write_sequence(
                 output.push(' ');
                 for (j, (k, v)) in m.iter().enumerate() {
                     if j > 0 {
-                        output.push('\n');
-                        write_indent(output, config.indent * (indent + 1));
+                        start_line(output, config.indent * (indent + 1));
                     }
                     write_key_string(output, k, indent + 1, config);
                     output.push(':');
@@ -1418,7 +1444,20 @@ fn write_sequence(
                 if indicator_takes_a_space(value) {
                     output.push(' ');
                 }
-                write_value(output, value, indent + 1, false, config, depth + 1)?;
+                // A block collection item nests one level under the dash.
+                // A scalar item uses the indent for one thing, a block
+                // scalar's body, which belongs `config.indent` columns past
+                // the dash -- the parent node's indentation the block's
+                // indentation indicator counts from -- so it takes this
+                // sequence's own level. One level deeper put the body four
+                // columns past the dash under a `|2` indicator, and the
+                // surplus read back as content (#387).
+                let item_indent = if needs_block_layout(value) {
+                    indent + 1
+                } else {
+                    indent
+                };
+                write_value(output, value, item_indent, false, config, depth + 1)?;
             }
         }
     }
@@ -1495,8 +1534,7 @@ fn write_mapping(
 
     for (i, (key, value)) in map.iter().enumerate() {
         if i > 0 || !is_root {
-            output.push('\n');
-            write_indent(output, config.indent * indent);
+            start_line(output, config.indent * indent);
         }
         write_key_string(output, key, indent, config);
 
@@ -1668,11 +1706,7 @@ fn write_flow_mapping(
 }
 
 fn write_literal_block(output: &mut String, s: &str, indent: usize, config: &SerializerConfig) {
-    let chomping = if s.ends_with('\n') {
-        if s.ends_with("\n\n") { "+" } else { "" }
-    } else {
-        "-"
-    };
+    let chomping = block_chomping(s);
 
     output.push('|');
     output.push_str(&block_scalar_indent_indicator(s, config));
@@ -1682,11 +1716,7 @@ fn write_literal_block(output: &mut String, s: &str, indent: usize, config: &Ser
 }
 
 fn write_folded_block(output: &mut String, s: &str, indent: usize, config: &SerializerConfig) {
-    let chomping = if s.ends_with('\n') {
-        if s.ends_with("\n\n") { "+" } else { "" }
-    } else {
-        "-"
-    };
+    let chomping = block_chomping(s);
 
     output.push('>');
     output.push_str(&block_scalar_indent_indicator(s, config));
