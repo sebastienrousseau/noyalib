@@ -17,7 +17,7 @@ Coming from `serde_yaml` and want zero source changes? Rename the
 package and keep every call site:
 
 ```toml
-serde_yaml = { package = "noyalib-serde-yaml", version = "=0.0.33" }
+serde_yaml = { package = "noyalib-serde-yaml", version = "=0.0.34" }
 ```
 
 [`noyalib-serde-yaml`](https://github.com/sebastienrousseau/noyalib-serde-yaml)
