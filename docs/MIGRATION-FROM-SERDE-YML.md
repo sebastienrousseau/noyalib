@@ -5,7 +5,7 @@
 
 [`serde_yml`](https://crates.io/crates/serde_yml) was a
 continuation fork of `serde_yaml` after upstream archival. The
-`serde_yml` repo was itself **archived 2025-09-03**; `0.0.12`
+`serde_yml` repo was itself **archived 2025-09-03**; `0.0.13`
 (2024-08-25) is the last published release. The fork inherits
 the full `serde_yaml` 0.9 API shape including the 7-variant
 `Value` and the `with::singleton_map*` family.
@@ -14,7 +14,7 @@ the full `serde_yaml` 0.9 API shape including the 7-variant
 same `serde` data model, no `unsafe` code, and no `libyaml` C
 dependency.
 
-> **Crates.io / docs.rs state verified 2026-05-08.** If the
+> **Crates.io / docs.rs state verified 2026-09-05 (every function this guide names still exists on docs.rs).** If the
 > upstream API has shifted since, file an issue and we'll update.
 
 ## TL;DR

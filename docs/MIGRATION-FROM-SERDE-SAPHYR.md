@@ -5,7 +5,7 @@
 
 [`serde-saphyr`](https://crates.io/crates/serde-saphyr) (module
 `serde_saphyr`) is `bourumir-wyngs`'s clean-room serde adapter
-on top of the `saphyr` parser. `0.0.26` (2026-05-04) is the
+on top of the `saphyr` parser. `1.2.0` (2026-08-30) is the
 current release. The README explicitly states:
 
 > serde-saphyr is not a fork of serde-yaml and shares no code
@@ -20,7 +20,7 @@ same `serde` data model, no `unsafe` code, and no `libyaml` C
 dependency. noyalib's default `from_str<T>` path is also
 streaming-first; the `Value` DOM is *added*, not removed.
 
-> **Crates.io / docs.rs state verified 2026-05-08.** If the
+> **Crates.io / docs.rs state verified 2026-09-05 (every function this guide names still exists on docs.rs).** If the
 > upstream API has shifted since, file an issue and we'll update.
 
 ## TL;DR
