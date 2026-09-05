@@ -7,6 +7,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+## [v0.0.33] - 2026-09-05
+
 ### Added
 
 - **Bracket-quoted key segments in the path grammar** (#388,
@@ -30,6 +32,14 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   help text treat each pair alike, so a match on `ErrorKind` is
   unaffected. The location-less variants stay for callers that build
   them and for paths that have no position.
+
+### Changed
+
+- **`to_string` no longer writes a blank line between a clip-chomped
+  block scalar and the entry that follows it** (#385, part of the
+  block-scalar fix below). Files written by earlier versions still
+  parse to the same value, and lossless CST edits keep the layout a
+  file already has; only freshly emitted output changes.
 
 ### Fixed
 
