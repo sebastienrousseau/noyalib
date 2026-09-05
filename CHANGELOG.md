@@ -9,6 +9,28 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [v0.0.33] - 2026-09-05
 
+### Performance
+
+- **Parsing no longer pays a per-key clone and a per-mapping vector for
+  the key-collision check.** Since v0.0.14 every mapping key was cloned
+  into a `Vec<Value>` so that keys which stringify identically (`1` and
+  `"1"`) could be told apart — one `String` allocation per key plus four
+  vector reallocations per mapping, on documents that never had a
+  non-string key to record. The check now keeps a `KeyShape` that is only
+  materialised when a non-string key appears, and boxes the rare variant so
+  the mapping frame fits its original size class.
+
+  Measured on 2,000 documents of typical frontmatter (858 KiB), counting
+  every allocation: 20.2 MB / 180k allocations on v0.0.32 → 16.6 MB /
+  150k. Against v0.0.13, the last release before the regression, that is
+  fewer allocations than it ever made (168k) with 15% more bytes remaining,
+  down from 39%. Peak heap is unchanged throughout; this was churn, not
+  retention. Two tests pin the frame size and the laziness so it cannot
+  quietly return.
+
+  Found from `static-site-generator`, whose frontmatter path profiled at
+  84% parser allocation.
+
 ### Added
 
 - **Bracket-quoted key segments in the path grammar** (#388,
