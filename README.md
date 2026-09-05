@@ -29,9 +29,10 @@
 **Getting started**
 
 - [Install](#install) — Cargo, source
+- [Requirements](#requirements) — toolchain floor, platforms, `no_std`
 - [Quick Start](#quick-start) — parse and serialise in ten lines
 
-**The noyalib ecosystem** (library + four satellite crates)
+**The noyalib ecosystem** (library + five satellite crates)
 
 - [The noyalib ecosystem](#the-noyalib-ecosystem) — `noyalib`, `noya-cli`, `noyalib-lsp`, `noyalib-mcp`, `noyalib-wasm`, `noyalib-serde-yaml` at a glance
 
@@ -66,7 +67,7 @@
 
 ```toml
 [dependencies]
-noyalib = "0.0.32"
+noyalib = "0.0.33"
 ```
 
 ### As a CLI tool
@@ -104,7 +105,7 @@ maintainer runbook.
 
 ```toml
 [dependencies]
-noyalib = { version = "0.0.32", default-features = false }
+noyalib = { version = "0.0.33", default-features = false }
 ```
 
 Requires `alloc`. Core data binding (`from_str`, `to_string`, `Value`,
@@ -120,6 +121,67 @@ git clone https://github.com/sebastienrousseau/noyalib.git
 cd noyalib
 make          # check + clippy + test
 ```
+
+### Cargo features
+
+All optional integrations are off by default. Enable only what
+the application needs.
+
+| Feature | Pulls in | Adds | Documented in |
+| :--- | :--- | :--- | :--- |
+| `std` *(default)* | — | `from_reader`, `to_writer`, `Spanned<T>`, CST module | [Install](#install) |
+| `miette` | `miette` 7 | Rich terminal diagnostics with source spans | [Library Usage](#library-usage), `examples/diagnostic.rs` |
+| `ariadne` | `ariadne` | Alternative `ariadne`-rendered diagnostics | `examples/ariadne_diagnostic.rs` |
+| `include` | — | `$include` directive resolution via an in-memory resolver | `examples/include_directive.rs` |
+| `include_fs` | `include` + `std` | Filesystem include resolver (`SafeFileResolver`) | `examples/include_directive.rs` |
+| `schema` | `schemars`, `serde_json` | `JsonSchema` derive + `schema_for::<T>()`. **Downstream callers that derive `JsonSchema` must add `schemars = "1.2"` to their own `Cargo.toml`** — the proc-macro emits `::schemars::*` paths that need to resolve in the call-site dep graph. | [Capabilities at a glance](#capabilities-at-a-glance) |
+| `validate-schema` | `schema` + `jsonschema` | `validate_against_schema`, `coerce_to_schema` | [Governance: schema-driven autofix](#governance-schema-driven-autofix) |
+| `figment` | `figment` 0.10 | `noyalib::figment::Yaml` provider | `examples/figment.rs` |
+| `garde` | `garde` 0.22 | `Validated<T>` wrapper | `examples/validation_garde.rs` |
+| `validator` | `validator` 0.19 | `ValidatedValidator<T>` wrapper | `examples/validation_validator.rs` |
+| `lossless-float` | — | `LosslessFloat` — refuse-to-lose-precision float, the floating-point sibling of `lossless-u64` | — |
+| `parallel` | `rayon` 1.10 | `noyalib::parallel::parse<T>` for `---`-separated streams | [Benchmarks](#benchmarks) |
+| `recovery` | — | `noyalib::recovery::parse_lenient` — best-effort tree + error list for LSP / IDE half-typed documents | `examples/recovery_lenient.rs`, `benches/v006_features.rs` |
+| `sval` | `sval` 2 | `impl sval::Value` for `Value` / `Number` / `Mapping` / `MappingAny` / `TaggedValue`, `noyalib::sval_adapter::to_sval_writer` | `examples/sval_streaming.rs`, `benches/v006_features.rs` |
+| `tokio` | `tokio`, `tokio-util`, `bytes` | `noyalib::tokio_async::from_async_reader` / `from_async_reader_multi` and `YamlDecoder` codec for `tokio_util::codec::Framed` pipelines | `examples/tokio_async_reader.rs`, `benches/v006_features.rs` |
+| `simd` | — | Forward-compat no-op — `noyalib::simd::*` is always available and the parser hot path uses it unconditionally | [Benchmarks](#benchmarks) |
+| `nightly-simd` | `simd` (nightly toolchain) | `core::simd`-backed `StructuralIter` (32-byte chunks) | [Benchmarks](#benchmarks) |
+| `compat-serde-yaml` | — | **behavioural** `serde_yaml` 0.9 shim (values, error text, and locations pinned by the live-captured 18-case contract suite); `noyalib-serde-yaml` packages it as a Cargo package-rename drop-in | [When not to use noyalib](#when-not-to-use-noyalib) |
+| `lossless-u64` | — | `Number::Unsigned(u64)` plus opt-in parser/serializer config for scalars in `(i64::MAX, u64::MAX]` | [`docs/adr/0004-lossless-u64-integers.md`](docs/adr/0004-lossless-u64-integers.md), `examples/lossless_u64.rs`, `benches/lossless_u64.rs` |
+| `compare-saphyr` | `serde-saphyr` *(dev only)* | Cross-library bench comparison arms | `benches/comparison.rs` |
+| `wasm-opt` | — | Build-time flag opting the `noyalib-wasm` bundle into `wasm-opt` size passes (no API surface) | [`sebastienrousseau/noyalib-wasm`](https://github.com/sebastienrousseau/noyalib-wasm) |
+| `noyavalidate` | `std` + `miette` + `validate-schema` | Enables the schema-validation surface the `noyavalidate` CLI is built on | [`docs/USER-GUIDE.md` §11](docs/USER-GUIDE.md) |
+
+```toml
+# Example: rich diagnostics + schema validation
+[dependencies]
+noyalib = { version = "0.0.33", features = ["miette", "validate-schema"] }
+```
+
+**Optional features:** `lossless-u64` preserves YAML integer scalars above
+`i64::MAX` as `Number::Unsigned(u64)` instead of lossy `f64` widening —
+useful for distributed-system IDs, content hashes, and timestamp fields.
+Enable the Cargo feature, then opt in at runtime with
+`ParserConfig::lossless_u64_integers(true)` and
+`SerializerConfig::lossless_u64_integers(true)`. See
+[`docs/adr/0004-lossless-u64-integers.md`](docs/adr/0004-lossless-u64-integers.md)
+for rationale and migration notes.
+
+---
+
+## Requirements
+
+- **Rust 1.86.0 or newer.** Every crate manifest carries `rust-version`,
+  and CI enforces the floor on every push: `msrv-core` builds the core
+  surface on 1.86.0, and `msrv-per-crate` checks each satellite
+  against its own declared floor.
+- **Any tier-1 platform.** The test matrix runs on Linux, macOS, and
+  Windows with the stable, beta, and nightly toolchains; stable is the
+  gate, beta and nightly are early warning.
+- **`std` is optional.** With `default-features = false` the core builds
+  on `core` + `alloc`; CI checks `wasm32-unknown-unknown`,
+  `thumbv7em-none-eabihf`, `riscv32imac-unknown-none-elf`, and
+  `aarch64-unknown-none` on every push.
 
 **MSRV by crate.** Each workspace crate carries its own
 `rust-version`; CI's `msrv-per-crate` job (Phase 7) gates each
@@ -157,51 +219,6 @@ the MSRV and is excluded from the MSRV gate.
 development; the 1.86.0 floor on the core surface is enforced
 by the dedicated `msrv-core` CI job (Ubuntu,
 no-default-features + default-features build paths).
-
-### Cargo features
-
-All optional integrations are off by default. Enable only what
-the application needs.
-
-| Feature | Pulls in | Adds | Documented in |
-| :--- | :--- | :--- | :--- |
-| `std` *(default)* | — | `from_reader`, `to_writer`, `Spanned<T>`, CST module | [Install](#install) |
-| `miette` | `miette` 7 | Rich terminal diagnostics with source spans | [Library Usage](#library-usage), `examples/diagnostic.rs` |
-| `ariadne` | `ariadne` | Alternative `ariadne`-rendered diagnostics | `examples/ariadne_diagnostic.rs` |
-| `include` | — | `$include` directive resolution via an in-memory resolver | `examples/include_directive.rs` |
-| `include_fs` | `include` + `std` | Filesystem include resolver (`SafeFileResolver`) | `examples/include_directive.rs` |
-| `schema` | `schemars`, `serde_json` | `JsonSchema` derive + `schema_for::<T>()`. **Downstream callers that derive `JsonSchema` must add `schemars = "1.2"` to their own `Cargo.toml`** — the proc-macro emits `::schemars::*` paths that need to resolve in the call-site dep graph. | [Capabilities at a glance](#capabilities-at-a-glance) |
-| `validate-schema` | `schema` + `jsonschema` | `validate_against_schema`, `coerce_to_schema` | [Governance: schema-driven autofix](#governance-schema-driven-autofix) |
-| `figment` | `figment` 0.10 | `noyalib::figment::Yaml` provider | `examples/figment.rs` |
-| `garde` | `garde` 0.22 | `Validated<T>` wrapper | `examples/validation_garde.rs` |
-| `validator` | `validator` 0.19 | `ValidatedValidator<T>` wrapper | `examples/validation_validator.rs` |
-| `lossless-float` | — | `LosslessFloat` — refuse-to-lose-precision float, the floating-point sibling of `lossless-u64` | — |
-| `parallel` | `rayon` 1.10 | `noyalib::parallel::parse<T>` for `---`-separated streams | [Benchmarks](#benchmarks) |
-| `recovery` | — | `noyalib::recovery::parse_lenient` — best-effort tree + error list for LSP / IDE half-typed documents | `examples/recovery_lenient.rs`, `benches/v006_features.rs` |
-| `sval` | `sval` 2 | `impl sval::Value` for `Value` / `Number` / `Mapping` / `MappingAny` / `TaggedValue`, `noyalib::sval_adapter::to_sval_writer` | `examples/sval_streaming.rs`, `benches/v006_features.rs` |
-| `tokio` | `tokio`, `tokio-util`, `bytes` | `noyalib::tokio_async::from_async_reader` / `from_async_reader_multi` and `YamlDecoder` codec for `tokio_util::codec::Framed` pipelines | `examples/tokio_async_reader.rs`, `benches/v006_features.rs` |
-| `simd` | — | Forward-compat no-op — `noyalib::simd::*` is always available and the parser hot path uses it unconditionally | [Benchmarks](#benchmarks) |
-| `nightly-simd` | `simd` (nightly toolchain) | `core::simd`-backed `StructuralIter` (32-byte chunks) | [Benchmarks](#benchmarks) |
-| `compat-serde-yaml` | — | **behavioural** `serde_yaml` 0.9 shim (values, error text, and locations pinned by the live-captured 18-case contract suite); `noyalib-serde-yaml` packages it as a Cargo package-rename drop-in | [When not to use noyalib](#when-not-to-use-noyalib) |
-| `lossless-u64` | — | `Number::Unsigned(u64)` plus opt-in parser/serializer config for scalars in `(i64::MAX, u64::MAX]` | [`docs/adr/0004-lossless-u64-integers.md`](docs/adr/0004-lossless-u64-integers.md), `examples/lossless_u64.rs`, `benches/lossless_u64.rs` |
-| `compare-saphyr` | `serde-saphyr` *(dev only)* | Cross-library bench comparison arms | `benches/comparison.rs` |
-| `wasm-opt` | — | Build-time flag opting the `noyalib-wasm` bundle into `wasm-opt` size passes (no API surface) | [`sebastienrousseau/noyalib-wasm`](https://github.com/sebastienrousseau/noyalib-wasm) |
-| `noyavalidate` | `std` + `miette` + `validate-schema` | Enables the schema-validation surface the `noyavalidate` CLI is built on | [`docs/USER-GUIDE.md` §11](docs/USER-GUIDE.md) |
-
-```toml
-# Example: rich diagnostics + schema validation
-[dependencies]
-noyalib = { version = "0.0.32", features = ["miette", "validate-schema"] }
-```
-
-**Optional features:** `lossless-u64` preserves YAML integer scalars above
-`i64::MAX` as `Number::Unsigned(u64)` instead of lossy `f64` widening —
-useful for distributed-system IDs, content hashes, and timestamp fields.
-Enable the Cargo feature, then opt in at runtime with
-`ParserConfig::lossless_u64_integers(true)` and
-`SerializerConfig::lossless_u64_integers(true)`. See
-[`docs/adr/0004-lossless-u64-integers.md`](docs/adr/0004-lossless-u64-integers.md)
-for rationale and migration notes.
 
 ---
 
@@ -272,7 +289,7 @@ npm install @sebastienrousseau/noyalib-wasm
 
 ```toml
 # serde_yaml drop-in — the whole migration is this one line:
-serde_yaml = { package = "noyalib-serde-yaml", version = "=0.0.32" }
+serde_yaml = { package = "noyalib-serde-yaml", version = "=0.0.33" }
 ```
 
 Per-crate READMEs cover the surface specific to each artifact:
@@ -332,21 +349,45 @@ their READMEs above.
 
 ## One-minute migration from `serde_yaml` (and the wider ecosystem)
 
-Most call sites are mechanical to update. The full guide —
-covering `serde_yaml` 0.9 plus every actively-published fork
-and adjacent crate — is
+The one-minute version is a package rename. Change **zero source
+lines**:
+
+```toml
+[dependencies]
+serde_yaml = { package = "noyalib-serde-yaml", version = "=0.0.33" }
+```
+
+[`noyalib-serde-yaml`](https://github.com/sebastienrousseau/noyalib-serde-yaml)
+re-exports noyalib's `serde_yaml` 0.9 shim and releases in lockstep
+with the core, so the exact pin is the compatibility contract. The
+shim is **behavioural** since v0.0.29: `<<` stays a literal key,
+`0123` stays a string, `u64::MAX` keeps precision, alias bombs fail
+with upstream's `repetition limit exceeded`, and the pinned error
+classes carry libyaml's phrasing and locations, verified by an
+18-case contract suite captured live from `serde_yaml 0.9.34`.
+Every type is noyalib-native; there is no transitive dependency on
+the archived upstream. The same shim is available without the
+rename: depend on `noyalib` with `features = ["compat-serde-yaml"]`
+and replace `use serde_yaml` with `use noyalib::compat::serde_yaml`.
+
+### Moving to the native API
+
+Take this route when you want what the shim does not expose:
+`from_str_strict`, `Spanned<T>`, the `Tagged` variant, and the
+lossless CST. Most call sites are mechanical to update. The full
+guide, covering `serde_yaml` 0.9 plus every actively published fork
+and adjacent crate, is
 [`docs/MIGRATION-FROM-SERDE-YAML.md`](docs/MIGRATION-FROM-SERDE-YAML.md).
-The headline mapping for `serde_yaml` 0.9 is below; the same
-guide has per-crate sections for `serde_yml`, `yaml_serde`,
-`serde-yaml-ng`, `serde-norway`, `serde-yaml-bw`,
-`serde-saphyr`, and `yaml-spanned` with verified function
-tables for each.
+The headline mapping for `serde_yaml` 0.9 is below; the same guide
+has per-crate sections for `serde_yml`, `yaml_serde`,
+`serde-yaml-ng`, `serde-norway`, `serde-yaml-bw`, `serde-saphyr`,
+and `yaml-spanned` with verified function tables for each.
 
 ```diff
 -[dependencies]
 -serde_yaml = "0.9"
 +[dependencies]
-+noyalib = "0.0.32"
++noyalib = "0.0.33"
 ```
 
 ```diff
@@ -375,38 +416,20 @@ tables for each.
 | (n/a) | `noyalib::Spanned<T>` — source-location wrapper |
 | (n/a) | `noyalib::cst::Document` — lossless byte-faithful edits |
 
-If your call sites can't change at all, rename the package in
-`Cargo.toml` and change **zero source lines**:
-
-```toml
-serde_yaml = { package = "noyalib-serde-yaml", version = "=0.0.32" }
-```
-
-or depend on noyalib directly with
-`features = ["compat-serde-yaml"]` and replace `use serde_yaml`
-with `use noyalib::compat::serde_yaml`. Either way the shim is
-**behavioural** since v0.0.29: `<<` stays a literal key, `0123`
-stays a string, `u64::MAX` keeps precision, alias bombs fail with
-upstream's `repetition limit exceeded`, and the pinned error
-classes carry libyaml's phrasing and locations — verified by an
-18-case contract suite captured live from `serde_yaml 0.9.34`.
-Every type is noyalib-native; no transitive dep on the archived
-upstream.
-
 ### Coming from a different YAML crate?
 
 Each crate has a standalone migration guide with TL;DR diff,
 function-mapping table, behavioural notes, and a checklist.
-Crates.io state verified **2026-05-08**:
+Crates.io state verified **2026-09-05**:
 
 | Crate | Version | Drop-in for `serde_yaml`? | Migration guide |
 |---|---|---|---|
-| [`serde_yml`](https://crates.io/crates/serde_yml) | `0.0.12` (archived 2025-09) | mostly | [`MIGRATION-FROM-SERDE-YML.md`](docs/MIGRATION-FROM-SERDE-YML.md) |
-| [`yaml_serde`](https://crates.io/crates/yaml_serde) | `0.10.4` | yes (Cargo `package =` rename) | [`MIGRATION-FROM-YAML-SERDE.md`](docs/MIGRATION-FROM-YAML-SERDE.md) |
+| [`serde_yml`](https://crates.io/crates/serde_yml) | `0.0.13` (repo archived) | mostly | [`MIGRATION-FROM-SERDE-YML.md`](docs/MIGRATION-FROM-SERDE-YML.md) |
+| [`yaml_serde`](https://crates.io/crates/yaml_serde) | `0.10.7` | yes (Cargo `package =` rename) | [`MIGRATION-FROM-YAML-SERDE.md`](docs/MIGRATION-FROM-YAML-SERDE.md) |
 | [`serde-yaml-ng`](https://crates.io/crates/serde-yaml-ng) | `0.10.0` | yes | [`MIGRATION-FROM-SERDE-YAML-NG.md`](docs/MIGRATION-FROM-SERDE-YAML-NG.md) |
 | [`serde-norway`](https://crates.io/crates/serde-norway) | `0.9.42` | yes | [`MIGRATION-FROM-SERDE-NORWAY.md`](docs/MIGRATION-FROM-SERDE-NORWAY.md) |
-| [`serde-yaml-bw`](https://crates.io/crates/serde-yaml-bw) | `2.5.6` | **no** (breaking 2.x; 8-variant `Value` with `Alias`) | [`MIGRATION-FROM-SERDE-YAML-BW.md`](docs/MIGRATION-FROM-SERDE-YAML-BW.md) |
-| [`serde-saphyr`](https://crates.io/crates/serde-saphyr) | `0.0.27` | **no** (no `Value` DOM, streaming-only) | [`MIGRATION-FROM-SERDE-SAPHYR.md`](docs/MIGRATION-FROM-SERDE-SAPHYR.md) |
+| [`serde-yaml-bw`](https://crates.io/crates/serde-yaml-bw) | `2.5.7` | **no** (breaking 2.x; 8-variant `Value` with `Alias`) | [`MIGRATION-FROM-SERDE-YAML-BW.md`](docs/MIGRATION-FROM-SERDE-YAML-BW.md) |
+| [`serde-saphyr`](https://crates.io/crates/serde-saphyr) | `1.2.0` | **no** (no `Value` DOM, streaming-only) | [`MIGRATION-FROM-SERDE-SAPHYR.md`](docs/MIGRATION-FROM-SERDE-SAPHYR.md) |
 | [`yaml-spanned`](https://crates.io/crates/yaml-spanned) | `0.0.3` | **no** (parser-only, no `to_string`) | [`MIGRATION-FROM-YAML-SPANNED.md`](docs/MIGRATION-FROM-YAML-SPANNED.md) |
 
 The umbrella index is
@@ -624,7 +647,7 @@ stack, etc.) live in
 | | |
 | :--- | :--- |
 | **Serde** | `from_str`, `from_slice`, `from_reader`, `to_string`, `to_writer`, `to_fmt_writer` -- all with `_with_config` variants. `to_value`, `from_value` for Value conversion. Multi-document: `load_all`, `load_all_as`, `to_string_multi`. Streaming deserializer bypasses Value AST for typed targets. |
-| **Values** | 7-variant `Value` enum: Null, Bool, Number, String, Sequence, Mapping, Tagged. Path traversal via `get_path("server.host")`. Path queries via `query("items[*].name")` with wildcards (`*`) and recursive descent (`..`). Deep merge via `merge()` and `merge_concat()`. `MappingAny` for non-string keys. Zero-copy `BorrowedValue<'a>` borrows strings from input (18% faster). |
+| **Values** | 7-variant `Value` enum: Null, Bool, Number, String, Sequence, Mapping, Tagged. Path traversal via `get_path("server.host")`. Path queries via `query("items[*].name")` with wildcards (`*`), recursive descent (`..`), and bracket-quoted keys (`labels["app.kubernetes.io/name"]`) for a key the grammar would otherwise read as structure; `noyalib::path::join_keys` spells such a path from literal keys. Deep merge via `merge()` and `merge_concat()`. `MappingAny` for non-string keys. Zero-copy `BorrowedValue<'a>` borrows strings from input (18% faster). |
 | **Spans** | `Spanned<T>` tracks line, column, and byte offset for every deserialized field. Serializes transparently as `T`. Span tracking is opt-in — disabled by default in `from_str` for zero overhead. For large documents, consider the memory impact of the span HashMap. |
 | **Formatting** | Per-value output control: `FlowSeq<T>`, `FlowMap<T>`, `LitStr`, `FoldStr`, `Commented<T>`, `SpaceAfter<T>`. |
 | **Enums** | `singleton_map`, `singleton_map_optional`, `singleton_map_recursive`, `singleton_map_with` -- custom key transforms (snake\_case, kebab-case, lowercase). |
@@ -1340,7 +1363,7 @@ disagreement on priorities.
 - **You have a hard dependency budget that cannot tolerate a
   Grisu / Ryu float formatter and a hash-randomised lookup
   table.** Default profile carries 8 runtime deps. `noyalib =
-  { version = "0.0.32", default-features = false, features =
+  { version = "0.0.33", default-features = false, features =
   ["std"] }` (or the equivalent `features = ["minimal"]`) drops
   to 5 — `itoa`, `ryu`, and `serde_ignored` become opt-in via
   the `fast-int` / `fast-float` / `strict-deserialise` features.
@@ -1617,7 +1640,7 @@ The four entry points, identical across every repo in the family:
 | [`docs/release-notes/`](docs/release-notes/README.md) | Narrative notes for v0.0.1–v0.0.17, one file per tag. Complements the changelog rather than duplicating it. |
 | [`docs/USER-GUIDE.md`](docs/USER-GUIDE.md) | Long-form usage guide with worked examples for every major feature. |
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Module map, hot-path notes, design decisions. |
-| [`docs/GLOSSARY.md`](GLOSSARY.md) | YAML / serde terminology reference. |
+| [`docs/GLOSSARY.md`](docs/GLOSSARY.md) | YAML / serde terminology reference. |
 | [`crates/noyalib/docs/internals.md`](crates/noyalib/docs/internals.md) | Library internals (parser stages, loader frames, CST green tree). |
 | [`crates/noyalib/docs/errors.md`](crates/noyalib/docs/errors.md) | Error reference — every variant, when it fires, how to handle it. |
 

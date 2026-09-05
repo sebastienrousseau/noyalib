@@ -17,7 +17,10 @@ use noyalib::{Error, Value, from_str, from_str_borrowing};
 
 fn assert_collision<T: std::fmt::Debug>(r: Result<T, Error>, ctx: &str) {
     assert!(
-        matches!(r, Err(Error::KeyCollision(_))),
+        matches!(
+            r,
+            Err(Error::KeyCollision(_) | Error::KeyCollisionAt { .. })
+        ),
         "{ctx}: expected KeyCollision, got {r:?}"
     );
 }

@@ -322,9 +322,30 @@ impl serde_core::Serialize for TaggedValue {
     where
         S: serde_core::Serializer,
     {
+        // The wire form is a single-entry map keyed by the tag string,
+        // which is what a serializer with no YAML-tag concept
+        // (`serde_json` and friends) needs (#350). It travels inside a
+        // newtype struct named `MAGIC_TAGGED`: a generic serializer
+        // passes a newtype through untouched, and this crate's own
+        // serializer recognises the name, not the shape, when it
+        // rebuilds `Value::Tagged` -- so a genuine mapping whose only
+        // key starts with `!` is never mistaken for a tag (#377).
+        serializer.serialize_newtype_struct(crate::fmt::MAGIC_TAGGED, &TaggedWire(self))
+    }
+}
+
+/// The single-entry-map wire form of a [`TaggedValue`]; see the
+/// `Serialize` impl above.
+struct TaggedWire<'a>(&'a TaggedValue);
+
+impl serde_core::Serialize for TaggedWire<'_> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde_core::Serializer,
+    {
         use serde_core::ser::SerializeMap as _;
         let mut map = serializer.serialize_map(Some(1))?;
-        map.serialize_entry(self.tag.as_str(), self.value())?;
+        map.serialize_entry(self.0.tag.as_str(), self.0.value())?;
         map.end()
     }
 }

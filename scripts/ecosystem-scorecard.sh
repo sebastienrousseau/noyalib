@@ -32,8 +32,9 @@
 #   scripts/ecosystem-scorecard.sh --json out.json
 #
 # Exit status: 0 if the weighted score is >= SCORE_FLOOR (default 0.90),
-# 1 otherwise, 2 on harness error. Wire it into CI to make the rating a
-# gate rather than a boast.
+# 1 otherwise, 2 on harness error. `.github/workflows/ecosystem-scorecard.yml`
+# runs it weekly and on every change to the harness or docs/ECOSYSTEM.md,
+# so the rating is a gate rather than a boast.
 # ─────────────────────────────────────────────────────────────────────────
 
 # Deliberately no `-e`: a probe failing IS the measurement. The harness
@@ -47,7 +48,7 @@ HERE=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 ECOSYSTEM_ROOT="${ECOSYSTEM_ROOT:-$(cd "$HERE/../.." && pwd)}"
 OWNER="${OWNER:-sebastienrousseau}"
 
-ALL_REPOS=(noyalib noya-cli noyalib-lsp noyalib-mcp noyalib-wasm)
+ALL_REPOS=(noyalib noya-cli noyalib-lsp noyalib-mcp noyalib-wasm noyalib-serde-yaml)
 
 WITH_NETWORK=0
 WITH_COVERAGE=0
@@ -100,6 +101,7 @@ abspath() {
 [ -n "$INJECT" ]   && INJECT=$(abspath "$INJECT")
 
 WORK=$(mktemp -d) || exit 2
+LAST_LOG=""
 trap 'rm -rf "$WORK"' EXIT
 ROWS="$WORK/rows.tsv"     # repo \t id \t category \t weight \t value \t score \t evidence
 : > "$ROWS"
@@ -129,6 +131,14 @@ record() {
     mark=$'\033[33m  ~\033[0m'
   fi
   printf '%s %-22s %-28s %s\n' "$mark" "$2" "$5" "$(dim_inline "$7")"
+  # A failing probe is only a measurement if the reader can see what
+  # failed. run() records its log; print its tail once, then forget it
+  # so a later probe that ran nothing cannot borrow a stale log.
+  if [ -n "${LAST_LOG:-}" ] && [ -f "$LAST_LOG" ] \
+     && awk -v v="$6" 'BEGIN{exit !(v+0 <= 0.0005)}'; then
+    tail -n "${FAIL_LOG_LINES:-12}" "$LAST_LOG" | sed 's/^/      │ /'
+  fi
+  LAST_LOG=""
 }
 dim_inline() { printf '\033[2m%s\033[0m' "$*"; }
 
@@ -173,6 +183,7 @@ have() { command -v "$1" >/dev/null 2>&1; }
 # matching timeout(1)'s convention.
 run() {
   local log="$1"; shift
+  LAST_LOG="$log"
   "$@" >"$log" 2>&1 &
   local pid=$! waited=0
   while kill -0 "$pid" 2>/dev/null; do
@@ -589,10 +600,17 @@ bold "── ecosystem"
 # exactly, and that pin equals the core's own version. This is the single
 # invariant that makes a five-crate release atomic.
 CORE_VER="${REPO_VERSION[noyalib]:-}"
-if [ -n "$CORE_VER" ]; then
+# A release branch carries the next version before it publishes, and the
+# satellites cannot pin a version that is not on crates.io. Until the
+# core's tag exists the invariant is pending, not broken, so it scores
+# N/A (rule 2: no credit, no blame, for what cannot be measured).
+if [ -n "$CORE_VER" ] && ! git -C "$ECOSYSTEM_ROOT/noyalib" tag -l "v$CORE_VER" 2>/dev/null | grep -q .; then
+  record ecosystem version_lockstep integrity 5 "core $CORE_VER not tagged yet" NA \
+    "git tag -l v$CORE_VER in noyalib (pending release; satellites pin only published versions)"
+elif [ -n "$CORE_VER" ]; then
   matched=0; total=0
   detail=""
-  for r in noya-cli noyalib-lsp noyalib-mcp noyalib-wasm; do
+  for r in noya-cli noyalib-lsp noyalib-mcp noyalib-wasm noyalib-serde-yaml; do
     d="$ECOSYSTEM_ROOT/$r"; [ -d "$d" ] || continue
     total=$((total+1))
     pin=$(grep -rhoE 'noyalib *= *\{?[^}]*version *= *"=?[0-9.]+"|noyalib *= *"=?[0-9.]+"' \
@@ -613,8 +631,8 @@ fi
 # hosts that actually have a shipping crate rather than a roadmap entry.
 hosts=0
 for r in "${ALL_REPOS[@]}"; do [ -d "$ECOSYSTEM_ROOT/$r" ] && hosts=$((hosts+1)); done
-record ecosystem host_coverage integrity 3 "$hosts/5 hosts present" \
-  "$(fdiv "$hosts" 5)" "directory presence for ${ALL_REPOS[*]}"
+record ecosystem host_coverage integrity 3 "$hosts/${#ALL_REPOS[@]} hosts present" \
+  "$(fdiv "$hosts" "${#ALL_REPOS[@]}")" "directory presence for ${ALL_REPOS[*]}"
 
 echo
 

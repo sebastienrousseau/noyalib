@@ -347,10 +347,13 @@ fn quote_for_site(s: &str, style: ScalarStyle) -> String {
 /// YAML spelling for a sequence / mapping at an insertion site.
 ///
 /// Delegates to the serializer with the file's detected indent unit and
-/// collection style, then strips the trailing newline `to_string` adds
-/// for top-level emission — the splice templates supply their own line
-/// break. The result may be multi-line; callers re-indent continuation
-/// lines to the site's column before splicing.
+/// collection style, then strips the one line break that terminates the
+/// emission's last line — the splice templates supply their own. Only
+/// that one: a keep-chomped block scalar (`|+`) ends in the empty lines
+/// that *are* its value, and stripping every trailing break lost them,
+/// so the spliced entry failed the integrity check (#386). The result
+/// may be multi-line; callers re-indent continuation lines to the
+/// site's column before splicing.
 ///
 /// Nested scalars take the serializer's conservative `Auto` quoting,
 /// which always round-trips (the oracle would reject anything that did
@@ -363,7 +366,7 @@ fn emit_collection(value: &Value, ctx: &EmitCtx) -> Result<String> {
         .indent(ctx.indent_unit)
         .flow_style(ctx.flow);
     let emitted = crate::to_string_value_with_config(value, &cfg)?;
-    Ok(emitted.trim_end_matches('\n').to_owned())
+    Ok(emitted.strip_suffix('\n').unwrap_or(&emitted).to_owned())
 }
 
 /// YAML spelling for a **mapping key** being inserted.

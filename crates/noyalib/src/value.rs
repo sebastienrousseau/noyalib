@@ -456,6 +456,10 @@ impl Value {
     /// - `"items[0]"` - access index 0 in sequence "items"
     /// - `"items[0].name"` - access key "name" in first element of sequence
     ///   "items"
+    /// - `"labels[\"app.kubernetes.io/name\"]"` - a bracket-quoted segment
+    ///   is one key, whatever it contains; see [`crate::path`] for the
+    ///   grammar and for [`crate::path::join_keys`], which spells a path
+    ///   from literal keys
     ///
     /// # Examples
     ///
@@ -511,6 +515,8 @@ impl Value {
     /// Returns all matching values. Supports:
     /// - Dot notation: `"foo.bar.baz"`
     /// - Bracket indexing: `"items[0]"`
+    /// - Quoted keys: `"labels[\"app.kubernetes.io/name\"]"` — one key,
+    ///   whatever it contains (see [`crate::path`])
     /// - Wildcard: `"items[*]"` or `"items.*"` — matches all children
     /// - Recursive descent: `"..name"` — finds `name` at any depth
     ///

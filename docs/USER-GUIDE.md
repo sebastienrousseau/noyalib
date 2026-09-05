@@ -111,6 +111,11 @@ let first = v.get("items").and_then(|s| s.get(0));
 let names = v.query("items[*].name");          // every name in the list
 let any   = v.query("..debug");                // every `debug` at any depth
 
+// A key the grammar would read as structure is bracket-quoted;
+// `join_keys` spells the path from literal keys.
+let app = v.get_path(r#"labels["app.kubernetes.io/name"]"#);
+let same = v.get_path(&noyalib::path::join_keys(["labels", "app.kubernetes.io/name"]));
+
 // Mutation.
 let mut v = v;
 v["server"]["port"] = Value::from(9090u16);
@@ -503,7 +508,7 @@ diagnostics list and offer autocomplete on the recoverable
 subtrees.
 
 ```rust
-// Cargo.toml: noyalib = { version = "0.0.32", features = ["recovery"] }
+// Cargo.toml: noyalib = { version = "0.0.33", features = ["recovery"] }
 use noyalib::recovery::parse_lenient;
 
 let half_typed = "name: noyalib\nfeatures: [recovery, sval\n# ^ unclosed\n";
@@ -526,7 +531,7 @@ For high-concurrency services parsing YAML from network sources,
 the `tokio` feature lets you skip `spawn_blocking`:
 
 ```rust
-// Cargo.toml: noyalib = { version = "0.0.32", features = ["tokio"] }
+// Cargo.toml: noyalib = { version = "0.0.33", features = ["tokio"] }
 use noyalib::tokio_async::{from_async_reader_multi, YamlDecoder};
 
 // Pattern 1: drain-and-parse
@@ -550,7 +555,7 @@ cost of serde monomorphisation. The adapter implements
 `sval::Stream` consumer can read it:
 
 ```rust
-// Cargo.toml: noyalib = { version = "0.0.32", features = ["sval"] }
+// Cargo.toml: noyalib = { version = "0.0.33", features = ["sval"] }
 let value: noyalib::Value = noyalib::from_str("name: noyalib")?;
 sval::Value::stream(&value, &mut my_stream)?;
 ```

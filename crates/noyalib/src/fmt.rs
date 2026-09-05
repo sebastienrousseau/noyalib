@@ -33,6 +33,13 @@ pub(crate) const MAGIC_COMMENTED: &str = "__noya_commented";
 pub(crate) const MAGIC_SPACE_AFTER: &str = "__noya_space_after";
 pub(crate) const MAGIC_ANCHOR_DEF: &str = "__noya_anchor_def";
 pub(crate) const MAGIC_ANCHOR_REF: &str = "__noya_anchor_ref";
+/// Newtype name `TaggedValue::serialize` wraps its single-entry-map wire
+/// form in. A serializer with no tag concept (`serde_json`) passes a
+/// newtype through and still sees `{"!tag": value}`; this crate's own
+/// serializer recognises the name and rebuilds `Value::Tagged`, so a
+/// genuine mapping whose only key starts with `!` is never mistaken for
+/// a tag (#377).
+pub(crate) const MAGIC_TAGGED: &str = "__noya_tagged";
 
 /// Force flow style `[a, b, c]` for a sequence value.
 ///

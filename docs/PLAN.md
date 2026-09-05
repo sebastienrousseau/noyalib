@@ -185,7 +185,7 @@ cargo deny check
 > workspace. The edition, floor and member list below are the v0.0.1-era
 > values — the live values are edition 2024, `rust-version = "1.86.0"`,
 > `members = ["crates/noyalib"]`. See the root `Cargo.toml` and
-> [`docs/POLICIES.md`](docs/POLICIES.md) §1, which is the source of truth
+> [`docs/POLICIES.md`](POLICIES.md) §1, which is the source of truth
 > for the MSRV.
 
 ```toml
@@ -630,7 +630,7 @@ for crate in crates/*/; do
 done
 ```
 
-CI job `msrv-per-crate` runs this on every PR. It reads `rust-version` from each manifest rather than hard-coding a number, so it catches drift if e.g. `noyalib-lsp` adopts a feature requiring a newer rustc than the declared floor — which would silently break distros pinned to the lower rustc. The current floor is **1.86.0** across all five crates (see [`docs/POLICIES.md`](docs/POLICIES.md) §1).
+CI job `msrv-per-crate` runs this on every PR. It reads `rust-version` from each manifest rather than hard-coding a number, so it catches drift if e.g. `noyalib-lsp` adopts a feature requiring a newer rustc than the declared floor — which would silently break distros pinned to the lower rustc. The current floor is **1.86.0** across all five crates (see [`docs/POLICIES.md`](POLICIES.md) §1).
 
 ### 7.6 Intra-doc link strictness
 

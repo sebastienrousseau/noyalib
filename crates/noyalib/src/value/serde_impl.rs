@@ -144,13 +144,10 @@ impl serde_core::Serialize for Value {
                 }
                 map.end()
             }
-            Self::Tagged(tagged) => {
-                // Serialize as a single-entry map with tag as key
-                use serde_core::ser::SerializeMap as _;
-                let mut map = serializer.serialize_map(Some(1))?;
-                map.serialize_entry(tagged.tag().as_str(), tagged.value())?;
-                map.end()
-            }
+            // `TaggedValue::serialize` owns the wire form (a marker newtype
+            // around a single-entry map keyed by the tag string); one
+            // definition keeps this arm and the standalone impl in step.
+            Self::Tagged(tagged) => serde_core::Serialize::serialize(tagged.as_ref(), serializer),
         }
     }
 }

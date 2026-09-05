@@ -8,23 +8,38 @@ every actively-published Rust YAML crate. Each link goes to a
 standalone, self-contained guide with TL;DR diff, function
 table, behavioural notes, and migration checklist.
 
-> **Crates.io / docs.rs state verified 2026-05-08.** If the
+> **Crates.io / docs.rs state verified 2026-09-05.** If the
 > upstream API has shifted since, file an issue at
 > <https://github.com/sebastienrousseau/noyalib/issues> and we'll
 > update.
+
+Coming from `serde_yaml` and want zero source changes? Rename the
+package and keep every call site:
+
+```toml
+serde_yaml = { package = "noyalib-serde-yaml", version = "=0.0.33" }
+```
+
+[`noyalib-serde-yaml`](https://github.com/sebastienrousseau/noyalib-serde-yaml)
+is the behavioural `serde_yaml` 0.9 shim, released in lockstep with
+the core. The guides below are for moving to the native API.
 
 ## Pick your starting crate
 
 | Coming from | Drop-in for `serde_yaml`? | Migration guide |
 |---|---|---|
 | [`serde_yaml`](https://crates.io/crates/serde_yaml) `0.9.34+deprecated` | (the original — archived 2024-03) | [`MIGRATION-FROM-SERDE-YAML.md`](MIGRATION-FROM-SERDE-YAML.md) |
-| [`serde_yml`](https://crates.io/crates/serde_yml) `0.0.12` | mostly (archived 2025-09) | [`MIGRATION-FROM-SERDE-YML.md`](MIGRATION-FROM-SERDE-YML.md) |
-| [`yaml_serde`](https://crates.io/crates/yaml_serde) `0.10.4` | yes (Cargo `package =` rename) | [`MIGRATION-FROM-YAML-SERDE.md`](MIGRATION-FROM-YAML-SERDE.md) |
+| [`serde_yml`](https://crates.io/crates/serde_yml) `0.0.13` | mostly (repo archived) | [`MIGRATION-FROM-SERDE-YML.md`](MIGRATION-FROM-SERDE-YML.md) |
+| [`yaml_serde`](https://crates.io/crates/yaml_serde) `0.10.7` | yes (Cargo `package =` rename) | [`MIGRATION-FROM-YAML-SERDE.md`](MIGRATION-FROM-YAML-SERDE.md) |
 | [`serde-yaml-ng`](https://crates.io/crates/serde-yaml-ng) `0.10.0` | yes | [`MIGRATION-FROM-SERDE-YAML-NG.md`](MIGRATION-FROM-SERDE-YAML-NG.md) |
 | [`serde-norway`](https://crates.io/crates/serde-norway) `0.9.42` | yes | [`MIGRATION-FROM-SERDE-NORWAY.md`](MIGRATION-FROM-SERDE-NORWAY.md) |
-| [`serde-yaml-bw`](https://crates.io/crates/serde-yaml-bw) `2.5.6` | **no** (breaking 2.x; 8-variant `Value` with `Alias`) | [`MIGRATION-FROM-SERDE-YAML-BW.md`](MIGRATION-FROM-SERDE-YAML-BW.md) |
-| [`serde-saphyr`](https://crates.io/crates/serde-saphyr) `0.0.26` | **no** (no `Value` DOM, streaming-only) | [`MIGRATION-FROM-SERDE-SAPHYR.md`](MIGRATION-FROM-SERDE-SAPHYR.md) |
+| [`serde-yaml-bw`](https://crates.io/crates/serde-yaml-bw) `2.5.7` | **no** (breaking 2.x; 8-variant `Value` with `Alias`) | [`MIGRATION-FROM-SERDE-YAML-BW.md`](MIGRATION-FROM-SERDE-YAML-BW.md) |
+| [`serde-saphyr`](https://crates.io/crates/serde-saphyr) `1.2.0` | **no** (no `Value` DOM, streaming-only) | [`MIGRATION-FROM-SERDE-SAPHYR.md`](MIGRATION-FROM-SERDE-SAPHYR.md) |
 | [`yaml-spanned`](https://crates.io/crates/yaml-spanned) `0.0.3` | **no** (read-only, no `to_string`) | [`MIGRATION-FROM-YAML-SPANNED.md`](MIGRATION-FROM-YAML-SPANNED.md) |
+
+Already on `noyalib` from before the v0.0.12 workspace split? That
+move is covered separately in
+[`MIGRATION-WORKSPACE-SPLIT.md`](MIGRATION-WORKSPACE-SPLIT.md).
 
 ## What to expect from `noyalib` regardless of source crate
 

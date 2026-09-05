@@ -35,10 +35,10 @@ on:
       toolchain-list:
         description: >-
           JSON array of Rust toolchains to test with. Default:
-          `["stable", "nightly"]`.
+          `["stable", "beta", "nightly"]`.
         required: false
         type: string
-        default: '["stable", "nightly"]'
+        default: '["stable", "beta", "nightly"]'
       cargo-test-flags:
         description: >-
           Extra flags for `cargo test`. Default `--all-features`.
@@ -58,7 +58,9 @@ jobs:
       matrix:
         os: ${{ fromJSON(inputs.os-list) }}
         toolchain: ${{ fromJSON(inputs.toolchain-list) }}
-    continue-on-error: ${{ matrix.toolchain == 'nightly' }}
+    # beta and nightly are early warning, not gates: a regression in
+    # an unreleased compiler must not block a merge. Stable is the gate.
+    continue-on-error: ${{ matrix.toolchain == 'nightly' || matrix.toolchain == 'beta' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Install Rust ${{ matrix.toolchain }}

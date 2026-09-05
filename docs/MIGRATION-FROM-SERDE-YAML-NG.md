@@ -14,7 +14,7 @@ but the cadence is slow.
 same `serde` data model, no `unsafe` code, and no `libyaml` C
 dependency.
 
-> **Crates.io / docs.rs state verified 2026-05-08.** If the
+> **Crates.io / docs.rs state verified 2026-09-05 (every function this guide names still exists on docs.rs).** If the
 > upstream API has shifted since, file an issue and we'll update.
 
 ## TL;DR

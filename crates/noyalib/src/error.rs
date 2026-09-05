@@ -514,6 +514,38 @@ pub enum Error {
     /// ```
     DuplicateKey(String),
 
+    /// A duplicate mapping key, with where it is.
+    ///
+    /// The located form of [`Self::DuplicateKey`], raised under
+    /// [`crate::DuplicateKeyPolicy::Error`] by the parsers that know the
+    /// key's position -- every `from_str` entry point and the CST parser.
+    /// `path` is the dotted path of the entry (`site.name`; a sequence
+    /// index counts as a segment, `items.0.name`), `location` where the
+    /// second occurrence begins. [`Self::kind`] reports
+    /// [`ErrorKind::DuplicateKey`] for both forms and [`Self::location`]
+    /// returns the position.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use noyalib::{DuplicateKeyPolicy, Error, ParserConfig, Value, from_str_with_config};
+    /// let cfg = ParserConfig::new().duplicate_key_policy(DuplicateKeyPolicy::Error);
+    /// let err = from_str_with_config::<Value>("site:\n  name: a\n  name: b\n", &cfg).unwrap_err();
+    /// assert!(matches!(err, Error::DuplicateKeyAt { .. }));
+    /// assert_eq!(
+    ///     err.to_string(),
+    ///     "site.name: duplicate key \"name\" at line 3, column 3"
+    /// );
+    /// ```
+    DuplicateKeyAt {
+        /// The key that appears twice.
+        key: String,
+        /// The dotted path of the entry, the key included.
+        path: String,
+        /// Where the second occurrence begins.
+        location: Location,
+    },
+
     /// Two distinct-typed keys collapsed to the same string key.
     ///
     /// The mapping key model is `Mapping<String, Value>`, so keys are
@@ -539,9 +571,35 @@ pub enum Error {
     /// ```
     /// use noyalib::{Error, Value, from_str};
     /// let err = from_str::<Value>("1: a\n\"1\": b\n").unwrap_err();
-    /// assert!(matches!(err, Error::KeyCollision(_)));
+    /// assert!(matches!(err, Error::KeyCollision(_) | Error::KeyCollisionAt { .. }));
     /// ```
     KeyCollision(String),
+
+    /// Two distinct-typed keys collapsed to the same string key, with
+    /// where the second one is.
+    ///
+    /// The located form of [`Self::KeyCollision`], raised by the parsers
+    /// that know the key's position. `path` is the dotted path of the
+    /// entry, `location` where the colliding key begins. [`Self::kind`]
+    /// reports [`ErrorKind::KeyCollision`] for both forms.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use noyalib::{Error, Value, from_str};
+    /// let err = from_str::<Value>("m:\n  1: a\n  \"1\": b\n").unwrap_err();
+    /// assert_eq!(err.kind(), noyalib::ErrorKind::KeyCollision);
+    /// assert_eq!(err.location().map(|l| (l.line(), l.column())), Some((3, 3)));
+    /// assert!(err.to_string().starts_with("m.1: distinct mapping keys collide"));
+    /// ```
+    KeyCollisionAt {
+        /// The collapsed string key.
+        key: String,
+        /// The dotted path of the entry, the key included.
+        path: String,
+        /// Where the colliding key begins.
+        location: Location,
+    },
 
     /// Repetition limit exceeded (security limit against billion-laughs).
     ///
@@ -870,10 +928,24 @@ impl fmt::Display for Error {
                 write!(f, "recursion depth limit exceeded: {depth}")
             }
             Self::DuplicateKey(name) => write!(f, "duplicate key: {name}"),
+            Self::DuplicateKeyAt {
+                key,
+                path,
+                location,
+            } => write!(f, "{path}: duplicate key \"{key}\" at {location}"),
             Self::KeyCollision(name) => write!(
                 f,
                 "distinct mapping keys collide after string conversion: {name} \
                  (e.g. `1` and `\"1\"`, or `true` and `\"true\"`)"
+            ),
+            Self::KeyCollisionAt {
+                key,
+                path,
+                location,
+            } => write!(
+                f,
+                "{path}: distinct mapping keys collide after string conversion: {key} \
+                 (e.g. `1` and `\"1\"`, or `true` and `\"true\"`) at {location}"
             ),
             Self::RepetitionLimitExceeded => f.write_str("alias expansion limit exceeded"),
             Self::IntegerOverflow { .. } => {
@@ -950,6 +1022,9 @@ impl Error {
             Self::ParseWithLocation { location, .. } => Some(*location),
             Self::DeserializeWithLocation { location, .. } => Some(*location),
             Self::UnknownAnchorAt { location, .. } => Some(*location),
+            Self::DuplicateKeyAt { location, .. } | Self::KeyCollisionAt { location, .. } => {
+                Some(*location)
+            }
             Self::IntegerOverflow { location, .. } | Self::NonScalarKey { location, .. } => {
                 *location
             }
@@ -988,8 +1063,8 @@ impl Error {
             Self::Io(_) => ErrorKind::Io,
             Self::Custom(_) => ErrorKind::Other,
             Self::RecursionLimitExceeded { .. } => ErrorKind::Budget,
-            Self::DuplicateKey(_) => ErrorKind::DuplicateKey,
-            Self::KeyCollision(_) => ErrorKind::KeyCollision,
+            Self::DuplicateKey(_) | Self::DuplicateKeyAt { .. } => ErrorKind::DuplicateKey,
+            Self::KeyCollision(_) | Self::KeyCollisionAt { .. } => ErrorKind::KeyCollision,
             Self::RepetitionLimitExceeded => ErrorKind::Budget,
             Self::IntegerOverflow { .. } => ErrorKind::IntegerOverflow,
             Self::NonScalarKey { .. } => ErrorKind::NonScalarKey,
@@ -1617,8 +1692,8 @@ impl miette::Diagnostic for Error {
             Self::RepetitionLimitExceeded => "noyalib::repetition_limit",
             Self::Budget(_) => "noyalib::budget",
             Self::UnknownAnchor(_) | Self::UnknownAnchorAt { .. } => "noyalib::unknown_anchor",
-            Self::DuplicateKey(_) => "noyalib::duplicate_key",
-            Self::KeyCollision(_) => "noyalib::key_collision",
+            Self::DuplicateKey(_) | Self::DuplicateKeyAt { .. } => "noyalib::duplicate_key",
+            Self::KeyCollision(_) | Self::KeyCollisionAt { .. } => "noyalib::key_collision",
             Self::IntegerOverflow { .. } => "noyalib::integer_overflow",
             Self::NonScalarKey { .. } => "noyalib::non_scalar_key",
             Self::EndOfStream => "noyalib::eof",
@@ -1650,10 +1725,10 @@ impl miette::Diagnostic for Error {
             Self::Budget(_) => {
                 Some("raise the matching ParserConfig::max_* limit or simplify the input".into())
             }
-            Self::DuplicateKey(_) => {
+            Self::DuplicateKey(_) | Self::DuplicateKeyAt { .. } => {
                 Some("use DuplicateKeyPolicy::Last or ::Error to control behaviour".into())
             }
-            Self::KeyCollision(_) => Some(
+            Self::KeyCollision(_) | Self::KeyCollisionAt { .. } => Some(
                 "give the colliding keys distinct spellings, or quote them consistently".into(),
             ),
             Self::MoreThanOneDocument => {

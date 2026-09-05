@@ -30,6 +30,6 @@ is canonical.
 
 - **API reference** — [docs.rs/noyalib](https://docs.rs/noyalib)
   (also rendered [alongside this manual](../noyalib/index.html))
-- **Getting started** — [`GETTING_STARTED.md`](https://github.com/sebastienrousseau/noyalib/blob/main/GETTING_STARTED.md)
+- **Getting started** — [`GETTING_STARTED.md`](GETTING_STARTED.md)
 - **Per-crate guides** — each satellite repository's README and
   `docs/` directory

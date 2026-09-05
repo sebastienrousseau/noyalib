@@ -267,7 +267,8 @@ impl<'a> BorrowedValue<'a> {
     /// Query nested values using an extended path expression.
     ///
     /// Returns all matching values. Supports dot notation, bracket indexing,
-    /// wildcards (`*`), and recursive descent (`..`).
+    /// bracket-quoted keys (`labels["app.kubernetes.io/name"]`, see
+    /// [`crate::path`]), wildcards (`*`), and recursive descent (`..`).
     ///
     /// # Examples
     ///

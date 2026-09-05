@@ -2,7 +2,7 @@
 
 A focused walkthrough for someone who just landed on the repo and
 wants to *use* the library. The full reference is the
-[root README](./README.md); this page is the on-ramp.
+[root README](../README.md); this page is the on-ramp.
 
 ## Install
 
@@ -10,11 +10,11 @@ wants to *use* the library. The full reference is the
 
 ```toml
 [dependencies]
-noyalib = "0.0.32"
+noyalib = "0.0.33"
 ```
 
 `no_std` (alloc-only) and lean profiles are documented in the
-[per-crate README](./crates/noyalib/README.md#install).
+[per-crate README](../crates/noyalib/README.md#install).
 
 ### As a CLI tool
 
@@ -29,11 +29,11 @@ yay -S noyalib-bin                     # Arch / AUR
 
 The library crate is `noyalib`; the binary crate that produces
 `noyafmt` / `noyavalidate` is `noya-cli`. See the
-[Install](./README.md#install) section of the root README for the
+[Install](../README.md#install) section of the root README for the
 full per-channel matrix.
 
 Full per-channel install matrix lives in
-[`pkg/PUBLISH.md`](./pkg/PUBLISH.md).
+[`pkg/PUBLISH.md`](../pkg/PUBLISH.md).
 
 ## First parse
 
@@ -68,21 +68,21 @@ features:
 
 | If you want to… | Read |
 |---|---|
-| Migrate from `serde_yaml` 0.9 | [docs/MIGRATION-FROM-SERDE-YAML.md](./docs/MIGRATION-FROM-SERDE-YAML.md) |
-| Understand the architecture | [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) |
-| Edit YAML lossy-free (preserving comments and layout) | [crates/noyalib/README.md § CST](./crates/noyalib/README.md) and `noyalib::cst::Document` |
+| Migrate from `serde_yaml` 0.9 | [docs/MIGRATION-FROM-SERDE-YAML.md](MIGRATION-FROM-SERDE-YAML.md) |
+| Understand the architecture | [docs/ARCHITECTURE.md](ARCHITECTURE.md) |
+| Edit YAML lossy-free (preserving comments and layout) | [crates/noyalib/README.md § CST](../crates/noyalib/README.md) and `noyalib::cst::Document` |
 | Validate YAML against a JSON Schema | `noyavalidate --schema schema.yaml input.yaml` |
 | Format YAML | `noyafmt --write file.yaml` |
 | Use the LSP server in your editor | [crates/noyalib-lsp/README.md](https://github.com/sebastienrousseau/noyalib-lsp#readme) |
 | Drive noyalib from an AI agent (MCP) | [crates/noyalib-mcp/README.md](https://github.com/sebastienrousseau/noyalib-mcp#readme) |
 | Run noyalib in the browser | [crates/noyalib-wasm/README.md](https://github.com/sebastienrousseau/noyalib-wasm#readme) |
-| Look up a domain term | [GLOSSARY.md](./GLOSSARY.md) |
-| Contribute code | [CONTRIBUTING.md](./CONTRIBUTING.md) |
+| Look up a domain term | [GLOSSARY.md](GLOSSARY.md) |
+| Contribute code | [CONTRIBUTING.md](../CONTRIBUTING.md) |
 
 ## Building from source
 
 The full developer guide (toolchain, task map, reproducing every CI
-gate locally) is [`DEVELOPMENT.md`](DEVELOPMENT.md).
+gate locally) is [`DEVELOPMENT.md`](../DEVELOPMENT.md).
 
 ```sh
 git clone https://github.com/sebastienrousseau/noyalib.git
@@ -112,5 +112,5 @@ cargo run --example figment --features figment
 ## Where to ask for help
 
 - **Bug reports / feature requests:** [GitHub Issues](https://github.com/sebastienrousseau/noyalib/issues)
-- **Security issues:** see [SECURITY.md](./SECURITY.md) for the disclosure process — do not file public issues for vulnerabilities
-- **Migration questions:** [docs/MIGRATION-FROM-SERDE-YAML.md](./docs/MIGRATION-FROM-SERDE-YAML.md) covers the common gotchas
+- **Security issues:** see [SECURITY.md](../SECURITY.md) for the disclosure process — do not file public issues for vulnerabilities
+- **Migration questions:** [docs/MIGRATION-FROM-SERDE-YAML.md](MIGRATION-FROM-SERDE-YAML.md) covers the common gotchas

@@ -44,7 +44,7 @@ jobs:
         # private intra-doc links surfaced through re-exports, bad
         # codeblock fence attributes, malformed HTML, and bare
         # URLs that should be wrapped in `<https://...>` autolinks.
-        # Phase 7.6 of PLAN.md — every broken `[`Type`]` reference
+        # Phase 7.6 of docs/PLAN.md — every broken `[`Type`]` reference
         # in a doc comment now fails the docs build.
         env:
           RUSTDOCFLAGS: >-

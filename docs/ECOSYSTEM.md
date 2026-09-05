@@ -39,6 +39,11 @@ scripts/ecosystem-scorecard.sh --with-coverage  # + cargo-llvm-cov
 scripts/ecosystem-scorecard.sh --json out.json
 ```
 
+CI runs the same harness weekly and on every change to it or to this
+page (`.github/workflows/ecosystem-scorecard.yml`), against fresh
+checkouts of all six repos; the workflow fails below the 0.90 floor,
+and the JSON report is attached to the run.
+
 It exits non-zero below `SCORE_FLOOR` (default 0.90), so the rating can
 be a CI gate rather than a boast.
 
@@ -165,7 +170,7 @@ own authors have marked dead:
 | `metadata-gen` | `noyalib` **and** `yaml-rust2` | half-migrated |
 
 Already migrated: `frontmatter-gen`, `html-generator`,
-`static-site-generator`, and the four satellites.
+`static-site-generator`, and the five satellites.
 
 Shipping a YAML library while three of your own crates depend on an
 archived one is the most falsifiable credibility claim in the set, and
@@ -205,7 +210,7 @@ Ranked by measured gap times incumbent strength.
 ### Tier 4 — cheap credibility
 
 10. Fuzz targets in each satellite.
-11. OpenSSF Best Practices badge for the four satellites.
+11. OpenSSF Best Practices badge for the five satellites.
 12. Migrate `libmake`, `nucleusflow`, `wiserone`; finish `metadata-gen`.
 
 ## Rating

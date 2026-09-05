@@ -13,7 +13,7 @@ who is responsible for the roadmap, releases, and final decisions.
 
 This is stated plainly rather than dressed up: a single maintainer is a
 real bus-factor risk, and **broadening the maintainer team is an explicit
-`1.0` gate** (see [`PLAN.md`](PLAN.md) → *Road to 1.0*). Until then, the
+`1.0` gate** (see [`docs/PLAN.md`](docs/PLAN.md) → *Road to 1.0*). Until then, the
 automation and the documented processes below exist so the project does
 not depend on any one person's memory.
 
@@ -53,7 +53,7 @@ the full CI suite. Direct pushes to `main` are not used.
 ## Compatibility & releases
 
 - Versioning follows the `0.x` posture and the `1.0` gates in
-  [`PLAN.md`](PLAN.md). Under `0.x`, breaking changes are allowed and
+  [`docs/PLAN.md`](docs/PLAN.md). Under `0.x`, breaking changes are allowed and
   documented in [`CHANGELOG.md`](CHANGELOG.md).
 - The minimum supported Rust version (MSRV) is **1.86**; changes to it
   are treated as notable and called out in the changelog.

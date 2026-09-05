@@ -1003,9 +1003,12 @@ impl Scanner<'_> {
             actual_detected.max(min_indent)
         };
 
-        // YAML 1.2.2 §8.1.1.2: If any leading empty line contains more spaces than
-        // the indentation level, it is an error.
-        if max_leading_empty_spaces > block_indent {
+        // YAML 1.2.2 §8.1.1.1: with auto-detected indentation it is an
+        // error for a leading empty line to hold more spaces than the
+        // first non-empty line. With an explicit indentation indicator
+        // the level is given, so such a line is not empty: its spaces
+        // past the indentation are content, read below (#384).
+        if increment == 0 && max_leading_empty_spaces > block_indent {
             return Err(self.error("a leading all-space line must not have too many spaces"));
         }
 
@@ -1062,9 +1065,13 @@ impl Scanner<'_> {
             // 1.2.2 §8.1.1.4, every character at or beyond the content
             // indentation is preserved literally. The exception is
             // *leading* whitespace-only lines (before any real content
-            // has been emitted) — those are part of the leading
-            // empty-line region and contribute only their `\n`, not
-            // their indent characters.
+            // has been emitted) under auto-detected indentation — those
+            // are part of the leading empty-line region and contribute
+            // only their `\n`, not their indent characters. With an
+            // explicit indentation indicator the level is known before
+            // any content, so a leading line's surplus spaces are
+            // content too (#384).
+            let leading_spaces_are_content = increment > 0 || !string.is_empty();
             if Self::is_break(self.peek()) || self.is_eof() {
                 let extra = spaces.saturating_sub(block_indent);
                 if !Self::is_break(self.peek()) {
@@ -1073,7 +1080,7 @@ impl Scanner<'_> {
                     // synthetic line break so the chomping pass below
                     // sees the same shape it would for the
                     // newline-terminated case (L24T spec test).
-                    if literal && extra > 0 && !string.is_empty() {
+                    if literal && extra > 0 && leading_spaces_are_content {
                         if !trailing_breaks.is_empty() {
                             string.push_str(&trailing_breaks);
                             trailing_breaks.clear();
@@ -1085,7 +1092,7 @@ impl Scanner<'_> {
                     }
                     break;
                 }
-                if literal && extra > 0 && !string.is_empty() {
+                if literal && extra > 0 && leading_spaces_are_content {
                     if !trailing_breaks.is_empty() {
                         string.push_str(&trailing_breaks);
                         trailing_breaks.clear();

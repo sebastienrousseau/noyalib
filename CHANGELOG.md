@@ -7,6 +7,116 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+## [v0.0.33] - 2026-09-05
+
+### Performance
+
+- **Parsing no longer pays a per-key clone and a per-mapping vector for
+  the key-collision check.** Since v0.0.14 every mapping key was cloned
+  into a `Vec<Value>` so that keys which stringify identically (`1` and
+  `"1"`) could be told apart — one `String` allocation per key plus four
+  vector reallocations per mapping, on documents that never had a
+  non-string key to record. The check now keeps a `KeyShape` that is only
+  materialised when a non-string key appears, and boxes the rare variant so
+  the mapping frame fits its original size class.
+
+  Measured on 2,000 documents of typical frontmatter (858 KiB), counting
+  every allocation: 20.2 MB / 180k allocations on v0.0.32 → 16.6 MB /
+  150k. Against v0.0.13, the last release before the regression, that is
+  fewer allocations than it ever made (168k) with 15% more bytes remaining,
+  down from 39%. Peak heap is unchanged throughout; this was churn, not
+  retention. Two tests pin the frame size and the laziness so it cannot
+  quietly return.
+
+  Found from `static-site-generator`, whose frontmatter path profiled at
+  84% parser allocation.
+
+### Added
+
+- **Bracket-quoted key segments in the path grammar** (#388,
+  ADR-0012): `labels["app.kubernetes.io/name"]` or `['a[0]']`
+  addresses a mapping key the grammar would otherwise read as
+  structure (`.`, `[`, `]`, `*`), in every path-taking API at once --
+  `Value::get_path` and `query`, the borrowed reads, and every
+  `cst::Document` mutator and locator (`set`, `set_value`, `set_path`,
+  `remove`, `rename_key`, `span_at`, `key_span`, the comment editors,
+  `Entry`). `\` escapes the next character inside the quotes. The
+  `path` module is public and spells such paths: `quote_key` for one
+  segment, `push_key` to append a key in whichever form reads back as
+  that key, `join_keys` for a whole path from literal keys.
+
+- **`Error::DuplicateKeyAt` and `Error::KeyCollisionAt`** (#378,
+  ADR-0013): the located forms of `DuplicateKey` and `KeyCollision`,
+  carrying the entry's dotted path (`site.name`) and the position of
+  the second key. Every `from_str` entry point and the CST parser now
+  raise them under `DuplicateKeyPolicy::Error` -- `site.name: duplicate
+  key "name" at line 3, column 3` -- and `kind()`, `code()`, and the
+  help text treat each pair alike, so a match on `ErrorKind` is
+  unaffected. The location-less variants stay for callers that build
+  them and for paths that have no position.
+
+### Changed
+
+- **`GETTING_STARTED.md`, `GLOSSARY.md`, `PLAN.md`, `ROADMAP-TO-10.md`, and
+  the workspace-split guide moved under `docs/`** (the split guide is now
+  `docs/MIGRATION-WORKSPACE-SPLIT.md`); `docs/` is the single documentation
+  root and the pages are part of the rendered manual. Old root links 404.
+- **CI runs the test matrix on beta as well as stable and nightly**, and a
+  weekly `ecosystem-scorecard` workflow measures all six repos with
+  `scripts/ecosystem-scorecard.sh`, failing below its 0.90 floor.
+- **`to_string` no longer writes a blank line between a clip-chomped
+  block scalar and the entry that follows it** (#385, part of the
+  block-scalar fix below). Files written by earlier versions still
+  parse to the same value, and lossless CST edits keep the layout a
+  file already has; only freshly emitted output changes.
+
+### Fixed
+
+- **The compliance report scores multi-document cases through
+  `load_all_as`**, as the regression net always has; since v0.0.29 it had
+  been feeding streams to `from_str`, which refuses them by design, and
+  reporting 387/406 while `official_suite` and the README said 406/406.
+  Both now agree, and the suite asserts zero failures rather than a 94%
+  floor.
+- **`insert_entry` and `insert_entry_value` upsert a key holding `.`,
+  `[`, `]`, or `*`** instead of refusing it, and the upsert of an
+  existing `*` no longer appends a second `*` entry (the existing-key
+  guard covered `.` and `[` only). The `.`/`[` refusal from #288 is
+  gone. `set_path` re-spells a quoted ancestor when it creates a
+  missing level under one, and `rename_key`'s bracket check accepts a
+  quoted segment while still refusing an unquoted non-index one
+  (`servers[web]`), now naming the quoted spelling in the error.
+
+- **Block scalars the serializer wrote in a shape its own parser read
+  back differently** (#383, #385, #387), and the CST insert that the
+  same layout made fail its integrity check (#386):
+  - A text with no content line (`"\n"`) takes keep chomping (`|+`);
+    under clip a block with no content line has no final break to
+    keep, and the value read back as the empty string (#383).
+  - A collection entry that follows a block scalar starts on the line
+    after it instead of after a blank line. Under keep chomping the
+    blank line was counted into the scalar, which grew by one newline
+    per round trip whenever a sibling followed (#385); under clip the
+    blank line was only cosmetic and is gone too.
+  - A block scalar as a bare sequence item puts its body one indent
+    step past the dash, the column its indentation indicator counts
+    from; it sat two steps past, and under a `|2` indicator the surplus
+    read back as content (#387).
+  - The CST's collection emission strips only the line break that
+    terminates its last line, not every trailing break, so a
+    keep-chomped item keeps the empty lines that are its value and
+    `set_path` / `insert_entry_value` accept a sequence item that needs
+    an indicator or keep chomping (#386).
+
+- **A literal block scalar with an explicit indentation indicator
+  accepts a leading line of spaces only** (#384). The rule that a
+  leading empty line must not hold more spaces than the content
+  indentation belongs to auto-detection (YAML 1.2.2 §8.1.1.1); with an
+  indicator the level is given, so the line's surplus spaces are
+  content, as PyYAML reads them. The serializer writes exactly this
+  shape for a string that begins with a space-only line (`" \n"`), and
+  its own parser refused it.
+
 ## [v0.0.32] - 2026-09-03
 
 ### Fixed
@@ -98,7 +208,6 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   `EXPECTED_MIN_BASELINE` floor (725s, reason documented inline)
   covers intentional job-set changes like the v0.0.30 gates, while
   accidental regressions still fire against the rolling median.
-||||||| e33ba3c
 
 ## [v0.0.30] - 2026-09-02
 

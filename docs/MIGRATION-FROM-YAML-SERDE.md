@@ -5,7 +5,7 @@
 
 [`yaml_serde`](https://crates.io/crates/yaml_serde) (also
 resolvable as `yaml-serde`) is the actively maintained fork of
-`serde_yaml` under the `yaml` org. `0.10.4` (2026-03-11) is the
+`serde_yaml` under the `yaml` org. `0.10.7` (2026-08-18) is the
 current release. The fork advertises itself as a true drop-in
 for `serde_yaml` and documents a Cargo `package =` rename so
 existing `use serde_yaml::*;` imports keep compiling without
@@ -15,7 +15,7 @@ touching call sites.
 same `serde` data model, no `unsafe` code, and no `libyaml` C
 dependency.
 
-> **Crates.io / docs.rs state verified 2026-05-08.** If the
+> **Crates.io / docs.rs state verified 2026-09-05 (every function this guide names still exists on docs.rs).** If the
 > upstream API has shifted since, file an issue and we'll update.
 
 ## TL;DR

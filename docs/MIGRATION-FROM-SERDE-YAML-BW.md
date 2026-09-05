@@ -5,7 +5,7 @@
 
 [`serde-yaml-bw`](https://crates.io/crates/serde-yaml-bw)
 (crate name `serde_yaml_bw`) is `bourumir-wyngs`'s hardened
-fork of `serde_yaml`. `2.5.6` (2026-05-02) is the current
+fork of `serde_yaml`. `2.5.7` (2026-08-15) is the current
 release. The `bw` reads as "better warnings" / "billion-laughs
 warden" — the fork's marquee features are billion-laughs DoS
 hardening, anchor / alias preservation, merge-key support,
@@ -22,7 +22,7 @@ same `serde` data model, no `unsafe` code, and no `libyaml` C
 dependency. This guide is the function-mapping bridge to
 noyalib's surface.
 
-> **Crates.io / docs.rs state verified 2026-05-08.** If the
+> **Crates.io / docs.rs state verified 2026-09-05 (every function this guide names still exists on docs.rs).** If the
 > upstream API has shifted since, file an issue and we'll update.
 
 ## TL;DR

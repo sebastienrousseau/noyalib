@@ -27,7 +27,7 @@ artefact that satisfies it.
 | Discussion mechanism | GitHub Issues + Discussions enabled |
 | License is OSI-approved | `MIT OR Apache-2.0` — see `LICENSE-MIT`, `LICENSE-APACHE` |
 | Project provides documentation | `README.md`, `docs/USER-GUIDE.md`, `docs/ARCHITECTURE.md`, `docs/POLICIES.md`, `docs/BENCHMARKS.md` |
-| Documentation includes "Quick Start" | `README.md` §"Quick Start", `crates/noyalib/README.md`, `GETTING_STARTED.md` |
+| Documentation includes "Quick Start" | `README.md` §"Quick Start", `crates/noyalib/README.md`, `docs/GETTING_STARTED.md` |
 | Documentation has a security policy | `SECURITY.md` |
 | Maintainer-direct contact | `sebastian.rousseau@gmail.com` (per `SECURITY.md`) |
 | Public bug tracker | GitHub Issues |

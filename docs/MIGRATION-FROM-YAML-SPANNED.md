@@ -25,7 +25,7 @@ same `serde` data model, no `unsafe` code, no `libyaml` C
 dependency, and a *typed* span wrapper (`Spanned<T>`) that
 covers the same diagnostic use case.
 
-> **Crates.io / docs.rs state verified 2026-05-08.** If the
+> **Crates.io / docs.rs state verified 2026-09-05 (every function this guide names still exists on docs.rs).** If the
 > upstream API has shifted since, file an issue and we'll update.
 
 ## TL;DR

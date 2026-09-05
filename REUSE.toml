@@ -52,23 +52,20 @@ path = [
     "CHANGELOG.md",
     "CODE_OF_CONDUCT.md",
     "CONTRIBUTING.md",
-    "GETTING_STARTED.md",
-    "GLOSSARY.md",
     "AGENTS.md",
     "GOVERNANCE.md",
-    "PLAN.md",
     "SECURITY.md",
     "SUPPORT.md",
     "docs/**",
-    "MIGRATION.md",
     "crates/noyalib/README.md",
     "crates/noyalib/tests/README.md",
     "crates/noyalib/docs/**",
-    # All four satellites carry their own REUSE.toml:
-    #   - noyalib-wasm → https://github.com/sebastienrousseau/noyalib-wasm (v0.0.12)
-    #   - noyalib-mcp  → https://github.com/sebastienrousseau/noyalib-mcp  (v0.0.13)
-    #   - noyalib-lsp  → https://github.com/sebastienrousseau/noyalib-lsp  (v0.0.13)
-    #   - noya-cli     → https://github.com/sebastienrousseau/noya-cli     (v0.0.13)
+    # All five satellites carry their own REUSE.toml:
+    #   - noyalib-wasm       → https://github.com/sebastienrousseau/noyalib-wasm
+    #   - noyalib-mcp        → https://github.com/sebastienrousseau/noyalib-mcp
+    #   - noyalib-lsp        → https://github.com/sebastienrousseau/noyalib-lsp
+    #   - noyalib-serde-yaml → https://github.com/sebastienrousseau/noyalib-serde-yaml
+    #   - noya-cli           → https://github.com/sebastienrousseau/noya-cli
 ]
 precedence = "aggregate"
 SPDX-FileCopyrightText = "2026 Noyalib"
@@ -108,7 +105,7 @@ SPDX-License-Identifier = "MIT"
 
 # ── Distro packaging templates (pkg/) ─────────────────────────────
 # Hand-written per-channel packaging metadata consumed by
-# `.github/workflows/release-binaries.yml` (Phase 4 of PLAN.md).
+# `.github/workflows/release-binaries.yml` (Phase 4 of docs/PLAN.md).
 # Files in this tree are templates — `__VERSION__` / `__SHA256__`
 # placeholders rewritten per release — or inert config files
 # without inline SPDX headers.

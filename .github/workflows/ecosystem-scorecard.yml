@@ -1,0 +1,106 @@
+name: Ecosystem scorecard
+
+# Ecosystem scorecard — the CI-checked family table (REPO-STANDARD §8).
+#
+# `scripts/ecosystem-scorecard.sh` measures every repo in the lockstep
+# family with falsifiable probes and exits non-zero when the weighted
+# score drops below its floor (0.90 by default). Running it here turns
+# the rating in docs/ECOSYSTEM.md into a gate: a satellite that drifts
+# from the layout, loses a gate, or breaks the `=X.Y.Z` pin fails this
+# workflow instead of silently going stale in the table.
+#
+# The harness builds and tests six repositories, so it runs weekly and
+# on demand rather than per push, plus on any change to the harness
+# itself or to the document it backs.
+
+on:
+  schedule:
+    - cron: '0 8 * * 1' # Weekly Monday 08:00 UTC (after ci.yml, powerset, kani)
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - scripts/ecosystem-scorecard.sh
+      - docs/ECOSYSTEM.md
+      - .github/workflows/ecosystem-scorecard.yml
+  pull_request:
+    paths:
+      - scripts/ecosystem-scorecard.sh
+      - docs/ECOSYSTEM.md
+      - .github/workflows/ecosystem-scorecard.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  scorecard:
+    name: Family scorecard (floor 0.90)
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      # The harness expects sibling checkouts under one root, the way
+      # a maintainer's ~/Code/… tree is laid out. `ECOSYSTEM_ROOT` is
+      # that root; the core is checked out into it by name.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: noyalib
+          fetch-tags: true # the lockstep probe asks whether v<core version> exists
+
+      # Satellites are measured on main. A satellite's release branch
+      # carries a [patch.crates-io] git source until the core publishes,
+      # which cargo-deny forbids by design; and the harness scores the
+      # lockstep probe N/A while the core version is untagged, so main is
+      # both the stable and the honest thing to measure.
+      - name: Check out the satellites
+        run: |
+          set -euo pipefail
+          for repo in noya-cli noyalib-lsp noyalib-mcp noyalib-wasm noyalib-serde-yaml; do
+            git clone --depth 1 "https://github.com/sebastienrousseau/${repo}.git" "${repo}"
+          done
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # master
+        with:
+          toolchain: stable
+          components: clippy
+
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+        with:
+          workspaces: |
+            noyalib
+            noya-cli
+            noyalib-lsp
+            noyalib-mcp
+            noyalib-wasm
+            noyalib-serde-yaml
+          key: ecosystem-scorecard
+
+      # The supply-chain probes score N/A without these; installing them
+      # keeps the measured fraction of the rubric honest.
+      - uses: taiki-e/install-action@742a3317eac7bd62f91cd888b4eead5e784ba833 # v2.87.1
+        with:
+          tool: cargo-deny,cargo-audit
+      # Same install as shared-cargo-vet.yml: the prebuilt cargo-vet is
+      # older than the audit-file format the family uses and fails to
+      # parse imports.lock, scoring every repo 0 on vet_audited.
+      - name: Install cargo-vet
+        run: cargo install --locked cargo-vet
+      - name: Install reuse
+        run: pipx install reuse
+
+      - name: Run the scorecard
+        env:
+          ECOSYSTEM_ROOT: ${{ github.workspace }}
+        run: noyalib/scripts/ecosystem-scorecard.sh --json scorecard.json
+
+      - name: Upload the report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ecosystem-scorecard
+          path: scorecard.json
+          if-no-files-found: warn

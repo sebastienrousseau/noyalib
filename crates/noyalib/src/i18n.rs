@@ -134,7 +134,9 @@ impl MessageFormatter for UserFormatter {
             | Error::RepetitionLimitExceeded => {
                 "The configuration file is too large or deeply nested.".to_string()
             }
-            Error::DuplicateKey(_) => "A configuration key appears twice.".to_string(),
+            Error::DuplicateKey(_) | Error::DuplicateKeyAt { .. } => {
+                "A configuration key appears twice.".to_string()
+            }
             Error::UnknownAnchor(_) | Error::UnknownAnchorAt { .. } => {
                 "A configuration reference points at something that does not exist.".to_string()
             }

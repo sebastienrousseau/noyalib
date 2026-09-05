@@ -5,7 +5,7 @@
 # scripts/coverage-gap-report.sh — print a punchlist of files
 # below the workspace coverage threshold.
 #
-# Used during the Phase 1 coverage-hardening work (see PLAN.md):
+# Used during the Phase 1 coverage-hardening work (see docs/PLAN.md):
 # the script runs `cargo +nightly llvm-cov` with a minimal
 # --summary-only output, parses the per-file rows, and prints
 # every file whose region / line / function coverage is under the
