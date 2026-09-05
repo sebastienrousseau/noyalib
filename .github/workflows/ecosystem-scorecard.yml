@@ -49,13 +49,24 @@ jobs:
         with:
           path: noyalib
 
+      # A release branch carries the next version before it publishes,
+      # and the satellites carry the matching pin on a branch of the same
+      # name (the lockstep contract). Measure that branch where it
+      # exists so the version_lockstep probe compares like with like;
+      # fall back to main.
       - name: Check out the satellites
         env:
-          GH_TOKEN: ${{ github.token }}
+          CORE_REF: ${{ github.head_ref || github.ref_name }}
         run: |
           set -euo pipefail
           for repo in noya-cli noyalib-lsp noyalib-mcp noyalib-wasm noyalib-serde-yaml; do
-            git clone --depth 1 "https://github.com/sebastienrousseau/${repo}.git" "${repo}"
+            url="https://github.com/sebastienrousseau/${repo}.git"
+            ref=main
+            if git ls-remote --exit-code --heads "$url" "$CORE_REF" >/dev/null 2>&1; then
+              ref="$CORE_REF"
+            fi
+            echo "${repo}: ${ref}"
+            git clone --depth 1 --branch "$ref" "$url" "${repo}"
           done
 
       - name: Install Rust
@@ -80,6 +91,8 @@ jobs:
       - uses: taiki-e/install-action@742a3317eac7bd62f91cd888b4eead5e784ba833 # v2.87.1
         with:
           tool: cargo-deny,cargo-vet,cargo-audit
+      - name: Install reuse
+        run: pipx install reuse
 
       - name: Run the scorecard
         env:

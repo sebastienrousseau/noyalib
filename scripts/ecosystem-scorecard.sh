@@ -101,6 +101,7 @@ abspath() {
 [ -n "$INJECT" ]   && INJECT=$(abspath "$INJECT")
 
 WORK=$(mktemp -d) || exit 2
+LAST_LOG=""
 trap 'rm -rf "$WORK"' EXIT
 ROWS="$WORK/rows.tsv"     # repo \t id \t category \t weight \t value \t score \t evidence
 : > "$ROWS"
@@ -130,6 +131,14 @@ record() {
     mark=$'\033[33m  ~\033[0m'
   fi
   printf '%s %-22s %-28s %s\n' "$mark" "$2" "$5" "$(dim_inline "$7")"
+  # A failing probe is only a measurement if the reader can see what
+  # failed. run() records its log; print its tail once, then forget it
+  # so a later probe that ran nothing cannot borrow a stale log.
+  if [ -n "${LAST_LOG:-}" ] && [ -f "$LAST_LOG" ] \
+     && awk -v v="$6" 'BEGIN{exit !(v+0 <= 0.0005)}'; then
+    tail -n "${FAIL_LOG_LINES:-12}" "$LAST_LOG" | sed 's/^/      │ /'
+  fi
+  LAST_LOG=""
 }
 dim_inline() { printf '\033[2m%s\033[0m' "$*"; }
 
@@ -174,6 +183,7 @@ have() { command -v "$1" >/dev/null 2>&1; }
 # matching timeout(1)'s convention.
 run() {
   local log="$1"; shift
+  LAST_LOG="$log"
   "$@" >"$log" 2>&1 &
   local pid=$! waited=0
   while kill -0 "$pid" 2>/dev/null; do
@@ -614,8 +624,8 @@ fi
 # hosts that actually have a shipping crate rather than a roadmap entry.
 hosts=0
 for r in "${ALL_REPOS[@]}"; do [ -d "$ECOSYSTEM_ROOT/$r" ] && hosts=$((hosts+1)); done
-record ecosystem host_coverage integrity 3 "$hosts/5 hosts present" \
-  "$(fdiv "$hosts" 5)" "directory presence for ${ALL_REPOS[*]}"
+record ecosystem host_coverage integrity 3 "$hosts/${#ALL_REPOS[@]} hosts present" \
+  "$(fdiv "$hosts" "${#ALL_REPOS[@]}")" "directory presence for ${ALL_REPOS[*]}"
 
 echo
 
