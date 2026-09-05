@@ -34,6 +34,7 @@ reference back. Nothing is silently rewritten.
 | [0009](./0009-set-path-parent-creation.md) | `Document::set_path`: parent-creating writes in the CST editor | accepted |
 | [0010](./0010-typed-collection-set-value.md) | `set_value` accepts collections, emitted in the target node's style | accepted |
 | [0011](./0011-flow-inserts-and-anchor-policy.md) | Flow-collection inserts, flow renames, and one anchored-node policy | accepted |
+| [0013](./0013-located-duplicate-key-errors.md) | Located duplicate-key and key-collision errors as sibling variants | accepted |
 
 ## When to add an ADR
 

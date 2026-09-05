@@ -546,6 +546,18 @@ where
 /// fails without a location yields the streaming error unchanged.
 fn locate_streaming_error<T>(ast_result: Result<T>, streaming_err: Option<Error>) -> Result<T> {
     match (ast_result, streaming_err) {
+        // A refusal the AST loader can place and name -- a duplicate key
+        // or a key collision carrying its path and position -- is the
+        // better report of the fact the streaming walker refused without
+        // one; it is kept whole so `kind()` stays what it was (#378).
+        (Err(ast_err), Some(_))
+            if matches!(
+                ast_err.kind(),
+                crate::error::ErrorKind::DuplicateKey | crate::error::ErrorKind::KeyCollision
+            ) && ast_err.location().is_some() =>
+        {
+            Err(ast_err)
+        }
         (Err(ast_err), Some(streaming_err)) => Err(match ast_err.location() {
             Some(location) => {
                 let message = match streaming_err {

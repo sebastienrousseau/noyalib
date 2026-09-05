@@ -7,6 +7,18 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Added
+
+- **`Error::DuplicateKeyAt` and `Error::KeyCollisionAt`** (#378,
+  ADR-0013): the located forms of `DuplicateKey` and `KeyCollision`,
+  carrying the entry's dotted path (`site.name`) and the position of
+  the second key. Every `from_str` entry point and the CST parser now
+  raise them under `DuplicateKeyPolicy::Error` -- `site.name: duplicate
+  key "name" at line 3, column 3` -- and `kind()`, `code()`, and the
+  help text treat each pair alike, so a match on `ErrorKind` is
+  unaffected. The location-less variants stay for callers that build
+  them and for paths that have no position.
+
 ## [v0.0.32] - 2026-09-03
 
 ### Fixed
