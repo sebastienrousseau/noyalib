@@ -190,7 +190,7 @@ fn distinct_typed_keys_collide_loudly() {
     ] {
         let err = parse_document(src).expect_err("distinct-typed collision must error");
         assert!(
-            matches!(err, noyalib::Error::KeyCollision(_)),
+            matches!(err, noyalib::Error::KeyCollisionAt { .. }),
             "expected KeyCollision for {src:?}, got {err:?}"
         );
         assert!(format!("{err}").contains("collide"), "{err}");
