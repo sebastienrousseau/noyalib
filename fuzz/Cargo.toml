@@ -112,3 +112,10 @@ path = "fuzz_targets/fuzz_editors.rs"
 test = false
 doc = false
 bench = false
+
+[[bin]]
+name = "fuzz_value_roundtrip"
+path = "fuzz_targets/fuzz_value_roundtrip.rs"
+test = false
+doc = false
+bench = false

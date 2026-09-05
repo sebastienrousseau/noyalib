@@ -19,7 +19,7 @@
 #   make examples  — run all examples sequentially
 #   make clean    — remove build artifacts
 
-.PHONY: all check clippy test fmt deny doc miri miri-full miri-bigendian sbom notice vendor vendor-build msrv-per-crate coverage-gap examples bench-smoke compliance clean
+.PHONY: miri-tree miri-align all check clippy test fmt deny doc miri miri-full miri-bigendian sbom notice vendor vendor-build msrv-per-crate coverage-gap examples bench-smoke compliance clean
 
 all: check clippy test
 
@@ -52,6 +52,12 @@ miri-full:
 
 miri-bigendian:
 	MIRI_TARGET=mips64-unknown-linux-gnuabi64 ./scripts/miri.sh
+
+miri-tree:
+	MIRI_MODEL=tree ./scripts/miri.sh
+
+miri-align:
+	MIRI_ALIGN=1 ./scripts/miri.sh simd
 
 sbom:
 	cargo tree --edges normal --prefix depth --format '{p} {l}' > SBOM.txt

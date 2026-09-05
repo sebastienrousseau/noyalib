@@ -2018,9 +2018,15 @@ impl<'a> Scanner<'a> {
                 return Err(self.error("verbatim tag must not be empty (`!<>`)"));
             }
             suffix = Cow::Borrowed(self.slice_str(start, self.pos));
-            if self.peek() == b'>' {
-                self.advance();
+            // The closing `>` is part of the production, not optional:
+            // an unterminated `!<…` at end of input used to be accepted
+            // with whatever it had swallowed as the tag name, and the
+            // emitter then wrote a tag the parser read back differently
+            // (found by fuzz_roundtrip_alloc_only on `!<<`).
+            if self.is_eof() {
+                return Err(self.error("verbatim tag is not closed (expected `>`)"));
             }
+            self.advance(); // skip '>'
         } else if self.peek() == b'!' {
             // Secondary tag handle `!!suffix`.
             handle = Cow::Borrowed("!!");

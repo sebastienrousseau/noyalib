@@ -101,15 +101,6 @@ updates:
           - "Swatinem/*"
           - "taiki-e/*"
 
-  # ── Container images (pkg/docker/Dockerfile{,.full,.mcp}) ───────
-  - package-ecosystem: docker
-    directories:
-      - "/pkg/docker"
-    schedule:
-      interval: weekly
-      day: monday
-      time: "06:00"
-      timezone: UTC
     open-pull-requests-limit: 3
     commit-message:
       prefix: "deps(docker)"

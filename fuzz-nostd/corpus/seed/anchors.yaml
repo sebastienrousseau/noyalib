@@ -1,0 +1,13 @@
+defaults: &defaults
+  adapter: postgres
+  host: localhost
+  pool: 5
+
+development:
+  <<: *defaults
+  database: dev_db
+
+production:
+  <<: *defaults
+  database: prod_db
+  pool: 25

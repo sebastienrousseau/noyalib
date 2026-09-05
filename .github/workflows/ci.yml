@@ -179,18 +179,23 @@ jobs:
       # sanitized fuzzers for x86_64-unknown-linux-musl and dies on
       # "sanitizer is incompatible with statically linked libc".
       - run: cargo install --locked cargo-fuzz
-      - name: Build every fuzz target
-        run: cargo +nightly fuzz build
+      - name: Build every fuzz target (std and alloc-only crates)
+        run: |
+          set -euo pipefail
+          for crate in fuzz fuzz-nostd; do
+            cargo +nightly fuzz build --fuzz-dir "$crate"
+          done
       - name: Replay seed corpus and fixed-bug regressions
         run: |
           set -euo pipefail
-          cd fuzz
-          for f in fuzz_targets/*.rs; do
-            t=$(basename "$f" .rs)
-            dirs="corpus/seed"
-            [ -d "regressions/$t" ] && dirs="$dirs regressions/$t"
-            echo "── replaying $t against: $dirs"
-            cargo +nightly fuzz run "$t" $dirs -- -runs=0
+          for crate in fuzz fuzz-nostd; do
+            for f in "$crate"/fuzz_targets/*.rs; do
+              t=$(basename "$f" .rs)
+              dirs=("$crate/corpus/seed")
+              [ -d "$crate/regressions/$t" ] && dirs+=("$crate/regressions/$t")
+              echo "── $crate: replaying $t against: ${dirs[*]}"
+              cargo +nightly fuzz run --fuzz-dir "$crate" "$t" "${dirs[@]}" -- -runs=0
+            done
           done
 
   each-feature:

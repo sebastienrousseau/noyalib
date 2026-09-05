@@ -71,7 +71,20 @@ IFS=$'\n\t'
 # defaults (Stacked Borrows, strict provenance, leak detection)
 # still catch every category of UB we care about; only the
 # memchr-SSE2 false positive is sacrificed.
-export MIRIFLAGS="${MIRIFLAGS:-} -Zmiri-strict-provenance -Zmiri-disable-isolation"
+# MIRI_MODEL selects the aliasing model: `stacked` (default) or `tree`.
+# Both must pass for a soundness claim; they reject different patterns.
+# MIRI_FEATURES passes cargo feature flags, e.g. `--no-default-features`
+# for the alloc-only code shape.
+case "${MIRI_MODEL:-stacked}" in
+    stacked) MODEL_FLAGS="" ;;
+    tree)    MODEL_FLAGS="-Zmiri-tree-borrows" ;;
+    *) echo "MIRI_MODEL must be stacked or tree" >&2; exit 2 ;;
+esac
+# MIRI_ALIGN=1 adds -Zmiri-symbolic-alignment-check: every multi-byte read
+# must be provably aligned. It is the slowest flag, so the per-PR legs run
+# without it and the weekly sweep runs with it.
+ALIGN_FLAGS=""; [ "${MIRI_ALIGN:-0}" = 1 ] && ALIGN_FLAGS="-Zmiri-symbolic-alignment-check"
+export MIRIFLAGS="${MIRIFLAGS:-} ${MODEL_FLAGS} ${ALIGN_FLAGS} -Zmiri-strict-provenance -Zmiri-disable-isolation"
 
 # Optional cross-target. When set, `cargo miri` simulates the
 # specified architecture (big-endian targets are the most
@@ -107,8 +120,9 @@ echo
 # every dep (rayon brings in unsupported syscalls); use the
 # default feature set, which covers the primitives the focus list
 # actually exercises.
+# shellcheck disable=SC2086
 cargo +nightly miri test \
-    --lib \
+    --lib ${MIRI_FEATURES:-} \
     "${TARGET_ARGS[@]}" \
     -- \
     "${FILTERS[@]}"
@@ -117,3 +131,4 @@ echo
 echo "✓ Miri verification complete — no UB, leaks, or alignment errors."
 echo "  Filters:  ${FILTERS[*]}"
 echo "  Target:   ${MIRI_TARGET:-native}"
+echo "  Model:    ${MIRI_MODEL:-stacked}   Features: ${MIRI_FEATURES:-default}   Alignment check: ${MIRI_ALIGN:-0}"

@@ -160,10 +160,16 @@ if changelog.is_file():
     else:
         bad("CHANGELOG.md", f"no [v{version}] heading — still under [Unreleased]?")
 
-# README install snippets naming this crate.
-for rel in ("README.md", f"crates/{name}/README.md"):
-    f = root / rel
-    if not f.is_file():
+# Install snippets naming this crate: the READMEs and every page under
+# docs/ (the v0.0.33 cycle found GETTING_STARTED.md and two migration
+# guides carrying snippets the gate never read).
+snippet_files = [root / "README.md", root / "crates" / name / "README.md"]
+snippet_files += sorted((root / "docs").rglob("*.md")) if (root / "docs").is_dir() else []
+for f in snippet_files:
+    rel = str(f.relative_to(root))
+    # Release notes and decision records quote the versions of their
+    # own day; they are history, not install instructions.
+    if not f.is_file() or "release-notes" in rel or "/adr/" in rel:
         continue
     stale = set()
     for line in f.read_text(encoding="utf-8").splitlines():

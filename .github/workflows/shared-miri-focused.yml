@@ -34,6 +34,15 @@ permissions:
 
 jobs:
   check:
+    # One leg per PR: Stacked Borrows on the default build, ~55 minutes.
+    # Tree Borrows and the symbolic alignment check are slower still and
+    # run in the weekly sweep (shared-miri-full.yml). The alloc-only
+    # build is not a leg: the library's unit tests are std-only (they
+    # use vec!/format! without the alloc prelude), so `miri test --lib
+    # --no-default-features` does not compile; that code shape is
+    # covered by the fuzz-nostd crate instead.
+    # The job name is a required status check in the branch ruleset;
+    # keep it exactly "Miri (focused, per-PR)".
     name: Miri (focused, per-PR)
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest

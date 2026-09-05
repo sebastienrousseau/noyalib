@@ -18,6 +18,9 @@ pub use number::{Number, ParseNumberError};
 /// A YAML sequence (array/list).
 pub type Sequence = Vec<Value>;
 
+#[cfg(feature = "arbitrary")]
+#[cfg_attr(docsrs, doc(cfg(feature = "arbitrary")))]
+mod arbitrary_impls;
 mod tag;
 pub use tag::{MaybeTag, Tag, TaggedValue, check_for_tag, nobang};
 

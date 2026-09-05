@@ -1,0 +1,60 @@
+# SPDX-FileCopyrightText: 2026 Noyalib
+# SPDX-License-Identifier: MIT OR Apache-2.0
+
+name: shared / yaml-test-suite conformance
+
+# Reusable conformance gate for the family. Every noyalib crate
+# exposes YAML through its own entry point (a CLI exit code, an LSP
+# diagnostic, an MCP tool result, the serde_yaml shim, the wasm
+# JSON model). Each one must agree with the core on every case of
+# the official yaml-test-suite, not only the core's own parser.
+#
+# The caller ships `tests/yaml_test_suite.rs`, which reads the
+# wrapper files under `NOYALIB_SUITE_DIR` and drives its entry
+# point over all of them. This workflow supplies the directory:
+# the suite vendored in the core at `crates/noyalib/tests/
+# yaml-test-suite`, checked out at the core commit the caller pins
+# this workflow to (`github.job_workflow_sha`), so every family
+# member is measured against the same case set the core passes.
+#
+# Consumers pin by SHA:
+#
+#   jobs:
+#     yaml-test-suite:
+#       uses: sebastienrousseau/noyalib/.github/workflows/shared-yaml-test-suite.yml@<sha>
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  conformance:
+    name: yaml-test-suite conformance
+    runs-on: ubuntu-latest
+    env:
+      NOYALIB_SUITE_DIR: ${{ github.workspace }}/.noyalib-core/crates/noyalib/tests/yaml-test-suite
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Fetch the suite from the core at the pinned commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: sebastienrousseau/noyalib
+          # `github.job_workflow_sha` is the commit of this reusable
+          # workflow file, i.e. the core SHA the caller pins. Read it
+          # through fromJSON so actionlint's (older) context schema
+          # does not reject the property.
+          ref: ${{ fromJSON(toJSON(github)).job_workflow_sha }}
+          path: .noyalib-core
+          sparse-checkout: crates/noyalib/tests/yaml-test-suite
+      - uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # master
+        with:
+          toolchain: stable
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+        with:
+          key: yaml-test-suite
+      - name: Count the cases on disk
+        run: find "$NOYALIB_SUITE_DIR" -name '*.yaml' | wc -l
+      - name: Run the conformance test
+        run: cargo test --test yaml_test_suite -- --nocapture
