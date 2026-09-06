@@ -243,6 +243,7 @@ serde-saphyr does not appear on the multi-document fixture because its
 `from_str` reads one document. Rerun the command to refresh this table;
 the numbers above are reproducible to within criterion's reported
 confidence intervals.
+
 ## v0.0.6 feature benchmarks
 
 Three additional bench arms cover the optional surfaces added

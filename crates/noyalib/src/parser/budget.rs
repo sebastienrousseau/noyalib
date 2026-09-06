@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
+// Copyright (c) 2026 Noyalib. All rights reserved.
+
 //! The resource budgets the loaders enforce, as pure predicates.
 //!
 //! Every limit a hostile document could exploit (nesting depth, alias
