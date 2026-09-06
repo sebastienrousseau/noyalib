@@ -7,6 +7,36 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Added
+
+- **The resource budgets are pure predicates, machine-checked.**
+  `parser::budget` decides nesting depth, alias occurrences, the
+  alias-to-anchor ratio, the transitive repetition charge, expanded
+  bytes and the node ceiling over plain integers; both loaders call
+  them at the same points as before. Kani proof harnesses show the
+  checks are exact and monotone, the ratio heuristic never panics and
+  never trips on a non-finite ratio or while aliases do not outnumber
+  anchors, and the saturating accumulators can never wrap back under a
+  limit. A `kani` CI job runs them on every push.
+- **A `wasm32-wasip2` build job**: the library builds for the WASI
+  component-model target (defaults and `std`-only) on every push.
+- **`docs/COOKBOOK.md`**: task-shaped recipes, each naming the runnable
+  example it is distilled from.
+- **Family gaps closed in the satellites this cycle:** a GitHub Action
+  and hosted pre-commit hooks (noya-cli), a VS Code extension packaged
+  as a `.vsix` on every push (noyalib-lsp), and three stateless MCP
+  tools that take content in the request (noyalib-mcp).
+
+### Changed
+
+- **Branch protection on `main` now requires strict status checks,
+  signed commits, code-owner review and dismissal of stale reviews.**
+  A solo maintainer cannot require a second approval; the rest of the
+  OpenSSF Branch-Protection tier is on.
+- **The registry drift probe pins the npm installs** to the version the
+  checkout declares, so it tests the matching release and satisfies the
+  Scorecard's pinned-dependencies check.
+
 ## [v0.0.34] - 2026-09-05
 
 ### Added (family)
