@@ -193,3 +193,28 @@ fn directive_after_an_unclosed_document_is_located_in_the_stream() {
         "{err}"
     );
 }
+
+#[test]
+fn a_document_end_marker_that_closes_nothing_is_not_a_document() {
+    // The suite's HWV9: a stream that is only `...` has no documents.
+    // parse_stream keeps its one-document-minimum for empty input, but
+    // a leading `...` must not add a document the typed loaders do not
+    // see; it becomes the prologue of the document that follows.
+    for (src, docs) in [
+        ("...\nfoo\n", 1),
+        ("...\n---\na: 1\n", 1),
+        ("# c\n...\nfoo\n", 1),
+        ("a: 1\n...\n...\nb: 2\n", 2),
+        ("a: 1\n...\n...\n", 1),
+        ("---\n...\n", 1),
+    ] {
+        let parsed = parse_stream(src).unwrap_or_else(|e| panic!("{src:?}: {e}"));
+        assert_eq!(parsed.len(), docs, "{src:?}");
+        assert_eq!(parsed.iter().map(Document::source).collect::<String>(), src);
+        assert_eq!(
+            load_all_as::<Value>(src).unwrap().len(),
+            docs,
+            "typed {src:?}"
+        );
+    }
+}

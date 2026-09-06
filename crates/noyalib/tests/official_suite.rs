@@ -376,13 +376,13 @@ fn check_stream(label: &str, stream: &str, expected: usize, failures: &mut Vec<S
                 failures.push(format!("{label}: {name} accepted the stream"));
                 None
             }
-            Err(err) => match err.location() {
-                Some(loc) => Some(loc),
-                None => {
+            Err(err) => {
+                let loc = err.location();
+                if loc.is_none() {
                     failures.push(format!("{label}: {name} error has no location: {err}"));
-                    None
                 }
-            },
+                loc
+            }
         }
     };
 

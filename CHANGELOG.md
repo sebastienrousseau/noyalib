@@ -33,6 +33,12 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   consequence `<tab>- a` and `<tab>? a` on the first line of a stream,
   which used to be accepted, are rejected like they already were in
   every later document.
+- **A `...` that closes nothing is not a document.** `cst::parse_stream`
+  made an empty document out of a `...` at the start of a stream, or of
+  a second `...` right after another, where the typed loaders yield
+  none (the suite's HWV9). The marker now becomes the prologue of the
+  document that follows, so both entry points count documents the same
+  way and the sources still concatenate to the input byte-for-byte.
 - **CST scanner errors carry their position.** `cst::parse_stream`,
   `parse_document` and the green-tree builder used to drop the byte
   index of a scanner error (a directive after an unclosed document,
