@@ -380,8 +380,8 @@ when = "2026-04-28"
 trusted-publisher = "github:wasm-bindgen/wasm-bindgen"
 
 [[publisher.jsonschema]]
-version = "0.52.1"
-when = "2026-08-30"
+version = "0.53.0"
+when = "2026-09-02"
 user-id = 82692
 user-login = "Stranger6667"
 user-name = "Dmitry Dygalo"
@@ -627,8 +627,8 @@ user-login = "dtolnay"
 user-name = "David Tolnay"
 
 [[publisher.referencing]]
-version = "0.52.1"
-when = "2026-08-30"
+version = "0.53.0"
+when = "2026-09-02"
 user-id = 82692
 user-login = "Stranger6667"
 user-name = "Dmitry Dygalo"
