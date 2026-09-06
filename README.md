@@ -67,7 +67,7 @@
 
 ```toml
 [dependencies]
-noyalib = "0.0.34"
+noyalib = "0.0.35"
 ```
 
 ### As a CLI tool
@@ -105,7 +105,7 @@ maintainer runbook.
 
 ```toml
 [dependencies]
-noyalib = { version = "0.0.34", default-features = false }
+noyalib = { version = "0.0.35", default-features = false }
 ```
 
 Requires `alloc`. Core data binding (`from_str`, `to_string`, `Value`,
@@ -156,7 +156,7 @@ the application needs.
 ```toml
 # Example: rich diagnostics + schema validation
 [dependencies]
-noyalib = { version = "0.0.34", features = ["miette", "validate-schema"] }
+noyalib = { version = "0.0.35", features = ["miette", "validate-schema"] }
 ```
 
 **Optional features:** `lossless-u64` preserves YAML integer scalars above
@@ -290,7 +290,7 @@ npm install @sebastienrousseau/noyalib-wasm
 
 ```toml
 # serde_yaml drop-in — the whole migration is this one line:
-serde_yaml = { package = "noyalib-serde-yaml", version = "=0.0.34" }
+serde_yaml = { package = "noyalib-serde-yaml", version = "=0.0.35" }
 ```
 
 Per-crate READMEs cover the surface specific to each artifact:
@@ -355,7 +355,7 @@ lines**:
 
 ```toml
 [dependencies]
-serde_yaml = { package = "noyalib-serde-yaml", version = "=0.0.34" }
+serde_yaml = { package = "noyalib-serde-yaml", version = "=0.0.35" }
 ```
 
 [`noyalib-serde-yaml`](https://github.com/sebastienrousseau/noyalib-serde-yaml)
@@ -388,7 +388,7 @@ and `yaml-spanned` with verified function tables for each.
 -[dependencies]
 -serde_yaml = "0.9"
 +[dependencies]
-+noyalib = "0.0.34"
++noyalib = "0.0.35"
 ```
 
 ```diff
@@ -1364,7 +1364,7 @@ disagreement on priorities.
 - **You have a hard dependency budget that cannot tolerate a
   Grisu / Ryu float formatter and a hash-randomised lookup
   table.** Default profile carries 8 runtime deps. `noyalib =
-  { version = "0.0.34", default-features = false, features =
+  { version = "0.0.35", default-features = false, features =
   ["std"] }` (or the equivalent `features = ["minimal"]`) drops
   to 5 — `itoa`, `ryu`, and `serde_ignored` become opt-in via
   the `fast-int` / `fast-float` / `strict-deserialise` features.
@@ -1652,6 +1652,7 @@ The four entry points, identical across every repo in the family:
 | [`docs/release-notes/`](docs/release-notes/README.md) | Narrative notes for v0.0.1–v0.0.17, one file per tag. Complements the changelog rather than duplicating it. |
 | [`docs/USER-GUIDE.md`](docs/USER-GUIDE.md) | Long-form usage guide with worked examples for every major feature. |
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Module map, hot-path notes, design decisions. |
+| [`docs/COOKBOOK.md`](docs/COOKBOOK.md) | Task-shaped recipes, each pointing at the runnable example it comes from. |
 | [`docs/GLOSSARY.md`](docs/GLOSSARY.md) | YAML / serde terminology reference. |
 | [`crates/noyalib/docs/internals.md`](crates/noyalib/docs/internals.md) | Library internals (parser stages, loader frames, CST green tree). |
 | [`crates/noyalib/docs/errors.md`](crates/noyalib/docs/errors.md) | Error reference — every variant, when it fires, how to handle it. |
