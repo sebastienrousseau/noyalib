@@ -57,20 +57,49 @@ jobs:
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: '22'
-      - name: WASM package installs and parses
+      # Both probes fetch the exact version this checkout declares straight
+      # from the registry and verify the tarball against the sha512 the
+      # registry publishes for it, then unpack it by hand. No `npm install`:
+      # Scorecard flags one without a lockfile as unpinned, and a lockfile
+      # here would have to be regenerated after every release (alerts #59
+      # and #60). The probe also asks the question consumers ask: does the
+      # package carry every file its entry module imports (the 0.0.35 npm
+      # package did not).
+      - name: Fetch a package by exact version, verified against the registry sha512
+        run: |
+          cat > fetch-pkg.sh <<'SH'
+          #!/usr/bin/env bash
+          # usage: fetch-pkg.sh <scoped name> <version> <dir>
+          set -euo pipefail
+          name=$1; version=$2; dir=$3
+          meta=$(curl -sSf --retry 5 "https://registry.npmjs.org/${name//\//%2F}/${version}")
+          tarball=$(printf '%s' "$meta" | node -e 'const d=JSON.parse(require("fs").readFileSync(0,"utf8"));process.stdout.write(d.dist.tarball)')
+          integrity=$(printf '%s' "$meta" | node -e 'const d=JSON.parse(require("fs").readFileSync(0,"utf8"));process.stdout.write(d.dist.integrity)')
+          curl -sSf --retry 5 -o pkg.tgz "$tarball"
+          node -e '
+            const fs=require("fs"),c=require("crypto");
+            const [algo,want]=process.argv[2].split("-",2);
+            const got=c.createHash(algo).update(fs.readFileSync("pkg.tgz")).digest("base64");
+            if(got!==want){console.error(`integrity mismatch for ${process.argv[1]}: ${algo} ${got} != ${want}`);process.exit(1)}
+            console.log(`${process.argv[1]} ${algo} integrity ok`)' "$name@$version" "$integrity"
+          mkdir -p "$dir" && tar -xzf pkg.tgz -C "$dir" --strip-components=1
+          rm -f pkg.tgz
+          SH
+          chmod +x fetch-pkg.sh
+      - name: WASM package resolves and carries every file its entry imports
         run: |
           set -euo pipefail
-          mkdir probe && cd probe && npm init -y >/dev/null
-          # Pinned to the version this checkout declares: the probe asks
-          # whether the release that matches the tree installs, and a
-          # floating install would silently test a different one.
-          v=$(grep -m1 '^version' ../crates/noyalib/Cargo.toml | cut -d'"' -f2)
-          npm install "@sebastienrousseau/noyalib-wasm@${v}"
-          node -e "const y = require('@sebastienrousseau/noyalib-wasm'); console.log('wasm package loads')"
-      - name: MCP package installs
+          v=$(grep -m1 '^version' crates/noyalib/Cargo.toml | cut -d'"' -f2)
+          ./fetch-pkg.sh @sebastienrousseau/noyalib-wasm "$v" probe/node_modules/@sebastienrousseau/noyalib-wasm
+          cd probe/node_modules/@sebastienrousseau/noyalib-wasm
+          entry=$(node -e 'const p=require("./package.json");console.log(p.module||p.main)')
+          for imp in $(grep -oE 'from "\./[^"]+"' "$entry" | sed -E 's/from "\.\/([^"]+)"/\1/' | sort -u); do
+            [ -f "$imp" ] || { echo "$entry imports $imp, which the package does not carry"; exit 1; }
+          done
+          [ -f noyalib_wasm_bg.wasm ] && echo "wasm package $v: entry $entry and every import present"
+      - name: MCP package resolves
         run: |
           set -euo pipefail
-          mkdir probe-mcp && cd probe-mcp && npm init -y >/dev/null
-          v=$(grep -m1 '^version' ../crates/noyalib/Cargo.toml | cut -d'"' -f2)
-          npm install "@sebastienrousseau/noyalib-mcp@${v}"
-          node -e "require.resolve('@sebastienrousseau/noyalib-mcp'); console.log('mcp package resolves')"
+          v=$(grep -m1 '^version' crates/noyalib/Cargo.toml | cut -d'"' -f2)
+          ./fetch-pkg.sh @sebastienrousseau/noyalib-mcp "$v" probe-mcp/node_modules/@sebastienrousseau/noyalib-mcp
+          cd probe-mcp && node -e "require.resolve('@sebastienrousseau/noyalib-mcp/package.json'); console.log('mcp package resolves')"

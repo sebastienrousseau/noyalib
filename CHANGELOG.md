@@ -7,6 +7,15 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Fixed
+
+- **The registry drift net no longer runs `npm install`.** Both probes
+  fetch the exact version this checkout declares from the registry,
+  verify the tarball against the sha512 the registry publishes for it,
+  unpack it by hand and check that the package carries every file its
+  entry module imports (the question the 0.0.35 npm package failed).
+  Closes Scorecard alerts #59 and #60 (unpinned npm command).
+
 ## [v0.0.37] - 2026-09-06
 
 ### Changed
