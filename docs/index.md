@@ -21,6 +21,7 @@ is canonical.
 | You want to | Read |
 | :--- | :--- |
 | Parse or write YAML from Rust | the [User guide](USER-GUIDE.md) |
+| Find the recipe for a task | the [Cookbook](COOKBOOK.md) |
 | Leave `serde_yaml` behind | the [migration guides](MIGRATION.md) — for the one-line drop-in, see [noyalib-serde-yaml](https://github.com/sebastienrousseau/noyalib-serde-yaml) |
 | Edit YAML without destroying formatting | the User guide's CST sections, then [Architecture](ARCHITECTURE.md) |
 | Judge the library before adopting it | [Choosing a YAML library](COMPARISON.md) and [Testing and verification](TESTING.md) |

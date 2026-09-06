@@ -1652,6 +1652,7 @@ The four entry points, identical across every repo in the family:
 | [`docs/release-notes/`](docs/release-notes/README.md) | Narrative notes for v0.0.1–v0.0.17, one file per tag. Complements the changelog rather than duplicating it. |
 | [`docs/USER-GUIDE.md`](docs/USER-GUIDE.md) | Long-form usage guide with worked examples for every major feature. |
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Module map, hot-path notes, design decisions. |
+| [`docs/COOKBOOK.md`](docs/COOKBOOK.md) | Task-shaped recipes, each pointing at the runnable example it comes from. |
 | [`docs/GLOSSARY.md`](docs/GLOSSARY.md) | YAML / serde terminology reference. |
 | [`crates/noyalib/docs/internals.md`](crates/noyalib/docs/internals.md) | Library internals (parser stages, loader frames, CST green tree). |
 | [`crates/noyalib/docs/errors.md`](crates/noyalib/docs/errors.md) | Error reference — every variant, when it fires, how to handle it. |
