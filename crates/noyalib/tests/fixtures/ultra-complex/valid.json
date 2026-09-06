@@ -1,0 +1,152 @@
+[
+  {
+    "defaults": {
+      "db_base": {
+        "adapter": "postgresql",
+        "credentials": {
+          "password": "SecureP@ssw0rd!",
+          "username": "app_admin"
+        },
+        "encoding": "utf-8",
+        "pool": 10,
+        "timeout": 5000
+      },
+      "logging_base": {
+        "destination": "/var/log/app/",
+        "format": "[%{timestamp}s] [%{level}s] %{message}s",
+        "level": "info"
+      }
+    },
+    "environments": {
+      "development": {
+        "adapter": "postgresql",
+        "credentials": {
+          "password": "SecureP@ssw0rd!",
+          "username": "dev_user"
+        },
+        "encoding": "utf-8",
+        "host": "dev-db.local",
+        "pool": 2,
+        "timeout": 5000
+      },
+      "production": {
+        "adapter": "postgresql",
+        "credentials": {
+          "password": "SecureP@ssw0rd!",
+          "username": "app_admin"
+        },
+        "encoding": "utf-8",
+        "failover_hosts": [
+          "prod-db-replica-01.internal",
+          "prod-db-replica-02.internal"
+        ],
+        "host": "prod-cluster-db.internal",
+        "pool": 10,
+        "ssl": {
+          "cert_path": "/etc/ssl/certs/db.crt",
+          "enabled": true,
+          "mode": "require"
+        },
+        "timeout": 5000
+      }
+    }
+  },
+  {
+    "project_metadata": {
+      "classification": "InternalOnly",
+      "name": "OmniChannel Mesh Framework",
+      "version": "4.12.2-rc3"
+    },
+    "services": [
+      {
+        "[region, zone]": {
+          "latency_threshold_ms": 45,
+          "policy": "geo-replicated"
+        },
+        "description": "This pipeline ingests cross-platform streaming telemetries, cleanses dirty schemas, aggregates standard KPIs, and dispatches structured events to downstream brokers.\n",
+        "name": "ingestion-pipeline-service",
+        "network": {
+          "egress": [
+            {
+              "destination": {
+                "adapter": "postgresql",
+                "credentials": {
+                  "password": "SecureP@ssw0rd!",
+                  "username": "app_admin"
+                },
+                "encoding": "utf-8",
+                "pool": 10,
+                "timeout": 5000
+              },
+              "routes": {
+                "active_paths": [
+                  {
+                    "backup": "/api/v2/fallback",
+                    "primary": "/api/v1/write"
+                  }
+                ]
+              }
+            }
+          ],
+          "ingress": [
+            {
+              "policies": [
+                "ALLOW_EXTERNAL",
+                "TLS_1.3_ONLY"
+              ],
+              "port": 443,
+              "protocol": "TCP"
+            },
+            {
+              "policies": [
+                "LOCAL_VPC_ONLY",
+                "MESH_ROUTING"
+              ],
+              "port": 8080,
+              "protocol": "UDP"
+            }
+          ]
+        },
+        "startup_script": "#!/bin/bash\necho \"Initializing Ingestion Mesh...\"\nsysctl -w net.core.somaxconn=1024\nexec ./bin/pipeline --mode=stream\n",
+        "version": "4.12.2-rc3"
+      },
+      {
+        "logging": {
+          "destination": "/var/log/app/",
+          "format": "[%{timestamp}s] [%{level}s] %{message}s",
+          "level": "debug"
+        },
+        "matrix_routes": [
+          {
+            "sms": "gateway.twilio.internal"
+          },
+          {
+            "email": "smtp.sendgrid.internal"
+          },
+          {
+            "sms": "backup.gateway.internal"
+          }
+        ],
+        "name": "notification-delivery-engine",
+        "version": "4.12.2-rc3"
+      }
+    ],
+    "templates": {
+      "database": {
+        "adapter": "postgresql",
+        "credentials": {
+          "password": "SecureP@ssw0rd!",
+          "username": "app_admin"
+        },
+        "encoding": "utf-8",
+        "pool": 10,
+        "timeout": 5000
+      },
+      "logging": {
+        "destination": "/var/log/app/",
+        "format": "[%{timestamp}s] [%{level}s] %{message}s",
+        "level": "info"
+      }
+    }
+  }
+]

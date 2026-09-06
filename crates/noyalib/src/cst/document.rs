@@ -13,7 +13,7 @@ use crate::cst::green::{GreenChild, GreenNode};
 use crate::cst::syntax::SyntaxKind;
 use crate::de::ParserConfig;
 use crate::doc_boundary::strip_bom;
-use crate::error::{Error, Result};
+use crate::error::{Error, Location, Result};
 use crate::parser::ParseConfig;
 use crate::path::{QuerySegment, parse_query_path, push_key};
 use crate::prelude::*;
@@ -3282,10 +3282,50 @@ fn parse_stream_inner(input: &str, config: &ParseConfig) -> Result<Vec<Document>
             continue;
         }
         let doc = parse_document_inner(&input[s..e], config.clone())
-            .map_err(|err| err.relocate(input, s))?;
+            .map_err(|err| cross_document_anchor_hint(err.relocate(input, s), &input[..s]))?;
         out.push(doc);
     }
     Ok(out)
+}
+
+/// When an alias names an anchor that an earlier document defined,
+/// point at that definition: each document is parsed from its own
+/// slice, so the parser cannot know, but the error should say it the
+/// way the typed loaders do (YAML 1.2.2 §3.2.2.2: anchors do not cross
+/// `---`).
+fn cross_document_anchor_hint(err: Error, earlier: &str) -> Error {
+    let Error::UnknownAnchorAt {
+        name,
+        location,
+        suggestion: None,
+    } = err
+    else {
+        return err;
+    };
+    let needle = format!("&{name}");
+    let mut from = 0;
+    let mut found = None;
+    while let Some(i) = earlier[from..].find(&needle) {
+        let at = from + i;
+        let end = at + needle.len();
+        let after_ok = earlier[end..]
+            .chars()
+            .next()
+            .is_none_or(|c| c.is_whitespace() || matches!(c, ',' | '[' | ']' | '{' | '}'));
+        let before_ok = at == 0
+            || earlier[..at].chars().next_back().is_some_and(|c| {
+                c.is_whitespace() || matches!(c, '-' | ',' | '[' | '{' | '?' | ':')
+            });
+        if after_ok && before_ok {
+            found = Some(at);
+        }
+        from = end;
+    }
+    Error::UnknownAnchorAt {
+        name: name.clone(),
+        location,
+        suggestion: found.map(|at| (name, Location::from_index(earlier, at))),
+    }
 }
 
 // ── Localised repair (Phase A) ──────────────────────────────────────

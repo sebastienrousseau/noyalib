@@ -602,6 +602,14 @@ impl<'a> Scanner<'a> {
         }
     }
 
+    /// Like [`Self::error`], for a message built at the failure site.
+    fn error_owned(&self, msg: String) -> ScanError {
+        ScanError {
+            message: Cow::Owned(msg),
+            index: self.pos,
+        }
+    }
+
     fn emit(&mut self, kind: TokenKind<'a>) {
         // Document-content tokens establish that we are inside a
         // document body. Subsequent directives without an
@@ -2078,6 +2086,16 @@ impl<'a> Scanner<'a> {
                 self.advance();
             }
             suffix = Cow::Borrowed(self.slice_str(start, self.pos));
+            // YAML 1.2.2 §6.8.2.2: `ns-tag-char` excludes `!`, so a
+            // suffix that starts with one is not a tag. `!!!int` is the
+            // common shape of the mistake (one bang too many).
+            if suffix.starts_with('!') {
+                let meant = suffix.trim_start_matches('!');
+                self.pos = start;
+                return Err(self.error_owned(format!(
+                    "tag suffix must not contain `!`: `!!{suffix}` is not a tag; did you mean `!!{meant}`?"
+                )));
+            }
         } else {
             // Primary `!suffix` OR named `!handle!suffix`. The two
             // forms are distinguished by whether a second `!` appears
@@ -2121,6 +2139,14 @@ impl<'a> Scanner<'a> {
                 // second `!`, suffix is what follows it.
                 handle = Cow::Owned(format!("!{}!", self.slice_str(start, bang_pos)));
                 suffix = Cow::Borrowed(self.slice_str(bang_pos + 1, self.pos));
+                // The handle closed at `bang_pos`; a further `!` in what
+                // is left is not a `ns-tag-char` (§6.8.2.2).
+                if suffix.contains('!') {
+                    self.pos = bang_pos + 1;
+                    return Err(self.error_owned(format!(
+                        "tag suffix must not contain `!`: `{handle}{suffix}` is not a tag"
+                    )));
+                }
             } else {
                 handle = Cow::Borrowed("!");
                 suffix = Cow::Borrowed(self.slice_str(start, self.pos));

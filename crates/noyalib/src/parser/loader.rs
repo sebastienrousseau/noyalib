@@ -394,6 +394,11 @@ struct Loader<'a> {
     /// the streaming path's `anchor_def_spans`) — powers the
     /// "did you mean …?" affordance on `Error::UnknownAnchorAt`.
     anchor_def_spans: IndexMap<String, usize>,
+    /// Anchors defined in earlier documents of the stream (name to
+    /// byte index of the last definition). Anchors do not cross `---`
+    /// (YAML 1.2.2 §3.2.2.2); when an alias names one of these the
+    /// error says so instead of only "unknown anchor".
+    earlier_anchor_defs: IndexMap<String, usize>,
     alias_count: usize,
     alias_bytes: usize,
     config: &'a ParseConfig,
@@ -452,6 +457,7 @@ impl<'a> Loader<'a> {
             stack: Vec::with_capacity(16),
             anchor_map: IndexMap::with_capacity(4),
             anchor_def_spans: IndexMap::with_capacity(4),
+            earlier_anchor_defs: IndexMap::new(),
             alias_count: 0,
             alias_bytes: 0,
             config,
@@ -528,7 +534,8 @@ impl<'a> Loader<'a> {
             Event::DocumentStart => {
                 self.in_document = true;
                 self.anchor_map.clear();
-                self.anchor_def_spans.clear();
+                self.earlier_anchor_defs
+                    .extend(self.anchor_def_spans.drain(..));
                 self.alias_count = 0;
                 self.alias_bytes = 0;
                 // Budget: max_documents
@@ -579,6 +586,14 @@ impl<'a> Loader<'a> {
                             self.anchor_def_spans.get(s).map(|&idx| {
                                 (
                                     s.to_string(),
+                                    crate::error::Location::from_index(input, idx),
+                                )
+                            })
+                        })
+                        .or_else(|| {
+                            self.earlier_anchor_defs.get(anchor.as_str()).map(|&idx| {
+                                (
+                                    anchor.clone(),
                                     crate::error::Location::from_index(input, idx),
                                 )
                             })
@@ -1206,6 +1221,11 @@ struct NoSpanLoader<'a> {
     // point at the closest known definition — the same "did you mean
     // `&logger`?" affordance the streaming path already offers.
     anchor_def_spans: IndexMap<String, usize>,
+    /// Anchors defined in earlier documents of the stream (name to
+    /// byte index of the last definition). Anchors do not cross `---`
+    /// (YAML 1.2.2 §3.2.2.2); when an alias names one of these the
+    /// error says so instead of only "unknown anchor".
+    earlier_anchor_defs: IndexMap<String, usize>,
     alias_count: usize,
     alias_bytes: usize,
     // Merge-key occurrences seen across the current document (for
@@ -1257,6 +1277,7 @@ impl<'a> NoSpanLoader<'a> {
             stack: Vec::new(),
             anchor_map: IndexMap::default(),
             anchor_def_spans: IndexMap::default(),
+            earlier_anchor_defs: IndexMap::default(),
             alias_count: 0,
             alias_bytes: 0,
             merge_key_count: 0,
@@ -1329,7 +1350,8 @@ impl<'a> NoSpanLoader<'a> {
             Event::DocumentStart => {
                 self.in_document = true;
                 self.anchor_map.clear();
-                self.anchor_def_spans.clear();
+                self.earlier_anchor_defs
+                    .extend(self.anchor_def_spans.drain(..));
                 // Reset the per-document alias budget, matching the span-full
                 // Loader (see DocumentStart above). Without this, alias counts
                 // accumulate across a multi-document stream, so a stream whose
@@ -1385,6 +1407,14 @@ impl<'a> NoSpanLoader<'a> {
                         self.anchor_def_spans.get(s).map(|&idx| {
                             (
                                 s.to_string(),
+                                crate::error::Location::from_index(input, idx),
+                            )
+                        })
+                    })
+                    .or_else(|| {
+                        self.earlier_anchor_defs.get(anchor.as_str()).map(|&idx| {
+                            (
+                                anchor.clone(),
                                 crate::error::Location::from_index(input, idx),
                             )
                         })

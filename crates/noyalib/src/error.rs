@@ -956,8 +956,23 @@ impl fmt::Display for Error {
             }
             Self::Budget(breach) => write!(f, "{breach}"),
             Self::UnknownAnchor(name) => write!(f, "unknown anchor: {name}"),
-            Self::UnknownAnchorAt { name, location, .. } => {
-                write!(f, "unknown anchor: {name} at {location}")
+            Self::UnknownAnchorAt {
+                name,
+                location,
+                suggestion,
+            } => {
+                write!(f, "unknown anchor: {name} at {location}")?;
+                match suggestion {
+                    // The same name anchored earlier in the stream: the
+                    // alias reaches across a document boundary.
+                    Some((s, at)) if s == name => write!(
+                        f,
+                        " (`&{name}` is defined at {at}, in an earlier document; \
+                         anchors do not cross `---`)"
+                    ),
+                    Some((s, _)) => write!(f, " (did you mean `{s}`?)"),
+                    None => Ok(()),
+                }
             }
             Self::MissingField(name) => write!(f, "missing field: {name}"),
             Self::UnknownField(name) => write!(f, "unknown field: {name}"),

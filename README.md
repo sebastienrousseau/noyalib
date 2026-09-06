@@ -449,10 +449,12 @@ covers each in detail.
 noyalib targets the niche `serde_yaml` / `serde_yml` / `libyml`
 occupy — read YAML into typed Rust structs, write Rust structs back
 as YAML — and is written from scratch against the YAML 1.2 spec.
-The implementation runs the official YAML test suite to **100%
-strict compliance — 406/406 attempted cases pass, 0 failures, 0
-skips** (rebuilt on every CI run via
-[`tests/yaml_compliance_report.rs`](crates/noyalib/tests/yaml_compliance_report.rs)).
+The implementation runs the official [YAML test suite](https://github.com/yaml/yaml-test-suite)
+to **100% strict compliance**: 406/406 attempted cases pass, 0 failures, 0
+skips, on every push and with no skip list. Every companion crate runs the
+same vendored suite through its own entry point in its own CI (see
+[Conformance](https://noyalib.com/conformance/)), and since v0.0.36 every
+valid case also runs as a multi-document stream to pin error positions.
 It is not a fork of `serde_yaml`; the parser,
 scanner, serialiser, and CST are independent code.
 
@@ -513,7 +515,7 @@ inventory; the table below groups the current surface by theme.
 
 | Theme | Headline deliverables |
 | :--- | :--- |
-| Spec compliance | YAML 1.2 official test suite at 100% strict (406/406 attempted, 0 failures, 0 skips — verified by `tests/yaml_compliance_report.rs`); YAML 1.1 opt-in compatibility for the "Norway problem"; multi-document streams |
+| Spec compliance | YAML 1.2 official [test suite](https://github.com/yaml/yaml-test-suite) at 100% strict (406/406 attempted, 0 failures, 0 skips — verified by `tests/yaml_compliance_report.rs`); YAML 1.1 opt-in compatibility for the "Norway problem"; multi-document streams |
 | Migration from `serde_yaml` | **behavioural** `compat-serde-yaml` shim since v0.0.29 — parses under `ParserConfig::serde_yaml_compat()` and renders upstream-style errors, pinned by the live-captured 18-case contract suite; `noyalib-serde-yaml` packages it as a one-line package-rename drop-in; `From`/`TryFrom` parity for `Value`/`Mapping`/`Number` |
 | Binary scalars | First-class `!!binary` tag; RFC 4648 base64 round-trip with `serde_bytes::ByteBuf`/`Bytes`; non-UTF-8 payloads supported |
 | Flatten guard | `Spanned<Value>` in `#[serde(flatten)]` returns an actionable error pointing at the working alternative |

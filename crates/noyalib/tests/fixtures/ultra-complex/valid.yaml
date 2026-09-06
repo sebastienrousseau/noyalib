@@ -1,0 +1,121 @@
+# ==============================================================================
+# ULTRA-COMPLEX YAML SPECIFICATION EXAMPLE
+# Demonstrating advanced anchoring, merging, tagging, and multi-line structures.
+# ==============================================================================
+---
+# Document 1: Global Infrastructure Templates & Anchor Definitions
+
+# 1. Base Anchors (Re-usable blocks)
+defaults:
+  db_base: &database_template
+    adapter: postgresql
+    timeout: !!int 5000
+    pool: 10
+    encoding: utf-8
+    credentials: &db_creds
+      username: app_admin
+      password: !!str SecureP@ssw0rd!
+
+  logging_base: &logging_template
+    level: info
+    format: "[%{timestamp}s] [%{level}s] %{message}s"
+    destination: /var/log/app/
+
+# 2. Advanced Merging (Inheriting and overriding attributes)
+environments:
+  development:
+    <<: *database_template
+    host: dev-db.local
+    pool: 2                   # Overriding the base pool value
+    credentials:
+      <<: *db_creds
+      username: dev_user     # Overriding the username while keeping password
+
+  production:
+    <<: *database_template
+    host: prod-cluster-db.internal
+    failover_hosts:
+      - prod-db-replica-01.internal
+      - prod-db-replica-02.internal
+    ssl:
+      enabled: !!bool true
+      mode: require
+      cert_path: !!str /etc/ssl/certs/db.crt
+
+---
+# Document 2: Microservice Micro-Architecture Configuration
+#
+# Anchors do not cross a document boundary (YAML 1.2.2 §3.2.2.2), so the
+# templates this document reuses are anchored again here.
+
+templates:
+  database: &database_template
+    adapter: postgresql
+    timeout: !!int 5000
+    pool: 10
+    encoding: utf-8
+    credentials:
+      username: app_admin
+      password: !!str SecureP@ssw0rd!
+  logging: &logging_template
+    level: info
+    format: "[%{timestamp}s] [%{level}s] %{message}s"
+    destination: /var/log/app/
+
+project_metadata:
+  name: "OmniChannel Mesh Framework"
+  version: &current_version "4.12.2-rc3"
+  classification: !!str InternalOnly
+
+# Deeply nested architecture matrix using block scalars and sequences
+services:
+  - name: ingestion-pipeline-service
+    version: *current_version  # Referencing string scalar anchor
+    
+    # Literal Block Scalar (Preserves newlines exactly - great for scripts/keys)
+    startup_script: |
+      #!/bin/bash
+      echo "Initializing Ingestion Mesh..."
+      sysctl -w net.core.somaxconn=1024
+      exec ./bin/pipeline --mode=stream
+
+    # Folded Block Scalar (Converts single newlines into spaces - great for text blocks)
+    description: >
+      This pipeline ingests cross-platform streaming telemetries,
+      cleanses dirty schemas, aggregates standard KPIs, and dispatches
+      structured events to downstream brokers.
+
+    # Sequence of complex mappings with explicit data types
+    network:
+      ingress:
+        - port: !!int 443
+          protocol: TCP
+          policies: [ ALLOW_EXTERNAL, TLS_1.3_ONLY ] # Flow style sequence
+        - port: !!int 8080
+          protocol: UDP
+          policies:
+            - LOCAL_VPC_ONLY
+            - MESH_ROUTING
+      egress:
+        - destination: *database_template # Merging deep structures natively
+          routes:
+            active_paths:
+              - primary: /api/v1/write
+                backup: /api/v2/fallback
+
+    # Complex key example (Using a nested structure as a key mapping)
+    ? [ region, zone ]
+    : policy: geo-replicated
+      latency_threshold_ms: 45
+
+  - name: notification-delivery-engine
+    version: *current_version
+    logging:
+      <<: *logging_template # Re-using our logging template from Doc 1
+      level: debug         # Upgrading log verbosity for this service
+    matrix_routes:
+      !!pairs # Explicit collection type (ordered pairs allowing duplicate keys)
+      - sms: gateway.twilio.internal
+      - email: smtp.sendgrid.internal
+      - sms: backup.gateway.internal
+...
