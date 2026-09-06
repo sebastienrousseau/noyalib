@@ -7,6 +7,44 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+## [v0.0.38] - 2026-09-06
+
+### Added
+
+- **An ultra-complex fixture through every surface**
+  (`tests/fixtures/ultra-complex/`): anchors and merge keys at two
+  depths, explicit `!!int`, `!!str`, `!!bool` and `!!pairs` tags,
+  literal and folded block scalars, flow and block sequences, a
+  sequence as a mapping key, comments everywhere, two documents. It
+  must parse through the typed loaders and the CST and project onto
+  exactly the JSON beside it; the same fixture runs through each
+  companion crate's entry point and is the playground's second
+  example on noyalib.com.
+- **Two diagnostics name the mistake.** `!!!int` (one bang too many)
+  is refused as "tag suffix must not contain `!`" with "did you mean
+  `!!int`?", since YAML 1.2.2 §6.8.2.2 excludes `!` from a tag suffix.
+  An alias that names an anchor from an earlier document says where
+  that anchor is defined and that anchors do not cross `---`
+  (§3.2.2.2), in the typed loaders and the CST alike; libyaml refuses
+  the same input with "an alias referenced an unknown anchor".
+
+### Fixed
+
+- **The CST formatter keeps explicit keys and lone properties
+  parseable.** `? a` / `: b` was rewritten as `? a: b` (a different
+  mapping), `? [a, b]` lost the space after `?` (a plain scalar, not a
+  key), and a tag or anchor alone on the line after a colon lost its
+  indentation. The value indicator of an explicit key now starts its own
+  line, the indicator keeps its space, and a lone property joins the key
+  line (`k: !!pairs`). Found by running the ultra-complex fixture through
+  `noyafmt`; every output must re-parse to the same value as its input.
+- **The registry drift net no longer runs `npm install`.** Both probes
+  fetch the exact version this checkout declares from the registry,
+  verify the tarball against the sha512 the registry publishes for it,
+  unpack it by hand and check that the package carries every file its
+  entry module imports (the question the 0.0.35 npm package failed).
+  Closes Scorecard alerts #59 and #60 (unpinned npm command).
+
 ## [v0.0.37] - 2026-09-06
 
 ### Changed
