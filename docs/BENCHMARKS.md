@@ -212,7 +212,8 @@ single-threaded.
 | DoS rejection (billion laughs) | **<3 us** with `ParserConfig::strict()` |
 | DoS rejection (deep nesting) | **<4 us** |
 
-Reproduce: `cargo bench --bench comparison` and
+Reproduce: `make bench-compare` (the comparison bench with the
+`compare-saphyr` feature, so serde-saphyr is in the same run) and
 `cargo bench --bench architecture`.
 
 ## v0.0.6 feature benchmarks

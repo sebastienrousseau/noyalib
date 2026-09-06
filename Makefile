@@ -112,6 +112,11 @@ examples:
 
 # Smoke-run every `[[bench]]` once via Criterion `--test` (no
 # measurement). Mirrors the `smoke-benches` CI gate.
+# The head-to-head against the other pure-Rust YAML crates, serde-saphyr
+# included. Numbers go in docs/BENCHMARKS.md with host and toolchain.
+bench-compare:
+	cd crates/noyalib && cargo bench --bench comparison --features compare-saphyr
+
 bench-smoke:
 	./scripts/smoke-benches.sh
 
