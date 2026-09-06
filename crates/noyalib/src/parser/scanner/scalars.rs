@@ -880,6 +880,15 @@ impl Scanner<'_> {
         self.last_token_opens_block = false;
         Ok(())
     }
+    /// Whether the bytes at the cursor are a document marker (`---` or
+    /// `...`) followed by a blank, a break, or the end of input.
+    fn at_document_marker(&self) -> bool {
+        let p0 = self.peek();
+        (p0 == b'-' || p0 == b'.')
+            && self.peek_at(1) == p0
+            && self.peek_at(2) == p0
+            && (self.pos + 3 >= self.input.len() || Self::is_blank_or_break(self.peek_at(3)))
+    }
 
     fn scan_block_scalar(&mut self, literal: bool) -> ScanResult<String> {
         self.advance(); // skip '|' or '>'
@@ -955,11 +964,20 @@ impl Scanner<'_> {
         }
 
         // Determine the indentation level and validate leading empty lines.
+        //
+        // The first non-empty line counts as the scalar's first content
+        // line only when it is part of the scalar: more indented than
+        // the parent node, and not a document marker at column 0. A
+        // scalar whose lines are all blank (`- |+` followed by a line
+        // of spaces, then `---`) has no content line at all, and its
+        // blank lines are trailing breaks, not a leading-line
+        // indentation error (found by the suite-stream permutations).
         let mut max_leading_empty_spaces = 0;
         let mut detected = 0;
         let mut has_content = false;
         let save_pos = self.pos;
         let save_col = self.col;
+        let parent_indent = self.indent;
         loop {
             let mut spaces = 0;
             while self.peek() == b' ' {
@@ -974,8 +992,12 @@ impl Scanner<'_> {
             if self.is_eof() {
                 break;
             }
-            detected = spaces;
-            has_content = true;
+            let belongs_to_scalar =
+                spaces as i32 > parent_indent && !(spaces == 0 && self.at_document_marker());
+            if belongs_to_scalar {
+                detected = spaces;
+                has_content = true;
+            }
             break;
         }
         self.pos = save_pos;
@@ -1020,17 +1042,8 @@ impl Scanner<'_> {
         while !self.is_eof() {
             // Document boundary terminates the block scalar (matters when
             // `block_indent == 0`; otherwise the indent check below handles it).
-            if self.col == 0 {
-                let p0 = self.peek();
-                let is_marker_byte = p0 == b'-' || p0 == b'.';
-                if is_marker_byte
-                    && self.peek_at(1) == p0
-                    && self.peek_at(2) == p0
-                    && (self.pos + 3 >= self.input.len()
-                        || Self::is_blank_or_break(self.peek_at(3)))
-                {
-                    break;
-                }
+            if self.col == 0 && self.at_document_marker() {
+                break;
             }
 
             // Count leading spaces.

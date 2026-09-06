@@ -131,3 +131,30 @@ fn folded_block_leading_empty_lines_preserved() {
     let v: String = from_str(">\n\n folded\n line\n\n next\n line\n").unwrap();
     assert_eq!(v, "\nfolded line\nnext line\n");
 }
+
+// A keep-chomped scalar whose only lines are blank, followed by another
+// document. The blank lines are trailing breaks, not a leading-line
+// indentation error: the `---` at column 0 is not the scalar's first
+// content line (found by the suite-stream permutations, JEF9).
+#[test]
+fn all_blank_keep_scalar_before_a_document_marker() {
+    use noyalib::{Value, load_all_as};
+    for (src, expected) in [
+        ("- |+\n   \n---\nb: 2\n", "\n"),
+        ("- |+\n   \n...\n", "\n"),
+        ("|+\n   \n---\nb: 2\n", "\n"),
+        ("- |+\n\n\n---\nb: 2\n", "\n\n"),
+    ] {
+        let docs = load_all_as::<Value>(src).unwrap_or_else(|e| panic!("{src:?}: {e}"));
+        let text = match &docs[0] {
+            Value::Sequence(items) => items[0].as_str().map(str::to_owned),
+            other => other.as_str().map(str::to_owned),
+        };
+        assert_eq!(text.as_deref(), Some(expected), "{src:?}");
+        let cst = noyalib::cst::parse_stream(src).unwrap_or_else(|e| panic!("cst {src:?}: {e}"));
+        assert_eq!(cst.iter().map(|d| d.source()).collect::<String>(), src);
+    }
+    // The standalone form is unchanged.
+    let v: Vec<String> = from_str("- |+\n   \n").unwrap();
+    assert_eq!(v, vec!["\n"]);
+}

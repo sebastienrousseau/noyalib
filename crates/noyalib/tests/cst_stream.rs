@@ -173,3 +173,23 @@ fn rendered_error_shows_the_failing_line_of_the_stream() {
     let rendered = parse_stream(src).unwrap_err().render(src);
     assert!(rendered.contains("5 | c: *nope"), "{rendered}");
 }
+
+#[test]
+fn directive_after_an_unclosed_document_is_located_in_the_stream() {
+    // YAML 1.2.2 §9.1.4: a directive needs the previous document
+    // closed by `...`. The scanner rejects the stream before any
+    // document is parsed; the error still carries the directive's
+    // position, the same one the typed loader reports.
+    let src = "a: 1\n%YAML 1.2\n---\nb: 2\n";
+    let err = parse_stream(src).unwrap_err();
+    let loc = err.location().expect("located");
+    assert_eq!((loc.index(), loc.line(), loc.column()), (5, 2, 1));
+    assert!(src[loc.index()..].starts_with("%YAML"));
+    let typed = load_all_as::<Value>(src).unwrap_err();
+    assert_eq!(typed.location(), Some(loc));
+    assert!(
+        err.to_string()
+            .contains("directive must be preceded by '...'"),
+        "{err}"
+    );
+}
