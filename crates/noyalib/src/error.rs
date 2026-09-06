@@ -1043,6 +1043,10 @@ impl Error {
     /// way every located error computes them. A `base` of zero is the
     /// identity. Variants without a location, and a shared error, are
     /// returned unchanged.
+    ///
+    /// Gated like its only caller, the `cst` module: without `std` it
+    /// would be dead code, which the crate denies.
+    #[cfg(feature = "std")]
     pub(crate) fn relocate(self, source: &str, base: usize) -> Self {
         if base == 0 {
             return self;
