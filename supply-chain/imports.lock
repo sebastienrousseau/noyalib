@@ -1054,14 +1054,14 @@ version = "0.8.48"
 when = "2026-03-28"
 user-id = 7178
 user-login = "joshlf"
-user-name = "Joshua Liebow-Feeser"
+user-name = "Josh Liebow-Feeser"
 
 [[publisher.zerocopy-derive]]
 version = "0.8.48"
 when = "2026-03-28"
 user-id = 7178
 user-login = "joshlf"
-user-name = "Joshua Liebow-Feeser"
+user-name = "Josh Liebow-Feeser"
 
 [[publisher.zerofrom]]
 version = "0.1.7"
