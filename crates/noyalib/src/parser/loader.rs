@@ -7,16 +7,13 @@
 
 use crate::de::RequireIndent;
 use crate::error::{Error, Result};
+use crate::parser::budget;
 use crate::parser::events::Event;
 use crate::prelude::IndexMap;
 use crate::prelude::*;
 #[cfg(feature = "std")]
 use crate::span_context::SpanTree;
 use crate::value::{Mapping, Number, Tag, TaggedValue, Value};
-
-/// Maximum number of bytes an expanded alias can account for per document.
-/// Prevents billion-laughs style attacks.
-const MAX_ALIAS_BYTES: usize = 1024 * 1024 * 32; // 32 MB
 
 /// Overhead in bytes accounted for each node in a mapping or sequence.
 const NODE_OVERHEAD: usize = 32;
@@ -496,7 +493,7 @@ impl<'a> Loader<'a> {
             Event::Scalar { .. } | Event::SequenceStart { .. } | Event::MappingStart { .. }
         ) {
             self.node_count += 1;
-            if self.node_count > self.config.max_nodes {
+            if budget::nodes_exceeded(self.node_count, self.config.max_nodes) {
                 return Err(Error::Budget(crate::BudgetBreach::MaxNodes {
                     limit: self.config.max_nodes,
                     observed: self.node_count,
@@ -550,15 +547,19 @@ impl<'a> Loader<'a> {
                     return Err(Error::parse_at("alias outside document", input, span.start));
                 }
                 self.alias_count += 1;
-                if self.alias_count > self.config.max_alias_expansions {
+                if budget::alias_count_exceeded(self.alias_count, self.config.max_alias_expansions)
+                {
                     return Err(Error::RepetitionLimitExceeded);
                 }
                 // Budget: alias_anchor_ratio heuristic.
                 // Trips when aliases vastly outnumber anchors —
                 // a billion-laughs amplification fingerprint.
                 if let Some(ratio) = self.config.alias_anchor_ratio {
-                    let anchors = self.anchor_count.max(1) as f64;
-                    if (self.alias_count as f64) > ratio * anchors {
+                    if budget::alias_ratio_exceeded(
+                        self.alias_count,
+                        self.anchor_count,
+                        Some(ratio),
+                    ) {
                         return Err(Error::Budget(crate::BudgetBreach::AliasAnchorRatio {
                             ratio,
                             anchors: self.anchor_count,
@@ -595,20 +596,27 @@ impl<'a> Loader<'a> {
                 // — the rule behind serde_yaml's "repetition limit
                 // exceeded" (it caps alias jumps at events × 100).
                 if let Some(factor) = self.config.alias_jump_event_factor {
-                    self.alias_jump_charge = self
-                        .alias_jump_charge
-                        .saturating_add(count_value_nodes(&value));
-                    if self.alias_jump_charge > self.event_count.saturating_mul(factor) {
+                    let (charge, over) = budget::jump_charge_exceeded(
+                        self.alias_jump_charge,
+                        count_value_nodes(&value),
+                        self.event_count,
+                        factor,
+                    );
+                    self.alias_jump_charge = charge;
+                    if over {
                         return Err(Error::RepetitionLimitExceeded);
                     }
                 }
-                self.alias_bytes += estimate_value_size(&value);
                 // Bound cumulative alias expansion by the document length
                 // limit — a classic billion-laughs vector amplifies well
                 // beyond the raw input size.
-                if self.alias_bytes > self.config.max_document_length
-                    || self.alias_bytes > MAX_ALIAS_BYTES
-                {
+                let (bytes, over) = budget::alias_bytes_exceeded(
+                    self.alias_bytes,
+                    estimate_value_size(&value),
+                    self.config.max_document_length,
+                );
+                self.alias_bytes = bytes;
+                if over {
                     return Err(Error::RepetitionLimitExceeded);
                 }
 
@@ -697,7 +705,7 @@ impl<'a> Loader<'a> {
                 anchor, tag, span, ..
             } => {
                 self.depth += 1;
-                if self.depth > self.config.max_depth {
+                if budget::depth_exceeded(self.depth, self.config.max_depth) {
                     return Err(Error::RecursionLimitExceeded { depth: self.depth });
                 }
                 if let Some(name) = anchor.as_ref() {
@@ -757,7 +765,7 @@ impl<'a> Loader<'a> {
                 anchor, tag, span, ..
             } => {
                 self.depth += 1;
-                if self.depth > self.config.max_depth {
+                if budget::depth_exceeded(self.depth, self.config.max_depth) {
                     return Err(Error::RecursionLimitExceeded { depth: self.depth });
                 }
                 if let Some(name) = anchor.as_ref() {
@@ -1288,7 +1296,7 @@ impl<'a> NoSpanLoader<'a> {
             Event::Scalar { .. } | Event::SequenceStart { .. } | Event::MappingStart { .. }
         ) {
             self.node_count += 1;
-            if self.node_count > self.config.max_nodes {
+            if budget::nodes_exceeded(self.node_count, self.config.max_nodes) {
                 return Err(Error::Budget(crate::BudgetBreach::MaxNodes {
                     limit: self.config.max_nodes,
                     observed: self.node_count,
@@ -1348,14 +1356,18 @@ impl<'a> NoSpanLoader<'a> {
                     return Err(Error::parse_at("alias outside document", input, span.start));
                 }
                 self.alias_count += 1;
-                if self.alias_count > self.config.max_alias_expansions {
+                if budget::alias_count_exceeded(self.alias_count, self.config.max_alias_expansions)
+                {
                     return Err(Error::RepetitionLimitExceeded);
                 }
                 // Budget: alias_anchor_ratio (billion-laughs amplification
                 // fingerprint), mirroring the span-full Loader.
                 if let Some(ratio) = self.config.alias_anchor_ratio {
-                    let anchors = self.anchor_count.max(1) as f64;
-                    if (self.alias_count as f64) > ratio * anchors {
+                    if budget::alias_ratio_exceeded(
+                        self.alias_count,
+                        self.anchor_count,
+                        Some(ratio),
+                    ) {
                         return Err(Error::Budget(crate::BudgetBreach::AliasAnchorRatio {
                             ratio,
                             anchors: self.anchor_count,
@@ -1386,21 +1398,28 @@ impl<'a> NoSpanLoader<'a> {
                 // serde_yaml-profile transitive repetition budget —
                 // see the span-full loader's twin for the rationale.
                 if let Some(factor) = self.config.alias_jump_event_factor {
-                    self.alias_jump_charge = self
-                        .alias_jump_charge
-                        .saturating_add(count_value_nodes(&value));
-                    if self.alias_jump_charge > self.event_count.saturating_mul(factor) {
+                    let (charge, over) = budget::jump_charge_exceeded(
+                        self.alias_jump_charge,
+                        count_value_nodes(&value),
+                        self.event_count,
+                        factor,
+                    );
+                    self.alias_jump_charge = charge;
+                    if over {
                         return Err(Error::RepetitionLimitExceeded);
                     }
                 }
-                self.alias_bytes += estimate_value_size(&value);
                 // Bound cumulative alias expansion by both the crate-level
                 // hard cap and the caller-supplied `max_document_length`.
                 // Mirrors the span-full loader (billion-laughs guard) so
                 // the `Value` fast path can't outrun either budget.
-                if self.alias_bytes > self.config.max_document_length
-                    || self.alias_bytes > MAX_ALIAS_BYTES
-                {
+                let (bytes, over) = budget::alias_bytes_exceeded(
+                    self.alias_bytes,
+                    estimate_value_size(&value),
+                    self.config.max_document_length,
+                );
+                self.alias_bytes = bytes;
+                if over {
                     return Err(Error::RepetitionLimitExceeded);
                 }
                 self.push_value(value, false, span.start, input)?;
@@ -1461,7 +1480,7 @@ impl<'a> NoSpanLoader<'a> {
             }
             Event::SequenceStart { anchor, tag, span } => {
                 self.depth += 1;
-                if self.depth > self.config.max_depth {
+                if budget::depth_exceeded(self.depth, self.config.max_depth) {
                     return Err(Error::RecursionLimitExceeded { depth: self.depth });
                 }
                 if let Some(name) = anchor.as_ref() {
@@ -1493,7 +1512,7 @@ impl<'a> NoSpanLoader<'a> {
             }
             Event::MappingStart { anchor, tag, span } => {
                 self.depth += 1;
-                if self.depth > self.config.max_depth {
+                if budget::depth_exceeded(self.depth, self.config.max_depth) {
                     return Err(Error::RecursionLimitExceeded { depth: self.depth });
                 }
                 if let Some(name) = anchor.as_ref() {
