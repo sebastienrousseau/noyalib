@@ -31,7 +31,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Added
 
-- **Fifteen documents that each stress one corner of the
+- **Twenty documents that each stress one corner of the
   specification** (`tests/fixtures/spec-torture/`), with every
   expectation cross-checked against libyaml and go-yaml: complex keys
   with all three chomping indicators and an explicit indentation
@@ -44,7 +44,15 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   holding a block scalar used as keys; four-byte emoji, a Japanese key
   and a zero-width space in a key; tag and anchor in either order;
   an anchored block-scalar key aliased as a value; plain-scalar
-  folding; and empty documents around a real one.
+  folding; and empty documents around a real one. Five of them separate
+  the implementations: a billion-laughs payload that the alias budget
+  refuses in under a second, where libyaml exhausts memory and go-yaml
+  does not finish inside a minute; the Norway problem, where `NO`,
+  `no`, `off`, `y` and `190:20:30` all stay strings under YAML 1.2's
+  core schema while libyaml still resolves them the 1.1 way; a block
+  scalar opened inside a flow collection, which every implementation
+  refuses; colons inside plain scalars; and a four-line plain scalar
+  used as an explicit key.
 
 ## [v0.0.38] - 2026-09-06
 

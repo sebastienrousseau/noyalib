@@ -572,3 +572,108 @@ fn empty_documents_and_trailing_comments_close_the_stream() {
         Some("STABLE")
     );
 }
+
+// ── Five that separate the implementations ────────────────────────────
+
+#[test]
+fn the_billion_laughs_payload_is_refused_by_the_budget() {
+    // Seven levels of ten-fold alias expansion. The budget stops it
+    // instead of expanding it. Of the three implementations checked,
+    // only this one refuses: libyaml exhausts memory and go-yaml did
+    // not finish inside a minute.
+    let start = std::time::Instant::now();
+    let err = from_str::<Value>(&fixture("billion-laughs.yaml")).expect_err("refused");
+    let elapsed = start.elapsed();
+    assert!(
+        err.to_string().contains("alias expansion limit exceeded"),
+        "{err}"
+    );
+    // Refusing has to be quick; the point of the budget is that the
+    // work is bounded, not merely finite.
+    assert!(
+        elapsed < std::time::Duration::from_secs(10),
+        "took {elapsed:?}"
+    );
+}
+
+#[test]
+fn the_core_schema_leaves_the_norway_mines_alone() {
+    // YAML 1.1 resolved `no`, `NO`, `off`, `n` to booleans and
+    // `190:20:30` to a sexagesimal integer. YAML 1.2's core schema
+    // dropped all of it, so every one of these stays a string. libyaml
+    // still reads 1.1 here and turns `NO` into false; go-yaml agrees
+    // with this crate.
+    let doc: Value = from_str(&fixture("norway-and-legacy-coercion.yaml")).expect("parses");
+    let c = &doc["legacy_coercion_checks"];
+    assert_eq!(c["country_codes"][2].as_str(), Some("NO"));
+    let b = &c["implicit_strings_vs_booleans"];
+    for key in [
+        "string_yes",
+        "string_no",
+        "string_on",
+        "string_off",
+        "string_y",
+        "string_n",
+    ] {
+        assert!(
+            b[key].as_str().is_some(),
+            "{key} was coerced to {:?}",
+            b[key]
+        );
+        assert!(b[key].as_bool().is_none(), "{key} was coerced to a bool");
+    }
+    // The two spellings the core schema does resolve.
+    assert_eq!(b["actual_boolean_true"].as_bool(), Some(true));
+    assert_eq!(b["actual_boolean_false"].as_bool(), Some(false));
+    // Sexagesimal is gone: 190:20:30 is text, not 685230.
+    assert_eq!(c["base_60_test"].as_str(), Some("190:20:30"));
+}
+
+#[test]
+fn a_block_scalar_cannot_open_inside_a_flow_collection() {
+    // All three implementations refuse this; only the wording differs.
+    let err = from_str::<Value>(&fixture("block-scalar-inside-flow.yaml")).expect_err("refused");
+    let msg = err.to_string();
+    assert!(msg.contains("block scalar indicator"), "{msg}");
+    assert!(
+        msg.contains("not allowed inside a flow collection"),
+        "{msg}"
+    );
+    assert_eq!(err.location().map(|l| l.line()), Some(12), "{msg}");
+}
+
+#[test]
+fn a_colon_inside_a_plain_scalar_is_not_a_separator() {
+    let doc: Value = from_str(&fixture("colon-boundaries.yaml")).expect("parses");
+    let b = &doc["colon_boundary_conditions"];
+    // `:` only separates when a space follows it, so a URL and a
+    // Windows path survive unquoted.
+    assert_eq!(b["url_path"].as_str(), Some("https://api.internal"));
+    assert_eq!(
+        b["windows_drive"].as_str(),
+        Some(r"C:\ProgramFiles\App\config.bin")
+    );
+    // A key with nothing after its colon holds null, and its sibling is
+    // still a sibling.
+    let n = &b["nested_empty_value_dispatch"];
+    assert!(n["key_with_trailing_colon"].is_null());
+    assert_eq!(n["next_sibling_key"].as_str(), Some("value"));
+    // The empty string is a usable key.
+    assert_eq!(b[""]["nested_under_empty_key"].as_bool(), Some(true));
+}
+
+#[test]
+fn an_explicit_key_may_be_a_multi_line_plain_scalar() {
+    let doc: Value = from_str(&fixture("lookahead-plain-key.yaml")).expect("parses");
+    let m = doc.as_mapping().expect("mapping");
+    let (key, value) = m.iter().next().expect("one entry");
+    // Four source lines folded into one key of 317 characters.
+    assert_eq!(key.len(), 317);
+    assert!(
+        !key.contains('\n'),
+        "the plain scalar key kept a line break"
+    );
+    assert!(key.starts_with("This is an incredibly lengthy unquoted plain scalar key"));
+    assert!(key.ends_with("the target colon separator below."));
+    assert_eq!(value.as_str(), Some("value_bound_to_the_max_lookahead_key"));
+}

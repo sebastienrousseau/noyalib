@@ -1,0 +1,20 @@
+# ==============================================================================
+# SPECIFICATION 18: INDENTED FLOW MIXED WITH TRAILING BLOCK STATE
+# ==============================================================================
+---
+scanner_state_torture:
+  - flow_bracket_open: [
+      "element 1",
+      "element 2",
+      # Comment injected right inside a JSON-like token stream
+      {
+        nested_key: "value",
+        block_literal_inside_flow: |
+          Line A
+          Line B      },
+      [
+        [ [ "deeply nested unclosed flow array" ] ]
+      ],
+      "trailing item", # Legal trailing comma
+    ]
+...
