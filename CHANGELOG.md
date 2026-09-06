@@ -7,6 +7,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+## [v0.0.36] - 2026-09-06
+
 ### Added
 
 - **The yaml-test-suite now also runs as streams.** Every valid suite
