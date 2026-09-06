@@ -1,0 +1,23 @@
+# ==============================================================================
+# SPECIFICATION 9: ZERO-INDENT NESTED SEQUENCES
+# ==============================================================================
+---
+nested_matrix:
+  level_one:
+  - level_two:
+    - level_three:
+      - item_a
+      - item_b
+    - level_three_sibling:
+      - item_c
+  - level_two_sibling:
+    - item_d
+    - item_e
+
+# Mixed spacing torture
+irregular_blocks:
+  mapping_key:
+  - "no indent on sequence item"
+  - nested_map_inside_unindented_seq:
+      valid_key: "value"
+...

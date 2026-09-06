@@ -1,0 +1,52 @@
+# ==============================================================================
+# SPECIFICATION 2: ANCHOR DEEP LATTICE & SPECIFIC TAGGING
+# ==============================================================================
+---
+global_definitions:
+  - &compute_hardware
+    cpu_cores: !!int 16
+    memory_gb: !!int 64
+    storage: &nvme_storage
+      type: "NVMe"
+      io_ops: !!int 100000
+
+  - &network_routing
+    vpc_id: "vpc-0a1b2c3d"
+    subnets: [ "subnet-1a", "subnet-2b" ]
+    security_groups: &sec_groups [ "sg-default", "sg-mesh" ]
+
+  - &base_microservice
+    hardware: *compute_hardware
+    networking: *network_routing
+    scaling:
+      min_replicas: !!int 2
+      max_replicas: !!int 10
+
+# Testing Recursive Cascading Merges
+deployment_matrix:
+  core-api-service:
+    <<: *base_microservice # Inherits the entire nested hierarchy
+    service_name: "api-gateway"
+    # Override deep structural elements cleanly
+    scaling:
+      min_replicas: !!int 5
+      max_replicas: !!int 50
+
+  data-processing-worker:
+    <<: *base_microservice
+    # Deep object mutation via selective anchors
+    hardware:
+      <<: *compute_hardware
+      storage:
+        <<: *nvme_storage
+        io_ops: !!int 500000 # Scaling up IOPS for data crunching
+
+# Advanced Tag System validation
+strict_typing_tests:
+  binary_payload: !!binary |
+    R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7
+  timestamp_canonical: !!timestamp 2026-09-06T23:45:00.00Z
+  timestamp_spaced: !!timestamp 2026-09-06 23:45:00 +01:00
+  hexadecimal_int: !!int 0x1A2F
+  octal_int: !!int 0o755
+...

@@ -1,0 +1,16 @@
+# ==============================================================================
+# SPECIFICATION 8: DIRECTIVES AND TAG SHORTHAND
+# ==============================================================================
+%YAML 1.2
+%TAG !crypto! tag:company.com,2026:crypto/
+---
+# Testing custom URI tag shorthand resolution
+secure_service:
+  algorithm: !crypto!rsa-4096
+  payload: !crypto!encrypted |
+    MIIEowIBAAKCAQEA0yXg2p+... (base64 data) ...
+    # Combining global tags with local runtime tagging
+  metadata: !local-config
+    owner: "SecOps Team"
+    expires_at: !!timestamp 2027-12-31T23:59:59Z
+...

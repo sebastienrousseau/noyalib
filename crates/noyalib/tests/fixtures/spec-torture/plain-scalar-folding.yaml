@@ -1,0 +1,14 @@
+# ==============================================================================
+# SPECIFICATION 14: MULTI-LINE PLAIN SCALAR FOLDING
+# ==============================================================================
+---
+plain_text_folding_rules:
+  implicit_concatenation: This is a long unquoted plain scalar string
+    that spans multiple lines to test how the scanner merges lines
+    together. Note that a blank line like the one below
+
+    forces a paragraph break containing a literal newline token, while
+      indented text blocks like this line
+      and this line
+    might be treated uniquely depending on parser strictness.
+...

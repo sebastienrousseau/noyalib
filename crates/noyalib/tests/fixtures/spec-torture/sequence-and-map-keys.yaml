@@ -1,0 +1,21 @@
+# ==============================================================================
+# SPECIFICATION 10: MULTI-TYPE SEQUENCE KEY COMPLEX
+# ==============================================================================
+---
+complex_matrix_dispatch:
+  # Key is a sequence of objects
+  ? - rule_id: 101
+      action: "REJECT"
+    - rule_id: 102
+      action: "PROXY"
+  : router_target: "edge-firewall-cluster"
+    priority: !!int 999
+
+  # Key is an object containing a literal multi-line script
+  ? script_checksum: "a1b2c3d4"
+    execution_payload: |
+      #!/bin/sh
+      echo "Validating Complex Key..."
+  : status: "STABLE"
+    verified: !!bool true
+...

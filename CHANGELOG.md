@@ -7,6 +7,45 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+## [v0.0.39] - 2026-09-07
+
+### Fixed
+
+- **`parallel::values` counted one document too many** for any stream
+  that opened with a comment, a blank line or a directive: the splitter
+  treated that prologue as a document of its own, so the parallel path
+  disagreed with `load_all`. The prologue now stays with the document
+  its `---` opens. A property test holds the two paths to the same
+  answer across every file of the official test suite.
+- **A self-referential anchor said the wrong thing.** An alias pointing
+  at an anchor whose value is still being built was reported as an
+  unknown anchor defined "in an earlier document". It now says that the
+  alias points at an anchor still being defined and that a
+  self-referential node cannot be represented as a tree, which is the
+  actual limit: YAML's representation graph may be cyclic, a `Value` is
+  a tree.
+- **`!!int` on a YAML 1.1 spelling now says which one and what to
+  write.** `!!int 0b101010` answers "YAML 1.2 has no binary literal,
+  `0b` was YAML 1.1; write 42", and `!!int 100_000_000` names the digit
+  separator and gives 100000000.
+
+### Added
+
+- **Fifteen documents that each stress one corner of the
+  specification** (`tests/fixtures/spec-torture/`), with every
+  expectation cross-checked against libyaml and go-yaml: complex keys
+  with all three chomping indicators and an explicit indentation
+  indicator; a merge lattice with `!!binary`, `!!timestamp`,
+  hexadecimal and octal integers; `!!set`, `!!omap` and `!!pairs`
+  together; graph recursion and anchor shadowing; a multi-line flow key
+  that every implementation refuses; custom local tags with infinities
+  and NaN; the null boundary shapes; `%TAG` shorthand resolution;
+  zero-indent nested sequences; a sequence of mappings and a mapping
+  holding a block scalar used as keys; four-byte emoji, a Japanese key
+  and a zero-width space in a key; tag and anchor in either order;
+  an anchored block-scalar key aliased as a value; plain-scalar
+  folding; and empty documents around a real one.
+
 ## [v0.0.38] - 2026-09-06
 
 ### Added

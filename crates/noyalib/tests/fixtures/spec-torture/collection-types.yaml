@@ -1,0 +1,34 @@
+# ==============================================================================
+# SPECIFICATION 3: ADVANCED LOCAL COLLECTIONS & SEQUENTIAL MAPS
+# ==============================================================================
+---
+collection_torture_chamber:
+  # Set: Values must be unique; keys are mathematically considered unique flags
+  unique_cluster_tags: !!set
+    ? "production"
+    ? "pci-compliant"
+    ? "dmz-zone"
+    # Duplicate entry to test parser error handling or structural filtering
+    ? "production"
+
+  # Omap: Ordered mapping where sequence layout matters explicitly
+  execution_pipeline_steps: !!omap
+    - 01_pull_source: "git fetch origin main"
+    - 02_security_scan: "snyk test"
+    - 03_compile_binary: "cargo build --release"
+    - 04_docker_push: "docker push registry.internal/app"
+
+  # Pairs: Ordered sequence that explicitly permits identical duplicate keys
+  audit_trail_events: !!pairs
+    - state_change: "INITIALIZING"
+    - health_check: "PASS"
+    - state_change: "RUNNING"
+    - security_alert: "UNAUTHORIZED_SSH_ATTEMPT"
+    - state_change: "DEGRADED"
+    - state_change: "RUNNING"
+
+  # Flow Style mixed with Block Style variations
+  hybrid_flow_structures:
+    - { name: "node-0", metadata: [ true, null, 42 ] }
+    - [ "inline-array-element-1", { sub_key: [ 1, 2, 3 ] } ]
+...

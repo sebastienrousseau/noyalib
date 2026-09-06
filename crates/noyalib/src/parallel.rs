@@ -164,21 +164,37 @@ pub fn split(input: &str) -> Vec<&str> {
         };
     }
 
-    // Build slices between successive markers. Anything before the
-    // first marker is also a document (it's the preamble of an
-    // implicit first doc when the input starts with content
-    // followed by `---`).
+    // Build slices between successive markers. Text before the first
+    // marker is its own document only when it *holds content*: a bare
+    // document closed by `---`. Comments, blank lines and directives
+    // there are the first document's prologue, not a document of their
+    // own, so they stay attached to it — otherwise this function
+    // reports one document more than `load_all` does for any stream
+    // that opens with a comment.
     let mut docs: Vec<&str> = Vec::with_capacity(markers.len() + 1);
+    let mut first_start = markers[0];
     if markers[0] > 0 {
-        let pre = input[..markers[0]].trim();
-        if !pre.is_empty() {
+        if prologue_has_content(&input[..markers[0]]) {
             docs.push(&input[..markers[0]]);
+        } else {
+            first_start = 0;
         }
     }
+    let mut bounds: Vec<(usize, usize)> = Vec::with_capacity(markers.len());
     for window in markers.windows(2) {
-        docs.push(&input[window[0]..window[1]]);
+        bounds.push((window[0], window[1]));
     }
-    let last = *markers.last().unwrap();
+    if let Some(first) = bounds.first_mut() {
+        first.0 = first_start;
+    }
+    for (start, end) in bounds {
+        docs.push(&input[start..end]);
+    }
+    let last = if markers.len() == 1 {
+        first_start
+    } else {
+        *markers.last().unwrap()
+    };
     if last < input.len() {
         let trailing = &input[last..];
         if !trailing.trim_end().is_empty() {
@@ -186,6 +202,17 @@ pub fn split(input: &str) -> Vec<&str> {
         }
     }
     docs
+}
+
+/// Whether the text before the stream's first `---` is a document of
+/// its own. Only content makes it one: comments (`#`), blank lines and
+/// directives (`%YAML`, `%TAG`) belong to the document the marker
+/// opens.
+fn prologue_has_content(pre: &str) -> bool {
+    pre.lines().any(|line| {
+        let t = line.trim();
+        !t.is_empty() && !t.starts_with('#') && !t.starts_with('%')
+    })
 }
 
 #[cfg(test)]

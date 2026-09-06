@@ -964,7 +964,10 @@ impl fmt::Display for Error {
                 write!(f, "unknown anchor: {name} at {location}")?;
                 match suggestion {
                     // The same name anchored earlier in the stream: the
-                    // alias reaches across a document boundary.
+                    // alias reaches across a document boundary. An alias
+                    // to an anchor still being defined never reaches
+                    // here; the loader reports that as its own parse
+                    // error, because it is a cycle, not a lookup miss.
                     Some((s, at)) if s == name => write!(
                         f,
                         " (`&{name}` is defined at {at}, in an earlier document; \

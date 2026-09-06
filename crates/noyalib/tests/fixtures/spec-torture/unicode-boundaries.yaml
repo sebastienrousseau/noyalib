@@ -1,0 +1,22 @@
+# ==============================================================================
+# SPECIFICATION 11: UNICODE AND BOUNDARY STRESS TEST
+# ==============================================================================
+---
+# Testing UTF-8 multibyte boundary slicing (Emojis can be 4+ bytes each)
+🌟_mesh_node_🚀:
+  status: "ONLINE"
+  "コンニチハ_world": "Japanese Key Test"
+
+# Key containing control characters and zero-width non-joiners
+invisible_keys:
+  key_with_zero_width_space_​: "Hidden character at the end of key name"
+
+# Maximum length plain unquoted scalar string (Testing buffer sizes)
+unquoted_marathon_scalar: This is a completely unquoted string that spans across multiple lines using plain notation format which means the parser must capture all words cleanly without tripping over trailing spaces or treating newlines as individual keys or unexpected structure tokens
+
+# Explicit tag conversion of empty collections
+empty_typed_structures:
+  empty_map: !!map {}
+  empty_seq: !!seq []
+  empty_str: !!str
+...

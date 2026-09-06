@@ -1,0 +1,38 @@
+# ==============================================================================
+# SPECIFICATION 4: GRAPH RECURSION & ANCHOR SHADOWING
+# ==============================================================================
+---
+graph_nodes:
+  # Base node definition
+  - &node_alpha
+    id: "node-01"
+    links: []
+
+  # Self-referential graph loop (Node links to itself)
+  - &node_beta
+    id: "node-02"
+    links:
+      - *node_beta # Recursive pointer. Parsers must not stack-overflow here.
+
+  # Interconnected cyclic dependencies
+  - &node_gamma
+    id: "node-03"
+    links:
+      - *node_alpha
+
+# Redefining an existing anchor name inside a sub-scope (Shadowing)
+anchor_shadowing_test:
+  scope_one:
+    variable: &shadow_target "Original String Value"
+    reference: *shadow_target
+
+  scope_two:
+    # Overwriting the pointer identifier '&shadow_target'
+    variable: &shadow_target [ "Shadowed", "Into", "An", "Array" ]
+    # A parser must resolve this to the Array, not the string from scope_one
+    reference: *shadow_target
+
+  scope_three:
+    # Verifying that the parent scope isn't globally corrupted
+    final_verification: *shadow_target
+...
