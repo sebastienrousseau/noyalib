@@ -409,6 +409,41 @@ jobs:
     # `uses: sebastienrousseau/noyalib/.github/workflows/shared-no-std.yml@<sha>`.
     uses: ./.github/workflows/shared-no-std.yml
 
+  # The core on WASI 0.3's predecessor target, which is the Tier 2 path
+  # today: a build, not the browser bindings. Server and edge runtimes
+  # that speak the component model consume this.
+  wasip2:
+    name: wasm32-wasip2 build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # master
+        with:
+          toolchain: stable
+          targets: wasm32-wasip2
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+        with:
+          key: wasip2
+      - name: Build the library for wasm32-wasip2 (defaults and std-only)
+        run: |
+          cargo build -p noyalib --target wasm32-wasip2 --locked
+          cargo build -p noyalib --target wasm32-wasip2 --locked --no-default-features --features std
+
+  # Machine-checked proofs of the resource budgets (parser::budget).
+  # Kani explores every input value of each harness; a counterexample
+  # fails the job. Tests and fuzzing cover the loaders' use of the
+  # predicates; this covers the predicates themselves, exhaustively.
+  kani:
+    name: Kani proofs (parser budgets)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: model-checking/kani-github-action@f838096619a707b0f6b2118cf435eaccfa33e51f # v1.1
+        with:
+          args: -p noyalib --harness proofs
+
   readme-examples:
     # Dogfooded from shared-readme-examples.yml. The check itself
     # (scripts/check-readme-examples.sh) is invoked by the shared

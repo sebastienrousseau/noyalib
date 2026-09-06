@@ -61,11 +61,16 @@ jobs:
         run: |
           set -euo pipefail
           mkdir probe && cd probe && npm init -y >/dev/null
-          npm install @sebastienrousseau/noyalib-wasm
+          # Pinned to the version this checkout declares: the probe asks
+          # whether the release that matches the tree installs, and a
+          # floating install would silently test a different one.
+          v=$(grep -m1 '^version' ../crates/noyalib/Cargo.toml | cut -d'"' -f2)
+          npm install "@sebastienrousseau/noyalib-wasm@${v}"
           node -e "const y = require('@sebastienrousseau/noyalib-wasm'); console.log('wasm package loads')"
       - name: MCP package installs
         run: |
           set -euo pipefail
           mkdir probe-mcp && cd probe-mcp && npm init -y >/dev/null
-          npm install @sebastienrousseau/noyalib-mcp
+          v=$(grep -m1 '^version' ../crates/noyalib/Cargo.toml | cut -d'"' -f2)
+          npm install "@sebastienrousseau/noyalib-mcp@${v}"
           node -e "require.resolve('@sebastienrousseau/noyalib-mcp'); console.log('mcp package resolves')"
