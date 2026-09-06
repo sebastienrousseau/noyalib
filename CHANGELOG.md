@@ -7,6 +7,14 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+## [v0.0.37] - 2026-09-06
+
+### Changed
+
+- Lockstep release with the noyalib-wasm npm package gate repair: the
+  0.0.36 npm publish failed inside the gate itself under npm 12, so the
+  whole family moves to 0.0.37 together. No core code change.
+
 ## [v0.0.36] - 2026-09-06
 
 ### Added
