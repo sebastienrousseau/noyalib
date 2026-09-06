@@ -1033,6 +1033,69 @@ impl Error {
         }
     }
 
+    /// Move every location on this error from the slice of `source`
+    /// that starts at byte `base` to `source` itself.
+    ///
+    /// The stream parsers parse each document from its own slice, so
+    /// the locations they get back count from that slice. This
+    /// re-anchors them on the whole input: the byte index shifts by
+    /// `base`, and line and column are recomputed from `source` the
+    /// way every located error computes them. A `base` of zero is the
+    /// identity. Variants without a location, and a shared error, are
+    /// returned unchanged.
+    pub(crate) fn relocate(self, source: &str, base: usize) -> Self {
+        if base == 0 {
+            return self;
+        }
+        let shift = |loc: Location| Location::from_index(source, base + loc.index());
+        match self {
+            Self::ParseWithLocation { message, location } => Self::ParseWithLocation {
+                message,
+                location: shift(location),
+            },
+            Self::DeserializeWithLocation { message, location } => Self::DeserializeWithLocation {
+                message,
+                location: shift(location),
+            },
+            Self::UnknownAnchorAt {
+                name,
+                location,
+                suggestion,
+            } => Self::UnknownAnchorAt {
+                name,
+                location: shift(location),
+                suggestion: suggestion.map(|(name, loc)| (name, shift(loc))),
+            },
+            Self::DuplicateKeyAt {
+                key,
+                path,
+                location,
+            } => Self::DuplicateKeyAt {
+                key,
+                path,
+                location: shift(location),
+            },
+            Self::KeyCollisionAt {
+                key,
+                path,
+                location,
+            } => Self::KeyCollisionAt {
+                key,
+                path,
+                location: shift(location),
+            },
+            Self::IntegerOverflow { location, path } => Self::IntegerOverflow {
+                location: location.map(shift),
+                path,
+            },
+            Self::NonScalarKey { kind, location } => Self::NonScalarKey {
+                kind,
+                location: location.map(shift),
+            },
+            other => other,
+        }
+    }
+
     /// Coarse-grained classification for routing without matching
     /// every variant of the `#[non_exhaustive]` [`Error`] enum.
     ///
