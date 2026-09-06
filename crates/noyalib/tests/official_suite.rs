@@ -315,3 +315,188 @@ fn official_suite() {
         "official YAML test suite: {fail} failing case(s), compliance {compliance:.1}%"
     );
 }
+
+// ── Streams built from the suite (#407) ─────────────────────────────
+//
+// `cst::parse_stream` parses each document from its own slice and
+// re-anchors error locations on the whole input. The unit tests in
+// `cst_stream.rs` pin the reported cases; the property below runs the
+// same check over every valid suite case: each one becomes a stream
+// with a known-bad document injected first, in the middle and last,
+// and the location the CST reports must be the byte we injected, with
+// line and column recomputed on the stream, and identical to what the
+// typed loaders report for the same bytes.
+
+/// Documents with exactly one error each, and the byte at which that
+/// error is reported when the document is parsed on its own.
+const PROBES: &[(&str, &str, usize)] = &[
+    ("block mapping alias", "---\nc: *nope\n", 7),
+    ("root alias on the marker line", "--- *nope\n", 4),
+    ("flow sequence on the marker line", "--- [*nope]\n", 5),
+    ("sequence alias", "---\n- *nope\n", 6),
+    ("flow mapping alias", "---\n{k: *nope}\n", 8),
+    ("alias then explicit end marker", "---\nc: *nope\n...\n", 7),
+    ("nested alias", "---\na:\n  b:\n    - *nope\n", 18),
+    ("key collision", "---\n1: x\n\"1\": y\n", 9),
+];
+
+/// The case's YAML terminated so a following document starts on a
+/// fresh line.
+fn document_body(yaml: &str) -> String {
+    if yaml.ends_with('\n') {
+        yaml.to_string()
+    } else {
+        format!("{yaml}\n")
+    }
+}
+
+/// The explicit end marker that separates `probe` from whatever
+/// follows it. A case need not open with `---`: without the marker its
+/// first lines would continue the probe's document (YAML 1.2.2 §9.1.4),
+/// and a directive-led case would make the stream invalid for a second
+/// reason.
+fn close_after(probe: &str) -> &'static str {
+    if probe.ends_with("...\n") {
+        ""
+    } else {
+        "...\n"
+    }
+}
+
+/// Check one stream: the CST entry points and the typed loaders must
+/// all reject it at byte `expected` of the stream.
+fn check_stream(label: &str, stream: &str, expected: usize, failures: &mut Vec<String>) {
+    use noyalib::cst::{parse_stream, parse_stream_with_config};
+    use noyalib::{Location, ParserConfig};
+
+    let want = Location::from_index(stream, expected);
+    let mut located = |name: &str, res: Result<(), noyalib::Error>| -> Option<Location> {
+        match res {
+            Ok(()) => {
+                failures.push(format!("{label}: {name} accepted the stream"));
+                None
+            }
+            Err(err) => {
+                let loc = err.location();
+                if loc.is_none() {
+                    failures.push(format!("{label}: {name} error has no location: {err}"));
+                }
+                loc
+            }
+        }
+    };
+
+    let cst = located("cst::parse_stream", parse_stream(stream).map(drop));
+    let cst_cfg = located(
+        "cst::parse_stream_with_config",
+        parse_stream_with_config(stream, &ParserConfig::new()).map(drop),
+    );
+    let typed = located(
+        "load_all_as::<Value>",
+        noyalib::load_all_as::<Value>(stream).map(drop),
+    );
+    let untyped = located("load_all", noyalib::load_all(stream).map(drop));
+
+    for (name, loc) in [
+        ("cst::parse_stream", cst),
+        ("cst::parse_stream_with_config", cst_cfg),
+        ("load_all_as::<Value>", typed),
+        ("load_all", untyped),
+    ] {
+        let Some(loc) = loc else { continue };
+        if loc != want {
+            failures.push(format!(
+                "{label}: {name} reported index {} line {} column {}, expected index {} line {} column {}; stream {stream:?}",
+                loc.index(),
+                loc.line(),
+                loc.column(),
+                want.index(),
+                want.line(),
+                want.column()
+            ));
+        }
+    }
+
+    // The rendered error points at the stream line, not the document
+    // line.
+    if let Err(err) = parse_stream(stream) {
+        let rendered = err.render(stream);
+        let line_no = format!("{} |", want.line());
+        if !rendered.contains(&line_no) {
+            failures.push(format!(
+                "{label}: rendered error does not show stream line {}:\n{rendered}",
+                want.line()
+            ));
+        }
+    }
+}
+
+#[test]
+fn official_suite_streams_locate_errors_in_the_stream() {
+    let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let suite_dir = manifest_dir.join("tests").join("yaml-test-suite");
+    let cases = load_test_suite(&suite_dir);
+
+    // Every valid case, decoded, as a document body.
+    let bodies: Vec<(String, String)> = cases
+        .iter()
+        .filter(|c| !c.should_fail && !SKIP_LIST.iter().any(|(id, _)| *id == c.id))
+        .map(|c| (c.id.clone(), decode_test_suite_markers(&c.yaml)))
+        .filter(|(_, yaml)| noyalib::load_all_as::<Value>(yaml).is_ok())
+        .map(|(id, yaml)| (id, document_body(&yaml)))
+        .collect();
+    assert!(
+        bodies.len() > 200,
+        "only {} valid suite cases",
+        bodies.len()
+    );
+
+    let mut failures = Vec::new();
+    let mut streams = 0u32;
+
+    for (i, (id, body)) in bodies.iter().enumerate() {
+        let (next_id, next_body) = &bodies[(i + 1) % bodies.len()];
+        for (probe_name, probe, local) in PROBES {
+            // Probe last: the common shape, the case's own documents
+            // first.
+            let last = format!("{body}{probe}");
+            check_stream(
+                &format!("{id} then {probe_name}"),
+                &last,
+                body.len() + local,
+                &mut failures,
+            );
+            // Probe first: base zero must be the identity.
+            let first = format!("{probe}{}{body}", close_after(probe));
+            check_stream(
+                &format!("{probe_name} then {id}"),
+                &first,
+                *local,
+                &mut failures,
+            );
+            // Probe in the middle of two cases.
+            let middle = format!("{body}{probe}{}{next_body}", close_after(probe));
+            check_stream(
+                &format!("{id} then {probe_name} then {next_id}"),
+                &middle,
+                body.len() + local,
+                &mut failures,
+            );
+            streams += 3;
+        }
+    }
+
+    eprintln!();
+    eprintln!("═══ YAML Test Suite Streams ═══");
+    eprintln!("  Bodies:     {}", bodies.len());
+    eprintln!("  Streams:    {streams}");
+    eprintln!("  Failures:   {}", failures.len());
+    for f in failures.iter().take(40) {
+        eprintln!("  - {f}");
+    }
+    assert!(
+        failures.is_empty(),
+        "{} stream(s) reported a wrong error location",
+        failures.len()
+    );
+}

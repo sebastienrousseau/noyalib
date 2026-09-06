@@ -197,9 +197,13 @@ pub(crate) fn document_boundaries(input: &str) -> Result<Vec<(usize, usize)>> {
     let mut scanner = Scanner::new(input);
     scanner.enable_recording();
     loop {
+        // Keep the scanner's byte position: the typed loaders report
+        // the same error at the same place, and a caller needs the
+        // line to point at (a directive after an unclosed document,
+        // for instance).
         let tok = scanner
             .next_token()
-            .map_err(|e| Error::Parse(e.message.into_owned()))?;
+            .map_err(|e| Error::parse_at(&*e.message, input, e.index))?;
         if matches!(tok.kind, TokenKind::StreamEnd) {
             break;
         }
@@ -223,6 +227,16 @@ pub(crate) fn document_boundaries(input: &str) -> Result<Vec<(usize, usize)>> {
                 saw_explicit_end = false;
             }
             RecordedTokenKind::DocEnd => {
+                // A `...` that closes nothing (the start of the stream,
+                // or another `...` right before it) is not a document:
+                // the typed loaders yield none for it (the suite's
+                // HWV9), so it stays in the range and becomes the next
+                // document's prologue, keeping the byte-for-byte
+                // guarantee.
+                if !has_content {
+                    saw_explicit_end = true;
+                    continue;
+                }
                 let bytes = input.as_bytes();
                 let mut close = t.end;
                 if bytes.get(close) == Some(&b'\r') {
@@ -267,7 +281,7 @@ pub(crate) fn build_green_tree(source: &str) -> Result<GreenNode> {
     loop {
         let tok = scanner
             .next_token()
-            .map_err(|e| Error::Parse(e.message.into_owned()))?;
+            .map_err(|e| Error::parse_at(&*e.message, source, e.index))?;
         if matches!(tok.kind, TokenKind::StreamEnd) {
             break;
         }

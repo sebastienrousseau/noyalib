@@ -7,7 +7,45 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+## [v0.0.36] - 2026-09-06
+
+### Added
+
+- **The yaml-test-suite now also runs as streams.** Every valid suite
+  case becomes a multi-document stream with a known-bad document
+  injected first, in the middle and last, and `cst::parse_stream`,
+  `parse_stream_with_config`, `load_all` and `load_all_as` must all
+  report the error at the injected byte, with line and column counted
+  on the stream (`tests/official_suite.rs`, 7,488 streams). This is the
+  property behind #407, and it found the two scanner fixes below.
+
 ### Fixed
+
+- **A keep-chomped block scalar whose lines are all blank no longer
+  fails when another document follows** (`- |+`, a line of spaces, then
+  `---`). The scalar's first content line is now only a line that
+  belongs to it; a document marker at column 0 or a less indented line
+  ends it, and the blank lines are trailing breaks. Found by the
+  suite-stream permutations (JEF9).
+- **A tab before a top-level flow node parses the same in every
+  document of a stream.** `<tab>[` was accepted on the first line of a
+  stream (the suite's 6CA3) and rejected after `---` or `...`. The rule
+  is now one rule at every line start: a tab is separation before a
+  flow node at the top level, and indentation everywhere else. As a
+  consequence `<tab>- a` and `<tab>? a` on the first line of a stream,
+  which used to be accepted, are rejected like they already were in
+  every later document.
+- **A `...` that closes nothing is not a document.** `cst::parse_stream`
+  made an empty document out of a `...` at the start of a stream, or of
+  a second `...` right after another, where the typed loaders yield
+  none (the suite's HWV9). The marker now becomes the prologue of the
+  document that follows, so both entry points count documents the same
+  way and the sources still concatenate to the input byte-for-byte.
+- **CST scanner errors carry their position.** `cst::parse_stream`,
+  `parse_document` and the green-tree builder used to drop the byte
+  index of a scanner error (a directive after an unclosed document,
+  for instance); they now report the same location as the typed
+  loaders.
 
 - **`cst::parse_stream` and `parse_stream_with_config` locate an error
   in the stream, not in the document that failed** (#407). The stream
