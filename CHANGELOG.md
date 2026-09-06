@@ -7,6 +7,18 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Fixed
+
+- **`cst::parse_stream` and `parse_stream_with_config` locate an error
+  in the stream, not in the document that failed** (#407). The stream
+  parser parses each document from its own slice, so a failure in the
+  third document came back at the slice's line 2 with no way back to
+  the stream's line 5, while `load_all` reported line 5 for the same
+  bytes. Every location on the error, the similar-anchor suggestion
+  included, now counts from the start of the input the caller passed,
+  as the typed loaders already do. The first document of a stream, and
+  a single document, are unchanged.
+
 ## [v0.0.35] - 2026-09-06
 
 ### Added

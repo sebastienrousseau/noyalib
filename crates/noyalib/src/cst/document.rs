@@ -3266,6 +3266,11 @@ pub fn parse_stream_with_config(input: &str, config: &ParserConfig) -> Result<Ve
 }
 
 /// Shared body of [`parse_stream`] and [`parse_stream_with_config`].
+///
+/// Each document is parsed from its own slice of `input`, so an error's
+/// locations come back relative to that slice; they are re-anchored on
+/// `input` before the error is returned, so a caller sees the same
+/// positions the typed loaders report for the same bytes.
 fn parse_stream_inner(input: &str, config: &ParseConfig) -> Result<Vec<Document>> {
     let bounds = document_boundaries(input)?;
     if bounds.len() <= 1 {
@@ -3276,7 +3281,9 @@ fn parse_stream_inner(input: &str, config: &ParseConfig) -> Result<Vec<Document>
         if s == e {
             continue;
         }
-        out.push(parse_document_inner(&input[s..e], config.clone())?);
+        let doc = parse_document_inner(&input[s..e], config.clone())
+            .map_err(|err| err.relocate(input, s))?;
+        out.push(doc);
     }
     Ok(out)
 }
