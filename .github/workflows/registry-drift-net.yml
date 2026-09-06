@@ -93,7 +93,7 @@ jobs:
           ./fetch-pkg.sh @sebastienrousseau/noyalib-wasm "$v" probe/node_modules/@sebastienrousseau/noyalib-wasm
           cd probe/node_modules/@sebastienrousseau/noyalib-wasm
           entry=$(node -e 'const p=require("./package.json");console.log(p.module||p.main)')
-          for imp in $(grep -oE 'from "\./[^"]+"' "$entry" | sed -E 's/from "\.\/([^"]+)"/\1/' | sort -u); do
+          grep -oE 'from "\./[^"]+"' "$entry" | sed -E 's/from "\.\/([^"]+)"/\1/' | sort -u | while read -r imp; do
             [ -f "$imp" ] || { echo "$entry imports $imp, which the package does not carry"; exit 1; }
           done
           [ -f noyalib_wasm_bg.wasm ] && echo "wasm package $v: entry $entry and every import present"
