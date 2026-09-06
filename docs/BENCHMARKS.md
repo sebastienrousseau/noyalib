@@ -216,6 +216,33 @@ Reproduce: `make bench-compare` (the comparison bench with the
 `compare-saphyr` feature, so serde-saphyr is in the same run) and
 `cargo bench --bench architecture`.
 
+
+## Head-to-head with serde-saphyr (2026-09-06)
+
+serde-saphyr is the other pure-Rust crate that passes the full official
+test suite, so it is the comparison that matters. Same run, same host,
+same command, every crate in the same criterion session:
+
+```bash
+make bench-compare   # cargo bench --bench comparison --features compare-saphyr
+```
+
+Host: Apple A18 Pro. Toolchain: rustc 1.98.0 (88d9e12ae 2026-08-18). Times are criterion medians in the
+default `bench` profile (no LTO tuning), so they sit above the headline
+table's tuned numbers; the ratios are what to read.
+
+| Fixture | noyalib | serde-saphyr 1.2.0 | ratio | serde_yaml_ng | yaml-rust2 | yaml-spanned |
+|---|---:|---:|---:|---:|---:|---:|
+| Deserialise simple | 2.15 µs | 5.49 µs | **2.55×** | 3.76 µs (1.75×) | 2.70 µs (1.25×) | 3.73 µs (1.73×) |
+| Deserialise nested | 13.32 µs | 38.34 µs | **2.88×** | 19.26 µs (1.45×) | 16.13 µs (1.21×) | 21.81 µs (1.64×) |
+| Deserialise large_list | 1.09 ms | 3.10 ms | **2.84×** | 2.12 ms (1.94×) | 1.79 ms (1.64×) | 2.12 ms (1.94×) |
+| Deserialise github_actions | 76.72 µs | 250.41 µs | **3.26×** | 211.06 µs (2.75×) | 253.59 µs (3.31×) | 438.86 µs (5.72×) |
+| Deserialise k8s_multidoc | 134.04 µs | — | — | 380.09 µs (2.84×) | 248.18 µs (1.85×) | — |
+
+serde-saphyr does not appear on the multi-document fixture because its
+`from_str` reads one document. Rerun the command to refresh this table;
+the numbers above are reproducible to within criterion's reported
+confidence intervals.
 ## v0.0.6 feature benchmarks
 
 Three additional bench arms cover the optional surfaces added
