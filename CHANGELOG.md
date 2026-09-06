@@ -7,6 +7,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+## [v0.0.38] - 2026-09-06
+
 ### Fixed
 
 - **The registry drift net no longer runs `npm install`.** Both probes
