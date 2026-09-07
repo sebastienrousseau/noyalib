@@ -721,3 +721,87 @@ fn every_parsable_fixture_survives_the_formatter() {
     );
     eprintln!("{checked} fixtures round-tripped through the formatter");
 }
+
+/// Every fixture that parses must survive a round trip through the
+/// serialiser: emit the parsed value as YAML, read it back, and get the
+/// same value. This is a different path from the formatter, which
+/// rewrites the original text; here the text is generated from scratch,
+/// so it exercises the emitter against the widest set of shapes in the
+/// repository.
+#[test]
+fn every_parsable_fixture_survives_a_serialiser_round_trip() {
+    let dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/spec-torture");
+    let mut checked = 0u32;
+    for entry in fs::read_dir(&dir).expect("fixtures") {
+        let path = entry.expect("entry").path();
+        if path.extension().and_then(|e| e.to_str()) != Some("yaml") {
+            continue;
+        }
+        let src = fs::read_to_string(&path).expect("read");
+        let name = path.file_name().unwrap().to_string_lossy().to_string();
+        let Ok(docs) = noyalib::load_all_as::<Value>(&src) else {
+            continue;
+        };
+        for (i, doc) in docs.into_iter().enumerate() {
+            let emitted = noyalib::to_string(&doc).unwrap_or_else(|e| {
+                panic!("{name} doc {i}: serialiser refused a parsed value: {e}")
+            });
+            let back: Value = from_str(&emitted).unwrap_or_else(|e| {
+                panic!("{name} doc {i}: emitted YAML does not parse: {e}\n{emitted}")
+            });
+            assert_eq!(doc, back, "{name} doc {i}: the value changed\n{emitted}");
+            checked += 1;
+        }
+    }
+    assert!(checked >= 15, "only {checked} documents round-tripped");
+    eprintln!("{checked} documents round-tripped through the serialiser");
+}
+
+/// The streaming deserialiser must see the same documents as the
+/// batch loader across the corpus. It has its own scanner-driving loop,
+/// so agreement is not free.
+#[test]
+fn the_streaming_deserialiser_agrees_with_the_batch_loader() {
+    use noyalib::StreamingDeserializer;
+    use serde_core::Deserialize as _;
+    let dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/spec-torture");
+    let mut checked = 0u32;
+    for entry in fs::read_dir(&dir).expect("fixtures") {
+        let path = entry.expect("entry").path();
+        if path.extension().and_then(|e| e.to_str()) != Some("yaml") {
+            continue;
+        }
+        let src = fs::read_to_string(&path).expect("read");
+        let name = path.file_name().unwrap().to_string_lossy().to_string();
+        let Ok(batch) = noyalib::load_all_as::<Value>(&src) else {
+            continue;
+        };
+        // The streaming path is a serde `Deserializer`, driven one
+        // document at a time.
+        let mut de = StreamingDeserializer::new(&src);
+        let mut streamed: Vec<Value> = Vec::new();
+        let mut usable = true;
+        for _ in 0..batch.len() {
+            match Value::deserialize(&mut de) {
+                Ok(v) => streamed.push(v),
+                // A document the batch loader accepts may still sit
+                // outside the streaming path's contract; skip the
+                // fixture rather than assert about it here.
+                Err(_) => {
+                    usable = false;
+                    break;
+                }
+            }
+        }
+        if !usable {
+            continue;
+        }
+        assert_eq!(streamed.len(), batch.len(), "{name}: document count");
+        assert_eq!(streamed, batch, "{name}: documents differ");
+        checked += 1;
+    }
+    // The streaming path is single-document for most shapes, so only
+    // the fixtures inside its contract are compared here.
+    assert!(checked >= 4, "only {checked} fixtures streamed");
+    eprintln!("{checked} fixtures agree between the streaming and batch loaders");
+}

@@ -149,3 +149,81 @@ fn remove_rejects_unresolvable_paths() {
     assert!(d.remove("seq[9]").is_err(), "index out of bounds");
     assert_eq!(d.to_string(), SRC);
 }
+
+// ── Paths and targets the editing API must refuse ─────────────────────
+//
+// Each of these is an error branch a caller can reach through the public
+// API. They were reachable and untested, which meant the message a user
+// would see had never been read by anyone.
+
+#[test]
+fn set_path_rejects_query_segments_that_address_more_than_one_entry() {
+    for path in ["a.*", "a..b", "a[*]", "$..b"] {
+        let mut d = doc();
+        let err = d
+            .set_path(path, &Value::Bool(true))
+            .expect_err(&format!("`{path}` addresses more than one entry"));
+        let msg = err.to_string();
+        assert!(msg.contains("set_path"), "{path}: {msg}");
+        // The document is left exactly as it was.
+        assert_eq!(d.to_string(), doc().to_string(), "{path}: document changed");
+    }
+}
+
+#[test]
+fn rename_key_rejects_a_path_that_is_not_a_mapping_entry() {
+    // A sequence item has no key to rename.
+    let mut d = parse_document("items:\n  - one\n  - two\n").unwrap();
+    let before = d.to_string();
+    let err = d
+        .rename_key("items[0]", "renamed")
+        .expect_err("a sequence item has no key");
+    assert!(err.to_string().contains("rename_key"), "{err}");
+    assert_eq!(d.to_string(), before, "the document was modified");
+}
+
+#[test]
+fn rename_key_rejects_the_document_root() {
+    let mut d = doc();
+    let before = d.to_string();
+    let err = d
+        .rename_key("", "renamed")
+        .expect_err("the root has no key");
+    assert!(err.to_string().contains("rename_key"), "{err}");
+    assert_eq!(d.to_string(), before);
+}
+
+#[test]
+fn remove_rejects_the_document_root() {
+    let mut d = doc();
+    let before = d.to_string();
+    let err = d.remove("").expect_err("the root cannot be removed");
+    assert!(!err.to_string().is_empty());
+    assert_eq!(d.to_string(), before);
+}
+
+#[test]
+fn set_value_rejects_a_path_through_a_scalar() {
+    let mut d = parse_document("a: 1\n").unwrap();
+    let before = d.to_string();
+    let err = d
+        .set_value("a.b", &Value::Bool(true))
+        .expect_err("`a` is a scalar, so `a.b` addresses nothing");
+    assert!(!err.to_string().is_empty());
+    assert_eq!(d.to_string(), before);
+}
+
+#[test]
+fn swap_items_rejects_equal_and_reversed_indices_consistently() {
+    let mut d = parse_document("items:\n  - one\n  - two\n  - three\n").unwrap();
+    let before = d.to_string();
+    // Swapping an item with itself is a no-op, not an error.
+    d.swap_items("items", 1, 1)
+        .expect("swapping an item with itself");
+    assert_eq!(d.to_string(), before);
+    // Reversed order addresses the same pair.
+    d.swap_items("items", 2, 0).expect("reversed indices");
+    let after: Value = noyalib::from_str(&d.to_string()).unwrap();
+    assert_eq!(after["items"][0].as_str(), Some("three"));
+    assert_eq!(after["items"][2].as_str(), Some("one"));
+}

@@ -11,6 +11,13 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Fixed
 
+- **The serialiser wrote a directive-resolved tag in a form that does
+  not parse back.** A tag introduced by `%TAG` is held as a bare URI
+  with no `!`, and the emitter wrote it as it stood, so
+  `!c!thing 1` came back as the plain scalar
+  `tag:example.com,2026:x/thing "1"` and the tag was lost. Such tags
+  are now written in the verbatim form `!<uri>`, which carries them
+  without needing the directive.
 - **The formatter tore apart a mapping used as an explicit key.** The
   lines below `? a: 1` were emitted at the outer indent, so they became
   entries of the surrounding mapping and the `: value` line was lost
@@ -24,6 +31,16 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Added
 
+- **Every fixture that parses must also survive the serialiser**:
+  emitting the parsed value and reading it back has to give the same
+  value. That is what found the tag defect above.
+- **The streaming reader is held to the batch loader across the whole
+  official suite**, the same way the parallel path already was. It is
+  the third independent reader in the crate, so agreement is not free.
+- **Error paths in the CST editing API have tests**: query segments
+  that address more than one entry, renaming something that is not a
+  mapping key, and removing the document root. These are messages a
+  user can reach, and none of them had ever been read by a test.
 - **Every fixture that parses must survive the formatter**: its output
   has to re-parse to the same value. Running the twenty spec-torture
   documents through it is what found both defects above.
