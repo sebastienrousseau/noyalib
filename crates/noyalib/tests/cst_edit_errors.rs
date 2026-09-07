@@ -227,3 +227,54 @@ fn swap_items_rejects_equal_and_reversed_indices_consistently() {
     assert_eq!(after["items"][0].as_str(), Some("three"));
     assert_eq!(after["items"][2].as_str(), Some("one"));
 }
+
+#[test]
+fn editing_a_sequence_index_past_the_end_is_refused_by_every_operation() {
+    // Each of these resolves the path through a different helper, and
+    // each has its own "index out of bounds" message. A caller reaches
+    // all of them with the same mistake.
+    let src = "items:\n  - one\n  - two\n";
+    for (name, result) in [
+        (
+            "set_value",
+            parse_document(src)
+                .unwrap()
+                .set_value("items[9]", &Value::Bool(true)),
+        ),
+        ("set", parse_document(src).unwrap().set("items[9]", "x")),
+        (
+            "rename_key",
+            parse_document(src).unwrap().rename_key("items[9]", "k"),
+        ),
+        ("remove", parse_document(src).unwrap().remove("items[9]")),
+        (
+            "push_back_value",
+            parse_document(src)
+                .unwrap()
+                .push_back_value("items[9]", "x"),
+        ),
+        (
+            "insert_after_value",
+            parse_document(src)
+                .unwrap()
+                .insert_after_value("items[9]", "x"),
+        ),
+    ] {
+        let err = result.expect_err(&format!("{name}: index 9 of a two-item sequence"));
+        assert!(!err.to_string().is_empty(), "{name}: empty message");
+    }
+}
+
+#[test]
+fn a_nested_sequence_index_past_the_end_is_refused() {
+    let src = "outer:\n  items:\n    - one\n";
+    for path in ["outer.items[5]", "outer.items[5].deeper", "outer[0]"] {
+        let mut d = parse_document(src).unwrap();
+        let before = d.to_string();
+        let err = d
+            .set_value(path, &Value::Bool(true))
+            .expect_err(&format!("`{path}` addresses nothing"));
+        assert!(!err.to_string().is_empty());
+        assert_eq!(d.to_string(), before, "{path}: the document was modified");
+    }
+}

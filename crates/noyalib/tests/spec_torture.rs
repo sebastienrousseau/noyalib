@@ -782,15 +782,14 @@ fn the_streaming_deserialiser_agrees_with_the_batch_loader() {
         let mut streamed: Vec<Value> = Vec::new();
         let mut usable = true;
         for _ in 0..batch.len() {
-            match Value::deserialize(&mut de) {
-                Ok(v) => streamed.push(v),
-                // A document the batch loader accepts may still sit
-                // outside the streaming path's contract; skip the
-                // fixture rather than assert about it here.
-                Err(_) => {
-                    usable = false;
-                    break;
-                }
+            // A document the batch loader accepts may still sit outside
+            // the streaming path's contract; skip the fixture rather
+            // than assert about it here.
+            if let Ok(v) = Value::deserialize(&mut de) {
+                streamed.push(v);
+            } else {
+                usable = false;
+                break;
             }
         }
         if !usable {
