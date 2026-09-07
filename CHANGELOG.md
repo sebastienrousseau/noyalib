@@ -7,6 +7,14 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+## [v0.0.41] - 2026-09-07
+
+### Changed
+
+- Lockstep release for the September GitHub Actions bumps across the
+  family, cherry-picked from Dependabot with authorship intact. No core
+  code change.
+
 ## [v0.0.40] - 2026-09-07
 
 ### Fixed
