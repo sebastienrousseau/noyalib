@@ -1,0 +1,14 @@
+# ==============================================================================
+# SPECIFICATION 15: INTERSPERSED BOM & PREMATURE STREAMS
+# ==============================================================================
+---
+# Testing consecutive multi-document boundaries without content
+---
+---
+valid_document_after_empty_breaks:
+  stream_status: "STABLE"
+...
+# Ending document explicitly with '...' but keeping trailing content inside the file
+...
+# This comment sits outside any logical YAML document boundary at the EOF.
+# An enterprise parser must successfully close the stream without crashing.

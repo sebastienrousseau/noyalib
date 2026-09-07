@@ -1,0 +1,15 @@
+# ==============================================================================
+# SPECIFICATION 16: PARSER RESOURCE EXHAUSTION (BILLION LAUGHS STRESS)
+# ==============================================================================
+---
+lol_matrix:
+  - &lol1 "lol"
+  - &lol2 [*lol1,*lol1,*lol1,*lol1,*lol1,*lol1,*lol1,*lol1,*lol1,*lol1]
+  - &lol3 [*lol2,*lol2,*lol2,*lol2,*lol2,*lol2,*lol2,*lol2,*lol2,*lol2]
+  - &lol4 [*lol3,*lol3,*lol3,*lol3,*lol3,*lol3,*lol3,*lol3,*lol3,*lol3]
+  - &lol5 [*lol4,*lol4,*lol4,*lol4,*lol4,*lol4,*lol4,*lol4,*lol4,*lol4]
+  - &lol6 [*lol5,*lol5,*lol5,*lol5,*lol5,*lol5,*lol5,*lol5,*lol5,*lol5]
+  - &lol7 [*lol6,*lol6,*lol6,*lol6,*lol6,*lol6,*lol6,*lol6,*lol6,*lol6]
+  # Expanding thousands of nested references inline
+  - root_trigger: *lol7
+...

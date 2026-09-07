@@ -575,6 +575,23 @@ impl<'a> Loader<'a> {
                     }
                 }
 
+                // An anchor that this document has opened but not yet
+                // finished: the alias points inside the node being
+                // built. YAML allows a cyclic representation graph; a
+                // `Value` is a tree and cannot hold one, so say that
+                // rather than calling the anchor unknown.
+                if !self.anchor_map.contains_key(&anchor) {
+                    if let Some(&defined_at) = self.anchor_def_spans.get(anchor.as_str()) {
+                        return Err(Error::parse_at(
+                            format!(
+                                "alias `*{anchor}` points at `&{anchor}`, still being defined at {}; a self-referential node cannot be represented as a tree",
+                                crate::error::Location::from_index(input, defined_at)
+                            ),
+                            input,
+                            span.start,
+                        ));
+                    }
+                }
                 let (value, span_tree) =
                     self.anchor_map.get(&anchor).cloned().ok_or_else(|| {
                         let alias_loc = crate::error::Location::from_index(input, span.start);
@@ -1397,6 +1414,23 @@ impl<'a> NoSpanLoader<'a> {
                         }));
                     }
                 }
+                // An anchor that this document has opened but not yet
+                // finished: the alias points inside the node being
+                // built. YAML allows a cyclic representation graph; a
+                // `Value` is a tree and cannot hold one, so say that
+                // rather than calling the anchor unknown.
+                if !self.anchor_map.contains_key(&anchor) {
+                    if let Some(&defined_at) = self.anchor_def_spans.get(anchor.as_str()) {
+                        return Err(Error::parse_at(
+                            format!(
+                                "alias `*{anchor}` points at `&{anchor}`, still being defined at {}; a self-referential node cannot be represented as a tree",
+                                crate::error::Location::from_index(input, defined_at)
+                            ),
+                            input,
+                            span.start,
+                        ));
+                    }
+                }
                 let value = self.anchor_map.get(&anchor).cloned().ok_or_else(|| {
                     let alias_loc = crate::error::Location::from_index(input, span.start);
                     let suggestion = crate::error::closest_name(
@@ -2141,7 +2175,7 @@ fn resolve_tagged_scalar(
                 } else {
                     parse_tagged_decimal_integer(trimmed, lossless_u64)
                 };
-                parsed.ok_or_else(|| Error::FailedToParseNumber(format!("!!int {value}")))
+                parsed.ok_or_else(|| Error::FailedToParseNumber(int_hint(value)))
             }
             "float" => {
                 let trimmed = value.trim();
@@ -2470,4 +2504,37 @@ mod merge_key_eligibility_tests {
         );
         assert!(treated_as_merge(MERGE_KEY, true), "both together");
     }
+}
+
+/// Explain an `!!int` that does not match YAML 1.2's integer form.
+///
+/// The two shapes people reach for are YAML 1.1's: a `0b` binary
+/// literal and `_` digit separators. YAML 1.2's core schema dropped
+/// both, so a parser that follows 1.2 has to refuse them under an
+/// explicit `!!int`. Saying which one it is saves the reader a trip to
+/// the specification.
+fn int_hint(value: &str) -> String {
+    let trimmed = value.trim();
+    let negative = trimmed.starts_with('-');
+    let unsigned = trimmed.strip_prefix(['-', '+']).unwrap_or(trimmed);
+    if unsigned.starts_with("0b") || unsigned.starts_with("0B") {
+        let digits = &unsigned[2..];
+        if !digits.is_empty() && digits.bytes().all(|b| matches!(b, b'0' | b'1')) {
+            if let Ok(n) = i64::from_str_radix(digits, 2) {
+                let n = if negative { -n } else { n };
+                return format!(
+                    "!!int {trimmed}: YAML 1.2 has no binary literal, `0b` was YAML 1.1; write {n}"
+                );
+            }
+        }
+    }
+    if unsigned.contains('_') {
+        let stripped: String = trimmed.chars().filter(|c| *c != '_').collect();
+        if stripped.parse::<i64>().is_ok() {
+            return format!(
+                "!!int {trimmed}: YAML 1.2 has no digit separators, `_` was YAML 1.1; write {stripped}"
+            );
+        }
+    }
+    format!("!!int {trimmed}")
 }

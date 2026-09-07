@@ -1,0 +1,26 @@
+# ==============================================================================
+# SPECIFICATION 17: SCHEMA COMPLIANCE AND THE NORWAY MINES
+# ==============================================================================
+---
+legacy_coercion_checks:
+  # The infamous 'Norway Problem' (YAML 1.1 converted NO into false)
+  country_codes:
+    - US
+    - UK
+    - NO
+    - FR
+
+  # Alternating unquoted 1.1 Truthy/Falsy variations (Should parse as strings in 1.2)
+  implicit_strings_vs_booleans:
+    string_yes: yes
+    string_no: no
+    string_on: on
+    string_off: off
+    string_y: y
+    string_n: n
+    actual_boolean_true: true
+    actual_boolean_false: false
+
+  # Sexagesimal numbers (Base-60 integers allowed in YAML 1.1, dropped in 1.2)
+  base_60_test: 190:20:30
+...

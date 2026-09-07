@@ -1,0 +1,20 @@
+# ==============================================================================
+# SPECIFICATION 6: CUSTOM LOCAL TAGS & ADVANCED NUMERICS
+# ==============================================================================
+---
+# Testing how your parsing layer acts when it encounters application-specific tags
+secure_infrastructure:
+  database_password: !secret "env_db_pass_vault_xyz"
+  network_map: !include "./network-topology.yaml"
+  custom_vector: !vector3d [ 12.5, 0.0, -1.95 ]
+
+# Edge cases for floating point and integer variations
+numeric_coercion:
+  positive_infinity: !!float .inf
+  negative_infinity: !!float -.Inf
+  not_a_number: !!float .NaN
+  scientific_notation_low: !!float 1.23e-4
+  scientific_notation_high: !!float 4.56E+10
+  base_2_binary_integer: !!int 0b101010
+  underscored_big_int: !!int 100_000_000 # Valid formatting for humans
+...

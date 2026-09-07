@@ -1,0 +1,10 @@
+# ==============================================================================
+# SPECIFICATION 20: EXTREME LOOKAHEAD SCALAR KEY STRINGS
+# ==============================================================================
+---
+? This is an incredibly lengthy unquoted plain scalar key that intentionally
+  forces the tokeniser loop to stream text buffers across multiple line boundaries
+  without encountering an early termination quote. The engine must store this entire
+  block as the single map key before resolving the target colon separator below.
+: value_bound_to_the_max_lookahead_key
+...

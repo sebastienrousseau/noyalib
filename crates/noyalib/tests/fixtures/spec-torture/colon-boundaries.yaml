@@ -1,0 +1,18 @@
+# ==============================================================================
+# SPECIFICATION 19: UNSPACED COLON SCALAR DISPATCH
+# ==============================================================================
+---
+colon_boundary_conditions:
+  # Colons with no spaces are valid plain scalar parts if they look like URIs or paths
+  url_path: https://api.internal
+  windows_drive: C:\ProgramFiles\App\config.bin
+
+  # A colon directly preceding a newline with deep indentation
+  nested_empty_value_dispatch:
+    key_with_trailing_colon:
+    next_sibling_key: value
+
+  # Complex mapping containing an empty string key mapping directly to another map
+  "":
+    nested_under_empty_key: true
+...

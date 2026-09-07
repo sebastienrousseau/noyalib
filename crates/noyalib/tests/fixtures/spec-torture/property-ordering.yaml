@@ -1,0 +1,23 @@
+# ==============================================================================
+# SPECIFICATION 12: PROPERTIES ORDERING AND ANCHOR/TAG CHAINS
+# ==============================================================================
+---
+property_ordering_tests:
+  # Tag followed by Anchor
+  case_one: !!str &anchor_one "Tag then Anchor declaration"
+
+  # Anchor followed by Tag
+  case_two: &anchor_two !!str "Anchor then Tag declaration"
+
+  # Mixed property spacing within nested sequence nodes
+  complex_sequence:
+    - &seq_anchor !!int 42
+    - !!float &float_anchor 3.14159
+    - !!str &empty_anchor_str ""
+
+  # Re-referencing the mixed chain properties
+  resolutions:
+    copied_str: *anchor_one
+    copied_int: *seq_anchor
+    copied_flt: *float_anchor
+...

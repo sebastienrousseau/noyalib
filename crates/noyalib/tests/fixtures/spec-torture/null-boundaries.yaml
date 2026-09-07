@@ -1,0 +1,21 @@
+# ==============================================================================
+# SPECIFICATION 7: THE NULL BOUNDARY STRESS TEST
+# ==============================================================================
+---
+# Entirely empty document structure with structural maps pointing to absolutely nothing
+---
+? 
+: 
+---
+# Map keys that consist completely of other null identifiers
+~: null
+null: ~
+true: "true_as_a_string"
+!!str true: "forced_string_type"
+---
+# Document ending prematurely with only comments
+# This tests EOF (End of File) handling immediately following an open map token
+endpoint_list:
+  - https://api.internal
+  - # Missing second item string entirely, followed directly by structural end
+...

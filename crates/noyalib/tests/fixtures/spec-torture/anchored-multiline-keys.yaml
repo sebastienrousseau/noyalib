@@ -1,0 +1,19 @@
+# ==============================================================================
+# SPECIFICATION 13: ANCHORED MULTILINE KEYS & MAP-IN-MAP KEY TORTURE
+# ==============================================================================
+---
+nested_key_torture:
+  # Anchor applied to a complex key containing an explicit multiline literal string
+  ? &multiline_key_anchor |-
+      SELECT * FROM telemetry
+      WHERE event = 'ERROR'
+  : status: "ACTIVE_MONITOR_QUERY"
+
+  # Referencing the multiline key string *as a value* somewhere else
+  query_archive:
+    historical_sql: *multiline_key_anchor
+
+  # Map-in-Map Key: A key containing an object whose key is another object
+  ? { ? { deep_key: true } : "mid_level_value" }
+  : "outermost_value"
+...

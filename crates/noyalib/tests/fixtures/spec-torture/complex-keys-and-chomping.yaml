@@ -1,0 +1,39 @@
+# ==============================================================================
+# SPECIFICATION 1: COMPLEX MAPPING KEYS & EDGECASE STRINGS
+# ==============================================================================
+---
+# Testing implicit vs explicit keys, multi-line chomping, and null variants
+matrix_configuration:
+  # Complex key: Mapping an inline sequence to a nested dictionary
+  ? [ &north_region "us-east-1", "us-east-2" ]
+  : failover_target: "eu-west-1"
+    traffic_weight: 0.65
+
+  # Complex key: Mapping an entire dictionary object as a key
+  ? { provider: "aws", service: "eks" }
+  : node_groups:
+      - name: "cpu-burst-mesh"
+        capacity_type: "SPOT"
+
+  # Testing String Chomping Indicators: Strip (-), Keep (+), Default (Clip)
+  string_behaviors:
+    strip_newlines: |-
+      This text block drops all trailing newlines at the end of the script.
+
+    keep_newlines: |+
+      This text block keeps all trailing blank lines exactly as typed.
+
+
+    folded_with_indentation: >4
+        This block uses an explicit 4-space indentation indicator.
+        Any deeper lines are preserved as block indents.
+          - Nested line 1
+          - Nested line 2
+
+  # Edge-case Null configurations
+  null_matrix:
+    empty_value:
+    canonical_null: !!null "null"
+    word_null: Null
+    tilde_null: ~
+...

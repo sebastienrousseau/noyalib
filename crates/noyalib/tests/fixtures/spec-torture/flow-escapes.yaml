@@ -1,0 +1,30 @@
+# ==============================================================================
+# SPECIFICATION 5: HYBRID FLOW ESCAPES & WHITESPACE TORTURE
+# ==============================================================================
+---
+flow_torture:
+  # Mixing JSON flow arrays/objects seamlessly within multi-line keys
+  {
+    nested_array: [ 1, 2, { key: "value" } ],
+    "escaped\nkey\twith\"quotes\"": [ true, false, null ]
+  }: "value for the complex flow key"
+
+  # Deeply nested flow sequences stretching over multiple indented lines
+  nested_flow_matrix: [
+    [, [3, 4] ],
+    [
+      { a: 1, b: 2 },
+      { c: 3, d: \
+        "escaped newline item" }
+    ],
+    "string element with trailing spaces    ",
+    "" # Empty string token
+  ]
+
+  # String parsing stress test with odd unicode, control characters, and hex values
+  string_escapes:
+    double_quoted: "Line 1\nLine 2\tTabbed\x20Space☺_Smiley\nCustom Escape: \\\""
+    single_quoted: 'Preserves raw \n and \t except double single quotes: ''this is one quote'''
+    no_space_indicators::value_with_double_colon
+    trailing_carriage_returns: "Text\r\nMore Text\r"
+...
