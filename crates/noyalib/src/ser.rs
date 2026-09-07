@@ -791,12 +791,23 @@ fn write_value(
                         matches!(b, b',' | b'[' | b']' | b'{' | b'}' | b'!' | b' ' | b'\t')
                     })
                 });
-                if needs_verbatim {
-                    output.push_str("!<");
-                    output.push_str(&tag_str[1..]);
-                    output.push('>');
-                } else {
-                    output.push_str(tag_str);
+                match shorthand_body {
+                    // A tag a `%TAG` directive resolved is held as a
+                    // bare URI with no `!`. Written as it stands it is
+                    // not a tag at all, and the document reads back as a
+                    // plain scalar, so the value is lost. The verbatim
+                    // form carries it without needing the directive.
+                    None => {
+                        output.push_str("!<");
+                        output.push_str(tag_str);
+                        output.push('>');
+                    }
+                    Some(_) if needs_verbatim => {
+                        output.push_str("!<");
+                        output.push_str(&tag_str[1..]);
+                        output.push('>');
+                    }
+                    Some(_) => output.push_str(tag_str),
                 }
                 let inner = tagged.value();
                 if indicator_takes_a_space(inner) {

@@ -82,18 +82,40 @@ impl<'a> Formatter<'a> {
     }
 
     fn newline(&mut self) {
-        if !self.at_line_start {
-            self.out.push('\n');
-            self.at_line_start = true;
-            self.last_was_space = false;
+        if self.at_line_start {
+            return;
         }
+        // A block scalar's token carries the indentation of the line
+        // that follows it, so after writing one the cursor sits on a
+        // line holding nothing but spaces. Ending that line would add a
+        // blank line, and a keep-chomped scalar counts blank lines as
+        // content, so the value would gain a newline. Drop the spaces
+        // and we are already at the start of a line (found by
+        // formatting the spec-torture corpus).
+        let trimmed = self.out.trim_end_matches([' ', '\t']).len();
+        let line_is_only_space =
+            trimmed < self.out.len() && (trimmed == 0 || self.out.as_bytes()[trimmed - 1] == b'\n');
+        if line_is_only_space {
+            self.out.truncate(trimmed);
+        } else {
+            self.out.push('\n');
+        }
+        self.at_line_start = true;
+        self.last_was_space = false;
     }
 
     fn write_raw(&mut self, text: &str) {
         if text.is_empty() {
             return;
         }
-        self.indent();
+        // Indentation is written eagerly, so writing it before a token
+        // that opens with a line break leaves a line of nothing but
+        // spaces. Inside a keep-chomped block scalar that line is
+        // content and silently adds a newline to the value (found by
+        // formatting the spec-torture corpus).
+        if !text.starts_with(['\n', '\r']) {
+            self.indent();
+        }
         self.out.push_str(text);
         if let Some(last_newline) = text.rfind('\n') {
             let trailing = &text[last_newline + 1..];
@@ -337,7 +359,19 @@ impl<'a> Formatter<'a> {
                 GreenChild::Node(inner) => {
                     if saw_question && !saw_colon {
                         self.ensure_space();
-                        self.format_node(inner, pos)?;
+                        // A mapping used as an explicit key continues on
+                        // the lines below the `?`, and those lines must
+                        // be indented past it or they become entries of
+                        // the surrounding mapping instead. Without this
+                        // the key is torn apart and the value is lost
+                        // (found by formatting the spec-torture corpus).
+                        if inner.kind() == SyntaxKind::BlockMapping {
+                            self.indent_level += 1;
+                            self.format_node(inner, pos)?;
+                            self.indent_level -= 1;
+                        } else {
+                            self.format_node(inner, pos)?;
+                        }
                     } else if saw_colon {
                         if matches!(
                             inner.kind(),

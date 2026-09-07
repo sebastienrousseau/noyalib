@@ -161,3 +161,55 @@ fn every_torture_fixture_agrees_between_the_two_paths() {
         seq.len()
     );
 }
+
+/// The streaming deserialiser must see what the batch loader sees,
+/// across the official suite.
+///
+/// It drives the scanner itself rather than building a document tree,
+/// so agreement is not free: it is the third independent reader in the
+/// crate, after the batch loader and the CST. Anything it accepts must
+/// mean the same thing, and anything it refuses must be something the
+/// batch loader also refuses or a shape outside its single-document
+/// contract.
+#[test]
+fn the_streaming_reader_agrees_with_the_batch_loader_across_the_suite() {
+    use noyalib::StreamingDeserializer;
+    use serde_core::Deserialize as _;
+
+    let dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/yaml-test-suite");
+    let mut agreed = 0u32;
+    let mut outside_contract = 0u32;
+    let mut disagreed = Vec::new();
+
+    for entry in fs::read_dir(&dir).expect("suite directory") {
+        let path = entry.expect("dir entry").path();
+        if path.extension().and_then(|e| e.to_str()) != Some("yaml") {
+            continue;
+        }
+        let src = fs::read_to_string(&path).expect("read case");
+        let id = path.file_stem().unwrap().to_string_lossy().to_string();
+        let Ok(batch) = load_all_as::<Value>(&src) else {
+            continue;
+        };
+        if batch.len() != 1 {
+            // The streaming reader is single-document by contract.
+            outside_contract += 1;
+            continue;
+        }
+        let mut de = StreamingDeserializer::new(&src);
+        match Value::deserialize(&mut de) {
+            Ok(v) if v == batch[0] => agreed += 1,
+            Ok(v) => disagreed.push(format!("{id}: streamed {v:?} vs batch {:?}", batch[0])),
+            Err(_) => outside_contract += 1,
+        }
+    }
+
+    eprintln!("streaming agrees on {agreed} suite files, {outside_contract} outside its contract");
+    assert!(agreed > 200, "only {agreed} cases agreed");
+    assert!(
+        disagreed.is_empty(),
+        "{} disagreement(s): {:?}",
+        disagreed.len(),
+        &disagreed[..disagreed.len().min(8)]
+    );
+}

@@ -7,6 +7,55 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+## [v0.0.40] - 2026-09-07
+
+### Fixed
+
+- **The serialiser wrote a directive-resolved tag in a form that does
+  not parse back.** A tag introduced by `%TAG` is held as a bare URI
+  with no `!`, and the emitter wrote it as it stood, so
+  `!c!thing 1` came back as the plain scalar
+  `tag:example.com,2026:x/thing "1"` and the tag was lost. Such tags
+  are now written in the verbatim form `!<uri>`, which carries them
+  without needing the directive.
+- **The formatter tore apart a mapping used as an explicit key.** The
+  lines below `? a: 1` were emitted at the outer indent, so they became
+  entries of the surrounding mapping and the `: value` line was lost
+  entirely. They are now indented past the `?`.
+- **The formatter added a newline to a keep-chomped block scalar.** A
+  block scalar's token carries the indentation of the line after it, so
+  the emitter sat on a line of nothing but spaces and then ended it. A
+  `|+` scalar counts that blank line as content, so the value grew a
+  newline every time the file was formatted. The formatter no longer
+  leaves a whitespace-only line.
+
+### Added
+
+- **Every fixture that parses must also survive the serialiser**:
+  emitting the parsed value and reading it back has to give the same
+  value. That is what found the tag defect above.
+- **The streaming reader is held to the batch loader across the whole
+  official suite**, the same way the parallel path already was. It is
+  the third independent reader in the crate, so agreement is not free.
+- **Error paths in the CST editing API have tests**: query segments
+  that address more than one entry, renaming something that is not a
+  mapping key, and removing the document root. These are messages a
+  user can reach, and none of them had ever been read by a test.
+- **Every fixture that parses must survive the formatter**: its output
+  has to re-parse to the same value. Running the twenty spec-torture
+  documents through it is what found both defects above.
+- **The diagnostics are checked through every loader.** There are two
+  loaders behind the public API, one recording spans and one not, and
+  the v0.0.39 messages were only tested through the first. A message
+  that depends on which function the caller used is a bug waiting to
+  happen (`tests/loader_paths.rs`).
+
+### Changed
+
+- Lockstep release for the OpenSSF Best Practices badges: every
+  companion crate is now registered and passing, and each README
+  carries its own badge. No core code change.
+
 ## [v0.0.39] - 2026-09-07
 
 ### Fixed
