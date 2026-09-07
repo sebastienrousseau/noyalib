@@ -7,6 +7,14 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+## [v0.0.40] - 2026-09-07
+
+### Changed
+
+- Lockstep release for the OpenSSF Best Practices badges: every
+  companion crate is now registered and passing, and each README
+  carries its own badge. No core code change.
+
 ## [v0.0.39] - 2026-09-07
 
 ### Fixed
