@@ -677,3 +677,47 @@ fn an_explicit_key_may_be_a_multi_line_plain_scalar() {
     assert!(key.ends_with("the target colon separator below."));
     assert_eq!(value.as_str(), Some("value_bound_to_the_max_lookahead_key"));
 }
+
+/// Every fixture that parses must also survive the formatter: the
+/// output has to re-parse and mean the same thing. This walks the whole
+/// corpus, which is the widest mix of node kinds in the repository, so
+/// it exercises the formatter's dispatch far better than any single
+/// document can.
+#[test]
+fn every_parsable_fixture_survives_the_formatter() {
+    use noyalib::cst::{FormatConfig, format_with_config};
+    let dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/spec-torture");
+    let mut checked = 0u32;
+    for entry in fs::read_dir(&dir).expect("fixtures") {
+        let path = entry.expect("entry").path();
+        if path.extension().and_then(|e| e.to_str()) != Some("yaml") {
+            continue;
+        }
+        let src = fs::read_to_string(&path).expect("read");
+        let name = path.file_name().unwrap().to_string_lossy().to_string();
+        // Only documents the parser accepts are in scope; the
+        // deliberately invalid ones are covered by their own tests.
+        let Ok(before) = noyalib::load_all_as::<Value>(&src) else {
+            continue;
+        };
+        // A directive belongs to its document, and the formatter emits
+        // documents, so a directive-led file is out of scope here.
+        if src.contains("\n%") || src.starts_with('%') {
+            continue;
+        }
+        let formatted = match format_with_config(&src, &FormatConfig::default()) {
+            Ok(f) => f,
+            Err(e) => panic!("{name}: formatter refused a document the parser accepted: {e}"),
+        };
+        let after = noyalib::load_all_as::<Value>(&formatted).unwrap_or_else(|e| {
+            panic!("{name}: formatted output does not parse: {e}\n{formatted}")
+        });
+        assert_eq!(before, after, "{name}: formatting changed the value");
+        checked += 1;
+    }
+    assert!(
+        checked >= 10,
+        "only {checked} fixtures went through the formatter"
+    );
+    eprintln!("{checked} fixtures round-tripped through the formatter");
+}

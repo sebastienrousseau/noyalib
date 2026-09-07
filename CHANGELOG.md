@@ -9,6 +9,30 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [v0.0.40] - 2026-09-07
 
+### Fixed
+
+- **The formatter tore apart a mapping used as an explicit key.** The
+  lines below `? a: 1` were emitted at the outer indent, so they became
+  entries of the surrounding mapping and the `: value` line was lost
+  entirely. They are now indented past the `?`.
+- **The formatter added a newline to a keep-chomped block scalar.** A
+  block scalar's token carries the indentation of the line after it, so
+  the emitter sat on a line of nothing but spaces and then ended it. A
+  `|+` scalar counts that blank line as content, so the value grew a
+  newline every time the file was formatted. The formatter no longer
+  leaves a whitespace-only line.
+
+### Added
+
+- **Every fixture that parses must survive the formatter**: its output
+  has to re-parse to the same value. Running the twenty spec-torture
+  documents through it is what found both defects above.
+- **The diagnostics are checked through every loader.** There are two
+  loaders behind the public API, one recording spans and one not, and
+  the v0.0.39 messages were only tested through the first. A message
+  that depends on which function the caller used is a bug waiting to
+  happen (`tests/loader_paths.rs`).
+
 ### Changed
 
 - Lockstep release for the OpenSSF Best Practices badges: every

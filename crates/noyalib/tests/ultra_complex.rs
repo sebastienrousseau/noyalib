@@ -186,3 +186,52 @@ fn formatter_keeps_explicit_keys_and_lone_properties_parseable() {
         assert_eq!(before, after, "input {src:?}");
     }
 }
+
+/// Three more formatter defects, each found by running the
+/// spec-torture corpus through `noyafmt` and reproduced here on the
+/// smallest input that shows them. Every output must re-parse to the
+/// same value as its input.
+#[test]
+fn formatter_keeps_mapping_keys_and_kept_blank_lines() {
+    use noyalib::cst::{FormatConfig, format_with_config};
+    for (label, src, expected) in [
+        // A mapping used as an explicit key continues on the lines
+        // below the `?`. Without the indent those lines became entries
+        // of the surrounding mapping and the value was dropped.
+        (
+            "mapping as an explicit key",
+            "? a: 1\n  b: 2\n: v\n",
+            "? a: 1\n  b: 2\n: v\n",
+        ),
+        (
+            "mapping key holding a block scalar",
+            "? a: 1\n  b: |\n    x\n: v\n",
+            "? a: 1\n  b: |\n    x\n: v\n",
+        ),
+        // A block scalar's token carries the next line's indentation,
+        // so the formatter sat on a spaces-only line and ended it,
+        // adding a blank line. A keep-chomped scalar counts that as
+        // content, so the value gained a newline.
+        (
+            "keep-chomped scalar with a sibling after it",
+            "outer:\n  b: |+\n    two\n\n\n  c: 1\n",
+            "outer:\n  b: |+\n    two\n\n\n  c: 1\n",
+        ),
+    ] {
+        let out = format_with_config(src, &FormatConfig::default()).unwrap();
+        assert_eq!(out, expected, "{label}");
+        let before: Value = noyalib::from_str(src).unwrap();
+        let after: Value = noyalib::from_str(&out).unwrap();
+        assert_eq!(before, after, "{label}: formatting changed the value");
+    }
+    // The formatter never leaves a line of nothing but spaces.
+    let out = format_with_config(
+        "outer:\n  a: |-\n    one\n\n  b: |+\n    two\n\n\n  c: 1\n",
+        &FormatConfig::default(),
+    )
+    .unwrap();
+    assert!(
+        !out.lines().any(|l| !l.is_empty() && l.trim().is_empty()),
+        "whitespace-only line in {out:?}"
+    );
+}
