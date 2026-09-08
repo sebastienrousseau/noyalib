@@ -90,7 +90,7 @@ path).
 ```rust
 use noyalib::cst::parse_document;
 let mut doc = parse_document(text)?;
-doc.set("version", "0.0.42")?;
+doc.set("version", "0.0.43")?;
 std::fs::write("Cargo.yaml", doc.to_string())?;
 ```
 
