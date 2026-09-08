@@ -7,6 +7,13 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+## [v0.0.43] - 2026-09-08
+
+### Changed
+
+- Lockstep release for a hardening pass on the VS Code extension's
+  publish step in noyalib-lsp. No core code change.
+
 ## [v0.0.42] - 2026-09-08
 
 ### Changed
