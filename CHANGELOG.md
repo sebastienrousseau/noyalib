@@ -7,6 +7,15 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+## [v0.0.42] - 2026-09-08
+
+### Changed
+
+- Lockstep release for the VS Code extension's publish path: the
+  extension is now bundled, carries an icon and a licence the packager
+  recognises, and the language server's release workflow publishes it to
+  the Marketplace once a token is configured. No core code change.
+
 ## [v0.0.41] - 2026-09-07
 
 ### Changed
