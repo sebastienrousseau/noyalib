@@ -825,14 +825,17 @@ impl Document {
         // folded scalar to a plain one) without changing the loaded
         // document (#337). `write_span` has already vetted the path, so
         // alias refusals and path errors are unaffected.
-        {
+        let segments = parse_query_path(path);
+        let target_is_collection = {
             self.ensure_cache();
             let cache = self.cache.borrow();
             let (root, _) = cache.as_ref().expect("ensure_cache populated");
-            if typed_value_at(root, &parse_query_path(path)) == Some(value) {
+            let current = typed_value_at(root, &segments);
+            if current == Some(value) {
                 return Ok(());
             }
-        }
+            matches!(current, Some(Value::Sequence(_) | Value::Mapping(_)))
+        };
         // A collection value replaces a collection node in the node's
         // own style — flow stays flow, block stays block (#328). The
         // scalar formatter below cannot spell one, so branch off here.
@@ -845,16 +848,43 @@ impl Document {
         // give. (An equal value already returned above: a no-op is
         // harmless wherever it points.)
         self.refuse_inside_aliased_anchor("set_value", path, s)?;
+        // A block collection occupies its own lines, and the resolver
+        // widens its span to the first of them
+        // ([`extend_to_line_start`]) so that a *read* slice is uniformly
+        // indented and re-parses to the value it denotes. A scalar
+        // spliced over that span therefore starts where the collection's
+        // line started, which is the key's own column: `k:` / `  a: 1`
+        // came back as `k:` / `5`. This parser reads that; PyYAML and
+        // libyaml reject it, and one level down it surfaces as an
+        // "inconsistent indentation" error over a document that has
+        // none.
+        //
+        // The value goes where the collection's content sat instead, one
+        // indent step past the key when the collection sat at the key's
+        // own column. That is the correction `remove` already makes when
+        // it empties a sole entry, and it is what `set_value` already
+        // does for a scalar that was on its own line (`k:` / `  hello`
+        // becomes `k:` / `  5`): the new value goes where the old value's
+        // content began. This is the one span that had been widened past
+        // that rule.
+        let own_line = target_is_collection
+            && !segments.is_empty()
+            && s != e
+            && s == start_of_line(&self.source, s);
         // An empty span is an implicit null's insertion point, not a value to
         // overwrite: there is no scalar leaf there to read a style from, and
         // no `: ` separator either, since the span starts right after the
         // indicator. Everything else about the site — the neighbours, the
         // column — is read the same way.
         let filling_in = s == e;
-        let kind = if filling_in {
+        let kind = if filling_in || own_line {
             // No existing bytes means no quoting *intent* to preserve, which
             // is exactly the state `PlainScalar` denotes to the neighbour rule
-            // below.
+            // below. A span widened to a line start has none either: the leaf
+            // there is the indentation, which `is_block_site` rejects and the
+            // formatter reports as "target site is not a scalar leaf" — which
+            // is why a *string* over a block collection errored while a number
+            // corrupted, the arm disagreeing with itself.
             SyntaxKind::PlainScalar
         } else {
             leaf_kind_at(&self.green, s).ok_or_else(|| {
@@ -865,9 +895,19 @@ impl Document {
         // plain (so there is no quoting *intent* to preserve) and a
         // sibling style dominates the surrounding `BlockMapping`,
         // match the neighbours.
-        let neighbour = sibling_dominant_scalar_kind(&self.green, s)
-            .filter(|_| kind == SyntaxKind::PlainScalar);
-        let entry_col = entry_indent_column(&self.source, s);
+        let neighbour = if own_line {
+            // At a line start the sibling walk resolves the *inner*
+            // collection, so it would hand back the quoting style of the
+            // value being replaced.
+            None
+        } else {
+            sibling_dominant_scalar_kind(&self.green, s).filter(|_| kind == SyntaxKind::PlainScalar)
+        };
+        let entry_col = if own_line {
+            own_line_replacement_column(&self.source, s, self.indent_unit())
+        } else {
+            entry_indent_column(&self.source, s)
+        };
         let in_flow = in_flow_collection(&self.green, s);
         let ctx = SiteContext {
             kind,
@@ -890,9 +930,17 @@ impl Document {
         };
         let fragment = if filling_in {
             fill_in(&fragment)
+        } else if own_line {
+            // The splice starts at the line's first byte, so the fragment
+            // carries the indentation itself. A block literal's body already
+            // sits at `entry_col + 2`; only its header line needs placing.
+            format!("{}{fragment}", " ".repeat(entry_col))
         } else {
             fragment
         };
+        // Last, so it covers the block literal, the single-quoted
+        // multi-line scalar and the hoisted comment above alike.
+        let fragment = respell_breaks(&fragment, document_break(&self.source));
         self.replace_span(s, e, &fragment)
     }
 
@@ -975,6 +1023,11 @@ impl Document {
                 .trim_end_matches('\n')
                 .replace('\n', &format!("\n{pad}"))
         };
+        // The scalar arm's rule, on the arm that renders through the
+        // serializer. It must land *here*, above the candidate: the
+        // oracle proves something only if the bytes it parses are the
+        // bytes that get spliced.
+        let fragment = respell_breaks(&fragment, document_break(&self.source));
         // Oracle before the splice: the candidate must load back as
         // the document with exactly this one path replaced.
         let mut candidate = String::with_capacity(self.source.len() + fragment.len());
@@ -5842,6 +5895,24 @@ fn column_of_key_at(source: &str, value_start: usize) -> Option<usize> {
     }
 }
 
+/// The column a replacement must sit at when the value it replaces
+/// occupies its own lines.
+///
+/// Normally that is the old value's own indent. A block *sequence* is
+/// allowed to sit at its key's own column — `on:` / `- push`, the
+/// GitHub Actions and Ansible idiom — and a value written there does
+/// not re-parse as that key's value, so the answer is one indent step
+/// past the key instead. [`sole_entry_range`] makes the same call when
+/// `remove` empties a sole entry, which is why `on:` / `- push` becomes
+/// `on:` / `  []` rather than `on:` / `[]`.
+///
+/// `line_start` is the first byte of the line the old value begins.
+fn own_line_replacement_column(source: &str, line_start: usize, unit: usize) -> usize {
+    let own = skip_line_indent(source, line_start) - line_start;
+    let key = column_of_key_at(source, line_start).unwrap_or(own);
+    if own <= key { key + unit } else { own }
+}
+
 /// Walk every scalar leaf in the green tree and pick the
 /// dominant *quoted* style. Plain mapping keys overwhelm any
 /// real signal from the values so we deliberately ignore them —
@@ -5924,6 +5995,32 @@ fn document_break(source: &str) -> &'static str {
         }
     }
     if saw { "\r\n" } else { "\n" }
+}
+
+/// A finished fragment with its own line breaks re-spelled in the
+/// document's convention ([`document_break`]).
+///
+/// The emitters are `\n`-separated by design (see
+/// [`indent_continuation_lines`]), and a splice that *adds* a line takes
+/// the document's spelling instead. An insertion learned that in #261;
+/// a replacement grows lines too, whenever the value written has more of
+/// them than the value replaced, and did not.
+///
+/// Applied to the finished fragment rather than inside a formatter, so
+/// that every producer on the path is covered: the block literal's body,
+/// a multi-line single-quoted scalar, and the break a hoisted comment
+/// sits above. [`format_block_literal`] itself stays `\n`-only, because
+/// the insertion path shares it and re-spells later.
+///
+/// A blind substitution is safe because no fragment can carry a raw
+/// `\r`: every string containing one is routed to double-quoted style
+/// and escaped, by `format_string_for_site` and by the serializer alike
+/// (#335). So `\r\r\n` is unreachable.
+fn respell_breaks(fragment: &str, nl: &str) -> String {
+    if nl == "\n" || !fragment.contains('\n') {
+        return fragment.to_owned();
+    }
+    fragment.replace('\n', nl)
 }
 
 /// The line break a splice at `pos` must supply for itself, if any.
@@ -6650,6 +6747,60 @@ pub(super) fn format_double_quoted(s: &str) -> String {
     out.push('"');
     out
 }
+#[cfg(test)]
+mod respell_breaks_tests {
+    //! `respell_breaks` re-spells a *replacement's* breaks;
+    //! `indent_continuation_lines` re-spells an *insertion's*. They are
+    //! the same operation, and the second at indent zero is the first.
+    //!
+    //! Pinned as an equivalence rather than implemented as one, so the
+    //! two halves of #261's rule cannot drift on what re-spelling means
+    //! while still reading as what each call site is doing.
+
+    use super::{document_break, indent_continuation_lines, respell_breaks};
+
+    #[test]
+    fn it_is_indent_continuation_lines_at_column_zero() {
+        for fragment in [
+            "|-\n  one\n  two",
+            "one",
+            "",
+            "\n",
+            "a\n\nb",
+            "|- # note\n  multi\n  line",
+        ] {
+            for nl in ["\n", "\r\n"] {
+                assert_eq!(
+                    respell_breaks(fragment, nl),
+                    indent_continuation_lines(fragment, 0, nl),
+                    "fragment {fragment:?} with break {nl:?}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn an_lf_document_leaves_the_fragment_alone() {
+        assert_eq!(respell_breaks("a\nb", document_break("x: 1\n")), "a\nb");
+    }
+
+    #[test]
+    fn a_crlf_document_respells_every_break() {
+        assert_eq!(
+            respell_breaks("a\nb\nc", document_break("x: 1\r\n")),
+            "a\r\nb\r\nc"
+        );
+    }
+
+    #[test]
+    fn a_mixed_document_takes_the_default() {
+        assert_eq!(
+            respell_breaks("a\nb", document_break("x: 1\r\ny: 2\n")),
+            "a\nb"
+        );
+    }
+}
+
 #[cfg(test)]
 mod absorb_emptied_line_tests {
     //! Direct unit coverage for @zoosky's #294 helper.
