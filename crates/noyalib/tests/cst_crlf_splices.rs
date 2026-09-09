@@ -173,13 +173,133 @@ fn a_document_with_no_break_at_all_gets_lf() {
 }
 
 #[test]
-fn set_value_and_remove_were_never_affected() {
-    // Neither adds a line; these pin that the fix did not disturb them.
-    let mut doc = parse_document("m:\r\n  a: 1\r\n").expect("parse");
-    doc.set_value("m.a", &Value::from(9i64)).expect("set");
-    assert_eq!(doc.source(), "m:\r\n  a: 9\r\n");
-
+fn remove_was_never_affected() {
+    // It adds no line; this pins that the fix did not disturb it.
     let mut doc = parse_document("m:\r\n  a: 1\r\n  b: 2\r\n").expect("parse");
     doc.remove("m.b").expect("remove");
     assert_eq!(doc.source(), "m:\r\n  a: 1\r\n");
+}
+
+#[test]
+fn a_single_line_set_value_was_never_affected() {
+    // A replacement that stays on one line grows no break, so it was
+    // correct before the replacement arm learned the rule below.
+    let mut doc = parse_document("m:\r\n  a: 1\r\n").expect("parse");
+    doc.set_value("m.a", &Value::from(9i64)).expect("set");
+    assert_eq!(doc.source(), "m:\r\n  a: 9\r\n");
+}
+
+// ── Replacement (`set_value`) ───────────────────────────────────────
+//
+// A replacement adds lines whenever the value written has more of them
+// than the value replaced. That is the same event an insertion has, and
+// it takes the same answer.
+
+#[test]
+fn a_multi_line_set_value_is_crlf_on_every_line() {
+    let mut doc = parse_document("a: 1\r\nb: 2\r\n").expect("parse");
+    doc.set_value("a", &Value::from("one\ntwo")).expect("set");
+    assert_eq!(doc.source(), "a: |-\r\n  one\r\n  two\r\nb: 2\r\n");
+    // The value itself is unchanged: the breaks re-spelled are the
+    // document's, not the string's.
+    assert_eq!(
+        doc.as_value().get_path("a").and_then(Value::as_str),
+        Some("one\ntwo")
+    );
+}
+
+#[test]
+fn a_hoisted_comment_keeps_the_documents_break() {
+    // The comment is moved onto the block header (#333) *after* the
+    // formatter returns, so a terminator threaded through the formatter
+    // would miss this one.
+    let mut doc = parse_document("title: Hello # note\r\n").expect("parse");
+    doc.set_value("title", &Value::from("multi\nline"))
+        .expect("set");
+    assert_eq!(doc.source(), "title: |- # note\r\n  multi\r\n  line\r\n");
+}
+
+#[test]
+fn a_single_quoted_multi_line_site_is_crlf_too() {
+    // A line beginning with a space rules out a block literal, so the
+    // fragment comes from the single-quoted formatter instead.
+    let mut doc = parse_document("a: 'p'\r\nb: 2\r\n").expect("parse");
+    doc.set_value("a", &Value::from("x\n y")).expect("set");
+    assert_eq!(doc.source(), "a: 'x\r\n y'\r\nb: 2\r\n");
+    assert!(!has_bare_lf(doc.source()), "{:?}", doc.source());
+    // The value folds to `x y` on the way back, which is what YAML says
+    // a line break inside a quoted scalar means. That is the site's own
+    // semantics and predates this rule; what is pinned here is only that
+    // the break the formatter wrote takes the document's spelling.
+}
+
+#[test]
+fn a_carriage_return_in_the_value_is_escaped_not_doubled() {
+    // The substitution is blind, which is safe only because a fragment
+    // can never carry a raw `\r` (#335). This pins the premise.
+    let mut doc = parse_document("a: 1\r\nb: 2\r\n").expect("parse");
+    doc.set_value("a", &Value::from("x\ry")).expect("set");
+    assert!(!doc.source().contains("\r\r"), "{:?}", doc.source());
+    assert_eq!(
+        doc.as_value().get_path("a").and_then(Value::as_str),
+        Some("x\ry")
+    );
+}
+
+#[test]
+fn a_collection_replacement_that_grows_is_crlf_on_every_line() {
+    let mut doc = parse_document("tags:\r\n  - a\r\nname: x\r\n").expect("parse");
+    let value = Value::Sequence(vec![Value::from("a"), Value::from("b"), Value::from("c")]);
+    doc.set_value("tags", &value).expect("set");
+    assert!(!has_bare_lf(doc.source()), "{:?}", doc.source());
+    assert_eq!(
+        doc.source(),
+        "tags:\r\n  - a\r\n  - b\r\n  - c\r\nname: x\r\n"
+    );
+}
+
+#[test]
+fn a_collection_replacement_of_the_same_line_count_is_still_clean() {
+    let mut doc = parse_document("tags:\r\n  - a\r\nname: x\r\n").expect("parse");
+    doc.set_value("tags", &Value::Sequence(vec![Value::from("z")]))
+        .expect("set");
+    assert_eq!(doc.source(), "tags:\r\n  - z\r\nname: x\r\n");
+}
+
+#[test]
+fn a_flow_collection_replacement_is_still_one_line() {
+    let mut doc = parse_document("tags: [a]\r\nname: x\r\n").expect("parse");
+    doc.set_value(
+        "tags",
+        &Value::Sequence(vec![Value::from("a"), Value::from("b")]),
+    )
+    .expect("set");
+    assert!(!has_bare_lf(doc.source()), "{:?}", doc.source());
+}
+
+#[test]
+fn an_lf_document_is_unchanged_by_the_set_value_respelling() {
+    let mut doc = parse_document("a: 1\nb: 2\n").expect("parse");
+    doc.set_value("a", &Value::from("one\ntwo")).expect("set");
+    assert_eq!(doc.source(), "a: |-\n  one\n  two\nb: 2\n");
+}
+
+#[test]
+fn a_mixed_document_keeps_the_lf_default_for_set_value() {
+    // Mixed input has no convention to honour, so the replacement takes
+    // the same default every other splice takes there.
+    let mut doc = parse_document("a: 1\r\nb: 2\n").expect("parse");
+    doc.set_value("a", &Value::from("one\ntwo")).expect("set");
+    // The `\r\n` after `two` is the document's own byte, outside the
+    // replaced span; the two breaks the fragment grew are the default.
+    assert_eq!(doc.source(), "a: |-\n  one\n  two\r\nb: 2\n");
+}
+
+/// A line feed with no carriage return before it.
+fn has_bare_lf(source: &str) -> bool {
+    let bytes = source.as_bytes();
+    bytes
+        .iter()
+        .enumerate()
+        .any(|(i, b)| *b == b'\n' && (i == 0 || bytes[i - 1] != b'\r'))
 }
