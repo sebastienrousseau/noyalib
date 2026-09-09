@@ -893,6 +893,9 @@ impl Document {
         } else {
             fragment
         };
+        // Last, so it covers the block literal, the single-quoted
+        // multi-line scalar and the hoisted comment above alike.
+        let fragment = respell_breaks(&fragment, document_break(&self.source));
         self.replace_span(s, e, &fragment)
     }
 
@@ -975,6 +978,11 @@ impl Document {
                 .trim_end_matches('\n')
                 .replace('\n', &format!("\n{pad}"))
         };
+        // The scalar arm's rule, on the arm that renders through the
+        // serializer. It must land *here*, above the candidate: the
+        // oracle proves something only if the bytes it parses are the
+        // bytes that get spliced.
+        let fragment = respell_breaks(&fragment, document_break(&self.source));
         // Oracle before the splice: the candidate must load back as
         // the document with exactly this one path replaced.
         let mut candidate = String::with_capacity(self.source.len() + fragment.len());
@@ -5926,6 +5934,32 @@ fn document_break(source: &str) -> &'static str {
     if saw { "\r\n" } else { "\n" }
 }
 
+/// A finished fragment with its own line breaks re-spelled in the
+/// document's convention ([`document_break`]).
+///
+/// The emitters are `\n`-separated by design (see
+/// [`indent_continuation_lines`]), and a splice that *adds* a line takes
+/// the document's spelling instead. An insertion learned that in #261;
+/// a replacement grows lines too, whenever the value written has more of
+/// them than the value replaced, and did not.
+///
+/// Applied to the finished fragment rather than inside a formatter, so
+/// that every producer on the path is covered: the block literal's body,
+/// a multi-line single-quoted scalar, and the break a hoisted comment
+/// sits above. [`format_block_literal`] itself stays `\n`-only, because
+/// the insertion path shares it and re-spells later.
+///
+/// A blind substitution is safe because no fragment can carry a raw
+/// `\r`: every string containing one is routed to double-quoted style
+/// and escaped, by `format_string_for_site` and by the serializer alike
+/// (#335). So `\r\r\n` is unreachable.
+fn respell_breaks(fragment: &str, nl: &str) -> String {
+    if nl == "\n" || !fragment.contains('\n') {
+        return fragment.to_owned();
+    }
+    fragment.replace('\n', nl)
+}
+
 /// The line break a splice at `pos` must supply for itself, if any.
 ///
 /// [`end_of_line`] returns the byte after the line's `\n`, or the end
@@ -6650,6 +6684,60 @@ pub(super) fn format_double_quoted(s: &str) -> String {
     out.push('"');
     out
 }
+#[cfg(test)]
+mod respell_breaks_tests {
+    //! `respell_breaks` re-spells a *replacement's* breaks;
+    //! `indent_continuation_lines` re-spells an *insertion's*. They are
+    //! the same operation, and the second at indent zero is the first.
+    //!
+    //! Pinned as an equivalence rather than implemented as one, so the
+    //! two halves of #261's rule cannot drift on what re-spelling means
+    //! while still reading as what each call site is doing.
+
+    use super::{document_break, indent_continuation_lines, respell_breaks};
+
+    #[test]
+    fn it_is_indent_continuation_lines_at_column_zero() {
+        for fragment in [
+            "|-\n  one\n  two",
+            "one",
+            "",
+            "\n",
+            "a\n\nb",
+            "|- # note\n  multi\n  line",
+        ] {
+            for nl in ["\n", "\r\n"] {
+                assert_eq!(
+                    respell_breaks(fragment, nl),
+                    indent_continuation_lines(fragment, 0, nl),
+                    "fragment {fragment:?} with break {nl:?}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn an_lf_document_leaves_the_fragment_alone() {
+        assert_eq!(respell_breaks("a\nb", document_break("x: 1\n")), "a\nb");
+    }
+
+    #[test]
+    fn a_crlf_document_respells_every_break() {
+        assert_eq!(
+            respell_breaks("a\nb\nc", document_break("x: 1\r\n")),
+            "a\r\nb\r\nc"
+        );
+    }
+
+    #[test]
+    fn a_mixed_document_takes_the_default() {
+        assert_eq!(
+            respell_breaks("a\nb", document_break("x: 1\r\ny: 2\n")),
+            "a\nb"
+        );
+    }
+}
+
 #[cfg(test)]
 mod absorb_emptied_line_tests {
     //! Direct unit coverage for @zoosky's #294 helper.

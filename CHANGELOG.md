@@ -7,6 +7,21 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Fixed
+
+- **A replacement wrote LF into a CRLF document.** `set_value` with a
+  multi-line string gave a CRLF file a bare line feed per line the
+  replacement grew, and so did a collection replacement with more lines
+  than the value it replaced. The insertion mutators learned to take the
+  document's own line break in #261; a replacement adds lines too,
+  whenever the value written has more of them than the value replaced,
+  and it did not. The finished fragment is now re-spelled at the splice,
+  which covers the block literal, a multi-line single-quoted scalar and
+  the comment hoisted onto a block header alike. The emitters stay
+  LF-separated, as the insertion path requires. A replacement that keeps
+  the line count, a flow collection, an LF document and a document that
+  already mixes terminators are all unchanged.
+
 ## [v0.0.43] - 2026-09-08
 
 ### Changed
