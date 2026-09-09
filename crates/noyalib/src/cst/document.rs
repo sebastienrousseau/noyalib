@@ -825,14 +825,17 @@ impl Document {
         // folded scalar to a plain one) without changing the loaded
         // document (#337). `write_span` has already vetted the path, so
         // alias refusals and path errors are unaffected.
-        {
+        let segments = parse_query_path(path);
+        let target_is_collection = {
             self.ensure_cache();
             let cache = self.cache.borrow();
             let (root, _) = cache.as_ref().expect("ensure_cache populated");
-            if typed_value_at(root, &parse_query_path(path)) == Some(value) {
+            let current = typed_value_at(root, &segments);
+            if current == Some(value) {
                 return Ok(());
             }
-        }
+            matches!(current, Some(Value::Sequence(_) | Value::Mapping(_)))
+        };
         // A collection value replaces a collection node in the node's
         // own style — flow stays flow, block stays block (#328). The
         // scalar formatter below cannot spell one, so branch off here.
@@ -845,16 +848,43 @@ impl Document {
         // give. (An equal value already returned above: a no-op is
         // harmless wherever it points.)
         self.refuse_inside_aliased_anchor("set_value", path, s)?;
+        // A block collection occupies its own lines, and the resolver
+        // widens its span to the first of them
+        // ([`extend_to_line_start`]) so that a *read* slice is uniformly
+        // indented and re-parses to the value it denotes. A scalar
+        // spliced over that span therefore starts where the collection's
+        // line started, which is the key's own column: `k:` / `  a: 1`
+        // came back as `k:` / `5`. This parser reads that; PyYAML and
+        // libyaml reject it, and one level down it surfaces as an
+        // "inconsistent indentation" error over a document that has
+        // none.
+        //
+        // The value goes where the collection's content sat instead, one
+        // indent step past the key when the collection sat at the key's
+        // own column. That is the correction `remove` already makes when
+        // it empties a sole entry, and it is what `set_value` already
+        // does for a scalar that was on its own line (`k:` / `  hello`
+        // becomes `k:` / `  5`): the new value goes where the old value's
+        // content began. This is the one span that had been widened past
+        // that rule.
+        let own_line = target_is_collection
+            && !segments.is_empty()
+            && s != e
+            && s == start_of_line(&self.source, s);
         // An empty span is an implicit null's insertion point, not a value to
         // overwrite: there is no scalar leaf there to read a style from, and
         // no `: ` separator either, since the span starts right after the
         // indicator. Everything else about the site — the neighbours, the
         // column — is read the same way.
         let filling_in = s == e;
-        let kind = if filling_in {
+        let kind = if filling_in || own_line {
             // No existing bytes means no quoting *intent* to preserve, which
             // is exactly the state `PlainScalar` denotes to the neighbour rule
-            // below.
+            // below. A span widened to a line start has none either: the leaf
+            // there is the indentation, which `is_block_site` rejects and the
+            // formatter reports as "target site is not a scalar leaf" — which
+            // is why a *string* over a block collection errored while a number
+            // corrupted, the arm disagreeing with itself.
             SyntaxKind::PlainScalar
         } else {
             leaf_kind_at(&self.green, s).ok_or_else(|| {
@@ -865,9 +895,19 @@ impl Document {
         // plain (so there is no quoting *intent* to preserve) and a
         // sibling style dominates the surrounding `BlockMapping`,
         // match the neighbours.
-        let neighbour = sibling_dominant_scalar_kind(&self.green, s)
-            .filter(|_| kind == SyntaxKind::PlainScalar);
-        let entry_col = entry_indent_column(&self.source, s);
+        let neighbour = if own_line {
+            // At a line start the sibling walk resolves the *inner*
+            // collection, so it would hand back the quoting style of the
+            // value being replaced.
+            None
+        } else {
+            sibling_dominant_scalar_kind(&self.green, s).filter(|_| kind == SyntaxKind::PlainScalar)
+        };
+        let entry_col = if own_line {
+            own_line_replacement_column(&self.source, s, self.indent_unit())
+        } else {
+            entry_indent_column(&self.source, s)
+        };
         let in_flow = in_flow_collection(&self.green, s);
         let ctx = SiteContext {
             kind,
@@ -890,6 +930,11 @@ impl Document {
         };
         let fragment = if filling_in {
             fill_in(&fragment)
+        } else if own_line {
+            // The splice starts at the line's first byte, so the fragment
+            // carries the indentation itself. A block literal's body already
+            // sits at `entry_col + 2`; only its header line needs placing.
+            format!("{}{fragment}", " ".repeat(entry_col))
         } else {
             fragment
         };
@@ -5848,6 +5893,24 @@ fn column_of_key_at(source: &str, value_start: usize) -> Option<usize> {
         }
         cursor = prev_start - 1;
     }
+}
+
+/// The column a replacement must sit at when the value it replaces
+/// occupies its own lines.
+///
+/// Normally that is the old value's own indent. A block *sequence* is
+/// allowed to sit at its key's own column — `on:` / `- push`, the
+/// GitHub Actions and Ansible idiom — and a value written there does
+/// not re-parse as that key's value, so the answer is one indent step
+/// past the key instead. [`sole_entry_range`] makes the same call when
+/// `remove` empties a sole entry, which is why `on:` / `- push` becomes
+/// `on:` / `  []` rather than `on:` / `[]`.
+///
+/// `line_start` is the first byte of the line the old value begins.
+fn own_line_replacement_column(source: &str, line_start: usize, unit: usize) -> usize {
+    let own = skip_line_indent(source, line_start) - line_start;
+    let key = column_of_key_at(source, line_start).unwrap_or(own);
+    if own <= key { key + unit } else { own }
 }
 
 /// Walk every scalar leaf in the green tree and pick the

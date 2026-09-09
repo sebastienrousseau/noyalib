@@ -295,6 +295,19 @@ fn a_mixed_document_keeps_the_lf_default_for_set_value() {
     assert_eq!(doc.source(), "a: |-\n  one\n  two\r\nb: 2\n");
 }
 
+#[test]
+fn a_scalar_over_a_block_collection_is_crlf_too() {
+    // The own-line replacement path is a fresh multi-line producer, so
+    // it meets the rule above.
+    let mut doc = parse_document("k:\r\n  a: 1\r\nafter: 1\r\n").expect("parse");
+    doc.set_value("k", &Value::from("one\ntwo")).expect("set");
+    assert_eq!(
+        doc.source(),
+        "k:\r\n  |-\r\n    one\r\n    two\r\nafter: 1\r\n"
+    );
+    assert!(!has_bare_lf(doc.source()), "{:?}", doc.source());
+}
+
 /// A line feed with no carriage return before it.
 fn has_bare_lf(source: &str) -> bool {
     let bytes = source.as_bytes();
