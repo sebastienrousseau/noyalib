@@ -108,7 +108,7 @@ impl Document {
     /// ```
     #[must_use]
     pub fn comments_at(&self, path: &str) -> CommentBundle {
-        let Some((start, end)) = self.span_at(path) else {
+        let Some((start, end)) = self.comment_anchor_span(path) else {
             return CommentBundle::default();
         };
 
@@ -226,7 +226,7 @@ impl Document {
                  an inline comment is a single line"
             )));
         }
-        let Some((start, end)) = self.span_at(path) else {
+        let Some((start, end)) = self.comment_anchor_span(path) else {
             return Err(Error::Parse(format!(
                 "set_inline_comment: path `{path}` did not resolve to a node"
             )));
@@ -277,7 +277,7 @@ impl Document {
     /// assert_eq!(doc.source(), "port: 8080\n");
     /// ```
     pub fn remove_inline_comment(&mut self, path: &str) -> Result<()> {
-        let Some((_start, end)) = self.span_at(path) else {
+        let Some((_start, end)) = self.comment_anchor_span(path) else {
             return Ok(());
         };
         let Some(c) = self.comments_at(path).inline else {
@@ -403,7 +403,7 @@ impl Document {
                 "leading comment: `{path}` does not address a block-mapping key"
             )));
         };
-        let Some((vstart, vend)) = self.span_at(path) else {
+        let Some((vstart, vend)) = self.comment_anchor_span(path) else {
             return Err(Error::Parse(format!(
                 "leading comment: `{path}` did not resolve to a value"
             )));
@@ -551,7 +551,7 @@ impl Document {
                  comments split on `\n` only"
             )));
         }
-        let Some((start, end)) = self.span_at(path) else {
+        let Some((start, end)) = self.comment_anchor_span(path) else {
             return Err(Error::Parse(format!(
                 "set_comment: path `{path}` does not resolve"
             )));
@@ -622,7 +622,7 @@ impl Document {
     }
 
     fn remove_comment_inner(&mut self, path: &str, position: CommentPosition) -> Result<()> {
-        if self.span_at(path).is_none() {
+        if self.comment_anchor_span(path).is_none() {
             return Err(Error::Parse(format!(
                 "remove_comment: path `{path}` does not resolve"
             )));

@@ -3894,6 +3894,42 @@ fn implicit_null_insertion_point(source: &str, pos: usize) -> Option<(usize, usi
     }
 }
 
+/// The span the comment API anchors on for `path`: the value's own span,
+/// or, when the entry has no value bytes, the point one would be written
+/// at.
+///
+/// An entry written `k:` with nothing after it is an implicit null. It is
+/// a real entry with a key token of its own, and `write_span` has resolved
+/// it since #310/#311, which is what lets `set_value` fill it in. The
+/// comment API never learned the same thing, so a `# todo` sitting beside
+/// such an entry was invisible to `comments_at` and unreachable by the
+/// mutators.
+///
+/// Restricted to entries that have a **key**. A `-` with nothing after it
+/// is the same shape reached by the other indicator, but neither go-yaml
+/// nor ruamel.yaml produces a usable result for it: setting a comment
+/// there orphans the existing one onto a line of its own, and removing the
+/// item leaves it behind. Nobody has a good answer for the sequence case,
+/// so this does not invent one.
+// Issue #425.
+impl Document {
+    pub(super) fn comment_anchor_span(&self, path: &str) -> Option<(usize, usize)> {
+        if let Some(span) = self.span_at(path) {
+            return Some(span);
+        }
+        // No value bytes. Only a mapping entry qualifies, and only when the
+        // indicator is really there to write after.
+        let (_, key_end) = self.key_span(path)?;
+        let rest = self.source.get(key_end..)?;
+        let colon = key_end + rest.find(':')?;
+        if rest[..colon - key_end].trim().is_empty() {
+            implicit_null_insertion_point(&self.source, colon)
+        } else {
+            None
+        }
+    }
+}
+
 /// A value written at an [`implicit_null_insertion_point`], separated from the
 /// indicator it follows.
 fn fill_in(fragment: &str) -> String {
