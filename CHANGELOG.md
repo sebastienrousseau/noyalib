@@ -7,6 +7,19 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Fixed
+
+- **A comment beside an entry with no value was invisible.** An entry
+  written `k:` with nothing after it is an implicit null: a real entry
+  with a key token of its own, which `write_span` has resolved since
+  #310/#311 so that `set_value` can fill it in. The comment API asked for
+  the value's span instead, so a `# todo` sitting right beside the entry
+  was not reported by `comments_at`, both setters refused it, and both
+  removers reported success having done nothing. All four now work, at any
+  depth and at end of input, keeping whatever gutter the author wrote. An
+  empty sequence item is deliberately unchanged, because no implementation
+  has a usable answer there (#425).
+
 ## [v0.0.43] - 2026-09-08
 
 ### Changed
