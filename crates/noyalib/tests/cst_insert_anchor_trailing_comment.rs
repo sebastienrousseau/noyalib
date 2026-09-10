@@ -238,6 +238,105 @@ fn insert_entry_keeps_a_comment_inside_the_block() {
     );
 }
 
+// --- A keep-chomped block scalar's blank lines are content --------
+
+// `|+` and `>+` keep the blank lines at the end of a block scalar, so
+// those lines are the value rather than trivia below it — which is why
+// `trim_value_span` hands such a span back untrimmed. An anchor walk
+// that skipped them as blank would splice into the middle of the scalar
+// and shorten a value the caller never named: worse than #418, because
+// it changes a value rather than where a comment sits.
+//
+// Each of these asserts the value as well as the bytes. The byte
+// assertion alone cannot see the damage — the lines are still there,
+// just on the wrong side of the new key.
+
+/// The scalar at `path` in the re-parsed document.
+fn scalar_at(source: &str, path: &str) -> String {
+    let v: Value = noyalib::from_str(source).expect("document must re-parse");
+    v[path].as_str().expect("a string").to_owned()
+}
+
+#[test]
+fn a_keep_chomped_literal_keeps_its_trailing_blank() {
+    let out = insert_fragment("a: |+\n  x\n\n", "", "c");
+    assert_eq!(out, "a: |+\n  x\n\nc: 2\n");
+    assert_eq!(
+        scalar_at(&out, "a"),
+        "x\n\n",
+        "the kept blank line is content"
+    );
+}
+
+#[test]
+fn a_keep_chomped_folded_scalar_behaves_the_same() {
+    let out = insert_fragment("a: >+\n  x\n\n", "", "c");
+    assert_eq!(out, "a: >+\n  x\n\nc: 2\n");
+    assert_eq!(scalar_at(&out, "a"), "x\n\n");
+}
+
+#[test]
+fn a_keep_chomped_scalar_keeps_several_trailing_blanks() {
+    let out = insert_fragment("a: |+\n  x\n\n\n", "", "c");
+    assert_eq!(out, "a: |+\n  x\n\n\nc: 2\n");
+    assert_eq!(scalar_at(&out, "a"), "x\n\n\n");
+}
+
+#[test]
+fn a_keep_chomped_scalar_below_an_anchor_property_is_found() {
+    // `is_keep_chomped_block_scalar` skips `&anchor` / `!tag` before
+    // looking for the indicator, and the span walk has to reach it the
+    // same way or the property hides the `|+`.
+    let out = insert_fragment("a: &an |+\n  x\n\n", "", "c");
+    assert_eq!(out, "a: &an |+\n  x\n\nc: 2\n");
+    assert_eq!(scalar_at(&out, "a"), "x\n\n");
+}
+
+#[test]
+fn a_comment_after_a_keep_chomped_scalar_still_stays_last() {
+    // Both rules at once: the blank belongs to the scalar, the comment
+    // does not belong to the entry. The new key goes between them.
+    let out = insert_fragment("a: |+\n  x\n\n# trailing\n", "", "c");
+    assert_eq!(out, "a: |+\n  x\n\nc: 2\n# trailing\n");
+    assert_eq!(scalar_at(&out, "a"), "x\n\n");
+}
+
+#[test]
+fn a_comment_indented_into_a_keep_chomped_scalar_is_its_content() {
+    // `# in` is indented to the scalar's own column, so YAML reads it as
+    // literal text, not as a comment. It must travel with the value.
+    let out = insert_fragment("a: |+\n  x\n  # in\n\n", "", "c");
+    assert_eq!(out, "a: |+\n  x\n  # in\n\nc: 2\n");
+    assert_eq!(scalar_at(&out, "a"), "x\n# in\n\n");
+}
+
+#[test]
+fn a_nested_keep_chomped_scalar_is_found_through_its_parent() {
+    // The anchor here is `m`, whose value is a mapping; the keep-chomped
+    // scalar is one level down. The blank still belongs to it, so the
+    // question has to be asked of the whole span rather than of the
+    // anchor's own value.
+    let out = insert_fragment("m:\n  a: |+\n    x\n\n", "m", "c");
+    assert_eq!(out, "m:\n  a: |+\n    x\n\n  c: 2\n");
+    let v: Value = noyalib::from_str(&out).expect("document must re-parse");
+    assert_eq!(v["m"]["a"].as_str().expect("a string"), "x\n\n");
+}
+
+#[test]
+fn the_other_chomping_modes_are_unaffected() {
+    // Clip (`|`) and strip (`|-`) own no trailing blank, so nothing
+    // about them changes and the new key follows the content directly.
+    assert_eq!(insert_fragment("a: |\n  x\n", "", "c"), "a: |\n  x\nc: 2\n");
+    assert_eq!(
+        insert_fragment("a: |-\n  x\n", "", "c"),
+        "a: |-\n  x\nc: 2\n"
+    );
+    assert_eq!(
+        insert_fragment("a: |\n  x\n# trailing\n", "", "c"),
+        "a: |\n  x\nc: 2\n# trailing\n"
+    );
+}
+
 // --- set_path reaches the same anchor -----------------------------
 
 #[test]

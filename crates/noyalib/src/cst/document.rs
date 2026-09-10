@@ -5927,7 +5927,15 @@ fn walk_collections(node: &GreenNode, visit: &mut dyn FnMut(SyntaxKind)) {
 ///   and a sibling goes before it. At the entry's own column it could be
 ///   read either way, and going before is what the anchor did until #288.
 ///
-/// The line holding `start` always counts, because the entry begins there.
+/// The line holding `start` always counts, because the entry begins there,
+/// and a blank line is trivia — except inside a keep-chomped block scalar,
+/// which is handled before the walk begins.
+///
+/// Indentation here counts a tab as one column, where `column_of_key_at`
+/// counts leading spaces only. The two can therefore disagree about a
+/// tab-indented comment. That is deliberate: a tab is not valid YAML
+/// indentation (#428), so there is no right column to give it, and this
+/// keeps the measure total rather than guessing.
 ///
 /// Only comments outside the entry move, which is the reported class: a
 /// document-final comment after a nested block, at the mapping's own
@@ -5936,6 +5944,14 @@ fn walk_collections(node: &GreenNode, visit: &mut dyn FnMut(SyntaxKind)) {
 /// and not what the report is about.
 // Issue #418, a regression from #288.
 fn anchor_line_end(source: &str, start: usize, end: usize, column: usize) -> usize {
+    // A blank line is trivia only when it cannot be content. Inside a
+    // keep-chomped block scalar (`|+`, `>+`) the trailing blanks *are*
+    // the value — which is why `trim_value_span` hands such a span back
+    // untrimmed — and dropping them here would splice into the middle of
+    // the scalar and silently shorten a value the caller never named.
+    // The scalar can sit anywhere under the anchor, not only at its top,
+    // so the question is asked of the whole span.
+    let blank_may_be_content = span_holds_keep_chomped_scalar(source, start, end);
     let mut best = end_of_line(source, start);
     let mut i = best;
     while i < end {
@@ -5943,7 +5959,7 @@ fn anchor_line_end(source: &str, start: usize, end: usize, column: usize) -> usi
         let line = &source[i..line_end];
         let text = line.trim();
         let owned = if text.is_empty() {
-            false
+            blank_may_be_content
         } else if text.starts_with('#') {
             line.len() - line.trim_start_matches([' ', '\t']).len() > column
         } else {
@@ -5958,6 +5974,40 @@ fn anchor_line_end(source: &str, start: usize, end: usize, column: usize) -> usi
         i = line_end;
     }
     best
+}
+
+/// Whether `start..end` holds the header of a keep-chomped block scalar,
+/// which makes a blank line inside that span possibly the scalar's own
+/// content rather than trivia.
+///
+/// Deliberately errs toward `true`: a `|+` inside a quoted string counts,
+/// and so does one under an entry whose blanks are not in fact its own.
+/// The asymmetry decides the direction. A false `true` places a new key
+/// below a blank line, which is a matter of taste; a false `false`
+/// truncates a value, which is data loss.
+fn span_holds_keep_chomped_scalar(source: &str, start: usize, end: usize) -> bool {
+    let bytes = source.as_bytes();
+    let mut i = start;
+    while i < end {
+        let line_end = end_of_line(source, i).min(end);
+        // `is_keep_chomped_block_scalar` expects the value's first byte,
+        // so offer it each indicator on the line in turn; it rejects
+        // anything that is not a header.
+        for (offset, _) in bytes[i..line_end]
+            .iter()
+            .enumerate()
+            .filter(|(_, b)| matches!(**b, b'|' | b'>'))
+        {
+            if is_keep_chomped_block_scalar(source, i + offset, line_end) {
+                return true;
+            }
+        }
+        if line_end == i {
+            break;
+        }
+        i = line_end;
+    }
+    false
 }
 
 /// Position of the byte immediately past the next `\n` at or after
