@@ -7,6 +7,44 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Fixed
+
+- **A new key was inserted below a comment that belonged to the
+  document, not to the entry above it** (#418, a regression in v0.0.25).
+
+  ```yaml
+  a:
+    b:
+      n: 1
+  # trailing
+  ```
+
+  `insert_entry("a", "c", "2")` wrote `c` *after* `# trailing`, so a
+  comment closing the document silently became the new key's head
+  comment. Reading the comments back reported it against `a.c`.
+
+  The anchor an insert splices after comes from the loader's span tree,
+  which runs on to the next token and sweeps up the blank and comment
+  lines below an entry. The green tree trims a block collection to its
+  content instead, so the two disagree, and only for this shape: a
+  mapping whose last entry is a *nested block collection* with a comment
+  beneath it. A scalar entry sweeps up nothing, which is why a flat
+  mapping was never affected. The anchor moved to the span tree in
+  v0.0.25 (#288, PR #289) to fix insertion into mappings with `.` in
+  their keys; this side of it was not noticed.
+
+  The insert now walks the anchor's lines and stops at the last one the
+  entry actually owns. Indentation decides: a comment indented strictly
+  deeper than the anchor's key is inside its block and keeps the new
+  sibling below it, while a comment at the key's own column or shallower
+  is not, and the sibling goes above. A blank line is trivia too, except
+  where it can be content: inside a keep-chomped block scalar (`|+`,
+  `>+`) the trailing blanks are the value, and the walk leaves a span
+  holding one alone rather than splicing into the middle of it.
+  `insert_entry`, `insert_entry_value` and `set_path` all reach that
+  anchor, so all three are fixed, at either nesting depth and under
+  CRLF.
+
 ## [v0.0.43] - 2026-09-08
 
 ### Changed
