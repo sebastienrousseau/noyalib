@@ -37,8 +37,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   entry actually owns. Indentation decides: a comment indented strictly
   deeper than the anchor's key is inside its block and keeps the new
   sibling below it, while a comment at the key's own column or shallower
-  is not, and the sibling goes above. Both `insert_entry` and
-  `insert_entry_value` are fixed, at either nesting depth and under CRLF.
+  is not, and the sibling goes above. `insert_entry`, `insert_entry_value`
+  and `set_path` all reach that anchor, so all three are fixed, at either
+  nesting depth and under CRLF.
 
 ## [v0.0.43] - 2026-09-08
 

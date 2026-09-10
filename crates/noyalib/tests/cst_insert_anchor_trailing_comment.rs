@@ -4,8 +4,8 @@
 //! Where a new key lands when the mapping's last entry is a nested
 //! block collection followed by a comment.
 //!
-//! `insert_entry` and `insert_entry_value` splice after the anchor
-//! entry's last line. Two span sources disagree about where that entry
+//! `insert_entry`, `insert_entry_value` and `set_path` all splice after
+//! the anchor entry's last line. Two span sources disagree about where that entry
 //! stops: the green tree trims a block collection to its content, while
 //! the loader's span tree runs on to the next token and sweeps up the
 //! blank and comment lines beneath it. Since v0.0.25 the anchor has come
@@ -42,6 +42,15 @@ fn insert_fragment(src: &str, map: &str, key: &str) -> String {
     let mut doc = parse_document(src).expect("source must parse");
     doc.insert_entry(map, key, "2")
         .expect("insert must succeed");
+    doc.source().to_owned()
+}
+
+/// `set_path`, which the report names as a third way in. It creates the
+/// missing levels and hands the outermost to `insert_entry_value`.
+fn set_path(src: &str, path: &str) -> String {
+    let mut doc = parse_document(src).expect("source must parse");
+    doc.set_path(path, &Value::from("2"))
+        .expect("set_path must succeed");
     doc.source().to_owned()
 }
 
@@ -147,9 +156,11 @@ fn a_comment_indented_inside_the_block_keeps_the_new_key_below_it() {
 
 #[test]
 fn a_comment_at_the_anchors_own_column_is_not_inside_it() {
-    // The tie. A comment aligned with the entries could be read either
-    // way; going above is what the anchor did before v0.0.25, and it
-    // keeps the comment adjacent to whatever follows it.
+    // A comment aligned with the entries could be read either way in
+    // principle. The report settles it: it names this shape as part of
+    // the defect and expects the new key above. That is also what the
+    // anchor did before v0.0.25, and it keeps the comment adjacent to
+    // whatever follows it.
     assert_eq!(
         insert("a:\n  b:\n    n: 1\n  # sibling\n", "a", "c"),
         "a:\n  b:\n    n: 1\n  c: \"2\"\n  # sibling\n"
@@ -161,7 +172,7 @@ fn a_comment_at_the_anchors_own_column_is_not_inside_it() {
 #[test]
 fn a_root_key_goes_above_a_document_final_comment() {
     // The root's own column is 0 and so is the comment's, so this case
-    // rides on the same tie-break as the one above.
+    // rides on the same rule as the one above.
     assert_eq!(
         insert("a:\n  b:\n    n: 1\n# trailing\n", "", "c"),
         "a:\n  b:\n    n: 1\nc: \"2\"\n# trailing\n"
@@ -224,5 +235,36 @@ fn insert_entry_keeps_a_comment_inside_the_block() {
     assert_eq!(
         insert_fragment("a:\n  b:\n    n: 1\n    # inner\n", "a", "c"),
         "a:\n  b:\n    n: 1\n    # inner\n  c: 2\n"
+    );
+}
+
+// --- set_path reaches the same anchor -----------------------------
+
+#[test]
+fn set_path_lands_above_the_comment_too() {
+    assert_eq!(
+        set_path("a:\n  b:\n    n: 1\n# trailing\n", "a.c"),
+        "a:\n  b:\n    n: 1\n  c: \"2\"\n# trailing\n"
+    );
+}
+
+#[test]
+fn set_path_at_the_root_lands_above_the_comment_too() {
+    // The root shape from the report's follow-up: the root mapping's last
+    // entry is `a`, whose value is a nested block, so the root has the
+    // defect for the same reason a nested mapping does.
+    assert_eq!(
+        set_path("a:\n  b: 1\n# trailing\n", "z"),
+        "a:\n  b: 1\nz: \"2\"\n# trailing\n"
+    );
+}
+
+#[test]
+fn set_path_creating_several_levels_lands_above_the_comment() {
+    // The whole created chain goes in one splice at the anchor, so it
+    // moves as a unit rather than straddling the comment.
+    assert_eq!(
+        set_path("a:\n  b:\n    n: 1\n# trailing\n", "a.x.y"),
+        "a:\n  b:\n    n: 1\n  x:\n    y: \"2\"\n# trailing\n"
     );
 }
