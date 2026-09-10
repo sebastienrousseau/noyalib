@@ -3089,7 +3089,11 @@ impl Document {
                  `{MERGE_KEY_SPELLING}` merge — use `set` with a fragment instead"
             ))
         })?;
-        Ok((column, end_of_line(&self.source, end), start))
+        Ok((
+            column,
+            anchor_line_end(&self.source, start, end, column),
+            start,
+        ))
     }
 }
 
@@ -5897,6 +5901,63 @@ fn walk_collections(node: &GreenNode, visit: &mut dyn FnMut(SyntaxKind)) {
             walk_collections(inner, visit);
         }
     }
+}
+
+/// The end of the anchor entry's own last line: the line a new sibling is
+/// spliced after.
+///
+/// Not simply `end_of_line(end)`. The two span sources disagree about
+/// where a nested block collection stops. `resolve_path_in_green` trims it
+/// to its content, but the loader's span tree runs on to the next token,
+/// sweeping up the blank and comment lines that follow. That difference is
+/// invisible for a scalar entry, where there is nothing to sweep, and for
+/// an entry with nothing after it. It shows when the mapping's last entry
+/// is a *nested block collection* with a comment beneath it: the anchor
+/// landed past the comment, so the new key was written after it and the
+/// comment became that key's head comment instead of the document's
+/// (#418).
+///
+/// The last line the entry owns is therefore the last one in `start..end`
+/// that is not blank and not a comment sitting *outside* the entry.
+/// Indentation is what tells those apart, and `column` is the entry's own:
+///
+/// - a comment indented *strictly deeper* than the entry sits inside its
+///   block, so a new sibling goes after it;
+/// - a comment at the entry's own column or shallower is not inside it,
+///   and a sibling goes before it. At the entry's own column it could be
+///   read either way, and going before is what the anchor did until #288.
+///
+/// The line holding `start` always counts, because the entry begins there.
+///
+/// Only comments outside the entry move, which is the reported class: a
+/// document-final comment after a nested block, at the mapping's own
+/// column or at the document's. A comment indented inside the block keeps
+/// the behaviour it has had since #288, which is the better answer there
+/// and not what the report is about.
+// Issue #418, a regression from #288.
+fn anchor_line_end(source: &str, start: usize, end: usize, column: usize) -> usize {
+    let mut best = end_of_line(source, start);
+    let mut i = best;
+    while i < end {
+        let line_end = end_of_line(source, i);
+        let line = &source[i..line_end];
+        let text = line.trim();
+        let owned = if text.is_empty() {
+            false
+        } else if text.starts_with('#') {
+            line.len() - line.trim_start_matches([' ', '\t']).len() > column
+        } else {
+            true
+        };
+        if owned {
+            best = line_end;
+        }
+        if line_end == i {
+            break;
+        }
+        i = line_end;
+    }
+    best
 }
 
 /// Position of the byte immediately past the next `\n` at or after
