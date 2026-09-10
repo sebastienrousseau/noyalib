@@ -5993,12 +5993,20 @@ fn span_holds_keep_chomped_scalar(source: &str, start: usize, end: usize) -> boo
         // `is_keep_chomped_block_scalar` expects the value's first byte,
         // so offer it each indicator on the line in turn; it rejects
         // anything that is not a header.
+        //
+        // Each offer gets a three-byte window rather than the rest of the
+        // line. A header is the indicator plus, in either order, one
+        // indentation digit and one chomping character, so a `+` that
+        // belongs to it is always within two bytes. Handing over the
+        // whole line instead would make a line of `|||...|` cost a scan
+        // per pipe, and this runs on every insert.
         for (offset, _) in bytes[i..line_end]
             .iter()
             .enumerate()
             .filter(|(_, b)| matches!(**b, b'|' | b'>'))
         {
-            if is_keep_chomped_block_scalar(source, i + offset, line_end) {
+            let at = i + offset;
+            if is_keep_chomped_block_scalar(source, at, (at + 3).min(line_end)) {
                 return true;
             }
         }

@@ -337,6 +337,38 @@ fn the_other_chomping_modes_are_unaffected() {
     );
 }
 
+#[test]
+fn an_indentation_indicator_does_not_hide_the_chomping_one() {
+    // A header carries an indentation digit and a chomping character in
+    // either order, so the `+` can be one or two bytes past the
+    // indicator. The span scan looks exactly that far — it cannot look
+    // to the end of the line, or a line dense in `|` would cost a scan
+    // per pipe on every insert — so both orders need saying.
+    for src in ["a: |2+\n  x\n\n", "a: |+2\n  x\n\n", "a: >2+\n  x\n\n"] {
+        let out = insert_fragment(src, "", "c");
+        assert_eq!(
+            scalar_at(&out, "a"),
+            "x\n\n",
+            "the kept blank must survive in {src:?}, got {out:?}"
+        );
+    }
+    // Strip and clip with the same digit own no trailing blank.
+    assert_eq!(
+        insert_fragment("a: |2-\n  x\n", "", "c"),
+        "a: |2-\n  x\nc: 2\n"
+    );
+}
+
+#[test]
+fn a_line_dense_in_indicators_is_not_mistaken_for_a_header() {
+    // The scan offers every `|` on the line to the header predicate.
+    // None of these is one, and the insert must be ordinary.
+    assert_eq!(
+        insert_fragment("a: \"||||||||\"\nb: 1\n", "", "c"),
+        "a: \"||||||||\"\nb: 1\nc: 2\n"
+    );
+}
+
 // --- set_path reaches the same anchor -----------------------------
 
 #[test]
