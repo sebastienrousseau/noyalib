@@ -35,6 +35,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   target site is not a scalar leaf. Flow collections, sequence items and
   the document root are unchanged. See ADR-0010.
 
+=======
+
 - **A tab before a comment is separation, not indentation (#428).**
   Whether `\t# t` parsed depended on the quote style of the line above
   it: `k: 1` accepted it and `k: "1"` rejected it, because the two paths
