@@ -41,6 +41,19 @@ value onto its own lines is a layout decision `set` expresses with a
 fragment. Equal-value writes stay byte no-ops (#337's rule, already
 in place, applies unchanged).
 
+Replacing a **block collection with a scalar** is accepted, and the
+scalar goes where the collection's content sat rather than where its
+span begins. The resolver widens a block collection's span to its
+first line so that a read slice is uniformly indented; a scalar
+spliced over that span would start at the key's own column, which
+this parser reads back and other implementations reject. When the
+collection sat at the key's own column, which a block sequence is
+allowed to do, the scalar goes one indent step past the key instead.
+That is the column `remove` already picks when it empties a sole
+entry, and it keeps `set_value` consistent with what it already does
+for a scalar that was on its own line: the new value goes where the
+old value's content began.
+
 ## Consequences
 
 - **Positive:** `doc.set_value("tags", &value)` now covers the
