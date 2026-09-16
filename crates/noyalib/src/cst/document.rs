@@ -3089,7 +3089,12 @@ impl Document {
                  `{MERGE_KEY_SPELLING}` merge — use `set` with a fragment instead"
             ))
         })?;
-        Ok((column, end_of_line(&self.source, end), start))
+        let line_end = end_of_line(&self.source, end);
+        Ok((
+            column,
+            extend_past_kept_blank_lines(&self.source, start, line_end),
+            start,
+        ))
     }
 }
 
@@ -5951,6 +5956,57 @@ fn start_of_line(source: &str, pos: usize) -> usize {
         i -= 1;
     }
     i
+}
+
+/// Advances past blank lines that a keep-chomped block scalar owns.
+///
+/// A blank line is normally trivia, and a new sibling key may be spliced
+/// in above it. Under `|+` or `>+` it is not trivia — chomping is what
+/// decides, and "keep" means the trailing line breaks are part of the
+/// value. Splicing above them moves them out of the scalar and into the
+/// document, so the key that was asked for is added correctly and a
+/// *different* key's value silently loses a newline (#429).
+///
+/// Nothing fails when that happens: the document still parses, every
+/// byte is still present, and a diff of the raw text looks like an
+/// ordinary insertion. Only the value changed.
+///
+/// The scan is bounded to the anchor entry's own span and only looks for
+/// a header, so it errs toward treating blanks as content. That
+/// direction is the safe one: a false positive puts a new key one line
+/// lower than a reader might expect, which is cosmetic; a false negative
+/// corrupts a value.
+fn extend_past_kept_blank_lines(source: &str, start: usize, line_end: usize) -> usize {
+    if !span_holds_keep_chomped_header(source, start, line_end) {
+        return line_end;
+    }
+    let bytes = source.as_bytes();
+    let mut i = line_end;
+    while i < bytes.len() {
+        let stop = end_of_line(source, i);
+        if !source[i..stop].trim().is_empty() {
+            break;
+        }
+        i = stop;
+        if stop == line_end {
+            break;
+        }
+    }
+    i
+}
+
+/// Whether `start..end` contains a `|+` or `>+` block-scalar header.
+///
+/// Deliberately crude: a `|+` inside a quoted string counts. Getting
+/// this wrong in the permissive direction costs a blank line's placement;
+/// getting it wrong the other way costs a value.
+fn span_holds_keep_chomped_header(source: &str, start: usize, end: usize) -> bool {
+    let end = end.min(source.len());
+    if start >= end {
+        return false;
+    }
+    let region = &source[start..end];
+    region.contains("|+") || region.contains(">+")
 }
 
 fn end_of_line(source: &str, pos: usize) -> usize {
