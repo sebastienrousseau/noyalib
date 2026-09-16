@@ -20,6 +20,62 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   empty sequence item is deliberately unchanged, because no implementation
   has a usable answer there (#425).
 
+- **A replacement wrote LF into a CRLF document.** `set_value` with a
+  multi-line string gave a CRLF file a bare line feed per line the
+  replacement grew, and so did a collection replacement with more lines
+  than the value it replaced. The insertion mutators learned to take the
+  document's own line break in #261; a replacement adds lines too,
+  whenever the value written has more of them than the value replaced,
+  and it did not. The finished fragment is now re-spelled at the splice,
+  which covers the block literal, a multi-line single-quoted scalar and
+  the comment hoisted onto a block header alike. The emitters stay
+  LF-separated, as the insertion path requires. A replacement that keeps
+  the line count, a flow collection, an LF document and a document that
+  already mixes terminators are all unchanged.
+- **A scalar written over a block collection landed at its key's own
+  column.** `set_value("k", 5)` over `k:` / `  a: 1` produced `k:` /
+  `5`, which this parser reads back and PyYAML and libyaml reject; one
+  level down it surfaced as an "inconsistent indentation" error over a
+  document that has none. The resolver widens a block collection's span
+  to its first line so a read slice is uniformly indented, and a scalar
+  spliced over that span started where the line started. The value now
+  goes where the collection's content sat, or one indent step past the
+  key when the collection sat at the key's own column, which is the
+  column `remove` already picks when it empties a sole entry. A string
+  over a block collection writes too, where it used to report that the
+  target site is not a scalar leaf. Flow collections, sequence items and
+  the document root are unchanged. See ADR-0010.
+
+=======
+
+- **A tab before a comment is separation, not indentation (#428).**
+  Whether `\t# t` parsed depended on the quote style of the line above
+  it: `k: 1` accepted it and `k: "1"` rejected it, because the two paths
+  leave the scanner at different `indent` values and the top-level
+  escape in `reject_tab_indentation` is keyed on that. YAML 1.2.2 gives
+  `l-comment ::= s-separate-in-line c-nb-comment-text? b-comment` with
+  `s-white ::= s-space | s-tab` (§6.2, §6.6), so whitespace before `#`
+  is separation and a tab is as legal there as a space. The no-tabs rule
+  is about indentation (§6.1), which a comment line has none of.
+
+  A tab indenting real content is still an error, and block scalars
+  still reject a tab-indented comment through their own separate check —
+  both covered by tests so neither drifts unnoticed.
+
+- **Inserting a key no longer truncates a keep-chomped block scalar
+  (#429).** `insert_entry` spliced the new key at the end of the anchor
+  entry's last line. Under `|+` or `>+` the trailing blank lines *are*
+  the value, so the key landed above them and they moved out of the
+  scalar and into the document: the requested key was added correctly
+  and a different key silently lost a newline.
+
+  Nothing failed when that happened — the document still parsed, every
+  byte was still present, and the raw-text diff looked like an ordinary
+  insertion. Only the value changed. The insertion point now clears
+  blank lines a keep-chomped scalar owns, and errs toward treating them
+  as content: a false positive places a key one line lower, a false
+  negative corrupts a value.
+
 ## [v0.0.43] - 2026-09-08
 
 ### Changed
