@@ -793,6 +793,21 @@ impl<'a> Scanner<'a> {
         if look >= self.input.len() || Self::is_break(self.input[look]) {
             return Ok(());
         }
+        // A comment is not indented content. YAML 1.2.2 gives
+        // `l-comment ::= s-separate-in-line c-nb-comment-text? b-comment`
+        // with `s-white ::= s-space | s-tab` (§6.2, §6.6), so whitespace
+        // before a `#` is *separation*, and a tab is as legal there as a
+        // space. Indentation (§6.1) is what may not contain tabs, and a
+        // comment line has none to satisfy.
+        //
+        // Without this the answer depended on the quote style of the
+        // line above: `"k: 1\n\t# t\n"` parsed and
+        // `"k: \"1\"\n\t# t\n"` did not, because the two paths leave
+        // the scanner at different `indent` values and the top-level
+        // escape below is keyed on that (#428).
+        if self.input[look] == b'#' {
+            return Ok(());
+        }
         let block_indicator = matches!(self.input[look], b'-' | b'?' | b':')
             && (look + 1 >= self.input.len() || Self::is_blank_or_break(self.input[look + 1]));
         if self.indent < 0 && !block_indicator {
