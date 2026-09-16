@@ -1507,22 +1507,57 @@ fn indicator_takes_a_space(value: &Value) -> bool {
 /// block layout exactly when *its* payload does (a tagged mapping/sequence
 /// under a key must be indented one level deeper, the same as an untagged
 /// one — see [`write_value`]'s `Value::Tagged` arm).
+///
+/// Every `__noya_` arm below must predict what [`write_internal_tag`] will
+/// actually emit for that tag. When the two disagree and the writer emits a
+/// block *mapping* while this says inline, the mapping's keys are written at
+/// the parent's column and YAML reads them as siblings of the key they were
+/// meant to be under — the value silently becomes null and its contents move
+/// up a level. `SpaceAfter`/`Commented` around a struct did exactly that
+/// until this function learned to look through them.
 fn needs_block_layout(v: &Value) -> bool {
-    match v {
-        Value::Mapping(m) => !m.is_empty(),
-        Value::Sequence(s) => !s.is_empty(),
-        Value::Tagged(t) if t.tag().as_str() == crate::fmt::MAGIC_ANCHOR_DEF => {
-            if let Value::Sequence(seq) = t.value() {
-                if seq.len() == 2 {
-                    return needs_block_layout(&seq[1]);
-                }
-            }
-            false
+    let Value::Tagged(t) = v else {
+        return match v {
+            Value::Mapping(m) => !m.is_empty(),
+            Value::Sequence(s) => !s.is_empty(),
+            _ => false,
+        };
+    };
+    let inner = t.value();
+    match t.tag().as_str() {
+        // `[id, inner]` — `&id` goes on the key's line, the inner value
+        // lays itself out from there.
+        crate::fmt::MAGIC_ANCHOR_DEF => match inner {
+            Value::Sequence(seq) if seq.len() == 2 => needs_block_layout(&seq[1]),
+            _ => false,
+        },
+        // `*id` is always inline.
+        crate::fmt::MAGIC_ANCHOR_REF => false,
+        // A flow wrapper holding the shape it names emits one line. Holding
+        // anything else, the writer falls back to plain output, and the
+        // layout has to follow the fallback rather than the wrapper's name.
+        crate::fmt::MAGIC_FLOW_SEQ => {
+            !matches!(inner, Value::Sequence(_)) && needs_block_layout(inner)
         }
-        Value::Tagged(t) if !t.tag().as_str().starts_with("__noya_") => {
-            needs_block_layout(t.value())
+        crate::fmt::MAGIC_FLOW_MAP => {
+            !matches!(inner, Value::Mapping(_)) && needs_block_layout(inner)
         }
-        _ => false,
+        // A block-scalar wrapper around a string writes its own `|`/`>`
+        // header; around anything else it falls back the same way.
+        crate::fmt::MAGIC_LIT_STR | crate::fmt::MAGIC_FOLD_STR => {
+            !matches!(inner, Value::String(_)) && needs_block_layout(inner)
+        }
+        // `[inner, comment]` — the comment is appended to whatever `inner`
+        // emits, so the layout is entirely `inner`'s.
+        crate::fmt::MAGIC_COMMENTED => match inner {
+            Value::Sequence(seq) if seq.len() == 2 => needs_block_layout(&seq[0]),
+            other => needs_block_layout(other),
+        },
+        // A trailing blank line does not change how the value itself lays out.
+        crate::fmt::MAGIC_SPACE_AFTER => needs_block_layout(inner),
+        // Any other internal tag falls through to plain output, as does a
+        // user-visible tag.
+        _ => needs_block_layout(inner),
     }
 }
 
@@ -1631,6 +1666,14 @@ fn write_internal_tag(
         crate::fmt::MAGIC_SPACE_AFTER => {
             write_value(output, value, indent, is_root, config, depth)?;
             output.push('\n');
+            // `start_line` opens the next entry with a newline only when the
+            // output does not already end in one, so a single `\n` here is
+            // absorbed and the blank line never appears. Nested values need a
+            // second one to survive that. At the root there is no next entry
+            // to separate from, and one `\n` is simply the terminator.
+            if !is_root {
+                output.push('\n');
+            }
         }
         crate::fmt::MAGIC_ANCHOR_DEF => {
             // value is a sequence [String(id), inner_value]. Emit "&id" before

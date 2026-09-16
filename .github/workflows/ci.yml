@@ -381,10 +381,31 @@ jobs:
     # breach is measuring LLVM's instantiation accounting, not the
     # test suite. 95 keeps the gold-standard promise with enough
     # slack to survive that noise.
+    #
+    # The function floor rose to 96 in v0.0.44. This job measured
+    # 96.57% fn / 94.87% line / 93.51% region on that release, so the
+    # floors keep 0.57 / 0.87 / 0.51 points of slack.
+    #
+    # SET THESE FROM *THIS JOB'S* OUTPUT, NOT A LOCAL RUN. A local
+    # `cargo llvm-cov` is not measuring the same thing: v0.0.44's floors
+    # were first raised to 96/95/94 from a local figure of
+    # 96.52 / 95.05 / 94.28 and the gate went red immediately, because
+    # the local invocation passed an `--ignore-filename-regex` this job
+    # does not, on a different host triple, where `nightly-simd` compiles
+    # code that is `cfg`-ed out here. The two runs did not even agree on
+    # the denominator — 34080 regions locally against 23286 here. Read
+    # the number off a run of this workflow before touching a floor.
+    #
+    # Note what the denominator contains: `#[cfg(test)]` modules inside
+    # `src/` are instrumented and counted like library code, and they are
+    # ~99% covered by construction — about a tenth of the lines here. So
+    # the headline reads above the library's own coverage, and these
+    # floors could be met by adding in-`src` unit tests that test nothing
+    # new. v0.0.44's gain came from covering library code.
     uses: ./.github/workflows/shared-coverage.yml
     with:
       ignore-filename-regex: ''
-      fail-under-functions: 95
+      fail-under-functions: 96
       fail-under-lines: 94
       fail-under-regions: 93
 
@@ -449,7 +470,25 @@ jobs:
     # (scripts/check-readme-examples.sh) is invoked by the shared
     # workflow and must exist in the caller's checkout at the same
     # path.
+    #
+    # Every Markdown file with rust blocks is listed. A doc left off
+    # this list is not checked by anything — `docs/` was in exactly
+    # that position until v0.0.44, and 31 of its blocks had stopped
+    # compiling. Add a file here when you add rust blocks to it.
     uses: ./.github/workflows/shared-readme-examples.yml
+    with:
+      files: |
+        README.md
+        crates/noyalib/README.md
+        docs/ARCHITECTURE.md
+        docs/BENCHMARKS.md
+        docs/COOKBOOK.md
+        docs/GETTING_STARTED.md
+        docs/MIGRATION-FROM-SERDE-SAPHYR.md
+        docs/MIGRATION-FROM-SERDE-YAML-BW.md
+        docs/MIGRATION-FROM-SERDE-YAML.md
+        docs/MIGRATION-FROM-YAML-SPANNED.md
+        docs/USER-GUIDE.md
 
   docs-strict:
     # Dogfooded from shared-rustdoc-strict.yml. The strict

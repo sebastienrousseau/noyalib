@@ -259,7 +259,9 @@ Audit pass: ~30 public items currently lack doc comments; each gets a one-line `
 
 ### 2.1 `build.rs` in `crates/noya-cli/`
 
-```rust
+```rust,ignore
+// A sketch of `noya-cli`'s build.rs — that crate is not a dependency
+// of noyalib, so this block is not compiled here.
 //! Generates man pages and shell completions during `cargo build` so
 //! distro packagers (rpmbuild / dpkg-buildpackage) get the artefacts
 //! without needing a separate `cargo xtask` invocation.

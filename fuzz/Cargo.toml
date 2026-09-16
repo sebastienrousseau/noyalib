@@ -119,3 +119,17 @@ path = "fuzz_targets/fuzz_value_roundtrip.rs"
 test = false
 doc = false
 bench = false
+
+[[bin]]
+name = "fuzz_reader_and_slice"
+path = "fuzz_targets/fuzz_reader_and_slice.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fuzz_borrowing"
+path = "fuzz_targets/fuzz_borrowing.rs"
+test = false
+doc = false
+bench = false

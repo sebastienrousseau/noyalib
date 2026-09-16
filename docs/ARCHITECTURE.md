@@ -196,6 +196,7 @@ Foundation of the `noyafmt` (formatter) and `noyavalidate
 `crates/noyalib/src/value.rs`. The 7-variant enum:
 
 ```rust
+# use noyalib::{Mapping, Number, TaggedValue};
 pub enum Value {
     Null,
     Bool(bool),
@@ -205,6 +206,20 @@ pub enum Value {
     Mapping(Mapping),
     Tagged(Box<TaggedValue>),
 }
+# // Not a copy of the real type — a check that every variant above still
+# // exists on it, so this sketch cannot drift unnoticed.
+# fn exhaustive(v: &noyalib::Value) -> &'static str {
+#     match v {
+#         noyalib::Value::Null => "Null",
+#         noyalib::Value::Bool(_) => "Bool",
+#         noyalib::Value::Number(_) => "Number",
+#         noyalib::Value::String(_) => "String",
+#         noyalib::Value::Sequence(_) => "Sequence",
+#         noyalib::Value::Mapping(_) => "Mapping",
+#         noyalib::Value::Tagged(_) => "Tagged",
+#     }
+# }
+# assert_eq!(exhaustive(&noyalib::Value::Null), "Null");
 ```
 
 `Mapping` wraps `IndexMap<String, Value>` so iteration order
@@ -231,11 +246,17 @@ for the full grammar and the `quote_key` / `push_key` /
 wrapper:
 
 ```rust
+# use noyalib::Location;
 pub struct Spanned<T> {
     pub value: T,
     pub start: Location,
     pub end:   Location,
 }
+# // The real type, with the same three fields reachable by name.
+# let s: noyalib::Spanned<u64> = noyalib::from_str("5")?;
+# let _: (u64, Location, Location) = (s.value, s.start, s.end);
+# // `Location`'s fields are private; these are the accessors.
+# let _ = (s.start.line(), s.start.column(), s.end.index());
 ```
 
 `Location` carries `(line, column, byte_offset)` — 1-indexed
@@ -266,18 +287,23 @@ that emits canonical YAML 1.2 output:
 Emission is configurable via `SerializerConfig`:
 
 ```rust
+# use noyalib::SerializerConfig;
 let cfg = SerializerConfig::new()
     .indent(4)
     .quote_all(true)
     .compact_list_indent(true)        // K8s-style lists
     .document_start(true);
+# let v: noyalib::Value = noyalib::from_str("a:\n  - 1\n")?;
+# let out = noyalib::to_string_value_with_config(&v, &cfg)?;
+# assert!(out.starts_with("---\n"), "document_start not applied: {out:?}");
 ```
 
 ## Streaming deserialiser hot path
 
 The streaming path is roughly:
 
-```rust
+```rust,ignore
+// Shape only: `...` stands for the real visitor calls.
 loop {
     match scanner.next_token()? {
         Token::MappingStart       => visitor.visit_map(...),

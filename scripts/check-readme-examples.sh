@@ -66,7 +66,11 @@ edition = "2024"
 publish = false
 
 [dependencies]
-noyalib = { path = "${NOYALIB_ABS}", features = ["schema", "validate-schema", "figment"] }
+# Every optional surface the docs demonstrate must resolve here,
+# or a correct example fails for want of a feature and looks like
+# a documentation bug. `recovery`, `sval` and `tokio` are all
+# demonstrated in docs/USER-GUIDE.md.
+noyalib = { path = "${NOYALIB_ABS}", features = ["schema", "validate-schema", "figment", "recovery", "sval", "tokio", "miette", "ariadne", "lossless-float", "lossless-u64", "include", "parallel", "compat-serde-yaml"] }
 serde = { version = "1.0", features = ["derive"] }
 # schemars is required for the block that demonstrates
 # `#[derive(JsonSchema)]` — the derive macro emits `::schemars::*`
@@ -104,11 +108,31 @@ process_block() {
     local start_line="$2"
     BLOCK_INDEX=$((BLOCK_INDEX + 1))
 
+    # Honour rustdoc's hidden-line convention. A line beginning `# `
+    # (or bare `#`) is setup rustdoc compiles but does not render, and
+    # docs written for `cargo test --doc` use it to keep an example
+    # readable while still compiling. Stripping the marker here — rather
+    # than dropping the line — keeps the semantics identical to rustdoc.
+    # Without this, a *correct* example that uses the convention is
+    # reported as broken, which is worse than not checking it at all.
+    block_body="$(sed -e 's/^# //' -e 's/^#$//' <<< "${block_body}")"
+
     # Detect whether the block already declares fn main.
     # If not, wrap with `fn main() { ... }` — matches rustdoc.
     local wrapped
     if grep -q '^fn main' <<< "${block_body}"; then
         wrapped="${block_body}"
+    elif grep -qE '^\s*Ok::<[^>]*>\(\(\)\)\s*$|^\s*Ok\(\(\)\)\s*$' <<< "${block_body}"; then
+        # The block already supplies its own return — typically via
+        # rustdoc's hidden `# Ok::<(), noyalib::Error>(())` line. Adding
+        # another `Ok(())` after it is a second tail expression and does
+        # not compile, so a *correct* example would be reported broken.
+        # The block's own error type is preserved by letting it be the
+        # return type rather than forcing `Box<dyn Error>`.
+        wrapped="fn main() -> Result<(), Box<dyn std::error::Error>> {
+${block_body}
+    ;Ok(())
+}"
     else
         wrapped="fn main() -> Result<(), Box<dyn std::error::Error>> {
 ${block_body}
@@ -121,9 +145,9 @@ ${block_body}
 
     local build_output
     if build_output=$(cargo build --manifest-path "${SCRATCH}/Cargo.toml" --quiet 2>&1); then
-        printf '  [ OK  ] block #%d @ README.md:%d\n' "${BLOCK_INDEX}" "${start_line}"
+        printf '  [ OK  ] block #%d @ %s:%d\n' "${BLOCK_INDEX}" "${README}" "${start_line}"
     else
-        printf '  [FAIL ] block #%d @ README.md:%d\n' "${BLOCK_INDEX}" "${start_line}" >&2
+        printf '  [FAIL ] block #%d @ %s:%d\n' "${BLOCK_INDEX}" "${README}" "${start_line}" >&2
         echo "----- block source -----" >&2
         echo "${wrapped}" >&2
         echo "----- rustc output -----" >&2

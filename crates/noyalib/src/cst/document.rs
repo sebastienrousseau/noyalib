@@ -116,6 +116,74 @@ pub enum RepairScope {
     Document,
 }
 
+/// Deliberate failures, for the tests that verify the rollbacks.
+///
+/// Every splicing mutator wraps its edit in the same three-part guard:
+/// splice, re-parse, compare the loaded value against a snapshot taken
+/// before the edit. Each part has a failure arm that restores the
+/// snapshot and reports what went wrong — and each of those arms fires
+/// only when the *mutator's own* logic has produced something wrong,
+/// which is to say never, from outside.
+///
+/// That left the whole safety net untested: nothing confirmed that a
+/// failed splice actually puts the document back. These switches make
+/// the two fallible steps fail on demand so the rollback arms can be
+/// driven and, more to the point, *checked*.
+///
+/// Compiled only under `cfg(test)` — the crate's own test target, which
+/// the coverage job builds and runs like any other. A consumer's build
+/// contains none of it, and neither does the library as an integration
+/// test links it. The switches are thread-local and default to off, so
+/// a test that does not ask for a failure cannot be given one by a test
+/// running beside it.
+#[cfg(test)]
+pub(crate) mod fault {
+    use core::cell::Cell;
+
+    thread_local! {
+        static FAIL_SPLICE: Cell<bool> = const { Cell::new(false) };
+        static FAIL_VALIDATE: Cell<bool> = const { Cell::new(false) };
+    }
+
+    pub(crate) fn splice_should_fail() -> bool {
+        FAIL_SPLICE.with(Cell::get)
+    }
+
+    pub(crate) fn validate_should_fail() -> bool {
+        FAIL_VALIDATE.with(Cell::get)
+    }
+
+    /// Run `f` with [`Document::replace_span`] failing.
+    ///
+    /// The switch is cleared on the way out even if `f` panics, so one
+    /// failing assertion cannot leave the rest of the suite injecting
+    /// failures.
+    pub(crate) fn while_splicing_fails<R>(f: impl FnOnce() -> R) -> R {
+        struct Reset;
+        impl Drop for Reset {
+            fn drop(&mut self) {
+                FAIL_SPLICE.with(|c| c.set(false));
+            }
+        }
+        FAIL_SPLICE.with(|c| c.set(true));
+        let _reset = Reset;
+        f()
+    }
+
+    /// Run `f` with [`Document::validate`] failing.
+    pub(crate) fn while_validation_fails<R>(f: impl FnOnce() -> R) -> R {
+        struct Reset;
+        impl Drop for Reset {
+            fn drop(&mut self) {
+                FAIL_VALIDATE.with(|c| c.set(false));
+            }
+        }
+        FAIL_VALIDATE.with(|c| c.set(true));
+        let _reset = Reset;
+        f()
+    }
+}
+
 impl Document {
     /// Borrow the root [`GreenNode`].
     ///
@@ -327,6 +395,63 @@ impl Document {
     /// regular `Result`. On success, the typed cache is populated
     /// as a side-effect so a subsequent `as_value` call is free.
     ///
+    /// # A structurally invalid fragment commits
+    ///
+    /// The splice is verbatim, so a fragment that is not a well-formed
+    /// YAML node — `"[unclosed"` — is written out and this call still
+    /// returns `Ok(())`. The document is only checked when asked, and
+    /// [`Document::validate`] is how you ask:
+    ///
+    /// ```
+    /// use noyalib::cst::parse_document;
+    ///
+    /// let mut doc = parse_document("m:\n  k: 1\n").unwrap();
+    /// doc.insert_entry("m", "z", "[unclosed").unwrap();                 // accepted
+    /// assert!(doc.validate().is_err());            // and reported here
+    /// ```
+    ///
+    /// Call `validate` before writing the result anywhere, or use
+    /// [`Document::insert_entry_value`] instead: the `_value` mutators render
+    /// the value themselves and cannot produce invalid YAML.
+    ///
+    /// # A structurally invalid fragment commits
+    ///
+    /// The splice is verbatim, so a fragment that is not a well-formed
+    /// YAML node — `"[unclosed"` — is written out and this call still
+    /// returns `Ok(())`. The document is only checked when asked, and
+    /// [`Document::validate`] is how you ask:
+    ///
+    /// ```
+    /// use noyalib::cst::parse_document;
+    ///
+    /// let mut doc = parse_document("xs:\n  - p\n").unwrap();
+    /// doc.push_back("xs", "[unclosed").unwrap();                 // accepted
+    /// assert!(doc.validate().is_err());            // and reported here
+    /// ```
+    ///
+    /// Call `validate` before writing the result anywhere, or use
+    /// [`Document::push_back_value`] instead: the `_value` mutators render
+    /// the value themselves and cannot produce invalid YAML.
+    ///
+    /// # A structurally invalid fragment commits
+    ///
+    /// The splice is verbatim, so a fragment that is not a well-formed
+    /// YAML node — `"[unclosed"` — is written out and this call still
+    /// returns `Ok(())`. The document is only checked when asked, and
+    /// [`Document::validate`] is how you ask:
+    ///
+    /// ```
+    /// use noyalib::cst::parse_document;
+    ///
+    /// let mut doc = parse_document("xs:\n  - p\n").unwrap();
+    /// doc.insert_after("xs[0]", "[unclosed").unwrap();                 // accepted
+    /// assert!(doc.validate().is_err());            // and reported here
+    /// ```
+    ///
+    /// Call `validate` before writing the result anywhere, or use
+    /// [`Document::insert_after_value`] instead: the `_value` mutators render
+    /// the value themselves and cannot produce invalid YAML.
+    ///
     /// # Errors
     ///
     /// Returns the underlying parse error if the source no longer
@@ -357,6 +482,10 @@ impl Document {
     /// assert!(doc.validate().is_ok());
     /// ```
     pub fn validate(&self) -> Result<()> {
+        #[cfg(test)]
+        if fault::validate_should_fail() {
+            return Err(Error::Parse("injected validate failure".into()));
+        }
         if self.cache.borrow().is_some() {
             return Ok(());
         }
@@ -404,6 +533,10 @@ impl Document {
     /// assert_eq!(doc.to_string(), "a: 42\n");
     /// ```
     pub fn replace_span(&mut self, start: usize, end: usize, replacement: &str) -> Result<()> {
+        #[cfg(test)]
+        if fault::splice_should_fail() {
+            return Err(Error::Parse("injected splice failure".into()));
+        }
         if start > end || end > self.source.len() {
             return Err(Error::Parse(format!(
                 "replace_span range {start}..{end} out of bounds (source length {})",
@@ -577,6 +710,25 @@ impl Document {
     /// fragment changed anything elsewhere, the edit is refused and the
     /// document is left untouched. Restructuring the target itself —
     /// scalar to mapping, say — remains allowed.
+    ///
+    /// # A structurally invalid fragment commits
+    ///
+    /// The splice is verbatim, so a fragment that is not a well-formed
+    /// YAML node — `"[unclosed"` — is written out and this call still
+    /// returns `Ok(())`. The document is only checked when asked, and
+    /// [`Document::validate`] is how you ask:
+    ///
+    /// ```
+    /// use noyalib::cst::parse_document;
+    ///
+    /// let mut doc = parse_document("a: 1\nb: 2\n").unwrap();
+    /// doc.set("a", "[unclosed").unwrap();          // accepted
+    /// assert!(doc.validate().is_err());            // and reported here
+    /// ```
+    ///
+    /// Call `validate` before writing the result anywhere, or use
+    /// [`Document::set_value`] and the other `_value` mutators, which
+    /// render the value themselves and cannot produce invalid YAML.
     ///
     /// # Errors
     ///
@@ -7122,5 +7274,240 @@ mod absorb_emptied_line_tests {
         let (ws, we) = absorb_emptied_line(src, s, e);
         assert_eq!(ws, start_of_line(src, s));
         assert_eq!(we, end_of_line(src, e));
+    }
+}
+
+#[cfg(test)]
+mod rollback_invariant_tests {
+    //! What happens when an edit fails halfway.
+    //!
+    //! Every splicing mutator promises the same thing: if the edit
+    //! cannot be completed, the document is left exactly as it was.
+    //! That promise is kept by a rollback arm on each of the three
+    //! fallible steps — the splice, the re-parse, and the comparison
+    //! against the pre-edit value — and none of those arms can be
+    //! reached from outside, because reaching one means the mutator's
+    //! own logic produced something wrong.
+    //!
+    //! So the promise was never checked. These tests use the
+    //! [`super::fault`] switches to fail each step on demand, and then
+    //! assert the part that matters: not that an error came back, but
+    //! that the document is byte-for-byte what it was before.
+
+    use super::fault;
+    use super::{Document, parse_document};
+    use crate::Value;
+
+    /// Carries an inline comment so the comment mutators have
+    /// something to edit; without one they are documented no-ops and
+    /// would never reach a splice at all.
+    const DOC: &str = "a: 1  # beside a\nxs:\n  - p\n  - q\nm:\n  k: 1\n";
+
+    /// The mutators that consult `validate` before accepting an edit
+    /// to [`DOC`]. Which ones do is a property of the *shape* being
+    /// edited as much as the method: `remove` has a documented fast
+    /// path for an entry that owns its line, and takes it here, so it
+    /// is covered separately by
+    /// [`remove_rolls_back_when_it_cannot_take_its_fast_path`]. The
+    /// fragment-splicing mutators re-parse the source directly instead
+    /// — that is the optimistic commit documented on `set`.
+    ///
+    /// Listed rather than inferred so that a mutator quietly dropping
+    /// its `validate` call fails this test instead of passing it.
+    const VALIDATE_GUARDED: &[&str] = &[
+        "rename_key",
+        "swap_items",
+        "move_item",
+        "push_back_value",
+        "insert_after_value",
+        "insert_entry_value",
+        "set_inline_comment",
+        "set_leading_comment",
+        "remove_inline_comment",
+    ];
+
+    /// One mutator, pinned to a fixed path and argument.
+    type Mutator = fn(&mut Document) -> crate::Result<()>;
+
+    /// Every mutator that edits through a splice, as a name and a call.
+    fn mutators() -> Vec<(&'static str, Mutator)> {
+        vec![
+            ("set", |d| d.set("a", "2")),
+            ("set_value", |d| d.set_value("a", &Value::from(2_i64))),
+            ("remove", |d| d.remove("a")),
+            ("rename_key", |d| d.rename_key("a", "z")),
+            ("swap_items", |d| d.swap_items("xs", 0, 1)),
+            ("move_item", |d| d.move_item("xs", 0, 1)),
+            ("push_back", |d| d.push_back("xs", "r")),
+            ("push_back_value", |d| {
+                d.push_back_value("xs", &Value::from("r"))
+            }),
+            ("insert_after", |d| d.insert_after("xs[0]", "r")),
+            ("insert_after_value", |d| {
+                d.insert_after_value("xs[0]", &Value::from("r"))
+            }),
+            ("insert_entry", |d| d.insert_entry("m", "n", "2")),
+            ("insert_entry_value", |d| {
+                d.insert_entry_value("m", "n", &Value::from(2_i64))
+            }),
+            ("set_inline_comment", |d| d.set_inline_comment("a", "c")),
+            ("set_leading_comment", |d| d.set_leading_comment("a", "c")),
+            ("remove_inline_comment", |d| d.remove_inline_comment("a")),
+        ]
+    }
+
+    /// The control: with nothing injected, every one of them succeeds.
+    /// Without this, a mutator that fails for an unrelated reason would
+    /// make the two tests below pass while proving nothing.
+    #[test]
+    fn every_mutator_succeeds_when_nothing_is_injected() {
+        for (name, op) in mutators() {
+            let mut doc = parse_document(DOC).expect("fixture parses");
+            op(&mut doc).unwrap_or_else(|e| {
+                panic!("{name}: fails without any injected fault, so the rollback tests below measure nothing: {e}")
+            });
+        }
+    }
+
+    #[test]
+    fn a_failed_splice_leaves_the_document_byte_for_byte_unchanged() {
+        let mut refused = 0;
+        for (name, op) in mutators() {
+            // Build (and warm) the document outside the injection
+            // scope, so only the mutator's own splice is affected.
+            let mut doc = parse_document(DOC).expect("fixture parses");
+            doc.validate().expect("fixture validates");
+
+            let result = fault::while_splicing_fails(|| op(&mut doc));
+
+            // The invariant is not "it errors" — a mutator may decline
+            // to splice at all. It is that a *reported failure* leaves
+            // nothing behind.
+            if result.is_err() {
+                refused += 1;
+                assert_eq!(
+                    doc.to_string(),
+                    DOC,
+                    "{name}: the splice failed and the document was left edited"
+                );
+            }
+        }
+        assert!(
+            refused >= 10,
+            "only {refused} mutators reported a failed splice; the injection is              probably not reaching them, so this test proves nothing"
+        );
+    }
+
+    #[test]
+    fn a_failed_revalidation_leaves_the_document_byte_for_byte_unchanged() {
+        for (name, op) in mutators() {
+            let mut doc = parse_document(DOC).expect("fixture parses");
+            doc.validate().expect("fixture validates");
+
+            let result = fault::while_validation_fails(|| op(&mut doc));
+
+            if VALIDATE_GUARDED.contains(&name) {
+                assert!(
+                    result.is_err(),
+                    "{name}: re-validation failed and the mutator reported success, \
+                     so its guard is no longer consulting `validate`"
+                );
+            }
+            if result.is_err() {
+                assert_eq!(
+                    doc.to_string(),
+                    DOC,
+                    "{name}: re-validation failed and the document was left edited"
+                );
+            }
+        }
+    }
+
+    /// `remove` skips the guard when the entry owns its line — deleting
+    /// a whole line cannot disturb a neighbour. When it does *not* own
+    /// its line, as inside a flow mapping, the guard arbitrates, and
+    /// that is the path with the rollback on it.
+    #[test]
+    fn remove_rolls_back_when_it_cannot_take_its_fast_path() {
+        const FLOW: &str = "f: {x: 1, y: 2}\ng: 3\n";
+
+        // Control: it succeeds, and only `f.x` goes.
+        let mut doc = parse_document(FLOW).expect("parse");
+        doc.remove("f.x").expect("removing a flow member");
+        let out = doc.to_string();
+        assert!(out.contains("y: 2"), "the sibling was removed too: {out}");
+        assert!(
+            out.contains("g: 3"),
+            "the next entry was removed too: {out}"
+        );
+
+        let mut doc = parse_document(FLOW).expect("parse");
+        doc.validate().expect("fixture validates");
+        let res = fault::while_validation_fails(|| doc.remove("f.x"));
+        assert!(
+            res.is_err(),
+            "re-validation failed and `remove` reported success"
+        );
+        assert_eq!(doc.to_string(), FLOW, "`remove` left the document edited");
+
+        let mut doc = parse_document(FLOW).expect("parse");
+        doc.validate().expect("fixture validates");
+        let res = fault::while_splicing_fails(|| doc.remove("f.x"));
+        assert!(
+            res.is_err(),
+            "the splice failed and `remove` reported success"
+        );
+        assert_eq!(doc.to_string(), FLOW, "`remove` left the document edited");
+    }
+
+    /// After a rolled-back edit the document must still be *usable* —
+    /// a snapshot restored with a stale cache would report the
+    /// pre-rollback value and quietly corrupt the next edit.
+    #[test]
+    fn a_rolled_back_document_still_edits_correctly_afterwards() {
+        for (name, op) in mutators() {
+            let mut doc = parse_document(DOC).expect("fixture parses");
+            doc.validate().expect("fixture validates");
+
+            let _ = fault::while_splicing_fails(|| op(&mut doc));
+
+            // The same mutator, now without the injected failure.
+            op(&mut doc).unwrap_or_else(|e| {
+                panic!("{name}: the document was unusable after a rollback: {e}")
+            });
+            let out = doc.to_string();
+            let reparsed: Value = crate::from_str(&out).unwrap_or_else(|e| {
+                panic!("{name}: post-rollback edit broke the document: {e}\n{out}")
+            });
+            assert_eq!(
+                reparsed,
+                *doc.as_value(),
+                "{name}: the cached value disagrees with the source after a rollback"
+            );
+        }
+    }
+
+    /// The switches must not leak between tests: each helper clears its
+    /// flag on the way out, including on a panic inside the closure.
+    #[test]
+    fn an_injected_failure_is_cleared_even_when_the_closure_panics() {
+        let panicked = std::panic::catch_unwind(|| {
+            fault::while_splicing_fails(|| panic!("deliberate"));
+        });
+        assert!(panicked.is_err(), "the closure was expected to panic");
+        assert!(
+            !fault::splice_should_fail(),
+            "the splice switch stayed on after a panic, which would make every \
+             later test in this thread fail for the wrong reason"
+        );
+
+        let panicked = std::panic::catch_unwind(|| {
+            fault::while_validation_fails(|| panic!("deliberate"));
+        });
+        assert!(panicked.is_err(), "the closure was expected to panic");
+        assert!(
+            !fault::validate_should_fail(),
+            "the validate switch stayed on after a panic"
+        );
     }
 }

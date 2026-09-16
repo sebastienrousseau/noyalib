@@ -19,15 +19,15 @@ yanked = "warn"
 # to be benched too — they were retired in v0.0.6 so `cargo
 # audit` and the OpenSSF Scorecard Vulnerabilities check stay
 # clean without needing per-advisory exemptions.
-ignore = [
-    # proc-macro-error2 is unmaintained (author confirmed). It reaches
-    # us only at build time via validator_derive -> validator (the
-    # `validate` feature); it never ships in a release artefact, so the
-    # advisory is informational for us. No maintained drop-in exists yet
-    # (validator has not migrated off it). Revisit when validator cuts a
-    # release that drops proc-macro-error2.
-    "RUSTSEC-2026-0173",
-]
+# Empty on purpose. An exemption that no longer matches anything is a
+# check that has been switched off without anyone noticing — cargo-deny
+# reports it as `advisory-not-detected`, and the fix is to delete it, not
+# to leave it in place "just in case".
+#
+# RUSTSEC-2026-0173 (proc-macro-error2, unmaintained) was exempted here
+# until v0.0.44. `validator` 0.21 builds on proc-macro-error3, so
+# proc-macro-error2 is no longer in the graph at all.
+ignore = []
 
 [licenses]
 allow = [

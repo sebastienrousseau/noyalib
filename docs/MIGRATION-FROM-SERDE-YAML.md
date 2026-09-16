@@ -178,6 +178,7 @@ If you depend on the legacy behaviour (Docker Compose, GitHub
 Actions, pre-1.2 toolchains), opt back in:
 
 ```rust
+# use noyalib::Value;
 use noyalib::{from_str_with_config, ParserConfig};
 let cfg = ParserConfig::new().legacy_booleans(true);
 let v: Value = from_str_with_config("country: NO\n", &cfg)?;
@@ -190,6 +191,9 @@ assert_eq!(v["country"].as_bool(), Some(false));
 `Result<Value>`. `noyalib` exposes:
 
 ```rust
+# #[derive(serde::Deserialize)]
+# struct MyType { a: i64 }
+# let stream = "a: 1\n---\na: 2\n";
 // Eager parse, returns Vec<T>.
 let docs: Vec<MyType> = noyalib::load_all_as::<MyType>(stream)?;
 
@@ -201,8 +205,12 @@ For very large streams (audit logs, Kubernetes-resource snapshots),
 the parallel path is a drop-in replacement:
 
 ```rust
+# #[derive(serde::Deserialize)]
+# struct MyType { a: i64 }
+# let stream = "a: 1\n---\na: 2\n";
 // Same input, parses each doc concurrently across Rayon.
 let docs: Vec<MyType> = noyalib::parallel::parse(stream)?;
+# assert_eq!(docs.len(), 2);
 ```
 
 Requires the `parallel` feature.
@@ -265,7 +273,7 @@ Cargo can substitute for `serde_yaml`:
 
 ```toml
 [dependencies]
-serde_yaml = { package = "noyalib-serde-yaml", version = "=0.0.43" }
+serde_yaml = { package = "noyalib-serde-yaml", version = "=0.0.44" }
 ```
 
 Every `use serde_yaml::…` keeps compiling and behaving — `<<` stays
