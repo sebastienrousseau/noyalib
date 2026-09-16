@@ -14,6 +14,11 @@
 //! named. That re-scan is quote-aware, which only matters when the
 //! document has quotes *and* brackets in it — the case nothing reached.
 
+// The whole file exercises the `compat::serde_yaml` façade, which only
+// exists behind its own feature. Without this the file is a compile
+// error in every build that does not happen to enable it — which is
+// every feature-matrix job except `--all-features`.
+#![cfg(feature = "compat-serde-yaml")]
 #![allow(missing_docs, clippy::unwrap_used, clippy::expect_used)]
 
 use noyalib::compat::serde_yaml;
