@@ -371,6 +371,16 @@
 // are excluded from coverage instrumentation. Stable builds and
 // regular nightly builds never see the `coverage_attribute`
 // feature flag, so the annotations are no-ops there.
+// Kani injects its own preamble into the crate — `<kani_macro_overrides>`
+// carries a `#[macro_use] extern crate`, which this crate's lint table
+// denies. That table governs code written here; a verifier's generated
+// prelude is not that, and there is no edit to this repository that
+// would satisfy it.
+//
+// Scoped to `cfg(kani)` so the lint keeps its full force everywhere
+// else: a `#[macro_use] extern crate` written by hand still fails to
+// compile.
+#![cfg_attr(kani, allow(macro_use_extern_crate))]
 #![cfg_attr(noyalib_coverage, allow(unstable_features))]
 #![cfg_attr(noyalib_coverage, feature(coverage_attribute))]
 
