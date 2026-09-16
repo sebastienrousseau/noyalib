@@ -35,6 +35,34 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   target site is not a scalar leaf. Flow collections, sequence items and
   the document root are unchanged. See ADR-0010.
 
+- **A tab before a comment is separation, not indentation (#428).**
+  Whether `\t# t` parsed depended on the quote style of the line above
+  it: `k: 1` accepted it and `k: "1"` rejected it, because the two paths
+  leave the scanner at different `indent` values and the top-level
+  escape in `reject_tab_indentation` is keyed on that. YAML 1.2.2 gives
+  `l-comment ::= s-separate-in-line c-nb-comment-text? b-comment` with
+  `s-white ::= s-space | s-tab` (§6.2, §6.6), so whitespace before `#`
+  is separation and a tab is as legal there as a space. The no-tabs rule
+  is about indentation (§6.1), which a comment line has none of.
+
+  A tab indenting real content is still an error, and block scalars
+  still reject a tab-indented comment through their own separate check —
+  both covered by tests so neither drifts unnoticed.
+
+- **Inserting a key no longer truncates a keep-chomped block scalar
+  (#429).** `insert_entry` spliced the new key at the end of the anchor
+  entry's last line. Under `|+` or `>+` the trailing blank lines *are*
+  the value, so the key landed above them and they moved out of the
+  scalar and into the document: the requested key was added correctly
+  and a different key silently lost a newline.
+
+  Nothing failed when that happened — the document still parsed, every
+  byte was still present, and the raw-text diff looked like an ordinary
+  insertion. Only the value changed. The insertion point now clears
+  blank lines a keep-chomped scalar owns, and errs toward treating them
+  as content: a false positive places a key one line lower, a false
+  negative corrupts a value.
+
 ## [v0.0.43] - 2026-09-08
 
 ### Changed
