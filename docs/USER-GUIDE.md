@@ -99,6 +99,15 @@ When the schema isn't fixed at compile time, work with `Value`:
 ```rust
 use noyalib::{from_str, Value};
 
+let yaml = "
+server:
+  port: 8080
+items:
+  - name: first
+    debug: true
+  - name: second
+";
+
 let v: Value = from_str(yaml)?;
 
 // Dot-path traversal.
@@ -163,6 +172,11 @@ the span info is read-side only. Combine with `miette` to render
 the exact offending region:
 
 ```rust
+# use noyalib::Spanned;
+# #[derive(serde::Deserialize)]
+# struct Cfg { port: Spanned<u16>, host: Spanned<String> }
+# let yaml = "port: 80\nhost: api\n";
+# let cfg: Cfg = noyalib::from_str(yaml)?;
 let report = noyalib::diagnostic::spanned_error(
     yaml,
     &cfg.port,
@@ -181,7 +195,7 @@ lenient by design (extras are ignored), `from_str_strict` errors
 out:
 
 ```rust
-#[derive(serde::Deserialize)]
+#[derive(Debug, serde::Deserialize)]
 struct Cfg { port: u16, host: String }
 
 let yaml = "port: 8080\nhost: api\nporrt: 9090\n";
@@ -230,6 +244,8 @@ let cfg = ParserConfig::new()
     .max_alias_expansions(100)            // billion-laughs guard
     .max_depth(64);
 
+let input = "host: api.example.com\nport: 8080\n";
+
 let res: Result<noyalib::Value, _> =
     from_str_with_config(input, &cfg);
 ```
@@ -255,7 +271,10 @@ machine-readable error code. The minimum, no-feature path
 renders a rustc-style snippet:
 
 ```rust
-let err = noyalib::from_str::<Value>("port: [unclosed").unwrap_err();
+use noyalib::Value;
+
+let input = "port: [unclosed";
+let err = noyalib::from_str::<Value>(input).unwrap_err();
 println!("{}", err.format_with_source(input));
 // error: expected ',' or ']'
 //   --> input.yaml:1:7
@@ -268,7 +287,9 @@ Enable `--features miette` to surface this through the
 `miette::Diagnostic` interface — `cargo` / `rustc`-style ANSI
 output, error codes, help text, source-span underlining:
 
-```rust
+```rust,ignore
+// Needs `miette` in *your* Cargo.toml alongside noyalib's `miette`
+// feature, so this block is shown rather than compiled here.
 fn main() -> miette::Result<()> {
     let cfg: Config = noyalib::from_str(yaml)
         .map_err(|e| miette::Report::new(e)
@@ -478,6 +499,10 @@ independent documents (Kubernetes manifests, audit-event
 streams). The eager API:
 
 ```rust
+# use noyalib::Value;
+# #[derive(serde::Deserialize)]
+# struct MyConfig { a: i64 }
+# let stream = "a: 1\n---\na: 2\n";
 use noyalib::{load_all, load_all_as};
 
 // `load_all` yields a lazy iterator of `Result<Value>`; collect it.
@@ -490,6 +515,9 @@ For large streams, the `parallel` feature unlocks linear-with-
 cores throughput:
 
 ```rust
+# #[derive(serde::Deserialize)]
+# struct MyConfig { a: i64 }
+# let stream = "a: 1\n---\na: 2\n";
 // Drop-in for `load_all_as`. Pre-scans `---` boundaries on a
 // single thread, then deserialises each document concurrently.
 let docs: Vec<MyConfig> = noyalib::parallel::parse(stream)?;
@@ -508,7 +536,7 @@ diagnostics list and offer autocomplete on the recoverable
 subtrees.
 
 ```rust
-// Cargo.toml: noyalib = { version = "0.0.43", features = ["recovery"] }
+// Cargo.toml: noyalib = { version = "0.0.44", features = ["recovery"] }
 use noyalib::recovery::parse_lenient;
 
 let half_typed = "name: noyalib\nfeatures: [recovery, sval\n# ^ unclosed\n";
@@ -530,8 +558,10 @@ See [`crates/noyalib/examples/recovery_lenient.rs`](../crates/noyalib/examples/r
 For high-concurrency services parsing YAML from network sources,
 the `tokio` feature lets you skip `spawn_blocking`:
 
-```rust
-// Cargo.toml: noyalib = { version = "0.0.43", features = ["tokio"] }
+```rust,ignore
+// Needs an async runtime and, for pattern 2, `tokio-util` in *your*
+// Cargo.toml, so this block is shown rather than compiled here.
+// Cargo.toml: noyalib = { version = "0.0.44", features = ["tokio"] }
 use noyalib::tokio_async::{from_async_reader_multi, YamlDecoder};
 
 // Pattern 1: drain-and-parse
@@ -554,8 +584,10 @@ cost of serde monomorphisation. The adapter implements
 `sval::Value` for the noyalib value graph so any
 `sval::Stream` consumer can read it:
 
-```rust
-// Cargo.toml: noyalib = { version = "0.0.43", features = ["sval"] }
+```rust,ignore
+// `sval` and the `sval::Stream` you hand it are *your* dependencies,
+// so this block is shown rather than compiled here.
+// Cargo.toml: noyalib = { version = "0.0.44", features = ["sval"] }
 let value: noyalib::Value = noyalib::from_str("name: noyalib")?;
 sval::Value::stream(&value, &mut my_stream)?;
 ```

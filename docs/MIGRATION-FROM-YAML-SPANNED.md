@@ -58,8 +58,10 @@ without typed targets:
 spans on the dynamic path, parse through the CST:
 
 ```rust
+# let input = "server:\n  port: 8080\n  host: localhost\n";
 let doc = noyalib::cst::parse_document(input)?;
 let span = doc.span_at("server.port");  // (start, end) byte offsets
+# assert!(span.is_some());
 ```
 
 ## Function-by-function mapping
@@ -91,6 +93,7 @@ unpack the wrapper.
 layer:
 
 ```rust
+# let input = "host: localhost\nport: 8080\n";
 use noyalib::Spanned;
 
 #[derive(serde::Deserialize)]
@@ -117,6 +120,7 @@ For dynamic-path workloads (where `yaml-spanned` returned a
 spans by path:
 
 ```rust
+# let input = "server:\n  host: localhost\n";
 let doc = noyalib::cst::parse_document(input)?;
 if let Some((start, end)) = doc.span_at("server.host") {
     println!("server.host span: bytes {start}..{end}");

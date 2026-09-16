@@ -143,6 +143,7 @@ table above is the migration. If you want to keep
 that re-exports the noyalib equivalents:
 
 ```rust
+# mod yaml_compat {
 // in src/yaml_compat.rs
 pub use noyalib::{
     from_reader, from_slice, from_str,
@@ -151,6 +152,8 @@ pub use noyalib::{
     ParserConfig as Options,
     SerializerConfig as SerializerOptions,
 };
+# }
+# let _: yaml_compat::Options = yaml_compat::Options::new();
 ```
 
 ## Migration checklist

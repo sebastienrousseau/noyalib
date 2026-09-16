@@ -1,12 +1,12 @@
 # SPDX-FileCopyrightText: 2026 Noyalib
 # SPDX-License-Identifier: MIT OR Apache-2.0
 
-name: shared / README examples (root)
+name: shared / Markdown examples
 
-# Reusable "compile every ```rust block in the workspace-root
-# README" gate. Runs `scripts/check-readme-examples.sh` which
-# extracts every ` ```rust ` code block (excluding `,ignore`)
-# from the caller's root `README.md`, wraps each with `fn main()`
+# Reusable "compile every ```rust block in the caller's Markdown"
+# gate. Runs `scripts/check-readme-examples.sh` which extracts every
+# ` ```rust ` code block (excluding `,ignore`) from each file named
+# by the `files` input, wraps each with `fn main()`
 # if not already present (matches rustdoc's implicit-main
 # behaviour), and compiles them against a scratch project.
 #
@@ -33,13 +33,22 @@ name: shared / README examples (root)
 
 on:
   workflow_call:
+    inputs:
+      files:
+        description: >-
+          Newline-separated Markdown files to check. Defaults to the
+          workspace-root README alone, which is what satellite repos
+          want; noyalib itself passes its `docs/` set too.
+        required: false
+        type: string
+        default: "README.md"
 
 permissions:
   contents: read
 
 jobs:
   check:
-    name: README examples (root)
+    name: Markdown examples
     runs-on: ubuntu-latest
     env:
       CARGO_TARGET_DIR: ${{ github.workspace }}/target-readme-examples
@@ -52,5 +61,16 @@ jobs:
         with:
           workspaces: ". -> target-readme-examples"
           key: readme-examples
-      - name: Compile every rust block in README.md
-        run: bash scripts/check-readme-examples.sh
+      - name: Compile every rust block in each Markdown file
+        # One scratch build per file. A file with no rust blocks is
+        # reported as such rather than skipped silently, so a doc that
+        # stops being checked because its blocks were renamed shows up.
+        run: |
+          set -euo pipefail
+          failed=0
+          while IFS= read -r f; do
+            [ -n "${f}" ] || continue
+            echo "── ${f} ──"
+            README="${f}" bash scripts/check-readme-examples.sh || failed=1
+          done <<< "${{ inputs.files }}"
+          exit "${failed}"

@@ -18,7 +18,11 @@ use noyalib::from_str;
 #[derive(serde::Deserialize)]
 struct Config { name: String, port: u16 }
 
+# if false {
 let cfg: Config = from_str(std::fs::read_to_string("app.yaml")?.as_str())?;
+# }
+# let cfg: Config = from_str("name: api\nport: 8080\n")?;
+# assert_eq!(cfg.port, 8080);
 ```
 
 Example: `hello`, `config_macros`.
@@ -26,6 +30,9 @@ Example: `hello`, `config_macros`.
 ### Refuse a misspelt key instead of defaulting it
 
 ```rust
+# #[derive(serde::Deserialize)]
+# struct Config { name: String, port: u16 }
+# let text = "name: api\nport: 8080\n";
 let cfg: Config = noyalib::from_str_strict(text)?;
 // error: unknown field `retires`, did you mean `retries`?
 ```
@@ -35,7 +42,11 @@ Example: `strict_deserialise`, `suggest`.
 ### Read every document in a stream
 
 ```rust
-for doc in noyalib::load_all::<Manifest>(text)? { deploy(doc)?; }
+# #[derive(serde::Deserialize)]
+# struct Manifest { kind: String }
+# fn deploy(_m: Manifest) -> Result<(), noyalib::Error> { Ok(()) }
+# let text = "kind: Service\n---\nkind: Ingress\n";
+for doc in noyalib::load_all_as::<Manifest>(text)? { deploy(doc)?; }
 ```
 
 Example: `stream`, `read_iterator`. For very large streams split across
@@ -47,6 +58,8 @@ threads: `parallel`.
 use noyalib::Spanned;
 #[derive(serde::Deserialize)]
 struct Rule { name: Spanned<String>, limit: Spanned<u64> }
+# let r: Rule = noyalib::from_str("name: cap\nlimit: 5\n")?;
+# assert_eq!(r.limit.start.line(), 2);
 ```
 
 Example: `source`, `diagnostic_path`, `errors`.
@@ -54,8 +67,9 @@ Example: `source`, `diagnostic_path`, `errors`.
 ### Parse untrusted input with explicit limits
 
 ```rust
+# let untrusted = "a: 1\n";
 let cfg = noyalib::ParserConfig::new().max_depth(32).max_alias_expansions(64);
-let v: noyalib::Value = cfg.from_str(untrusted)?;
+let v: noyalib::Value = noyalib::from_str_with_config(untrusted, &cfg)?;
 ```
 
 Example: `harden_untrusted`, `secure`.
@@ -63,7 +77,8 @@ Example: `harden_untrusted`, `secure`.
 ### Borrow instead of copy
 
 ```rust
-let v: noyalib::BorrowedValue<'_> = noyalib::from_str_borrowed(text)?;
+# let text = "a: 1\n";
+let v: noyalib::borrowed::BorrowedValue<'_> = noyalib::borrowed::from_str_borrowed(text)?;
 ```
 
 Example: `zero_copy_borrow`, `borrow`.
@@ -73,6 +88,9 @@ Example: `zero_copy_borrow`, `borrow`.
 ### Serialise a struct
 
 ```rust
+# #[derive(serde::Serialize)]
+# struct Config { name: String, port: u16 }
+# let cfg = Config { name: "api".into(), port: 8080 };
 let text = noyalib::to_string(&cfg)?;
 ```
 
@@ -88,10 +106,14 @@ path).
 ### Bump one value and keep every other byte
 
 ```rust
+# let text = "version: 0.0.43  # keep this comment\n";
 use noyalib::cst::parse_document;
 let mut doc = parse_document(text)?;
-doc.set("version", "0.0.43")?;
+doc.set("version", "0.0.44")?;
+# assert_eq!(doc.to_string(), "version: 0.0.44  # keep this comment\n");
+# if false {
 std::fs::write("Cargo.yaml", doc.to_string())?;
+# }
 ```
 
 Example: `lossless_edit`, `cst_surgical_edit`, `modify`.
@@ -107,7 +129,10 @@ Example: `cst_wrapped_flow_edit`.
 ### Turn aliases into inline copies before shipping a manifest
 
 ```rust
+# use noyalib::cst::parse_document;
+# let mut doc = parse_document("shared: &shared\n  a: 1\nuse: *shared\n")?;
 let n = doc.materialise_aliases_of("shared")?;
+# assert_eq!(n, 1);
 ```
 
 Example: `anchor_shared`, `alias`.
@@ -121,8 +146,18 @@ Example: `comments`, `comments_at`.
 ### Validate a document against a JSON Schema
 
 ```rust
-let report = noyalib::validate_against_schema(&value, &schema)?;
-for v in report.violations() { eprintln!("{} at {}", v.message, v.path); }
+# let value: noyalib::Value = noyalib::from_str("port: \"nope\"\n")?;
+# let schema: noyalib::Value = noyalib::from_str(
+#     "type: object\nproperties:\n  port:\n    type: integer\n")?;
+// One call, one error: stops at the first violation.
+let ok = noyalib::validate_against_schema(&value, &schema).is_ok();
+
+// Every violation instead, each with the JSON pointer that reached it.
+let compiled = noyalib::CompiledSchema::compile(&schema)?;
+for v in compiled.iter_errors(&value)? {
+    eprintln!("{} at {}", v.message, v.instance_path);
+}
+# assert!(!ok);
 ```
 
 Example: `schema_validation`, `validated_miette`.
@@ -130,7 +165,9 @@ Example: `schema_validation`, `validated_miette`.
 ### Generate a schema from your own types
 
 ```rust
-let schema = noyalib::schema_for::<Config>();
+# #[derive(noyalib::JsonSchema)]
+# struct Config { port: u16 }
+let schema = noyalib::schema_for::<Config>()?;
 ```
 
 Example: `schema`, `schema_ext`, `schema_compiled`.
@@ -147,6 +184,7 @@ Example: `validation` (`coerce_to_schema`), `validation_garde`,
 ```rust
 let v: noyalib::Value = noyalib::from_str("!Color '#ff8800'")?;
 let plain = v.untag();
+# assert_eq!(plain.as_str(), Some("#ff8800"));
 ```
 
 Example: `tags`, `untagged`, `registry`, `variants`.

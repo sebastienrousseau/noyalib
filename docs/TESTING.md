@@ -25,7 +25,9 @@ they compose.
 Every public item carries a runnable example in its docstring. The
 noyalib README is also wired into the doctest sweep via:
 
-```rust
+```rust,ignore
+// `include_str!` resolves relative to the file it appears in, so this
+// only compiles inside the crate it documents.
 #[cfg(doctest)]
 #[doc = include_str!("../README.md")]
 mod readme_doctests {}

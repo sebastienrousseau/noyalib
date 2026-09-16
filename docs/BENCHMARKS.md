@@ -186,6 +186,9 @@ document parse work distributes across the Rayon thread pool.
 (`benches/streaming_vs_value.rs`, `benches/large_doc_soak.rs`)
 
 ```rust
+# #[derive(serde::Deserialize, PartialEq, Debug)]
+# struct MyType { kind: String }
+# let yaml = "kind: a\n---\nkind: b\n";
 // Single-threaded baseline:
 let docs: Vec<MyType> = noyalib::load_all_as(yaml)?;
 
@@ -193,6 +196,7 @@ let docs: Vec<MyType> = noyalib::load_all_as(yaml)?;
 // feature). Drop-in replacement, scales near-linearly with cores
 // on multi-document inputs:
 let docs: Vec<MyType> = noyalib::parallel::parse(yaml)?;
+# assert_eq!(docs.len(), 2);
 ```
 
 Other Rust YAML libraries the comparison table covers run

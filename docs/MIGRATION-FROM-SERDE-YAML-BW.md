@@ -82,7 +82,9 @@ enum shape (8 variants vs 7).
 
 `serde_yaml_bw`'s builder pattern:
 
-```rust
+```rust,ignore
+// The *old* library's API, shown for comparison — `serde_yaml_bw` is
+// not a dependency here, so this block is not compiled.
 use serde_yaml_bw::SerializerBuilder;
 let mut buf = Vec::new();
 let mut ser = SerializerBuilder::default()
@@ -94,11 +96,13 @@ value.serialize(&mut ser)?;
 The noyalib equivalent uses a config struct:
 
 ```rust
+# let value: noyalib::Value = noyalib::from_str("a: 1\n")?;
 use noyalib::SerializerConfig;
 let cfg = SerializerConfig::new();
 // configure cfg as needed
 let mut buf = Vec::new();
 noyalib::to_writer_with_config(&mut buf, &value, &cfg)?;
+# assert_eq!(String::from_utf8(buf)?, "a: 1");
 ```
 
 ### Multi-document streams
@@ -109,13 +113,19 @@ noyalib::to_writer_with_config(&mut buf, &value, &cfg)?;
 into a single `load_all_as` entry point:
 
 ```rust
+# #[derive(serde::Deserialize)]
+# struct Cfg { a: i64 }
+# let input = "a: 1\n---\na: 2\n";
 let docs: Vec<Cfg> = noyalib::load_all_as(input)?;
+# assert_eq!(docs.len(), 2);
 ```
 
 For raw `Value` per document:
 
 ```rust
+# let input = "a: 1\n---\na: 2\n";
 let docs: Vec<noyalib::Value> = noyalib::load_all_as(input)?;
+# assert_eq!(docs.len(), 2);
 ```
 
 ### `Value` shape — 8 variants → 7 variants

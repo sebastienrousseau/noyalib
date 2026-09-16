@@ -381,12 +381,26 @@ jobs:
     # breach is measuring LLVM's instantiation accounting, not the
     # test suite. 95 keeps the gold-standard promise with enough
     # slack to survive that noise.
+    #
+    # Raised in v0.0.44 from 95/94/93 after the measured figures moved to
+    # 96.52 fn / 95.05 line / 94.28 region. Each floor keeps roughly a
+    # point of slack, which is what the instantiation-accounting noise
+    # described above actually costs — a tighter floor measures LLVM, not
+    # the suite.
+    #
+    # Note what the denominator contains: `#[cfg(test)]` modules inside
+    # `src/` are instrumented and counted like library code, and they are
+    # ~99% covered by construction. They are about a tenth of the lines
+    # here, so the headline reads roughly a point above the library's own
+    # coverage. Raising these floors by adding in-`src` unit tests would
+    # therefore move the number without testing anything new; the figures
+    # above came from covering library code.
     uses: ./.github/workflows/shared-coverage.yml
     with:
       ignore-filename-regex: ''
-      fail-under-functions: 95
-      fail-under-lines: 94
-      fail-under-regions: 93
+      fail-under-functions: 96
+      fail-under-lines: 95
+      fail-under-regions: 94
 
   vendor-build:
     # Dogfooded from shared-vendor-offline.yml. Verifies the
@@ -449,7 +463,25 @@ jobs:
     # (scripts/check-readme-examples.sh) is invoked by the shared
     # workflow and must exist in the caller's checkout at the same
     # path.
+    #
+    # Every Markdown file with rust blocks is listed. A doc left off
+    # this list is not checked by anything — `docs/` was in exactly
+    # that position until v0.0.44, and 31 of its blocks had stopped
+    # compiling. Add a file here when you add rust blocks to it.
     uses: ./.github/workflows/shared-readme-examples.yml
+    with:
+      files: |
+        README.md
+        crates/noyalib/README.md
+        docs/ARCHITECTURE.md
+        docs/BENCHMARKS.md
+        docs/COOKBOOK.md
+        docs/GETTING_STARTED.md
+        docs/MIGRATION-FROM-SERDE-SAPHYR.md
+        docs/MIGRATION-FROM-SERDE-YAML-BW.md
+        docs/MIGRATION-FROM-SERDE-YAML.md
+        docs/MIGRATION-FROM-YAML-SPANNED.md
+        docs/USER-GUIDE.md
 
   docs-strict:
     # Dogfooded from shared-rustdoc-strict.yml. The strict

@@ -1,15 +1,24 @@
 [workspace]
 resolver = "2"
 members = ["crates/noyalib"]
-# All four satellites now ship from their own repositories per
-# ADR-0005 workspace split:
-#   - `noyalib-wasm` → https://github.com/sebastienrousseau/noyalib-wasm (since v0.0.12)
-#   - `noyalib-mcp`  → https://github.com/sebastienrousseau/noyalib-mcp  (since v0.0.13)
-#   - `noyalib-lsp`  → https://github.com/sebastienrousseau/noyalib-lsp  (since v0.0.13)
-#   - `noya-cli`     → https://github.com/sebastienrousseau/noya-cli     (since v0.0.13)
+# The satellites now ship from their own repositories per ADR-0005
+# workspace split:
+#   - `noyalib-wasm`       → https://github.com/sebastienrousseau/noyalib-wasm       (since v0.0.12)
+#   - `noyalib-mcp`        → https://github.com/sebastienrousseau/noyalib-mcp        (since v0.0.13)
+#   - `noyalib-lsp`        → https://github.com/sebastienrousseau/noyalib-lsp        (since v0.0.13)
+#   - `noya-cli`           → https://github.com/sebastienrousseau/noya-cli           (since v0.0.13)
+#   - `noyalib-serde-yaml` → https://github.com/sebastienrousseau/noyalib-serde-yaml
 #
-# All four release in strict lockstep at the same `=0.0.X`
-# version as this workspace.
+# All five release in strict lockstep at the same `=0.0.X` version as
+# this workspace. `noyalib-serde-yaml` was missing from this list while
+# pinning `=0.0.X` exactly like the rest, so a release that consulted
+# only this comment would have stranded it a version behind.
+#
+# Release order is not free: the pins are exact and ADR-0005 forbids a
+# `path =` override, so a satellite cannot build against an unpublished
+# version. This workspace publishes first, then the satellites bump to
+# match. Bumping a satellite ahead of the publish leaves it referring to
+# a version that does not exist yet.
 #
 # The `[workspace]` table is retained (as a single-member
 # workspace) to keep root-level `cargo` invocations working

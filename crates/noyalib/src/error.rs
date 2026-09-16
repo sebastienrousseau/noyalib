@@ -1976,3 +1976,162 @@ mod truncate_tests {
         assert_eq!(t.chars().count(), 10);
     }
 }
+
+#[cfg(all(test, feature = "std"))]
+mod relocate_tests {
+    //! `relocate` re-anchors a located error onto the whole input.
+    //!
+    //! The stream readers parse each document from its own slice, so an
+    //! error they raise counts its bytes from that slice. `relocate`
+    //! shifts it onto the full source, and every located variant has to
+    //! be shifted — a variant that falls through unshifted reports a
+    //! position in the wrong document, which is worse than no position
+    //! at all.
+    //!
+    //! It is `pub(crate)` and reached only from the `cst` module, so
+    //! this exercises it directly rather than hoping a CST test happens
+    //! to produce each variant.
+
+    use super::{Error, Location};
+
+    /// `source` is laid out so a shift of `base` lands on line 3.
+    const SOURCE: &str = "first\nsecond\nthird line here\n";
+    const BASE: usize = 13; // start of "third line here"
+
+    /// Build one of each located variant, all pointing at byte 0 of
+    /// their own slice.
+    fn located_variants() -> Vec<(&'static str, Error)> {
+        let at0 = Location::from_index("third line here\n", 0);
+        vec![
+            (
+                "ParseWithLocation",
+                Error::ParseWithLocation {
+                    message: "m".into(),
+                    location: at0,
+                },
+            ),
+            (
+                "DeserializeWithLocation",
+                Error::DeserializeWithLocation {
+                    message: "m".into(),
+                    location: at0,
+                },
+            ),
+            (
+                "UnknownAnchorAt",
+                Error::UnknownAnchorAt {
+                    name: "a".into(),
+                    location: at0,
+                    suggestion: Some(("b".into(), at0)),
+                },
+            ),
+            (
+                "DuplicateKeyAt",
+                Error::DuplicateKeyAt {
+                    key: "k".into(),
+                    path: "p".into(),
+                    location: at0,
+                },
+            ),
+            (
+                "KeyCollisionAt",
+                Error::KeyCollisionAt {
+                    key: "k".into(),
+                    path: "p".into(),
+                    location: at0,
+                },
+            ),
+            (
+                "IntegerOverflow",
+                Error::IntegerOverflow {
+                    location: Some(at0),
+                    path: Some("p".into()),
+                },
+            ),
+            (
+                "NonScalarKey",
+                Error::NonScalarKey {
+                    kind: "sequence",
+                    location: Some(at0),
+                },
+            ),
+        ]
+    }
+
+    #[test]
+    fn every_located_variant_is_shifted_onto_the_whole_source() {
+        for (name, err) in located_variants() {
+            let before = err.location().expect("the fixture variant is located");
+            assert_eq!(before.index(), 0, "{name}: fixture is not at byte 0");
+
+            let after = err
+                .relocate(SOURCE, BASE)
+                .location()
+                .unwrap_or_else(|| panic!("{name}: relocate dropped the location"));
+
+            assert_eq!(after.index(), BASE, "{name}: byte index not shifted");
+            assert_eq!(
+                after.line(),
+                3,
+                "{name}: line not recomputed from the whole source"
+            );
+            assert_eq!(after.column(), 1, "{name}: column not recomputed");
+        }
+    }
+
+    #[test]
+    fn a_base_of_zero_is_the_identity() {
+        for (name, err) in located_variants() {
+            let before = err.to_string();
+            let after = err.relocate(SOURCE, 0);
+            assert_eq!(
+                after.to_string(),
+                before,
+                "{name}: base 0 changed the error"
+            );
+        }
+    }
+
+    #[test]
+    fn an_unlocated_variant_survives_relocation_unchanged() {
+        for (name, err) in [
+            ("Parse", Error::Parse("m".into())),
+            ("Serialize", Error::Serialize("m".into())),
+            ("Custom", Error::Custom("m".into())),
+            ("EndOfStream", Error::EndOfStream),
+            ("RepetitionLimitExceeded", Error::RepetitionLimitExceeded),
+            ("DuplicateKey", Error::DuplicateKey("k".into())),
+            ("UnknownAnchor", Error::UnknownAnchor("a".into())),
+        ] {
+            let before = err.to_string();
+            let kind = err.kind();
+            let after = err.relocate(SOURCE, BASE);
+            assert_eq!(after.to_string(), before, "{name}: message changed");
+            assert_eq!(after.kind(), kind, "{name}: kind changed");
+            assert!(after.location().is_none(), "{name}: gained a location");
+        }
+    }
+
+    /// The suggestion inside `UnknownAnchorAt` carries its own location
+    /// and has to move too — it is the one nested location in the enum,
+    /// and a shift that misses it points at the wrong anchor.
+    #[test]
+    fn the_nested_suggestion_location_is_shifted_too() {
+        let at0 = Location::from_index("third line here\n", 0);
+        let err = Error::UnknownAnchorAt {
+            name: "a".into(),
+            location: at0,
+            suggestion: Some(("b".into(), at0)),
+        };
+        let Error::UnknownAnchorAt { suggestion, .. } = err.relocate(SOURCE, BASE) else {
+            panic!("relocate changed the variant");
+        };
+        let (_, loc) = suggestion.expect("the suggestion was dropped");
+        assert_eq!(
+            loc.index(),
+            BASE,
+            "the suggestion's location was not shifted"
+        );
+        assert_eq!(loc.line(), 3, "the suggestion's line was not recomputed");
+    }
+}
