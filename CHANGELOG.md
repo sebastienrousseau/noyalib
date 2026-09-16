@@ -45,6 +45,19 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   anchor, so all three are fixed, at either nesting depth and under
   CRLF.
 
+- **A replacement wrote LF into a CRLF document.** `set_value` with a
+  multi-line string gave a CRLF file a bare line feed per line the
+  replacement grew, and so did a collection replacement with more lines
+  than the value it replaced. The insertion mutators learned to take the
+  document's own line break in #261; a replacement adds lines too,
+  whenever the value written has more of them than the value replaced,
+  and it did not. The finished fragment is now re-spelled at the splice,
+  which covers the block literal, a multi-line single-quoted scalar and
+  the comment hoisted onto a block header alike. The emitters stay
+  LF-separated, as the insertion path requires. A replacement that keeps
+  the line count, a flow collection, an LF document and a document that
+  already mixes terminators are all unchanged.
+
 - **A tab before a comment is separation, not indentation (#428).**
   Whether `\t# t` parsed depended on the quote style of the line above
   it: `k: 1` accepted it and `k: "1"` rejected it, because the two paths
