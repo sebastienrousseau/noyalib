@@ -295,7 +295,11 @@ impl<'de> serde_core::Deserializer<'de> for &'de Value {
         V: serde_core::de::Visitor<'de>,
     {
         if name == crate::spanned::SPANNED_TYPE_NAME {
-            return visitor.visit_map(crate::de::SpannedMapAccess::new(self, None));
+            // Deserializing straight from a `Value` carries no
+            // `ParserConfig`, so the per-call toggles are off by
+            // definition here — unlike the `from_str` paths, which
+            // now pass their own through.
+            return visitor.visit_map(crate::de::SpannedMapAccess::new(self, None, false, false));
         }
         serde_core::Deserializer::deserialize_map(self, visitor)
     }

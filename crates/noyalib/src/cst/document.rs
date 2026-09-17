@@ -143,6 +143,7 @@ pub(crate) mod fault {
     thread_local! {
         static FAIL_SPLICE: Cell<bool> = const { Cell::new(false) };
         static FAIL_VALIDATE: Cell<bool> = const { Cell::new(false) };
+        static FAIL_ORACLE: Cell<bool> = const { Cell::new(false) };
     }
 
     pub(crate) fn splice_should_fail() -> bool {
@@ -151,6 +152,10 @@ pub(crate) mod fault {
 
     pub(crate) fn validate_should_fail() -> bool {
         FAIL_VALIDATE.with(Cell::get)
+    }
+
+    pub(crate) fn oracle_should_mismatch() -> bool {
+        FAIL_ORACLE.with(Cell::get)
     }
 
     /// Run `f` with [`Document::replace_span`] failing.
@@ -170,6 +175,25 @@ pub(crate) mod fault {
         f()
     }
 
+    /// Run `f` with the post-edit oracle rejecting whatever it is given.
+    ///
+    /// This is the third of the three guards, and the one that catches a
+    /// splice which parses but does not *mean* what was asked for. It
+    /// cannot be reached from outside at all: getting there requires the
+    /// mutator to have produced a document that re-parses into the wrong
+    /// value, which is the bug the guard exists to stop.
+    pub(crate) fn while_the_oracle_rejects<R>(f: impl FnOnce() -> R) -> R {
+        struct Reset;
+        impl Drop for Reset {
+            fn drop(&mut self) {
+                FAIL_ORACLE.with(|c| c.set(false));
+            }
+        }
+        FAIL_ORACLE.with(|c| c.set(true));
+        let _reset = Reset;
+        f()
+    }
+
     /// Run `f` with [`Document::validate`] failing.
     pub(crate) fn while_validation_fails<R>(f: impl FnOnce() -> R) -> R {
         struct Reset;
@@ -182,6 +206,19 @@ pub(crate) mod fault {
         let _reset = Reset;
         f()
     }
+}
+
+/// Whether the post-edit oracle rejects the edit: the document loaded
+/// back differs from the value the mutator said it would produce.
+///
+/// Every guard compares through this so the rollback arms can be driven
+/// in tests; see [`fault::while_the_oracle_rejects`].
+pub(crate) fn oracle_rejects(actual: &Value, expected: &Value) -> bool {
+    #[cfg(test)]
+    if fault::oracle_should_mismatch() {
+        return true;
+    }
+    actual != expected
 }
 
 impl Document {
@@ -1192,7 +1229,7 @@ impl Document {
                  re-parse ({err}); the document was left unchanged"
             ))
         })?;
-        if *reparsed.as_value() != expected {
+        if oracle_rejects(&reparsed.as_value(), &expected) {
             return Err(Error::Parse(format!(
                 "set_value: replacing `{path}` failed the integrity check — the rendered \
                  collection did not load back as the value given; the document was left \
@@ -1361,7 +1398,7 @@ impl Document {
                  mapping and not empty ({e}); the document was left unchanged"
             ))
         })?;
-        if candidate_value != expected {
+        if oracle_rejects(&candidate_value, &expected) {
             return Err(Error::Parse(format!(
                 "set_path: `{path}` cannot be created here — the document's root already \
                  holds a non-mapping value; the document was left unchanged"
@@ -1554,7 +1591,7 @@ impl Document {
                  the document was left unchanged"
             )));
         }
-        if *self.as_value() != expected {
+        if oracle_rejects(&self.as_value(), &expected) {
             *self = snapshot;
             return Err(Error::Parse(format!(
                 "remove: removing `{path}` failed the integrity check — the edit would \
@@ -1983,7 +2020,7 @@ impl Document {
                  unable to re-parse ({e}); the document was left unchanged"
             )));
         }
-        if *self.as_value() != expected {
+        if oracle_rejects(&self.as_value(), &expected) {
             *self = snapshot;
             return Err(Error::Parse(format!(
                 "swap_items: swapping items {i} and {j} of `{path}` failed the integrity \
@@ -2879,7 +2916,7 @@ impl Document {
                  unable to re-parse ({e}); the document was left unchanged"
             )));
         }
-        if *self.as_value() != expected {
+        if oracle_rejects(&self.as_value(), &expected) {
             *self = snapshot;
             return Err(Error::Parse(format!(
                 "insert_entry_value: inserting `{key}` into `{mapping_path}` failed the \
@@ -7333,6 +7370,10 @@ mod rollback_invariant_tests {
     fn mutators() -> Vec<(&'static str, Mutator)> {
         vec![
             ("set", |d| d.set("a", "2")),
+            ("set_path", |d| d.set_path("a", &Value::from(2_i64))),
+            ("set_path new key", |d| {
+                d.set_path("fresh", &Value::from(1_i64))
+            }),
             ("set_value", |d| d.set_value("a", &Value::from(2_i64))),
             ("remove", |d| d.remove("a")),
             ("rename_key", |d| d.rename_key("a", "z")),
@@ -7487,6 +7528,67 @@ mod rollback_invariant_tests {
         }
     }
 
+    /// The third guard: the splice lands, the document re-parses, but it
+    /// does not load back as the value the mutator promised. Unreachable
+    /// from outside by construction — getting there means the mutator
+    /// itself produced the wrong document — so only injection can prove
+    /// that the rollback behind it works.
+    #[test]
+    fn a_rejected_oracle_leaves_the_document_byte_for_byte_unchanged() {
+        let mut refused = 0;
+        for (name, op) in mutators() {
+            let mut doc = parse_document(DOC).expect("fixture parses");
+            doc.validate().expect("fixture validates");
+
+            let result = fault::while_the_oracle_rejects(|| op(&mut doc));
+
+            if result.is_err() {
+                refused += 1;
+                assert_eq!(
+                    doc.to_string(),
+                    DOC,
+                    "{name}: the oracle rejected the edit and the document was left edited"
+                );
+            }
+        }
+        // Seven of the table reach the oracle. The rest either take a
+        // documented fast path that skips it (`remove` on an entry that
+        // owns its line) or re-parse the source directly instead
+        // (`set`'s optimistic commit). The floor is what stops this
+        // test passing vacuously if the injection stops arriving.
+        assert!(
+            refused >= 7,
+            "only {refused} mutators consulted the oracle; the injection is probably \
+             not reaching them, so this test proves nothing"
+        );
+    }
+
+    /// And the document must still be usable afterwards — a snapshot put
+    /// back with a stale cache would report the pre-rollback value.
+    #[test]
+    fn a_document_rolled_back_by_the_oracle_still_edits_correctly() {
+        for (name, op) in mutators() {
+            let mut doc = parse_document(DOC).expect("fixture parses");
+            doc.validate().expect("fixture validates");
+            if fault::while_the_oracle_rejects(|| op(&mut doc)).is_ok() {
+                // This mutator does not consult the oracle, so there was
+                // no rollback to recover from.
+                continue;
+            }
+
+            op(&mut doc)
+                .unwrap_or_else(|e| panic!("{name}: unusable after an oracle rollback: {e}"));
+            let out = doc.to_string();
+            let reparsed: Value = crate::from_str(&out)
+                .unwrap_or_else(|e| panic!("{name}: post-rollback edit broke the document: {e}"));
+            assert_eq!(
+                reparsed,
+                *doc.as_value(),
+                "{name}: the cached value disagrees with the source after an oracle rollback"
+            );
+        }
+    }
+
     /// The switches must not leak between tests: each helper clears its
     /// flag on the way out, including on a panic inside the closure.
     #[test]
@@ -7508,6 +7610,15 @@ mod rollback_invariant_tests {
         assert!(
             !fault::validate_should_fail(),
             "the validate switch stayed on after a panic"
+        );
+
+        let panicked = std::panic::catch_unwind(|| {
+            fault::while_the_oracle_rejects(|| panic!("deliberate"));
+        });
+        assert!(panicked.is_err(), "the closure was expected to panic");
+        assert!(
+            !fault::oracle_should_mismatch(),
+            "the oracle switch stayed on after a panic"
         );
     }
 }

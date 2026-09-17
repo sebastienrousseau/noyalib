@@ -500,7 +500,12 @@ impl<'de> serde_core::Deserializer<'de> for Deserializer<'de> {
         V: serde_core::de::Visitor<'de>,
     {
         if name == crate::spanned::SPANNED_TYPE_NAME {
-            return visitor.visit_map(SpannedMapAccess::new(self.value, self.span_ctx));
+            return visitor.visit_map(SpannedMapAccess::new(
+                self.value,
+                self.span_ctx,
+                self.ignore_binary_tag_for_string,
+                self.plain_scalar_strings,
+            ));
         }
         self.wrap_err(visitor.visit_newtype_struct(self))
     }
@@ -579,7 +584,12 @@ impl<'de> serde_core::Deserializer<'de> for Deserializer<'de> {
         V: serde_core::de::Visitor<'de>,
     {
         if name == crate::spanned::SPANNED_TYPE_NAME {
-            return visitor.visit_map(SpannedMapAccess::new(self.value, self.span_ctx));
+            return visitor.visit_map(SpannedMapAccess::new(
+                self.value,
+                self.span_ctx,
+                self.ignore_binary_tag_for_string,
+                self.plain_scalar_strings,
+            ));
         }
         self.deserialize_map(visitor)
     }
@@ -847,14 +857,28 @@ impl<'de> serde_core::de::VariantAccess<'de> for VariantAccess<'de> {
 pub(crate) struct SpannedMapAccess<'de> {
     value: &'de Value,
     span_ctx: Option<&'de span_context::SpanContext>,
+    /// Carried from the enclosing deserializer. `Spanned<T>` is a
+    /// descent like any other, so the per-call toggles have to survive
+    /// it — building the inner deserializer with `new` dropped them,
+    /// and a `Spanned<String>` field then refused a plain scalar that a
+    /// bare `String` field accepted.
+    ignore_binary_tag_for_string: bool,
+    plain_scalar_strings: bool,
     fields: core::slice::Iter<'static, &'static str>,
 }
 
 impl<'de> SpannedMapAccess<'de> {
-    pub(crate) fn new(value: &'de Value, span_ctx: Option<&'de span_context::SpanContext>) -> Self {
+    pub(crate) fn new(
+        value: &'de Value,
+        span_ctx: Option<&'de span_context::SpanContext>,
+        ignore_binary_tag_for_string: bool,
+        plain_scalar_strings: bool,
+    ) -> Self {
         SpannedMapAccess {
             value,
             span_ctx,
+            ignore_binary_tag_for_string,
+            plain_scalar_strings,
             fields: crate::spanned::SPANNED_FIELDS.iter(),
         }
     }
@@ -888,11 +912,12 @@ impl<'de> serde_core::de::MapAccess<'de> for SpannedMapAccess<'de> {
         let last_field = SPANNED_FIELDS[SPANNED_FIELDS.len() - 1 - (self.fields.len())];
 
         if last_field == SPANNED_FIELD_VALUE {
-            let de = if let Some(ctx) = self.span_ctx {
-                Deserializer::with_span_context(self.value, ctx)
-            } else {
-                Deserializer::new(self.value)
-            };
+            let de = Deserializer::with_options(
+                self.value,
+                self.span_ctx,
+                self.ignore_binary_tag_for_string,
+                self.plain_scalar_strings,
+            );
             return de.wrap_err(seed.deserialize(de));
         }
 

@@ -443,7 +443,7 @@ impl Document {
                  re-parse ({e}); the document was left unchanged"
             )));
         }
-        if *self.as_value() != *expected {
+        if super::document::oracle_rejects(&self.as_value(), expected) {
             *self = snapshot;
             return Err(Error::Parse(format!(
                 "{op}: editing the comment on `{path}` changed the document's data; \

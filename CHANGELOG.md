@@ -5,6 +5,36 @@ All notable changes to this project are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- **`Spanned<T>` dropped the per-call parser toggles.** `ParserConfig`
+  carries two options that reach the value deserializer —
+  `plain_scalar_strings` and `ignore_binary_tag_for_string` — and every
+  descent site propagates them through `Deserializer::descend`, whose
+  doc says "used by every descent site … so the toggles survive the
+  walk". `SpannedMapAccess` was a descent site that did not: it built
+  the inner deserializer with `Deserializer::new` / `with_span_context`,
+  both of which default the toggles to `false`.
+
+  The effect was a silent inconsistency between two fields of the same
+  struct: with `plain_scalar_strings` on, a `String` field read
+  `k: .inf` happily while a `Spanned<String>` field beside it failed
+  with "expected string, found float". The toggles now travel with the
+  access, and the one site that genuinely has no config to carry —
+  deserializing straight from a `Value` — passes `false` explicitly.
+
+### Testing
+
+- The third CST guard is now verified. Each mutator checks its edit
+  three ways — the splice, the re-parse, and an oracle comparing the
+  document against the value it promised — and only the first two could
+  be driven. Every oracle comparison now goes through one helper with a
+  `cfg(test)` switch behind it, so the rollback under the third guard is
+  exercised and asserted (byte-for-byte restoration, and the document
+  still usable afterwards) rather than assumed.
+
 ## [v0.0.44] - 2026-09-16
 
 ### Fixed
