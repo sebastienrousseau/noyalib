@@ -294,3 +294,81 @@ fn a_structurally_invalid_fragment_commits_but_validate_reports_it() {
         );
     }
 }
+
+/// A fragment cannot reshape a sibling — it can only add lines — but it
+/// can write a *second* copy of an existing key, and duplicate keys
+/// collapse when the document is loaded. The shape fingerprint therefore
+/// saw no difference, and `set` returned `Ok` on a document that now
+/// carried two `b` entries:
+///
+/// ```text
+/// a: 2
+/// b: changed      <- injected by the fragment
+/// b:
+///   c: 1
+/// ```
+#[test]
+fn a_fragment_that_shadows_a_sibling_with_a_duplicate_key_is_refused() {
+    for (label, src, frag) in [
+        ("a sibling mapping", "a: 1\nb:\n  c: 1\n", "2\nb: changed"),
+        (
+            "deep inside a sibling",
+            "a: 1\nb:\n  c:\n    d: 1\n",
+            "2\nb:\n  c:\n    d: 999",
+        ),
+        ("a scalar sibling", "a: 1\nb: 2\n", "2\nb: 3"),
+    ] {
+        let mut doc = parse_document(src).expect("parse");
+        let err = doc
+            .set("a", frag)
+            .expect_err(&format!("{label}: the shadowing fragment must be refused"));
+        assert!(
+            err.to_string().contains("duplicate key"),
+            "{label}: the refusal does not say what was wrong: {err}"
+        );
+        assert_eq!(
+            doc.to_string(),
+            src,
+            "{label}: a refused splice edited the document"
+        );
+    }
+}
+
+/// The check is "did this edit introduce a duplicate", not "are there
+/// duplicates" — a document that carries them on purpose stays editable.
+/// Without that distinction the fix would make such documents read-only.
+#[test]
+fn a_document_that_already_has_duplicate_keys_is_still_editable() {
+    let src = "k: 1\nk: 2\nz: 3\n";
+    let mut doc = parse_document(src).expect("parse");
+    doc.set("z", "9")
+        .expect("editing a document with existing duplicates");
+    assert_eq!(doc.to_string(), "k: 1\nk: 2\nz: 9\n");
+}
+
+/// The edits the guard must keep allowing: a plain value, a restructure
+/// of the target itself, and a multi-line block scalar — all of which
+/// add lines without touching anything else.
+#[test]
+fn the_duplicate_check_does_not_refuse_legitimate_edits() {
+    for (label, src, frag, want) in [
+        ("a scalar", "a: 1\nb:\n  c: 1\n", "2", "a: 2\nb:\n  c: 1\n"),
+        (
+            "restructuring the target",
+            "a: 1\nb:\n  c: 1\n",
+            "{x: 1}",
+            "a: {x: 1}\nb:\n  c: 1\n",
+        ),
+        (
+            "a block scalar",
+            "a: 1\nb: 2\n",
+            "|\n  line one\n  line two",
+            "a: |\n  line one\n  line two\nb: 2\n",
+        ),
+    ] {
+        let mut doc = parse_document(src).expect("parse");
+        doc.set("a", frag)
+            .unwrap_or_else(|e| panic!("{label}: {e}"));
+        assert_eq!(doc.to_string(), want, "{label}");
+    }
+}

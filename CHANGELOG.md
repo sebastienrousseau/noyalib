@@ -9,6 +9,36 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Fixed
 
+- **`set` accepted a fragment that shadowed a sibling with a duplicate
+  key.** The method is documented to refuse a fragment that reaches
+  outside the target, and it guards that with a fingerprint of the
+  document's shape with the edited path elided. A spliced fragment can
+  only *add* lines, so it cannot reshape a sibling in place — but it can
+  write a second copy of an existing key, and duplicate keys collapse
+  when the document is loaded, leaving the fingerprint identical:
+
+  ```yaml
+  # set("a", "2\nb: changed") on `a: 1` / `b: {c: 1}` returned Ok
+  a: 2
+  b: changed      # injected by the fragment
+  b:
+    c: 1
+  ```
+
+  The guard now also asks whether the edit *introduced* a duplicate key
+  — clean before and dirty after — rather than whether duplicates exist,
+  so a document that carries them on purpose stays editable.
+
+- **The shape fingerprint never recorded a sibling's shape.** Its walk
+  chose between recursing along the edited path and rendering a subtree
+  whole by testing `next.len() < skip.len()`, which is true in *both*
+  branches (`skip` is never empty there), so the render-whole arm was
+  dead code and every off-path child collapsed to the `<target>` marker.
+  The walk now branches on whether the child is actually on the path.
+
+
+### Fixed
+
 - **`Spanned<T>` dropped the per-call parser toggles.** `ParserConfig`
   carries two options that reach the value deserializer —
   `plain_scalar_strings` and `ignore_binary_tag_for_string` — and every
