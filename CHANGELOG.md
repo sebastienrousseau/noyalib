@@ -9,6 +9,32 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Fixed
 
+- **A leading comment anchored on the value, not the key** (#442, thanks
+  @zoosky). A leading comment decorates the entry, so the line it sits
+  above is the entry's first line — the key's. The comment API measured
+  from the *value* instead, which is the same line only when the value
+  is a scalar, a flow collection or an implicit null. For a block-valued
+  key the value starts on the next line, so the upward walk began one
+  line too low.
+
+  `comments_at("k").before` reported `[]` for a comment sitting directly
+  above `k:`, contradicting the field's own documented contract, and
+  `set_comment(.., Before, ..)` spliced the new comment *inside* the
+  block, where it documented the first child instead.
+
+  Worse, it could claim a comment it did not own: for
+  `k:\n  # about n\n  n: 1\n` the walk started inside the block, so
+  `# about n` was reported as the leading comment of both `k` and `k.n`
+  — and `remove_comment("k", Before)` deleted it. A caller that named
+  `k` destroyed a comment belonging to a key it never mentioned, at
+  `Ok(())`.
+
+  `leading_comment_anchor` now returns the entry's key token when the
+  path names one. Where key and value share a line the anchor moves zero
+  bytes, which is why the scalar, flow, implicit-null, nested-key and
+  sequence-item cases come out byte for byte as before.
+
+
 - **`!!str` was ignored by the borrowed value graph.** The tag is a
   *resolution* tag, not a decoration — it says the scalar is a string —
   and the owned graph honours it. The borrowed reader discarded the tag
@@ -53,8 +79,6 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   dead code and every off-path child collapsed to the `<target>` marker.
   The walk now branches on whether the child is actually on the path.
 
-
-### Fixed
 
 - **`Spanned<T>` dropped the per-call parser toggles.** `ParserConfig`
   carries two options that reach the value deserializer —

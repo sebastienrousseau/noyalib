@@ -122,6 +122,7 @@ fn the_multi_document_readers_agree() {
     );
 }
 
+#[cfg(feature = "parallel")]
 /// `parallel::parse` is a drop-in for `load_all_as` that splits the
 /// stream and deserializes each document concurrently. Concurrency is
 /// exactly where an ordering or boundary mistake hides, so the two must
@@ -158,6 +159,7 @@ fn the_parallel_reader_agrees_with_the_sequential_one() {
     );
 }
 
+#[cfg(feature = "parallel")]
 /// `parallel::values` is the `Value`-typed sibling, and `parallel::split`
 /// the boundary scanner underneath both. A split that loses or merges a
 /// document would show as a count mismatch.
@@ -192,6 +194,9 @@ fn the_parallel_split_finds_the_same_document_boundaries() {
     );
 }
 
+/// The deviations the `compat::serde_yaml` shim documents. Only built
+/// when that optional façade is compiled in.
+#[cfg(feature = "compat-serde-yaml")]
 /// The `serde_yaml` façade is a seventh route, and it is *supposed* to
 /// differ: it parses under `ParserConfig::serde_yaml_compat`, whose
 /// documented job is reproducing serde_yaml 0.9's observable behaviour
@@ -206,6 +211,7 @@ const DOCUMENTED_FACADE_DEVIATIONS: &[(&str, &str)] = &[(
      serde_yaml 0.9 requires an explicit merge step",
 )];
 
+#[cfg(feature = "compat-serde-yaml")]
 #[test]
 fn the_compat_facade_differs_only_where_it_documents() {
     let mut undocumented = Vec::new();
@@ -250,6 +256,7 @@ fn the_compat_facade_differs_only_where_it_documents() {
 
 /// The compat deviations the shim documents, asserted individually so
 /// the façade cannot quietly stop being a drop-in replacement.
+#[cfg(feature = "compat-serde-yaml")]
 #[test]
 fn the_facade_reproduces_serde_yamls_documented_quirks() {
     use noyalib::compat::serde_yaml as syml;
@@ -303,6 +310,7 @@ fn no_reader_panics_or_invents_data_on_a_truncated_stream() {
             let _ = from_slice::<Value>(prefix.as_bytes());
             let _ = from_reader::<_, Value>(prefix.as_bytes());
             let _ = load_all_as::<Value>(prefix);
+            #[cfg(feature = "parallel")]
             let _ = noyalib::parallel::parse::<Value>(prefix);
         }
         let _ = label;
