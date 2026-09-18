@@ -1,8 +1,8 @@
 # SPDX-FileCopyrightText: 2026 Noyalib
 # SPDX-License-Identifier: MIT OR Apache-2.0
 
-# `cargo-about` configuration. Used by `make notice` /
-# `cargo xtask notice` to produce the NOTICE file shipped in
+# `cargo-about` configuration. Used by `make notice` to produce
+# the NOTICE file shipped in
 # every release tarball, .deb, .rpm, and MSI.
 #
 # https://embarkstudios.github.io/cargo-about/
