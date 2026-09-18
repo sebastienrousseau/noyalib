@@ -219,7 +219,9 @@ fn the_feature_table_lists_every_feature() {
             let name = name.trim_end();
             (!name.is_empty()
                 && !line.starts_with([' ', '\t', '#'])
-                && name.chars().all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_'))
+                && name
+                    .chars()
+                    .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_'))
             .then_some(name)
         })
         .collect();
