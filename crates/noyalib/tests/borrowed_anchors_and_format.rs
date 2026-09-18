@@ -55,6 +55,12 @@ fn the_borrowed_graph_coerces_every_scalar_key_kind() {
 /// The owned and borrowed graphs must agree, on and off: a document
 /// that changes meaning depending on which reader you picked would be
 /// worse than either behaviour on its own.
+///
+/// Gated on the feature, not just on the toggle: `lossless_u64_integers`
+/// is a `ParserConfig` field that only exists when `lossless-u64` is on,
+/// so naming it in a default-feature build is a compile error rather
+/// than a skipped assertion.
+#[cfg(feature = "lossless-u64")]
 #[test]
 fn the_unsigned_arm_needs_its_toggle_and_both_graphs_agree() {
     const YAML: &str = "big: 18446744073709551615\nfits: 9223372036854775807\n";
