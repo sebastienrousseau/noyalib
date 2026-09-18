@@ -1,6 +1,13 @@
 <!-- SPDX-FileCopyrightText: 2026 Noyalib -->
 <!-- SPDX-License-Identifier: MIT OR Apache-2.0 -->
 
+<!-- commands-gate: external — this page documents the packaging
+     commands of the satellite repositories (noya-cli's `make install`
+     and `make assets`, its `cargo deb` / `cargo generate-rpm`
+     metadata), which are correctly absent from this repository's
+     Makefile. scripts/check-documented-commands.sh therefore skips it;
+     the commands are verified in the repo that owns them. -->
+
 # Packaging noyalib for a distribution
 
 Written for downstream maintainers (Debian, Fedora, Arch, Nix,
