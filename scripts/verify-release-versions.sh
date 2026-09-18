@@ -175,11 +175,32 @@ for f in snippet_files:
     for line in f.read_text(encoding="utf-8").splitlines():
         if re.search(rf"\b{re.escape(name)}\s*=\s*[\"{{]", line):
             stale.update(v for v in re.findall(r"\d+\.\d+\.\d+", line) if v != version)
-        # The noyalib-serde-yaml drop-in snippet carries its own
-        # `=0.0.X` pin (lockstep: must equal this release). Only the
-        # pin syntax is checked so prose/MSRV mentions do not trip it.
-        if "noyalib-serde-yaml" in line:
-            stale.update(v for v in re.findall(r"=(\d+\.\d+\.\d+)", line) if v != version)
+        # Satellite crates pin the core exactly and move with it
+        # (ADR-0005 strict lockstep), so a snippet telling a reader to
+        # depend on one must name this release too. Matched by shape
+        # rather than by an explicit list: a hardcoded list only had
+        # noyalib-serde-yaml in it, and MIGRATION-WORKSPACE-SPLIT.md
+        # sat on `noyalib-wasm = "=0.0.14"` for 31 releases because
+        # nothing looked at the other satellites. `tag = "vX.Y.Z"` on
+        # a git dependency is caught by the same line scan.
+        if re.search(r"\b(?:noyalib-[a-z][a-z-]*|noya-[a-z][a-z-]*)\s*=\s*[\"{]", line):
+            stale.update(v for v in re.findall(r"\d+\.\d+\.\d+", line) if v != version)
+        # A published image tag and a git tag are install instructions
+        # too. MIGRATION-WORKSPACE-SPLIT.md told readers to `cosign
+        # verify ...:0.0.14` and to `git subtree add ... v0.0.14` in
+        # the same breath as an up-to-date crates.io pin, because the
+        # gate only ever looked at Cargo dependency syntax.
+        stale.update(
+            v for v in re.findall(r"ghcr\.io/[\w./-]+:(\d+\.\d+\.\d+)", line)
+            if v != version
+        )
+        stale.update(
+            v for v in re.findall(
+                r"github\.com/[\w.-]+/(?:noyalib|noyalib-[a-z-]+|noya-[a-z-]+)\s+v(\d+\.\d+\.\d+)",
+                line,
+            )
+            if v != version
+        )
     if stale:
         bad(rel, "mentions " + ", ".join(sorted(stale)))
     else:

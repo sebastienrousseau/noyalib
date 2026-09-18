@@ -5,9 +5,110 @@ All notable changes to this project are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [v0.0.45] - 2026-09-17
+
+### Added
+
+- **`docs/errors.md`** — every error variant, the `ErrorKind` it reports,
+  the stable `code()` a tool can match on, and what raises it. 32
+  variants, 11 kinds.
+
+- **`docs/internals.md`** — the module map (68 modules) and the twelve
+  longest functions, which are where the time goes and where a change
+  is most likely to cost something.
+
+  Both are **generated** from the source by
+  `scripts/generate-reference-docs.sh`, because an inventory maintained
+  by hand is wrong the first time someone adds an item and forgets the
+  document. Generation alone would not be enough — someone can forget to
+  run it — so `tests/reference_docs_are_complete.rs` reads the source
+  and the documents and fails when they disagree, in *both* directions:
+  a variant or module missing from a document, and a document naming
+  something that no longer exists. Both documents are compiled by the
+  same CI gate as the rest of `docs/`.
+
+### Changed
+
+- Dependencies brought to their latest releases. `ariadne` 0.5 → 0.6 and
+  `garde` 0.22 → 0.23 are major bumps for a `0.x` crate; the adapters and
+  their examples were checked to still render and validate identically,
+  not merely to compile. `serde-saphyr` 1.2 → 1.3, `memchr` 2.8.2 →
+  2.8.3, `smallvec` 1.16.0 → 1.16.1, and the cargo-vet exemptions moved
+  with them.
+
 
 ### Fixed
+
+- **A leading comment anchored on the value, not the key** (#442, thanks
+  @zoosky). A leading comment decorates the entry, so the line it sits
+  above is the entry's first line — the key's. The comment API measured
+  from the *value* instead, which is the same line only when the value
+  is a scalar, a flow collection or an implicit null. For a block-valued
+  key the value starts on the next line, so the upward walk began one
+  line too low.
+
+  `comments_at("k").before` reported `[]` for a comment sitting directly
+  above `k:`, contradicting the field's own documented contract, and
+  `set_comment(.., Before, ..)` spliced the new comment *inside* the
+  block, where it documented the first child instead.
+
+  Worse, it could claim a comment it did not own: for
+  `k:\n  # about n\n  n: 1\n` the walk started inside the block, so
+  `# about n` was reported as the leading comment of both `k` and `k.n`
+  — and `remove_comment("k", Before)` deleted it. A caller that named
+  `k` destroyed a comment belonging to a key it never mentioned, at
+  `Ok(())`.
+
+  `leading_comment_anchor` now returns the entry's key token when the
+  path names one. Where key and value share a line the anchor moves zero
+  bytes, which is why the scalar, flow, implicit-null, nested-key and
+  sequence-item cases come out byte for byte as before.
+
+
+- **`!!str` was ignored by the borrowed value graph.** The tag is a
+  *resolution* tag, not a decoration — it says the scalar is a string —
+  and the owned graph honours it. The borrowed reader discarded the tag
+  before resolving, so a document saying explicitly that a value is a
+  string handed back a number:
+
+  ```text
+  a: !!str 1
+    from_str::<Value>        -> String("1")
+    from_str_borrowed        -> Number(Integer(1))
+  ```
+
+  Found by running one corpus through every pair of readers and
+  requiring them to agree, rather than by testing each against what it
+  should say.
+
+
+- **`set` accepted a fragment that shadowed a sibling with a duplicate
+  key.** The method is documented to refuse a fragment that reaches
+  outside the target, and it guards that with a fingerprint of the
+  document's shape with the edited path elided. A spliced fragment can
+  only *add* lines, so it cannot reshape a sibling in place — but it can
+  write a second copy of an existing key, and duplicate keys collapse
+  when the document is loaded, leaving the fingerprint identical:
+
+  ```yaml
+  # set("a", "2\nb: changed") on `a: 1` / `b: {c: 1}` returned Ok
+  a: 2
+  b: changed      # injected by the fragment
+  b:
+    c: 1
+  ```
+
+  The guard now also asks whether the edit *introduced* a duplicate key
+  — clean before and dirty after — rather than whether duplicates exist,
+  so a document that carries them on purpose stays editable.
+
+- **The shape fingerprint never recorded a sibling's shape.** Its walk
+  chose between recursing along the edited path and rendering a subtree
+  whole by testing `next.len() < skip.len()`, which is true in *both*
+  branches (`skip` is never empty there), so the render-whole arm was
+  dead code and every off-path child collapsed to the `<target>` marker.
+  The walk now branches on whether the child is actually on the path.
+
 
 - **`Spanned<T>` dropped the per-call parser toggles.** `ParserConfig`
   carries two options that reach the value deserializer —

@@ -59,7 +59,6 @@ path = [
     "docs/**",
     "crates/noyalib/README.md",
     "crates/noyalib/tests/README.md",
-    "crates/noyalib/docs/**",
     # All five satellites carry their own REUSE.toml:
     #   - noyalib-wasm       → https://github.com/sebastienrousseau/noyalib-wasm
     #   - noyalib-mcp        → https://github.com/sebastienrousseau/noyalib-mcp

@@ -45,7 +45,7 @@ to crates.io as before:
 
 ```toml
 [dependencies]
-noyalib = "0.0.44"
+noyalib = "0.0.45"
 ```
 
 ### Consuming a satellite crate
@@ -56,8 +56,8 @@ version pin:
 
 ```toml
 [dependencies]
-noyalib-wasm = "0.0.44"   # crates.io — repo doesn't matter to Cargo
-noyalib-mcp  = "0.0.44"
+noyalib-wasm = "0.0.45"   # crates.io — repo doesn't matter to Cargo
+noyalib-mcp  = "0.0.45"
 ```
 
 The [ADR-0005 strict-lockstep contract](adr/0005-workspace-split.md#versioning-contract)
@@ -130,7 +130,7 @@ repo's OIDC identity:
 cosign verify \
     --certificate-identity-regexp 'https://github.com/sebastienrousseau/noyalib-mcp/' \
     --certificate-oidc-issuer 'https://token.actions.githubusercontent.com' \
-    ghcr.io/sebastienrousseau/noyalib-mcp:0.0.14
+    ghcr.io/sebastienrousseau/noyalib-mcp:0.0.45
 ```
 
 ### MCP Registry entry
@@ -153,8 +153,8 @@ onward). Migrate to one of:
 
 ```toml
 [dependencies]
-noyalib-wasm = "=0.0.14"    # exact-match pins recommended
-noyalib-mcp  = "=0.0.14"
+noyalib-wasm = "=0.0.45"    # exact-match pins recommended
+noyalib-mcp  = "=0.0.45"
 ```
 
 Same version identity, same crate identity — only the source
@@ -164,15 +164,15 @@ repo changed.
 
 ```toml
 [dependencies]
-noyalib-wasm = { git = "https://github.com/sebastienrousseau/noyalib-wasm", tag = "v0.0.14" }
-noyalib-mcp  = { git = "https://github.com/sebastienrousseau/noyalib-mcp",  tag = "v0.0.14" }
+noyalib-wasm = { git = "https://github.com/sebastienrousseau/noyalib-wasm", tag = "v0.0.45" }
+noyalib-mcp  = { git = "https://github.com/sebastienrousseau/noyalib-mcp",  tag = "v0.0.45" }
 ```
 
 ### Option C — subtree-vendor the satellite
 
 ```bash
 git subtree add --prefix=vendor/noyalib-wasm \
-    https://github.com/sebastienrousseau/noyalib-wasm v0.0.14 --squash
+    https://github.com/sebastienrousseau/noyalib-wasm v0.0.45 --squash
 ```
 
 If you were also depending on `pkg/npm-mcp-wrapper/` or

@@ -327,7 +327,26 @@
 //! - **Tier 2**: musl Linux (`*-musl`),
 //!   `i686-pc-windows-msvc`, `aarch64-pc-windows-msvc`. Built
 //!   in release CI; not gated on every PR.
-//! - **Embedded / `no_std`**: any target supported by `alloc`.
+//! - **Embedded / `no_std`**: any `alloc` target that also has
+//!   atomic pointer support (`target_has_atomic = "ptr"`) —
+//!   Cortex-M3/M4/M7 (`thumbv7m-none-eabi`,
+//!   `thumbv7em-none-eabi*`), RISC-V with the `A` extension
+//!   (`riscv32imac-unknown-none-elf`) and similar. CI builds
+//!   `thumbv7em-none-eabihf` and `riscv32imac-unknown-none-elf`
+//!   on every PR.
+//!
+//!   Targets **without** atomic compare-and-swap — Cortex-M0 /
+//!   M0+ / M1 (`thumbv6m-none-eabi`), RISC-V cores lacking the
+//!   `A` extension (`riscv32i-unknown-none-elf`), AVR and
+//!   MSP430 — are **not** supported: `alloc::sync::Arc` does
+//!   not exist there, and it backs the shared interior of
+//!   [`Error`], the tag registry, the interner and the [`cst`]
+//!   green tree. Supporting them would mean an `Rc` fallback
+//!   that drops `Send`/`Sync` from those public types on exactly
+//!   those targets, or making every downstream user pick a
+//!   `critical-section` implementation. If you need a CAS-free
+//!   target, please open an issue rather than assuming it works.
+//!
 //!   The `std`-only items ([`from_reader`], [`to_writer`],
 //!   [`Spanned<T>`] deserialisation via TLS, the [`cst`]
 //!   module) are gone; the rest of the surface compiles. CI

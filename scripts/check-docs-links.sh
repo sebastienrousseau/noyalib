@@ -18,6 +18,13 @@ for m in re.finditer(r'\]\(([^)#\s]+\.md)\)', summary):
     if not os.path.exists(p):
         bad.append(f'SUMMARY.md -> {m.group(1)}')
 for root, dirs, files in os.walk('docs'):
+    # docs/partials/ holds prose that generate-reference-docs.sh appends
+    # into docs/errors.md and docs/internals.md. Its links are written
+    # relative to docs/, where the assembled file lives, so resolving
+    # them from docs/partials/ reports working links as broken. The
+    # assembled files are walked here like any other, so the links are
+    # still checked — once, in the position they are used.
+    dirs[:] = [d for d in dirs if os.path.join(root, d) != os.path.join('docs', 'partials')]
     for fn in files:
         if not fn.endswith('.md'):
             continue

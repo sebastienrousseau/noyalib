@@ -208,6 +208,17 @@ pub(crate) mod fault {
     }
 }
 
+/// Whether `source` contains a duplicate mapping key.
+///
+/// Loading a document with duplicate keys succeeds and collapses them,
+/// so a value-level comparison cannot tell that one was introduced.
+/// Re-reading under a policy that refuses duplicates can.
+fn duplicate_keys_present(source: &str) -> bool {
+    let mut config = ParserConfig::new();
+    config.duplicate_key_policy = crate::DuplicateKeyPolicy::Error;
+    crate::from_str_with_config::<Value>(source, &config).is_err()
+}
+
 /// Whether the post-edit oracle rejects the edit: the document loaded
 /// back differs from the value the mutator said it would produce.
 ///
@@ -840,6 +851,28 @@ impl Document {
                 "set: the fragment for `{path}` added or removed entries \
                  elsewhere in the document — it was left unchanged. Use \
                  `set_value` to write a value without splicing YAML."
+            )));
+        }
+
+        // The shape fingerprint above cannot see a *shadowed* sibling. A
+        // fragment can only add lines, so it cannot reshape `b` in place
+        // — but it can write a second `b`, and duplicate keys collapse
+        // when the document is loaded, leaving the fingerprint identical:
+        //
+        //     set("a", "2\nb: changed")  on  "a: 1\nb:\n  c: 1\n"
+        //
+        // used to return `Ok` and produce a document with two `b` keys.
+        //
+        // Duplicate keys are legal here and some documents carry them on
+        // purpose, so the test is not "are there duplicates" but "did
+        // this edit introduce one": clean before and dirty after.
+        if !duplicate_keys_present(&snapshot.source) && duplicate_keys_present(&self.source) {
+            *self = snapshot;
+            return Err(Error::Parse(format!(
+                "set: the fragment for `{path}` introduced a duplicate key, \
+                 shadowing an entry elsewhere in the document — it was left \
+                 unchanged. Use `set_value` to write a value without \
+                 splicing YAML."
             )));
         }
         Ok(())
@@ -4182,6 +4215,26 @@ impl Document {
             None
         }
     }
+
+    /// The byte a leading comment run is measured upward from: the entry's
+    /// own key token when the path names one, and the comment anchor span
+    /// otherwise.
+    ///
+    /// A leading comment decorates the **entry**, so the line it sits above
+    /// is the entry's first line, which is the key's. For a scalar, a flow
+    /// collection or an implicit null the key and the value share that line
+    /// and either would do. For a block collection they do not: the value
+    /// starts on the next line, so measuring from it asks about the wrong
+    /// line and the run above the key is out of reach.
+    ///
+    /// A path that names no key, such as a sequence item, keeps the value
+    /// span it always used.
+    pub(super) fn leading_comment_anchor(&self, path: &str) -> Option<usize> {
+        if let Some((key_start, _)) = self.key_span(path) {
+            return Some(key_start);
+        }
+        self.comment_anchor_span(path).map(|(start, _)| start)
+    }
 }
 
 /// A value written at an [`implicit_null_insertion_point`], separated from the
@@ -5756,14 +5809,24 @@ fn shape_excluding(value: &Value, segments: &[QuerySegment]) -> String {
                 for (k, val) in m {
                     out.push_str(k.as_str());
                     out.push(':');
-                    let next = match skip.first() {
-                        Some(QuerySegment::Key(sk)) if sk.as_str() == k.as_str() => &skip[1..],
-                        _ => &[][..],
-                    };
-                    if next.len() < skip.len() {
-                        walk(val, next, out);
-                    } else {
-                        walk_all(val, out);
+                    // On the path: recurse with the remaining segments, so
+                    // the elided target contributes its marker. Off it:
+                    // render the whole subtree, so a change anywhere
+                    // inside a sibling shows up in the fingerprint.
+                    //
+                    // This used to compute `next` first — `&skip[1..]` on a
+                    // match, `&[]` otherwise — and branch on
+                    // `next.len() < skip.len()`. That is true in *both*
+                    // cases (`skip` is never empty here; `walk` returns
+                    // early when it is), so `walk_all` was dead and every
+                    // sibling collapsed to the `<target>` marker. The
+                    // fingerprint then recorded only the top-level key
+                    // names, not the shapes under them.
+                    match skip.first() {
+                        Some(QuerySegment::Key(sk)) if sk.as_str() == k.as_str() => {
+                            walk(val, &skip[1..], out);
+                        }
+                        _ => walk_all(val, out),
                     }
                     out.push(',');
                 }
@@ -5772,14 +5835,11 @@ fn shape_excluding(value: &Value, segments: &[QuerySegment]) -> String {
             Value::Sequence(s) => {
                 out.push('[');
                 for (i, val) in s.iter().enumerate() {
-                    let next = match skip.first() {
-                        Some(QuerySegment::Index(si)) if *si == i => &skip[1..],
-                        _ => &[][..],
-                    };
-                    if next.len() < skip.len() {
-                        walk(val, next, out);
-                    } else {
-                        walk_all(val, out);
+                    match skip.first() {
+                        Some(QuerySegment::Index(si)) if *si == i => {
+                            walk(val, &skip[1..], out);
+                        }
+                        _ => walk_all(val, out),
                     }
                     out.push(',');
                 }

@@ -67,7 +67,7 @@
 
 ```toml
 [dependencies]
-noyalib = "0.0.44"
+noyalib = "0.0.45"
 ```
 
 ### As a CLI tool
@@ -105,7 +105,7 @@ maintainer runbook.
 
 ```toml
 [dependencies]
-noyalib = { version = "0.0.44", default-features = false }
+noyalib = { version = "0.0.45", default-features = false }
 ```
 
 Requires `alloc`. Core data binding (`from_str`, `to_string`, `Value`,
@@ -156,7 +156,7 @@ the application needs.
 ```toml
 # Example: rich diagnostics + schema validation
 [dependencies]
-noyalib = { version = "0.0.44", features = ["miette", "validate-schema"] }
+noyalib = { version = "0.0.45", features = ["miette", "validate-schema"] }
 ```
 
 **Optional features:** `lossless-u64` preserves YAML integer scalars above
@@ -290,7 +290,7 @@ npm install @sebastienrousseau/noyalib-wasm
 
 ```toml
 # serde_yaml drop-in — the whole migration is this one line:
-serde_yaml = { package = "noyalib-serde-yaml", version = "=0.0.44" }
+serde_yaml = { package = "noyalib-serde-yaml", version = "=0.0.45" }
 ```
 
 Per-crate READMEs cover the surface specific to each artifact:
@@ -355,7 +355,7 @@ lines**:
 
 ```toml
 [dependencies]
-serde_yaml = { package = "noyalib-serde-yaml", version = "=0.0.44" }
+serde_yaml = { package = "noyalib-serde-yaml", version = "=0.0.45" }
 ```
 
 [`noyalib-serde-yaml`](https://github.com/sebastienrousseau/noyalib-serde-yaml)
@@ -388,7 +388,7 @@ and `yaml-spanned` with verified function tables for each.
 -[dependencies]
 -serde_yaml = "0.9"
 +[dependencies]
-+noyalib = "0.0.44"
++noyalib = "0.0.45"
 ```
 
 ```diff
@@ -823,7 +823,11 @@ CLI surface error codes (`noyalib::parse`,
 `noyalib::duplicate_key`, …) and actionable help text from the
 same call site:
 
-```rust,ignore
+<!-- doctest-preamble
+#[derive(serde::Deserialize)] struct Config { a: i32 }
+let yaml = "a: 1\n";
+-->
+```rust
 let cfg: Config = noyalib::from_str(yaml)
     .map_err(|e| miette::Report::new(e).with_source_code(yaml.to_owned()))?;
 ```
@@ -1021,7 +1025,15 @@ is a contract violation.
 <details>
 <summary><b>Deserialization</b></summary>
 
-```rust,ignore
+<!-- doctest-preamble
+#[derive(serde::Deserialize)] struct Config { a: i32 }
+let yaml = "a: 1\n";
+let bytes = b"a: 1\n".as_slice();
+let file = std::io::Cursor::new(b"a: 1\n".to_vec());
+let reader = std::io::Cursor::new(b"a: 1\n".to_vec());
+let value: noyalib::Value = noyalib::from_str("a: 1\n")?;
+-->
+```rust
 // API surface synopsis — substitute your own `Config`, `yaml`, `bytes`, etc.
 use noyalib::{from_str, from_slice, from_reader, from_value, ParserConfig};
 
@@ -1043,7 +1055,12 @@ let config: Config = noyalib::from_reader_with_config(reader, &parser)?;
 <details>
 <summary><b>Serialization</b></summary>
 
-```rust,ignore
+<!-- doctest-preamble
+#[derive(serde::Serialize)] struct Config { a: i32 }
+let config = Config { a: 1 };
+let mut file: Vec<u8> = Vec::new();
+-->
+```rust
 // API surface synopsis — substitute your own `config` value + `file` writer.
 use noyalib::{to_string, to_writer, to_fmt_writer, to_value, SerializerConfig};
 
@@ -1168,13 +1185,19 @@ value.apply_merge()?;
 <details>
 <summary><b>Multi-document streams</b></summary>
 
-```rust,ignore
+<!-- doctest-preamble
+#[derive(serde::Deserialize, serde::Serialize)] struct Config { a: i32 }
+let yaml = "---\na: 1\n---\na: 2\n";
+let config1 = Config { a: 1 };
+let config2 = Config { a: 2 };
+-->
+```rust
 // API surface synopsis — substitute your own `Config` type + `config1`/`config2` values.
 use noyalib::{load_all, to_string_multi};
 
 let docs = load_all("---\na: 1\n---\nb: 2\n")?;
-for doc in &docs {
-    println!("{doc:?}");
+for doc in docs {
+    println!("{:?}", doc?);
 }
 
 let items: Vec<Config> = noyalib::load_all_as::<Config>(yaml)?;
@@ -1227,7 +1250,10 @@ struct Task {
 <details>
 <summary><b>Parser configuration</b></summary>
 
-```rust,ignore
+<!-- doctest-preamble
+let input = "a: 1\n";
+-->
+```rust
 // API surface synopsis — substitute your own `input` string.
 use noyalib::{from_str_with_config, ParserConfig, DuplicateKeyPolicy};
 
@@ -1250,7 +1276,10 @@ For maximum strictness, use `ParserConfig::strict()`.
 <details>
 <summary><b>Serializer configuration</b></summary>
 
-```rust,ignore
+<!-- doctest-preamble
+let value: noyalib::Value = noyalib::from_str("a: 1\n")?;
+-->
+```rust
 // API surface synopsis — substitute your own `value` to serialise.
 use noyalib::{to_string_with_config, SerializerConfig, FlowStyle, ScalarStyle};
 
@@ -1366,7 +1395,7 @@ disagreement on priorities.
 - **You have a hard dependency budget that cannot tolerate a
   Grisu / Ryu float formatter and a hash-randomised lookup
   table.** Default profile carries 8 runtime deps. `noyalib =
-  { version = "0.0.44", default-features = false, features =
+  { version = "0.0.45", default-features = false, features =
   ["std"] }` (or the equivalent `features = ["minimal"]`) drops
   to 5 — `itoa`, `ryu`, and `serde_ignored` become opt-in via
   the `fast-int` / `fast-float` / `strict-deserialise` features.
@@ -1656,8 +1685,8 @@ The four entry points, identical across every repo in the family:
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Module map, hot-path notes, design decisions. |
 | [`docs/COOKBOOK.md`](docs/COOKBOOK.md) | Task-shaped recipes, each pointing at the runnable example it comes from. |
 | [`docs/GLOSSARY.md`](docs/GLOSSARY.md) | YAML / serde terminology reference. |
-| [`crates/noyalib/docs/internals.md`](crates/noyalib/docs/internals.md) | Library internals (parser stages, loader frames, CST green tree). |
-| [`crates/noyalib/docs/errors.md`](crates/noyalib/docs/errors.md) | Error reference — every variant, when it fires, how to handle it. |
+| [`docs/internals.md`](docs/internals.md) | Library internals (parser stages, loader frames, CST green tree). |
+| [`docs/errors.md`](docs/errors.md) | Error reference — every variant, when it fires, how to handle it. |
 
 The per-crate READMEs at
 [`crates/noyalib`](crates/noyalib/README.md),

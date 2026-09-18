@@ -33,7 +33,7 @@ version = "0.12.15"
 criteria = "safe-to-deploy"
 
 [[exemptions.ariadne]]
-version = "0.5.1"
+version = "0.6.0"
 criteria = "safe-to-deploy"
 suggest = false
 
@@ -51,7 +51,7 @@ criteria = "safe-to-deploy"
 suggest = false
 
 [[exemptions.granit-parser]]
-version = "1.2.0"
+version = "1.3.0"
 criteria = "safe-to-deploy"
 
 [[exemptions.hashlink]]
@@ -90,11 +90,11 @@ criteria = "safe-to-deploy"
 suggest = false
 
 [[exemptions.serde-saphyr]]
-version = "1.2.0"
+version = "1.3.0"
 criteria = "safe-to-deploy"
 
 [[exemptions.smallvec]]
-version = "1.16.0"
+version = "1.16.1"
 criteria = "safe-to-deploy"
 
 [[exemptions.sval]]

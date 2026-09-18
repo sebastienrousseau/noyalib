@@ -60,15 +60,40 @@ fn set_preserves_siblings() {
     assert_eq!(doc.source(), "a: 1\n# middle\nb: 2\nc: 3\n");
 }
 
-// ── set: refusals ───────────────────────────────────────────────────
+// ── set: a block-valued key ─────────────────────────────────────────
 
 #[test]
-fn set_rejects_multi_line_entry() {
-    let src = "server:\n  host: x\n  port: 8080\n";
-    let mut doc = parse_document(src).unwrap();
-    assert!(doc.set_leading_comment("server", "nope").is_err());
-    assert_eq!(doc.source(), src);
+fn set_on_a_key_whose_value_is_a_block_mapping() {
+    // The comment goes above the key's line, so the value's height decides
+    // nothing. This entry was refused as "a multi-line entry" until the
+    // leading-comment anchor moved from the value to the key.
+    let mut doc = parse_document("server:\n  host: x\n  port: 8080\n").unwrap();
+    doc.set_leading_comment("server", "the API server").unwrap();
+    assert_eq!(
+        doc.source(),
+        "# the API server\nserver:\n  host: x\n  port: 8080\n"
+    );
 }
+
+#[test]
+fn set_replaces_the_run_above_a_block_valued_key() {
+    // The run above the key is found now, so a second set replaces it
+    // rather than stacking another line on top of it.
+    let mut doc = parse_document("# old\nserver:\n  host: x\n").unwrap();
+    doc.set_leading_comment("server", "new").unwrap();
+    assert_eq!(doc.source(), "# new\nserver:\n  host: x\n");
+}
+
+#[test]
+fn set_on_a_nested_block_valued_key_takes_the_key_indent() {
+    // The indent comes from the key's line, not the value's, so the comment
+    // lines up with `inner` rather than with the entries beneath it.
+    let mut doc = parse_document("outer:\n  inner:\n    n: 1\n").unwrap();
+    doc.set_leading_comment("outer.inner", "why").unwrap();
+    assert_eq!(doc.source(), "outer:\n  # why\n  inner:\n    n: 1\n");
+}
+
+// ── set: refusals ───────────────────────────────────────────────────
 
 #[test]
 fn set_rejects_missing_path() {

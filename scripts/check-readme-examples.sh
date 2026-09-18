@@ -68,15 +68,22 @@ publish = false
 [dependencies]
 # Every optional surface the docs demonstrate must resolve here,
 # or a correct example fails for want of a feature and looks like
-# a documentation bug. `recovery`, `sval` and `tokio` are all
+# a documentation bug. recovery, sval and tokio are all
 # demonstrated in docs/USER-GUIDE.md.
 noyalib = { path = "${NOYALIB_ABS}", features = ["schema", "validate-schema", "figment", "recovery", "sval", "tokio", "miette", "ariadne", "lossless-float", "lossless-u64", "include", "parallel", "compat-serde-yaml"] }
 serde = { version = "1.0", features = ["derive"] }
 # schemars is required for the block that demonstrates
-# `#[derive(JsonSchema)]` — the derive macro emits `::schemars::*`
+# #[derive(JsonSchema)] — the derive macro emits ::schemars::*
 # paths that need to resolve in the caller's dep graph
 # (documented in the README's "Optional integrations" section).
 schemars = { version = "1.2", features = ["derive"] }
+# miette is needed by the "Error reporting" block, which names
+# miette::Report directly. The miette *feature* makes noyalib::Error
+# implement miette::Diagnostic; naming the crate's own types still
+# requires the crate, as for any other trait. (No backticks in this
+# comment: the heredoc is unquoted so it can interpolate the crate
+# path, which makes backticks command substitution.)
+miette = "7"
 
 [workspace]
 EOF
@@ -102,10 +109,14 @@ CURRENT_BLOCK=""
 IN_BLOCK=0
 BLOCK_START_LINE=0
 LINE_NO=0
+IN_PREAMBLE=0
+PENDING_PREAMBLE=""
+BLOCK_PREAMBLE=""
 
 process_block() {
     local block_body="$1"
     local start_line="$2"
+    local preamble="${3:-}"
     BLOCK_INDEX=$((BLOCK_INDEX + 1))
 
     # Honour rustdoc's hidden-line convention. A line beginning `# `
@@ -116,6 +127,18 @@ process_block() {
     # Without this, a *correct* example that uses the convention is
     # reported as broken, which is worse than not checking it at all.
     block_body="$(sed -e 's/^# //' -e 's/^#$//' <<< "${block_body}")"
+
+    # Prepend any `<!-- doctest-preamble ... -->` setup. The README's
+    # API-synopsis blocks are deliberately fragmentary ("substitute your
+    # own `Config`"), so they cannot compile as written — and tagging
+    # them `ignore` meant the API names in them, which are the whole
+    # point of those sections, were checked by nothing. An HTML comment
+    # is invisible on GitHub, so the rendered page is unchanged while
+    # the block becomes a real compile gate.
+    if [[ -n "${preamble}" ]]; then
+        block_body="${preamble}
+${block_body}"
+    fi
 
     # Detect whether the block already declares fn main.
     # If not, wrap with `fn main() { ... }` — matches rustdoc.
@@ -163,17 +186,35 @@ while IFS= read -r line; do
     LINE_NO=$((LINE_NO + 1))
 
     if [[ ${IN_BLOCK} -eq 0 ]]; then
+        if [[ ${IN_PREAMBLE} -eq 1 ]]; then
+            # Collecting setup lines until the comment closes.
+            if [[ "${line}" == '-->' ]]; then
+                IN_PREAMBLE=0
+            else
+                PENDING_PREAMBLE="${PENDING_PREAMBLE}
+${line}"
+            fi
+        elif [[ "${line}" == '<!-- doctest-preamble' ]]; then
+            IN_PREAMBLE=1
+            PENDING_PREAMBLE=""
         # Match "```rust" exactly — no attributes = compile-and-run.
         # "```rust,ignore" / "```rust,no_run" are handled below.
-        if [[ "${line}" == '```rust' ]]; then
+        elif [[ "${line}" == '```rust' ]]; then
             IN_BLOCK=1
             CURRENT_BLOCK=""
+            BLOCK_PREAMBLE="${PENDING_PREAMBLE}"
+            PENDING_PREAMBLE=""
             BLOCK_START_LINE=${LINE_NO}
+        elif [[ -n "${line//[[:space:]]/}" ]]; then
+            # A preamble applies only to the fence that immediately
+            # follows it; anything else in between discards it, so a
+            # stale preamble can never silently feed the wrong block.
+            PENDING_PREAMBLE=""
         fi
     else
         # Closing fence.
         if [[ "${line}" == '```' ]]; then
-            process_block "${CURRENT_BLOCK}" "${BLOCK_START_LINE}"
+            process_block "${CURRENT_BLOCK}" "${BLOCK_START_LINE}" "${BLOCK_PREAMBLE}"
             IN_BLOCK=0
             CURRENT_BLOCK=""
         else
