@@ -395,9 +395,9 @@ migration checklist:
 - **Security policy**:
   [`SECURITY.md`](https://github.com/sebastienrousseau/noyalib/blob/main/SECURITY.md)
 - **Internals (module map, hot paths)**:
-  [`docs/internals.md`](https://github.com/sebastienrousseau/noyalib/blob/main/crates/noyalib/docs/internals.md)
+  [`docs/internals.md`](https://github.com/sebastienrousseau/noyalib/blob/main/docs/internals.md)
 - **Error reference**:
-  [`docs/errors.md`](https://github.com/sebastienrousseau/noyalib/blob/main/crates/noyalib/docs/errors.md)
+  [`docs/errors.md`](https://github.com/sebastienrousseau/noyalib/blob/main/docs/errors.md)
 - **User guide**:
   [`docs/USER-GUIDE.md`](https://github.com/sebastienrousseau/noyalib/blob/main/docs/USER-GUIDE.md)
 - **Architecture overview**:

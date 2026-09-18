@@ -58,8 +58,13 @@ errs = variants("Error")
 # `code()` is the stable string a tool matches on; read it from the impl.
 codes = dict(re.findall(r'Self::([A-Za-z0-9]+)[^=]*=>\s*"(noyalib::[a-z_]+)"', error_rs))
 
+# REUSE-IgnoreStart
+# These are the headers written into the *generated* files. Without the
+# ignore markers `reuse lint` reads them as this script's own licence
+# expression and reports `MIT OR Apache-2.0 -->",` as invalid.
 out = ["<!-- SPDX-FileCopyrightText: 2026 Noyalib -->",
        "<!-- SPDX-License-Identifier: MIT OR Apache-2.0 -->",
+       # REUSE-IgnoreEnd
        "",
        "# Error reference",
        "",
@@ -106,7 +111,26 @@ out += ["", "## Reading an error against its source", "",
         "`format_with_source_truncated` are the same idea with control over",
         "how much context is shown. See the API reference for the full set.",
         ""]
-pathlib.Path("docs/errors.md").write_text("\n".join(out))
+
+
+def appendix(name):
+    """Static prose kept beside the generated inventory.
+
+    The guidance half of these documents cannot be derived from the
+    source, but it still must not be hand-maintained in a *second*
+    file: crates/noyalib/docs/{errors,internals}.md were exactly that,
+    and drifted until they documented a `robotics` feature and a
+    `load_all_as_parallel` function that have never existed, while
+    both READMEs linked readers to them. Keeping the prose in
+    docs/partials/ and assembling it here means there is one file per
+    topic, and the CI examples gate compiles its code blocks.
+    """
+    f = pathlib.Path("docs/partials") / name
+    return ["", f.read_text().rstrip("\n")] if f.is_file() else []
+
+
+out += appendix("errors-guide.md")
+pathlib.Path("docs/errors.md").write_text("\n".join(out) + "\n")
 print(f"docs/errors.md: {len(kinds)} kinds, {len(errs)} variants")
 
 # ── internals.md ────────────────────────────────────────────────
@@ -171,8 +195,13 @@ for n,p,f in rows[:12]: print(f"{n}\t{p}\t{f}")
 '''],
     capture_output=True, text=True).stdout.strip().splitlines()
 
+# REUSE-IgnoreStart
+# These are the headers written into the *generated* files. Without the
+# ignore markers `reuse lint` reads them as this script's own licence
+# expression and reports `MIT OR Apache-2.0 -->",` as invalid.
 out = ["<!-- SPDX-FileCopyrightText: 2026 Noyalib -->",
        "<!-- SPDX-License-Identifier: MIT OR Apache-2.0 -->",
+       # REUSE-IgnoreEnd
        "",
        "# Internals",
        "",
@@ -203,7 +232,50 @@ out += ["", "## Module map", "",
         "| --- | --- | --- |"]
 for rel, loc, head in mods:
     out.append(f"| `{rel}` | {loc} | {head or '—'} |")
-out.append("")
-pathlib.Path("docs/internals.md").write_text("\n".join(out))
-print(f"docs/internals.md: {len(mods)} modules, {len(hot)} hot paths")
+
+# ── feature table, read from Cargo.toml ──────────────────────────
+# The comment block directly above a feature is its description, the
+# same convention `doc_comment` uses for error variants. Generating
+# this table is the point: the hand-written one listed 16 of 28
+# features and invented one that does not exist.
+manifest = pathlib.Path("crates/noyalib/Cargo.toml").read_text().split("\n")
+fstart = manifest.index("[features]")
+fend = next(i for i in range(fstart + 1, len(manifest))
+            if manifest[i].startswith("[") and i != fstart)
+feats = []
+i = fstart + 1
+while i < fend:
+    m = re.match(r"^([a-z0-9_-]+)\s*=\s*(.*)$", manifest[i])
+    if not m:
+        i += 1
+        continue
+    # A feature list may span lines — `std = [` opens and the entries
+    # follow. Matching only single-line lists silently dropped `std`,
+    # the most load-bearing feature in the crate, from the table.
+    value, j = m.group(2), i
+    while value.count("[") > value.count("]") and j + 1 < fend:
+        j += 1
+        value += " " + manifest[j].strip()
+    desc, k = [], i - 1
+    while k > fstart and manifest[k].lstrip().startswith("#"):
+        desc.append(manifest[k].lstrip().lstrip("#").strip())
+        k -= 1
+    desc.reverse()
+    feats.append((m.group(1), " ".join(d for d in desc if d),
+                  re.findall(r'"([^"]+)"', value)))
+    i = j + 1
+
+out += ["", "## Features", "",
+        f"{len(feats)} features, read from `crates/noyalib/Cargo.toml`.",
+        "",
+        "| Feature | Enables | Notes |",
+        "| --- | --- | --- |"]
+for name, desc, enables in feats:
+    en = ", ".join(f"`{e}`" for e in enables) or "—"
+    out.append(f"| `{name}` | {en} | {desc.replace('|', chr(92) + '|') or '—'} |")
+
+out += appendix("internals-guide.md")
+pathlib.Path("docs/internals.md").write_text("\n".join(out) + "\n")
+print(f"docs/internals.md: {len(mods)} modules, {len(hot)} hot paths, "
+      f"{len(feats)} features")
 PY

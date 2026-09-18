@@ -189,6 +189,66 @@ fn the_module_map_lists_every_module() {
     );
 }
 
+/// Every Cargo feature must appear in the internals feature table.
+///
+/// The table this replaced was hand-written in a second copy of the
+/// document that nothing checked. It listed 16 of 28 features, invented
+/// a `robotics` feature that has never existed, and both READMEs linked
+/// to it. Generation alone does not prevent that — a generator whose
+/// pattern misses a line drops a feature just as silently, and the
+/// first version of this one did exactly that to `std`, whose feature
+/// list spans several lines. This test is what notices.
+#[test]
+fn the_feature_table_lists_every_feature() {
+    let doc = fs::read_to_string(repo_root().join("docs/internals.md"))
+        .expect("docs/internals.md — run scripts/generate-reference-docs.sh");
+    let manifest = fs::read_to_string(crate_root().join("Cargo.toml")).expect("Cargo.toml");
+
+    let features = manifest
+        .split_once("\n[features]\n")
+        .expect("a [features] table")
+        .1;
+    let features = features.split("\n[").next().expect("end of the table");
+
+    let declared: Vec<&str> = features
+        .lines()
+        .filter_map(|line| {
+            // Only a line that starts in column zero declares a feature;
+            // the continuation lines of a multi-line list are indented.
+            let (name, _) = line.split_once('=')?;
+            let name = name.trim_end();
+            (!name.is_empty()
+                && !line.starts_with([' ', '\t', '#'])
+                && name.chars().all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_'))
+            .then_some(name)
+        })
+        .collect();
+
+    assert!(
+        declared.len() > 20,
+        "suspiciously few features parsed: {declared:?}"
+    );
+
+    // Anchored to the start of a line, not `contains`: the Enables
+    // column of another feature's row is also of the form `| `std` |`,
+    // so a substring search reports a dropped feature as present. The
+    // first version of this test did, and passed when `std` was deleted
+    // from the table.
+    let missing: Vec<_> = declared
+        .iter()
+        .filter(|f| {
+            let row = format!("| `{f}` |");
+            !doc.lines().any(|line| line.starts_with(&row))
+        })
+        .collect();
+    assert!(
+        missing.is_empty(),
+        "{} feature(s) are not in the docs/internals.md feature table: {missing:?}\n\
+         Run `bash scripts/generate-reference-docs.sh` and commit the result.",
+        missing.len()
+    );
+}
+
 /// Both documents must say they are generated, so nobody edits them by
 /// hand and loses the edit on the next run.
 #[test]
