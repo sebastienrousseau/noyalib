@@ -644,7 +644,26 @@ impl<'a> BorrowedBuilder<'a> {
         self.result.unwrap_or(BorrowedValue::Null)
     }
 
-    fn resolve_scalar(&self, value: Cow<'a, str>, style: ScalarStyle) -> BorrowedValue<'a> {
+    fn resolve_scalar(
+        &self,
+        value: Cow<'a, str>,
+        style: ScalarStyle,
+        tag: Option<&(String, String)>,
+    ) -> BorrowedValue<'a> {
+        // `!!str` is a resolution tag, not a decoration: it says the
+        // scalar *is* a string, so plain resolution must not run and
+        // turn `!!str 1` into the integer 1. The owned graph honours it
+        // (`resolve_tagged_scalar`'s "str" arm); this one used to
+        // discard the tag entirely and disagree.
+        //
+        // The other core tags (`int`, `float`, `bool`, `null`) already
+        // land on the same answer through plain resolution for every
+        // well-formed payload, and `BorrowedValue` has no `Tagged`
+        // variant for a custom tag to live in — both are recorded in
+        // `differential_readers.rs` rather than silently differing.
+        if is_core_string_tag(tag) {
+            return BorrowedValue::String(value);
+        }
         if style != ScalarStyle::Plain {
             return BorrowedValue::String(value);
         }
@@ -725,6 +744,7 @@ impl<'a> BorrowedBuilder<'a> {
                 value,
                 style,
                 anchor,
+                tag,
                 ..
             } => {
                 // Check if this is a mapping key
@@ -740,7 +760,7 @@ impl<'a> BorrowedBuilder<'a> {
                     return Ok(BuilderState::Continue);
                 }
 
-                let resolved = self.resolve_scalar(value, style);
+                let resolved = self.resolve_scalar(value, style, tag.as_ref());
                 self.record_anchor(anchor, &resolved);
                 self.push_value(resolved);
                 Ok(BuilderState::Continue)
@@ -837,4 +857,13 @@ impl<'a> BorrowedBuilder<'a> {
             }
         }
     }
+}
+
+/// Whether `tag` is YAML's core-schema string tag, in any of its
+/// spellings: `!!str`, the verbatim `tag:yaml.org,2002:str`, or the
+/// primary `!str`. Matches the owned loader's `resolve_tagged_scalar`.
+fn is_core_string_tag(tag: Option<&(String, String)>) -> bool {
+    tag.is_some_and(|(handle, suffix)| {
+        suffix == "str" && (handle == "!!" || handle == "tag:yaml.org,2002:" || handle == "!")
+    })
 }

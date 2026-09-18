@@ -9,6 +9,23 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Fixed
 
+- **`!!str` was ignored by the borrowed value graph.** The tag is a
+  *resolution* tag, not a decoration — it says the scalar is a string —
+  and the owned graph honours it. The borrowed reader discarded the tag
+  before resolving, so a document saying explicitly that a value is a
+  string handed back a number:
+
+  ```text
+  a: !!str 1
+    from_str::<Value>        -> String("1")
+    from_str_borrowed        -> Number(Integer(1))
+  ```
+
+  Found by running one corpus through every pair of readers and
+  requiring them to agree, rather than by testing each against what it
+  should say.
+
+
 - **`set` accepted a fragment that shadowed a sibling with a duplicate
   key.** The method is documented to refuse a fragment that reaches
   outside the target, and it guards that with a fingerprint of the
