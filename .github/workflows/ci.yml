@@ -465,6 +465,30 @@ jobs:
         with:
           args: -p noyalib --harness proofs
 
+  install-guides:
+    # Builds and runs a scratch project for every dependency line the
+    # docs tell a reader to paste. The README-examples gate compiles
+    # the code blocks and the version gate checks the numbers agree;
+    # neither checks that the *install line* in between yields a crate
+    # where the documented API exists. A feature renamed, a re-export
+    # moved behind a flag, or a snippet that needs a companion crate it
+    # never mentions all produce docs that are individually consistent
+    # and collectively wrong.
+    name: Installation guides build and run
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # master
+        with:
+          toolchain: stable
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+        with:
+          workspaces: ". -> target-install-guides"
+          key: install-guides
+      - name: Build every documented installation configuration
+        run: bash scripts/check-install-guides.sh
+
   readme-examples:
     # Dogfooded from shared-readme-examples.yml. The check itself
     # (scripts/check-readme-examples.sh) is invoked by the shared
