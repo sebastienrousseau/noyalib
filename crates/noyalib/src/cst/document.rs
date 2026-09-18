@@ -4215,6 +4215,26 @@ impl Document {
             None
         }
     }
+
+    /// The byte a leading comment run is measured upward from: the entry's
+    /// own key token when the path names one, and the comment anchor span
+    /// otherwise.
+    ///
+    /// A leading comment decorates the **entry**, so the line it sits above
+    /// is the entry's first line, which is the key's. For a scalar, a flow
+    /// collection or an implicit null the key and the value share that line
+    /// and either would do. For a block collection they do not: the value
+    /// starts on the next line, so measuring from it asks about the wrong
+    /// line and the run above the key is out of reach.
+    ///
+    /// A path that names no key, such as a sequence item, keeps the value
+    /// span it always used.
+    pub(super) fn leading_comment_anchor(&self, path: &str) -> Option<usize> {
+        if let Some((key_start, _)) = self.key_span(path) {
+            return Some(key_start);
+        }
+        self.comment_anchor_span(path).map(|(start, _)| start)
+    }
 }
 
 /// A value written at an [`implicit_null_insertion_point`], separated from the
