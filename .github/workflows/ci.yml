@@ -489,6 +489,8 @@ jobs:
         docs/MIGRATION-FROM-SERDE-YAML.md
         docs/MIGRATION-FROM-YAML-SPANNED.md
         docs/USER-GUIDE.md
+        docs/errors.md
+        docs/internals.md
 
   docs-strict:
     # Dogfooded from shared-rustdoc-strict.yml. The strict

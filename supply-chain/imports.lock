@@ -128,8 +128,8 @@ user-login = "epage"
 user-name = "Ed Page"
 
 [[publisher.compact_str]]
-version = "0.8.1"
-when = "2024-12-29"
+version = "0.9.1"
+when = "2026-05-27"
 user-id = 75844
 user-login = "ParkMyCar"
 user-name = "Parker Timmerman"
@@ -279,15 +279,15 @@ user-login = "taiki-e"
 user-name = "Taiki Endo"
 
 [[publisher.garde]]
-version = "0.22.1"
-when = "2025-11-30"
+version = "0.23.0"
+when = "2026-05-23"
 user-id = 116951
 user-login = "jprochazk"
 user-name = "Jan Procházka"
 
 [[publisher.garde_derive]]
-version = "0.22.1"
-when = "2025-11-30"
+version = "0.23.0"
+when = "2026-05-23"
 user-id = 116951
 user-login = "jprochazk"
 user-name = "Jan Procházka"
@@ -420,8 +420,8 @@ user-login = "Amanieu"
 user-name = "Amanieu d'Antras"
 
 [[publisher.memchr]]
-version = "2.8.2"
-when = "2026-06-12"
+version = "2.8.3"
+when = "2026-07-08"
 user-id = 189
 user-login = "BurntSushi"
 user-name = "Andrew Gallant"

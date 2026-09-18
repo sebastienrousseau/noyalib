@@ -7,6 +7,36 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [v0.0.45] - 2026-09-17
 
+### Added
+
+- **`docs/errors.md`** — every error variant, the `ErrorKind` it reports,
+  the stable `code()` a tool can match on, and what raises it. 32
+  variants, 11 kinds.
+
+- **`docs/internals.md`** — the module map (68 modules) and the twelve
+  longest functions, which are where the time goes and where a change
+  is most likely to cost something.
+
+  Both are **generated** from the source by
+  `scripts/generate-reference-docs.sh`, because an inventory maintained
+  by hand is wrong the first time someone adds an item and forgets the
+  document. Generation alone would not be enough — someone can forget to
+  run it — so `tests/reference_docs_are_complete.rs` reads the source
+  and the documents and fails when they disagree, in *both* directions:
+  a variant or module missing from a document, and a document naming
+  something that no longer exists. Both documents are compiled by the
+  same CI gate as the rest of `docs/`.
+
+### Changed
+
+- Dependencies brought to their latest releases. `ariadne` 0.5 → 0.6 and
+  `garde` 0.22 → 0.23 are major bumps for a `0.x` crate; the adapters and
+  their examples were checked to still render and validate identically,
+  not merely to compile. `serde-saphyr` 1.2 → 1.3, `memchr` 2.8.2 →
+  2.8.3, `smallvec` 1.16.0 → 1.16.1, and the cargo-vet exemptions moved
+  with them.
+
+
 ### Fixed
 
 - **A leading comment anchored on the value, not the key** (#442, thanks
