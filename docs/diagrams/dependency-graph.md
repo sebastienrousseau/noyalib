@@ -44,10 +44,12 @@ and the LSP server, for instance, both implement `format` and
 directly — neither imports from the other. This keeps the per-crate
 dependency footprint minimal and the integration tests independent.
 
-**`xtask`** is the build-tooling crate (`cargo xtask completions`,
-`cargo xtask manpages`, etc.). It pulls in `noya-cli` to call the
-shared clap-derive command builders, and `noyalib` transitively.
-It is `publish = false` and never ships to crates.io.
+There is no `xtask` crate. It was the build-tooling crate
+(it provided the `completions` and `manpages` subcommands) and was
+retired with the workspace split (#134): man pages and shell
+completions belong to `noya-cli`, which generates them in its own
+repository. What remains here runs from `Makefile` targets
+(`make sbom`, `make notice`, `make vendor`) and `scripts/`.
 
 ## MSRV (single lockstep floor)
 

@@ -11,6 +11,14 @@ signed artefacts ready for crates.io, npm, the VS Code Marketplace,
 Linux distros (deb / rpm / Arch / Nix), Homebrew, AUR, Scoop, and a
 container registry.
 
+> **Superseded in part.** Phase 2.2 below proposes a `crates/xtask/`
+> runner (`cargo xtask completions`, `cargo xtask manpages`, …). That
+> crate was built, then retired with the workspace split (#134, closed):
+> man pages and shell completions now belong to `noya-cli` and are
+> generated in its repository, and what remains here runs from
+> `Makefile` targets and `scripts/`. `cargo xtask` is not a command in
+> this repo. The rest of the plan stands.
+
 The plan is written so any maintainer can pick up where the last
 commit left off. Each phase is sized for a single self-contained
 PR; the order respects dependencies (gates first, restructure

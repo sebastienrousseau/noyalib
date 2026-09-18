@@ -1,9 +1,12 @@
 # SPDX-FileCopyrightText: 2026 Noyalib
 # SPDX-License-Identifier: MIT OR Apache-2.0
 
-# `cargo xtask <subcommand>` — runs the workspace's internal
-# release-pipeline tooling under `crates/xtask/`. Used to
-# regenerate man pages and shell completions; see the xtask
-# crate's main.rs for the full subcommand list.
-[alias]
-xtask = "run --quiet --package xtask --release --"
+# No `[alias]` table.
+#
+# There used to be `xtask = "run --package xtask ..."`, but
+# `crates/xtask/` was retired with the workspace split (#134) and the
+# alias outlived it: `cargo xtask <anything>` has been failing with
+# "package ID specification `xtask` did not match any packages" ever
+# since, while README.md and pkg/VERIFY.md still told people to run it.
+# Man pages and completions are generated in the `noya-cli` repository;
+# what remains here runs from `Makefile` targets and `scripts/`.

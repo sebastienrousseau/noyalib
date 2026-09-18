@@ -142,8 +142,7 @@ EOF
 cargo build --release --offline --locked
 ```
 
-The vendor tarball is produced by `cargo xtask vendor` (or
-`make vendor`) and is signed alongside every other release
+The vendor tarball is produced by `make vendor` and is signed alongside every other release
 artefact via cosign keyless. The same `cosign verify-blob`
 invocation as for the source crate applies.
 

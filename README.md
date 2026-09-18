@@ -630,7 +630,7 @@ because the levers needed (`CompactString` keys in `Mapping`,
 bump-arena event lifetimes, eliminating the `Value` AST on the
 typed path) require SemVer-breaking refactors.
 
-`cargo xtask pgo-build` runs the LLVM profile-guided optimisation
+`./scripts/pgo.sh` runs the LLVM profile-guided optimisation
 pipeline and adds 5–15% on top of the numbers above; recommended
 for production deployments.
 

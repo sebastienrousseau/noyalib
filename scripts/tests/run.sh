@@ -45,5 +45,46 @@ if [ "$floor" = "725.0" ]; then ok; else bad "declared-budget floor arithmetic (
 floor=$(awk -v m="900" -v e="725" 'BEGIN {printf "%.1f", (m > e) ? m : e}')
 if [ "$floor" = "900.0" ]; then ok; else bad "rolling median must win once above the floor ($floor)"; fi
 
+# ── check-documented-commands ──────────────────────────────────────
+if ./scripts/check-documented-commands.sh >/dev/null 2>&1; then ok; else bad "command gate rejects the clean tree"; fi
+# A retired cargo subcommand in a fenced block.
+printf '# t\n\n```sh\ncargo notarealsubcommand --flag\n```\n' > docs/__selftest_cmd.md
+if ./scripts/check-documented-commands.sh >/dev/null 2>&1; then bad "command gate missed an unknown cargo subcommand"; else ok; fi
+# ...and in an inline code span, which is where the real defect lived:
+# `cargo xtask pgo-build` sat in a README *paragraph*, so a gate that
+# reads only fenced blocks passes while the command cannot run.
+printf '# t\n\nRun `cargo notarealsubcommand build` to do the thing.\n' > docs/__selftest_cmd.md
+if ./scripts/check-documented-commands.sh >/dev/null 2>&1; then bad "command gate missed an inline-span command"; else ok; fi
+# A missing make target and a missing script.
+printf '# t\n\n```sh\nmake __no_such_target__\n```\n' > docs/__selftest_cmd.md
+if ./scripts/check-documented-commands.sh >/dev/null 2>&1; then bad "command gate missed a missing make target"; else ok; fi
+printf '# t\n\n```sh\n./scripts/__no_such_script__.sh\n```\n' > docs/__selftest_cmd.md
+if ./scripts/check-documented-commands.sh >/dev/null 2>&1; then bad "command gate missed a missing script"; else ok; fi
+# Prose in a comment must NOT be read as a command.
+printf '# t\n\n```sh\n# cargo will fetch the index first\ncargo build\n```\n' > docs/__selftest_cmd.md
+if ./scripts/check-documented-commands.sh >/dev/null 2>&1; then ok; else bad "command gate read a shell comment as an instruction"; fi
+rm -f docs/__selftest_cmd.md
+
+# ── every gate script is exercised above ───────────────────────────
+# Without this, a new `scripts/check-*.sh` joins the release path with
+# no self-test and nobody notices — which is how three of the five got
+# here. A gate too expensive to self-test says so, in this list, with
+# the reason; silence is not an option.
+EXEMPT_READ="exercised by its own CI job against the real tree; each run builds cargo projects and takes minutes"
+declare -a EXEMPT=("check-readme-examples.sh" "check-install-guides.sh" "check-crates-io-ownership.sh")
+for g in scripts/check-*.sh; do
+    name="$(basename "$g")"
+    if grep -q "scripts/${name}" scripts/tests/run.sh; then
+        continue
+    fi
+    skip=0
+    for e in "${EXEMPT[@]}"; do [ "$name" = "$e" ] && skip=1; done
+    if [ "$skip" = 1 ]; then
+        ok
+    else
+        bad "$name has no self-test and is not listed as exempt ($EXEMPT_READ)"
+    fi
+done
+
 echo "gate self-tests: $pass passed, $fail failed"
 [ "$fail" = 0 ]

@@ -465,6 +465,62 @@ jobs:
         with:
           args: -p noyalib --harness proofs
 
+  default-feature-targets:
+    # Compile every target — tests, benches, examples — with the
+    # DEFAULT feature set.
+    #
+    # Nothing else does. `test-matrix` defaults to `--all-features`,
+    # both `lossless-u64-matrix` legs enable the feature they are named
+    # for, and `each-feature` / `feature-powerset` both pass
+    # `--no-dev-deps`, which never builds a test target at all. So a
+    # test that names a feature-gated item without gating itself
+    # compiles in every configuration CI looks at, and breaks for the
+    # user who builds with defaults.
+    #
+    # That has now happened three times — compat_serde_yaml_messages.rs,
+    # differential_entry_points.rs and borrowed_anchors_and_format.rs,
+    # the last of which reached this branch. 28 test files carry a
+    # crate-level `#![cfg(feature = ...)]`, so the exposure is real and
+    # permanent.
+    #
+    # `check` rather than `build`: no codegen, no linking, ~13s warm
+    # over 469 units, and type resolution is all this needs to see.
+    name: Default-feature targets typecheck
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # master
+        with:
+          toolchain: stable
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+        with:
+          workspaces: ". -> target-default-targets"
+          key: default-feature-targets
+      - name: cargo check --all-targets (default features)
+        env:
+          CARGO_TARGET_DIR: ${{ github.workspace }}/target-default-targets
+        run: cargo check -p noyalib --all-targets --locked
+
+  documented-commands:
+    # Every `make`, `scripts/*.sh` and `cargo <subcommand>` the docs
+    # tell a reader to run must resolve to something that exists.
+    #
+    # The Rust blocks are compiled and the dependency lines are built;
+    # the shell commands were checked by nothing, so `cargo xtask
+    # pgo-build` (README) and `cargo xtask vendor` (pkg/VERIFY.md, in
+    # the supply-chain reproduction steps) survived 31 releases after
+    # the xtask crate was deleted.
+    #
+    # No toolchain needed — this reads the tree, so it is seconds.
+    name: Documented commands resolve
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Check every documented command
+        run: bash scripts/check-documented-commands.sh
+
   install-guides:
     # Builds and runs a scratch project for every dependency line the
     # docs tell a reader to paste. The README-examples gate compiles

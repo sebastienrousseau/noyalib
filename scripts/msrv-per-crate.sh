@@ -29,15 +29,12 @@ IFS=$'\n\t'
 ONLY="${1:-}"
 
 # Locate every `crates/*/Cargo.toml` carrying a `rust-version`.
-# Skip the xtask crate — it's an internal tool that can track the
-# host toolchain, not a downstream-visible MSRV contract.
+# (There was a skip here for `crates/xtask/`, an internal tool that
+# tracked the host toolchain rather than a downstream-visible MSRV.
+# That crate was retired with the workspace split, so the branch could
+# no longer be taken and is gone.)
 mapfile -t MANIFESTS < <(
     for m in crates/*/Cargo.toml; do
-        # Skip xtask (internal tooling, not part of the public MSRV
-        # contract) unless explicitly requested.
-        if [[ -z "$ONLY" && "$m" == *"crates/xtask/"* ]]; then
-            continue
-        fi
         # Filter on `rust-version = "..."` presence.
         if grep -qE '^rust-version *=' "$m"; then
             echo "$m"

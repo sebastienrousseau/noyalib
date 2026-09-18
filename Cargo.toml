@@ -20,14 +20,16 @@ members = ["crates/noyalib"]
 # match. Bumping a satellite ahead of the publish leaves it referring to
 # a version that does not exist yet.
 #
-# The `[workspace]` table is retained (as a single-member
-# workspace) to keep root-level `cargo` invocations working
-# during the transition. Post-v0.0.14 will follow #134 to
-# collapse this into a plain single-crate repo.
+# The `[workspace]` table is deliberate, not transitional. #134
+# (which proposed collapsing this into a plain single-crate repo)
+# is closed, and collapsing is no longer wanted: every satellite's
+# CI sparse-checkouts `crates/noyalib/tests/yaml-test-suite` via
+# shared-yaml-test-suite.yml, so moving the crate to the root
+# breaks five repositories at once for a cosmetic gain.
 #
-# `xtask` was internal tooling; the parts that need to keep
-# running (release-prep automation, bench runner) migrate
-# into `noya-cli` at #134 (release notes for v0.0.14).
+# `xtask` was internal tooling and is gone; man pages and shell
+# completions moved to `noya-cli` with the split. What still runs
+# here does so from `Makefile` targets and `scripts/`.
 exclude = ["crates/noyalib/examples/wasm", "fuzz", "fuzz-nostd"]
 
 [profile.dev]
