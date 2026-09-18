@@ -124,7 +124,10 @@ impl Document {
         };
 
         let src = self.source();
-        let line_start_idx = line_start(src, start);
+        // The leading run is measured from the entry's own line; the inline
+        // comment is still the one following the value on the value's line.
+        let lead_anchor = self.leading_comment_anchor(path).unwrap_or(start);
+        let line_start_idx = line_start(src, lead_anchor);
         let line_end_idx = line_end(src, end.saturating_sub(1).max(start));
 
         let mut bundle = CommentBundle::default();
@@ -291,9 +294,9 @@ impl Document {
         self.finish_comment_edit("remove_inline_comment", path, splice, snapshot, &expected)
     }
 
-    /// Set (or replace) the **leading** comment block above the
-    /// single-line mapping entry at `path` — the run of comment lines
-    /// that `comments_at(path).before` reports.
+    /// Set (or replace) the **leading** comment block above the mapping
+    /// entry at `path` — the run of comment lines that
+    /// `comments_at(path).before` reports.
     ///
     /// `text` becomes one comment line per `\n`-separated segment, each
     /// rendered at the key's indentation as `# <segment>` (a bare `#`
@@ -301,17 +304,16 @@ impl Document {
     /// place; otherwise the block is inserted immediately above the
     /// entry's line.
     ///
-    /// Scope: block **mapping keys** on a single line (where the key
-    /// token, and therefore the entry's own line and indent, are
-    /// unambiguous). Multi-line / nested entries and sequence items are
-    /// a follow-up — `comments_at` does not attribute a leading block to
-    /// them unambiguously. Guarded like the other mutators: the edit
-    /// must re-parse and leave the typed value unchanged, or it rolls
-    /// back.
+    /// Scope: block **mapping keys**, whatever their value spans. The
+    /// comment goes above the key's own line, so a value that runs on for
+    /// twenty lines changes nothing about where it lands. Sequence items
+    /// have no key token and so no entry line to anchor on; they remain a
+    /// follow-up. Guarded like the other mutators: the edit must re-parse
+    /// and leave the typed value unchanged, or it rolls back.
     ///
     /// # Errors
     ///
-    /// - `path` does not address a single-line block-mapping key.
+    /// - `path` does not address a block-mapping key.
     /// - The splice would not re-parse or would change data (roll back).
     ///
     /// # Examples
@@ -357,7 +359,7 @@ impl Document {
 
     /// Remove the **leading** comment block above the mapping entry at
     /// `path`, if any. A no-op returning `Ok(())` when there is none (or
-    /// the path does not address a single-line mapping key).
+    /// the path does not address a mapping key).
     ///
     /// Guarded and rolled back exactly like
     /// [`set_leading_comment`](Self::set_leading_comment).
@@ -377,8 +379,8 @@ impl Document {
     /// assert_eq!(doc.source(), "port: 8080\n");
     /// ```
     pub fn remove_leading_comment(&mut self, path: &str) -> Result<()> {
-        // A path that is not a single-line mapping key simply has no
-        // leading block this method owns — treat as a no-op.
+        // A path that is not a mapping key simply has no leading block
+        // this method owns — treat as a no-op.
         if self.leading_comment_site(path).is_err() {
             return Ok(());
         }
@@ -394,24 +396,24 @@ impl Document {
         self.finish_comment_edit("remove_leading_comment", path, splice, snapshot, &expected)
     }
 
-    /// Resolve `path` to a single-line block-mapping key and return its
-    /// key-token start, its line start, and the indent (whitespace)
-    /// prefix of that line. `Err` for anything that is not such a key.
+    /// Resolve `path` to a block-mapping key and return its key-token
+    /// start, its line start, and the indent (whitespace) prefix of that
+    /// line. `Err` for anything that is not such a key.
+    ///
+    /// The value's own extent is not consulted: a leading comment sits
+    /// above the key's line, so how many lines the value occupies decides
+    /// nothing here. This refused a multi-line entry until the leading
+    /// anchor moved to the key, which had put every block-valued key out of
+    /// reach of the one leading-comment API that already anchored correctly.
     fn leading_comment_site(&self, path: &str) -> Result<(usize, usize, String)> {
         let Some((key_start, _key_end)) = self.key_span(path) else {
             return Err(Error::Parse(format!(
                 "leading comment: `{path}` does not address a block-mapping key"
             )));
         };
-        let Some((vstart, vend)) = self.comment_anchor_span(path) else {
+        if self.comment_anchor_span(path).is_none() {
             return Err(Error::Parse(format!(
                 "leading comment: `{path}` did not resolve to a value"
-            )));
-        };
-        if self.source()[vstart..vend].contains('\n') {
-            return Err(Error::Parse(format!(
-                "leading comment: `{path}` is a multi-line entry; leading-comment \
-                 mutation is limited to single-line mapping keys in this phase"
             )));
         }
         let ls = line_start(self.source(), key_start);
@@ -573,7 +575,13 @@ impl Document {
                 }
             }
             CommentPosition::Before => {
-                let indent = indent_of_line_containing(self.source(), start);
+                // Both the indent and the insertion point come from the
+                // entry's own line. Taking them from a block collection's
+                // value would indent the comment one level too deep and
+                // splice it inside the block, where it documents the first
+                // child instead of the entry.
+                let anchor = self.leading_comment_anchor(path).unwrap_or(start);
+                let indent = indent_of_line_containing(self.source(), anchor);
                 let nl = comment_line_break(self.source());
                 let block: String = text
                     .split('\n')
@@ -586,7 +594,7 @@ impl Document {
                     let start_of_run = line_start_from(self.source(), first.start);
                     self.replace_span(start_of_run, end_of_run.min(self.source().len()), &block)
                 } else {
-                    let line_start = line_start_from(self.source(), start);
+                    let line_start = line_start_from(self.source(), anchor);
                     self.replace_span(line_start, line_start, &block)
                 }
             }
