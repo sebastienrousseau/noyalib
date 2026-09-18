@@ -20,7 +20,7 @@
 //! [`CompiledSchema::builder`]: noyalib::CompiledSchema::builder
 //! [`CompiledSchema::iter_errors`]: noyalib::CompiledSchema::iter_errors
 
-#[path = "support.rs"]
+#[path = "support/mod.rs"]
 mod support;
 
 use noyalib::{CompiledSchema, Value, from_str};

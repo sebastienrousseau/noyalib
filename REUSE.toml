@@ -144,9 +144,9 @@ SPDX-License-Identifier = "MIT OR Apache-2.0"
 path = [
     ".cargo/config.toml",
     "crates/noyalib/Cargo.toml",
-    "crates/noyalib/examples/wasm/.gitignore",
-    "crates/noyalib/examples/wasm/Cargo.toml",
-    "crates/noyalib/examples/wasm/index.html",
+    "demos/wasm/.gitignore",
+    "demos/wasm/Cargo.toml",
+    "demos/wasm/index.html",
 ]
 precedence = "aggregate"
 SPDX-FileCopyrightText = "2026 Noyalib"

@@ -14,7 +14,7 @@
 //!
 //! Run: `cargo run --example figment --features figment`
 
-#[path = "support.rs"]
+#[path = "support/mod.rs"]
 mod support;
 
 use figment::Figment;

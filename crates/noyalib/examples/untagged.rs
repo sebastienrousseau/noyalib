@@ -8,7 +8,7 @@
 //!
 //! Run: `cargo run --example untagged`
 
-#[path = "support.rs"]
+#[path = "support/mod.rs"]
 mod support;
 
 use noyalib::{from_str, to_string};

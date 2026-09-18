@@ -5,7 +5,7 @@
 //!
 //! Run: `cargo run --example emit`
 
-#[path = "support.rs"]
+#[path = "support/mod.rs"]
 mod support;
 
 use noyalib::{ScalarStyle, SerializerConfig, Value, from_str, to_string_with_config};

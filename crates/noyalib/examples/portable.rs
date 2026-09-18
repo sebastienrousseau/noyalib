@@ -4,15 +4,15 @@
 //! WASM portability proof: noyalib compiles to wasm32-unknown-unknown.
 //!
 //! This example verifies all core operations work identically on native
-//! and WASM targets. The actual WASM bindings are in `examples/wasm/`.
+//! and WASM targets. The actual WASM bindings are in `demos/wasm/`.
 //!
-//! Build WASM:  `cd examples/wasm && wasm-pack build --target web`
-//! Serve:       `cd examples/wasm && python3 -m http.server 8080`
+//! Build WASM:  `cd demos/wasm && wasm-pack build --target web`
+//! Serve:       `cd demos/wasm && python3 -m http.server 8080`
 //! Open:        `http://localhost:8080/index.html`
 //!
 //! Run native:  `cargo run --example portable`
 
-#[path = "support.rs"]
+#[path = "support/mod.rs"]
 mod support;
 
 use noyalib::{Value, from_str, to_string};
@@ -107,7 +107,7 @@ fn main() {
             "target   = wasm32-unknown-unknown".to_string(),
             "binary   = ~201 KB (release, lto)".to_string(),
             "deps     = 0 C/FFI (pure Rust)".to_string(),
-            "build    = cd examples/wasm && wasm-pack build --target web".to_string(),
+            "build    = cd demos/wasm && wasm-pack build --target web".to_string(),
         ]
     });
 

@@ -8,7 +8,7 @@
 //!
 //! Run: `cargo run --example transcode`
 
-#[path = "support.rs"]
+#[path = "support/mod.rs"]
 mod support;
 
 use noyalib::Value as YamlValue;

@@ -5,7 +5,7 @@
 //!
 //! Run: `cargo run --example errors`
 
-#[path = "support.rs"]
+#[path = "support/mod.rs"]
 mod support;
 
 use noyalib::{Error, Location, Value, from_str};

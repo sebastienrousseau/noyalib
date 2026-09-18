@@ -9,7 +9,7 @@
 //!
 //! Run: `cargo run --example anchor_shared`
 
-#[path = "support.rs"]
+#[path = "support/mod.rs"]
 mod support;
 
 use noyalib::{ArcAnchor, RcAnchor, to_string, to_string_tracking_shared};

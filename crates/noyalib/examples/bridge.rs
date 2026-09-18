@@ -5,7 +5,7 @@
 //!
 //! Run: `cargo run --example bridge`
 
-#[path = "support.rs"]
+#[path = "support/mod.rs"]
 mod support;
 
 use noyalib::Value as YamlValue;

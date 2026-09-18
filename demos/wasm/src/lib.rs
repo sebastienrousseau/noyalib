@@ -5,7 +5,7 @@
 //!
 //! Exposes YAML parse/serialize to JavaScript via wasm-bindgen.
 //!
-//! Build: `cd examples/wasm && wasm-pack build --target web`
+//! Build: `cd demos/wasm && wasm-pack build --target web`
 
 use wasm_bindgen::prelude::*;
 

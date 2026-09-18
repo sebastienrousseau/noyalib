@@ -15,7 +15,7 @@
 //!
 //! Run: `cargo run --example entry_api`
 
-#[path = "support.rs"]
+#[path = "support/mod.rs"]
 mod support;
 
 use noyalib::Value;

@@ -12,7 +12,6 @@ readme = "README.md"
 keywords = ["yaml", "serde", "serialization", "parser", "safe"]
 categories = ["encoding", "parser-implementations", "config"]
 authors = ["Sebastien Rousseau <sebastian.rousseau@gmail.com>"]
-autoexamples = false
 include = [
     "/benches/**",
     "/build.rs",
@@ -31,205 +30,9 @@ path = "src/lib.rs"
 
 ## ── Core ──
 [[example]]
-name = "hello"
-path = "examples/hello.rs"
-[[example]]
-name = "dynamic"
-path = "examples/dynamic.rs"
-[[example]]
-name = "modify"
-path = "examples/modify.rs"
-[[example]]
-name = "deep"
-path = "examples/deep.rs"
-[[example]]
-name = "std"
-path = "examples/std.rs"
-[[example]]
-name = "variants"
-path = "examples/variants.rs"
-[[example]]
-name = "tags"
-path = "examples/tags.rs"
-
-## ── Spec ──
-[[example]]
-name = "alias"
-path = "examples/alias.rs"
-[[example]]
-name = "smart"
-path = "examples/smart.rs"
-[[example]]
-name = "overlay"
-path = "examples/overlay.rs"
-[[example]]
-name = "inherit"
-path = "examples/inherit.rs"
-[[example]]
-name = "stream"
-path = "examples/stream.rs"
-[[example]]
-name = "types"
-path = "examples/types.rs"
-[[example]]
-name = "binary"
-path = "examples/binary.rs"
-
-## ── Logic & Security ──
-[[example]]
-name = "strict"
-path = "examples/strict.rs"
-[[example]]
-name = "secure"
-path = "examples/secure.rs"
-[[example]]
-name = "harden_untrusted"
-path = "examples/harden_untrusted.rs"
-[[example]]
-name = "schema"
-path = "examples/schema.rs"
-[[example]]
-name = "env"
-path = "examples/env.rs"
-
-## ── DX ──
-[[example]]
-name = "errors"
-path = "examples/errors.rs"
-[[example]]
-name = "trace"
-path = "examples/trace.rs"
-[[example]]
-name = "source"
-path = "examples/source.rs"
-[[example]]
-name = "style"
-path = "examples/style.rs"
-
-## ── Advanced ──
-[[example]]
-name = "emit"
-path = "examples/emit.rs"
-[[example]]
-name = "rename"
-path = "examples/rename.rs"
-[[example]]
-name = "flatten"
-path = "examples/flatten.rs"
-[[example]]
-name = "bridge"
-path = "examples/bridge.rs"
-[[example]]
-name = "pipes"
-path = "examples/pipes.rs"
-[[example]]
-name = "global"
-path = "examples/global.rs"
-[[example]]
-name = "bench"
-path = "examples/bench.rs"
-## ── Future-Proof ──
-[[example]]
-name = "portable"
-path = "examples/portable.rs"
-[[example]]
-name = "mask"
-path = "examples/mask.rs"
-[[example]]
-name = "patch"
-path = "examples/patch.rs"
-[[example]]
-name = "suggest"
-path = "examples/suggest.rs"
-[[example]]
-name = "schema_ext"
-path = "examples/schema_ext.rs"
-
-## ── Deep Rust ──
-[[example]]
-name = "untagged"
-path = "examples/untagged.rs"
-[[example]]
-name = "borrow"
-path = "examples/borrow.rs"
-[[example]]
-name = "transcode"
-path = "examples/transcode.rs"
-[[example]]
-name = "comments"
-path = "examples/comments.rs"
-
-## ── Final ──
-[[example]]
-name = "async_io"
-path = "examples/async_io.rs"
-[[example]]
-name = "recursive"
-path = "examples/recursive.rs"
-
-## ── Platform ──
-[[example]]
-name = "diagnostic"
-path = "examples/diagnostic.rs"
-[[example]]
-name = "nostd"
-path = "examples/nostd.rs"
-[[example]]
-name = "preserve"
-path = "examples/preserve.rs"
-
-## ── Competitive Features ──
-[[example]]
-name = "replay"
-path = "examples/replay.rs"
-[[example]]
-name = "registry"
-path = "examples/registry.rs"
-[[example]]
-name = "scientific"
-path = "examples/scientific.rs"
-[[example]]
-name = "validation"
-path = "examples/validation.rs"
-[[example]]
-name = "anchor_shared"
-path = "examples/anchor_shared.rs"
-
-[[example]]
-name = "all"
-path = "examples/all.rs"
-
-[[example]]
-name = "lossless_edit"
-path = "examples/lossless_edit.rs"
-[[example]]
-name = "cst_surgical_edit"
-path = "examples/cst_surgical_edit.rs"
-
-[[example]]
-name = "cst_wrapped_flow_edit"
-path = "examples/cst_wrapped_flow_edit.rs"
-
-[[example]]
-name = "merge_keys_with_aliases"
-path = "examples/merge_keys_with_aliases.rs"
-
-[[example]]
 name = "lossless_u64"
 path = "examples/lossless_u64.rs"
 required-features = ["lossless-u64"]
-
-[[example]]
-name = "comments_at"
-path = "examples/comments_at.rs"
-
-[[example]]
-name = "entry_api"
-path = "examples/entry_api.rs"
-
-[[example]]
-name = "flattened"
-path = "examples/flattened.rs"
 
 [[example]]
 name = "schema_validation"
@@ -248,10 +51,6 @@ required-features = ["strict-deserialise"]
 
 ## ── Ecosystem Citizen ──
 [[example]]
-name = "include"
-path = "examples/include.rs"
-
-[[example]]
 name = "figment"
 path = "examples/figment.rs"
 required-features = ["figment"]
@@ -265,22 +64,6 @@ required-features = ["garde"]
 name = "validation_validator"
 path = "examples/validation_validator.rs"
 required-features = ["validator"]
-
-[[example]]
-name = "diagnostic_path"
-path = "examples/diagnostic_path.rs"
-
-[[example]]
-name = "zero_copy_borrow"
-path = "examples/zero_copy_borrow.rs"
-
-[[example]]
-name = "read_iterator"
-path = "examples/read_iterator.rs"
-
-[[example]]
-name = "properties_interpolation"
-path = "examples/properties_interpolation.rs"
 
 [[example]]
 name = "ariadne_diagnostic"
@@ -298,14 +81,6 @@ path = "examples/include_directive.rs"
 required-features = ["include_fs"]
 
 [[example]]
-name = "config_macros"
-path = "examples/config_macros.rs"
-
-[[example]]
-name = "i18n_formatters"
-path = "examples/i18n_formatters.rs"
-
-[[example]]
 name = "recovery_lenient"
 path = "examples/recovery_lenient.rs"
 required-features = ["recovery"]
@@ -321,10 +96,6 @@ path = "examples/tokio_async_reader.rs"
 required-features = ["tokio"]
 
 ## ── Coverage-gap examples added in v0.0.14 ──
-[[example]]
-name = "interner"
-path = "examples/interner.rs"
-
 [[example]]
 name = "parallel"
 path = "examples/parallel.rs"

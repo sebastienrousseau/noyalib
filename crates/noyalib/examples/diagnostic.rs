@@ -11,7 +11,7 @@
 //! Without the miette feature, this example still demonstrates the
 //! Error API (code, help, labels are just not rendered via miette).
 
-#[path = "support.rs"]
+#[path = "support/mod.rs"]
 mod support;
 
 use noyalib::{DuplicateKeyPolicy, ParserConfig, Value, from_str, from_str_with_config};

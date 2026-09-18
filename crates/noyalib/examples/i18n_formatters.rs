@@ -11,7 +11,7 @@
 //!
 //! Run: `cargo run --example i18n_formatters`
 
-#[path = "support.rs"]
+#[path = "support/mod.rs"]
 mod support;
 
 use noyalib::i18n::{DefaultFormatter, MessageFormatter, UserFormatter};

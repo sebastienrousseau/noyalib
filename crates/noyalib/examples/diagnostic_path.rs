@@ -17,7 +17,7 @@
 //!
 //! Run: `cargo run --example diagnostic_path`
 
-#[path = "support.rs"]
+#[path = "support/mod.rs"]
 mod support;
 
 use noyalib::{Deserializer, Value, from_str};

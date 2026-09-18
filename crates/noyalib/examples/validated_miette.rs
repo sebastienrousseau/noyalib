@@ -6,7 +6,7 @@
 //!
 //! Run: `cargo run --example validated_miette --features miette,garde`
 
-#[path = "support.rs"]
+#[path = "support/mod.rs"]
 mod support;
 
 use garde::Validate;

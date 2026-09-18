@@ -9,7 +9,7 @@
 //!
 //! Run: `cargo run --example schema_ext`
 
-#[path = "support.rs"]
+#[path = "support/mod.rs"]
 mod support;
 
 use noyalib::{Value, from_str};

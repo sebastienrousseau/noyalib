@@ -19,7 +19,7 @@
 //!
 //! Run: `cargo run --example strict_deserialise --features strict-deserialise`
 
-#[path = "support.rs"]
+#[path = "support/mod.rs"]
 mod support;
 
 use noyalib::{from_reader_strict, from_slice_strict, from_str, from_str_strict};

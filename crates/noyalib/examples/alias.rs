@@ -5,7 +5,7 @@
 //!
 //! Run: `cargo run --example alias`
 
-#[path = "support.rs"]
+#[path = "support/mod.rs"]
 mod support;
 
 use std::collections::BTreeMap;

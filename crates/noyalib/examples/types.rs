@@ -5,7 +5,7 @@
 //!
 //! Run: `cargo run --example types`
 
-#[path = "support.rs"]
+#[path = "support/mod.rs"]
 mod support;
 
 use noyalib::{Tag, TaggedValue, Value, from_str, to_string};

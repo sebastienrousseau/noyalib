@@ -5,7 +5,7 @@
 //!
 //! Run: `cargo run --example pipes`
 
-#[path = "support.rs"]
+#[path = "support/mod.rs"]
 mod support;
 
 use std::io::Cursor;

@@ -46,24 +46,29 @@ floor=$(awk -v m="900" -v e="725" 'BEGIN {printf "%.1f", (m > e) ? m : e}')
 if [ "$floor" = "900.0" ]; then ok; else bad "rolling median must win once above the floor ($floor)"; fi
 
 # ── check-documented-commands ──────────────────────────────────────
+# The gate reads `git ls-files`, so a fixture must be known to git to be
+# seen at all. `git add -N` records intent-to-add without staging
+# content; `git reset` on the path undoes it.
+cmdfix() { printf '%b' "$1" > docs/__selftest_cmd.md; git add -N docs/__selftest_cmd.md; }
+cmdclean() { git reset -q -- docs/__selftest_cmd.md 2>/dev/null; command rm -f docs/__selftest_cmd.md; }
 if ./scripts/check-documented-commands.sh >/dev/null 2>&1; then ok; else bad "command gate rejects the clean tree"; fi
 # A retired cargo subcommand in a fenced block.
-printf '# t\n\n```sh\ncargo notarealsubcommand --flag\n```\n' > docs/__selftest_cmd.md
+cmdfix '# t\n\n```sh\ncargo notarealsubcommand --flag\n```\n'
 if ./scripts/check-documented-commands.sh >/dev/null 2>&1; then bad "command gate missed an unknown cargo subcommand"; else ok; fi
 # ...and in an inline code span, which is where the real defect lived:
 # `cargo xtask pgo-build` sat in a README *paragraph*, so a gate that
 # reads only fenced blocks passes while the command cannot run.
-printf '# t\n\nRun `cargo notarealsubcommand build` to do the thing.\n' > docs/__selftest_cmd.md
+cmdfix '# t\n\nRun `cargo notarealsubcommand build` to do the thing.\n'
 if ./scripts/check-documented-commands.sh >/dev/null 2>&1; then bad "command gate missed an inline-span command"; else ok; fi
 # A missing make target and a missing script.
-printf '# t\n\n```sh\nmake __no_such_target__\n```\n' > docs/__selftest_cmd.md
+cmdfix '# t\n\n```sh\nmake __no_such_target__\n```\n'
 if ./scripts/check-documented-commands.sh >/dev/null 2>&1; then bad "command gate missed a missing make target"; else ok; fi
-printf '# t\n\n```sh\n./scripts/__no_such_script__.sh\n```\n' > docs/__selftest_cmd.md
+cmdfix '# t\n\n```sh\n./scripts/__no_such_script__.sh\n```\n'
 if ./scripts/check-documented-commands.sh >/dev/null 2>&1; then bad "command gate missed a missing script"; else ok; fi
 # Prose in a comment must NOT be read as a command.
-printf '# t\n\n```sh\n# cargo will fetch the index first\ncargo build\n```\n' > docs/__selftest_cmd.md
+cmdfix '# t\n\n```sh\n# cargo will fetch the index first\ncargo build\n```\n'
 if ./scripts/check-documented-commands.sh >/dev/null 2>&1; then ok; else bad "command gate read a shell comment as an instruction"; fi
-rm -f docs/__selftest_cmd.md
+cmdclean
 
 # ── every gate script is exercised above ───────────────────────────
 # Without this, a new `scripts/check-*.sh` joins the release path with

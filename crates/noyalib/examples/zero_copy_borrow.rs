@@ -13,7 +13,7 @@
 //!
 //! Run: `cargo run --example zero_copy_borrow`
 
-#[path = "support.rs"]
+#[path = "support/mod.rs"]
 mod support;
 
 use noyalib::borrowed::TransformReason;

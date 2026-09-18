@@ -5,7 +5,7 @@
 //!
 //! Run: `cargo run --example modify`
 
-#[path = "support.rs"]
+#[path = "support/mod.rs"]
 mod support;
 
 use noyalib::{Mapping, MappingAny, Value, from_str, from_value, to_value};
