@@ -59,3 +59,17 @@ jobs:
           --feature-powerset --depth 2
           --exclude-features nightly-simd,compare-saphyr
           --no-dev-deps
+
+      # The pair sweep above is `--no-dev-deps`, so it never compiles a
+      # test, bench or example. That is the right trade for 310 library
+      # combinations, but it means the sweep cannot see a test that
+      # names a feature-gated item without gating itself — the break
+      # that reached main three times. ci.yml's
+      # `default-feature-targets` job covers the default set per PR;
+      # this covers each feature on its own, once a week, where the
+      # extra cost is affordable.
+      - name: Check every target under each single feature
+        run: >
+          cargo hack check -p noyalib
+          --each-feature --all-targets
+          --exclude-features nightly-simd,compare-saphyr
