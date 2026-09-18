@@ -512,7 +512,10 @@ jobs:
         docs/MIGRATION-FROM-SERDE-YAML-BW.md
         docs/MIGRATION-FROM-SERDE-YAML.md
         docs/MIGRATION-FROM-YAML-SPANNED.md
+        docs/PLAN.md
+        docs/TESTING.md
         docs/USER-GUIDE.md
+        docs/design/green-tree.md
         docs/errors.md
         docs/internals.md
 

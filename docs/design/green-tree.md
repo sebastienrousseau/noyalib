@@ -119,7 +119,7 @@ input byte-for-byte.
 
 Sketch of the core types (lives in a new `src/cst/` module):
 
-```rust
+```rust,ignore
 // src/cst/mod.rs
 
 /// Kind of a syntax node or token.
@@ -193,7 +193,7 @@ requirement.
 
 A new top-level `Document` type sits on top of the green tree:
 
-```rust
+```rust,ignore
 // src/cst/document.rs (new file)
 
 /// A YAML document with byte-faithful source preservation.
