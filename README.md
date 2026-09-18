@@ -823,7 +823,11 @@ CLI surface error codes (`noyalib::parse`,
 `noyalib::duplicate_key`, …) and actionable help text from the
 same call site:
 
-```rust,ignore
+<!-- doctest-preamble
+#[derive(serde::Deserialize)] struct Config { a: i32 }
+let yaml = "a: 1\n";
+-->
+```rust
 let cfg: Config = noyalib::from_str(yaml)
     .map_err(|e| miette::Report::new(e).with_source_code(yaml.to_owned()))?;
 ```
@@ -1021,7 +1025,15 @@ is a contract violation.
 <details>
 <summary><b>Deserialization</b></summary>
 
-```rust,ignore
+<!-- doctest-preamble
+#[derive(serde::Deserialize)] struct Config { a: i32 }
+let yaml = "a: 1\n";
+let bytes = b"a: 1\n".as_slice();
+let file = std::io::Cursor::new(b"a: 1\n".to_vec());
+let reader = std::io::Cursor::new(b"a: 1\n".to_vec());
+let value: noyalib::Value = noyalib::from_str("a: 1\n")?;
+-->
+```rust
 // API surface synopsis — substitute your own `Config`, `yaml`, `bytes`, etc.
 use noyalib::{from_str, from_slice, from_reader, from_value, ParserConfig};
 
@@ -1043,7 +1055,12 @@ let config: Config = noyalib::from_reader_with_config(reader, &parser)?;
 <details>
 <summary><b>Serialization</b></summary>
 
-```rust,ignore
+<!-- doctest-preamble
+#[derive(serde::Serialize)] struct Config { a: i32 }
+let config = Config { a: 1 };
+let mut file: Vec<u8> = Vec::new();
+-->
+```rust
 // API surface synopsis — substitute your own `config` value + `file` writer.
 use noyalib::{to_string, to_writer, to_fmt_writer, to_value, SerializerConfig};
 
@@ -1168,13 +1185,19 @@ value.apply_merge()?;
 <details>
 <summary><b>Multi-document streams</b></summary>
 
-```rust,ignore
+<!-- doctest-preamble
+#[derive(serde::Deserialize, serde::Serialize)] struct Config { a: i32 }
+let yaml = "---\na: 1\n---\na: 2\n";
+let config1 = Config { a: 1 };
+let config2 = Config { a: 2 };
+-->
+```rust
 // API surface synopsis — substitute your own `Config` type + `config1`/`config2` values.
 use noyalib::{load_all, to_string_multi};
 
 let docs = load_all("---\na: 1\n---\nb: 2\n")?;
-for doc in &docs {
-    println!("{doc:?}");
+for doc in docs {
+    println!("{:?}", doc?);
 }
 
 let items: Vec<Config> = noyalib::load_all_as::<Config>(yaml)?;
@@ -1227,7 +1250,10 @@ struct Task {
 <details>
 <summary><b>Parser configuration</b></summary>
 
-```rust,ignore
+<!-- doctest-preamble
+let input = "a: 1\n";
+-->
+```rust
 // API surface synopsis — substitute your own `input` string.
 use noyalib::{from_str_with_config, ParserConfig, DuplicateKeyPolicy};
 
@@ -1250,7 +1276,10 @@ For maximum strictness, use `ParserConfig::strict()`.
 <details>
 <summary><b>Serializer configuration</b></summary>
 
-```rust,ignore
+<!-- doctest-preamble
+let value: noyalib::Value = noyalib::from_str("a: 1\n")?;
+-->
+```rust
 // API surface synopsis — substitute your own `value` to serialise.
 use noyalib::{to_string_with_config, SerializerConfig, FlowStyle, ScalarStyle};
 
@@ -1656,8 +1685,8 @@ The four entry points, identical across every repo in the family:
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Module map, hot-path notes, design decisions. |
 | [`docs/COOKBOOK.md`](docs/COOKBOOK.md) | Task-shaped recipes, each pointing at the runnable example it comes from. |
 | [`docs/GLOSSARY.md`](docs/GLOSSARY.md) | YAML / serde terminology reference. |
-| [`crates/noyalib/docs/internals.md`](crates/noyalib/docs/internals.md) | Library internals (parser stages, loader frames, CST green tree). |
-| [`crates/noyalib/docs/errors.md`](crates/noyalib/docs/errors.md) | Error reference — every variant, when it fires, how to handle it. |
+| [`docs/internals.md`](docs/internals.md) | Library internals (parser stages, loader frames, CST green tree). |
+| [`docs/errors.md`](docs/errors.md) | Error reference — every variant, when it fires, how to handle it. |
 
 The per-crate READMEs at
 [`crates/noyalib`](crates/noyalib/README.md),
