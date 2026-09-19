@@ -183,7 +183,7 @@ override via `ParserConfig`.
 | `max_mapping_keys` | 65536 | 1024 | Per-mapping key count cap | `ParserConfig::max_mapping_keys(N)` |
 
 The corresponding regression tests live in
-[`tests/stress_load.rs`](../crates/noyalib/tests/suite/stress_load.rs).
+[`tests/stress_load.rs`](../crates/noyalib/tests/limits/stress_load.rs).
 
 #### v0.0.6 opt-in surface limits
 
