@@ -12,24 +12,45 @@ pass=0; fail=0
 ok()  { pass=$((pass+1)); }
 bad() { fail=$((fail+1)); echo "  [FAIL] $1" >&2; }
 
+# These tests mutate tracked files and put them back. Restoring with
+# `git checkout -- <file>` restores the *committed* content, which
+# silently discards uncommitted work in that file — it threw away a
+# freshly regenerated docs/ECOSYSTEM.md that had taken half an hour to
+# measure. Save and restore the bytes that were actually there.
+SNAP="$(mktemp -d)"
+trap 'rm -rf "$SNAP"' EXIT
+save()    { for f in "$@"; do mkdir -p "$SNAP/$(dirname "$f")"; cp "$f" "$SNAP/$f"; done; }
+restore() { for f in "$@"; do cp "$SNAP/$f" "$f"; done; }
+
 # ── verify-release-versions ────────────────────────────────────────
 # Derive the tree's own version so this fixture survives every bump
 # (it went stale at the v0.0.31 bump when hardcoded).
 CUR="v$(grep -m1 '^version = ' crates/noyalib/Cargo.toml | cut -d'"' -f2)"
+save CHANGELOG.md CITATION.cff docs/ECOSYSTEM.md
 # A branch carries its version from creation; the dated CHANGELOG
 # heading is the one release-time step. So mid-cycle the gate may
 # fail ONLY on the missing heading — verify the positive path by
 # inserting a temporary heading, then restoring.
 perl -0pi -e "s/^## \[Unreleased\]\n/## [Unreleased]\n\n## [$CUR] - 2099-01-01\n/m" CHANGELOG.md
 if ./scripts/verify-release-versions.sh "$CUR" >/dev/null 2>&1; then ok; else bad "gate rejects the tree's own version ($CUR) even with a heading"; fi
-git checkout -q -- CHANGELOG.md
+restore CHANGELOG.md
 # A version nothing agrees on: must fail.
 if ./scripts/verify-release-versions.sh v9.9.9 >/dev/null 2>&1; then bad "gate accepted v9.9.9"; else ok; fi
 # Stale CITATION.cff must fail (restored via git checkout).
 perl -0pi -e "s/^## \[Unreleased\]\n/## [Unreleased]\n\n## [$CUR] - 2099-01-01\n/m" CHANGELOG.md
 perl -pi -e 's/^version: .*/version: 0.0.1/' CITATION.cff
 if ./scripts/verify-release-versions.sh "$CUR" >/dev/null 2>&1; then bad "gate missed a stale CITATION.cff"; else ok; fi
-git checkout -q -- CITATION.cff CHANGELOG.md
+restore CITATION.cff CHANGELOG.md
+
+# ── ECOSYSTEM.md rating-table freshness ────────────────────────────
+# The weekly scorecard workflow gates the *live* score against a floor
+# and never compares it to the *committed* table, which is how the table
+# sat at 0.0.33 for thirty-one releases with CI green throughout.
+if ./scripts/verify-release-versions.sh "$CUR" >/dev/null 2>&1; then :; fi
+perl -0pi -e "s/^## \\[Unreleased\\]\\n/## [Unreleased]\\n\\n## [$CUR] - 2099-01-01\\n/m" CHANGELOG.md
+perl -pi -e 's/tree \d+\.\d+\.\d+/tree 0.0.1/' docs/ECOSYSTEM.md
+if ./scripts/verify-release-versions.sh "$CUR" >/dev/null 2>&1; then bad "gate missed a stale ECOSYSTEM.md rating table"; else ok; fi
+restore docs/ECOSYSTEM.md CHANGELOG.md
 
 # ── check-docs-links ───────────────────────────────────────────────
 if ./scripts/check-docs-links.sh >/dev/null 2>&1; then ok; else bad "link gate rejects the clean tree"; fi
