@@ -5,7 +5,7 @@
 //!
 //! Run: `cargo run --example source`
 
-#[path = "support.rs"]
+#[path = "support/mod.rs"]
 mod support;
 
 use noyalib::{Spanned, from_str};

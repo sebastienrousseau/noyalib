@@ -353,7 +353,7 @@
 //!   enforces `cargo check --no-default-features` on every PR.
 //! - **WASM**: `wasm32-unknown-unknown` via the `noyalib-wasm`
 //!   companion crate. 338 KB release binary (LTO). Browser
-//!   demo in `crates/noyalib/examples/wasm/`.
+//!   demo in `demos/wasm/`.
 //! - **Big-endian**: validated under Miri's
 //!   `mips64-unknown-linux-gnuabi64` simulation in the weekly
 //!   `miri-bigendian` job.

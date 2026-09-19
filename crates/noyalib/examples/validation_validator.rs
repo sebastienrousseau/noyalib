@@ -12,7 +12,7 @@
 //!
 //! Run: `cargo run --example validation_validator --features validator`
 
-#[path = "support.rs"]
+#[path = "support/mod.rs"]
 mod support;
 
 use noyalib::ValidatedValidator;

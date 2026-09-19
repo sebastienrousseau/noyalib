@@ -5,7 +5,7 @@
 //!
 //! Run: `cargo run --example secure`
 
-#[path = "support.rs"]
+#[path = "support/mod.rs"]
 mod support;
 
 use noyalib::{DuplicateKeyPolicy, ParserConfig, Value, from_str_with_config};

@@ -14,7 +14,7 @@
 //!
 //! Run: `cargo run --example comments`
 
-#[path = "support.rs"]
+#[path = "support/mod.rs"]
 mod support;
 
 use noyalib::fmt::Commented;

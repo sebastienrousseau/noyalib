@@ -10,7 +10,7 @@
 //!
 //! Run: `cargo run --example preserve`
 
-#[path = "support.rs"]
+#[path = "support/mod.rs"]
 mod support;
 
 use noyalib::fmt::{Commented, FlowMap, FlowSeq, LitString, SpaceAfter};

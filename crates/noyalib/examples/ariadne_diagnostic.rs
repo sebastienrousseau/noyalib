@@ -9,7 +9,7 @@
 //!
 //! Run: `cargo run --example ariadne_diagnostic --features ariadne`
 
-#[path = "support.rs"]
+#[path = "support/mod.rs"]
 mod support;
 
 use ariadne::Source;

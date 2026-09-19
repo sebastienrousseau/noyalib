@@ -5,7 +5,7 @@
 //!
 //! Run: `cargo run --example stream`
 
-#[path = "support.rs"]
+#[path = "support/mod.rs"]
 mod support;
 
 use noyalib::{Value, load_all, load_all_as, try_load_all};

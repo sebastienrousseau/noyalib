@@ -5,7 +5,7 @@
 //!
 //! Run: `cargo run --example schema`
 
-#[path = "support.rs"]
+#[path = "support/mod.rs"]
 mod support;
 
 use noyalib::{Value, from_str, validate_yaml_core_schema, validate_yaml_json_schema};

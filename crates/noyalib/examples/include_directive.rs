@@ -13,7 +13,7 @@
 //!
 //! Run: `cargo run --example include_directive --features include_fs`
 
-#[path = "support.rs"]
+#[path = "support/mod.rs"]
 mod support;
 
 use noyalib::include::{IncludeRequest, IncludeResolver, InputSource, SafeFileResolver};

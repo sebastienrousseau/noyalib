@@ -17,7 +17,7 @@
 //!
 //! Run: `cargo run --example flattened`
 
-#[path = "support.rs"]
+#[path = "support/mod.rs"]
 mod support;
 
 use noyalib::{Flattened, Value, from_str};

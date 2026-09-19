@@ -8,7 +8,7 @@
 //!
 //! Run: `cargo run --example patch`
 
-#[path = "support.rs"]
+#[path = "support/mod.rs"]
 mod support;
 
 use noyalib::{Mapping, Value, from_str, to_string};

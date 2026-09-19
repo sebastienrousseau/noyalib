@@ -22,7 +22,7 @@
 //! [`validate_against_schema`]: noyalib::validate_against_schema
 //! [`coerce_to_schema`]: noyalib::coerce_to_schema
 
-#[path = "support.rs"]
+#[path = "support/mod.rs"]
 mod support;
 
 use noyalib::{JsonSchema, Value, coerce_to_schema, from_str, schema_for, validate_against_schema};

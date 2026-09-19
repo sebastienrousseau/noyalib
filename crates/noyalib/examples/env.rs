@@ -9,7 +9,7 @@
 //!
 //! Run: `cargo run --example env`
 
-#[path = "support.rs"]
+#[path = "support/mod.rs"]
 mod support;
 
 use std::collections::HashMap;

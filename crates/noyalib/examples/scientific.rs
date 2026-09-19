@@ -11,7 +11,7 @@
 //!
 //! Run: `cargo run --example scientific --features lossless-float`
 
-#[path = "support.rs"]
+#[path = "support/mod.rs"]
 mod support;
 
 fn main() {

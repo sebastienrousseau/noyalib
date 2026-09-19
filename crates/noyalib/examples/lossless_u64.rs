@@ -5,7 +5,7 @@
 //!
 //! Run: `cargo run --example lossless_u64 --features lossless-u64`
 
-#[path = "support.rs"]
+#[path = "support/mod.rs"]
 mod support;
 
 use noyalib::{

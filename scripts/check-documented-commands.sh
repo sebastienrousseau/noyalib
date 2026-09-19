@@ -28,7 +28,7 @@ set -uo pipefail
 cd "$(git rev-parse --show-toplevel)"
 
 exec python3 - <<'PY'
-import pathlib, re, sys
+import pathlib, re, subprocess, sys
 
 # History and roadmaps quote the commands of their own day, exactly as
 # verify-release-versions.sh excludes them for version numbers.
@@ -94,9 +94,16 @@ def command_lines(text):
             yield span
 
 
-for path in sorted(root.rglob("*.md")):
-    rel = str(path)
-    if "/target/" in rel or rel.startswith(".git") or any(s in rel for s in SKIP):
+# Tracked files only. Walking the tree also picked up build output —
+# `target-book/` is not matched by a "/target/" test — so the set of
+# scanned files, and the count reported, changed with whatever happened
+# to be built. A gate whose input depends on leftover artefacts is not
+# a gate.
+tracked = subprocess.run(["git", "ls-files", "*.md"],
+                         capture_output=True, text=True, check=True).stdout.split()
+for rel in sorted(tracked):
+    path = pathlib.Path(rel)
+    if not path.is_file() or any(s in rel for s in SKIP):
         continue
     text = path.read_text(errors="replace")
     # Some documents describe a *sibling repository's* commands —

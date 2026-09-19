@@ -30,7 +30,7 @@ members = ["crates/noyalib"]
 # `xtask` was internal tooling and is gone; man pages and shell
 # completions moved to `noya-cli` with the split. What still runs
 # here does so from `Makefile` targets and `scripts/`.
-exclude = ["crates/noyalib/examples/wasm", "fuzz", "fuzz-nostd"]
+exclude = ["demos/wasm", "fuzz", "fuzz-nostd"]
 
 [profile.dev]
 codegen-units = 256

@@ -14,7 +14,7 @@
 //!
 //! Run: `cargo run --example validation_garde --features garde`
 
-#[path = "support.rs"]
+#[path = "support/mod.rs"]
 mod support;
 
 use garde::Validate;
