@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 // Copyright (c) 2026 Noyalib. All rights reserved.
 
-//! Binary root for the serializer suites: emission, quoting, block scalars and formatting; see `ser/mod.rs`.
+//! Binary root for the streaming reader suites: events, typed reads and refusals; see `streaming/mod.rs`.
 
 #![allow(missing_docs)]
 
-#[path = "ser/mod.rs"]
+#[path = "streaming/mod.rs"]
 mod cases;
