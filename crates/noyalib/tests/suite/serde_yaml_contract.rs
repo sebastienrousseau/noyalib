@@ -24,7 +24,7 @@ use noyalib::compat::serde_yaml as syml;
 /// The corpus case named `name`.
 fn corpus_yaml(name: &str) -> String {
     let corpus: serde_json::Value =
-        serde_json::from_str(include_str!("fixtures/serde_yaml_contract/corpus.json"))
+        serde_json::from_str(include_str!("../fixtures/serde_yaml_contract/corpus.json"))
             .expect("corpus fixture parses");
     corpus["cases"]
         .as_array()
@@ -282,7 +282,7 @@ fn columns_count_characters_and_index_counts_bytes() {
 
 #[test]
 fn corpus_is_byte_identical_to_the_evaluated_contract() {
-    let bytes = include_bytes!("fixtures/serde_yaml_contract/corpus.json");
+    let bytes = include_bytes!("../fixtures/serde_yaml_contract/corpus.json");
     let mut hasher = Sha256Lite::new();
     hasher.update(bytes);
     assert_eq!(
@@ -298,7 +298,7 @@ fn corpus_covers_every_compatibility_category() {
     // Mirrors zfb's corpus_covers_every_named_compatibility_category:
     // the 18 cases must keep spanning the full category set.
     let corpus: serde_json::Value =
-        serde_json::from_str(include_str!("fixtures/serde_yaml_contract/corpus.json")).unwrap();
+        serde_json::from_str(include_str!("../fixtures/serde_yaml_contract/corpus.json")).unwrap();
     let cases = corpus["cases"].as_array().unwrap();
     assert_eq!(cases.len(), 18, "the contract is exactly 18 cases");
     let categories: std::collections::BTreeSet<&str> = cases

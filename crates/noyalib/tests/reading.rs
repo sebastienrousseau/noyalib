@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 // Copyright (c) 2026 Noyalib. All rights reserved.
 
-//! Binary root for the serializer suites: emission, quoting, block scalars and formatting; see `ser/mod.rs`.
+//! Binary root for the deserialiser, parser, loader and scanner suites; see `reading/mod.rs`.
 
 #![allow(missing_docs)]
 
-#[path = "ser/mod.rs"]
+#[path = "reading/mod.rs"]
 mod cases;
