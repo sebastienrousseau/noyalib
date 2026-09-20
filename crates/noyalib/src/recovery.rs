@@ -155,43 +155,72 @@ pub fn parse_lenient_with(input: &str, config: &LenientConfig) -> ParseResult {
     let bom_skip = crate::doc_boundary::strip_bom(input.as_bytes());
     let input = &input[bom_skip..];
 
-    let docs = match split_documents(input, &config.base_config) {
-        Ok(docs) => docs,
-        Err(error) => {
+    if let Err(error) =
+        crate::doc_boundary::validate_document_budget(input, config.base_config.max_documents)
+    {
+        return ParseResult {
+            value: Value::Null,
+            errors: vec![error],
+            is_complete: false,
+        };
+    }
+
+    let mut docs =
+        crate::doc_boundary::DocumentStream::new(input, config.base_config.max_documents);
+    let first = match docs.next() {
+        Some(Ok(document)) => document,
+        Some(Err(error)) => {
             return ParseResult {
                 value: Value::Null,
                 errors: vec![error],
                 is_complete: false,
             };
         }
+        None => {
+            return ParseResult {
+                value: Value::Null,
+                errors: Vec::new(),
+                is_complete: true,
+            };
+        }
+    };
+    let second = match docs.next() {
+        Some(Ok(document)) => document,
+        Some(Err(error)) => {
+            return ParseResult {
+                value: Value::Null,
+                errors: vec![error],
+                is_complete: false,
+            };
+        }
+        None => {
+            let (value, errors) = recover_one(first, config, config.max_errors);
+            let is_complete = errors.is_empty();
+            return ParseResult {
+                value,
+                errors,
+                is_complete,
+            };
+        }
     };
 
-    if docs.is_empty() {
-        return ParseResult {
-            value: Value::Null,
-            errors: Vec::new(),
-            is_complete: true,
-        };
-    }
-
-    if docs.len() == 1 {
-        let (value, errors) = recover_one(docs[0], config, config.max_errors);
-        let is_complete = errors.is_empty();
-        return ParseResult {
-            value,
-            errors,
-            is_complete,
-        };
-    }
-
-    let mut values: Vec<Value> = Vec::with_capacity(docs.len());
+    let initial = [Ok(first), Ok(second)];
+    let mut values: Vec<Value> = Vec::with_capacity(2);
     let mut errors: Vec<Error> = Vec::new();
     let mut budget = config.max_errors;
     // M2 — preserve per-document index alignment for LSP
     //      diagnostic joiners by pushing `Null` for every
     //      document we skip after the budget runs out.
     let mut budget_exhausted = false;
-    for doc in docs {
+    for document in initial.into_iter().chain(docs) {
+        let doc = match document {
+            Ok(document) => document,
+            Err(error) => {
+                errors.push(error);
+                values.push(Value::Null);
+                break;
+            }
+        };
         if budget_exhausted {
             values.push(Value::Null);
             continue;
@@ -340,6 +369,7 @@ fn try_line_truncation(
 /// Hostile `---`-spam inputs cannot drive unbounded `Vec`
 /// growth because the underlying scanner stops after
 /// `max_markers` boundaries.
+#[cfg(test)]
 fn split_documents<'a>(input: &'a str, config: &ParserConfig) -> crate::Result<Vec<&'a str>> {
     crate::doc_boundary::split_documents_checked(input, config.max_documents)
 }

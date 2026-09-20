@@ -427,10 +427,11 @@ recovery = ["std"]
 #   - `parallel::values(&str) -> Result<Vec<Value>>` — dynamic-tree variant.
 #   - `parallel::split(&str) -> Vec<&str>` — exposed boundary scanner
 #     for callers driving their own concurrency primitives.
-# All three pre-scan `---` document boundaries on a single thread
-# then deserialise each document in parallel via Rayon's global
-# thread pool. Off by default to keep the runtime dep list lean
-# for users that only parse single-document inputs.
+# Parsing validates the document budget without retaining offsets,
+# then discovers `---` boundaries on demand. Rayon's worker count
+# bounds in-flight deserialisation, and callers can select a pool
+# with `ThreadPool::install`. Off by default to keep the runtime dep
+# list lean for users that only parse single-document inputs.
 parallel = ["dep:rayon", "std"]
 # Portable-SIMD (`std::simd`) structural scanner. Builds a 16/32/
 # 64-byte-wide `SimdScanner` that finds any byte in a needle set

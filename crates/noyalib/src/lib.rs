@@ -249,9 +249,10 @@
 //!   across calls or across threads.
 //! - Anchor and alias state lives in the parser stack frame (one
 //!   per call); concurrent calls share no mutable state.
-//! - The Rayon-backed [`parallel`] module pre-scans document
-//!   boundaries on the calling thread, then dispatches each
-//!   document to the global Rayon pool — `T: Send` is required.
+//! - The Rayon-backed [`parallel`] module validates document limits
+//!   before scheduling, then discovers boundaries on demand and
+//!   dispatches bounded work to the active Rayon pool. `T: Send` is
+//!   required.
 //! - [`anchors::ArcAnchorRegistry`] / [`anchors::ArcAnchor`] use
 //!   `Arc` + `Weak` and are explicitly multi-thread-safe; the
 //!   `Rc`-backed siblings are single-thread.

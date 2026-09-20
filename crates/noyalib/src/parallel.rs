@@ -7,20 +7,21 @@
 //! exports, Kubernetes-resource snapshots, anything emitting `---`-
 //! separated documents at scale), even the fastest single-threaded
 //! parser is bounded by one CPU core. This module pre-scans the
-//! input on the main thread, splits it into per-document slices,
-//! then dispatches each document to a Rayon worker.
+//! input on demand and dispatches per-document slices to Rayon
+//! workers without materialising the complete boundary list.
 //!
 //! Gated behind the `parallel` Cargo feature.
 //!
 //! # Linear scaling
 //!
-//! The pre-scan runs in `O(input_len)` and stores one byte offset per
-//! document boundary; the
-//! parse-per-document work is the dominant cost and parallelises
-//! naturally across cores. Expect near-linear speedup with the
-//! number of cores up to the point where document size starts to
-//! dominate (very large single documents see less benefit because
-//! one document still parses on one thread).
+//! Boundary discovery runs in `O(input_len)` without allocating a
+//! marker or slice vector. Rayon requests slices on demand, so the
+//! worker count bounds in-flight parse work. Parse-per-document work
+//! is the dominant cost and parallelises naturally across cores.
+//! Expect near-linear speedup with the number of cores up to the
+//! point where document size starts to dominate (very large single
+//! documents see less benefit because one document still parses on
+//! one thread).
 //!
 //! # Document-boundary contract
 //!
@@ -117,31 +118,54 @@ pub fn parse_with_config<T>(input: &str, config: &ParserConfig) -> Result<Vec<T>
 where
     T: serde_core::de::DeserializeOwned + Send + 'static,
 {
-    let mut chunks = crate::doc_boundary::split_documents_checked(input, config.max_documents)?;
+    const SEQUENTIAL_DOCUMENTS: usize = 4;
+
+    crate::doc_boundary::validate_document_budget(input, config.max_documents)?;
+    let mut chunks = crate::doc_boundary::DocumentStream::new(input, config.max_documents);
+    let mut prefix = Vec::with_capacity(SEQUENTIAL_DOCUMENTS);
+    while prefix.len() < SEQUENTIAL_DOCUMENTS {
+        match chunks.next() {
+            Some(Ok(chunk)) => prefix.push(chunk),
+            Some(Err(error)) => return Err(error),
+            None => break,
+        }
+    }
+
     // `parallel::split` is a byte-partitioning API: unlike recovery,
     // a whitespace-only non-empty input must remain represented by its
     // original slice so concatenating the output reproduces the input.
-    if chunks.is_empty() && !input.is_empty() {
+    if prefix.is_empty() && !input.is_empty() {
         if config.max_documents == 0 {
             return Err(crate::Error::Budget(crate::BudgetBreach::MaxDocuments {
                 limit: 0,
                 observed: 1,
             }));
         }
-        chunks.push(input);
+        prefix.push(input);
     }
-    if chunks.len() < 4 {
-        return chunks
+
+    if prefix.len() < SEQUENTIAL_DOCUMENTS {
+        return prefix
             .iter()
             .map(|chunk| crate::from_str_with_config::<T>(chunk, config))
             .collect();
     }
-    chunks
-        .par_iter()
-        .map(|chunk| crate::from_str_with_config::<T>(chunk, config))
-        .collect::<Vec<Result<T>>>()
+
+    let mut parsed = prefix
         .into_iter()
-        .collect()
+        .map(Ok)
+        .chain(chunks)
+        .enumerate()
+        .par_bridge()
+        .map(|(index, chunk)| {
+            (
+                index,
+                chunk.and_then(|chunk| crate::from_str_with_config::<T>(chunk, config)),
+            )
+        })
+        .collect::<Vec<_>>();
+    parsed.sort_unstable_by_key(|(index, _)| *index);
+    parsed.into_iter().map(|(_, result)| result).collect()
 }
 
 /// Dynamic-tree variant of [`parse`]: returns a
@@ -184,7 +208,7 @@ pub fn values_with_config(input: &str, config: &ParserConfig) -> Result<Vec<crat
 /// ```
 #[must_use]
 pub fn split(input: &str) -> Vec<&str> {
-    let mut docs = crate::doc_boundary::split_documents(input, usize::MAX);
+    let mut docs = crate::doc_boundary::split_documents(input);
     if docs.is_empty() && !input.is_empty() {
         docs.push(input);
     }
@@ -301,9 +325,60 @@ mod tests {
     }
 
     #[test]
+    fn document_overflow_is_rejected_before_deserialization() {
+        use core::sync::atomic::{AtomicUsize, Ordering};
+
+        static DESERIALIZATIONS: AtomicUsize = AtomicUsize::new(0);
+
+        #[derive(Debug)]
+        struct CountingValue;
+
+        impl<'de> serde_core::Deserialize<'de> for CountingValue {
+            fn deserialize<D>(deserializer: D) -> core::result::Result<Self, D::Error>
+            where
+                D: serde_core::Deserializer<'de>,
+            {
+                let _ = <crate::Value as serde_core::Deserialize>::deserialize(deserializer)?;
+                let _ = DESERIALIZATIONS.fetch_add(1, Ordering::Relaxed);
+                Ok(Self)
+            }
+        }
+
+        DESERIALIZATIONS.store(0, Ordering::Relaxed);
+        let config = ParserConfig::default().max_documents(4);
+        let yaml = "---\na: 1\n---\na: 2\n---\na: 3\n---\na: 4\n---\na: 5\n";
+        let error = parse_with_config::<CountingValue>(yaml, &config).unwrap_err();
+        assert!(matches!(
+            error,
+            crate::Error::Budget(crate::BudgetBreach::MaxDocuments {
+                limit: 4,
+                observed: 5
+            })
+        ));
+        assert_eq!(DESERIALIZATIONS.load(Ordering::Relaxed), 0);
+    }
+
+    #[test]
     fn parse_with_config_preserves_semantic_policy() {
         let config = ParserConfig::default().duplicate_key_policy(crate::DuplicateKeyPolicy::Error);
         let error = parse_with_config::<crate::Value>("a: 1\na: 2\n", &config).unwrap_err();
+        assert_eq!(error.kind(), crate::ErrorKind::DuplicateKey);
+    }
+
+    #[cfg_attr(
+        miri,
+        ignore = "rayon/crossbeam-epoch uses int-to-ptr casts unsupported under -Zmiri-strict-provenance"
+    )]
+    #[test]
+    fn parallel_errors_remain_in_source_order() {
+        let config = ParserConfig::default().duplicate_key_policy(crate::DuplicateKeyPolicy::Error);
+        let yaml = concat!(
+            "---\nid: 1\n",
+            "---\nid: 2\nid: 3\n",
+            "---\nid: [\n",
+            "---\nid: 4\n",
+        );
+        let error = parse_with_config::<crate::Value>(yaml, &config).unwrap_err();
         assert_eq!(error.kind(), crate::ErrorKind::DuplicateKey);
     }
 
