@@ -106,7 +106,8 @@ pub struct ParserConfig {
     /// node-dense payloads (long runs of `[]`/`{}`) that stay under the
     /// scalar-byte and event caps. Trips [`crate::Error::Budget`] with
     /// [`crate::BudgetBreach::MaxNodes`]. Enforced on the AST-loader
-    /// path; raise it for deliberately large documents.
+    /// path and re-applied to the fully expanded include graph; raise it
+    /// for deliberately large documents.
     pub max_nodes: usize,
     /// Maximum cumulative scalar-byte count across the document
     /// (default: 64 MB). Distinct from

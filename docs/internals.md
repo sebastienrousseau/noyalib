@@ -57,9 +57,9 @@ likely to cost something. The `benches/` directory measures them.
 | `cst/green.rs` | 231 | Immutable green-node primitive with relative-length leaves. |
 | `cst/mod.rs` | 126 | Side-table CST (concrete syntax tree) for lossless round-tripping. |
 | `cst/syntax.rs` | 135 | Syntax-kind tags for green-tree nodes and tokens. |
-| `de/config.rs` | 1235 | Parser configuration types. |
+| `de/config.rs` | 1236 | Parser configuration types. |
 | `de/deserializer.rs` | 1041 | The serde `Deserializer` over a `&Value` and its access types. |
-| `de.rs` | 1183 | YAML Deserialization. |
+| `de.rs` | 1227 | YAML Deserialization. |
 | `diagnostic.rs` | 188 | Spanned value to `miette::Report` bridge. |
 | `doc_boundary.rs` | 329 | Workspace-private `---` document-boundary scanner. |
 | `document.rs` | 436 | Multi-document YAML loading. |

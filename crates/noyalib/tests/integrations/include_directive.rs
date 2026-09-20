@@ -162,6 +162,46 @@ fn cumulative_include_bytes_are_bounded() {
 }
 
 #[test]
+fn expanded_include_nodes_share_the_document_budget() {
+    let mut files = HashMap::new();
+    let _ = files.insert("a.yaml", "value: 1\n");
+    let _ = files.insert("b.yaml", "value: 2\n");
+    let cfg = ParserConfig::new()
+        .include_resolver(mem_resolver(files))
+        // The root has five authored nodes and each included document has
+        // three. All sources fit independently, but the expanded root has
+        // nine nodes: its mapping, two keys, and two three-node mappings.
+        .max_nodes(8);
+
+    let error =
+        from_str_with_config::<Value>("first: !include a.yaml\nsecond: !include b.yaml\n", &cfg)
+            .unwrap_err();
+    assert!(matches!(
+        error,
+        noyalib::Error::Budget(noyalib::BudgetBreach::MaxNodes {
+            limit: 8,
+            observed: 9
+        })
+    ));
+}
+
+#[test]
+fn expanded_include_nodes_accept_the_exact_budget() {
+    let mut files = HashMap::new();
+    let _ = files.insert("a.yaml", "value: 1\n");
+    let _ = files.insert("b.yaml", "value: 2\n");
+    let cfg = ParserConfig::new()
+        .include_resolver(mem_resolver(files))
+        .max_nodes(9);
+
+    let value =
+        from_str_with_config::<Value>("first: !include a.yaml\nsecond: !include b.yaml\n", &cfg)
+            .unwrap();
+    assert_eq!(value["first"]["value"].as_i64(), Some(1));
+    assert_eq!(value["second"]["value"].as_i64(), Some(2));
+}
+
+#[test]
 fn no_resolver_set_means_no_walk() {
     // Without a resolver installed, the !include node stays as
     // a Tagged value in the output — the user can still inspect

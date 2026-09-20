@@ -772,7 +772,51 @@ fn apply_includes(value: &mut Value, config: &ParserConfig) -> Result<()> {
             &mut include_sources,
             &mut include_bytes,
         )?;
+        enforce_expanded_node_budget(value, config.max_nodes)?;
     }
+    Ok(())
+}
+
+/// Re-apply the parser's node budget after include substitution.
+///
+/// Every source is bounded independently while it is parsed, but replacing
+/// several `!include` scalars can make the combined tree exceed the caller's
+/// document budget. Keep the accounting aligned with `Loader`: collection
+/// nodes and mapping-key scalar events are charged, while a tag decorates its
+/// underlying YAML node rather than adding another node.
+#[cfg(feature = "include")]
+fn enforce_expanded_node_budget(value: &Value, max_nodes: usize) -> Result<()> {
+    let mut pending = vec![value];
+    let mut observed = 0usize;
+
+    while let Some(value) = pending.pop() {
+        let charge = match value {
+            Value::Tagged(tagged) => {
+                pending.push(tagged.value());
+                continue;
+            }
+            Value::Sequence(sequence) => {
+                pending.extend(sequence);
+                1
+            }
+            Value::Mapping(mapping) => {
+                pending.extend(mapping.values());
+                // The mapping itself and each authored scalar key are
+                // distinct parser events and therefore distinct nodes.
+                1usize.saturating_add(mapping.len())
+            }
+            Value::Null | Value::Bool(_) | Value::Number(_) | Value::String(_) => 1,
+        };
+
+        observed = observed.saturating_add(charge);
+        if observed > max_nodes {
+            return Err(Error::Budget(crate::BudgetBreach::MaxNodes {
+                limit: max_nodes,
+                observed,
+            }));
+        }
+    }
+
     Ok(())
 }
 

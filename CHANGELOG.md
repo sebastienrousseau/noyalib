@@ -25,6 +25,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   workers.
 - Added separate `max_stream_bytes`, `max_include_sources`, and
   `max_total_include_bytes` resource budgets.
+- Re-applied `max_nodes` after include expansion so individually bounded
+  sources cannot create an oversized combined document.
 
 ### Added
 
