@@ -214,7 +214,7 @@ where
         }
     }
     let parse_config = parser::ParseConfig::from(config);
-    let (value, span_tree) = parser::parse_one(s, &parse_config)?;
+    let (value, span_tree) = parser::parse_exactly_one(s, &parse_config)?;
     for p in &config.policies {
         p.check_value(&value)?;
     }

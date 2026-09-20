@@ -200,39 +200,14 @@ pub(crate) fn load(
     Ok(loader.into_docs())
 }
 
-/// Load the first document from a YAML stream.
+/// Load exactly one document and error if the stream carries more than
+/// one.
 ///
-/// Silently discards any document past the first — used by consumers
-/// that only care about the first document by design, such as
-/// [`crate::cst::Document`]'s lazy typed-cache overlay (which reads
-/// path-shaped queries off the CST's raw text directly and does not
-/// need every document deserialised). Deserialise entry points that
-/// must reject a multi-document stream use [`load_exactly_one`]
-/// instead.
-#[cfg(feature = "std")]
-pub(crate) fn load_one(
-    parser: &mut crate::parser::events::Parser<'_>,
-    config: &ParseConfig,
-    input: &str,
-) -> Result<(Value, SpanTree)> {
-    let docs = load(parser, config, input)?;
-    // An empty YAML stream (whitespace, comments, or `---` with no
-    // content) is a valid document whose value is `null` per YAML 1.2.
-    Ok(docs
-        .into_iter()
-        .next()
-        .unwrap_or((Value::Null, SpanTree::Leaf(0, 0))))
-}
-
-/// Like [`load_one`], but errors if the stream carries more than one
-/// document.
-///
-/// Used by `from_str` / `from_str_with_config`'s AST path — a stream
-/// carrying more than one document is a caller error there
-/// (`from_str_multi` / `document::load_all` is the multi-document
-/// entry point). See #351. A single document with a leading `---` or
-/// trailing `...` marker is unaffected: it still produces exactly one
-/// entry in `docs`.
+/// Used by the single-document deserialisation and CST entry points. A
+/// stream carrying more than one document must use `from_str_multi`,
+/// `document::load_all`, or `cst::parse_stream` instead. See #351. A
+/// single document with a leading `---` or trailing `...` marker is
+/// unaffected: it still produces exactly one entry in `docs`.
 #[cfg(feature = "std")]
 pub(crate) fn load_exactly_one(
     parser: &mut crate::parser::events::Parser<'_>,

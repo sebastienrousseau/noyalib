@@ -42,6 +42,10 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   parser configuration.
 - CST mutations now validate the complete candidate document before commit, so
   a successful edit cannot leave later reads able to panic on invalid YAML.
+- Guarded insertions now restore their snapshot when the splice itself fails,
+  so a refused `push_back` or related insertion cannot retain partial edits.
+- CST single-document parsing and edits now reject additional YAML documents
+  instead of silently retaining only the first typed value.
 - Malformed query paths now fail atomically instead of resolving to and
   mutating a valid prefix.
 - Multi-document limits now return `MaxDocuments` rather than silently

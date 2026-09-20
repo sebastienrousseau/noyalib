@@ -422,7 +422,7 @@ impl Document {
         if self.cache.borrow().is_some() {
             return;
         }
-        let parsed = crate::parser::parse_one(&self.source, &self.config)
+        let parsed = crate::parser::parse_exactly_one(&self.source, &self.config)
             .expect("Document source must always parse — local repair invariant violated");
         *self.cache.borrow_mut() = Some(parsed);
     }
@@ -469,7 +469,7 @@ impl Document {
         if self.cache.borrow().is_some() {
             return Ok(());
         }
-        let parsed = crate::parser::parse_one(&self.source, &self.config)?;
+        let parsed = crate::parser::parse_exactly_one(&self.source, &self.config)?;
         *self.cache.borrow_mut() = Some(parsed);
         Ok(())
     }
@@ -542,7 +542,7 @@ impl Document {
         if let Some((new_green, scope)) =
             self.try_local_repair_green(start, end, replacement, &new_source)
         {
-            let parsed = crate::parser::parse_one(&new_source, &self.config)?;
+            let parsed = crate::parser::parse_exactly_one(&new_source, &self.config)?;
             self.last_repair_scope.set(Some(scope));
             self.source = new_arc;
             self.green = new_green;
@@ -3339,7 +3339,7 @@ pub fn parse_document(input: &str) -> Result<Document> {
     parse_document_inner(input, ParseConfig::default())
 }
 
-/// Parse a YAML stream into an editable [`Document`] under `config`,
+/// Parse one YAML document into an editable [`Document`] under `config`,
 /// mirroring [`crate::from_str_with_config`].
 ///
 /// The document keeps the configuration: every later re-parse of
@@ -3357,7 +3357,8 @@ pub fn parse_document(input: &str) -> Result<Document> {
 /// # Errors
 ///
 /// Returns the same parse errors as [`crate::from_str_with_config`]
-/// under the same configuration.
+/// under the same configuration, including rejection of a stream with
+/// more than one document. Use [`parse_stream_with_config`] for streams.
 ///
 /// # Examples
 ///
@@ -5636,11 +5637,20 @@ impl Document {
         };
 
         let snapshot = self.clone();
-        edit(self)?;
+        if let Err(error) = edit(self) {
+            *self = snapshot;
+            return Err(error);
+        }
 
         // The splice is document-valid by contract. Parse through the
         // public entry point for the independent shape oracle.
-        let after_value = crate::from_str::<Value>(&self.source)?;
+        let after_value = match crate::from_str::<Value>(&self.source) {
+            Ok(value) => value,
+            Err(error) => {
+                *self = snapshot;
+                return Err(error);
+            }
+        };
         if shape_excluding(&after_value, &segments) != before_shape {
             *self = snapshot;
             return Err(Error::Parse(format!(

@@ -50,10 +50,10 @@ likely to cost something. The `benches/` directory measures them.
 | `cst/annotated.rs` | 905 | Comment-aware read view over a [`crate::cst::Document`]. |
 | `cst/builder.rs` | 597 | Build the parts of a [`crate::cst::Document`] from input bytes. |
 | `cst/coerce.rs` | 232 | Lossless schema-driven type coercion on the CST path. |
-| `cst/document.rs` | 7607 | Public `Document` handle and parse / mutation entry points. |
+| `cst/document.rs` | 7617 | Public `Document` handle and parse / mutation entry points. |
 | `cst/emit.rs` | 463 | Auto-formatting for values spliced by the CST insertion mutators. |
 | `cst/entry.rs` | 671 | Path-shaped mutable handle to a CST node — the `Entry` "pro" |
-| `cst/format.rs` | 455 | Formatter for YAML CST. |
+| `cst/format.rs` | 459 | Formatter for YAML CST. |
 | `cst/green.rs` | 231 | Immutable green-node primitive with relative-length leaves. |
 | `cst/mod.rs` | 126 | Side-table CST (concrete syntax tree) for lossless round-tripping. |
 | `cst/syntax.rs` | 135 | Syntax-kind tags for green-tree nodes and tokens. |
@@ -75,8 +75,8 @@ likely to cost something. The `benches/` directory measures them.
 | `parallel.rs` | 425 | Parallel multi-document YAML parsing — the "MapReduce" path. |
 | `parser/budget.rs` | 253 | The resource budgets the loaders enforce, as pure predicates. |
 | `parser/events.rs` | 789 | YAML 1.2 event-based parser. |
-| `parser/loader.rs` | 2540 | Event-to-Value tree builder with security limits. |
-| `parser/mod.rs` | 103 | Native YAML 1.2 parser. |
+| `parser/loader.rs` | 2515 | Event-to-Value tree builder with security limits. |
+| `parser/mod.rs` | 92 | Native YAML 1.2 parser. |
 | `parser/scanner/scalars.rs` | 1191 | Scalar scanning for the YAML scanner: plain, single/double-quoted |
 | `parser/scanner.rs` | 2351 | YAML 1.2 lexical scanner. |
 | `path.rs` | 914 | Path tracking for YAML structure locations. |

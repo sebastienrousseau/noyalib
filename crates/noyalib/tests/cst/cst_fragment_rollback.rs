@@ -116,6 +116,40 @@ fn push_back_rolls_back_cleanly_for_every_hostile_fragment() {
 }
 
 #[test]
+fn push_back_rolls_back_when_splice_validation_fails() {
+    // Found by `fuzz_editors` on 2026-09-20. `replace_span` rejected the
+    // appended document marker after changing the source, and the outer
+    // insertion guard propagated that error without restoring its snapshot.
+    const SOURCE: &str = "-\t\t)";
+    let mut doc = parse_document(SOURCE).expect("fuzz source parses");
+
+    let error = doc
+        .push_back("", "\n|\n---")
+        .expect_err("the hostile fragment must be refused");
+
+    assert!(!error.to_string().is_empty());
+    assert_eq!(doc.source(), SOURCE);
+    doc.validate().expect("the restored document remains valid");
+}
+
+#[test]
+fn set_rejects_a_fragment_that_opens_another_document() {
+    // Found by `fuzz_editors` on 2026-09-20. The local repair path used
+    // a first-document parser, so it accepted the edit while silently
+    // ignoring the second document introduced by the fragment.
+    const SOURCE: &str = "G";
+    let mut doc = parse_document(SOURCE).expect("fuzz source parses");
+
+    let error = doc
+        .set("", "\r\r\r---['\r---")
+        .expect_err("a second document must be refused");
+
+    assert!(!error.to_string().is_empty());
+    assert_eq!(doc.source(), SOURCE);
+    doc.validate().expect("the original document remains valid");
+}
+
+#[test]
 fn insert_after_rolls_back_cleanly_for_every_hostile_fragment() {
     let mut refused = 0;
     for (label, frag) in HOSTILE {

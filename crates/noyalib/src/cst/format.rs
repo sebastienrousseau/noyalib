@@ -3,7 +3,7 @@
 
 //! Formatter for YAML CST.
 
-use crate::cst::document::parse_document;
+use crate::cst::document::parse_stream;
 use crate::cst::green::{GreenChild, GreenNode};
 use crate::cst::syntax::SyntaxKind;
 use crate::error::Result;
@@ -35,10 +35,14 @@ pub fn format_with_config(input: &str, config: &FormatConfig) -> Result<String> 
     if input.trim().is_empty() {
         return Ok(String::new());
     }
-    let doc = parse_document(input)?;
-    let mut formatter = Formatter::new(input, config);
-    formatter.format_node(doc.syntax(), 0)?;
-    Ok(formatter.finish())
+    let docs = parse_stream(input)?;
+    let mut output = String::with_capacity(input.len());
+    for doc in docs {
+        let mut formatter = Formatter::new(doc.source(), config);
+        formatter.format_node(doc.syntax(), 0)?;
+        output.push_str(&formatter.finish());
+    }
+    Ok(output)
 }
 
 struct Formatter<'a> {

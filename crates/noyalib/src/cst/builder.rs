@@ -39,7 +39,7 @@ pub(crate) struct ParsedDocument {
 /// under the limits the document was opened with.
 #[cfg(feature = "std")]
 pub(crate) fn parse_full(input: &str, cfg: &ParseConfig) -> Result<ParsedDocument> {
-    let (value, span_tree) = crate::parser::parse_one(input, cfg)?;
+    let (value, span_tree) = crate::parser::parse_exactly_one(input, cfg)?;
     let source: Arc<str> = Arc::from(input);
     let green = build_green_tree(&source)?;
     Ok(ParsedDocument {
