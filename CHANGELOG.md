@@ -27,6 +27,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   `max_total_include_bytes` resource budgets.
 - Re-applied `max_nodes` after include expansion so individually bounded
   sources cannot create an oversized combined document.
+- Made the shipped-size package gate reject dirty trees and select the exact
+  current-version artifact instead of a potentially stale cached package.
 
 ### Added
 
