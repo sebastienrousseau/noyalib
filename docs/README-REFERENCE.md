@@ -105,7 +105,7 @@ GitHub Releases additionally publish pre-built tarballs for
 Linux (gnu + musl), macOS (Intel + Apple Silicon + universal),
 and Windows (x86_64, i686, aarch64). Each archive ships with the
 binaries, man pages, shell completions, license bundle, and a
-cosign keyless signature + SLSA L3 attestation.
+cosign keyless signature + SLSA Build L2 attestation.
 
 See [`pkg/VERIFY.md`](../pkg/VERIFY.md) for verification commands
 and [`pkg/PUBLISH.md`](../pkg/PUBLISH.md) for the per-channel
@@ -147,10 +147,10 @@ the application needs.
 | `schema` | `schemars`, `serde_json` | `JsonSchema` derive + `schema_for::<T>()`. **Downstream callers that derive `JsonSchema` must add `schemars = "1.2"` to their own `Cargo.toml`** — the proc-macro emits `::schemars::*` paths that need to resolve in the call-site dep graph. | [Capabilities at a glance](#capabilities-at-a-glance) |
 | `validate-schema` | `schema` + `jsonschema` | `validate_against_schema`, `coerce_to_schema` | [Governance: schema-driven autofix](#governance-schema-driven-autofix) |
 | `figment` | `figment` 0.10 | `noyalib::figment::Yaml` provider | `examples/figment.rs` |
-| `garde` | `garde` 0.22 | `Validated<T>` wrapper | `examples/validation_garde.rs` |
-| `validator` | `validator` 0.19 | `ValidatedValidator<T>` wrapper | `examples/validation_validator.rs` |
+| `garde` | `garde` 0.23 | `Validated<T>` wrapper | `examples/validation_garde.rs` |
+| `validator` | `validator` 0.21 | `ValidatedValidator<T>` wrapper | `examples/validation_validator.rs` |
 | `lossless-float` | — | `LosslessFloat` — refuse-to-lose-precision float, the floating-point sibling of `lossless-u64` | — |
-| `parallel` | `rayon` 1.10 | `noyalib::parallel::parse<T>` for `---`-separated streams | [Benchmarks](#benchmarks) |
+| `parallel` | `rayon` 1.10 | `noyalib::parallel::parse<T>` and `parse_with_config<T>` for `---`-separated streams | [Benchmarks](#benchmarks) |
 | `recovery` | — | `noyalib::recovery::parse_lenient` — best-effort tree + error list for LSP / IDE half-typed documents | `examples/recovery_lenient.rs`, `benches/v006_features.rs` |
 | `arbitrary` | `arbitrary` 1 | `arbitrary::Arbitrary` for `Value`, `Number`, `Tag`, `TaggedValue`, `Mapping`: structure-aware fuzz targets and property tests build valid trees from one generator | `fuzz/fuzz_targets/fuzz_value_roundtrip.rs` |
 | `sval` | `sval` 2 | `impl sval::Value` for `Value` / `Number` / `Mapping` / `MappingAny` / `TaggedValue`, `noyalib::sval_adapter::to_sval_writer` | `examples/sval_streaming.rs`, `benches/v006_features.rs` |
@@ -535,7 +535,7 @@ inventory; the table below groups the current surface by theme.
 | Schema validation | `validate-schema` feature: `validate_against_schema(value, schema)`; aggregated violations with RFC 6901 paths |
 | Tooling | `noyavalidate` (with `--schema` and `--fix`), `noyafmt`, `noyalib-lsp`, `noyalib-mcp`, `noyalib-wasm`, `noyalib-serde-yaml` |
 | Performance | `noyalib::simd` primitives — `find_any_of`, `clean_prefix_len`, `ByteBitmap`; parser hot path integrated; ~58× and ~5.4× over byte-by-byte at arities 3 and 8 |
-| Supply chain | SLSA L3 provenance, sigstore signing, OpenSSF Scorecard, REUSE.software 3.3 compliance, signed commits, `cargo-deny` / `cargo-vet` / `cargo-semver-checks` gates, differential and soak fuzz |
+| Supply chain | SLSA Build L2 provenance, sigstore signing, OpenSSF Scorecard, REUSE.software 3.3 compliance, signed commits, `cargo-deny` / `cargo-vet` / `cargo-semver-checks` gates, differential and soak fuzz |
 
 ---
 
@@ -678,7 +678,7 @@ stack, etc.) live in
 | **Binary scalars** | First-class `!!binary` tag with RFC 4648 base64 round-trip. `serde_bytes::ByteBuf` / `Bytes` work end-to-end including non-UTF-8 payloads. |
 | **`serde_yaml` shim** | `compat-serde-yaml` feature: name-for-name re-exports backed by noyalib-native types — **the unmaintained `serde_yaml` 0.9 crate is intentionally not a dependency**. Migrating in-flight `::serde_yaml::Value` from un-migrated modules flows through the Serde bridge: `noyalib::to_value(&upstream)?`. |
 | **SIMD primitives** | `noyalib::simd::find_any_of` / `clean_prefix_len` / `SimdScanner` / `StructuralIter` / `ByteBitmap` / `parse_decimal_{u64,i64}`. Parser hot path routes through them for free; public for downstream scanner authors. **`StructuralIter`** delivers 4.2× stable / 9.2× nightly-simd vs the memchr loop on 1 MiB workloads. |
-| **Parallel parsing** | `parallel` feature: `noyalib::parallel::parse<T>` and `noyalib::parallel::values` deserialise multi-document streams across the Rayon thread pool. Pre-scan in `O(input_len)`; per-document work parallelises naturally. Linear-with-cores on `---`-separated logs / audit dumps / Kubernetes snapshots. |
+| **Parallel parsing** | `parallel` feature: `noyalib::parallel::parse<T>`, `parse_with_config<T>`, and their dynamic-value variants deserialise multi-document streams across the Rayon thread pool. The bounded pre-scan is `O(input_len)`; small streams stay sequential and larger per-document work parallelises naturally. |
 | **Pluggable policies** | `noyalib::policy::Policy` trait + `ParserConfig::with_policy(p)`. Built-ins: `DenyAnchors` (rejects `&name` / `*name` — billion-laughs guard), `DenyTags` (rejects custom tags), `MaxScalarLength(n)` (caps individual scalar size). Custom policies implement the trait. |
 | **Schema autofix** | `validate-schema` feature: `coerce_to_schema(value, schema) -> Result<usize>` walks JSON Schema type-mismatch errors and rewrites string-shaped scalars into the schema's expected type when the parse succeeds. Solves the `port: "8080"` quoting slip-up automatically. Library engine behind `noyavalidate --fix`. |
 | **Key interner** | `noyalib::interner::KeyInterner` — `&str → Arc<str>` deduplication for repeated-key workloads. Kubernetes-shaped streams with 20-byte keys × 10 000 records: footprint drops from ~200 KB of fresh allocations to ~20 B + Arc pointers. |
@@ -1567,7 +1567,7 @@ chosen code. Period.
 
 ### Configurable resource budgets
 
-The `ParserConfig::strict()` preset enforces eight **resource
+The `ParserConfig::strict()` preset enforces explicit **resource
 budgets** that cap every dimension of input size — designed to
 make billion-laughs and similar memory-amplification attacks
 mathematically impossible:
@@ -1576,6 +1576,7 @@ mathematically impossible:
 | :--- | ---: | ---: | :--- |
 | `max_depth` | 128 | 64 | Stack-blowing nested structures |
 | `max_document_length` | 64 MiB | 1 MiB | Oversized payloads |
+| `max_stream_bytes` | 256 MiB | 16 MiB | Oversized multi-document streams |
 | `max_nodes` | 250 K | 25 K | AST node-count floods (empty-collection bombs) |
 | `max_alias_expansions` | 1024 | 100 | **Billion-laughs amplification** |
 | `max_mapping_keys` | 64 K | 1024 | Hash-collision DoS |
@@ -1659,7 +1660,7 @@ value.interpolate_properties_lossy(&map);
   `serde_yml` / `libyml` bench dev-deps. See
   [`docs/POLICIES.md` § OpenSSF Scorecard posture](POLICIES.md#openssf-scorecard-posture)
   for the per-check breakdown.
-- `SLSA L3` build provenance + sigstore signing on every release.
+- `SLSA Build L2` provenance + sigstore signing on every release.
 - `REUSE.software` 3.3 compliant — every source file carries
   SPDX headers.
 - Signed commits (SSH ed25519) enforced via CI.

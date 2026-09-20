@@ -142,9 +142,9 @@ pub fn parse_lenient(input: &str) -> ParseResult {
 /// one by default and recovery is the one entry point callers
 /// expect to absorb it.
 ///
-/// Hostile `---`-spam inputs are bounded by
-/// [`ParserConfig::max_documents`]: the underlying boundary
-/// scanner stops collecting markers once the cap is reached.
+/// Hostile `---`-spam inputs are rejected at
+/// [`ParserConfig::max_documents`]: the boundary scanner probes
+/// one document beyond the cap instead of returning a truncated stream.
 /// Per-document parsing then re-enforces every other
 /// `ParserConfig` limit (`max_depth`, `max_events`,
 /// `max_document_length`, …).
@@ -155,7 +155,16 @@ pub fn parse_lenient_with(input: &str, config: &LenientConfig) -> ParseResult {
     let bom_skip = crate::doc_boundary::strip_bom(input.as_bytes());
     let input = &input[bom_skip..];
 
-    let docs = split_documents(input, &config.base_config);
+    let docs = match split_documents(input, &config.base_config) {
+        Ok(docs) => docs,
+        Err(error) => {
+            return ParseResult {
+                value: Value::Null,
+                errors: vec![error],
+                is_complete: false,
+            };
+        }
+    };
 
     if docs.is_empty() {
         return ParseResult {
@@ -331,8 +340,8 @@ fn try_line_truncation(
 /// Hostile `---`-spam inputs cannot drive unbounded `Vec`
 /// growth because the underlying scanner stops after
 /// `max_markers` boundaries.
-fn split_documents<'a>(input: &'a str, config: &ParserConfig) -> Vec<&'a str> {
-    crate::doc_boundary::split_documents(input, config.max_documents)
+fn split_documents<'a>(input: &'a str, config: &ParserConfig) -> crate::Result<Vec<&'a str>> {
+    crate::doc_boundary::split_documents_checked(input, config.max_documents)
 }
 
 #[cfg(test)]
@@ -425,15 +434,15 @@ mod tests {
 
     #[test]
     fn split_documents_handles_single() {
-        let d = split_documents("a: 1\n", &ParserConfig::default());
+        let d = split_documents("a: 1\n", &ParserConfig::default()).unwrap();
         assert_eq!(d.len(), 1);
     }
 
     #[test]
     fn split_documents_handles_empty() {
         let cfg = ParserConfig::default();
-        assert!(split_documents("", &cfg).is_empty());
-        assert!(split_documents("   \n", &cfg).is_empty());
+        assert!(split_documents("", &cfg).unwrap().is_empty());
+        assert!(split_documents("   \n", &cfg).unwrap().is_empty());
     }
 
     #[test]
@@ -482,14 +491,14 @@ mod tests {
     #[test]
     fn split_documents_handles_implicit_first_doc() {
         // Content before the first `---` is an implicit doc.
-        let d = split_documents("name: pre\n---\nname: post\n", &ParserConfig::default());
+        let d = split_documents("name: pre\n---\nname: post\n", &ParserConfig::default()).unwrap();
         assert_eq!(d.len(), 2);
     }
 
     #[test]
     fn split_documents_ignores_mid_line_dashes() {
         // `---` mid-line is not a document marker.
-        let d = split_documents("a: ---\nb: 2\n", &ParserConfig::default());
+        let d = split_documents("a: ---\nb: 2\n", &ParserConfig::default()).unwrap();
         assert_eq!(d.len(), 1);
     }
 
@@ -519,17 +528,18 @@ mod tests {
 
     #[test]
     fn marker_spam_is_bounded() {
-        // 10k `---\n` markers in a row. Without the C2 cap this
-        // would build a 10k-entry `Vec<usize>` and try to parse
-        // each marker as a doc. With the cap it returns whatever
-        // `max_documents` permits (default 1000).
+        // 10k `---\n` markers in a row must produce one bounded
+        // budget diagnostic, never a silently truncated result.
         let yaml = "---\n".repeat(10_000);
         let r = parse_lenient(&yaml);
-        if let Value::Sequence(s) = &r.value {
-            assert!(s.len() <= 1000);
-        } else {
-            // All-Null acceptable; we just must not OOM/hang.
-        }
+        assert!(matches!(r.value, Value::Null));
+        assert!(matches!(
+            r.errors.as_slice(),
+            [Error::Budget(crate::BudgetBreach::MaxDocuments {
+                limit: 1000,
+                ..
+            })]
+        ));
     }
 
     #[test]

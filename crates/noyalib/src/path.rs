@@ -359,89 +359,131 @@ pub(crate) enum QuerySegment {
 /// - Wildcard: `"items[*]"` or `"items.*"`
 /// - Recursive descent: `"..name"` (find `name` at any depth)
 ///
-/// The grammar is lenient: a bracket segment that is neither an index,
-/// a wildcard, nor a quoted key is dropped, and a quoted key that is
-/// never closed runs to the end of the path.
+/// Malformed paths never produce a partial prefix. Invalid bracket
+/// content, unterminated quoted keys, stray closing brackets, and
+/// dangling separators resolve to an impossible sentinel segment so a
+/// read returns no match and a mutator reports its existing path error
+/// without touching an ancestor node.
 pub(crate) fn parse_query_path(path: &str) -> Vec<QuerySegment> {
+    parse_query_path_checked(path).unwrap_or_else(|_| {
+        // NUL is forbidden in YAML scalar content, so no parsed mapping
+        // can contain this key. Keeping the public callers' existing
+        // `Option` / `Result` shapes avoids a breaking API change while
+        // guaranteeing malformed input cannot resolve to the root or a
+        // successfully parsed prefix.
+        vec![QuerySegment::Key("\0noyalib::invalid-query-path\0".into())]
+    })
+}
+
+fn parse_query_path_checked(path: &str) -> Result<Vec<QuerySegment>, &'static str> {
     let mut segments = Vec::new();
     let mut current = String::new();
     let mut chars = path.chars().peekable();
+    let mut separator_pending = false;
 
     while let Some(c) = chars.next() {
         match c {
             '.' => {
-                if !current.is_empty() {
+                let had_current = !current.is_empty();
+                if had_current {
                     segments.push(QuerySegment::Key(core::mem::take(&mut current)));
                 }
                 if chars.peek() == Some(&'.') {
+                    if separator_pending {
+                        return Err("empty path segment");
+                    }
                     let _ = chars.next();
                     segments.push(QuerySegment::RecursiveDescent);
+                    separator_pending = false;
+                } else if (!had_current && segments.is_empty()) || separator_pending {
+                    return Err("empty path segment");
+                } else {
+                    separator_pending = true;
                 }
             }
             '[' => {
+                if separator_pending {
+                    return Err("separator before bracket segment");
+                }
                 if !current.is_empty() {
                     segments.push(QuerySegment::Key(core::mem::take(&mut current)));
                 }
                 if let Some(&quote @ ('"' | '\'')) = chars.peek() {
                     let _ = chars.next();
-                    segments.push(QuerySegment::Key(read_quoted_key(&mut chars, quote)));
-                    if chars.peek() == Some(&']') {
-                        let _ = chars.next();
+                    let key = read_quoted_key(&mut chars, quote)?;
+                    if chars.next() != Some(']') {
+                        return Err("quoted key is not followed by a closing bracket");
                     }
+                    segments.push(QuerySegment::Key(key));
+                    separator_pending = false;
                     continue;
                 }
                 let mut index_str = String::new();
+                let mut closed = false;
                 while let Some(&c) = chars.peek() {
                     if c == ']' {
                         let _ = chars.next();
+                        closed = true;
                         break;
                     }
                     index_str.push(c);
                     let _ = chars.next();
                 }
+                if !closed {
+                    return Err("unterminated bracket segment");
+                }
                 if index_str == "*" {
                     segments.push(QuerySegment::Wildcard);
                 } else if let Ok(idx) = index_str.parse::<usize>() {
                     segments.push(QuerySegment::Index(idx));
+                } else {
+                    return Err("bracket segment is neither an index nor a wildcard");
                 }
+                separator_pending = false;
             }
-            ']' => {}
+            ']' => return Err("stray closing bracket"),
             '*' => {
                 if !current.is_empty() {
                     segments.push(QuerySegment::Key(core::mem::take(&mut current)));
                 }
                 segments.push(QuerySegment::Wildcard);
+                separator_pending = false;
             }
             _ => {
                 current.push(c);
+                separator_pending = false;
             }
         }
     }
 
+    if separator_pending {
+        return Err("dangling path separator");
+    }
     if !current.is_empty() {
         segments.push(QuerySegment::Key(current));
     }
 
-    segments
+    Ok(segments)
 }
 
 /// Read the body of a quoted key segment up to its closing `quote`,
-/// consuming the quote. `\` escapes the next character. An unterminated
-/// key runs to the end of the input.
-fn read_quoted_key(chars: &mut core::iter::Peekable<core::str::Chars<'_>>, quote: char) -> String {
+/// consuming the quote. `\` escapes the next character.
+fn read_quoted_key(
+    chars: &mut core::iter::Peekable<core::str::Chars<'_>>,
+    quote: char,
+) -> Result<String, &'static str> {
     let mut key = String::new();
     while let Some(c) = chars.next() {
         match c {
             '\\' => {
-                if let Some(escaped) = chars.next() {
-                    key.push(escaped);
-                }
+                let escaped = chars.next().ok_or("dangling quoted-key escape")?;
+                key.push(escaped);
             }
-            c if c == quote => break,
+            c if c == quote => return Ok(key),
             c => key.push(c),
         }
     }
-    key
+    Err("unterminated quoted key")
 }
 
 /// Whether the query grammar reads `key` back as itself when it is
@@ -737,13 +779,11 @@ mod tests {
     }
 
     #[test]
-    fn parse_query_path_drops_unparseable_bracket_content() {
-        // `items[abc]` — bracket content is neither `*` nor a
-        // numeric index. The current contract silently drops the
-        // bracket; callers get back the leading key only.
+    fn parse_query_path_rejects_unparseable_bracket_content() {
         let segments = parse_query_path("items[abc]");
         assert_eq!(segments.len(), 1);
-        assert!(matches!(&segments[0], QuerySegment::Key(s) if s == "items"));
+        assert!(matches!(&segments[0], QuerySegment::Key(s) if s.contains("invalid-query-path")));
+        assert!(parse_query_path_checked("items[abc]").is_err());
     }
 
     #[test]
@@ -811,9 +851,16 @@ mod tests {
     }
 
     #[test]
-    fn parse_query_path_unterminated_quoted_key_runs_to_the_end() {
-        assert_eq!(keys(&parse_query_path(r#"a["bc"#)), ["a", "bc"]);
-        assert_eq!(keys(&parse_query_path(r#"a["bc"#)), ["a", "bc"]);
+    fn parse_query_path_rejects_unterminated_quoted_key() {
+        assert!(parse_query_path_checked(r#"a["bc"#).is_err());
+        assert!(parse_query_path_checked("a['bc").is_err());
+    }
+
+    #[test]
+    fn parse_query_path_rejects_other_partial_grammars() {
+        for path in ["a.", ".a", "a[0", "a]", "a.[0]", r#"a["b"x]"#] {
+            assert!(parse_query_path_checked(path).is_err(), "{path}");
+        }
     }
 
     #[test]

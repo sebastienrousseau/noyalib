@@ -91,6 +91,26 @@ fn cycle_detection_aborts_with_clear_error() {
 }
 
 #[test]
+fn cycle_detection_uses_the_resolvers_canonical_identity() {
+    let resolver = IncludeResolver::new(|req: IncludeRequest<'_>| -> Result<InputSource> {
+        let bytes = match req.spec {
+            "alias-a.yaml" => "next: !include alias-b.yaml\n",
+            "alias-b.yaml" => "next: !include alias-a.yaml\n",
+            _ => unreachable!(),
+        };
+        Ok(InputSource::new("/canonical/shared.yaml", bytes))
+    });
+    let cfg = ParserConfig::new().include_resolver(resolver);
+
+    let error = from_str_with_config::<Value>("root: !include alias-a.yaml\n", &cfg).unwrap_err();
+    assert!(error.to_string().contains("cycle"), "{error}");
+    assert!(
+        error.to_string().contains("/canonical/shared.yaml"),
+        "{error}"
+    );
+}
+
+#[test]
 fn max_include_depth_caps_recursion() {
     // resolver always returns another !include — guaranteed
     // depth blow-up unless capped.
@@ -103,6 +123,42 @@ fn max_include_depth_caps_recursion() {
     let yaml = "root: !include start\n";
     let res: Result<Value> = from_str_with_config(yaml, &cfg);
     assert!(res.is_err(), "max-depth must abort: {res:?}");
+}
+
+#[test]
+fn include_source_count_is_bounded_across_siblings() {
+    let mut files = HashMap::new();
+    let _ = files.insert("a.yaml", "a: 1\n");
+    let _ = files.insert("b.yaml", "b: 2\n");
+    let cfg = ParserConfig::new()
+        .include_resolver(mem_resolver(files))
+        .max_include_sources(1);
+
+    let error =
+        from_str_with_config::<Value>("first: !include a.yaml\nsecond: !include b.yaml\n", &cfg)
+            .unwrap_err();
+    assert!(matches!(
+        error,
+        noyalib::Error::Budget(noyalib::BudgetBreach::MaxIncludeSources {
+            limit: 1,
+            observed: 2
+        })
+    ));
+}
+
+#[test]
+fn cumulative_include_bytes_are_bounded() {
+    let mut files = HashMap::new();
+    let _ = files.insert("a.yaml", "value: 12345\n");
+    let cfg = ParserConfig::new()
+        .include_resolver(mem_resolver(files))
+        .max_total_include_bytes(4);
+
+    let error = from_str_with_config::<Value>("root: !include a.yaml\n", &cfg).unwrap_err();
+    assert!(matches!(
+        error,
+        noyalib::Error::Budget(noyalib::BudgetBreach::MaxIncludeBytes { limit: 4, .. })
+    ));
 }
 
 #[test]

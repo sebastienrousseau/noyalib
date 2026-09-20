@@ -56,18 +56,22 @@ prefix re-renderer `set_path` uses when it creates a missing level. The
 spelling is now an upsert. `rename_key`'s stricter bracket check
 accepts a quoted segment and still refuses an unquoted non-index one.
 
-The grammar stays lenient where it was: an unquoted bracket segment
-that is neither an index nor `*` is still dropped, and an unterminated
-quoted key runs to the end of the path.
+The grammar rejects malformed syntax atomically. An unquoted bracket
+segment that is neither an index nor `*`, an unterminated quoted key,
+a dangling separator, or an unmatched bracket can never be interpreted
+as a valid prefix. Existing string-based APIs report their ordinary
+not-found error and leave mutable inputs unchanged.
 
 ## Consequences
 
 - **Positive:** every key is addressable through every API, and the
   three silent wrong writes above become writes to the named key.
-- **Positive:** additive. A path with no `["` or `['` after a bracket
-  parses exactly as before; `push_key` keeps plain keys plain, so
+- **Positive:** `push_key` keeps plain keys plain, so
   paths the crate composes for itself and shows in error messages do
   not change for ordinary keys.
+- **Positive:** malformed input cannot silently target an ancestor node.
+- **Negative:** callers that relied on partial-path recovery must correct
+  the path before querying or mutating a document.
 - **Negative:** one more form in a grammar that is documented by
   example rather than by a spec; `Path::Display` (the diagnostics
   location type) still prints a key plain, so its output is not

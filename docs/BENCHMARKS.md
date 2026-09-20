@@ -268,7 +268,7 @@ cargo bench --bench v006_features --features recovery,sval,tokio
 | Metric | Value |
 | :--- | :--- |
 | **Source** | 26,000+ lines across the workspace |
-| **Test suite** | 3,686 tests + 431 doctests + CLI smoke + 13 stress/load |
+| **Test suite** | 6,900+ test entries + 580+ doctest entries + CLI smoke + stress/load suites; enumerate in CI for the exact revision |
 | **YAML Test Suite** | 100% strict compliance: 406/406 attempted cases pass, 0 failures, 0 deliberate skips |
 | **Examples** | 76 runnable examples |
 | **Coverage** | 96%+ function coverage / 94%+ line coverage / 93%+ region coverage (CI-gated) |

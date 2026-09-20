@@ -48,7 +48,7 @@ jobs:
         with:
           workspaces: ". -> target-fuzz"
           key: fuzz-diff
-      - run: cargo install --locked cargo-fuzz
+      - run: cargo install --locked cargo-fuzz --version 0.13.2
       - run: cargo +nightly fuzz run fuzz_diff -- -max_total_time=10
         working-directory: .
         continue-on-error: true

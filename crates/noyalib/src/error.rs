@@ -195,6 +195,20 @@ pub enum BudgetBreach {
         /// The observed document count when the cap tripped.
         observed: usize,
     },
+    /// Include resolution exceeded the configured source-count budget.
+    MaxIncludeSources {
+        /// The configured cap.
+        limit: usize,
+        /// The observed source count when the cap tripped.
+        observed: usize,
+    },
+    /// Include resolution exceeded the configured cumulative byte budget.
+    MaxIncludeBytes {
+        /// The configured cap, in bytes.
+        limit: usize,
+        /// The observed cumulative bytes when the cap tripped.
+        observed: usize,
+    },
     /// Merge-key (`<<`) count exceeded
     /// `ParserConfig::max_merge_keys`.
     MaxMergeKeys {
@@ -248,6 +262,14 @@ impl fmt::Display for BudgetBreach {
             Self::MaxDocuments { limit, observed } => write!(
                 f,
                 "max_documents budget exceeded: observed {observed} > limit {limit}"
+            ),
+            Self::MaxIncludeSources { limit, observed } => write!(
+                f,
+                "max_include_sources budget exceeded: observed {observed} > limit {limit}"
+            ),
+            Self::MaxIncludeBytes { limit, observed } => write!(
+                f,
+                "max_total_include_bytes budget exceeded: observed {observed} > limit {limit}"
             ),
             Self::MaxMergeKeys { limit, observed } => write!(
                 f,

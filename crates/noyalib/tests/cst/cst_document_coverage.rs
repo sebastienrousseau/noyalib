@@ -596,12 +596,11 @@ fn coverage_doc_validate_succeeds_on_fresh_doc() {
 }
 
 #[test]
-fn coverage_doc_validate_surfaces_broken_edit() {
+fn coverage_doc_invalid_edit_is_atomic() {
     let mut doc = parse_document("name: foo\n").unwrap();
-    // Local repair commits optimistically — a structurally invalid
-    // splice (unclosed `[`) only surfaces via `validate`.
-    doc.set("name", "[").unwrap();
-    assert!(doc.validate().is_err());
+    assert!(doc.set("name", "[").is_err());
+    assert_eq!(doc.to_string(), "name: foo\n");
+    assert!(doc.validate().is_ok());
 }
 
 #[test]

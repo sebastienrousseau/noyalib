@@ -7,7 +7,6 @@
 
 // VecDeque replaced with Vec + consumed index for better cache locality.
 
-use crate::prelude::FxHashMap;
 use crate::prelude::*;
 
 /// Byte-offset span in the source input.
@@ -153,6 +152,10 @@ pub(crate) struct Scanner<'a> {
     /// Captured comments in source order. Populated as the scanner
     /// skips comment bytes; readers drain via `take_comments`.
     comments: Vec<ScannedComment>,
+    /// Whether comment text and spans should be retained. Normal typed
+    /// and `Value` parses leave this off so comment-heavy input does not
+    /// duplicate source text into owned strings.
+    capture_comments: bool,
     /// Whether a `%YAML` directive has been seen for the current
     /// document (cleared on each `DocumentStart`). Per YAML 1.2.2 §6.8.1
     /// a document may contain at most one `%YAML` directive.
@@ -163,7 +166,7 @@ pub(crate) struct Scanner<'a> {
     /// `%TAG !! tag:example.com,2000:app/`), the scanner substitutes
     /// the full URI prefix in place of the handle so the loader sees
     /// the resolved tag without needing directive context (P76L).
-    tag_handles: FxHashMap<String, String>,
+    tag_handles: IndexMap<String, String>,
     flow_stack: Vec<bool>,
     /// When set, the scanner records inter-token trivia and source-
     /// bearing token spans for the green-tree builder. Off by default
@@ -372,10 +375,12 @@ pub(crate) struct RecordedToken {
 impl<'a> Scanner<'a> {
     /// Create a new scanner for the given input.
     pub(crate) fn new(input: &'a str) -> Self {
-        // Pre-allocate based on input size heuristics:
-        // ~1 token per 8 bytes, ~1 indent level per 64 bytes.
-        let estimated_tokens = (input.len() / 8).max(16);
-        let estimated_depth = (input.len() / 64).max(4);
+        // Start with bounded buffers. Input length is not a reliable
+        // predictor of live token or nesting count: a large scalar used
+        // to reserve millions of token slots before the first byte was
+        // parsed even though the queue compacts after 256 tokens.
+        let estimated_tokens = (input.len() / 8).clamp(16, 256);
+        let estimated_depth = (input.len() / 64).clamp(4, 32);
         Scanner {
             input: input.as_bytes(),
             input_str: input,
@@ -386,7 +391,7 @@ impl<'a> Scanner<'a> {
             tokens_consumed: 0,
             tokens_produced: 0,
             indent: -1,
-            indents: smallvec::SmallVec::with_capacity(estimated_depth),
+            indents: smallvec::SmallVec::new(),
             flow_level: 0,
             simple_keys: Vec::with_capacity(estimated_depth),
             simple_key_allowed: false,
@@ -395,8 +400,9 @@ impl<'a> Scanner<'a> {
             stream_started: false,
             stream_ended: false,
             comments: Vec::new(),
+            capture_comments: false,
             yaml_directive_seen: false,
-            tag_handles: FxHashMap::default(),
+            tag_handles: IndexMap::default(),
             flow_stack: Vec::new(),
             recording: false,
             trivia: Vec::new(),
@@ -418,6 +424,13 @@ impl<'a> Scanner<'a> {
     #[cfg(feature = "std")]
     pub(crate) fn enable_recording(&mut self) {
         self.recording = true;
+        self.capture_comments = true;
+    }
+
+    /// Retain comment spans and text without enabling full CST token
+    /// recording. Used by [`crate::load_comments`].
+    pub(crate) fn enable_comment_capture(&mut self) {
+        self.capture_comments = true;
     }
 
     /// Drain the recorded inter-token trivia.
@@ -866,17 +879,19 @@ impl<'a> Scanner<'a> {
                 // `iter().position` on long comments.
                 let end = memchr::memchr2(b'\n', b'\r', remaining).unwrap_or(remaining.len());
                 let comment_end = comment_start + end;
-                // `#` itself is at `comment_start`; the text starts
-                // one byte later. Skip the `#` but keep any following
-                // space so reconstruction preserves formatting.
-                let text_start = comment_start + 1;
-                let text = self.input_str[text_start..comment_end].to_owned();
-                self.comments.push(ScannedComment {
-                    start: comment_start,
-                    end: comment_end,
-                    text,
-                    inline,
-                });
+                if self.capture_comments {
+                    // `#` itself is at `comment_start`; the text starts
+                    // one byte later. Skip the `#` but keep any following
+                    // space so reconstruction preserves formatting.
+                    let text_start = comment_start + 1;
+                    let text = self.input_str[text_start..comment_end].to_owned();
+                    self.comments.push(ScannedComment {
+                        start: comment_start,
+                        end: comment_end,
+                        text,
+                        inline,
+                    });
+                }
                 self.col += end;
                 self.pos += end;
             }
@@ -2200,6 +2215,30 @@ fn floor_char_boundary(s: &str, mut index: usize) -> usize {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn scanner_caps_speculative_capacity_for_large_inputs() {
+        let input = "x".repeat(1024 * 1024);
+        let scanner = Scanner::new(&input);
+
+        assert!(scanner.tokens.capacity() <= 256);
+        assert!(scanner.simple_keys.capacity() <= 32);
+        assert!(!scanner.indents.spilled());
+    }
+
+    #[test]
+    fn comments_are_only_owned_when_capture_is_enabled() {
+        let mut normal = Scanner::new("key: value # note\n");
+        while !matches!(normal.next_token().unwrap().kind, TokenKind::StreamEnd) {}
+        assert!(normal.take_comments().is_empty());
+
+        let mut capturing = Scanner::new("key: value # note\n");
+        capturing.enable_comment_capture();
+        while !matches!(capturing.next_token().unwrap().kind, TokenKind::StreamEnd) {}
+        let comments = capturing.take_comments();
+        assert_eq!(comments.len(), 1);
+        assert_eq!(comments[0].text, " note");
+    }
 
     #[test]
     fn test_scanner_two_key_mapping() {

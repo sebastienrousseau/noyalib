@@ -116,6 +116,12 @@ impl<'a> Parser<'a> {
         }
     }
 
+    /// Enable comment capture without the CST recorder's token and
+    /// trivia overhead.
+    pub(crate) fn enable_comment_capture(&mut self) {
+        self.scanner.enable_comment_capture();
+    }
+
     /// Drain captured comments. Used by the public
     /// [`crate::load_comments`] API. Returns comments in source order.
     pub(crate) fn take_comments(&mut self) -> Vec<crate::comments::Comment> {

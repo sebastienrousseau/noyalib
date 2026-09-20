@@ -16,10 +16,39 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - Reworked the README to the workspace-wide canonical structure and retained the
   complete prior guide in `docs/README-REFERENCE.md`.
 - Bumped the core and ecosystem documentation to the 0.0.46 lockstep release.
+- Switched the Rust 2024 workspace to Cargo resolver 3 and pinned every Cargo
+  utility installed by CI.
+- Centralized multi-document boundary splitting for async, parallel, and
+  recovery entry points. Parallel parsing now accepts caller configuration and
+  uses a sequential fast path for small streams.
+- Added separate `max_stream_bytes`, `max_include_sources`, and
+  `max_total_include_bytes` resource budgets.
 
 ### Added
 
 - A repository-standard compliance grade linked from the rendered manual.
+
+### Fixed
+
+- Async readers now probe one byte beyond configured limits and reject
+  oversized input instead of accepting a truncated valid prefix. Decoder EOF
+  parsing also preserves caller policies and derives its frame cap from the
+  parser configuration.
+- CST mutations now validate the complete candidate document before commit, so
+  a successful edit cannot leave later reads able to panic on invalid YAML.
+- Malformed query paths now fail atomically instead of resolving to and
+  mutating a valid prefix.
+- Multi-document limits now return `MaxDocuments` rather than silently
+  truncating marker scans.
+- Include cycles use the resolver's canonical source identity and include
+  expansion now has aggregate source-count and byte budgets.
+- Normal typed parsing no longer allocates owned copies of comments, and scanner
+  speculative capacities are capped for large inputs.
+- Hosted owned mappings, include identities, tag handles, and the key interner
+  now use randomized hashing for untrusted keys; `no_std` builds retain
+  deterministic Fx hashing.
+- Dependency review, Rust CodeQL, soak fuzzing, secret scoping, package
+  cleanliness, and provenance labelling now match their enforced CI behavior.
 
 ## [v0.0.45] - 2026-09-17
 

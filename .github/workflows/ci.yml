@@ -45,7 +45,6 @@ jobs:
       # fails on those annotations, so we keep it disabled here
       # to avoid duplicate work and red runs.
       run-coverage: false
-    secrets: inherit
 
   test-matrix:
     # Dogfooded from shared-test-matrix.yml. Matrix (os × toolchain:
@@ -178,7 +177,7 @@ jobs:
       # its own build triple, so the prebuilt one tries to build
       # sanitized fuzzers for x86_64-unknown-linux-musl and dies on
       # "sanitizer is incompatible with statically linked libc".
-      - run: cargo install --locked cargo-fuzz
+      - run: cargo install --locked cargo-fuzz --version 0.13.2
       - name: Build every fuzz target (std and alloc-only crates)
         run: |
           set -euo pipefail

@@ -50,7 +50,13 @@
 //! semantics.
 
 use crate::prelude::*;
+#[cfg(not(feature = "std"))]
 use crate::prelude::{FxBuildHasher, FxHashMap};
+
+#[cfg(feature = "std")]
+type InternMap = std::collections::HashMap<Arc<str>, ()>;
+#[cfg(not(feature = "std"))]
+type InternMap = FxHashMap<Arc<str>, ()>;
 
 /// Interner for `&str` → `Arc<str>` deduplication.
 ///
@@ -76,11 +82,10 @@ use crate::prelude::{FxBuildHasher, FxHashMap};
 /// ```
 #[derive(Debug, Default)]
 pub struct KeyInterner {
-    // The value side of the map is `()` — we use `FxHashMap` as a
-    // hash table keyed by `Arc<str>`. `get_key_value` lets us
+    // The value side of the map is `()`. `get_key_value` lets us
     // return the existing `Arc<str>` clone without allocating a
     // fresh one when a key is already present.
-    table: FxHashMap<Arc<str>, ()>,
+    table: InternMap,
 }
 
 impl KeyInterner {
@@ -97,7 +102,7 @@ impl KeyInterner {
     #[must_use]
     pub fn new() -> Self {
         Self {
-            table: FxHashMap::default(),
+            table: InternMap::default(),
         }
     }
 
@@ -114,8 +119,17 @@ impl KeyInterner {
     /// ```
     #[must_use]
     pub fn with_capacity(capacity: usize) -> Self {
-        Self {
-            table: FxHashMap::with_capacity_and_hasher(capacity, FxBuildHasher),
+        #[cfg(feature = "std")]
+        {
+            Self {
+                table: InternMap::with_capacity(capacity),
+            }
+        }
+        #[cfg(not(feature = "std"))]
+        {
+            Self {
+                table: InternMap::with_capacity_and_hasher(capacity, FxBuildHasher),
+            }
         }
     }
 

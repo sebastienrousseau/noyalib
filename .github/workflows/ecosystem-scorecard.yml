@@ -88,7 +88,7 @@ jobs:
       # older than the audit-file format the family uses and fails to
       # parse imports.lock, scoring every repo 0 on vet_audited.
       - name: Install cargo-vet
-        run: cargo install --locked cargo-vet
+        run: cargo install --locked cargo-vet --version 0.10.2
       - name: Install reuse
         run: pipx install reuse
 

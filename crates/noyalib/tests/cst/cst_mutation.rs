@@ -70,37 +70,13 @@ fn set_returns_path_not_found_error() {
 }
 
 #[test]
-fn set_with_invalid_replacement_surfaces_error_on_read() {
-    // Phase A.2 lazy: the local-repair fast path commits
-    // optimistically when the spliced fragment passes its own
-    // (scanner-level) validation. Cross-document structural errors
-    // — like an unclosed flow indicator at end-of-input — only
-    // surface on the next typed-view read. Callers that need an
-    // eager check call [`Document::validate`].
+fn set_with_invalid_replacement_is_atomic() {
     let mut doc = parse_document("name: foo\n").unwrap();
-    // The bare `[` opens a flow sequence that is never closed —
-    // structurally broken at the document level.
-    doc.set("name", "[").unwrap();
-    // Source reflects the optimistic splice; round-trip via the
-    // green tree still works.
-    assert_eq!(doc.to_string(), "name: [\n");
-    // Eager check: `validate()` surfaces the document-level parse
-    // error as a regular `Result` — no panic.
-    let err = doc
-        .validate()
-        .expect_err("validate must reject broken source");
-    let msg = err.to_string();
-    assert!(
-        msg.contains("flow") || msg.contains("expected") || msg.contains("end"),
-        "validate error should reference the parse failure; got {msg:?}",
-    );
-    // The typed view also refuses to materialise (it panics on
-    // first read), but `validate` is the supported way to detect
-    // this without unwinding.
-    let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-        let _ = doc.as_value();
-    }));
-    assert!(result.is_err(), "as_value() must panic on invalid source");
+    let error = doc.set("name", "[").unwrap_err();
+    assert!(!error.to_string().is_empty());
+    assert_eq!(doc.to_string(), "name: foo\n");
+    doc.validate().expect("the original document stays valid");
+    assert_eq!(doc.as_value()["name"].as_str(), Some("foo"));
 }
 
 #[test]

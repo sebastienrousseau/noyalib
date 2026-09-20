@@ -737,6 +737,11 @@ fn includes_inactive(_config: &ParserConfig) -> bool {
     true
 }
 
+#[cfg(all(feature = "include", feature = "std"))]
+type IncludeVisited = std::collections::HashSet<String>;
+#[cfg(all(feature = "include", not(feature = "std")))]
+type IncludeVisited = FxHashSet<String>;
+
 /// Walk the `Value` tree, find every `Value::Tagged(!include, _)`
 /// node, and replace it with the resolver's output. Cyclic
 /// includes are detected via a per-walk visited set; depth is
@@ -749,8 +754,10 @@ fn apply_includes(value: &mut Value, config: &ParserConfig) -> Result<()> {
         // Prelude set, not `std::collections`: `include` without `std`
         // is a valid combination (the resolver trait is `no_std`; only
         // `include_fs` implies `std`).
-        let mut visited: FxHashSet<String> = FxHashSet::default();
+        let mut visited: IncludeVisited = IncludeVisited::default();
         let mut next_id: usize = 1;
+        let mut include_sources = 0usize;
+        let mut include_bytes = 0usize;
         resolve_includes_recursive(
             value,
             resolver,
@@ -760,6 +767,10 @@ fn apply_includes(value: &mut Value, config: &ParserConfig) -> Result<()> {
             0,
             &mut visited,
             &mut next_id,
+            config.max_include_sources,
+            config.max_total_include_bytes,
+            &mut include_sources,
+            &mut include_bytes,
         )?;
     }
     Ok(())
@@ -780,8 +791,12 @@ fn resolve_includes_recursive(
     max_depth: usize,
     depth: usize,
     from_id: usize,
-    visited: &mut FxHashSet<String>,
+    visited: &mut IncludeVisited,
     next_id: &mut usize,
+    max_include_sources: usize,
+    max_total_include_bytes: usize,
+    include_sources: &mut usize,
+    include_bytes: &mut usize,
 ) -> Result<()> {
     if depth > max_depth {
         return Err(Error::RecursionLimitExceeded { depth });
@@ -797,11 +812,6 @@ fn resolve_includes_recursive(
                         ));
                     }
                 };
-                if !visited.insert(spec.clone()) {
-                    return Err(Error::Custom(format!(
-                        "!include cycle detected: `{spec}` already in resolution chain"
-                    )));
-                }
                 let (path, fragment) = crate::include::split_fragment(&spec);
                 let req = crate::include::IncludeRequest {
                     spec: &spec,
@@ -809,6 +819,26 @@ fn resolve_includes_recursive(
                     depth,
                 };
                 let source = resolver.resolve(req)?;
+                *include_sources = include_sources.saturating_add(1);
+                if *include_sources > max_include_sources {
+                    return Err(Error::Budget(crate::BudgetBreach::MaxIncludeSources {
+                        limit: max_include_sources,
+                        observed: *include_sources,
+                    }));
+                }
+                *include_bytes = include_bytes.saturating_add(source.bytes.len());
+                if *include_bytes > max_total_include_bytes {
+                    return Err(Error::Budget(crate::BudgetBreach::MaxIncludeBytes {
+                        limit: max_total_include_bytes,
+                        observed: *include_bytes,
+                    }));
+                }
+                let identity = source.name.clone();
+                if !visited.insert(identity.clone()) {
+                    return Err(Error::Custom(format!(
+                        "!include cycle detected: canonical source `{identity}` is already in the resolution chain"
+                    )));
+                }
                 let id = *next_id;
                 *next_id += 1;
                 // `parse_exactly_one_value`, not the `std`-only
@@ -829,6 +859,10 @@ fn resolve_includes_recursive(
                     id,
                     visited,
                     next_id,
+                    max_include_sources,
+                    max_total_include_bytes,
+                    include_sources,
+                    include_bytes,
                 )?;
                 // Fragment selection: if `spec` was `foo.yaml#anchor`,
                 // narrow to the named anchor inside the included
@@ -854,7 +888,7 @@ fn resolve_includes_recursive(
                 } else {
                     *value = included;
                 }
-                let _ = visited.remove(&spec);
+                let _ = visited.remove(&identity);
             } else {
                 resolve_includes_recursive(
                     boxed.value_mut(),
@@ -865,6 +899,10 @@ fn resolve_includes_recursive(
                     from_id,
                     visited,
                     next_id,
+                    max_include_sources,
+                    max_total_include_bytes,
+                    include_sources,
+                    include_bytes,
                 )?;
             }
         }
@@ -879,6 +917,10 @@ fn resolve_includes_recursive(
                     from_id,
                     visited,
                     next_id,
+                    max_include_sources,
+                    max_total_include_bytes,
+                    include_sources,
+                    include_bytes,
                 )?;
             }
         }
@@ -893,6 +935,10 @@ fn resolve_includes_recursive(
                     from_id,
                     visited,
                     next_id,
+                    max_include_sources,
+                    max_total_include_bytes,
+                    include_sources,
+                    include_bytes,
                 )?;
             }
         }

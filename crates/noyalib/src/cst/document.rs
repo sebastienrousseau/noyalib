@@ -216,7 +216,12 @@ pub(crate) mod fault {
 fn duplicate_keys_present(source: &str) -> bool {
     let mut config = ParserConfig::new();
     config.duplicate_key_policy = crate::DuplicateKeyPolicy::Error;
-    crate::from_str_with_config::<Value>(source, &config).is_err()
+    crate::from_str_with_config::<Value>(source, &config).is_err_and(|error| {
+        matches!(
+            error.kind(),
+            crate::ErrorKind::DuplicateKey | crate::ErrorKind::KeyCollision
+        )
+    })
 }
 
 /// Whether the post-edit oracle rejects the edit: the document loaded
@@ -410,12 +415,9 @@ impl Document {
     }
 
     /// Populate the typed cache from `self.source` if it is empty.
-    /// Panics if the source fails to re-parse — for the lazy path
-    /// to be safe, every successful edit must leave the source in a
-    /// state that re-parses. Local repair edits gate themselves on
-    /// `parse_subtree` (which validates the fragment) plus shape
-    /// guards that escalate cross-document concerns to the
-    /// safety-net full re-parse.
+    /// Every public edit validates the complete resulting document
+    /// before committing it, so a failure here indicates an internal
+    /// invariant violation rather than caller-provided YAML.
     fn ensure_cache(&self) {
         if self.cache.borrow().is_some() {
             return;
@@ -427,78 +429,10 @@ impl Document {
 
     /// Verify that the current source re-parses cleanly.
     ///
-    /// `Document::set` (and the rest of the path-shaped edit API)
-    /// uses a localised-repair fast path that gates each splice on
-    /// the fragment's own scanner-level validation but commits
-    /// *optimistically*: a structurally invalid splice across the
-    /// whole document — for example, a value like `[` that opens a
-    /// flow collection never closed at end-of-input — passes the
-    /// fragment check and only surfaces when the typed view is
-    /// next read. `as_value`, `span_at`, `get`, and any path-shaped
-    /// API panic on first access in that state.
-    ///
-    /// `validate` is the non-panicking eager check: call it after
-    /// an edit (or before handing the document to a downstream
-    /// consumer) to surface any document-level parse error as a
-    /// regular `Result`. On success, the typed cache is populated
-    /// as a side-effect so a subsequent `as_value` call is free.
-    ///
-    /// # A structurally invalid fragment commits
-    ///
-    /// The splice is verbatim, so a fragment that is not a well-formed
-    /// YAML node — `"[unclosed"` — is written out and this call still
-    /// returns `Ok(())`. The document is only checked when asked, and
-    /// [`Document::validate`] is how you ask:
-    ///
-    /// ```
-    /// use noyalib::cst::parse_document;
-    ///
-    /// let mut doc = parse_document("m:\n  k: 1\n").unwrap();
-    /// doc.insert_entry("m", "z", "[unclosed").unwrap();                 // accepted
-    /// assert!(doc.validate().is_err());            // and reported here
-    /// ```
-    ///
-    /// Call `validate` before writing the result anywhere, or use
-    /// [`Document::insert_entry_value`] instead: the `_value` mutators render
-    /// the value themselves and cannot produce invalid YAML.
-    ///
-    /// # A structurally invalid fragment commits
-    ///
-    /// The splice is verbatim, so a fragment that is not a well-formed
-    /// YAML node — `"[unclosed"` — is written out and this call still
-    /// returns `Ok(())`. The document is only checked when asked, and
-    /// [`Document::validate`] is how you ask:
-    ///
-    /// ```
-    /// use noyalib::cst::parse_document;
-    ///
-    /// let mut doc = parse_document("xs:\n  - p\n").unwrap();
-    /// doc.push_back("xs", "[unclosed").unwrap();                 // accepted
-    /// assert!(doc.validate().is_err());            // and reported here
-    /// ```
-    ///
-    /// Call `validate` before writing the result anywhere, or use
-    /// [`Document::push_back_value`] instead: the `_value` mutators render
-    /// the value themselves and cannot produce invalid YAML.
-    ///
-    /// # A structurally invalid fragment commits
-    ///
-    /// The splice is verbatim, so a fragment that is not a well-formed
-    /// YAML node — `"[unclosed"` — is written out and this call still
-    /// returns `Ok(())`. The document is only checked when asked, and
-    /// [`Document::validate`] is how you ask:
-    ///
-    /// ```
-    /// use noyalib::cst::parse_document;
-    ///
-    /// let mut doc = parse_document("xs:\n  - p\n").unwrap();
-    /// doc.insert_after("xs[0]", "[unclosed").unwrap();                 // accepted
-    /// assert!(doc.validate().is_err());            // and reported here
-    /// ```
-    ///
-    /// Call `validate` before writing the result anywhere, or use
-    /// [`Document::insert_after_value`] instead: the `_value` mutators render
-    /// the value themselves and cannot produce invalid YAML.
+    /// Public mutators validate the complete result before committing,
+    /// so this method normally returns immediately from the populated
+    /// typed cache. It remains useful as an explicit integrity check for
+    /// callers that accept a `Document` from another component.
     ///
     /// # Errors
     ///
@@ -507,18 +441,16 @@ impl Document {
     ///
     /// # Examples
     ///
-    /// Eagerly validate after an edit that may not be safe:
+    /// A malformed edit is rejected atomically and the original remains
+    /// valid:
     ///
     /// ```
     /// use noyalib::cst::parse_document;
     ///
     /// let mut doc = parse_document("name: foo\n").unwrap();
-    /// // `[` opens a flow seq that is never closed — the local
-    /// // repair commits optimistically, but the document is now
-    /// // structurally broken. `validate` surfaces that as an
-    /// // error rather than waiting for the next typed-view read.
-    /// doc.set("name", "[").unwrap();
-    /// assert!(doc.validate().is_err());
+    /// assert!(doc.set("name", "[").is_err());
+    /// assert!(doc.validate().is_ok());
+    /// assert_eq!(doc.to_string(), "name: foo\n");
     /// ```
     ///
     /// Validate a freshly-parsed document — always succeeds:
@@ -602,24 +534,19 @@ impl Document {
         new_source.push_str(replacement);
         new_source.push_str(&self.source[end..]);
 
-        // Phase A.2 — Lazy Value/SpanTree:
-        //   * On a successful local-repair edit, the green tree is
-        //     spliced and the typed cache is invalidated. We do NOT
-        //     re-parse the typed `Value` here. Subsequent edits in
-        //     the same batch don't pay any parser cost; the
-        //     deferred parse runs once, on the first read.
-        //   * On the safety-net path (no local repair fit), the
-        //     full re-parse already gives us validated `Value` and
-        //     `SpanTree` — we drop them straight into the cache
-        //     so the next read is free.
+        // A local green-tree repair avoids rebuilding unchanged CST
+        // nodes, but it is not a document-level validity proof. Parse
+        // the complete source before committing so `Ok(())` can never
+        // leave a `Document` whose next typed read panics.
         let new_arc: Arc<str> = Arc::from(new_source.as_str());
         if let Some((new_green, scope)) =
             self.try_local_repair_green(start, end, replacement, &new_source)
         {
+            let parsed = crate::parser::parse_one(&new_source, &self.config)?;
             self.last_repair_scope.set(Some(scope));
             self.source = new_arc;
             self.green = new_green;
-            let _ = self.cache.replace(None);
+            let _ = self.cache.replace(Some(parsed));
             return Ok(());
         }
 
@@ -759,24 +686,24 @@ impl Document {
     /// document is left untouched. Restructuring the target itself —
     /// scalar to mapping, say — remains allowed.
     ///
-    /// # A structurally invalid fragment commits
+    /// # Structurally invalid fragments are atomic failures
     ///
-    /// The splice is verbatim, so a fragment that is not a well-formed
-    /// YAML node — `"[unclosed"` — is written out and this call still
-    /// returns `Ok(())`. The document is only checked when asked, and
-    /// [`Document::validate`] is how you ask:
+    /// The splice is verbatim, but the complete document is validated
+    /// before the edit commits. A fragment that is not a well-formed
+    /// YAML node returns an error and leaves the document unchanged:
     ///
     /// ```
     /// use noyalib::cst::parse_document;
     ///
     /// let mut doc = parse_document("a: 1\nb: 2\n").unwrap();
-    /// doc.set("a", "[unclosed").unwrap();          // accepted
-    /// assert!(doc.validate().is_err());            // and reported here
+    /// assert!(doc.set("a", "[unclosed").is_err());
+    /// assert_eq!(doc.to_string(), "a: 1\nb: 2\n");
+    /// assert!(doc.validate().is_ok());
     /// ```
     ///
-    /// Call `validate` before writing the result anywhere, or use
-    /// [`Document::set_value`] and the other `_value` mutators, which
-    /// render the value themselves and cannot produce invalid YAML.
+    /// [`Document::set_value`] and the other `_value` mutators remain
+    /// preferable when the caller already has a typed value because
+    /// they do not need to interpret a YAML fragment.
     ///
     /// # Errors
     ///
@@ -1894,10 +1821,9 @@ impl Document {
             )));
         }
 
-        // Re-parse guard. `replace_span`'s local-repair fast path
-        // commits optimistically (see `validate`), so run the eager
-        // document-level check here and compare the typed view
-        // against the oracle. Roll back on any mismatch.
+        // `replace_span` has already validated the complete document;
+        // compare its typed view against the semantic oracle and roll
+        // back on any mismatch.
         if let Err(e) = self.validate() {
             *self = snapshot;
             return Err(Error::Parse(format!(
@@ -5712,12 +5638,9 @@ impl Document {
         let snapshot = self.clone();
         edit(self)?;
 
-        // Fallible parse: an invalid splice commits optimistically by
-        // design and surfaces via `validate`, and cannot be smuggling
-        // entries anyway.
-        let Ok(after_value) = crate::from_str::<Value>(&self.source) else {
-            return Ok(());
-        };
+        // The splice is document-valid by contract. Parse through the
+        // public entry point for the independent shape oracle.
+        let after_value = crate::from_str::<Value>(&self.source)?;
         if shape_excluding(&after_value, &segments) != before_shape {
             *self = snapshot;
             return Err(Error::Parse(format!(
@@ -7406,8 +7329,8 @@ mod rollback_invariant_tests {
     /// path for an entry that owns its line, and takes it here, so it
     /// is covered separately by
     /// [`remove_rolls_back_when_it_cannot_take_its_fast_path`]. The
-    /// fragment-splicing mutators re-parse the source directly instead
-    /// — that is the optimistic commit documented on `set`.
+    /// fragment-splicing mutators validate through `replace_span`
+    /// directly instead.
     ///
     /// Listed rather than inferred so that a mutator quietly dropping
     /// its `validate` call fails this test instead of passing it.
@@ -7614,7 +7537,7 @@ mod rollback_invariant_tests {
         // Seven of the table reach the oracle. The rest either take a
         // documented fast path that skips it (`remove` on an entry that
         // owns its line) or re-parse the source directly instead
-        // (`set`'s optimistic commit). The floor is what stops this
+        // (`set`'s direct parse guard). The floor is what stops this
         // test passing vacuously if the injection stops arriving.
         assert!(
             refused >= 7,

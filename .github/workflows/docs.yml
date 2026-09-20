@@ -59,7 +59,7 @@ jobs:
 
       - name: Build the User Manual (mdBook)
         run: |
-          cargo install --locked mdbook
+          cargo install --locked mdbook --version 0.5.4
           mdbook build docs
           scripts/check-docs-links.sh
 

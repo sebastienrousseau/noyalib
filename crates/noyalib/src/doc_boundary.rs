@@ -25,6 +25,7 @@
 
 #![allow(dead_code)]
 
+use crate::error::{BudgetBreach, Error, Result};
 use crate::prelude::{Vec, vec};
 
 /// UTF-8 BOM byte sequence (`U+FEFF`).
@@ -131,6 +132,27 @@ pub(crate) fn split_documents(input: &str, max_markers: usize) -> Vec<&str> {
     let bytes = input.as_bytes();
     let markers = scan_markers(bytes, max_markers);
 
+    split_at_markers(input, &markers)
+}
+
+/// Split a stream while enforcing a document-count budget.
+///
+/// The scanner probes one marker beyond the configured limit so an
+/// oversized stream is rejected rather than silently truncating the tail.
+pub(crate) fn split_documents_checked(input: &str, max_documents: usize) -> Result<Vec<&str>> {
+    let marker_probe = max_documents.saturating_add(1);
+    let markers = scan_markers(input.as_bytes(), marker_probe);
+    let docs = split_at_markers(input, &markers);
+    if docs.len() > max_documents {
+        return Err(Error::Budget(BudgetBreach::MaxDocuments {
+            limit: max_documents,
+            observed: docs.len(),
+        }));
+    }
+    Ok(docs)
+}
+
+fn split_at_markers<'a>(input: &'a str, markers: &[usize]) -> Vec<&'a str> {
     if markers.is_empty() {
         return if input.trim().is_empty() {
             Vec::new()
@@ -140,16 +162,23 @@ pub(crate) fn split_documents(input: &str, max_markers: usize) -> Vec<&str> {
     }
 
     let mut docs: Vec<&str> = Vec::with_capacity(markers.len() + 1);
+    let mut first_start = markers[0];
     if markers[0] > 0 {
-        let pre = input[..markers[0]].trim();
-        if !pre.is_empty() {
+        if prologue_has_content(&input[..markers[0]]) {
             docs.push(&input[..markers[0]]);
+        } else {
+            first_start = 0;
         }
     }
-    for window in markers.windows(2) {
-        docs.push(&input[window[0]..window[1]]);
+    for (index, window) in markers.windows(2).enumerate() {
+        let start = if index == 0 { first_start } else { window[0] };
+        docs.push(&input[start..window[1]]);
     }
-    let last = *markers.last().unwrap();
+    let last = if markers.len() == 1 {
+        first_start
+    } else {
+        *markers.last().unwrap()
+    };
     if last < input.len() {
         let trailing = &input[last..];
         if !trailing.trim_end().is_empty() {
@@ -157,6 +186,16 @@ pub(crate) fn split_documents(input: &str, max_markers: usize) -> Vec<&str> {
         }
     }
     docs
+}
+
+/// Whether the text before the first marker is an implicit document.
+/// Comments, blank lines, and directives belong to the explicit document
+/// opened by that marker.
+fn prologue_has_content(pre: &str) -> bool {
+    pre.lines().any(|line| {
+        let trimmed = line.trim();
+        !trimmed.is_empty() && !trimmed.starts_with('#') && !trimmed.starts_with('%')
+    })
 }
 
 #[cfg(test)]
@@ -213,5 +252,23 @@ mod tests {
     #[test]
     fn marker_cap_zero_yields_empty() {
         assert!(scan_markers(b"---\n---\n", 0).is_empty());
+    }
+
+    #[test]
+    fn checked_split_rejects_document_overflow() {
+        let error = split_documents_checked("---\na: 1\n---\na: 2\n", 1).unwrap_err();
+        assert!(matches!(
+            error,
+            Error::Budget(BudgetBreach::MaxDocuments {
+                limit: 1,
+                observed: 2
+            })
+        ));
+    }
+
+    #[test]
+    fn comments_before_a_leading_marker_stay_with_the_first_document() {
+        let docs = split_documents_checked("# heading\n---\na: 1\n", 1).unwrap();
+        assert_eq!(docs, vec!["# heading\n---\na: 1\n"]);
     }
 }

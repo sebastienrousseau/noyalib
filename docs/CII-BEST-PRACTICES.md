@@ -69,7 +69,7 @@ artefact that satisfies it.
 
 | Criterion | Satisfied by |
 | :--- | :--- |
-| Cryptographic best practices | Releases signed via cosign keyless + SLSA L3 build provenance attestations on every artefact |
+| Cryptographic best practices | Releases signed via cosign keyless + SLSA Build L2 provenance attestations on every artefact |
 | Inputs validated before use | Parser enforces `ParserConfig` limits (`max_depth`, `max_document_length`, `max_alias_expansions`, …) |
 | Hardened against vulnerabilities | `#![forbid(unsafe_code)]` workspace-wide, fuzz suite (10 targets) + Miri soak runs in `.github/workflows/security.yml` |
 | Vulnerability disclosure tested | One historical CVE-equivalent (issue #46 RecursionLimitExceeded false-positive) — patched in v0.0.6 within the same release cycle |

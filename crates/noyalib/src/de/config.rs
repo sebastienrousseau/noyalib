@@ -83,6 +83,11 @@ pub struct ParserConfig {
     pub max_depth: usize,
     /// Maximum length of a single YAML document in bytes (default: 64 MB).
     pub max_document_length: usize,
+    /// Maximum total byte length of a multi-document stream
+    /// (default: 256 MB). Async multi-document readers enforce this
+    /// before splitting, while each document remains subject to
+    /// [`Self::max_document_length`].
+    pub max_stream_bytes: usize,
     /// Maximum number of times a single anchor can be expanded (default: 1024).
     pub max_alias_expansions: usize,
     /// Maximum number of keys allowed in a single mapping (default: 64k).
@@ -299,6 +304,16 @@ pub struct ParserConfig {
     #[cfg(feature = "include")]
     #[cfg_attr(docsrs, doc(cfg(feature = "include")))]
     pub max_include_depth: usize,
+    /// Maximum number of sources resolved during one include walk.
+    /// Default 256.
+    #[cfg(feature = "include")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "include")))]
+    pub max_include_sources: usize,
+    /// Maximum cumulative bytes returned by include resolvers during one
+    /// include walk. Default 64 MiB.
+    #[cfg(feature = "include")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "include")))]
+    pub max_total_include_bytes: usize,
 }
 
 impl Default for ParserConfig {
@@ -307,6 +322,7 @@ impl Default for ParserConfig {
             yaml_version: YamlVersion::V1_2,
             max_depth: 128,
             max_document_length: 1024 * 1024 * 64, // 64 MB
+            max_stream_bytes: 1024 * 1024 * 256,   // 256 MB
             max_alias_expansions: 1024,
             max_mapping_keys: 1024 * 64,
             max_sequence_length: 1024 * 64,
@@ -344,6 +360,10 @@ impl Default for ParserConfig {
             include_resolver: None,
             #[cfg(feature = "include")]
             max_include_depth: 24,
+            #[cfg(feature = "include")]
+            max_include_sources: 256,
+            #[cfg(feature = "include")]
+            max_total_include_bytes: 64 * 1024 * 1024,
         }
     }
 }
@@ -378,7 +398,8 @@ impl ParserConfig {
         Self {
             yaml_version: YamlVersion::V1_2,
             max_depth: 64,
-            max_document_length: 1024 * 1024, // 1 MB
+            max_document_length: 1024 * 1024,   // 1 MB
+            max_stream_bytes: 1024 * 1024 * 16, // 16 MB
             max_alias_expansions: 100,
             max_mapping_keys: 1024,
             max_sequence_length: 1024,
@@ -419,6 +440,10 @@ impl ParserConfig {
             // 128 → 64, max_alias_expansions 1024 → 100).
             #[cfg(feature = "include")]
             max_include_depth: 8,
+            #[cfg(feature = "include")]
+            max_include_sources: 32,
+            #[cfg(feature = "include")]
+            max_total_include_bytes: 1024 * 1024,
         }
     }
 
@@ -582,6 +607,24 @@ impl ParserConfig {
     #[must_use]
     pub fn max_include_depth(mut self, depth: usize) -> Self {
         self.max_include_depth = depth;
+        self
+    }
+
+    /// Set the maximum number of sources resolved by one include walk.
+    #[cfg(feature = "include")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "include")))]
+    #[must_use]
+    pub fn max_include_sources(mut self, max: usize) -> Self {
+        self.max_include_sources = max;
+        self
+    }
+
+    /// Set the cumulative byte budget for sources returned by include resolvers.
+    #[cfg(feature = "include")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "include")))]
+    #[must_use]
+    pub fn max_total_include_bytes(mut self, max: usize) -> Self {
+        self.max_total_include_bytes = max;
         self
     }
 
@@ -803,6 +846,21 @@ impl ParserConfig {
     #[must_use]
     pub fn max_documents(mut self, max: usize) -> Self {
         self.max_documents = max;
+        self
+    }
+
+    /// Set the maximum total byte length of a multi-document stream.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use noyalib::ParserConfig;
+    /// let cfg = ParserConfig::new().max_stream_bytes(8 * 1024 * 1024);
+    /// assert_eq!(cfg.max_stream_bytes, 8 * 1024 * 1024);
+    /// ```
+    #[must_use]
+    pub fn max_stream_bytes(mut self, max: usize) -> Self {
+        self.max_stream_bytes = max;
         self
     }
 

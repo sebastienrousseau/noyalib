@@ -132,6 +132,19 @@ fn remove_and_rename_address_the_quoted_key_not_its_plain_prefix() {
 }
 
 #[test]
+fn malformed_paths_never_mutate_a_valid_prefix() {
+    let original = "a: 1\nother: 2\n";
+
+    let mut remove_doc = parse_document(original).unwrap();
+    assert!(remove_doc.remove("a[x]").is_err());
+    assert_eq!(remove_doc.to_string(), original);
+
+    let mut set_doc = parse_document(original).unwrap();
+    assert!(set_doc.set_path("a.", &s("changed")).is_err());
+    assert_eq!(set_doc.to_string(), original);
+}
+
+#[test]
 fn rename_key_still_refuses_an_unquoted_non_index_bracket_segment() {
     let mut doc = parse_document("servers:\n  web: 1\n").unwrap();
     let err = doc.rename_key("servers[web]", "x").unwrap_err().to_string();

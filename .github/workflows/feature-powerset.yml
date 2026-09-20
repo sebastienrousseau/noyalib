@@ -51,7 +51,7 @@ jobs:
           key: feature-powerset
 
       - name: Install cargo-hack
-        run: cargo install --locked cargo-hack
+        run: cargo install --locked cargo-hack --version 0.6.45
 
       - name: Check every feature pair
         run: >

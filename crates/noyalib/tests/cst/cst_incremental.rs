@@ -154,20 +154,12 @@ fn replacement_introducing_alias_escalates_to_document() {
     assert_equivalent_to_full_reparse(&doc);
 }
 
-// ── Optimistic commit / lazy validation ─────────────────────────────
+// ── Atomic validation ───────────────────────────────────────────────
 
 #[test]
-fn invalid_replacement_commits_optimistically_and_panics_on_read() {
-    // Phase A.2 trades atomic-rollback at edit time for batch
-    // perf: the green-tree splice commits if its fragment-level
-    // validation passes, so a cross-document structural error
-    // (unclosed flow, here) doesn't surface until the typed view
-    // is asked for.
+fn invalid_replacement_is_rejected_before_commit() {
     let mut doc = parse_document("name: foo\n").unwrap();
-    doc.set("name", "[").unwrap();
-    assert_eq!(doc.to_string(), "name: [\n");
-    let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-        let _ = doc.as_value();
-    }));
-    assert!(result.is_err(), "as_value must panic on invalid source");
+    assert!(doc.set("name", "[").is_err());
+    assert_eq!(doc.to_string(), "name: foo\n");
+    assert_eq!(doc.as_value()["name"].as_str(), Some("foo"));
 }

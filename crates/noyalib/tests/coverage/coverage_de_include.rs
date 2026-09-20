@@ -32,7 +32,7 @@ fn ever_deeper_resolver() -> IncludeResolver {
         let n = counter.fetch_add(1, Ordering::Relaxed);
         // Each level references a freshly-named child spec.
         Ok(InputSource::new(
-            "gen",
+            format!("gen-{n}"),
             format!("deeper: !include level_{}\n", n + 1),
         ))
     })
