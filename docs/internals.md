@@ -35,7 +35,7 @@ likely to cost something. The `benches/` directory measures them.
 
 ## Module map
 
-69 modules.
+70 modules.
 
 | Module | Lines | Purpose |
 | --- | --- | --- |
@@ -69,7 +69,8 @@ likely to cost something. The `benches/` directory measures them.
 | `flattened.rs` | 165 | `Flattened<T>` — capture the underlying [`Value`] alongside the |
 | `fmt.rs` | 635 | Formatting wrappers for fine-grained control over YAML output style. |
 | `i18n.rs` | 172 | Pluggable error-message formatters for user-facing rendering. |
-| `include.rs` | 537 | `!include` directive support — compose YAML documents from |
+| `include/fs.rs` | 363 | Capability-rooted filesystem support for `!include`. |
+| `include.rs` | 167 | `!include` directive support — compose YAML documents from |
 | `interner.rs` | 318 | Key interning for memory-efficient repeated-key workloads. |
 | `lossless_float.rs` | 180 | A float that refuses to silently lose information. |
 | `macros.rs` | 99 | Declarative builders for the public config types. |
