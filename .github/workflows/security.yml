@@ -1,13 +1,11 @@
 name: Security
 
 on:
-  # feat/** as well as main: a release branch collects PRs and direct
-  # commits before it merges, and OpenSSF Scorecard's SAST check counts a
-  # commit on main as unscanned unless CodeQL ran for it or its PR. With
-  # main-only triggers, commits merged into feat/v0.0.33 reached main
-  # unscanned (code-scanning alert 38).
+  # Feature branches run through the pull-request event; main runs after
+  # merge. Keeping feature pushes out of this trigger avoids duplicate
+  # CodeQL uploads for the same commit while preserving SAST coverage.
   push:
-    branches: [main, "feat/**"]
+    branches: [main]
   pull_request:
     branches: [main, "feat/**"]
   # Scan one specific commit. A commit that reached main through a

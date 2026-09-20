@@ -19,8 +19,10 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - Switched the Rust 2024 workspace to Cargo resolver 3 and pinned every Cargo
   utility installed by CI.
 - Centralized multi-document boundary splitting for async, parallel, and
-  recovery entry points. Parallel parsing now accepts caller configuration and
-  uses a sequential fast path for small streams.
+  recovery entry points. Parallel parsing now accepts caller configuration,
+  uses a sequential fast path for small streams, discovers boundaries without
+  retaining marker or slice vectors, and bounds in-flight work to Rayon
+  workers.
 - Added separate `max_stream_bytes`, `max_include_sources`, and
   `max_total_include_bytes` resource budgets.
 
@@ -49,6 +51,10 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   deterministic Fx hashing.
 - Dependency review, Rust CodeQL, soak fuzzing, secret scoping, package
   cleanliness, and provenance labelling now match their enforced CI behavior.
+- Release jobs now reject unsigned or lightweight tags and require a fresh
+  runner to reproduce byte-identical `.crate` packages before publication.
+- Feature branches now run CI and security analysis through pull requests only,
+  avoiding duplicate push and pull-request executions for the same commit.
 
 ## [v0.0.45] - 2026-09-17
 

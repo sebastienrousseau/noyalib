@@ -58,6 +58,28 @@ jobs:
           cargo test --all-features
           cargo doc --no-deps --all-features
 
+      - name: Verify annotated tag signature
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          REF_API="repos/${GITHUB_REPOSITORY}/git/ref/tags/${GITHUB_REF_NAME}"
+          OBJECT_TYPE=$(gh api "$REF_API" --jq '.object.type')
+          if [ "$OBJECT_TYPE" != "tag" ]; then
+            echo "::error::${GITHUB_REF_NAME} is not an annotated tag"
+            exit 1
+          fi
+          TAG_OBJECT=$(gh api "$REF_API" --jq '.object.sha')
+          TAG_API="repos/${GITHUB_REPOSITORY}/git/tags/${TAG_OBJECT}"
+          VERIFIED=$(gh api "$TAG_API" --jq '.verification.verified')
+          if [ "$VERIFIED" != "true" ]; then
+            REASON=$(gh api "$TAG_API" --jq '.verification.reason')
+            echo "::error::Tag signature is not verified: ${REASON}"
+            exit 1
+          fi
+          echo "Verified annotated signature for ${GITHUB_REF_NAME}"
+
       - name: Verify tag matches Cargo.toml version
         if: startsWith(github.ref, 'refs/tags/v')
         run: |
@@ -309,6 +331,56 @@ jobs:
             SBOM.cdx.json.asc
           retention-days: 5
 
+  # ── Independent reproducibility gate ───────────────────────────────
+  reproducible:
+    name: Reproduce source package
+    needs: artifacts
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772
+        with:
+          toolchain: stable
+
+      - name: Download release package
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: release-artifacts
+          path: original
+
+      - name: Rebuild and compare package bytes
+        run: |
+          set -euo pipefail
+          REBUILT_TARGET="${RUNNER_TEMP}/noyalib-rebuilt"
+          CARGO_TARGET_DIR="$REBUILT_TARGET" \
+            cargo package --all-features --no-verify
+          ORIGINAL_DIR="${GITHUB_WORKSPACE}/original/target/package"
+          REBUILT_DIR="${REBUILT_TARGET}/package"
+
+          ORIGINAL_FILES=("$ORIGINAL_DIR"/*.crate)
+          REBUILT_FILES=("$REBUILT_DIR"/*.crate)
+          if [ "${#ORIGINAL_FILES[@]}" -ne "${#REBUILT_FILES[@]}" ]; then
+            echo "::error::Rebuild produced a different crate count"
+            exit 1
+          fi
+
+          for ORIGINAL in "${ORIGINAL_FILES[@]}"; do
+            NAME=$(basename "$ORIGINAL")
+            REBUILT="${REBUILT_DIR}/${NAME}"
+            if [ ! -f "$REBUILT" ]; then
+              echo "::error::Rebuild did not produce ${NAME}"
+              exit 1
+            fi
+            if ! cmp --silent "$ORIGINAL" "$REBUILT"; then
+              echo "::error::Rebuilt ${NAME} is not byte-identical"
+              sha256sum "$ORIGINAL" "$REBUILT"
+              exit 1
+            fi
+            echo "Reproducible package: ${NAME}"
+          done
+
   # ── Cross-platform verification ─────────────────────────────────────
   cross-verify:
     name: Verify (${{ matrix.os }})
@@ -340,7 +412,7 @@ jobs:
   # ── GitHub Release ──────────────────────────────────────────────────
   github-release:
     name: GitHub Release
-    needs: [artifacts, cross-verify]
+    needs: [artifacts, cross-verify, reproducible]
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     # `contents: write` — required to create the GitHub Release.
