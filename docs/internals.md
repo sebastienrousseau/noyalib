@@ -69,7 +69,7 @@ likely to cost something. The `benches/` directory measures them.
 | `flattened.rs` | 165 | `Flattened<T>` — capture the underlying [`Value`] alongside the |
 | `fmt.rs` | 635 | Formatting wrappers for fine-grained control over YAML output style. |
 | `i18n.rs` | 172 | Pluggable error-message formatters for user-facing rendering. |
-| `include.rs` | 316 | `!include` directive support — compose YAML documents from |
+| `include.rs` | 537 | `!include` directive support — compose YAML documents from |
 | `interner.rs` | 318 | Key interning for memory-efficient repeated-key workloads. |
 | `lossless_float.rs` | 180 | A float that refuses to silently lose information. |
 | `macros.rs` | 99 | Declarative builders for the public config types. |
@@ -125,7 +125,7 @@ likely to cost something. The `benches/` directory measures them.
 | `ariadne` | `dep:ariadne` | — |
 | `lossless-float` | — | Opt-in `LosslessFloat` — deserialization rejects infinities, NaN, and any value that loses precision as f64; the floating-point sibling of `lossless-u64`. Needs nothing beyond the mandatory `serde_core`. |
 | `include` | — | `!include` directive — post-parse walk that consults a user-supplied `crate::include::IncludeResolver` for every `Value::Tagged(!include, _)` node and substitutes the resolved content in-place. Pairs with `max_include_depth` for cycle bounding. Off by default so callers who never see `!include` scalars pay zero compile cost. |
-| `include_fs` | `include`, `std` | Filesystem-backed `crate::include::SafeFileResolver` (root sandbox, symlink policy). Implies `include` + `std`. |
+| `include_fs` | `include`, `std`, `dep:rustix` | Filesystem-backed `crate::include::SafeFileResolver` (root sandbox, symlink policy). Implies `include` + `std`. |
 | `garde` | `dep:garde` | — |
 | `validator` | `dep:validator` | — |
 | `wasm-opt` | — | — |

@@ -184,6 +184,12 @@ tokio = { version = "1", optional = true, default-features = false, features = [
 tokio-util = { version = "0.7", optional = true, default-features = false, features = ["codec"] }
 bytes = { version = "1", optional = true, default-features = false }
 
+[target.'cfg(unix)'.dependencies]
+# Safe directory-relative opens for `SafeFileResolver`. rustix is already in
+# the audited workspace graph; keeping it target-specific preserves Windows
+# builds and the alloc-only dependency surface.
+rustix = { version = "1.1.4", optional = true, features = ["fs"] }
+
 [dev-dependencies]
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
@@ -348,7 +354,7 @@ lossless-float = []
 include = []
 # Filesystem-backed `crate::include::SafeFileResolver` (root
 # sandbox, symlink policy). Implies `include` + `std`.
-include_fs = ["include", "std"]
+include_fs = ["include", "std", "dep:rustix"]
 garde = ["dep:garde"]
 validator = ["dep:validator"]
 wasm-opt = []

@@ -359,8 +359,8 @@ mod safe_file {
         assert!(res.is_err(), "non-existent root must error");
         let msg = res.unwrap_err().to_string();
         assert!(
-            msg.contains("canonicalise"),
-            "expected canonicalisation error, got: {msg}"
+            msg.contains("cannot open root"),
+            "expected root capability error, got: {msg}"
         );
     }
 
@@ -406,6 +406,59 @@ mod safe_file {
         assert!(msg.contains("escapes"), "{msg}");
         let _ = std::fs::remove_file(&outside);
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn reject_policy_blocks_symlinked_parent_directory() {
+        let dir = temp_dir("nested-symlink");
+        std::fs::create_dir_all(dir.join("real")).unwrap();
+        std::fs::write(dir.join("real/value.yaml"), "safe: true\n").unwrap();
+        std::os::unix::fs::symlink("real", dir.join("linked")).unwrap();
+
+        let resolver = SafeFileResolver::new(&dir)
+            .symlink_policy(SymlinkPolicy::Reject)
+            .into_resolver();
+        let cfg = ParserConfig::new().include_resolver(resolver);
+        let res: Result<Value> = from_str_with_config("x: !include linked/value.yaml\n", &cfg);
+        assert!(res.is_err(), "parent-directory symlinks must be rejected");
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn follow_policy_accepts_symlinked_parent_within_root() {
+        let dir = temp_dir("nested-symlink-follow");
+        std::fs::create_dir_all(dir.join("real")).unwrap();
+        std::fs::write(dir.join("real/value.yaml"), "safe: true\n").unwrap();
+        std::os::unix::fs::symlink("real", dir.join("linked")).unwrap();
+
+        let cfg = ParserConfig::new().include_resolver(SafeFileResolver::new(&dir).into_resolver());
+        let value: Value = from_str_with_config("x: !include linked/value.yaml\n", &cfg).unwrap();
+        assert_eq!(value["x"]["safe"].as_bool(), Some(true));
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn opened_root_cannot_be_redirected_by_path_replacement() {
+        let dir = temp_dir("root-replacement");
+        let moved = dir.with_extension("opened");
+        let _ = std::fs::remove_dir_all(&moved);
+        std::fs::write(dir.join("value.yaml"), "source: original\n").unwrap();
+
+        let cfg = ParserConfig::new().include_resolver(SafeFileResolver::new(&dir).into_resolver());
+        std::fs::rename(&dir, &moved).unwrap();
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(dir.join("value.yaml"), "source: replacement\n").unwrap();
+
+        let value: Value = from_str_with_config("x: !include value.yaml\n", &cfg).unwrap();
+        assert_eq!(value["x"]["source"].as_str(), Some("original"));
+
+        let _ = std::fs::remove_dir_all(&dir);
+        let _ = std::fs::remove_dir_all(&moved);
     }
 }
 

@@ -293,7 +293,7 @@ checksum = "af491d569909a7e4dee0ad7db7f5341fef5c614d5b8ec8cf765732aba3cff681"
 dependencies = [
  "serde",
  "termcolor",
- "unicode-width 0.1.14",
+ "unicode-width 0.2.2",
 ]
 
 [[package]]
@@ -1100,6 +1100,7 @@ dependencies = [
  "rayon",
  "rust-yaml",
  "rustc-hash",
+ "rustix",
  "ryu",
  "schemars",
  "serde",

@@ -54,6 +54,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   truncating marker scans.
 - Include cycles use the resolver's canonical source identity and include
   expansion now has aggregate source-count and byte budgets.
+- On Unix, filesystem includes now resolve through a retained directory
+  capability, preventing root replacement and symlink check-to-open races.
+  Strict symlink rejection covers every path component on every platform.
 - Normal typed parsing no longer allocates owned copies of comments, and scanner
   speculative capacities are capped for large inputs.
 - Hosted owned mappings, include identities, tag handles, and the key interner
