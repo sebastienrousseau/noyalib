@@ -40,6 +40,8 @@
 - [Packaging for distributions](packaging.md)
 - [Production-readiness plan](PLAN.md)
 - [Road to 10/10](ROADMAP-TO-10.md)
+- [Repository standard compliance grade](COMPLIANCE-GRADE.md)
+- [Detailed README reference](README-REFERENCE.md)
 
 # The ecosystem
 

@@ -5,6 +5,22 @@ All notable changes to this project are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.0.46] - 2026-09-20
+
+### Changed
+
+- Split the former integration-test grab bag into eight themed binaries:
+  anchors, conformance, errors, integrations, limits, properties, regressions,
+  and values. Test behaviour is unchanged, but failures and targeted test runs
+  now map directly to a functional area.
+- Reworked the README to the workspace-wide canonical structure and retained the
+  complete prior guide in `docs/README-REFERENCE.md`.
+- Bumped the core and ecosystem documentation to the 0.0.46 lockstep release.
+
+### Added
+
+- A repository-standard compliance grade linked from the rendered manual.
+
 ## [v0.0.45] - 2026-09-17
 
 ### Added
