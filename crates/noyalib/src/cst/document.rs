@@ -20,6 +20,10 @@ use crate::prelude::*;
 use crate::span_context::SpanTree;
 use crate::value::{Mapping, Number, Value};
 
+mod transaction;
+
+pub use transaction::EditSession;
+
 /// A YAML document with byte-faithful source preservation, typed
 /// data access, and path-targeted edits.
 ///
@@ -62,13 +66,10 @@ use crate::value::{Mapping, Number, Value};
 pub struct Document {
     source: Arc<str>,
     green: GreenNode,
-    /// Lazy cache for the typed [`Value`] view + path resolver
-    /// [`SpanTree`]. Populated on first read; invalidated on every
-    /// edit. Local-repair edits leave it `None` so consecutive
-    /// `replace_span` calls don't pay the parser cost between them
-    /// — the work is deferred until [`Document::as_value`],
-    /// [`Document::span_at`], [`Document::get`], or any path-shaped
-    /// API actually needs the value tree.
+    /// Cache for the typed [`Value`] view + path resolver [`SpanTree`].
+    /// Initial parsing and validated edits populate it eagerly. Internal
+    /// operations may invalidate it, in which case the next typed read
+    /// rebuilds both views under this document's parser configuration.
     cache: core::cell::RefCell<Option<(Value, SpanTree)>>,
     /// Outcome of the most recent edit's localised-repair attempt.
     /// `None` for a freshly-parsed document or after a full
@@ -238,6 +239,39 @@ pub(crate) fn oracle_rejects(actual: &Value, expected: &Value) -> bool {
 }
 
 impl Document {
+    /// Start an atomic batch of byte-range edits.
+    ///
+    /// Every range is measured against the document source at the start of
+    /// the session. The document itself remains unchanged until
+    /// [`EditSession::commit`] builds and validates the complete candidate in
+    /// one commit-time validation. Dropping the session, calling
+    /// [`EditSession::abort`], or receiving a commit error leaves the
+    /// document byte-for-byte unchanged.
+    ///
+    /// Use this when several independent spans can be resolved before any of
+    /// them are changed. Path-based edits that depend on earlier edits should
+    /// continue to use the ordinary [`Document`] mutators.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use noyalib::cst::parse_document;
+    ///
+    /// let mut doc = parse_document("first: one\nsecond: two\n").unwrap();
+    /// let first = doc.span_at("first").unwrap();
+    /// let second = doc.span_at("second").unwrap();
+    ///
+    /// let mut edit = doc.edit();
+    /// edit.replace_span(first.0, first.1, "1").unwrap();
+    /// edit.replace_span(second.0, second.1, "2").unwrap();
+    /// edit.commit().unwrap();
+    ///
+    /// assert_eq!(doc.source(), "first: 1\nsecond: 2\n");
+    /// ```
+    pub fn edit(&mut self) -> EditSession<'_> {
+        EditSession::new(self)
+    }
+
     /// Borrow the root [`GreenNode`].
     ///
     /// # Examples
@@ -262,12 +296,10 @@ impl Document {
 
     /// Borrow the typed [`Value`] view of the document.
     ///
-    /// On the first call after an edit (or a fresh parse), this
-    /// triggers a one-shot parse of the current source into the
-    /// internal `Value` / `SpanTree` cache. Subsequent calls on the
-    /// same document are O(1) until the next edit invalidates the
-    /// cache. Code that batches many edits without reading the
-    /// typed view in between never pays the typed-tree cost.
+    /// If the typed cache is absent, this triggers a one-shot parse of
+    /// the current source into the internal `Value` / `SpanTree` cache.
+    /// Subsequent calls on the same document are O(1) until the cache is
+    /// invalidated.
     ///
     /// # Examples
     ///

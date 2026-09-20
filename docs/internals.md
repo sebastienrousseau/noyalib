@@ -35,7 +35,7 @@ likely to cost something. The `benches/` directory measures them.
 
 ## Module map
 
-68 modules.
+69 modules.
 
 | Module | Lines | Purpose |
 | --- | --- | --- |
@@ -50,12 +50,13 @@ likely to cost something. The `benches/` directory measures them.
 | `cst/annotated.rs` | 905 | Comment-aware read view over a [`crate::cst::Document`]. |
 | `cst/builder.rs` | 597 | Build the parts of a [`crate::cst::Document`] from input bytes. |
 | `cst/coerce.rs` | 232 | Lossless schema-driven type coercion on the CST path. |
-| `cst/document.rs` | 7617 | Public `Document` handle and parse / mutation entry points. |
+| `cst/document/transaction.rs` | 162 | Atomic batches of byte-range CST edits. |
+| `cst/document.rs` | 7649 | Public `Document` handle and parse / mutation entry points. |
 | `cst/emit.rs` | 463 | Auto-formatting for values spliced by the CST insertion mutators. |
 | `cst/entry.rs` | 671 | Path-shaped mutable handle to a CST node — the `Entry` "pro" |
 | `cst/format.rs` | 459 | Formatter for YAML CST. |
 | `cst/green.rs` | 231 | Immutable green-node primitive with relative-length leaves. |
-| `cst/mod.rs` | 126 | Side-table CST (concrete syntax tree) for lossless round-tripping. |
+| `cst/mod.rs` | 129 | Side-table CST (concrete syntax tree) for lossless round-tripping. |
 | `cst/syntax.rs` | 135 | Syntax-kind tags for green-tree nodes and tokens. |
 | `de/config.rs` | 1236 | Parser configuration types. |
 | `de/deserializer.rs` | 1041 | The serde `Deserializer` over a `&Value` and its access types. |

@@ -33,6 +33,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ### Added
 
 - A repository-standard compliance grade linked from the rendered manual.
+- `Document::edit` and `EditSession` for atomic batches of non-overlapping
+  byte-range replacements using one commit-time document validation.
 
 ### Fixed
 
