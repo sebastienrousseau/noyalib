@@ -4,7 +4,6 @@
 //! Atomic batches of byte-range CST edits.
 
 use super::{Document, RepairScope};
-use crate::cst::builder::parse_full;
 use crate::error::{Error, Result};
 use crate::prelude::*;
 
@@ -144,17 +143,8 @@ impl<'a> EditSession<'a> {
         }
         candidate.push_str(&source[cursor..]);
 
-        let parsed = parse_full(&candidate, &self.document.config)?;
-        self.document.source = parsed.source;
-        self.document.green = parsed.green;
-        let _ = self
-            .document
-            .cache
-            .replace(Some((parsed.value, parsed.span_tree)));
         self.document
-            .last_repair_scope
-            .set(Some(RepairScope::Document));
-        Ok(())
+            .commit_source(&candidate, RepairScope::Document)
     }
 
     /// Abort the session and leave the target document unchanged.

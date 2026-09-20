@@ -35,7 +35,7 @@ likely to cost something. The `benches/` directory measures them.
 
 ## Module map
 
-70 modules.
+72 modules.
 
 | Module | Lines | Purpose |
 | --- | --- | --- |
@@ -50,8 +50,10 @@ likely to cost something. The `benches/` directory measures them.
 | `cst/annotated.rs` | 905 | Comment-aware read view over a [`crate::cst::Document`]. |
 | `cst/builder.rs` | 597 | Build the parts of a [`crate::cst::Document`] from input bytes. |
 | `cst/coerce.rs` | 232 | Lossless schema-driven type coercion on the CST path. |
-| `cst/document/transaction.rs` | 162 | Atomic batches of byte-range CST edits. |
-| `cst/document.rs` | 7649 | Public `Document` handle and parse / mutation entry points. |
+| `cst/document/edit.rs` | 258 | Atomic source splicing and local green-tree repair. |
+| `cst/document/transaction.rs` | 152 | Atomic batches of byte-range CST edits. |
+| `cst/document/validation.rs` | 86 | Typed-cache validation and atomic document-state replacement. |
+| `cst/document.rs` | 7337 | Public `Document` handle and parse / mutation entry points. |
 | `cst/emit.rs` | 463 | Auto-formatting for values spliced by the CST insertion mutators. |
 | `cst/entry.rs` | 671 | Path-shaped mutable handle to a CST node — the `Entry` "pro" |
 | `cst/format.rs` | 459 | Formatter for YAML CST. |
@@ -243,7 +245,10 @@ edit didn't reach.
 | New `Error` variant | `error.rs` (enum + Display + miette code/help) |
 | New deserialisation helper (`from_X_strict`, etc.) | `de.rs` |
 | New custom-tag handler | route via `tag_registry.rs` |
-| New CST edit operation | `cst/document.rs` |
+| New path-oriented CST mutation | `cst/document.rs` |
+| New byte-splice or local-repair rule | `cst/document/edit.rs` |
+| New edit-session planning rule | `cst/document/transaction.rs` |
+| New CST validation or state-commit rule | `cst/document/validation.rs` |
 | New `Value` query method | `value.rs` |
 | New scanner state / token kind | `parser/scanner.rs` |
 | New SIMD / SWAR primitive | `simd.rs` (feature-gated) |
