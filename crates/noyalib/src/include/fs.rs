@@ -144,7 +144,7 @@ impl SafeFileResolver {
         let (mut file, display_path) =
             open_from_root(capability, &relative, self.symlink_policy).map_err(|error| {
                 Error::Custom(format!(
-                    "include resolver: `{}` escapes sandbox root, contains a rejected symlink, or cannot be read securely: {error}",
+                    "include resolver: `{}` escapes sandbox root, contains a rejected symlink, or cannot read securely: {error}",
                     self.root.join(&relative).display()
                 ))
             })?;
