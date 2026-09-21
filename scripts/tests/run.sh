@@ -106,6 +106,21 @@ else
     bad "hosted target sweep must retain the default feature baseline"
 fi
 
+# ── release artifact cache contract ───────────────────────────────
+# `cargo package` creates and removes transient directories below
+# target/package while verifying the unpacked crate. Letting rust-cache
+# traverse that target tree during post-job cleanup produces ENOENT error
+# annotations even when every release step succeeded. The artifact job only
+# needs registry and installed-tool caching.
+artifact_job=$(sed -n '/^  artifacts:/,/^  reproducible:/p' \
+    .github/workflows/release.yml)
+artifact_cache=$(grep -A3 'Swatinem/rust-cache@' <<<"$artifact_job")
+if grep -q -- 'cache-targets: false' <<<"$artifact_cache"; then
+    ok
+else
+    bad "release artifact job must not cache its transient target tree"
+fi
+
 # ── every gate script is exercised above ───────────────────────────
 # Without this, a new `scripts/check-*.sh` joins the release path with
 # no self-test and nobody notices — which is how three of the five got

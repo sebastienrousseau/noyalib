@@ -15,6 +15,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   test configuration before it reaches the intended feature matrix.
 - Gated the strict-deserialisation regression module at the feature that owns
   the API and added a gate self-test for the hosted-target contract.
+- Kept the release artifact job from caching its transient package target tree,
+  preventing successful releases from emitting misleading cache-cleanup error
+  annotations.
 
 ## [v0.0.46] - 2026-09-20
 

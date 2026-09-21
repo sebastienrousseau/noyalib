@@ -134,7 +134,14 @@ jobs:
         with:
           toolchain: stable
 
+      # `cargo package` verifies from an unpacked tree below `target/package`
+      # and creates short-lived test directories there. Caching that target
+      # tree makes rust-cache's post-job cleanup race those removals and emit
+      # misleading ENOENT error annotations on an otherwise clean release.
+      # Registry and installed-tool caching remain active.
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+        with:
+          cache-targets: false
 
       - name: Package crate
         run: cargo package --all-features
