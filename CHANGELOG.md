@@ -5,6 +5,20 @@ All notable changes to this project are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.0.47] - 2026-09-21
+
+### Fixed
+
+- Kept the documented default feature surface active while the weekly
+  feature-powerset workflow checks every hosted target with each optional
+  feature. This prevents the sweep from failing on an unsupported alloc-only
+  test configuration before it reaches the intended feature matrix.
+- Gated the strict-deserialisation regression module at the feature that owns
+  the API and added a gate self-test for the hosted-target contract.
+- Kept the release artifact job from caching its transient package target tree,
+  preventing successful releases from emitting misleading cache-cleanup error
+  annotations.
+
 ## [v0.0.46] - 2026-09-20
 
 ### Changed
