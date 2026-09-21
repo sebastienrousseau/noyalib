@@ -452,6 +452,28 @@ impl Value {
         index.index_into_mut(self)
     }
 
+    /// Access a nested value through a prevalidated [`QueryPath`].
+    ///
+    /// Unlike [`get_path`](Self::get_path), this separates path syntax
+    /// validation from lookup, so a missing value cannot be confused with
+    /// malformed user input.
+    #[must_use]
+    pub fn get_query_path(&self, path: &QueryPath) -> Option<&Self> {
+        let mut current = self;
+
+        for segment in path.segments() {
+            current = match segment {
+                QuerySegment::Key(key) => current.get(key.as_str())?,
+                QuerySegment::Index(idx) => current.get(*idx)?,
+                QuerySegment::Wildcard | QuerySegment::RecursiveDescent => {
+                    return self.query_path(path).into_iter().next();
+                }
+            };
+        }
+
+        Some(current)
+    }
+
     /// Access a nested value using a path string.
     ///
     /// Supports dot notation for mappings and bracket notation for sequences:
@@ -513,6 +535,14 @@ impl Value {
         Some(current)
     }
 
+    /// Query nested values through a prevalidated [`QueryPath`].
+    #[must_use]
+    pub fn query_path(&self, path: &QueryPath) -> Vec<&Self> {
+        let mut results = Vec::new();
+        query_recursive(self, path.segments(), 0, &mut results);
+        results
+    }
+
     /// Query nested values using an extended path expression.
     ///
     /// Returns all matching values. Supports:
@@ -545,6 +575,25 @@ impl Value {
         let mut results = Vec::new();
         query_recursive(self, &segments, 0, &mut results);
         results
+    }
+
+    /// Mutably access a nested value through a prevalidated [`QueryPath`].
+    ///
+    /// Wildcard and recursive-descent segments do not identify one mutable
+    /// value and therefore return `None`.
+    #[must_use]
+    pub fn get_query_path_mut(&mut self, path: &QueryPath) -> Option<&mut Self> {
+        let mut current = self;
+
+        for segment in path.segments() {
+            current = match segment {
+                QuerySegment::Key(key) => current.get_mut(key.as_str())?,
+                QuerySegment::Index(idx) => current.get_mut(*idx)?,
+                QuerySegment::Wildcard | QuerySegment::RecursiveDescent => return None,
+            };
+        }
+
+        Some(current)
     }
 
     /// Mutably access a nested value using a path string.
@@ -1109,7 +1158,7 @@ impl Value {
 }
 
 // Use shared path parsing from the path module.
-use crate::path::{QuerySegment, parse_query_path};
+use crate::path::{QueryPath, QuerySegment, parse_query_path};
 
 /// Backwards-compatible alias.
 fn parse_path(path: &str) -> Vec<QuerySegment> {

@@ -56,7 +56,7 @@
 // Copyright (c) 2026 Noyalib. All rights reserved.
 
 use crate::prelude::*;
-use core::fmt::Display;
+use core::{fmt, fmt::Display, str::FromStr};
 
 /// Represents a path to a location within a YAML document structure.
 ///
@@ -331,9 +331,9 @@ impl Display for Path<'_> {
 // ── Query path parsing ──────────────────────────────────────────────────
 // Shared path parsing for value.rs and borrowed.rs query methods.
 
-/// A segment in a query path expression.
-#[derive(Debug, Clone)]
-pub(crate) enum QuerySegment {
+/// A parsed segment in a [`QueryPath`].
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+pub enum QuerySegment {
     /// A key in a mapping.
     Key(String),
     /// An index in a sequence.
@@ -343,6 +343,143 @@ pub(crate) enum QuerySegment {
     /// Recursive descent: matches at any depth.
     RecursiveDescent,
 }
+
+/// A validated query path.
+///
+/// Parsing is atomic: malformed input returns [`PathError`] and never
+/// exposes a successfully parsed prefix. Use this type when a path comes
+/// from an untrusted configuration, command line, or network request and
+/// the caller must distinguish an invalid path from a path that is valid
+/// but does not match a value.
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+pub struct QueryPath(Vec<QuerySegment>);
+
+impl QueryPath {
+    /// Parse and validate a query path.
+    ///
+    /// The empty string is the root path. Empty segments, incomplete
+    /// brackets, invalid indices, and trailing separators are rejected.
+    pub fn parse(input: &str) -> Result<Self, PathError> {
+        parse_query_path_checked(input).map(Self)
+    }
+
+    /// Return the validated path segments.
+    #[must_use]
+    pub fn segments(&self) -> &[QuerySegment] {
+        &self.0
+    }
+
+    /// Return whether this path addresses the root value.
+    #[must_use]
+    pub fn is_root(&self) -> bool {
+        self.0.is_empty()
+    }
+}
+
+impl FromStr for QueryPath {
+    type Err = PathError;
+
+    fn from_str(input: &str) -> Result<Self, Self::Err> {
+        Self::parse(input)
+    }
+}
+
+impl Display for QueryPath {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut rendered = String::new();
+        let mut after_descent = false;
+        for segment in &self.0 {
+            match segment {
+                QuerySegment::Key(key) if is_plain_key(key) => {
+                    if !rendered.is_empty() && !after_descent {
+                        rendered.push('.');
+                    }
+                    rendered.push_str(key);
+                }
+                QuerySegment::Key(key) => rendered.push_str(&quote_key(key)),
+                QuerySegment::Index(index) => {
+                    use core::fmt::Write as _;
+                    write!(rendered, "[{index}]")?;
+                }
+                QuerySegment::Wildcard => rendered.push_str("[*]"),
+                QuerySegment::RecursiveDescent => rendered.push_str(".."),
+            }
+            after_descent = matches!(segment, QuerySegment::RecursiveDescent);
+        }
+        f.write_str(&rendered)
+    }
+}
+
+/// The category of a query-path syntax error.
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
+#[non_exhaustive]
+pub enum PathErrorKind {
+    /// A dot would create an empty mapping-key segment.
+    EmptySegment,
+    /// A dot appeared immediately before a bracket segment.
+    SeparatorBeforeBracket,
+    /// A bracket segment has no closing bracket.
+    UnterminatedBracket,
+    /// A quoted mapping key has no closing quote.
+    UnterminatedQuotedKey,
+    /// A quoted mapping key ends with an incomplete escape.
+    DanglingEscape,
+    /// A quoted mapping key is not followed by `]`.
+    ExpectedClosingBracket,
+    /// Bracket content is neither an index nor `*`.
+    InvalidBracketSegment,
+    /// A numeric sequence index does not fit in [`usize`].
+    IndexOverflow,
+    /// A closing bracket appeared outside a bracket segment.
+    StrayClosingBracket,
+    /// The path ends with a dot separator.
+    DanglingSeparator,
+}
+
+/// An error returned when a query path is syntactically invalid.
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
+pub struct PathError {
+    kind: PathErrorKind,
+}
+
+impl PathError {
+    const fn new(kind: PathErrorKind) -> Self {
+        Self { kind }
+    }
+
+    /// Return the stable error category.
+    #[must_use]
+    pub const fn kind(self) -> PathErrorKind {
+        self.kind
+    }
+}
+
+impl Display for PathError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let message = match self.kind {
+            PathErrorKind::EmptySegment => "query path contains an empty segment",
+            PathErrorKind::SeparatorBeforeBracket => {
+                "query path has a separator before a bracket segment"
+            }
+            PathErrorKind::UnterminatedBracket => "query path has an unterminated bracket",
+            PathErrorKind::UnterminatedQuotedKey => "query path has an unterminated quoted key",
+            PathErrorKind::DanglingEscape => "query path has a dangling quoted-key escape",
+            PathErrorKind::ExpectedClosingBracket => {
+                "a quoted query-path key must be followed by a closing bracket"
+            }
+            PathErrorKind::InvalidBracketSegment => {
+                "query-path bracket content must be an index or wildcard"
+            }
+            PathErrorKind::IndexOverflow => "query-path sequence index overflows usize",
+            PathErrorKind::StrayClosingBracket => "query path contains a stray closing bracket",
+            PathErrorKind::DanglingSeparator => "query path ends with a separator",
+        };
+        f.write_str(message)
+    }
+}
+
+#[cfg(feature = "std")]
+impl std::error::Error for PathError {}
 
 /// Parse a query path string into segments.
 ///
@@ -375,7 +512,7 @@ pub(crate) fn parse_query_path(path: &str) -> Vec<QuerySegment> {
     })
 }
 
-fn parse_query_path_checked(path: &str) -> Result<Vec<QuerySegment>, &'static str> {
+fn parse_query_path_checked(path: &str) -> Result<Vec<QuerySegment>, PathError> {
     let mut segments = Vec::new();
     let mut current = String::new();
     let mut chars = path.chars().peekable();
@@ -390,20 +527,20 @@ fn parse_query_path_checked(path: &str) -> Result<Vec<QuerySegment>, &'static st
                 }
                 if chars.peek() == Some(&'.') {
                     if separator_pending {
-                        return Err("empty path segment");
+                        return Err(PathError::new(PathErrorKind::EmptySegment));
                     }
                     let _ = chars.next();
                     segments.push(QuerySegment::RecursiveDescent);
                     separator_pending = false;
                 } else if (!had_current && segments.is_empty()) || separator_pending {
-                    return Err("empty path segment");
+                    return Err(PathError::new(PathErrorKind::EmptySegment));
                 } else {
                     separator_pending = true;
                 }
             }
             '[' => {
                 if separator_pending {
-                    return Err("separator before bracket segment");
+                    return Err(PathError::new(PathErrorKind::SeparatorBeforeBracket));
                 }
                 if !current.is_empty() {
                     segments.push(QuerySegment::Key(core::mem::take(&mut current)));
@@ -412,7 +549,7 @@ fn parse_query_path_checked(path: &str) -> Result<Vec<QuerySegment>, &'static st
                     let _ = chars.next();
                     let key = read_quoted_key(&mut chars, quote)?;
                     if chars.next() != Some(']') {
-                        return Err("quoted key is not followed by a closing bracket");
+                        return Err(PathError::new(PathErrorKind::ExpectedClosingBracket));
                     }
                     segments.push(QuerySegment::Key(key));
                     separator_pending = false;
@@ -430,18 +567,23 @@ fn parse_query_path_checked(path: &str) -> Result<Vec<QuerySegment>, &'static st
                     let _ = chars.next();
                 }
                 if !closed {
-                    return Err("unterminated bracket segment");
+                    return Err(PathError::new(PathErrorKind::UnterminatedBracket));
                 }
                 if index_str == "*" {
                     segments.push(QuerySegment::Wildcard);
-                } else if let Ok(idx) = index_str.parse::<usize>() {
+                } else if index_str.bytes().all(|byte| byte.is_ascii_digit())
+                    && !index_str.is_empty()
+                {
+                    let idx = index_str
+                        .parse::<usize>()
+                        .map_err(|_| PathError::new(PathErrorKind::IndexOverflow))?;
                     segments.push(QuerySegment::Index(idx));
                 } else {
-                    return Err("bracket segment is neither an index nor a wildcard");
+                    return Err(PathError::new(PathErrorKind::InvalidBracketSegment));
                 }
                 separator_pending = false;
             }
-            ']' => return Err("stray closing bracket"),
+            ']' => return Err(PathError::new(PathErrorKind::StrayClosingBracket)),
             '*' => {
                 if !current.is_empty() {
                     segments.push(QuerySegment::Key(core::mem::take(&mut current)));
@@ -457,7 +599,7 @@ fn parse_query_path_checked(path: &str) -> Result<Vec<QuerySegment>, &'static st
     }
 
     if separator_pending {
-        return Err("dangling path separator");
+        return Err(PathError::new(PathErrorKind::DanglingSeparator));
     }
     if !current.is_empty() {
         segments.push(QuerySegment::Key(current));
@@ -471,19 +613,21 @@ fn parse_query_path_checked(path: &str) -> Result<Vec<QuerySegment>, &'static st
 fn read_quoted_key(
     chars: &mut core::iter::Peekable<core::str::Chars<'_>>,
     quote: char,
-) -> Result<String, &'static str> {
+) -> Result<String, PathError> {
     let mut key = String::new();
     while let Some(c) = chars.next() {
         match c {
             '\\' => {
-                let escaped = chars.next().ok_or("dangling quoted-key escape")?;
+                let escaped = chars
+                    .next()
+                    .ok_or_else(|| PathError::new(PathErrorKind::DanglingEscape))?;
                 key.push(escaped);
             }
             c if c == quote => return Ok(key),
             c => key.push(c),
         }
     }
-    Err("unterminated quoted key")
+    Err(PathError::new(PathErrorKind::UnterminatedQuotedKey))
 }
 
 /// Whether the query grammar reads `key` back as itself when it is
@@ -910,5 +1054,48 @@ mod tests {
         push_key(&mut path, "d]");
         assert_eq!(path, r#"["a.b"].c["d]"]"#);
         assert_eq!(keys(&parse_query_path(&path)), ["a.b", "c", "d]"]);
+    }
+
+    #[test]
+    fn query_path_reports_stable_error_categories() {
+        for (input, kind) in [
+            (".a", PathErrorKind::EmptySegment),
+            ("a.[0]", PathErrorKind::SeparatorBeforeBracket),
+            ("a[0", PathErrorKind::UnterminatedBracket),
+            (r#"a["b"#, PathErrorKind::UnterminatedQuotedKey),
+            (r#"a["b"x]"#, PathErrorKind::ExpectedClosingBracket),
+            ("a[no]", PathErrorKind::InvalidBracketSegment),
+            ("a]", PathErrorKind::StrayClosingBracket),
+            ("a.", PathErrorKind::DanglingSeparator),
+        ] {
+            assert_eq!(QueryPath::parse(input).unwrap_err().kind(), kind, "{input}");
+        }
+
+        let overflow = format!("items[{}]", "9".repeat(usize::BITS as usize));
+        assert_eq!(
+            QueryPath::parse(&overflow).unwrap_err().kind(),
+            PathErrorKind::IndexOverflow
+        );
+    }
+
+    #[test]
+    fn query_path_display_is_canonical_and_round_trips() {
+        for input in [
+            "",
+            "server.port",
+            "items[12].name",
+            r#"labels["app.example/name"]"#,
+            "items[*].name",
+            "..name",
+            "root..name",
+        ] {
+            let path = QueryPath::parse(input).unwrap();
+            let rendered = path.to_string();
+            assert_eq!(
+                QueryPath::parse(&rendered).unwrap(),
+                path,
+                "{input} -> {rendered}"
+            );
+        }
     }
 }

@@ -20,7 +20,7 @@
 
 use crate::error::{Error, Result};
 use crate::parser::{Event, ParseConfig, Parser, ScalarStyle};
-use crate::path::{QuerySegment, parse_query_path};
+use crate::path::{QueryPath, QuerySegment, parse_query_path};
 use crate::prelude::IndexMap;
 use crate::prelude::*;
 use crate::prelude::{FxBuildHasher, FxHashMap};
@@ -264,6 +264,14 @@ impl<'a> BorrowedValue<'a> {
         }
     }
 
+    /// Query nested values through a prevalidated [`QueryPath`].
+    #[must_use]
+    pub fn query_path(&self, path: &QueryPath) -> Vec<&Self> {
+        let mut results = Vec::new();
+        borrowed_query_recursive(self, path.segments(), 0, &mut results);
+        results
+    }
+
     /// Query nested values using an extended path expression.
     ///
     /// Returns all matching values. Supports dot notation, bracket indexing,
@@ -286,6 +294,34 @@ impl<'a> BorrowedValue<'a> {
         let mut results = Vec::new();
         borrowed_query_recursive(self, &segments, 0, &mut results);
         results
+    }
+
+    /// Access a nested value through a prevalidated [`QueryPath`].
+    #[must_use]
+    pub fn get_query_path(&self, path: &QueryPath) -> Option<&Self> {
+        let mut current = self;
+        for seg in path.segments() {
+            current = match seg {
+                QuerySegment::Key(key) => {
+                    if let Self::Mapping(m) = current {
+                        m.get(key.as_str())?
+                    } else {
+                        return None;
+                    }
+                }
+                QuerySegment::Index(idx) => {
+                    if let Self::Sequence(s) = current {
+                        s.get(*idx)?
+                    } else {
+                        return None;
+                    }
+                }
+                QuerySegment::Wildcard | QuerySegment::RecursiveDescent => {
+                    return self.query_path(path).into_iter().next();
+                }
+            };
+        }
+        Some(current)
     }
 
     /// Access a nested value via a dotted path.

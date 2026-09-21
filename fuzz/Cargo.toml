@@ -133,3 +133,10 @@ path = "fuzz_targets/fuzz_borrowing.rs"
 test = false
 doc = false
 bench = false
+
+[[bin]]
+name = "fuzz_query_path"
+path = "fuzz_targets/fuzz_query_path.rs"
+test = false
+doc = false
+bench = false

@@ -13,7 +13,7 @@ use crate::de::ParserConfig;
 use crate::doc_boundary::strip_bom;
 use crate::error::{Error, Location, Result};
 use crate::parser::ParseConfig;
-use crate::path::{QuerySegment, parse_query_path, push_key};
+use crate::path::{QueryPath, QuerySegment, parse_query_path, push_key};
 use crate::prelude::*;
 use crate::span_context::SpanTree;
 use crate::value::{Mapping, Number, Value};
@@ -1020,6 +1020,16 @@ impl Document {
             )));
         }
         self.replace_span(s, e, &fragment)
+    }
+
+    /// Set or create the entry addressed by a prevalidated [`QueryPath`].
+    ///
+    /// This is the strict-input counterpart to [`set_path`](Self::set_path):
+    /// parse untrusted input once, handle [`crate::PathError`] explicitly,
+    /// then apply the validated path without ambiguity between malformed and
+    /// missing input.
+    pub fn set_query_path(&mut self, path: &QueryPath, value: &Value) -> Result<()> {
+        self.set_path(&path.to_string(), value)
     }
 
     /// Like [`set_value`](Self::set_value), but creates every missing
