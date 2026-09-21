@@ -46,20 +46,9 @@ pub(crate) fn parse(input: &str, config: &ParseConfig) -> Result<Vec<(Value, Spa
     loader::load(&mut parser, config, input)
 }
 
-/// Parse a single YAML document from a string.
-///
-/// Silently discards any document past the first — see
-/// [`loader::load_one`]. Deserialise entry points use
-/// [`parse_exactly_one`] instead.
-#[cfg(feature = "std")]
-pub(crate) fn parse_one(input: &str, config: &ParseConfig) -> Result<(Value, SpanTree)> {
-    let mut parser = Parser::new(input);
-    loader::load_one(&mut parser, config, input)
-}
-
-/// Like [`parse_one`], but errors if the stream carries more than one
-/// document. Used by `from_str` / `from_str_with_config`'s AST path
-/// (see #351).
+/// Parse exactly one YAML document, erroring if the stream carries
+/// more than one. Used by single-document deserialisation and CST
+/// entry points (see #351).
 #[cfg(feature = "std")]
 pub(crate) fn parse_exactly_one(input: &str, config: &ParseConfig) -> Result<(Value, SpanTree)> {
     let mut parser = Parser::new(input);

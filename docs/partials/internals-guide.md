@@ -96,7 +96,11 @@ edit didn't reach.
 | New `Error` variant | `error.rs` (enum + Display + miette code/help) |
 | New deserialisation helper (`from_X_strict`, etc.) | `de.rs` |
 | New custom-tag handler | route via `tag_registry.rs` |
-| New CST edit operation | `cst/document.rs` |
+| New path-oriented CST mutation | `cst/document.rs` |
+| New green-tree path-resolution rule | `cst/document/path.rs` |
+| New byte-splice or local-repair rule | `cst/document/edit.rs` |
+| New edit-session planning rule | `cst/document/transaction.rs` |
+| New CST validation or state-commit rule | `cst/document/validation.rs` |
 | New `Value` query method | `value.rs` |
 | New scanner state / token kind | `parser/scanner.rs` |
 | New SIMD / SWAR primitive | `simd.rs` (feature-gated) |

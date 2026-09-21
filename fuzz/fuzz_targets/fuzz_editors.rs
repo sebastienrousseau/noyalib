@@ -19,19 +19,17 @@
 //!    in spirit — they did not refuse, but the failure mode is the
 //!    same: the document is not what the caller asked for.
 //!
-//! 2. **A comment edit never changes the value.** Comments are trivia;
+//! 2. **An accepted edit remains parseable.** The always-valid
+//!    `Document` contract applies after every successful mutator.
+//!
+//! 3. **A comment edit never changes the value.** Comments are trivia;
 //!    if `set_comment` or `remove_comment` alters what the document
 //!    *means*, that is a bug by definition. This gives the comment
 //!    mutators a total invariant, which the enumerated tests cannot.
 //!
-//! 3. **An accepted `remove` removes exactly one path.** The typed
+//! 4. **An accepted `remove` removes exactly one path.** The typed
 //!    oracle inside `remove` already claims this; asserting it here
 //!    tests the oracle rather than trusting it.
-//!
-//! Deliberately *not* asserted: that an accepted edit leaves a
-//! parseable document. `set` commits an invalid splice optimistically
-//! by design — `set("k", "[")` succeeds and surfaces via `validate` —
-//! and that behaviour is covered by its own test.
 
 // SPDX-License-Identifier: MIT OR Apache-2.0
 // Copyright (c) 2026 Noyalib. All rights reserved.
@@ -125,20 +123,27 @@ fuzz_target!(|case: Case| {
         return;
     }
 
-    // ── Invariant 2: comment edits preserve the value ───────────────
+    // ── Invariant 2: accepted edits remain parseable ────────────────
+    let after_value = noyalib::from_str::<Value>(doc.source()).unwrap_or_else(|e| {
+        panic!(
+            "an accepted edit made the document unparseable ({e}): {:?}\nsource: {:?}",
+            case.edit,
+            doc.source()
+        )
+    });
+    doc.validate().unwrap_or_else(|e| {
+        panic!(
+            "an accepted edit violated Document validity ({e}): {:?}\nsource: {:?}",
+            case.edit,
+            doc.source()
+        )
+    });
+
+    // ── Invariant 3: comment edits preserve the value ───────────────
     if is_comment_edit {
         if let Some(before) = &before_val {
-            // The edited document must still parse — a comment edit has
-            // no licence to break the document — and mean the same.
-            let after = noyalib::from_str::<Value>(doc.source()).unwrap_or_else(|e| {
-                panic!(
-                    "a comment edit made the document unparseable ({e}): {:?}\nsource: {:?}",
-                    case.edit,
-                    doc.source()
-                )
-            });
             assert_eq!(
-                &after, before,
+                &after_value, before,
                 "a comment edit changed the document's value: {:?}",
                 case.edit
             );
@@ -146,7 +151,7 @@ fuzz_target!(|case: Case| {
         return;
     }
 
-    // ── Invariant 3: an accepted remove drops exactly one path ──────
+    // ── Invariant 4: an accepted remove drops exactly one path ──────
     if let (Some(path), Some(before)) = (removed_path, before_val) {
         // An accepted remove must have changed the source.
         //
@@ -176,18 +181,16 @@ fuzz_target!(|case: Case| {
             "remove({path:?}) reported success but left the source unchanged"
         );
 
-        if let Ok(after) = noyalib::from_str::<Value>(doc.source()) {
-            // The value must never *grow*. A removal that took a parent
-            // with it — the v0.0.21 flow bug — still shows up here as a
-            // large drop, and this direction stays sound under duplicate
-            // keys.
-            let before_n = count_nodes(&before);
-            let after_n = count_nodes(&after);
-            assert!(
-                after_n <= before_n,
-                "remove({path:?}) grew the document: {before_n} -> {after_n}"
-            );
-        }
+        // The value must never *grow*. A removal that took a parent
+        // with it — the v0.0.21 flow bug — still shows up here as a
+        // large drop, and this direction stays sound under duplicate
+        // keys.
+        let before_n = count_nodes(&before);
+        let after_n = count_nodes(&after_value);
+        assert!(
+            after_n <= before_n,
+            "remove({path:?}) grew the document: {before_n} -> {after_n}"
+        );
     }
 });
 

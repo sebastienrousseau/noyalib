@@ -3,8 +3,8 @@
 
 //! The concrete-syntax-tree suites: parsing, editing, styling and round-tripping.
 //!
-//! 55 files, compiled into one test binary instead of
-//! 55 executables. The files themselves are unchanged.
+//! 56 files, compiled into one test binary instead of
+//! 56 executables.
 
 #![allow(missing_docs)]
 
@@ -19,6 +19,7 @@ mod cst_decorated_and_crlf_edits;
 mod cst_document_coverage;
 mod cst_document_final_push;
 mod cst_edit_errors;
+mod cst_edit_session;
 mod cst_emit;
 mod cst_entry_or_insert;
 mod cst_error_paths;

@@ -336,6 +336,7 @@ The CST exposes:
 |---|---|
 | `parse_document(s)` / `parse_stream(s)` | Read, under the default `ParserConfig` |
 | `parse_document_with_config(s, &cfg)` / `parse_stream_with_config(s, &cfg)` | Read under a `ParserConfig` (budgets, the alias-to-anchor ratio, key policies); the document keeps it for every later re-parse |
+| `doc.edit()` | Queue non-overlapping byte-range replacements and atomically commit them with one complete-document validation |
 | `doc.set(path, fragment)` | Write a literal scalar |
 | `doc.set_value(path, &Value)` | Write any `Value` |
 | `doc.entry(path)` | Chainable mutable handle (18 methods, smart `items[0]` paths) |
@@ -536,7 +537,7 @@ diagnostics list and offer autocomplete on the recoverable
 subtrees.
 
 ```rust
-// Cargo.toml: noyalib = { version = "0.0.45", features = ["recovery"] }
+// Cargo.toml: noyalib = { version = "0.0.46", features = ["recovery"] }
 use noyalib::recovery::parse_lenient;
 
 let half_typed = "name: noyalib\nfeatures: [recovery, sval\n# ^ unclosed\n";
@@ -561,7 +562,7 @@ the `tokio` feature lets you skip `spawn_blocking`:
 ```rust,ignore
 // Needs an async runtime and, for pattern 2, `tokio-util` in *your*
 // Cargo.toml, so this block is shown rather than compiled here.
-// Cargo.toml: noyalib = { version = "0.0.45", features = ["tokio"] }
+// Cargo.toml: noyalib = { version = "0.0.46", features = ["tokio"] }
 use noyalib::tokio_async::{from_async_reader_multi, YamlDecoder};
 
 // Pattern 1: drain-and-parse
@@ -587,7 +588,7 @@ cost of serde monomorphisation. The adapter implements
 ```rust,ignore
 // `sval` and the `sval::Stream` you hand it are *your* dependencies,
 // so this block is shown rather than compiled here.
-// Cargo.toml: noyalib = { version = "0.0.45", features = ["sval"] }
+// Cargo.toml: noyalib = { version = "0.0.46", features = ["sval"] }
 let value: noyalib::Value = noyalib::from_str("name: noyalib")?;
 sval::Value::stream(&value, &mut my_stream)?;
 ```

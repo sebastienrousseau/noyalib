@@ -7,19 +7,21 @@
 //! exports, Kubernetes-resource snapshots, anything emitting `---`-
 //! separated documents at scale), even the fastest single-threaded
 //! parser is bounded by one CPU core. This module pre-scans the
-//! input on the main thread, splits it into per-document slices,
-//! then dispatches each document to a Rayon worker.
+//! input on demand and dispatches per-document slices to Rayon
+//! workers without materialising the complete boundary list.
 //!
 //! Gated behind the `parallel` Cargo feature.
 //!
 //! # Linear scaling
 //!
-//! The pre-scan runs in `O(input_len)` with no allocation; the
-//! parse-per-document work is the dominant cost and parallelises
-//! naturally across cores. Expect near-linear speedup with the
-//! number of cores up to the point where document size starts to
-//! dominate (very large single documents see less benefit because
-//! one document still parses on one thread).
+//! Boundary discovery runs in `O(input_len)` without allocating a
+//! marker or slice vector. Rayon requests slices on demand, so the
+//! worker count bounds in-flight parse work. Parse-per-document work
+//! is the dominant cost and parallelises naturally across cores.
+//! Expect near-linear speedup with the number of cores up to the
+//! point where document size starts to dominate (very large single
+//! documents see less benefit because one document still parses on
+//! one thread).
 //!
 //! # Document-boundary contract
 //!
@@ -55,6 +57,8 @@
 //! # API shape
 //!
 //! - [`parse`](crate::parallel::parse) — typed deserialise into `Vec<T>`.
+//! - [`parse_with_config`](crate::parallel::parse_with_config) — the same
+//!   operation with caller-supplied limits and semantic policy.
 //! - [`values`](crate::parallel::values) — dynamic-tree variant returning `Vec<Value>`.
 //! - [`split`](crate::parallel::split) — standalone document-boundary
 //!   pre-scanner for callers driving their own concurrency primitives.
@@ -64,6 +68,7 @@
 //! verb stays single-word: `parallel::parse` reads as one
 //! sentence.
 
+use crate::ParserConfig;
 use crate::error::Result;
 use rayon::prelude::*;
 
@@ -97,11 +102,70 @@ pub fn parse<T>(input: &str) -> Result<Vec<T>>
 where
     T: serde_core::de::DeserializeOwned + Send + 'static,
 {
-    let chunks = split(input);
-    chunks
-        .par_iter()
-        .map(|chunk| crate::from_str::<T>(chunk))
-        .collect::<Result<Vec<T>>>()
+    let config = ParserConfig::default();
+    parse_with_config(input, &config)
+}
+
+/// Deserialise every document with a caller-supplied parser policy.
+/// Document-count and per-document limits are enforced before and during
+/// parallel work. Streams with fewer than four documents stay sequential to
+/// avoid Rayon scheduling overhead.
+///
+/// # Errors
+///
+/// Returns the first document or budget error in source order.
+pub fn parse_with_config<T>(input: &str, config: &ParserConfig) -> Result<Vec<T>>
+where
+    T: serde_core::de::DeserializeOwned + Send + 'static,
+{
+    const SEQUENTIAL_DOCUMENTS: usize = 4;
+
+    crate::doc_boundary::validate_document_budget(input, config.max_documents)?;
+    let mut chunks = crate::doc_boundary::DocumentStream::new(input, config.max_documents);
+    let mut prefix = Vec::with_capacity(SEQUENTIAL_DOCUMENTS);
+    while prefix.len() < SEQUENTIAL_DOCUMENTS {
+        match chunks.next() {
+            Some(Ok(chunk)) => prefix.push(chunk),
+            Some(Err(error)) => return Err(error),
+            None => break,
+        }
+    }
+
+    // `parallel::split` is a byte-partitioning API: unlike recovery,
+    // a whitespace-only non-empty input must remain represented by its
+    // original slice so concatenating the output reproduces the input.
+    if prefix.is_empty() && !input.is_empty() {
+        if config.max_documents == 0 {
+            return Err(crate::Error::Budget(crate::BudgetBreach::MaxDocuments {
+                limit: 0,
+                observed: 1,
+            }));
+        }
+        prefix.push(input);
+    }
+
+    if prefix.len() < SEQUENTIAL_DOCUMENTS {
+        return prefix
+            .iter()
+            .map(|chunk| crate::from_str_with_config::<T>(chunk, config))
+            .collect();
+    }
+
+    let mut parsed = prefix
+        .into_iter()
+        .map(Ok)
+        .chain(chunks)
+        .enumerate()
+        .par_bridge()
+        .map(|(index, chunk)| {
+            (
+                index,
+                chunk.and_then(|chunk| crate::from_str_with_config::<T>(chunk, config)),
+            )
+        })
+        .collect::<Vec<_>>();
+    parsed.sort_unstable_by_key(|(index, _)| *index);
+    parsed.into_iter().map(|(_, result)| result).collect()
 }
 
 /// Dynamic-tree variant of [`parse`]: returns a
@@ -122,6 +186,15 @@ pub fn values(input: &str) -> Result<Vec<crate::Value>> {
     parse::<crate::Value>(input)
 }
 
+/// Dynamic-tree variant of [`parse_with_config`].
+///
+/// # Errors
+///
+/// Returns the first document or budget error in source order.
+pub fn values_with_config(input: &str, config: &ParserConfig) -> Result<Vec<crate::Value>> {
+    parse_with_config::<crate::Value>(input, config)
+}
+
 /// Split `input` into per-document byte slices on YAML 1.2 `---`
 /// markers. Single-pass `O(input.len())`. Public so callers that
 /// drive their own concurrency primitives (async tasks, custom
@@ -135,84 +208,11 @@ pub fn values(input: &str) -> Result<Vec<crate::Value>> {
 /// ```
 #[must_use]
 pub fn split(input: &str) -> Vec<&str> {
-    let bytes = input.as_bytes();
-    let mut markers: Vec<usize> = Vec::new();
-    let mut i = 0;
-    while i + 3 <= bytes.len() {
-        let at_line_start = i == 0 || bytes[i - 1] == b'\n' || bytes[i - 1] == b'\r';
-        if at_line_start && &bytes[i..i + 3] == b"---" {
-            let next_ok =
-                i + 3 >= bytes.len() || matches!(bytes[i + 3], b'\n' | b'\r' | b' ' | b'\t');
-            if next_ok {
-                markers.push(i);
-                // Skip past the marker to avoid re-matching it on
-                // the next iteration.
-                i += 3;
-                continue;
-            }
-        }
-        i += 1;
-    }
-
-    if markers.is_empty() {
-        // No document marker — treat the whole input as one
-        // document. Skip the empty case.
-        return if input.is_empty() {
-            Vec::new()
-        } else {
-            vec![input]
-        };
-    }
-
-    // Build slices between successive markers. Text before the first
-    // marker is its own document only when it *holds content*: a bare
-    // document closed by `---`. Comments, blank lines and directives
-    // there are the first document's prologue, not a document of their
-    // own, so they stay attached to it — otherwise this function
-    // reports one document more than `load_all` does for any stream
-    // that opens with a comment.
-    let mut docs: Vec<&str> = Vec::with_capacity(markers.len() + 1);
-    let mut first_start = markers[0];
-    if markers[0] > 0 {
-        if prologue_has_content(&input[..markers[0]]) {
-            docs.push(&input[..markers[0]]);
-        } else {
-            first_start = 0;
-        }
-    }
-    let mut bounds: Vec<(usize, usize)> = Vec::with_capacity(markers.len());
-    for window in markers.windows(2) {
-        bounds.push((window[0], window[1]));
-    }
-    if let Some(first) = bounds.first_mut() {
-        first.0 = first_start;
-    }
-    for (start, end) in bounds {
-        docs.push(&input[start..end]);
-    }
-    let last = if markers.len() == 1 {
-        first_start
-    } else {
-        *markers.last().unwrap()
-    };
-    if last < input.len() {
-        let trailing = &input[last..];
-        if !trailing.trim_end().is_empty() {
-            docs.push(trailing);
-        }
+    let mut docs = crate::doc_boundary::split_documents(input);
+    if docs.is_empty() && !input.is_empty() {
+        docs.push(input);
     }
     docs
-}
-
-/// Whether the text before the stream's first `---` is a document of
-/// its own. Only content makes it one: comments (`#`), blank lines and
-/// directives (`%YAML`, `%TAG`) belong to the document the marker
-/// opens.
-fn prologue_has_content(pre: &str) -> bool {
-    pre.lines().any(|line| {
-        let t = line.trim();
-        !t.is_empty() && !t.starts_with('#') && !t.starts_with('%')
-    })
 }
 
 #[cfg(test)]
@@ -311,6 +311,75 @@ mod tests {
         assert_eq!(docs.len(), 2);
         assert_eq!(docs[0]["a"].as_i64(), Some(1));
         assert_eq!(docs[1]["b"].as_i64(), Some(2));
+    }
+
+    #[test]
+    fn parse_with_config_enforces_document_count_before_scheduling() {
+        let config = ParserConfig::default().max_documents(1);
+        let error =
+            parse_with_config::<crate::Value>("---\na: 1\n---\nb: 2\n", &config).unwrap_err();
+        assert!(matches!(
+            error,
+            crate::Error::Budget(crate::BudgetBreach::MaxDocuments { limit: 1, .. })
+        ));
+    }
+
+    #[test]
+    fn document_overflow_is_rejected_before_deserialization() {
+        use core::sync::atomic::{AtomicUsize, Ordering};
+
+        static DESERIALIZATIONS: AtomicUsize = AtomicUsize::new(0);
+
+        #[derive(Debug)]
+        struct CountingValue;
+
+        impl<'de> serde_core::Deserialize<'de> for CountingValue {
+            fn deserialize<D>(deserializer: D) -> core::result::Result<Self, D::Error>
+            where
+                D: serde_core::Deserializer<'de>,
+            {
+                let _ = <crate::Value as serde_core::Deserialize>::deserialize(deserializer)?;
+                let _ = DESERIALIZATIONS.fetch_add(1, Ordering::Relaxed);
+                Ok(Self)
+            }
+        }
+
+        DESERIALIZATIONS.store(0, Ordering::Relaxed);
+        let config = ParserConfig::default().max_documents(4);
+        let yaml = "---\na: 1\n---\na: 2\n---\na: 3\n---\na: 4\n---\na: 5\n";
+        let error = parse_with_config::<CountingValue>(yaml, &config).unwrap_err();
+        assert!(matches!(
+            error,
+            crate::Error::Budget(crate::BudgetBreach::MaxDocuments {
+                limit: 4,
+                observed: 5
+            })
+        ));
+        assert_eq!(DESERIALIZATIONS.load(Ordering::Relaxed), 0);
+    }
+
+    #[test]
+    fn parse_with_config_preserves_semantic_policy() {
+        let config = ParserConfig::default().duplicate_key_policy(crate::DuplicateKeyPolicy::Error);
+        let error = parse_with_config::<crate::Value>("a: 1\na: 2\n", &config).unwrap_err();
+        assert_eq!(error.kind(), crate::ErrorKind::DuplicateKey);
+    }
+
+    #[cfg_attr(
+        miri,
+        ignore = "rayon/crossbeam-epoch uses int-to-ptr casts unsupported under -Zmiri-strict-provenance"
+    )]
+    #[test]
+    fn parallel_errors_remain_in_source_order() {
+        let config = ParserConfig::default().duplicate_key_policy(crate::DuplicateKeyPolicy::Error);
+        let yaml = concat!(
+            "---\nid: 1\n",
+            "---\nid: 2\nid: 3\n",
+            "---\nid: [\n",
+            "---\nid: 4\n",
+        );
+        let error = parse_with_config::<crate::Value>(yaml, &config).unwrap_err();
+        assert_eq!(error.kind(), crate::ErrorKind::DuplicateKey);
     }
 
     #[cfg_attr(

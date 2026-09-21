@@ -1,13 +1,11 @@
 name: Security
 
 on:
-  # feat/** as well as main: a release branch collects PRs and direct
-  # commits before it merges, and OpenSSF Scorecard's SAST check counts a
-  # commit on main as unscanned unless CodeQL ran for it or its PR. With
-  # main-only triggers, commits merged into feat/v0.0.33 reached main
-  # unscanned (code-scanning alert 38).
+  # Feature branches run through the pull-request event; main runs after
+  # merge. Keeping feature pushes out of this trigger avoids duplicate
+  # CodeQL uploads for the same commit while preserving SAST coverage.
   push:
-    branches: [main, "feat/**"]
+    branches: [main]
   pull_request:
     branches: [main, "feat/**"]
   # Scan one specific commit. A commit that reached main through a
@@ -53,7 +51,6 @@ jobs:
         with:
           fail-on-severity: high
           deny-licenses: AGPL-3.0, GPL-3.0
-          warn-only: true
 
   # ── CodeQL analysis ────────────────────────────────────────────────
   codeql:
@@ -67,12 +64,12 @@ jobs:
           ref: ${{ inputs.sha || github.sha }}
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # v4.38.0
+        uses: github/codeql-action/init@1c5b675653bb5c22dbe9b12b556ec555138e09fd # v4.38.1
         with:
-          languages: actions
+          languages: rust,actions
 
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # v4.38.0
+        uses: github/codeql-action/analyze@1c5b675653bb5c22dbe9b12b556ec555138e09fd # v4.38.1
         with:
           # On a dispatch with a sha, results (and the check run) attach
           # to that commit; the ref must contain it.
@@ -104,7 +101,7 @@ jobs:
       CARGO_TARGET_DIR: ${{ github.workspace }}/target-soak-fuzz-${{ matrix.target }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # master
+      - uses: dtolnay/rust-toolchain@02cb101ec7c40f2c49e1d9714d64511d8e1b74de # master
         with:
           toolchain: nightly
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
@@ -112,13 +109,12 @@ jobs:
           workspaces: ". -> target-soak-fuzz-${{ matrix.target }}"
           key: soak-fuzz-${{ matrix.target }}
       - name: Install cargo-fuzz
-        run: cargo install --locked cargo-fuzz
+        run: cargo install --locked cargo-fuzz --version 0.13.2
       - name: Run ${{ matrix.target }} for 1 hour
         run: cargo +nightly fuzz run ${{ matrix.target }} -- -max_total_time=3600
-        # Don't fail the workflow when libfuzzer finds a crash —
-        # we want to upload the artefact for triage either way.
-        continue-on-error: true
       - name: Upload corpus + crashes
+        # A failed fuzz step still reaches this upload, while the job keeps
+        # its failing conclusion so a discovered crash cannot look green.
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
@@ -148,7 +144,7 @@ jobs:
       CARGO_TARGET_DIR: ${{ github.workspace }}/target-soak-miri
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # master
+      - uses: dtolnay/rust-toolchain@02cb101ec7c40f2c49e1d9714d64511d8e1b74de # master
         with:
           toolchain: nightly
           components: miri

@@ -187,7 +187,7 @@ cargo deny check
 ### 1.3 Workspace `Cargo.toml` shape
 
 > **Historical.** This is the multi-crate shape as originally planned.
-> It is **not** the current layout: ADR-0005 split all four satellites
+> It is **not** the current layout: ADR-0005 split the satellites
 > into their own repositories (`noyalib-wasm` v0.0.12; `noyalib-mcp`,
 > `noyalib-lsp`, `noya-cli` v0.0.13), leaving a single-member
 > workspace. The edition, floor and member list below are the v0.0.1-era
@@ -481,7 +481,7 @@ on:
 11. **Build .rpm** via `cargo generate-rpm` (x86_64-gnu + aarch64-gnu).
 12. **Build .msi** via `cargo wix` (windows legs).
 13. **Sign** every artefact with cosign keyless.
-14. **Attest SLSA L3** via `actions/attest-build-provenance@v2`.
+14. **Attest SLSA Build L2** via `actions/attest-build-provenance@v2`.
 15. **Upload** to the GitHub Release.
 
 ### 4.5 Reproducible builds

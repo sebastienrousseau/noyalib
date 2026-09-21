@@ -85,7 +85,7 @@ EOF
 echo "Checking every documented installation configuration…"
 echo
 
-# README: `noyalib = "0.0.45"` — the default install.
+# README: `noyalib = "0.0.46"` — the default install.
 check "default" "" '
 fn main() {
     let v: noyalib::Value = noyalib::from_str("a: 1\nb: [1, 2]\n").expect("parse");

@@ -70,7 +70,7 @@ embedded dependency list.
 
 Tags and commits are signed (`KEYS.asc` at the repo root); release
 artefacts carry sigstore bundles, SHA256/SHA512 checksum files, a
-CycloneDX SBOM, and SLSA build-provenance attestations
+CycloneDX SBOM, and SLSA Build L2 provenance attestations
 (`gh attestation verify --owner sebastienrousseau <artefact>`). The
 full cookbook is [`pkg/VERIFY.md`](../pkg/VERIFY.md).
 

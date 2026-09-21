@@ -43,13 +43,6 @@ fn rollback_is_clean(label: &str, op: impl FnOnce(&mut Document) -> noyalib::Res
             true
         }
         Ok(()) => {
-            // A structurally invalid fragment commits optimistically by
-            // design — the splice is verbatim, and the document is only
-            // checked when asked. `validate` is the documented catch, so
-            // the contract is that the two agree: either the result
-            // parses and validates, or it does neither. A document that
-            // fails to parse while `validate` reports success would mean
-            // the caller has no way to find out.
             let out = doc.to_string();
             let parses = noyalib::from_str::<Value>(&out).is_ok();
             let validates = doc.validate().is_ok();
@@ -120,6 +113,40 @@ fn push_back_rolls_back_cleanly_for_every_hostile_fragment() {
         refused >= 3,
         "only {refused} hostile fragments were refused"
     );
+}
+
+#[test]
+fn push_back_rolls_back_when_splice_validation_fails() {
+    // Found by `fuzz_editors` on 2026-09-20. `replace_span` rejected the
+    // appended document marker after changing the source, and the outer
+    // insertion guard propagated that error without restoring its snapshot.
+    const SOURCE: &str = "-\t\t)";
+    let mut doc = parse_document(SOURCE).expect("fuzz source parses");
+
+    let error = doc
+        .push_back("", "\n|\n---")
+        .expect_err("the hostile fragment must be refused");
+
+    assert!(!error.to_string().is_empty());
+    assert_eq!(doc.source(), SOURCE);
+    doc.validate().expect("the restored document remains valid");
+}
+
+#[test]
+fn set_rejects_a_fragment_that_opens_another_document() {
+    // Found by `fuzz_editors` on 2026-09-20. The local repair path used
+    // a first-document parser, so it accepted the edit while silently
+    // ignoring the second document introduced by the fragment.
+    const SOURCE: &str = "G";
+    let mut doc = parse_document(SOURCE).expect("fuzz source parses");
+
+    let error = doc
+        .set("", "\r\r\r---['\r---")
+        .expect_err("a second document must be refused");
+
+    assert!(!error.to_string().is_empty());
+    assert_eq!(doc.source(), SOURCE);
+    doc.validate().expect("the original document remains valid");
 }
 
 #[test]
@@ -265,13 +292,10 @@ fn rename_key_refuses_a_key_that_cannot_be_written_on_one_line() {
     }
 }
 
-/// The four splicing mutators commit a structurally invalid fragment
-/// rather than refusing it: the splice is verbatim by contract, and the
-/// result is only checked when asked. `validate` is the documented way
-/// to find out, and it must report every one of them — otherwise a
-/// caller who trusts the `Ok(())` writes a broken file.
+/// Every splicing mutator rejects a structurally invalid fragment and
+/// leaves the original source and typed view unchanged.
 #[test]
-fn a_structurally_invalid_fragment_commits_but_validate_reports_it() {
+fn a_structurally_invalid_fragment_is_rejected_atomically() {
     let cases: &[(&str, Mutator)] = &[
         ("set", |d| d.set("a", "[unclosed")),
         ("insert_entry", |d| d.insert_entry("m", "z", "[unclosed")),
@@ -280,18 +304,19 @@ fn a_structurally_invalid_fragment_commits_but_validate_reports_it() {
     ];
     for (label, op) in cases {
         let mut doc = parse_document(DOC).expect("parse");
-        op(&mut doc).unwrap_or_else(|e| panic!("{label}: expected an optimistic commit, got {e}"));
-        let err = doc
-            .validate()
-            .expect_err("`validate` must report the broken splice the mutator accepted");
-        assert!(
-            !err.to_string().is_empty(),
-            "{label}: `validate` failed without saying why"
+        let err = match op(&mut doc) {
+            Ok(()) => panic!("{label}: malformed fragment was accepted"),
+            Err(err) => err,
+        };
+        assert!(!err.to_string().is_empty(), "{label}: empty rejection");
+        assert_eq!(
+            doc.to_string(),
+            DOC,
+            "{label}: rejected edit changed source"
         );
-        assert!(
-            noyalib::from_str::<Value>(&doc.to_string()).is_err(),
-            "{label}: `validate` reported an error the parser does not agree with"
-        );
+        doc.validate()
+            .unwrap_or_else(|e| panic!("{label}: rejected edit invalidated document: {e}"));
+        assert_eq!(doc.as_value()["a"].as_i64(), Some(1));
     }
 }
 

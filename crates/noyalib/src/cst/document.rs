@@ -5,9 +5,7 @@
 
 use core::fmt::Write as _;
 
-use crate::cst::builder::{
-    SubtreeContext, document_boundaries, parse_full, parse_subtree, rebuild_with_splice,
-};
+use crate::cst::builder::{document_boundaries, parse_full};
 use crate::cst::emit::{Emit, EmitCtx, emit_key};
 use crate::cst::green::{GreenChild, GreenNode};
 use crate::cst::syntax::SyntaxKind;
@@ -19,6 +17,14 @@ use crate::path::{QuerySegment, parse_query_path, push_key};
 use crate::prelude::*;
 use crate::span_context::SpanTree;
 use crate::value::{Mapping, Number, Value};
+
+mod edit;
+mod path;
+mod transaction;
+mod validation;
+
+use path::{decode_single_quoted, resolve_path_in_green};
+pub use transaction::EditSession;
 
 /// A YAML document with byte-faithful source preservation, typed
 /// data access, and path-targeted edits.
@@ -62,13 +68,10 @@ use crate::value::{Mapping, Number, Value};
 pub struct Document {
     source: Arc<str>,
     green: GreenNode,
-    /// Lazy cache for the typed [`Value`] view + path resolver
-    /// [`SpanTree`]. Populated on first read; invalidated on every
-    /// edit. Local-repair edits leave it `None` so consecutive
-    /// `replace_span` calls don't pay the parser cost between them
-    /// — the work is deferred until [`Document::as_value`],
-    /// [`Document::span_at`], [`Document::get`], or any path-shaped
-    /// API actually needs the value tree.
+    /// Cache for the typed [`Value`] view + path resolver [`SpanTree`].
+    /// Initial parsing and validated edits populate it eagerly. Internal
+    /// operations may invalidate it, in which case the next typed read
+    /// rebuilds both views under this document's parser configuration.
     cache: core::cell::RefCell<Option<(Value, SpanTree)>>,
     /// Outcome of the most recent edit's localised-repair attempt.
     /// `None` for a freshly-parsed document or after a full
@@ -216,7 +219,12 @@ pub(crate) mod fault {
 fn duplicate_keys_present(source: &str) -> bool {
     let mut config = ParserConfig::new();
     config.duplicate_key_policy = crate::DuplicateKeyPolicy::Error;
-    crate::from_str_with_config::<Value>(source, &config).is_err()
+    crate::from_str_with_config::<Value>(source, &config).is_err_and(|error| {
+        matches!(
+            error.kind(),
+            crate::ErrorKind::DuplicateKey | crate::ErrorKind::KeyCollision
+        )
+    })
 }
 
 /// Whether the post-edit oracle rejects the edit: the document loaded
@@ -233,6 +241,39 @@ pub(crate) fn oracle_rejects(actual: &Value, expected: &Value) -> bool {
 }
 
 impl Document {
+    /// Start an atomic batch of byte-range edits.
+    ///
+    /// Every range is measured against the document source at the start of
+    /// the session. The document itself remains unchanged until
+    /// [`EditSession::commit`] builds and validates the complete candidate in
+    /// one commit-time validation. Dropping the session, calling
+    /// [`EditSession::abort`], or receiving a commit error leaves the
+    /// document byte-for-byte unchanged.
+    ///
+    /// Use this when several independent spans can be resolved before any of
+    /// them are changed. Path-based edits that depend on earlier edits should
+    /// continue to use the ordinary [`Document`] mutators.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use noyalib::cst::parse_document;
+    ///
+    /// let mut doc = parse_document("first: one\nsecond: two\n").unwrap();
+    /// let first = doc.span_at("first").unwrap();
+    /// let second = doc.span_at("second").unwrap();
+    ///
+    /// let mut edit = doc.edit();
+    /// edit.replace_span(first.0, first.1, "1").unwrap();
+    /// edit.replace_span(second.0, second.1, "2").unwrap();
+    /// edit.commit().unwrap();
+    ///
+    /// assert_eq!(doc.source(), "first: 1\nsecond: 2\n");
+    /// ```
+    pub fn edit(&mut self) -> EditSession<'_> {
+        EditSession::new(self)
+    }
+
     /// Borrow the root [`GreenNode`].
     ///
     /// # Examples
@@ -257,12 +298,10 @@ impl Document {
 
     /// Borrow the typed [`Value`] view of the document.
     ///
-    /// On the first call after an edit (or a fresh parse), this
-    /// triggers a one-shot parse of the current source into the
-    /// internal `Value` / `SpanTree` cache. Subsequent calls on the
-    /// same document are O(1) until the next edit invalidates the
-    /// cache. Code that batches many edits without reading the
-    /// typed view in between never pays the typed-tree cost.
+    /// If the typed cache is absent, this triggers a one-shot parse of
+    /// the current source into the internal `Value` / `SpanTree` cache.
+    /// Subsequent calls on the same document are O(1) until the cache is
+    /// invalidated.
     ///
     /// # Examples
     ///
@@ -409,139 +448,6 @@ impl Document {
         }
     }
 
-    /// Populate the typed cache from `self.source` if it is empty.
-    /// Panics if the source fails to re-parse — for the lazy path
-    /// to be safe, every successful edit must leave the source in a
-    /// state that re-parses. Local repair edits gate themselves on
-    /// `parse_subtree` (which validates the fragment) plus shape
-    /// guards that escalate cross-document concerns to the
-    /// safety-net full re-parse.
-    fn ensure_cache(&self) {
-        if self.cache.borrow().is_some() {
-            return;
-        }
-        let parsed = crate::parser::parse_one(&self.source, &self.config)
-            .expect("Document source must always parse — local repair invariant violated");
-        *self.cache.borrow_mut() = Some(parsed);
-    }
-
-    /// Verify that the current source re-parses cleanly.
-    ///
-    /// `Document::set` (and the rest of the path-shaped edit API)
-    /// uses a localised-repair fast path that gates each splice on
-    /// the fragment's own scanner-level validation but commits
-    /// *optimistically*: a structurally invalid splice across the
-    /// whole document — for example, a value like `[` that opens a
-    /// flow collection never closed at end-of-input — passes the
-    /// fragment check and only surfaces when the typed view is
-    /// next read. `as_value`, `span_at`, `get`, and any path-shaped
-    /// API panic on first access in that state.
-    ///
-    /// `validate` is the non-panicking eager check: call it after
-    /// an edit (or before handing the document to a downstream
-    /// consumer) to surface any document-level parse error as a
-    /// regular `Result`. On success, the typed cache is populated
-    /// as a side-effect so a subsequent `as_value` call is free.
-    ///
-    /// # A structurally invalid fragment commits
-    ///
-    /// The splice is verbatim, so a fragment that is not a well-formed
-    /// YAML node — `"[unclosed"` — is written out and this call still
-    /// returns `Ok(())`. The document is only checked when asked, and
-    /// [`Document::validate`] is how you ask:
-    ///
-    /// ```
-    /// use noyalib::cst::parse_document;
-    ///
-    /// let mut doc = parse_document("m:\n  k: 1\n").unwrap();
-    /// doc.insert_entry("m", "z", "[unclosed").unwrap();                 // accepted
-    /// assert!(doc.validate().is_err());            // and reported here
-    /// ```
-    ///
-    /// Call `validate` before writing the result anywhere, or use
-    /// [`Document::insert_entry_value`] instead: the `_value` mutators render
-    /// the value themselves and cannot produce invalid YAML.
-    ///
-    /// # A structurally invalid fragment commits
-    ///
-    /// The splice is verbatim, so a fragment that is not a well-formed
-    /// YAML node — `"[unclosed"` — is written out and this call still
-    /// returns `Ok(())`. The document is only checked when asked, and
-    /// [`Document::validate`] is how you ask:
-    ///
-    /// ```
-    /// use noyalib::cst::parse_document;
-    ///
-    /// let mut doc = parse_document("xs:\n  - p\n").unwrap();
-    /// doc.push_back("xs", "[unclosed").unwrap();                 // accepted
-    /// assert!(doc.validate().is_err());            // and reported here
-    /// ```
-    ///
-    /// Call `validate` before writing the result anywhere, or use
-    /// [`Document::push_back_value`] instead: the `_value` mutators render
-    /// the value themselves and cannot produce invalid YAML.
-    ///
-    /// # A structurally invalid fragment commits
-    ///
-    /// The splice is verbatim, so a fragment that is not a well-formed
-    /// YAML node — `"[unclosed"` — is written out and this call still
-    /// returns `Ok(())`. The document is only checked when asked, and
-    /// [`Document::validate`] is how you ask:
-    ///
-    /// ```
-    /// use noyalib::cst::parse_document;
-    ///
-    /// let mut doc = parse_document("xs:\n  - p\n").unwrap();
-    /// doc.insert_after("xs[0]", "[unclosed").unwrap();                 // accepted
-    /// assert!(doc.validate().is_err());            // and reported here
-    /// ```
-    ///
-    /// Call `validate` before writing the result anywhere, or use
-    /// [`Document::insert_after_value`] instead: the `_value` mutators render
-    /// the value themselves and cannot produce invalid YAML.
-    ///
-    /// # Errors
-    ///
-    /// Returns the underlying parse error if the source no longer
-    /// parses as a single YAML document.
-    ///
-    /// # Examples
-    ///
-    /// Eagerly validate after an edit that may not be safe:
-    ///
-    /// ```
-    /// use noyalib::cst::parse_document;
-    ///
-    /// let mut doc = parse_document("name: foo\n").unwrap();
-    /// // `[` opens a flow seq that is never closed — the local
-    /// // repair commits optimistically, but the document is now
-    /// // structurally broken. `validate` surfaces that as an
-    /// // error rather than waiting for the next typed-view read.
-    /// doc.set("name", "[").unwrap();
-    /// assert!(doc.validate().is_err());
-    /// ```
-    ///
-    /// Validate a freshly-parsed document — always succeeds:
-    ///
-    /// ```
-    /// use noyalib::cst::parse_document;
-    ///
-    /// let doc = parse_document("name: foo\n").unwrap();
-    /// assert!(doc.validate().is_ok());
-    /// ```
-    pub fn validate(&self) -> Result<()> {
-        #[cfg(test)]
-        if fault::validate_should_fail() {
-            return Err(Error::Parse("injected validate failure".into()));
-        }
-        if self.cache.borrow().is_some() {
-            return Ok(());
-        }
-        let parsed = crate::parser::parse_one(&self.source, &self.config)?;
-        *self.cache.borrow_mut() = Some(parsed);
-        Ok(())
-    }
-
     /// Return the source slice of the value at `path`.
     ///
     /// # Examples
@@ -556,162 +462,6 @@ impl Document {
     pub fn get(&self, path: &str) -> Option<&str> {
         let (s, e) = self.span_at(path)?;
         Some(&self.source[s..e])
-    }
-
-    /// Replace the bytes in `start..end` with `replacement` and
-    /// re-parse. The caller is responsible for `replacement` being a
-    /// syntactically valid fragment in that position; if the spliced
-    /// source fails to parse, the original document is left
-    /// unchanged and the parse error is returned.
-    ///
-    /// # Errors
-    ///
-    /// - `Error::Parse` if the resulting source is not valid YAML.
-    /// - `Error::Parse` if `start..end` is out of bounds or not a
-    ///   character boundary.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use noyalib::cst::parse_document;
-    ///
-    /// let mut doc = parse_document("a: 1\n").unwrap();
-    /// let (s, e) = doc.span_at("a").unwrap();
-    /// doc.replace_span(s, e, "42").unwrap();
-    /// assert_eq!(doc.to_string(), "a: 42\n");
-    /// ```
-    pub fn replace_span(&mut self, start: usize, end: usize, replacement: &str) -> Result<()> {
-        #[cfg(test)]
-        if fault::splice_should_fail() {
-            return Err(Error::Parse("injected splice failure".into()));
-        }
-        if start > end || end > self.source.len() {
-            return Err(Error::Parse(format!(
-                "replace_span range {start}..{end} out of bounds (source length {})",
-                self.source.len()
-            )));
-        }
-        if !self.source.is_char_boundary(start) || !self.source.is_char_boundary(end) {
-            return Err(Error::Parse(format!(
-                "replace_span range {start}..{end} is not a character boundary"
-            )));
-        }
-        let mut new_source =
-            String::with_capacity(self.source.len() - (end - start) + replacement.len());
-        new_source.push_str(&self.source[..start]);
-        new_source.push_str(replacement);
-        new_source.push_str(&self.source[end..]);
-
-        // Phase A.2 — Lazy Value/SpanTree:
-        //   * On a successful local-repair edit, the green tree is
-        //     spliced and the typed cache is invalidated. We do NOT
-        //     re-parse the typed `Value` here. Subsequent edits in
-        //     the same batch don't pay any parser cost; the
-        //     deferred parse runs once, on the first read.
-        //   * On the safety-net path (no local repair fit), the
-        //     full re-parse already gives us validated `Value` and
-        //     `SpanTree` — we drop them straight into the cache
-        //     so the next read is free.
-        let new_arc: Arc<str> = Arc::from(new_source.as_str());
-        if let Some((new_green, scope)) =
-            self.try_local_repair_green(start, end, replacement, &new_source)
-        {
-            self.last_repair_scope.set(Some(scope));
-            self.source = new_arc;
-            self.green = new_green;
-            let _ = self.cache.replace(None);
-            return Ok(());
-        }
-
-        // Safety net — full re-parse. Validates the new source and
-        // populates everything eagerly.
-        let parsed = parse_full(&new_source, &self.config)?;
-        self.last_repair_scope.set(Some(RepairScope::Document));
-        self.source = parsed.source;
-        self.green = parsed.green;
-        let _ = self.cache.replace(Some((parsed.value, parsed.span_tree)));
-        Ok(())
-    }
-
-    /// Attempt to repair the green tree locally for the edit
-    /// `[start, end) → replacement`. Returns the new tree and the
-    /// scope that was successfully repaired, or `None` if escalation
-    /// to a full re-parse is required. Pure — does not mutate
-    /// `self`.
-    fn try_local_repair_green(
-        &self,
-        start: usize,
-        end: usize,
-        replacement: &str,
-        new_source: &str,
-    ) -> Option<(GreenNode, RepairScope)> {
-        // Shape guard: any anchor / alias / tag in the affected
-        // region forces a Document-scope re-parse so we don't have
-        // to reason about cross-document name resolution.
-        if region_has_anchor_alias_or_tag(&self.green, start, end)
-            || replacement_introduces_anchor_alias_or_tag(replacement)
-        {
-            return None;
-        }
-
-        let delta = replacement.len() as isize - (end as isize - start as isize);
-        let candidates = ancestor_candidates(&self.green, start, end);
-
-        // Flow content is kept flat in the green tree, so re-parsing a
-        // block ancestor does not validate the structure of a flow
-        // collection the edit landed in: `{a: x {y} z, b: 2}` passed the
-        // sub-parse and was committed as the document's source (#332).
-        // Only the full parse checks flow structure, so escalate to it.
-        if candidates
-            .iter()
-            .any(|c| matches!(c.kind, SyntaxKind::FlowMapping | SyntaxKind::FlowSequence))
-        {
-            return None;
-        }
-
-        for cand in &candidates {
-            // Phase A only owns block-collection and block-entry
-            // re-parses. Other kinds (scalars, flow collections)
-            // are handled by climbing to an ancestor that this
-            // ladder rung does support.
-            if !is_phase_a_repairable(cand.kind) {
-                continue;
-            }
-
-            let n_old_start = cand.start;
-            let n_old_end = cand.end;
-            let n_new_start = n_old_start; // pre-edit start, by construction
-            let n_new_end_signed = n_old_end as isize + delta;
-            if n_new_end_signed < n_new_start as isize {
-                continue;
-            }
-            let n_new_end = n_new_end_signed as usize;
-            // Defensive: make sure the slice is in bounds.
-            if n_new_end > new_source.len() {
-                continue;
-            }
-            let fragment = &new_source[n_new_start..n_new_end];
-            let indent = entry_indent_column(&self.source, n_old_start);
-            let ctx = SubtreeContext::block_at(indent);
-
-            match parse_subtree(fragment, ctx, cand.kind) {
-                Ok(new_sub)
-                    if new_sub.kind() == cand.kind && new_sub.text_len() == fragment.len() =>
-                {
-                    let new_root =
-                        rebuild_with_splice(&self.green, n_old_start, n_old_end, new_sub);
-                    return Some((new_root, scope_for_kind(cand.kind)));
-                }
-                Ok(_) | Err(_) => {
-                    // Shape inversion (kind mismatch), partial
-                    // coverage (text_len mismatch — the fragment
-                    // spans into sibling territory), or a sub-parse
-                    // error. Either way: climb the ladder.
-                    continue;
-                }
-            }
-        }
-        None
     }
 
     /// Last successful repair scope, if any. Useful for tests and
@@ -759,24 +509,24 @@ impl Document {
     /// document is left untouched. Restructuring the target itself —
     /// scalar to mapping, say — remains allowed.
     ///
-    /// # A structurally invalid fragment commits
+    /// # Structurally invalid fragments are atomic failures
     ///
-    /// The splice is verbatim, so a fragment that is not a well-formed
-    /// YAML node — `"[unclosed"` — is written out and this call still
-    /// returns `Ok(())`. The document is only checked when asked, and
-    /// [`Document::validate`] is how you ask:
+    /// The splice is verbatim, but the complete document is validated
+    /// before the edit commits. A fragment that is not a well-formed
+    /// YAML node returns an error and leaves the document unchanged:
     ///
     /// ```
     /// use noyalib::cst::parse_document;
     ///
     /// let mut doc = parse_document("a: 1\nb: 2\n").unwrap();
-    /// doc.set("a", "[unclosed").unwrap();          // accepted
-    /// assert!(doc.validate().is_err());            // and reported here
+    /// assert!(doc.set("a", "[unclosed").is_err());
+    /// assert_eq!(doc.to_string(), "a: 1\nb: 2\n");
+    /// assert!(doc.validate().is_ok());
     /// ```
     ///
-    /// Call `validate` before writing the result anywhere, or use
-    /// [`Document::set_value`] and the other `_value` mutators, which
-    /// render the value themselves and cannot produce invalid YAML.
+    /// [`Document::set_value`] and the other `_value` mutators remain
+    /// preferable when the caller already has a typed value because
+    /// they do not need to interpret a YAML fragment.
     ///
     /// # Errors
     ///
@@ -1072,7 +822,7 @@ impl Document {
         self.refuse_inside_aliased_anchor("set_value", path, s)?;
         // A block collection occupies its own lines, and the resolver
         // widens its span to the first of them
-        // ([`extend_to_line_start`]) so that a *read* slice is uniformly
+        // (`extend_to_line_start`) so that a *read* slice is uniformly
         // indented and re-parses to the value it denotes. A scalar
         // spliced over that span therefore starts where the collection's
         // line started, which is the key's own column: `k:` / `  a: 1`
@@ -1894,10 +1644,9 @@ impl Document {
             )));
         }
 
-        // Re-parse guard. `replace_span`'s local-repair fast path
-        // commits optimistically (see `validate`), so run the eager
-        // document-level check here and compare the typed view
-        // against the oracle. Roll back on any mismatch.
+        // `replace_span` has already validated the complete document;
+        // compare its typed view against the semantic oracle and roll
+        // back on any mismatch.
         if let Err(e) = self.validate() {
             *self = snapshot;
             return Err(Error::Parse(format!(
@@ -3413,7 +3162,7 @@ pub fn parse_document(input: &str) -> Result<Document> {
     parse_document_inner(input, ParseConfig::default())
 }
 
-/// Parse a YAML stream into an editable [`Document`] under `config`,
+/// Parse one YAML document into an editable [`Document`] under `config`,
 /// mirroring [`crate::from_str_with_config`].
 ///
 /// The document keeps the configuration: every later re-parse of
@@ -3431,7 +3180,8 @@ pub fn parse_document(input: &str) -> Result<Document> {
 /// # Errors
 ///
 /// Returns the same parse errors as [`crate::from_str_with_config`]
-/// under the same configuration.
+/// under the same configuration, including rejection of a stream with
+/// more than one document. Use [`parse_stream_with_config`] for streams.
 ///
 /// # Examples
 ///
@@ -3615,100 +3365,6 @@ fn cross_document_anchor_hint(err: Error, earlier: &str) -> Error {
     }
 }
 
-// ── Localised repair (Phase A) ──────────────────────────────────────
-
-fn scope_for_kind(kind: SyntaxKind) -> RepairScope {
-    match kind {
-        SyntaxKind::MappingEntry | SyntaxKind::SequenceItem => RepairScope::Entry,
-        SyntaxKind::BlockMapping
-        | SyntaxKind::BlockSequence
-        | SyntaxKind::FlowMapping
-        | SyntaxKind::FlowSequence => RepairScope::Collection,
-        _ => RepairScope::Document,
-    }
-}
-
-fn is_phase_a_repairable(kind: SyntaxKind) -> bool {
-    matches!(
-        kind,
-        SyntaxKind::BlockMapping
-            | SyntaxKind::BlockSequence
-            | SyntaxKind::MappingEntry
-            | SyntaxKind::SequenceItem
-    )
-}
-
-/// One candidate ancestor for the smallest-scope repair walk.
-struct Candidate {
-    kind: SyntaxKind,
-    start: usize,
-    end: usize,
-}
-
-/// Walk the green tree once and collect every node ancestor of the
-/// edit span `[start, end)`, smallest-first. The Document root is
-/// implicitly the last entry — left out here because it always
-/// triggers escalation.
-fn ancestor_candidates(root: &GreenNode, start: usize, end: usize) -> Vec<Candidate> {
-    let mut out = Vec::new();
-    collect_ancestors(root, start, end, 0, &mut out);
-    // `collect_ancestors` pushes outermost-first; reverse so the
-    // smallest scope is tried first.
-    out.reverse();
-    out
-}
-
-fn collect_ancestors(
-    node: &GreenNode,
-    start: usize,
-    end: usize,
-    base: usize,
-    out: &mut Vec<Candidate>,
-) {
-    let node_end = base + node.text_len();
-    if start >= base && end <= node_end {
-        // This node fully contains the edit; record it.
-        out.push(Candidate {
-            kind: node.kind(),
-            start: base,
-            end: node_end,
-        });
-        // Recurse into the containing child.
-        let mut pos = base;
-        for child in node.children() {
-            let len = child.text_len();
-            let child_end = pos + len;
-            if start >= pos && end <= child_end {
-                if let GreenChild::Node(inner) = child {
-                    collect_ancestors(inner, start, end, pos, out);
-                }
-                break;
-            }
-            pos += len;
-        }
-    }
-}
-
-/// `true` when source bytes in `[start, end)` contain an anchor
-/// (`&`), alias (`*`), or tag (`!`) lexeme. Edits overlapping
-/// these are escalated to a full re-parse — we do not reason about
-/// cross-document name resolution after a localised splice.
-fn region_has_anchor_alias_or_tag(root: &GreenNode, start: usize, end: usize) -> bool {
-    let mut found = false;
-    walk_tokens(root, 0, &mut |kind, range| {
-        if range.start >= end || range.end <= start {
-            return; // disjoint
-        }
-        if matches!(
-            kind,
-            SyntaxKind::AnchorMark | SyntaxKind::AliasMark | SyntaxKind::TagMark
-        ) {
-            found = true;
-        }
-    });
-    found
-}
-
 fn walk_tokens(
     node: &GreenNode,
     base: usize,
@@ -3725,410 +3381,6 @@ fn walk_tokens(
         }
         pos += len;
     }
-}
-
-/// Cheap textual screen for anchor / alias / tag introduction in
-/// the replacement bytes. Conservative by design — any whiff of
-/// these in `replacement` forces escalation to a full re-parse.
-fn replacement_introduces_anchor_alias_or_tag(replacement: &str) -> bool {
-    replacement.bytes().any(|b| matches!(b, b'&' | b'*' | b'!'))
-}
-
-// ── Green-tree path resolution (Phase A.3) ──────────────────────────
-
-/// Resolve `segments` against the green tree of `root`, returning
-/// the byte range of the value at that path. Walks the structural
-/// CST directly — does not consult the typed `Value` / `SpanTree`,
-/// so callers that drive many edits via `set` / `set_value` can
-/// resolve paths without warming the typed cache between
-/// iterations.
-///
-/// Returns `None` for paths the walker does not yet handle
-/// (quoted-key escapes that aren't a simple single-quote-doubling,
-/// aliases, merge keys, anchors); the caller is expected to fall
-/// back to the typed cache for those cases.
-fn resolve_path_in_green(
-    root: &GreenNode,
-    segments: &[QuerySegment],
-    source: &str,
-) -> Option<(usize, usize)> {
-    // The Document root holds collection composites among its
-    // children. Find the first one and treat it as the entry
-    // point.
-    let (collection, base) = first_collection_child(root, 0)?;
-    walk_path(collection, segments, base, source)
-}
-
-fn first_collection_child(node: &GreenNode, base: usize) -> Option<(&GreenNode, usize)> {
-    let mut pos = base;
-    for child in node.children() {
-        let len = child.text_len();
-        if let GreenChild::Node(inner) = child {
-            if matches!(
-                inner.kind(),
-                SyntaxKind::BlockMapping
-                    | SyntaxKind::BlockSequence
-                    | SyntaxKind::FlowMapping
-                    | SyntaxKind::FlowSequence
-            ) {
-                return Some((inner, pos));
-            }
-        }
-        pos += len;
-    }
-    None
-}
-
-fn walk_path(
-    node: &GreenNode,
-    segments: &[QuerySegment],
-    base: usize,
-    source: &str,
-) -> Option<(usize, usize)> {
-    if segments.is_empty() {
-        return Some((base, base + node.text_len()));
-    }
-    let (head, tail) = segments.split_first()?;
-    match (head, node.kind()) {
-        (QuerySegment::Key(k), SyntaxKind::BlockMapping | SyntaxKind::FlowMapping) => {
-            walk_mapping(node, k, tail, base, source)
-        }
-        (QuerySegment::Index(i), SyntaxKind::BlockSequence | SyntaxKind::FlowSequence) => {
-            walk_sequence(node, *i, tail, base, source)
-        }
-        // Wildcard / recursive descent / kind mismatch — bail out;
-        // the caller falls back to the typed cache.
-        _ => None,
-    }
-}
-
-fn walk_mapping(
-    node: &GreenNode,
-    key: &str,
-    tail: &[QuerySegment],
-    base: usize,
-    source: &str,
-) -> Option<(usize, usize)> {
-    // Duplicate keys resolve to the *last* occurrence, matching the
-    // typed view: under the default `DuplicateKeyPolicy::Last` (the
-    // YAML 1.2 behaviour, and the config `as_value` loads with),
-    // `k: one\nk: two` yields `k = "two"`, so the span for `k` must
-    // denote `two` — never the bytes of a node the typed view did
-    // not select. The whole mapping is scanned before committing.
-    //
-    // An entry whose key text cannot be decoded here (double-quoted
-    // escapes, complex keys) could be a hidden duplicate of `key`,
-    // making the green walk inconclusive — bail out and let the
-    // caller resolve via the typed cache, which sees every key in
-    // decoded form.
-    let mut found: Option<(&GreenNode, usize)> = None;
-    let mut undecodable_key = false;
-    let mut pos = base;
-    for child in node.children() {
-        let len = child.text_len();
-        if let GreenChild::Node(entry) = child {
-            if entry.kind() == SyntaxKind::MappingEntry {
-                match entry_key_text(entry, source, pos) {
-                    Some(entry_key) => {
-                        if entry_key == key {
-                            found = Some((entry, pos));
-                        }
-                    }
-                    None => undecodable_key = true,
-                }
-            }
-        }
-        pos += len;
-    }
-    if undecodable_key {
-        return None;
-    }
-    let (entry, entry_pos) = found?;
-    resolve_value_in_entry(entry, entry_pos, tail, source)
-}
-
-fn walk_sequence(
-    node: &GreenNode,
-    target_index: usize,
-    tail: &[QuerySegment],
-    base: usize,
-    source: &str,
-) -> Option<(usize, usize)> {
-    let mut pos = base;
-    let mut idx = 0usize;
-    for child in node.children() {
-        let len = child.text_len();
-        if let GreenChild::Node(item) = child {
-            if item.kind() == SyntaxKind::SequenceItem {
-                if idx == target_index {
-                    return resolve_value_in_item(item, pos, tail, source);
-                }
-                idx += 1;
-            }
-        }
-        pos += len;
-    }
-    None
-}
-
-/// Extract the key text of a `MappingEntry`. Supports plain scalar
-/// keys verbatim and single-quoted keys with the YAML
-/// `''`-doubling escape. Returns `None` for keys whose textual
-/// representation differs from the segment string the user would
-/// pass — the caller falls back to the typed cache.
-fn entry_key_text<'s>(entry: &GreenNode, source: &'s str, base: usize) -> Option<Cow<'s, str>> {
-    let mut pos = base;
-    for child in entry.children() {
-        let child_len = child.text_len();
-        match child {
-            GreenChild::Token { kind, len } => {
-                let start = pos;
-                let end = pos + *len as usize;
-                match kind {
-                    SyntaxKind::QuestionIndicator
-                    | SyntaxKind::Whitespace
-                    | SyntaxKind::Newline
-                    | SyntaxKind::Comment
-                    | SyntaxKind::AnchorMark
-                    | SyntaxKind::TagMark => {}
-                    SyntaxKind::PlainScalar => {
-                        return Some(Cow::Borrowed(&source[start..end]));
-                    }
-                    SyntaxKind::SingleQuotedScalar => {
-                        return decode_single_quoted(&source[start..end]);
-                    }
-                    _ => return None,
-                }
-            }
-            GreenChild::Node(_) => {
-                return None;
-            }
-        }
-        pos += child_len;
-    }
-    None
-}
-
-fn decode_single_quoted(raw: &str) -> Option<Cow<'_, str>> {
-    // Strip surrounding quotes.
-    let inner = raw.strip_prefix('\'')?.strip_suffix('\'')?;
-    if !inner.contains('\'') {
-        return Some(Cow::Borrowed(inner));
-    }
-    // Replace `''` with `'`. Anything else inside single quotes is
-    // taken verbatim.
-    Some(Cow::Owned(inner.replace("''", "'")))
-}
-
-/// Find the value position inside a `MappingEntry` and either
-/// return its byte range (if `tail` is empty) or recurse into it
-/// with `tail`.
-/// Whether a resolved value node is a block (indentation-structured)
-/// collection, whose span begins on its own source line.
-fn is_block_collection(k: SyntaxKind) -> bool {
-    matches!(k, SyntaxKind::BlockMapping | SyntaxKind::BlockSequence)
-}
-
-/// Back `start` up over the inline whitespace that indents a value's first
-/// line, but only when that value begins its own line (the whitespace run is
-/// preceded by a line break or the start of input). A value that shares its
-/// line with a `-` / `:` / `{` (e.g. the inner sequence of `- - a`) is left
-/// untouched. This makes a block collection's slice uniformly indented — its
-/// first line keeps the indentation the following lines already carry — so it
-/// re-parses to the selected value instead of silently re-nesting.
-fn extend_to_line_start(source: &str, start: usize) -> usize {
-    let b = source.as_bytes();
-    let mut i = start;
-    while i > 0 && matches!(b[i - 1], b' ' | b'\t') {
-        i -= 1;
-    }
-    if i == 0 || matches!(b[i - 1], b'\n' | b'\r') {
-        i
-    } else {
-        start
-    }
-}
-
-fn resolve_value_in_entry(
-    entry: &GreenNode,
-    base: usize,
-    tail: &[QuerySegment],
-    source: &str,
-) -> Option<(usize, usize)> {
-    let (value_kind, value_range, value_node) = entry_value(entry, base)?;
-    if tail.is_empty() {
-        // A block collection's node starts at its first key/item token,
-        // leaving its first line's indentation just outside the span; widen
-        // to the line start so the slice is uniformly indented.
-        let start = if is_block_collection(value_kind) {
-            extend_to_line_start(source, value_range.0)
-        } else {
-            value_range.0
-        };
-        return Some((start, value_range.1));
-    }
-    // Recursing further requires the value to be a composite.
-    let node = value_node?;
-    walk_path(node, tail, value_range.0, source)
-}
-
-fn resolve_value_in_item(
-    item: &GreenNode,
-    base: usize,
-    tail: &[QuerySegment],
-    source: &str,
-) -> Option<(usize, usize)> {
-    let (value_kind, value_range, value_node) = item_value(item, base)?;
-    if tail.is_empty() {
-        let start = if is_block_collection(value_kind) {
-            extend_to_line_start(source, value_range.0)
-        } else {
-            value_range.0
-        };
-        return Some((start, value_range.1));
-    }
-    let node = value_node?;
-    walk_path(node, tail, value_range.0, source)
-}
-
-/// Inside a `MappingEntry`, walk past the key + ColonIndicator and
-/// return the first non-trivia "value" child. `value_node` is
-/// `Some` if the value is a composite (a nested collection), `None`
-/// if it is a leaf scalar.
-fn entry_value(
-    entry: &GreenNode,
-    base: usize,
-) -> Option<(SyntaxKind, (usize, usize), Option<&GreenNode>)> {
-    let mut pos = base;
-    let mut after_colon = false;
-    // First-property-token start: when a value is preceded by an
-    // [`SyntaxKind::AnchorMark`] / [`SyntaxKind::TagMark`] (or a
-    // combination), the conceptual value span covers the entire
-    // property prefix plus the scalar / node that follows.
-    // Capture that earliest property start here so the returned
-    // `(start, end)` stretches across the whole prefixed value.
-    let mut prefix_start: Option<usize> = None;
-    for child in entry.children() {
-        let len = child.text_len();
-        let child_start = pos;
-        let child_end = pos + len;
-        match child {
-            GreenChild::Token { kind, .. } => {
-                if !after_colon {
-                    if *kind == SyntaxKind::ColonIndicator {
-                        after_colon = true;
-                    }
-                } else if *kind == SyntaxKind::AliasMark {
-                    // An alias reference (`*name`) is a single token with
-                    // no value node of its own; its bytes are a dangling
-                    // alias that does not re-parse standalone. Bail so
-                    // span_at falls back to the typed cache, whose SpanTree
-                    // resolves the alias through to its anchor definition's
-                    // self-contained value span.
-                    return None;
-                } else if is_value_property_kind(*kind) {
-                    // `!Tag` / `&anchor` prefix — remember the earliest
-                    // start and keep scanning for the scalar that follows.
-                    let _ = prefix_start.get_or_insert(child_start);
-                } else if *kind == SyntaxKind::DashIndicator {
-                    // An indentless block sequence: the green tree keeps
-                    // its `-` items as entry-level tokens rather than a
-                    // nested BlockSequence node, so this walker cannot
-                    // see the sequence's true extent (#375 reported the
-                    // resulting indicator-only span). Bail to the typed
-                    // cache, whose SpanTree seals block sequences at
-                    // their last item.
-                    return None;
-                } else if !is_trivia_kind(*kind) {
-                    let start = prefix_start.unwrap_or(child_start);
-                    return Some((*kind, (start, child_end), None));
-                }
-            }
-            GreenChild::Node(inner) => {
-                if after_colon {
-                    let start = prefix_start.unwrap_or(child_start);
-                    return Some((inner.kind(), (start, child_end), Some(inner)));
-                }
-            }
-        }
-        pos += len;
-    }
-    // Fall-through: the entry has a tag/anchor prefix but nothing
-    // followed it before EOF — surface the prefix span so callers
-    // see a meaningful range rather than `None`.
-    prefix_start.map(|start| (SyntaxKind::PlainScalar, (start, pos), None))
-}
-
-/// Inside a `SequenceItem`, walk past the DashIndicator and return
-/// the first non-trivia "value" child. Mirrors [`entry_value`]'s
-/// tag/anchor-prefix handling: the returned span covers any
-/// `!Tag` / `&anchor` / `*alias` property tokens **plus** the
-/// scalar / node that follows.
-fn item_value(
-    item: &GreenNode,
-    base: usize,
-) -> Option<(SyntaxKind, (usize, usize), Option<&GreenNode>)> {
-    let mut pos = base;
-    let mut after_dash = false;
-    let mut prefix_start: Option<usize> = None;
-    for child in item.children() {
-        let len = child.text_len();
-        let child_start = pos;
-        let child_end = pos + len;
-        match child {
-            GreenChild::Token { kind, .. } => {
-                if !after_dash {
-                    if *kind == SyntaxKind::DashIndicator {
-                        after_dash = true;
-                    }
-                } else if *kind == SyntaxKind::AliasMark {
-                    // Alias reference as a sequence item: bail to the typed
-                    // cache, which resolves it to the anchor's value span.
-                    return None;
-                } else if is_value_property_kind(*kind) {
-                    let _ = prefix_start.get_or_insert(child_start);
-                } else if !is_trivia_kind(*kind) {
-                    let start = prefix_start.unwrap_or(child_start);
-                    return Some((*kind, (start, child_end), None));
-                }
-            }
-            GreenChild::Node(inner) => {
-                if after_dash {
-                    let start = prefix_start.unwrap_or(child_start);
-                    return Some((inner.kind(), (start, child_end), Some(inner)));
-                }
-            }
-        }
-        pos += len;
-    }
-    prefix_start.map(|start| (SyntaxKind::PlainScalar, (start, pos), None))
-}
-
-fn is_trivia_kind(k: SyntaxKind) -> bool {
-    matches!(
-        k,
-        SyntaxKind::Whitespace
-            | SyntaxKind::Newline
-            | SyntaxKind::Comment
-            | SyntaxKind::Bom
-            | SyntaxKind::Directive
-    )
-}
-
-/// Tokens that are part of a YAML *value* by attaching properties
-/// (anchor, alias, tag) but are not themselves the value content.
-/// The CST span resolver treats these as a *prefix* of the value
-/// span — `entry_value` / `item_value` stretch their returned
-/// `(start, end)` to cover the prefix plus the scalar / node that
-/// follows, so `Document::span_at("name")` on
-/// `name: !Custom 'app-1'` returns `6..21` (covering both the
-/// tag and the quoted scalar) rather than `6..13` (the tag
-/// alone, which was the pre-fix behaviour).
-fn is_value_property_kind(k: SyntaxKind) -> bool {
-    // Alias marks are handled separately (they bail the green walk to the
-    // typed cache); only anchor/tag definition prefixes stretch the value
-    // span to cover the property plus the scalar / node that follows.
-    matches!(k, SyntaxKind::AnchorMark | SyntaxKind::TagMark)
 }
 
 // ── Path resolution ─────────────────────────────────────────────────
@@ -5710,13 +4962,19 @@ impl Document {
         };
 
         let snapshot = self.clone();
-        edit(self)?;
+        if let Err(error) = edit(self) {
+            *self = snapshot;
+            return Err(error);
+        }
 
-        // Fallible parse: an invalid splice commits optimistically by
-        // design and surfaces via `validate`, and cannot be smuggling
-        // entries anyway.
-        let Ok(after_value) = crate::from_str::<Value>(&self.source) else {
-            return Ok(());
+        // The splice is document-valid by contract. Parse through the
+        // public entry point for the independent shape oracle.
+        let after_value = match crate::from_str::<Value>(&self.source) {
+            Ok(value) => value,
+            Err(error) => {
+                *self = snapshot;
+                return Err(error);
+            }
         };
         if shape_excluding(&after_value, &segments) != before_shape {
             *self = snapshot;
@@ -7406,8 +6664,8 @@ mod rollback_invariant_tests {
     /// path for an entry that owns its line, and takes it here, so it
     /// is covered separately by
     /// [`remove_rolls_back_when_it_cannot_take_its_fast_path`]. The
-    /// fragment-splicing mutators re-parse the source directly instead
-    /// — that is the optimistic commit documented on `set`.
+    /// fragment-splicing mutators validate through `replace_span`
+    /// directly instead.
     ///
     /// Listed rather than inferred so that a mutator quietly dropping
     /// its `validate` call fails this test instead of passing it.
@@ -7614,7 +6872,7 @@ mod rollback_invariant_tests {
         // Seven of the table reach the oracle. The rest either take a
         // documented fast path that skips it (`remove` on an entry that
         // owns its line) or re-parse the source directly instead
-        // (`set`'s optimistic commit). The floor is what stops this
+        // (`set`'s direct parse guard). The floor is what stops this
         // test passing vacuously if the injection stops arriving.
         assert!(
             refused >= 7,

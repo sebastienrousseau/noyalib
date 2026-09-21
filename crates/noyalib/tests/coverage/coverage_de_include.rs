@@ -32,7 +32,7 @@ fn ever_deeper_resolver() -> IncludeResolver {
         let n = counter.fetch_add(1, Ordering::Relaxed);
         // Each level references a freshly-named child spec.
         Ok(InputSource::new(
-            "gen",
+            format!("gen-{n}"),
             format!("deeper: !include level_{}\n", n + 1),
         ))
     })
@@ -94,11 +94,10 @@ fn error_propagates_through_sequence_element() {
     );
 }
 
-/// The read-error path in `include.rs` (`SafeFileResolver`): a path
-/// that canonicalises successfully but cannot be read as a file —
-/// i.e. it is a **directory**. Exercises lines 289-294 (`fs::read_to_string`
-/// error closure), which the "missing file" tests never reach because
-/// canonicalisation fails first for a non-existent path.
+/// The unreadable-input path in `SafeFileResolver`: a path that resolves
+/// successfully but cannot be consumed as a file because it is a directory.
+/// Unix may reject the later read while Windows may reject the initial open;
+/// both must retain the same public error classification.
 #[cfg(feature = "include_fs")]
 #[test]
 fn including_a_directory_surfaces_read_error() {

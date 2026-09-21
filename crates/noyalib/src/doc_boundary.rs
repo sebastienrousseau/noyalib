@@ -25,7 +25,8 @@
 
 #![allow(dead_code)]
 
-use crate::prelude::{Vec, vec};
+use crate::error::{BudgetBreach, Error, Result};
+use crate::prelude::Vec;
 
 /// UTF-8 BOM byte sequence (`U+FEFF`).
 pub(crate) const BOM: [u8; 3] = [0xEF, 0xBB, 0xBF];
@@ -66,37 +67,6 @@ pub(crate) fn is_doc_marker_at(bytes: &[u8], i: usize) -> bool {
     matches!(bytes[i + 3], b'\n' | b'\r' | b' ' | b'\t')
 }
 
-/// Collect every column-0 `---` marker offset in `bytes`, bounded
-/// by `max_markers` so a hostile `---`-spam input cannot drive
-/// unbounded `Vec` growth.
-///
-/// On overflow the scan stops at `max_markers` markers and the
-/// returned `Vec` has exactly that length. Callers that want a
-/// hard error on overflow should compare `out.len() == max_markers`
-/// and decide whether the input is suspicious.
-///
-/// `max_markers == 0` yields an empty `Vec` without scanning.
-#[must_use]
-pub(crate) fn scan_markers(bytes: &[u8], max_markers: usize) -> Vec<usize> {
-    let mut out = Vec::new();
-    if max_markers == 0 {
-        return out;
-    }
-    let mut i = 0;
-    while i + 3 <= bytes.len() {
-        if is_doc_marker_at(bytes, i) {
-            out.push(i);
-            if out.len() >= max_markers {
-                break;
-            }
-            i += 3;
-            continue;
-        }
-        i += 1;
-    }
-    out
-}
-
 /// Search `bytes` for the **next** column-0 `---` marker starting
 /// at offset `start`. Returns the offset of the first byte of the
 /// marker, or `None` when no marker is present.
@@ -107,7 +77,12 @@ pub(crate) fn scan_markers(bytes: &[u8], max_markers: usize) -> Vec<usize> {
 /// must be considered.
 #[must_use]
 pub(crate) fn next_marker_after(bytes: &[u8], start: usize) -> Option<usize> {
-    let mut i = start.max(1);
+    marker_at_or_after(bytes, start.max(1))
+}
+
+/// Search for a document marker at or after `start`.
+fn marker_at_or_after(bytes: &[u8], start: usize) -> Option<usize> {
+    let mut i = start;
     while i + 3 <= bytes.len() {
         if is_doc_marker_at(bytes, i) {
             return Some(i);
@@ -117,9 +92,109 @@ pub(crate) fn next_marker_after(bytes: &[u8], start: usize) -> Option<usize> {
     None
 }
 
+/// A fallible, allocation-free stream of document slices.
+///
+/// Boundaries are discovered only as the consumer requests another item. This
+/// keeps marker-heavy inputs from allocating storage proportional to the
+/// document count and lets parallel consumers bound in-flight work to their
+/// worker count.
+pub(crate) struct DocumentStream<'a> {
+    input: &'a str,
+    pending: Option<(usize, usize)>,
+    current_start: Option<usize>,
+    search_from: usize,
+    max_documents: usize,
+    yielded: usize,
+    exhausted: bool,
+}
+
+impl<'a> DocumentStream<'a> {
+    /// Construct a stream that reports the first document beyond
+    /// `max_documents` as a typed budget error.
+    #[must_use]
+    pub(crate) fn new(input: &'a str, max_documents: usize) -> Self {
+        let first_marker = marker_at_or_after(input.as_bytes(), 0);
+        let (pending, current_start, search_from) = match first_marker {
+            None if input.trim().is_empty() => (None, None, input.len()),
+            None => (Some((0, input.len())), None, input.len()),
+            Some(marker) if marker > 0 && prologue_has_content(&input[..marker]) => {
+                (Some((0, marker)), Some(marker), marker + 3)
+            }
+            Some(marker) => (None, Some(0), marker + 3),
+        };
+
+        Self {
+            input,
+            pending,
+            current_start,
+            search_from,
+            max_documents,
+            yielded: 0,
+            exhausted: false,
+        }
+    }
+
+    fn emit(&mut self, start: usize, end: usize) -> Result<&'a str> {
+        let observed = self.yielded.saturating_add(1);
+        if observed > self.max_documents {
+            self.exhausted = true;
+            return Err(Error::Budget(BudgetBreach::MaxDocuments {
+                limit: self.max_documents,
+                observed,
+            }));
+        }
+        self.yielded = observed;
+        Ok(&self.input[start..end])
+    }
+}
+
+impl<'a> Iterator for DocumentStream<'a> {
+    type Item = Result<&'a str>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.exhausted {
+            return None;
+        }
+
+        if let Some((start, end)) = self.pending.take() {
+            return Some(self.emit(start, end));
+        }
+
+        let Some(start) = self.current_start else {
+            self.exhausted = true;
+            return None;
+        };
+        if let Some(marker) = marker_at_or_after(self.input.as_bytes(), self.search_from) {
+            self.current_start = Some(marker);
+            self.search_from = marker + 3;
+            return Some(self.emit(start, marker));
+        }
+
+        self.current_start = None;
+        self.exhausted = true;
+        let trailing = &self.input[start..];
+        if start < self.input.len() && !trailing.trim_end().is_empty() {
+            return Some(self.emit(start, self.input.len()));
+        }
+        None
+    }
+}
+
+impl core::iter::FusedIterator for DocumentStream<'_> {}
+
+/// Validate the document-count budget without retaining markers or slices.
+///
+/// Parallel consumers use this before scheduling work so an oversized stream
+/// cannot execute a valid prefix before the eventual budget error is known.
+pub(crate) fn validate_document_budget(input: &str, max_documents: usize) -> Result<()> {
+    for document in DocumentStream::new(input, max_documents) {
+        let _ = document?;
+    }
+    Ok(())
+}
+
 /// Split `input` into per-document `&str` slices on column-0
-/// `---` markers, bounded by `max_markers` to defeat `---`-spam
-/// inputs. Empty trailing slices are omitted.
+/// `---` markers. Empty trailing slices are omitted.
 ///
 /// A leading implicit document (content before the first `---`)
 /// becomes the first slice; each subsequent slice starts at its
@@ -127,36 +202,28 @@ pub(crate) fn next_marker_after(bytes: &[u8], start: usize) -> Option<usize> {
 /// disagree on offsets — keeping the marker is the convention
 /// that round-trips cleanly through `from_str_with_config`).
 #[must_use]
-pub(crate) fn split_documents(input: &str, max_markers: usize) -> Vec<&str> {
-    let bytes = input.as_bytes();
-    let markers = scan_markers(bytes, max_markers);
+pub(crate) fn split_documents(input: &str) -> Vec<&str> {
+    DocumentStream::new(input, usize::MAX)
+        .map_while(Result::ok)
+        .collect()
+}
 
-    if markers.is_empty() {
-        return if input.trim().is_empty() {
-            Vec::new()
-        } else {
-            vec![input]
-        };
-    }
+/// Split a stream while enforcing a document-count budget.
+///
+/// The scanner probes one marker beyond the configured limit so an
+/// oversized stream is rejected rather than silently truncating the tail.
+pub(crate) fn split_documents_checked(input: &str, max_documents: usize) -> Result<Vec<&str>> {
+    DocumentStream::new(input, max_documents).collect()
+}
 
-    let mut docs: Vec<&str> = Vec::with_capacity(markers.len() + 1);
-    if markers[0] > 0 {
-        let pre = input[..markers[0]].trim();
-        if !pre.is_empty() {
-            docs.push(&input[..markers[0]]);
-        }
-    }
-    for window in markers.windows(2) {
-        docs.push(&input[window[0]..window[1]]);
-    }
-    let last = *markers.last().unwrap();
-    if last < input.len() {
-        let trailing = &input[last..];
-        if !trailing.trim_end().is_empty() {
-            docs.push(trailing);
-        }
-    }
-    docs
+/// Whether the text before the first marker is an implicit document.
+/// Comments, blank lines, and directives belong to the explicit document
+/// opened by that marker.
+fn prologue_has_content(pre: &str) -> bool {
+    pre.lines().any(|line| {
+        let trimmed = line.trim();
+        !trimmed.is_empty() && !trimmed.starts_with('#') && !trimmed.starts_with('%')
+    })
 }
 
 #[cfg(test)]
@@ -172,36 +239,38 @@ mod tests {
 
     #[test]
     fn lf_terminated_markers() {
-        let m = scan_markers(b"---\na: 1\n---\nb: 2\n", 16);
-        assert_eq!(m, vec![0, 9]);
+        let docs = DocumentStream::new("---\na: 1\n---\nb: 2\n", 16)
+            .collect::<Result<Vec<_>>>()
+            .unwrap();
+        assert_eq!(docs, vec!["---\na: 1\n", "---\nb: 2\n"]);
     }
 
     #[test]
     fn crlf_terminated_markers_are_recognised() {
         // The previous copies in recovery/parallel/tokio_async
         // each missed at least one of these.
-        let m = scan_markers(b"---\r\na: 1\r\n---\r\nb: 2\r\n", 16);
-        assert_eq!(m, vec![0, 11]);
+        let docs = DocumentStream::new("---\r\na: 1\r\n---\r\nb: 2\r\n", 16)
+            .collect::<Result<Vec<_>>>()
+            .unwrap();
+        assert_eq!(docs.len(), 2);
+        assert_eq!(docs.concat(), "---\r\na: 1\r\n---\r\nb: 2\r\n");
     }
 
     #[test]
     fn mid_line_dashes_are_not_markers() {
-        let m = scan_markers(b"a: ---\nb: 2\n", 16);
-        assert!(m.is_empty());
+        let docs = DocumentStream::new("a: ---\nb: 2\n", 16)
+            .collect::<Result<Vec<_>>>()
+            .unwrap();
+        assert_eq!(docs, vec!["a: ---\nb: 2\n"]);
     }
 
     #[test]
     fn marker_at_eof_is_recognised() {
         // `---` as the very last bytes — no terminator after.
-        let m = scan_markers(b"a: 1\n---", 16);
-        assert_eq!(m, vec![5]);
-    }
-
-    #[test]
-    fn marker_cap_truncates() {
-        let input = b"---\n---\n---\n---\n---\n";
-        let m = scan_markers(input, 2);
-        assert_eq!(m.len(), 2);
+        let docs = DocumentStream::new("a: 1\n---", 16)
+            .collect::<Result<Vec<_>>>()
+            .unwrap();
+        assert_eq!(docs, vec!["a: 1\n", "---"]);
     }
 
     #[test]
@@ -211,7 +280,50 @@ mod tests {
     }
 
     #[test]
-    fn marker_cap_zero_yields_empty() {
-        assert!(scan_markers(b"---\n---\n", 0).is_empty());
+    fn checked_split_rejects_document_overflow() {
+        let error = split_documents_checked("---\na: 1\n---\na: 2\n", 1).unwrap_err();
+        assert!(matches!(
+            error,
+            Error::Budget(BudgetBreach::MaxDocuments {
+                limit: 1,
+                observed: 2
+            })
+        ));
+    }
+
+    #[test]
+    fn comments_before_a_leading_marker_stay_with_the_first_document() {
+        let docs = split_documents_checked("# heading\n---\na: 1\n", 1).unwrap();
+        assert_eq!(docs, vec!["# heading\n---\na: 1\n"]);
+    }
+
+    #[test]
+    fn document_stream_preserves_exact_partitions() {
+        let cases = [
+            "a: 1\n---\nb: 2\n",
+            "# heading\n---\r\na: 1\r\n---\r\nb: 2\r\n",
+            "---\n---\n---",
+            "content\n---",
+        ];
+        for input in cases {
+            let docs = DocumentStream::new(input, usize::MAX)
+                .collect::<Result<Vec<_>>>()
+                .unwrap();
+            assert_eq!(docs.concat(), input);
+        }
+    }
+
+    #[test]
+    fn document_stream_reports_only_one_budget_error() {
+        let mut docs = DocumentStream::new("---\na: 1\n---\na: 2\n", 1);
+        assert!(docs.next().unwrap().is_ok());
+        assert!(matches!(
+            docs.next().unwrap(),
+            Err(Error::Budget(BudgetBreach::MaxDocuments {
+                limit: 1,
+                observed: 2
+            }))
+        ));
+        assert!(docs.next().is_none());
     }
 }

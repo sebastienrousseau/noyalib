@@ -5,6 +5,70 @@ All notable changes to this project are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.0.46] - 2026-09-20
+
+### Changed
+
+- Split the former integration-test grab bag into eight themed binaries:
+  anchors, conformance, errors, integrations, limits, properties, regressions,
+  and values. Test behaviour is unchanged, but failures and targeted test runs
+  now map directly to a functional area.
+- Reworked the README to the workspace-wide canonical structure and retained the
+  complete prior guide in `docs/README-REFERENCE.md`.
+- Bumped the core and ecosystem documentation to the 0.0.46 lockstep release.
+- Switched the Rust 2024 workspace to Cargo resolver 3 and pinned every Cargo
+  utility installed by CI.
+- Centralized multi-document boundary splitting for async, parallel, and
+  recovery entry points. Parallel parsing now accepts caller configuration,
+  uses a sequential fast path for small streams, discovers boundaries without
+  retaining marker or slice vectors, and bounds in-flight work to Rayon
+  workers.
+- Added separate `max_stream_bytes`, `max_include_sources`, and
+  `max_total_include_bytes` resource budgets.
+- Re-applied `max_nodes` after include expansion so individually bounded
+  sources cannot create an oversized combined document.
+- Made the shipped-size package gate reject dirty trees and select the exact
+  current-version artifact instead of a potentially stale cached package.
+
+### Added
+
+- A repository-standard compliance grade linked from the rendered manual.
+- `Document::edit` and `EditSession` for atomic batches of non-overlapping
+  byte-range replacements using one commit-time document validation.
+
+### Fixed
+
+- Async readers now probe one byte beyond configured limits and reject
+  oversized input instead of accepting a truncated valid prefix. Decoder EOF
+  parsing also preserves caller policies and derives its frame cap from the
+  parser configuration.
+- CST mutations now validate the complete candidate document before commit, so
+  a successful edit cannot leave later reads able to panic on invalid YAML.
+- Guarded insertions now restore their snapshot when the splice itself fails,
+  so a refused `push_back` or related insertion cannot retain partial edits.
+- CST single-document parsing and edits now reject additional YAML documents
+  instead of silently retaining only the first typed value.
+- Malformed query paths now fail atomically instead of resolving to and
+  mutating a valid prefix.
+- Multi-document limits now return `MaxDocuments` rather than silently
+  truncating marker scans.
+- Include cycles use the resolver's canonical source identity and include
+  expansion now has aggregate source-count and byte budgets.
+- On Unix, filesystem includes now resolve through a retained directory
+  capability, preventing root replacement and symlink check-to-open races.
+  Strict symlink rejection covers every path component on every platform.
+- Normal typed parsing no longer allocates owned copies of comments, and scanner
+  speculative capacities are capped for large inputs.
+- Hosted owned mappings, include identities, tag handles, and the key interner
+  now use randomized hashing for untrusted keys; `no_std` builds retain
+  deterministic Fx hashing.
+- Dependency review, Rust CodeQL, soak fuzzing, secret scoping, package
+  cleanliness, and provenance labelling now match their enforced CI behavior.
+- Release jobs now reject unsigned or lightweight tags and require a fresh
+  runner to reproduce byte-identical `.crate` packages before publication.
+- Feature branches now run CI and security analysis through pull requests only,
+  avoiding duplicate push and pull-request executions for the same commit.
+
 ## [v0.0.45] - 2026-09-17
 
 ### Added

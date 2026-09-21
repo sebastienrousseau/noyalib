@@ -35,7 +35,7 @@ likely to cost something. The `benches/` directory measures them.
 
 ## Module map
 
-68 modules.
+73 modules.
 
 | Module | Lines | Purpose |
 | --- | --- | --- |
@@ -43,45 +43,50 @@ likely to cost something. The `benches/` directory measures them.
 | `ariadne_adapter.rs` | 99 | [`ariadne`] adapter for [`crate::Error`]. |
 | `base64.rs` | 262 | Internal base64 codec for `!!binary` scalars (YAML 1.2.2 §10.4). |
 | `borrowed.rs` | 869 | Zero-copy YAML values that borrow strings from the input. |
-| `comments.rs` | 244 | Comment capture on the parse path. |
+| `comments.rs` | 245 | Comment capture on the parse path. |
 | `compat/mod.rs` | 19 | Compatibility shims for downstream crates migrating to `noyalib`. |
 | `compat/serde_yaml.rs` | 920 | Drop-in API surface compatible with `serde_yaml` 0.9. |
 | `cst/anchor.rs` | 709 | Anchor and alias management. |
 | `cst/annotated.rs` | 905 | Comment-aware read view over a [`crate::cst::Document`]. |
 | `cst/builder.rs` | 597 | Build the parts of a [`crate::cst::Document`] from input bytes. |
 | `cst/coerce.rs` | 232 | Lossless schema-driven type coercion on the CST path. |
-| `cst/document.rs` | 7684 | Public `Document` handle and parse / mutation entry points. |
+| `cst/document/edit.rs` | 258 | Atomic source splicing and local green-tree repair. |
+| `cst/document/path.rs` | 406 | Green-tree path resolution without typed-cache materialization. |
+| `cst/document/transaction.rs` | 152 | Atomic batches of byte-range CST edits. |
+| `cst/document/validation.rs` | 86 | Typed-cache validation and atomic document-state replacement. |
+| `cst/document.rs` | 6942 | Public `Document` handle and parse / mutation entry points. |
 | `cst/emit.rs` | 463 | Auto-formatting for values spliced by the CST insertion mutators. |
 | `cst/entry.rs` | 671 | Path-shaped mutable handle to a CST node — the `Entry` "pro" |
-| `cst/format.rs` | 455 | Formatter for YAML CST. |
+| `cst/format.rs` | 459 | Formatter for YAML CST. |
 | `cst/green.rs` | 231 | Immutable green-node primitive with relative-length leaves. |
-| `cst/mod.rs` | 126 | Side-table CST (concrete syntax tree) for lossless round-tripping. |
+| `cst/mod.rs` | 129 | Side-table CST (concrete syntax tree) for lossless round-tripping. |
 | `cst/syntax.rs` | 135 | Syntax-kind tags for green-tree nodes and tokens. |
-| `de/config.rs` | 1177 | Parser configuration types. |
+| `de/config.rs` | 1236 | Parser configuration types. |
 | `de/deserializer.rs` | 1041 | The serde `Deserializer` over a `&Value` and its access types. |
-| `de.rs` | 1137 | YAML Deserialization. |
+| `de.rs` | 1227 | YAML Deserialization. |
 | `diagnostic.rs` | 188 | Spanned value to `miette::Report` bridge. |
-| `doc_boundary.rs` | 217 | Workspace-private `---` document-boundary scanner. |
+| `doc_boundary.rs` | 329 | Workspace-private `---` document-boundary scanner. |
 | `document.rs` | 436 | Multi-document YAML loading. |
-| `error.rs` | 2137 | Error handling types. |
+| `error.rs` | 2159 | Error handling types. |
 | `figment.rs` | 81 | [`figment`] provider for noyalib YAML. |
 | `flattened.rs` | 165 | `Flattened<T>` — capture the underlying [`Value`] alongside the |
 | `fmt.rs` | 635 | Formatting wrappers for fine-grained control over YAML output style. |
 | `i18n.rs` | 172 | Pluggable error-message formatters for user-facing rendering. |
-| `include.rs` | 316 | `!include` directive support — compose YAML documents from |
-| `interner.rs` | 304 | Key interning for memory-efficient repeated-key workloads. |
+| `include/fs.rs` | 363 | Capability-rooted filesystem support for `!include`. |
+| `include.rs` | 167 | `!include` directive support — compose YAML documents from |
+| `interner.rs` | 318 | Key interning for memory-efficient repeated-key workloads. |
 | `lossless_float.rs` | 180 | A float that refuses to silently lose information. |
 | `macros.rs` | 99 | Declarative builders for the public config types. |
-| `parallel.rs` | 356 | Parallel multi-document YAML parsing — the "MapReduce" path. |
+| `parallel.rs` | 425 | Parallel multi-document YAML parsing — the "MapReduce" path. |
 | `parser/budget.rs` | 253 | The resource budgets the loaders enforce, as pure predicates. |
-| `parser/events.rs` | 783 | YAML 1.2 event-based parser. |
-| `parser/loader.rs` | 2540 | Event-to-Value tree builder with security limits. |
-| `parser/mod.rs` | 103 | Native YAML 1.2 parser. |
+| `parser/events.rs` | 789 | YAML 1.2 event-based parser. |
+| `parser/loader.rs` | 2515 | Event-to-Value tree builder with security limits. |
+| `parser/mod.rs` | 92 | Native YAML 1.2 parser. |
 | `parser/scanner/scalars.rs` | 1191 | Scalar scanning for the YAML scanner: plain, single/double-quoted |
-| `parser/scanner.rs` | 2312 | YAML 1.2 lexical scanner. |
-| `path.rs` | 867 | Path tracking for YAML structure locations. |
+| `parser/scanner.rs` | 2351 | YAML 1.2 lexical scanner. |
+| `path.rs` | 914 | Path tracking for YAML structure locations. |
 | `policy.rs` | 271 | Pluggable parser policies for "Safe YAML" enforcement. |
-| `recovery.rs` | 581 | Error-recovering YAML parser for LSP / IDE partial parsing. |
+| `recovery.rs` | 621 | Error-recovering YAML parser for LSP / IDE partial parsing. |
 | `schema.rs` | 334 | YAML 1.2 schema validation helpers. |
 | `schema_codegen.rs` | 322 | JSON Schema codegen for Rust types. |
 | `schema_validate.rs` | 704 | JSON Schema 2020-12 validation against a parsed [`crate::Value`]. |
@@ -92,12 +97,12 @@ likely to cost something. The `benches/` directory measures them.
 | `streaming.rs` | 2358 | Streaming YAML deserializer that operates directly on parser events. |
 | `sval_adapter.rs` | 442 | `sval` adapter — stream noyalib values through any |
 | `tag_registry.rs` | 211 | Streaming-path registry for custom YAML tag pass-through. |
-| `tokio_async.rs` | 547 | Native async YAML parsing for [`tokio`](https://tokio.rs) |
+| `tokio_async.rs` | 640 | Native async YAML parsing for [`tokio`](https://tokio.rs) |
 | `validated.rs` | 262 | Declarative validation via [`garde`] or [`validator`]. |
 | `validated_miette.rs` | 265 | [`Spanned<T>`] + `garde` / `validator` → `miette::Report` |
 | `value/arbitrary_impls.rs` | 150 | [`arbitrary::Arbitrary`] for the public value types, behind the |
 | `value/convert.rs` | 237 | `From<T> for Value` conversions and `Index`/`IndexMut`. |
-| `value/mapping.rs` | 1356 | YAML mapping types (`Mapping`, `MappingAny`). |
+| `value/mapping.rs` | 1378 | YAML mapping types (`Mapping`, `MappingAny`). |
 | `value/number.rs` | 631 | YAML number type (`Number`). |
 | `value/serde_impl.rs` | 335 | serde `Serialize`/`Deserialize` for `Value`. |
 | `value/tag.rs` | 505 | YAML tag types (`Tag`, `TaggedValue`) and tag utilities. |
@@ -124,7 +129,7 @@ likely to cost something. The `benches/` directory measures them.
 | `ariadne` | `dep:ariadne` | — |
 | `lossless-float` | — | Opt-in `LosslessFloat` — deserialization rejects infinities, NaN, and any value that loses precision as f64; the floating-point sibling of `lossless-u64`. Needs nothing beyond the mandatory `serde_core`. |
 | `include` | — | `!include` directive — post-parse walk that consults a user-supplied `crate::include::IncludeResolver` for every `Value::Tagged(!include, _)` node and substitutes the resolved content in-place. Pairs with `max_include_depth` for cycle bounding. Off by default so callers who never see `!include` scalars pay zero compile cost. |
-| `include_fs` | `include`, `std` | Filesystem-backed `crate::include::SafeFileResolver` (root sandbox, symlink policy). Implies `include` + `std`. |
+| `include_fs` | `include`, `std`, `dep:rustix` | Filesystem-backed `crate::include::SafeFileResolver` (root sandbox, symlink policy). Implies `include` + `std`. |
 | `garde` | `dep:garde` | — |
 | `validator` | `dep:validator` | — |
 | `wasm-opt` | — | — |
@@ -140,7 +145,7 @@ likely to cost something. The `benches/` directory measures them.
 | `sval` | `dep:sval` | `sval` zero-allocation streaming serialization framework adapter. Adds `impl sval::Value for Value` (and the other in-tree value types) plus a `noyalib::sval_adapter::to_sval_writer` entry point. serde remains the default; this is opt-in for callers that want to skip serde monomorphisation overhead. |
 | `arbitrary` | `dep:arbitrary`, `std` | Structure-aware fuzzing and property testing: `arbitrary::Arbitrary` for every public value type. The arbitrary crate needs std. |
 | `recovery` | `std` | Error-recovering parser for LSP / IDE partial parsing. Adds the `noyalib::recovery` module with `parse_lenient` / `parse_lenient_with` entry points returning a `ParseResult` carrying the best-effort tree plus the collected error list. Pure Rust, no extra deps — turns existing strict-parse retries into a recovery pipeline. Off by default because the strict path is what most callers want. |
-| `parallel` | `dep:rayon`, `std` | Parallel multi-document deserialisation via Rayon. Adds the `noyalib::parallel` module: - `parallel::parse<T>(&str) -> Result<Vec<T>>` — typed deserialise. - `parallel::values(&str) -> Result<Vec<Value>>` — dynamic-tree variant. - `parallel::split(&str) -> Vec<&str>` — exposed boundary scanner for callers driving their own concurrency primitives. All three pre-scan `---` document boundaries on a single thread then deserialise each document in parallel via Rayon's global thread pool. Off by default to keep the runtime dep list lean for users that only parse single-document inputs. |
+| `parallel` | `dep:rayon`, `std` | Parallel multi-document deserialisation via Rayon. Adds the `noyalib::parallel` module: - `parallel::parse<T>(&str) -> Result<Vec<T>>` — typed deserialise. - `parallel::values(&str) -> Result<Vec<Value>>` — dynamic-tree variant. - `parallel::split(&str) -> Vec<&str>` — exposed boundary scanner for callers driving their own concurrency primitives. Parsing validates the document budget without retaining offsets, then discovers `---` boundaries on demand. Rayon's worker count bounds in-flight deserialisation, and callers can select a pool with `ThreadPool::install`. Off by default to keep the runtime dep list lean for users that only parse single-document inputs. |
 | `nightly-simd` | `simd` | Portable-SIMD (`std::simd`) structural scanner. Builds a 16/32/ 64-byte-wide `SimdScanner` that finds any byte in a needle set in a single SIMD pass. Requires the nightly toolchain because `core::simd` is unstable (`#![feature(portable_simd)]`). On by default for nightly users who want maximum throughput; the stable `simd` feature still ships the memchr / SWAR fall-back so stable builds are not regressed. |
 
 <!-- SPDX-FileCopyrightText: 2026 Noyalib -->
@@ -241,7 +246,11 @@ edit didn't reach.
 | New `Error` variant | `error.rs` (enum + Display + miette code/help) |
 | New deserialisation helper (`from_X_strict`, etc.) | `de.rs` |
 | New custom-tag handler | route via `tag_registry.rs` |
-| New CST edit operation | `cst/document.rs` |
+| New path-oriented CST mutation | `cst/document.rs` |
+| New green-tree path-resolution rule | `cst/document/path.rs` |
+| New byte-splice or local-repair rule | `cst/document/edit.rs` |
+| New edit-session planning rule | `cst/document/transaction.rs` |
+| New CST validation or state-commit rule | `cst/document/validation.rs` |
 | New `Value` query method | `value.rs` |
 | New scanner state / token kind | `parser/scanner.rs` |
 | New SIMD / SWAR primitive | `simd.rs` (feature-gated) |

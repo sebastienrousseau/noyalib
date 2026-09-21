@@ -12,10 +12,10 @@
 //!   stored on [`crate::ParserConfig`]; users wire it up via
 //!   [`crate::ParserConfig::include_resolver`].
 //!
-//! - **`include_fs` feature** (`SafeFileResolver`) — a
-//!   filesystem-backed implementation with root-dir sandboxing,
-//!   symlink-policy enforcement (`SymlinkPolicy`), and
-//!   max-depth cycle protection.
+//! - **`include_fs` feature** (`SafeFileResolver`) — a Unix
+//!   capability-rooted filesystem implementation, with a Windows
+//!   canonical-root fallback, symlink-policy enforcement
+//!   (`SymlinkPolicy`), and max-depth cycle protection.
 //!
 //! Fragment anchors (`!include file.yaml#name`) resolve the named
 //! YAML anchor inside the included document and substitute its
@@ -27,10 +27,14 @@
 //! [`crate::ParserConfig::max_include_depth`] (default 24)
 //! bounds the recursion.
 
-#[cfg(feature = "include_fs")]
-use crate::error::Error;
 use crate::error::Result;
 use crate::prelude::*;
+
+#[cfg(feature = "include_fs")]
+mod fs;
+#[cfg(feature = "include_fs")]
+#[cfg_attr(docsrs, doc(cfg(feature = "include_fs")))]
+pub use fs::{SafeFileResolver, SymlinkPolicy};
 
 /// Describes one `!include` request the loader hands to the
 /// resolver.
@@ -140,159 +144,6 @@ impl fmt::Debug for IncludeResolver {
         f.debug_struct("IncludeResolver")
             .field("ptr", &Arc::as_ptr(&self.0))
             .finish()
-    }
-}
-
-/// How [`SafeFileResolver`] handles symbolic links it
-/// encounters while resolving a path.
-///
-/// # Examples
-///
-/// ```
-/// use noyalib::include::SymlinkPolicy;
-/// assert_eq!(SymlinkPolicy::default(), SymlinkPolicy::FollowWithinRoot);
-/// ```
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
-#[non_exhaustive]
-pub enum SymlinkPolicy {
-    /// Follow symlinks that resolve to a path still inside the
-    /// resolver's root directory. Reject anything pointing
-    /// outside. Default.
-    #[default]
-    FollowWithinRoot,
-    /// Reject all symbolic links regardless of target. Strictest
-    /// posture; appropriate for untrusted document graphs.
-    Reject,
-}
-
-/// Filesystem-backed [`IncludeResolver`] with root-dir
-/// sandboxing.
-///
-/// Behind the `include_fs` Cargo feature (which implies
-/// `include` + `std`).
-///
-/// # Sandboxing
-///
-/// All resolved paths are canonicalised (via [`std::fs::canonicalize`])
-/// and verified to live inside the supplied `root` directory.
-/// Path-traversal attempts (`../../etc/passwd`) are caught at
-/// the canonicalisation step — the canonical path simply will
-/// not have `root` as a prefix, and the resolver errors.
-///
-/// # Symlinks
-///
-/// Controlled by [`SymlinkPolicy`]. The default
-/// [`SymlinkPolicy::FollowWithinRoot`] follows symlinks but
-/// re-applies the root-prefix check against the resolved
-/// target. [`SymlinkPolicy::Reject`] errors on any symlink in
-/// the path.
-///
-/// # Examples
-///
-/// ```no_run
-/// use noyalib::include::{SafeFileResolver, SymlinkPolicy};
-/// use std::sync::Arc;
-///
-/// let resolver = SafeFileResolver::new("/srv/configs")
-///     .symlink_policy(SymlinkPolicy::Reject)
-///     .into_resolver();
-/// let cfg = noyalib::ParserConfig::new().include_resolver(resolver);
-/// # let _ = cfg;
-/// ```
-#[cfg(feature = "include_fs")]
-#[cfg_attr(docsrs, doc(cfg(feature = "include_fs")))]
-#[derive(Debug, Clone)]
-pub struct SafeFileResolver {
-    root: std::path::PathBuf,
-    symlink_policy: SymlinkPolicy,
-}
-
-#[cfg(feature = "include_fs")]
-impl SafeFileResolver {
-    /// Construct a resolver rooted at `root`. All resolved paths
-    /// must canonicalise to a descendant of `root`.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use noyalib::include::SafeFileResolver;
-    /// let r = SafeFileResolver::new("/srv/configs");
-    /// let _ = r;
-    /// ```
-    #[must_use]
-    pub fn new(root: impl Into<std::path::PathBuf>) -> Self {
-        Self {
-            root: root.into(),
-            symlink_policy: SymlinkPolicy::default(),
-        }
-    }
-
-    /// Set the [`SymlinkPolicy`].
-    #[must_use]
-    pub fn symlink_policy(mut self, policy: SymlinkPolicy) -> Self {
-        self.symlink_policy = policy;
-        self
-    }
-
-    /// Convert this configuration into a boxed [`IncludeResolver`]
-    /// suitable for [`crate::ParserConfig::include_resolver`].
-    #[must_use]
-    pub fn into_resolver(self) -> IncludeResolver {
-        let this = self;
-        IncludeResolver::new(move |req: IncludeRequest<'_>| this.resolve(req))
-    }
-
-    fn resolve(&self, req: IncludeRequest<'_>) -> Result<InputSource> {
-        use std::fs;
-        // Strip the optional `#anchor` fragment — the loader
-        // handles anchor selection after parse, so the resolver
-        // only needs the path portion.
-        let (path_part, _frag) = split_fragment(req.spec);
-        let candidate = self.root.join(path_part);
-
-        // Reject paths whose canonical form jumps outside `root`.
-        let canon_root = fs::canonicalize(&self.root).map_err(|e| {
-            Error::Custom(format!("include resolver: cannot canonicalise root: {e}"))
-        })?;
-        let canon = fs::canonicalize(&candidate).map_err(|e| {
-            Error::Custom(format!(
-                "include resolver: cannot canonicalise `{}`: {e}",
-                candidate.display()
-            ))
-        })?;
-        if !canon.starts_with(&canon_root) {
-            return Err(Error::Custom(format!(
-                "include resolver: `{}` escapes sandbox root `{}`",
-                canon.display(),
-                canon_root.display()
-            )));
-        }
-
-        if self.symlink_policy == SymlinkPolicy::Reject {
-            // `fs::symlink_metadata` returns metadata of the link itself
-            // (not the target). If the original (un-canonicalised)
-            // path is a symlink the policy rejects.
-            let meta = fs::symlink_metadata(&candidate).map_err(|e| {
-                Error::Custom(format!(
-                    "include resolver: cannot stat `{}`: {e}",
-                    candidate.display()
-                ))
-            })?;
-            if meta.file_type().is_symlink() {
-                return Err(Error::Custom(format!(
-                    "include resolver: symlink rejected by policy: `{}`",
-                    candidate.display()
-                )));
-            }
-        }
-
-        let bytes = fs::read_to_string(&canon).map_err(|e| {
-            Error::Custom(format!(
-                "include resolver: cannot read `{}`: {e}",
-                canon.display()
-            ))
-        })?;
-        Ok(InputSource::new(canon.display().to_string(), bytes))
     }
 }
 

@@ -168,6 +168,7 @@ pub struct Comment {
 /// ```
 pub fn load_comments(input: &str) -> Result<Vec<Comment>> {
     let mut parser = Parser::new(input);
+    parser.enable_comment_capture();
     // Drain events — we don't care about the tree, just need the
     // scanner to walk the whole document so every comment gets
     // captured.

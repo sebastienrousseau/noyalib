@@ -91,6 +91,26 @@ fn cycle_detection_aborts_with_clear_error() {
 }
 
 #[test]
+fn cycle_detection_uses_the_resolvers_canonical_identity() {
+    let resolver = IncludeResolver::new(|req: IncludeRequest<'_>| -> Result<InputSource> {
+        let bytes = match req.spec {
+            "alias-a.yaml" => "next: !include alias-b.yaml\n",
+            "alias-b.yaml" => "next: !include alias-a.yaml\n",
+            _ => unreachable!(),
+        };
+        Ok(InputSource::new("/canonical/shared.yaml", bytes))
+    });
+    let cfg = ParserConfig::new().include_resolver(resolver);
+
+    let error = from_str_with_config::<Value>("root: !include alias-a.yaml\n", &cfg).unwrap_err();
+    assert!(error.to_string().contains("cycle"), "{error}");
+    assert!(
+        error.to_string().contains("/canonical/shared.yaml"),
+        "{error}"
+    );
+}
+
+#[test]
 fn max_include_depth_caps_recursion() {
     // resolver always returns another !include — guaranteed
     // depth blow-up unless capped.
@@ -103,6 +123,82 @@ fn max_include_depth_caps_recursion() {
     let yaml = "root: !include start\n";
     let res: Result<Value> = from_str_with_config(yaml, &cfg);
     assert!(res.is_err(), "max-depth must abort: {res:?}");
+}
+
+#[test]
+fn include_source_count_is_bounded_across_siblings() {
+    let mut files = HashMap::new();
+    let _ = files.insert("a.yaml", "a: 1\n");
+    let _ = files.insert("b.yaml", "b: 2\n");
+    let cfg = ParserConfig::new()
+        .include_resolver(mem_resolver(files))
+        .max_include_sources(1);
+
+    let error =
+        from_str_with_config::<Value>("first: !include a.yaml\nsecond: !include b.yaml\n", &cfg)
+            .unwrap_err();
+    assert!(matches!(
+        error,
+        noyalib::Error::Budget(noyalib::BudgetBreach::MaxIncludeSources {
+            limit: 1,
+            observed: 2
+        })
+    ));
+}
+
+#[test]
+fn cumulative_include_bytes_are_bounded() {
+    let mut files = HashMap::new();
+    let _ = files.insert("a.yaml", "value: 12345\n");
+    let cfg = ParserConfig::new()
+        .include_resolver(mem_resolver(files))
+        .max_total_include_bytes(4);
+
+    let error = from_str_with_config::<Value>("root: !include a.yaml\n", &cfg).unwrap_err();
+    assert!(matches!(
+        error,
+        noyalib::Error::Budget(noyalib::BudgetBreach::MaxIncludeBytes { limit: 4, .. })
+    ));
+}
+
+#[test]
+fn expanded_include_nodes_share_the_document_budget() {
+    let mut files = HashMap::new();
+    let _ = files.insert("a.yaml", "value: 1\n");
+    let _ = files.insert("b.yaml", "value: 2\n");
+    let cfg = ParserConfig::new()
+        .include_resolver(mem_resolver(files))
+        // The root has five authored nodes and each included document has
+        // three. All sources fit independently, but the expanded root has
+        // nine nodes: its mapping, two keys, and two three-node mappings.
+        .max_nodes(8);
+
+    let error =
+        from_str_with_config::<Value>("first: !include a.yaml\nsecond: !include b.yaml\n", &cfg)
+            .unwrap_err();
+    assert!(matches!(
+        error,
+        noyalib::Error::Budget(noyalib::BudgetBreach::MaxNodes {
+            limit: 8,
+            observed: 9
+        })
+    ));
+}
+
+#[test]
+fn expanded_include_nodes_accept_the_exact_budget() {
+    let mut files = HashMap::new();
+    let _ = files.insert("a.yaml", "value: 1\n");
+    let _ = files.insert("b.yaml", "value: 2\n");
+    let cfg = ParserConfig::new()
+        .include_resolver(mem_resolver(files))
+        .max_nodes(9);
+
+    let value =
+        from_str_with_config::<Value>("first: !include a.yaml\nsecond: !include b.yaml\n", &cfg)
+            .unwrap();
+    assert_eq!(value["first"]["value"].as_i64(), Some(1));
+    assert_eq!(value["second"]["value"].as_i64(), Some(2));
 }
 
 #[test]
@@ -263,8 +359,8 @@ mod safe_file {
         assert!(res.is_err(), "non-existent root must error");
         let msg = res.unwrap_err().to_string();
         assert!(
-            msg.contains("canonicalise"),
-            "expected canonicalisation error, got: {msg}"
+            msg.contains("cannot open root"),
+            "expected root capability error, got: {msg}"
         );
     }
 
@@ -310,6 +406,59 @@ mod safe_file {
         assert!(msg.contains("escapes"), "{msg}");
         let _ = std::fs::remove_file(&outside);
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn reject_policy_blocks_symlinked_parent_directory() {
+        let dir = temp_dir("nested-symlink");
+        std::fs::create_dir_all(dir.join("real")).unwrap();
+        std::fs::write(dir.join("real/value.yaml"), "safe: true\n").unwrap();
+        std::os::unix::fs::symlink("real", dir.join("linked")).unwrap();
+
+        let resolver = SafeFileResolver::new(&dir)
+            .symlink_policy(SymlinkPolicy::Reject)
+            .into_resolver();
+        let cfg = ParserConfig::new().include_resolver(resolver);
+        let res: Result<Value> = from_str_with_config("x: !include linked/value.yaml\n", &cfg);
+        assert!(res.is_err(), "parent-directory symlinks must be rejected");
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn follow_policy_accepts_symlinked_parent_within_root() {
+        let dir = temp_dir("nested-symlink-follow");
+        std::fs::create_dir_all(dir.join("real")).unwrap();
+        std::fs::write(dir.join("real/value.yaml"), "safe: true\n").unwrap();
+        std::os::unix::fs::symlink("real", dir.join("linked")).unwrap();
+
+        let cfg = ParserConfig::new().include_resolver(SafeFileResolver::new(&dir).into_resolver());
+        let value: Value = from_str_with_config("x: !include linked/value.yaml\n", &cfg).unwrap();
+        assert_eq!(value["x"]["safe"].as_bool(), Some(true));
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn opened_root_cannot_be_redirected_by_path_replacement() {
+        let dir = temp_dir("root-replacement");
+        let moved = dir.with_extension("opened");
+        let _ = std::fs::remove_dir_all(&moved);
+        std::fs::write(dir.join("value.yaml"), "source: original\n").unwrap();
+
+        let cfg = ParserConfig::new().include_resolver(SafeFileResolver::new(&dir).into_resolver());
+        std::fs::rename(&dir, &moved).unwrap();
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(dir.join("value.yaml"), "source: replacement\n").unwrap();
+
+        let value: Value = from_str_with_config("x: !include value.yaml\n", &cfg).unwrap();
+        assert_eq!(value["x"]["source"].as_str(), Some("original"));
+
+        let _ = std::fs::remove_dir_all(&dir);
+        let _ = std::fs::remove_dir_all(&moved);
     }
 }
 

@@ -9,12 +9,20 @@ set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
 
 BUDGET=$(grep -A2 '^\[crate-package\]' scripts/size-budgets.toml | grep max_bytes | grep -oE '[0-9]+')
-cargo package -p noyalib --allow-dirty --no-verify -q
-CRATE=$(ls target/package/noyalib-*.crate | head -1)
-SIZE=$(wc -c < "${CRATE}" | tr -d ' ')
+# Packaging a dirty tree can measure bytes that are not represented by the
+# audited commit. Cargo's cleanliness check is therefore part of this gate.
+cargo package -p noyalib --no-verify -q
+NOYALIB_PKGID=$(cargo pkgid -p noyalib)
+NOYALIB_VERSION=${NOYALIB_PKGID##*#}
+NOYALIB_CRATE="target/package/noyalib-${NOYALIB_VERSION}.crate"
+if [ ! -f "${NOYALIB_CRATE}" ]; then
+  echo "[FAIL] cargo did not produce ${NOYALIB_CRATE}." >&2
+  exit 1
+fi
+SIZE=$(wc -c < "${NOYALIB_CRATE}" | tr -d ' ')
 
 echo "── shipped-size monitor ──"
-echo "  artefact: ${CRATE}"
+echo "  artefact: ${NOYALIB_CRATE}"
 echo "  size:     ${SIZE} bytes"
 echo "  budget:   ${BUDGET} bytes"
 if [ "${SIZE}" -gt "${BUDGET}" ]; then

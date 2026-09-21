@@ -214,8 +214,8 @@
 //! | `schema` | ⛔ | `schemars`, `serde_json` | [`schema_for`] / [`schema_for_yaml`] **+** consumer must also depend on `schemars = "1.2"` to derive [`JsonSchema`] | — |
 //! | `validate-schema` | ⛔ | `schema` + `jsonschema` | [`validate_against_schema`], [`coerce_to_schema`], [`CompiledSchema`] | `schema` |
 //! | `figment` | ⛔ | `figment 0.10` | [`figment::Yaml`](crate::figment) Provider | `std` |
-//! | `garde` | ⛔ | `garde 0.22` | [`Validated<T>`] | — |
-//! | `validator` | ⛔ | `validator 0.19` | [`ValidatedValidator<T>`] | — |
+//! | `garde` | ⛔ | `garde 0.23` | [`Validated<T>`] | — |
+//! | `validator` | ⛔ | `validator 0.21` | [`ValidatedValidator<T>`] | — |
 //! | `lossless-float` | ⛔ | — | [`lossless_float::LosslessFloat`] — refuse-to-lose-precision float, the floating-point sibling of `lossless-u64` | — |
 //! | `parallel` | ⛔ | `rayon 1.10` | [`parallel::parse`], [`parallel::values`] | `std` |
 //! | `simd` | ⛔ | — | forward-compat no-op — `noyalib::simd::*` is always available; the hot path uses it unconditionally | — |
@@ -249,9 +249,10 @@
 //!   across calls or across threads.
 //! - Anchor and alias state lives in the parser stack frame (one
 //!   per call); concurrent calls share no mutable state.
-//! - The Rayon-backed [`parallel`] module pre-scans document
-//!   boundaries on the calling thread, then dispatches each
-//!   document to the global Rayon pool — `T: Send` is required.
+//! - The Rayon-backed [`parallel`] module validates document limits
+//!   before scheduling, then discovers boundaries on demand and
+//!   dispatches bounded work to the active Rayon pool. `T: Send` is
+//!   required.
 //! - [`anchors::ArcAnchorRegistry`] / [`anchors::ArcAnchor`] use
 //!   `Arc` + `Weak` and are explicitly multi-thread-safe; the
 //!   `Rc`-backed siblings are single-thread.
@@ -278,7 +279,7 @@
 //!   organisational "Safe YAML" enforcement. Custom policies
 //!   implement [`policy::Policy`].
 //! - **Supply chain** — `cargo audit`, `cargo deny`, `cargo vet`
-//!   gate every PR. Releases ship SLSA L3 provenance and
+//!   gate every PR. Releases ship SLSA Build L2 provenance and
 //!   sigstore signatures (verification cookbook in
 //!   [`pkg/VERIFY.md`](https://github.com/sebastienrousseau/noyalib/blob/main/pkg/VERIFY.md)).
 //!   No archived or unmaintained crate appears in the dependency

@@ -28,6 +28,9 @@
 //!   wrapper most callers want). Both re-parse on edit and reject
 //!   the change if the spliced source is invalid YAML, leaving the
 //!   document untouched.
+//!   [`Document::edit`](crate::cst::Document::edit) creates an
+//!   [`EditSession`](crate::cst::EditSession) that batches independent
+//!   byte-range replacements and validates the assembled result once.
 //!
 //! - **Comments.** [`Document::comments_at`](crate::cst::Document::comments_at)
 //!   classifies the comments decorating a node into a
@@ -116,7 +119,7 @@ pub use annotated::{CommentBundle, CommentPosition};
 #[cfg_attr(docsrs, doc(cfg(feature = "validate-schema")))]
 pub use coerce::coerce_to_schema;
 pub use document::{
-    Document, RepairScope, parse_document, parse_document_with_config, parse_stream,
+    Document, EditSession, RepairScope, parse_document, parse_document_with_config, parse_stream,
     parse_stream_with_config,
 };
 pub use emit::{Emit, EmitCtx};

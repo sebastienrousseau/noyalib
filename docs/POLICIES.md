@@ -135,7 +135,7 @@ We try to avoid breakage anyway; the
 `cargo-semver-checks` CI gate catches accidental breaks. The
 `0.0.x` line is intentionally narrow: we expect to ship a
 single big-bang `0.0.1`, then iterate `0.0.2`, `0.0.3`, …
-through `0.0.99`, then graduate to `0.1.0` for the first
+through `0.0.999`, then graduate to `0.1.0` for the first
 genuinely stable release.
 
 ### Compatibility tooling
@@ -177,13 +177,13 @@ override via `ParserConfig`.
 | `max_depth` | 128 | 64 | Stack-overflow guard on deeply-nested input | `ParserConfig::max_depth(N)` |
 | `max_alias_expansions` | 1024 | 100 | Billion-laughs amplification cap | `ParserConfig::max_alias_expansions(N)` |
 | `max_document_length` | 64 MiB | 1 MiB | Per-document size cap | `ParserConfig::max_document_length(N)` |
+| `max_stream_bytes` | 256 MiB | 16 MiB | Multi-document stream size cap | `ParserConfig::max_stream_bytes(N)` |
 | `max_nodes` | 250000 | 25000 | AST node-count flood cap (empty-collection bombs) | `ParserConfig::max_nodes(N)` |
-| `max_nodes` | 250000 | 25000 | AST node-count cap (empty-collection bombs) | `ParserConfig::max_nodes(N)` |
 | `max_sequence_length` | 65536 | 1024 | Per-sequence item count cap | `ParserConfig::max_sequence_length(N)` |
 | `max_mapping_keys` | 65536 | 1024 | Per-mapping key count cap | `ParserConfig::max_mapping_keys(N)` |
 
 The corresponding regression tests live in
-[`tests/stress_load.rs`](../crates/noyalib/tests/suite/stress_load.rs).
+[`tests/stress_load.rs`](../crates/noyalib/tests/limits/stress_load.rs).
 
 #### v0.0.6 opt-in surface limits
 
@@ -191,16 +191,15 @@ The `recovery`, `tokio`, and `sval` modules (each behind its own
 Cargo feature) add their own DoS-resistance posture on top of
 the shared parser limits:
 
-- **`recovery::parse_lenient`** caps the `---`-marker scan at
+- **`recovery::parse_lenient`** rejects a `---`-marker scan beyond
   `ParserConfig::max_documents` to defeat marker-spam inputs,
   and caps the cumulative line-truncation-retry cost at
   `LenientConfig::truncation_event_budget` (default 1 MiB) to
   defeat O(n²) re-parse on 10k-line adversarial documents.
 - **`tokio_async::from_async_reader{,_multi}{,_with_config}`**
-  drain the reader through `AsyncReadExt::take(max_document_length)`
-  so a slow-drip producer cannot grow the in-memory buffer
-  beyond the configured limit before the parser fires its own
-  size check. A leading UTF-8 BOM is stripped so Windows-saved
+  probe one byte beyond `max_document_length` for a single document
+  or `max_stream_bytes` for a stream. Oversized input is rejected,
+  never parsed as a truncated prefix. A leading UTF-8 BOM is stripped so Windows-saved
   buffers round-trip identically to LF-on-Linux equivalents.
 - **`tokio_async::YamlDecoder`** exposes
   `max_frame_size(usize)`: when the inter-frame `BytesMut`
@@ -333,8 +332,9 @@ document.
   (`O(1)` expected), and the cumulative byte-budget for
   resolved aliases is bounded by `max_document_length` to
   defeat billion-laughs amplification.
-- **Mapping**: `IndexMap`-backed; key insertion is
-  `O(1)` amortised, ordered iteration is `O(n)`.
+- **Owned mapping**: `IndexMap`-backed with randomized hashing on hosted builds;
+  key insertion is `O(1)` amortised and ordered iteration is `O(n)`.
+  Allocation-only `no_std` targets retain deterministic Fx hashing.
 - **Path lookup** (`Document::get(path)`): `O(d + len(path))`
   worst case where `d` is path-depth (no cross-cuts).
 - **Schema validation**: `O(n × s)` where `n` = document size

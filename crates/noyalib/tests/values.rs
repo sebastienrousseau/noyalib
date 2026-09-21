@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 // Copyright (c) 2026 Noyalib. All rights reserved.
 
-//! Binary root for the remaining integration suites, grouped so they link once; see `suite/mod.rs`.
+//! Binary root for the Value tree, scalar resolution and the Serde bridge; see `values/mod.rs`.
 
 #![allow(missing_docs)]
 
-#[path = "suite/mod.rs"]
+#[path = "values/mod.rs"]
 mod cases;

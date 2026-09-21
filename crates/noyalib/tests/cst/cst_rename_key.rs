@@ -430,17 +430,11 @@ fn rename_onto_a_merge_provided_sibling_is_not_called_a_duplicate() {
 }
 
 #[test]
-fn rename_on_a_document_left_unparseable_errors_instead_of_panicking() {
-    // `set` commits its local repair optimistically, so `[` leaves
-    // the document structurally broken (see `Document::validate`).
-    // `rename_key` must report that as an error — it returns
-    // `Result` and documents no panics.
+fn rename_after_a_rejected_invalid_edit_remains_available() {
     let mut doc = parse_document("name: foo\n").unwrap();
-    doc.set("name", "[").unwrap();
-    let err = doc.rename_key("name", "x").unwrap_err();
-    let msg = err.to_string();
-    assert!(msg.contains("does not parse"), "got: {msg}");
-    assert!(msg.contains("left unchanged"), "got: {msg}");
+    assert!(doc.set("name", "[").is_err());
+    doc.rename_key("name", "x").unwrap();
+    assert_eq!(doc.to_string(), "x: foo\n");
 }
 
 #[test]

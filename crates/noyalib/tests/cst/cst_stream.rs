@@ -3,7 +3,7 @@
 
 //! Multi-document splitting for `parse_stream`.
 
-use noyalib::cst::{Document, parse_stream, parse_stream_with_config};
+use noyalib::cst::{Document, parse_document, parse_stream, parse_stream_with_config};
 use noyalib::{Error, ParserConfig, Value, load_all_as};
 
 fn join_sources(docs: &[Document]) -> String {
@@ -24,6 +24,12 @@ fn single_explicit_doc() {
     let docs = parse_stream(src).unwrap();
     assert_eq!(docs.len(), 1);
     assert_eq!(docs[0].source(), src);
+}
+
+#[test]
+fn single_document_entry_point_rejects_a_stream() {
+    let error = parse_document("a: 1\n---\nb: 2\n").unwrap_err();
+    assert!(matches!(error, Error::MoreThanOneDocument));
 }
 
 #[test]

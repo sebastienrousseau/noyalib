@@ -44,7 +44,7 @@ unchanged.
 | **API / functionality** | 9 | 488 public fns; lossless CST editors incl. `set`/`insert`/`remove`/`rename_key`/`rename_anchor`/`swap_items`/`move_item`/`set_comment`/`remove_comment`; streaming; async | #221 **closed** in v0.0.23 — flow-member and sole-entry removal completed sub-ask 4; sub-ask 5 was resolved in v0.0.21 by a structural oracle rather than auto-quoting |
 | **Correctness / testing** | 9.5 | 161 test files, 5 961 tests, coverage gate (95 fn / 94 line / 93 region), Miri, differential fuzz vs saphyr | Fuzz is a PR smoke, not continuous; no structured fuzzers for the *editors*; property-test breadth uneven |
 | **Performance** | 9 | 16 benches, SIMD, `fast-int`/`fast-float`, `parallel` | No published numbers; no CI regression gate; no criterion baselines |
-| **Security / supply-chain** | 9 | cargo-vet, cargo-deny, cargo-audit, CodeQL, OSSF scorecard, REUSE 850/850, `unsafe` forbidden except `simd`; schema-validator hardening pinned by test (v0.0.21); SLSA L3 attestation + keyless sigstore in release.yml; `build.rs` contract CI-enforced (`build-script-contract`); CycloneDX SBOM signed + attested per release (v0.0.29); weekly `cargo hack --feature-powerset --depth 2` sweep (v0.0.29, found the `ariadne`-without-`std` break on day one) | No OpenSSF badge; the schema validator's recursion bound is the `jsonschema` crate's fixed 129 (pinned by test, not caller-configurable — upstream limitation; parser/serializer `max_depth` ARE caller-configurable). Earlier revisions of this row claimed no SBOM, no SLSA, unaudited `build.rs`, and an unconfigurable depth bound generally — all four were stale. |
+| **Security / supply-chain** | 9 | cargo-vet, cargo-deny, cargo-audit, CodeQL, OSSF scorecard, REUSE 850/850, `unsafe` forbidden except `simd`; schema-validator hardening pinned by test (v0.0.21); SLSA Build L2 attestation + keyless sigstore in release.yml; `build.rs` contract CI-enforced (`build-script-contract`); CycloneDX SBOM signed + attested per release (v0.0.29); weekly `cargo hack --feature-powerset --depth 2` sweep (v0.0.29, found the `ariadne`-without-`std` break on day one) | No OpenSSF badge; the schema validator's recursion bound is the `jsonschema` crate's fixed 129 (pinned by test, not caller-configurable — upstream limitation; parser/serializer `max_depth` ARE caller-configurable). Earlier revisions of this row claimed no SBOM, no SLSA, unaudited `build.rs`, and an unconfigurable depth bound generally — all four were stale. |
 | **Documentation** | 9 | rustdoc-strict + broken-intra-doc-link gate, `USER-GUIDE.md`, ADRs, 79 examples | No docs.rs feature-matrix proof; no cookbook; no competitive comparison page |
 | **no_std / portability** | **10** | `no_std`+alloc; wasm32 and bare-metal `thumbv7em` / `riscv32imac` / `aarch64-unknown-none` build (v0.0.20) **and are gated in CI** (v0.0.21) | — |
 | **DX / ergonomics** | 8.5 | miette/ariadne diagnostics, typed path API, recovery | No derive helpers/builders; fix-hints not uniform across the error taxonomy |
@@ -218,8 +218,8 @@ VEX are what auditors now ask for.
 - **E1. Per-release SBOM** — CycloneDX *and* SPDX (`cargo-cyclonedx` /
   `cargo-sbom`) as release assets. S · low · **security**
 - **E2. SLSA build provenance** — GitHub's `attest-build-provenance` reaches
-  SLSA Build L2 directly and **L3 via reusable workflows**, which this repo
-  already uses throughout. Attest the release artifacts and the SBOM
+  SLSA Build L2. Reaching L3 requires a hardened, isolated builder, which this repo
+  does not yet use. Attest the release artifacts and the SBOM
   predicate. S–M · low · **security, governance**
 - **E3. VEX statements** — publish exploitability assessments for advisories
   that cannot be fixed upstream. The fleet has a live example: an advisory

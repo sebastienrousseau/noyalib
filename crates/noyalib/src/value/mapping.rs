@@ -15,6 +15,14 @@ use indexmap::map::{IntoIter, Iter, IterMut, Keys, Values, ValuesMut};
 /// Fast IndexMap using FxBuildHasher.
 type FxIndexMap<K, V> = IndexMap<K, V, FxBuildHasher>;
 
+/// Hosted builds use a randomized hasher for mappings populated from
+/// untrusted YAML. Bare-metal builds retain the deterministic Fx hasher
+/// because `RandomState` requires the standard library.
+#[cfg(feature = "std")]
+type ValueIndexMap<K, V> = IndexMap<K, V>;
+#[cfg(not(feature = "std"))]
+type ValueIndexMap<K, V> = FxIndexMap<K, V>;
+
 /// A YAML mapping (dictionary/object).
 ///
 /// This is an ordered map that preserves insertion order, wrapping
@@ -34,7 +42,7 @@ type FxIndexMap<K, V> = IndexMap<K, V, FxBuildHasher>;
 /// assert_eq!(map.get("name").unwrap().as_str(), Some("test"));
 /// ```
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
-pub struct Mapping(FxIndexMap<String, Value>);
+pub struct Mapping(ValueIndexMap<String, Value>);
 
 impl Mapping {
     /// Creates an empty mapping.
@@ -48,7 +56,7 @@ impl Mapping {
     /// ```
     #[must_use]
     pub fn new() -> Self {
-        Self(FxIndexMap::default())
+        Self(ValueIndexMap::default())
     }
 
     /// Creates an empty mapping with the specified capacity.
@@ -65,10 +73,17 @@ impl Mapping {
     /// ```
     #[must_use]
     pub fn with_capacity(capacity: usize) -> Self {
-        Self(FxIndexMap::with_capacity_and_hasher(
-            capacity,
-            FxBuildHasher,
-        ))
+        #[cfg(feature = "std")]
+        {
+            Self(ValueIndexMap::with_capacity(capacity))
+        }
+        #[cfg(not(feature = "std"))]
+        {
+            Self(ValueIndexMap::with_capacity_and_hasher(
+                capacity,
+                FxBuildHasher,
+            ))
+        }
     }
 
     /// Returns the number of key-value pairs the mapping can hold without
@@ -726,17 +741,17 @@ impl<'a> IntoIterator for &'a mut Mapping {
 
 impl FromIterator<(String, Value)> for Mapping {
     fn from_iter<I: IntoIterator<Item = (String, Value)>>(iter: I) -> Self {
-        Self(FxIndexMap::from_iter(iter))
+        Self(ValueIndexMap::from_iter(iter))
     }
 }
 
 impl<const N: usize> From<[(String, Value); N]> for Mapping {
     fn from(arr: [(String, Value); N]) -> Self {
-        let mut map = FxIndexMap::with_capacity_and_hasher(N, FxBuildHasher);
+        let mut map = Self::with_capacity(N);
         for (k, v) in arr {
-            let _ = map.insert(k, v);
+            let _ = map.0.insert(k, v);
         }
-        Self(map)
+        map
     }
 }
 
@@ -751,7 +766,7 @@ impl From<IndexMap<String, Value>> for Mapping {
 
 impl From<FxIndexMap<String, Value>> for Mapping {
     fn from(map: FxIndexMap<String, Value>) -> Self {
-        Self(map)
+        Self(map.into_iter().collect())
     }
 }
 
@@ -767,7 +782,7 @@ impl From<Mapping> for IndexMap<String, Value> {
 
 impl From<Mapping> for FxIndexMap<String, Value> {
     fn from(map: Mapping) -> Self {
-        map.0
+        map.0.into_iter().collect()
     }
 }
 
@@ -899,22 +914,29 @@ impl<'de> serde_core::Deserialize<'de> for Mapping {
 /// [1, 2]: nested key
 /// ```
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
-pub struct MappingAny(FxIndexMap<Value, Value>);
+pub struct MappingAny(ValueIndexMap<Value, Value>);
 
 impl MappingAny {
     /// Creates an empty mapping.
     #[must_use]
     pub fn new() -> Self {
-        Self(FxIndexMap::default())
+        Self(ValueIndexMap::default())
     }
 
     /// Creates an empty mapping with the specified capacity.
     #[must_use]
     pub fn with_capacity(capacity: usize) -> Self {
-        Self(FxIndexMap::with_capacity_and_hasher(
-            capacity,
-            FxBuildHasher,
-        ))
+        #[cfg(feature = "std")]
+        {
+            Self(ValueIndexMap::with_capacity(capacity))
+        }
+        #[cfg(not(feature = "std"))]
+        {
+            Self(ValueIndexMap::with_capacity_and_hasher(
+                capacity,
+                FxBuildHasher,
+            ))
+        }
     }
 
     /// Returns the number of key-value pairs the mapping can hold without
@@ -1214,11 +1236,11 @@ impl FromIterator<(Value, Value)> for MappingAny {
 
 impl<const N: usize> From<[(Value, Value); N]> for MappingAny {
     fn from(arr: [(Value, Value); N]) -> Self {
-        let mut map = FxIndexMap::with_capacity_and_hasher(N, FxBuildHasher);
+        let mut map = Self::with_capacity(N);
         for (k, v) in arr {
-            let _ = map.insert(k, v);
+            let _ = map.0.insert(k, v);
         }
-        Self(map)
+        map
     }
 }
 
@@ -1233,7 +1255,7 @@ impl From<IndexMap<Value, Value>> for MappingAny {
 
 impl From<FxIndexMap<Value, Value>> for MappingAny {
     fn from(map: FxIndexMap<Value, Value>) -> Self {
-        Self(map)
+        Self(map.into_iter().collect())
     }
 }
 
@@ -1249,7 +1271,7 @@ impl From<MappingAny> for IndexMap<Value, Value> {
 
 impl From<MappingAny> for FxIndexMap<Value, Value> {
     fn from(map: MappingAny) -> Self {
-        map.0
+        map.0.into_iter().collect()
     }
 }
 

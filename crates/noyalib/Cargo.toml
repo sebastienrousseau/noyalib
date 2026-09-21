@@ -1,6 +1,6 @@
 [package]
 name = "noyalib"
-version = "0.0.45"
+version = "0.0.46"
 edition = "2024"
 rust-version = "1.86.0"
 license = "MIT OR Apache-2.0"
@@ -184,6 +184,12 @@ tokio = { version = "1", optional = true, default-features = false, features = [
 tokio-util = { version = "0.7", optional = true, default-features = false, features = ["codec"] }
 bytes = { version = "1", optional = true, default-features = false }
 
+[target.'cfg(unix)'.dependencies]
+# Safe directory-relative opens for `SafeFileResolver`. rustix is already in
+# the audited workspace graph; keeping it target-specific preserves Windows
+# builds and the alloc-only dependency surface.
+rustix = { version = "1.1.4", optional = true, features = ["fs"] }
+
 [dev-dependencies]
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
@@ -348,7 +354,7 @@ lossless-float = []
 include = []
 # Filesystem-backed `crate::include::SafeFileResolver` (root
 # sandbox, symlink policy). Implies `include` + `std`.
-include_fs = ["include", "std"]
+include_fs = ["include", "std", "dep:rustix"]
 garde = ["dep:garde"]
 validator = ["dep:validator"]
 wasm-opt = []
@@ -427,10 +433,11 @@ recovery = ["std"]
 #   - `parallel::values(&str) -> Result<Vec<Value>>` — dynamic-tree variant.
 #   - `parallel::split(&str) -> Vec<&str>` — exposed boundary scanner
 #     for callers driving their own concurrency primitives.
-# All three pre-scan `---` document boundaries on a single thread
-# then deserialise each document in parallel via Rayon's global
-# thread pool. Off by default to keep the runtime dep list lean
-# for users that only parse single-document inputs.
+# Parsing validates the document budget without retaining offsets,
+# then discovers `---` boundaries on demand. Rayon's worker count
+# bounds in-flight deserialisation, and callers can select a pool
+# with `ThreadPool::install`. Off by default to keep the runtime dep
+# list lean for users that only parse single-document inputs.
 parallel = ["dep:rayon", "std"]
 # Portable-SIMD (`std::simd`) structural scanner. Builds a 16/32/
 # 64-byte-wide `SimdScanner` that finds any byte in a needle set
