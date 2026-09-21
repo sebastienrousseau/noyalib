@@ -12,6 +12,7 @@ mod competitive_features_full;
 mod competitor_bugs;
 mod feature_matrix;
 mod fmt;
+#[cfg(feature = "strict-deserialise")]
 mod issue_239;
 mod issue_46;
 mod key_collision_streaming;

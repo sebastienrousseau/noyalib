@@ -91,6 +91,21 @@ cmdfix '# t\n\n```sh\n# cargo will fetch the index first\ncargo build\n```\n'
 if ./scripts/check-documented-commands.sh >/dev/null 2>&1; then ok; else bad "command gate read a shell comment as an instruction"; fi
 cmdclean
 
+# ── feature-powerset hosted-target contract ───────────────────────
+# Integration tests, examples and benches use the documented default
+# surface. The isolated library-only sweep lives in ci.yml; omitting
+# this baseline makes the weekly all-target sweep compile hosted tests
+# as if they were alloc-only consumers and fail before testing a single
+# optional feature.
+hosted_target_step=$(sed -n \
+    '/name: Check hosted targets with each optional feature/,/exclude-features/p' \
+    .github/workflows/feature-powerset.yml)
+if grep -q -- '--each-feature --features default --all-targets' <<<"$hosted_target_step"; then
+    ok
+else
+    bad "hosted target sweep must retain the default feature baseline"
+fi
+
 # ── every gate script is exercised above ───────────────────────────
 # Without this, a new `scripts/check-*.sh` joins the release path with
 # no self-test and nobody notices — which is how three of the five got
