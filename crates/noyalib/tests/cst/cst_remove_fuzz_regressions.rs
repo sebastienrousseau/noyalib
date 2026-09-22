@@ -75,6 +75,32 @@ fn removing_the_last_entry_yields_an_empty_flow_mapping() {
     assert!(m.is_empty(), "the mapping should be empty, got {m:?}");
 }
 
+/// Removing a winning duplicate can reveal a larger shadowed value.
+///
+/// The last `:` key resolves to null. Once it is removed, the earlier
+/// `:` key becomes visible and owns a sequence, so the parsed node count
+/// grows even though the source lost exactly one entry.
+#[test]
+fn removing_a_duplicate_key_can_reveal_a_larger_value() {
+    let source = "::\n- <:\n\n-:- < < <:\n::\n-:\n ";
+    let mut doc = parse_document(source).expect("source parses");
+
+    doc.remove(":").expect("remove is accepted");
+
+    assert_eq!(
+        doc.source(),
+        "::\n- <:\n\n-:- < < <:\n-:\n ",
+        "remove should drop only the last `:` entry"
+    );
+
+    let after = noyalib::from_str::<Value>(doc.source()).expect("still parses");
+    let revealed = after.get(":").expect("the earlier duplicate is visible");
+    let Value::Sequence(items) = revealed else {
+        panic!("expected the shadowed sequence, got {revealed:?}");
+    };
+    assert_eq!(items.len(), 1);
+}
+
 /// A refused removal must leave the document byte-identical.
 #[test]
 fn a_refused_remove_leaves_the_source_untouched() {
