@@ -74,6 +74,8 @@ use crate::ParserConfig;
 use crate::error::Result;
 use rayon::prelude::*;
 
+pub use rayon::{ThreadPool, ThreadPoolBuilder};
+
 /// Deserialise every YAML document in `input` into `T`, parsing
 /// in parallel via Rayon's global thread pool.
 ///
@@ -174,7 +176,7 @@ where
 ///
 /// This is the bounded-concurrency entry point for services that must not use
 /// Rayon's global pool. The caller controls the worker count, thread names,
-/// stack size, and lifecycle through [`rayon::ThreadPoolBuilder`]. Small
+/// stack size, and lifecycle through [`ThreadPoolBuilder`]. Small
 /// streams still use the same sequential fast path as [`parse_with_config`].
 ///
 /// # Errors
@@ -184,7 +186,7 @@ where
 /// # Examples
 ///
 /// ```
-/// let pool = rayon::ThreadPoolBuilder::new()
+/// let pool = noyalib::parallel::ThreadPoolBuilder::new()
 ///     .num_threads(2)
 ///     .build()
 ///     .unwrap();
@@ -200,7 +202,7 @@ where
 pub fn parse_with_config_in_pool<T>(
     input: &str,
     config: &ParserConfig,
-    pool: &rayon::ThreadPool,
+    pool: &ThreadPool,
 ) -> Result<Vec<T>>
 where
     T: serde_core::de::DeserializeOwned + Send + 'static,
@@ -243,7 +245,7 @@ pub fn values_with_config(input: &str, config: &ParserConfig) -> Result<Vec<crat
 pub fn values_with_config_in_pool(
     input: &str,
     config: &ParserConfig,
-    pool: &rayon::ThreadPool,
+    pool: &ThreadPool,
 ) -> Result<Vec<crate::Value>> {
     parse_with_config_in_pool::<crate::Value>(input, config, pool)
 }
@@ -502,10 +504,7 @@ mod tests {
         }
 
         OBSERVED_POOL_WIDTH.store(0, Ordering::Relaxed);
-        let pool = rayon::ThreadPoolBuilder::new()
-            .num_threads(2)
-            .build()
-            .unwrap();
+        let pool = ThreadPoolBuilder::new().num_threads(2).build().unwrap();
         let yaml = "---\nid: 1\n---\nid: 2\n---\nid: 3\n---\nid: 4\n";
         let docs =
             parse_with_config_in_pool::<ObservedValue>(yaml, &ParserConfig::default(), &pool)

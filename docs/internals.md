@@ -77,7 +77,7 @@ likely to cost something. The `benches/` directory measures them.
 | `interner.rs` | 318 | Key interning for memory-efficient repeated-key workloads. |
 | `lossless_float.rs` | 180 | A float that refuses to silently lose information. |
 | `macros.rs` | 99 | Declarative builders for the public config types. |
-| `parallel.rs` | 517 | Parallel multi-document YAML parsing — the "MapReduce" path. |
+| `parallel.rs` | 516 | Parallel multi-document YAML parsing — the "MapReduce" path. |
 | `parser/budget.rs` | 253 | The resource budgets the loaders enforce, as pure predicates. |
 | `parser/events.rs` | 789 | YAML 1.2 event-based parser. |
 | `parser/loader.rs` | 2515 | Event-to-Value tree builder with security limits. |

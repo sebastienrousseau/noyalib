@@ -530,14 +530,15 @@ caller-owned pool instead of using Rayon's global pool:
 
 ```rust
 # let stream = "---\na: 1\n---\na: 2\n---\na: 3\n---\na: 4\n";
-let pool = rayon::ThreadPoolBuilder::new().num_threads(2).build()?;
+let pool = noyalib::parallel::ThreadPoolBuilder::new()
+    .num_threads(2)
+    .build()?;
 let docs = noyalib::parallel::parse_with_config_in_pool::<noyalib::Value>(
     stream,
     &noyalib::ParserConfig::default(),
     &pool,
 )?;
 # assert_eq!(docs.len(), 4);
-# Ok::<(), Box<dyn std::error::Error>>(())
 ```
 
 The pool owns the concurrency limit and lifecycle. Inputs with fewer than four
