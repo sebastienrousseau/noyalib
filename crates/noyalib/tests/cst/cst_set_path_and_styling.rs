@@ -15,8 +15,8 @@
 
 #![allow(missing_docs, clippy::unwrap_used, clippy::expect_used)]
 
-use noyalib::Value;
 use noyalib::cst::parse_document;
+use noyalib::{QueryPath, Value};
 
 // ── set_path ────────────────────────────────────────────────────
 
@@ -138,6 +138,27 @@ fn set_path_on_an_existing_path_sets_the_value() {
         Some(9)
     );
     assert_eq!(v.get("z").and_then(Value::as_i64), Some(2));
+}
+
+/// A validated path can be reused for CST mutation without reparsing
+/// untrusted input at each call site.
+#[test]
+fn set_query_path_creates_and_updates_entries() {
+    let path: QueryPath = "menu.visible".parse().expect("valid path");
+    let mut doc = parse_document("title: x\n").expect("parse");
+    doc.set_query_path(&path, &Value::Bool(true))
+        .expect("create typed path");
+    assert_eq!(
+        doc.as_value().get_query_path(&path),
+        Some(&Value::Bool(true))
+    );
+
+    doc.set_query_path(&path, &Value::Bool(false))
+        .expect("update typed path");
+    assert_eq!(
+        doc.as_value().get_query_path(&path),
+        Some(&Value::Bool(false))
+    );
 }
 
 // ── neighbour-copied styling ────────────────────────────────────

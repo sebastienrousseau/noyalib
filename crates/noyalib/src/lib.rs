@@ -673,7 +673,7 @@ pub use document::{load_all, load_all_as, load_all_with_config, try_load_all};
 pub use error::{BudgetBreach, CroppedRegion, Error, ErrorKind, Location, RenderOptions, Result};
 pub use flattened::Flattened;
 pub use fmt::{Commented, FlowMap, FlowSeq, FoldStr, FoldString, LitStr, LitString, SpaceAfter};
-pub use path::Path;
+pub use path::{Path, PathError, PathErrorKind, QueryPath, QuerySegment};
 pub use schema::{
     is_yaml_failsafe_compatible, is_yaml_json_compatible, validate_yaml_core_schema,
     validate_yaml_failsafe_schema, validate_yaml_json_schema,

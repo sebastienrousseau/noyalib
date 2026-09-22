@@ -5,6 +5,20 @@ All notable changes to this project are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.0.48] - 2026-09-22
+
+### Changed
+
+- Advanced the core release surfaces to the next incremental roadmap version.
+
+### Added
+
+- Added public, reusable `QueryPath` parsing with typed error categories,
+  canonical formatting, owned and borrowed value lookups, and strict CST
+  mutation support.
+- Added property and fuzz coverage for arbitrary query-path grammar input and
+  canonical display/parse round trips.
+
 ## [v0.0.47] - 2026-09-21
 
 ### Fixed

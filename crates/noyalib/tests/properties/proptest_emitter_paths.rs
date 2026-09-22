@@ -11,7 +11,7 @@
 
 #![allow(clippy::unwrap_used, missing_docs)]
 
-use noyalib::{Mapping, Value, from_str, path, to_string};
+use noyalib::{Mapping, QueryPath, Value, from_str, path, to_string};
 use proptest::prelude::*;
 
 /// Strings drawn from the alphabet that drives every block-scalar
@@ -122,5 +122,9 @@ proptest! {
         prop_assert_eq!(v.get_path(&p), Some(&leaf), "push_key path {:?}", p);
         let joined = path::join_keys([k.as_str(), inner.as_str()]);
         prop_assert_eq!(v.get_path(&joined), Some(&leaf), "join_keys path {:?}", joined);
+        let typed: QueryPath = joined.parse().unwrap();
+        prop_assert_eq!(v.get_query_path(&typed), Some(&leaf));
+        let canonical = typed.to_string();
+        prop_assert_eq!(canonical.parse::<QueryPath>().unwrap(), typed);
     }
 }
