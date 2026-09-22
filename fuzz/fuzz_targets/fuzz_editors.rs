@@ -27,9 +27,9 @@
 //!    *means*, that is a bug by definition. This gives the comment
 //!    mutators a total invariant, which the enumerated tests cannot.
 //!
-//! 4. **An accepted `remove` removes exactly one path.** The typed
-//!    oracle inside `remove` already claims this; asserting it here
-//!    tests the oracle rather than trusting it.
+//! 4. **An accepted `remove` changes the source.** Parsed node counts
+//!    are not monotonic when duplicate keys are present: removing the
+//!    winning occurrence can reveal a larger shadowed value.
 
 // SPDX-License-Identifier: MIT OR Apache-2.0
 // Copyright (c) 2026 Noyalib. All rights reserved.
@@ -151,8 +151,8 @@ fuzz_target!(|case: Case| {
         return;
     }
 
-    // ── Invariant 4: an accepted remove drops exactly one path ──────
-    if let (Some(path), Some(before)) = (removed_path, before_val) {
+    // ── Invariant 4: an accepted remove changes the source ──────────
+    if let Some(path) = removed_path {
         // An accepted remove must have changed the source.
         //
         // Two things this deliberately does NOT assert, both of which
@@ -181,24 +181,10 @@ fuzz_target!(|case: Case| {
             "remove({path:?}) reported success but left the source unchanged"
         );
 
-        // The value must never *grow*. A removal that took a parent
-        // with it — the v0.0.21 flow bug — still shows up here as a
-        // large drop, and this direction stays sound under duplicate
-        // keys.
-        let before_n = count_nodes(&before);
-        let after_n = count_nodes(&after_value);
-        assert!(
-            after_n <= before_n,
-            "remove({path:?}) grew the document: {before_n} -> {after_n}"
-        );
+        // Do not compare parsed node counts here. With duplicate keys,
+        // removing the winning occurrence can reveal an earlier value
+        // containing more nodes. The normal regression suite pins that
+        // counterexample and the mutator's typed oracle protects all
+        // non-fast-path edits from changing unrelated data.
     }
 });
-
-/// Total nodes in a value tree, counting containers and scalars alike.
-fn count_nodes(v: &Value) -> usize {
-    match v {
-        Value::Mapping(m) => 1 + m.values().map(count_nodes).sum::<usize>(),
-        Value::Sequence(s) => 1 + s.iter().map(count_nodes).sum::<usize>(),
-        _ => 1,
-    }
-}

@@ -77,7 +77,7 @@ the template migration does not discard documentation.
 
 ```toml
 [dependencies]
-noyalib = "0.0.48"
+noyalib = "0.0.49"
 ```
 
 ### As a CLI tool
@@ -115,7 +115,7 @@ maintainer runbook.
 
 ```toml
 [dependencies]
-noyalib = { version = "0.0.48", default-features = false }
+noyalib = { version = "0.0.49", default-features = false }
 ```
 
 Requires `alloc`. Core data binding (`from_str`, `to_string`, `Value`,
@@ -150,7 +150,7 @@ the application needs.
 | `garde` | `garde` 0.23 | `Validated<T>` wrapper | `examples/validation_garde.rs` |
 | `validator` | `validator` 0.21 | `ValidatedValidator<T>` wrapper | `examples/validation_validator.rs` |
 | `lossless-float` | — | `LosslessFloat` — refuse-to-lose-precision float, the floating-point sibling of `lossless-u64` | — |
-| `parallel` | `rayon` 1.10 | `noyalib::parallel::parse<T>` and `parse_with_config<T>` for `---`-separated streams | [Benchmarks](#benchmarks) |
+| `parallel` | `rayon` 1.10 | `parallel::parse<T>`, `parse_with_config<T>`, and `parse_with_config_in_pool<T>` for bounded `---`-separated streams | [Benchmarks](#benchmarks) |
 | `recovery` | — | `noyalib::recovery::parse_lenient` — best-effort tree + error list for LSP / IDE half-typed documents | `examples/recovery_lenient.rs`, `benches/v006_features.rs` |
 | `arbitrary` | `arbitrary` 1 | `arbitrary::Arbitrary` for `Value`, `Number`, `Tag`, `TaggedValue`, `Mapping`: structure-aware fuzz targets and property tests build valid trees from one generator | `fuzz/fuzz_targets/fuzz_value_roundtrip.rs` |
 | `sval` | `sval` 2 | `impl sval::Value` for `Value` / `Number` / `Mapping` / `MappingAny` / `TaggedValue`, `noyalib::sval_adapter::to_sval_writer` | `examples/sval_streaming.rs`, `benches/v006_features.rs` |
@@ -166,7 +166,7 @@ the application needs.
 ```toml
 # Example: rich diagnostics + schema validation
 [dependencies]
-noyalib = { version = "0.0.48", features = ["miette", "validate-schema"] }
+noyalib = { version = "0.0.49", features = ["miette", "validate-schema"] }
 ```
 
 **Optional features:** `lossless-u64` preserves YAML integer scalars above
@@ -300,7 +300,7 @@ npm install @sebastienrousseau/noyalib-wasm
 
 ```toml
 # serde_yaml drop-in — the whole migration is this one line:
-serde_yaml = { package = "noyalib-serde-yaml", version = "=0.0.48" }
+serde_yaml = { package = "noyalib-serde-yaml", version = "=0.0.49" }
 ```
 
 Per-crate READMEs cover the surface specific to each artifact:
@@ -365,7 +365,7 @@ lines**:
 
 ```toml
 [dependencies]
-serde_yaml = { package = "noyalib-serde-yaml", version = "=0.0.48" }
+serde_yaml = { package = "noyalib-serde-yaml", version = "=0.0.49" }
 ```
 
 [`noyalib-serde-yaml`](https://github.com/sebastienrousseau/noyalib-serde-yaml)
@@ -398,7 +398,7 @@ and `yaml-spanned` with verified function tables for each.
 -[dependencies]
 -serde_yaml = "0.9"
 +[dependencies]
-+noyalib = "0.0.48"
++noyalib = "0.0.49"
 ```
 
 ```diff
@@ -678,7 +678,7 @@ stack, etc.) live in
 | **Binary scalars** | First-class `!!binary` tag with RFC 4648 base64 round-trip. `serde_bytes::ByteBuf` / `Bytes` work end-to-end including non-UTF-8 payloads. |
 | **`serde_yaml` shim** | `compat-serde-yaml` feature: name-for-name re-exports backed by noyalib-native types — **the unmaintained `serde_yaml` 0.9 crate is intentionally not a dependency**. Migrating in-flight `::serde_yaml::Value` from un-migrated modules flows through the Serde bridge: `noyalib::to_value(&upstream)?`. |
 | **SIMD primitives** | `noyalib::simd::find_any_of` / `clean_prefix_len` / `SimdScanner` / `StructuralIter` / `ByteBitmap` / `parse_decimal_{u64,i64}`. Parser hot path routes through them for free; public for downstream scanner authors. **`StructuralIter`** delivers 4.2× stable / 9.2× nightly-simd vs the memchr loop on 1 MiB workloads. |
-| **Parallel parsing** | `parallel` feature: `noyalib::parallel::parse<T>`, `parse_with_config<T>`, and their dynamic-value variants deserialise multi-document streams across the Rayon thread pool. The bounded pre-scan is `O(input_len)`; small streams stay sequential and larger per-document work parallelises naturally. |
+| **Parallel parsing** | `parallel` feature: `parallel::parse<T>`, `parse_with_config<T>`, `parse_with_config_in_pool<T>`, and their dynamic-value variants deserialise multi-document streams across the global or a caller-owned Rayon pool. The bounded pre-scan is `O(input_len)`; small streams stay sequential and larger per-document work parallelises naturally. |
 | **Pluggable policies** | `noyalib::policy::Policy` trait + `ParserConfig::with_policy(p)`. Built-ins: `DenyAnchors` (rejects `&name` / `*name` — billion-laughs guard), `DenyTags` (rejects custom tags), `MaxScalarLength(n)` (caps individual scalar size). Custom policies implement the trait. |
 | **Schema autofix** | `validate-schema` feature: `coerce_to_schema(value, schema) -> Result<usize>` walks JSON Schema type-mismatch errors and rewrites string-shaped scalars into the schema's expected type when the parse succeeds. Solves the `port: "8080"` quoting slip-up automatically. Library engine behind `noyavalidate --fix`. |
 | **Key interner** | `noyalib::interner::KeyInterner` — `&str → Arc<str>` deduplication for repeated-key workloads. Kubernetes-shaped streams with 20-byte keys × 10 000 records: footprint drops from ~200 KB of fresh allocations to ~20 B + Arc pointers. |
@@ -1405,7 +1405,7 @@ disagreement on priorities.
 - **You have a hard dependency budget that cannot tolerate a
   Grisu / Ryu float formatter and a hash-randomised lookup
   table.** Default profile carries 8 runtime deps. `noyalib =
-  { version = "0.0.48", default-features = false, features =
+  { version = "0.0.49", default-features = false, features =
   ["std"] }` (or the equivalent `features = ["minimal"]`) drops
   to 5 — `itoa`, `ryu`, and `serde_ignored` become opt-in via
   the `fast-int` / `fast-float` / `strict-deserialise` features.

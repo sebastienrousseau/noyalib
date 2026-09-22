@@ -42,7 +42,7 @@ likely to cost something. The `benches/` directory measures them.
 | `anchors.rs` | 1151 | Smart pointer anchor types for shared/DAG structures. |
 | `ariadne_adapter.rs` | 99 | [`ariadne`] adapter for [`crate::Error`]. |
 | `base64.rs` | 262 | Internal base64 codec for `!!binary` scalars (YAML 1.2.2 §10.4). |
-| `borrowed.rs` | 869 | Zero-copy YAML values that borrow strings from the input. |
+| `borrowed.rs` | 905 | Zero-copy YAML values that borrow strings from the input. |
 | `comments.rs` | 245 | Comment capture on the parse path. |
 | `compat/mod.rs` | 19 | Compatibility shims for downstream crates migrating to `noyalib`. |
 | `compat/serde_yaml.rs` | 920 | Drop-in API surface compatible with `serde_yaml` 0.9. |
@@ -54,7 +54,7 @@ likely to cost something. The `benches/` directory measures them.
 | `cst/document/path.rs` | 406 | Green-tree path resolution without typed-cache materialization. |
 | `cst/document/transaction.rs` | 152 | Atomic batches of byte-range CST edits. |
 | `cst/document/validation.rs` | 86 | Typed-cache validation and atomic document-state replacement. |
-| `cst/document.rs` | 6942 | Public `Document` handle and parse / mutation entry points. |
+| `cst/document.rs` | 6952 | Public `Document` handle and parse / mutation entry points. |
 | `cst/emit.rs` | 463 | Auto-formatting for values spliced by the CST insertion mutators. |
 | `cst/entry.rs` | 671 | Path-shaped mutable handle to a CST node — the `Entry` "pro" |
 | `cst/format.rs` | 459 | Formatter for YAML CST. |
@@ -77,14 +77,14 @@ likely to cost something. The `benches/` directory measures them.
 | `interner.rs` | 318 | Key interning for memory-efficient repeated-key workloads. |
 | `lossless_float.rs` | 180 | A float that refuses to silently lose information. |
 | `macros.rs` | 99 | Declarative builders for the public config types. |
-| `parallel.rs` | 425 | Parallel multi-document YAML parsing — the "MapReduce" path. |
+| `parallel.rs` | 516 | Parallel multi-document YAML parsing — the "MapReduce" path. |
 | `parser/budget.rs` | 253 | The resource budgets the loaders enforce, as pure predicates. |
 | `parser/events.rs` | 789 | YAML 1.2 event-based parser. |
 | `parser/loader.rs` | 2515 | Event-to-Value tree builder with security limits. |
 | `parser/mod.rs` | 92 | Native YAML 1.2 parser. |
 | `parser/scanner/scalars.rs` | 1191 | Scalar scanning for the YAML scanner: plain, single/double-quoted |
 | `parser/scanner.rs` | 2351 | YAML 1.2 lexical scanner. |
-| `path.rs` | 914 | Path tracking for YAML structure locations. |
+| `path.rs` | 1101 | Path tracking for YAML structure locations. |
 | `policy.rs` | 271 | Pluggable parser policies for "Safe YAML" enforcement. |
 | `recovery.rs` | 621 | Error-recovering YAML parser for LSP / IDE partial parsing. |
 | `schema.rs` | 334 | YAML 1.2 schema validation helpers. |
@@ -106,7 +106,7 @@ likely to cost something. The `benches/` directory measures them.
 | `value/number.rs` | 631 | YAML number type (`Number`). |
 | `value/serde_impl.rs` | 335 | serde `Serialize`/`Deserialize` for `Value`. |
 | `value/tag.rs` | 505 | YAML tag types (`Tag`, `TaggedValue`) and tag utilities. |
-| `value.rs` | 1723 | YAML value types. |
+| `value.rs` | 1772 | YAML value types. |
 | `with/mod.rs` | 54 | Helper modules for customizing serialization and deserialization. |
 | `with/singleton_map.rs` | 212 | Serialize enums as single-entry maps. |
 | `with/singleton_map_optional.rs` | 265 | Serialize optional enums as single-entry maps. |
@@ -145,7 +145,7 @@ likely to cost something. The `benches/` directory measures them.
 | `sval` | `dep:sval` | `sval` zero-allocation streaming serialization framework adapter. Adds `impl sval::Value for Value` (and the other in-tree value types) plus a `noyalib::sval_adapter::to_sval_writer` entry point. serde remains the default; this is opt-in for callers that want to skip serde monomorphisation overhead. |
 | `arbitrary` | `dep:arbitrary`, `std` | Structure-aware fuzzing and property testing: `arbitrary::Arbitrary` for every public value type. The arbitrary crate needs std. |
 | `recovery` | `std` | Error-recovering parser for LSP / IDE partial parsing. Adds the `noyalib::recovery` module with `parse_lenient` / `parse_lenient_with` entry points returning a `ParseResult` carrying the best-effort tree plus the collected error list. Pure Rust, no extra deps — turns existing strict-parse retries into a recovery pipeline. Off by default because the strict path is what most callers want. |
-| `parallel` | `dep:rayon`, `std` | Parallel multi-document deserialisation via Rayon. Adds the `noyalib::parallel` module: - `parallel::parse<T>(&str) -> Result<Vec<T>>` — typed deserialise. - `parallel::values(&str) -> Result<Vec<Value>>` — dynamic-tree variant. - `parallel::split(&str) -> Vec<&str>` — exposed boundary scanner for callers driving their own concurrency primitives. Parsing validates the document budget without retaining offsets, then discovers `---` boundaries on demand. Rayon's worker count bounds in-flight deserialisation, and callers can select a pool with `ThreadPool::install`. Off by default to keep the runtime dep list lean for users that only parse single-document inputs. |
+| `parallel` | `dep:rayon`, `std` | Parallel multi-document deserialisation via Rayon. Adds the `noyalib::parallel` module: - `parallel::parse<T>(&str) -> Result<Vec<T>>` — typed deserialise. - `parallel::parse_with_config_in_pool<T>(...)` — bounded caller pool. - `parallel::values(&str) -> Result<Vec<Value>>` — dynamic-tree variant. - `parallel::split(&str) -> Vec<&str>` — exposed boundary scanner for callers driving their own concurrency primitives. Parsing validates the document budget without retaining offsets, then discovers `---` boundaries on demand. Rayon's worker count bounds in-flight deserialisation, and the pool-aware entry point lets services own their concurrency limit and thread lifecycle. Off by default to keep the runtime dep list lean for users that only parse single-document inputs. |
 | `nightly-simd` | `simd` | Portable-SIMD (`std::simd`) structural scanner. Builds a 16/32/ 64-byte-wide `SimdScanner` that finds any byte in a needle set in a single SIMD pass. Requires the nightly toolchain because `core::simd` is unstable (`#![feature(portable_simd)]`). On by default for nightly users who want maximum throughput; the stable `simd` feature still ships the memchr / SWAR fall-back so stable builds are not regressed. |
 
 <!-- SPDX-FileCopyrightText: 2026 Noyalib -->

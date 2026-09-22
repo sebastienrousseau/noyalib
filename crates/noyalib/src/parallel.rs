@@ -59,6 +59,8 @@
 //! - [`parse`](crate::parallel::parse) — typed deserialise into `Vec<T>`.
 //! - [`parse_with_config`](crate::parallel::parse_with_config) — the same
 //!   operation with caller-supplied limits and semantic policy.
+//! - [`parse_with_config_in_pool`](crate::parallel::parse_with_config_in_pool) —
+//!   run the configured parse in a caller-owned Rayon pool.
 //! - [`values`](crate::parallel::values) — dynamic-tree variant returning `Vec<Value>`.
 //! - [`split`](crate::parallel::split) — standalone document-boundary
 //!   pre-scanner for callers driving their own concurrency primitives.
@@ -71,6 +73,8 @@
 use crate::ParserConfig;
 use crate::error::Result;
 use rayon::prelude::*;
+
+pub use rayon::{ThreadPool, ThreadPoolBuilder};
 
 /// Deserialise every YAML document in `input` into `T`, parsing
 /// in parallel via Rayon's global thread pool.
@@ -168,6 +172,44 @@ where
     parsed.into_iter().map(|(_, result)| result).collect()
 }
 
+/// Deserialise every document using a caller-owned Rayon thread pool.
+///
+/// This is the bounded-concurrency entry point for services that must not use
+/// Rayon's global pool. The caller controls the worker count, thread names,
+/// stack size, and lifecycle through [`ThreadPoolBuilder`]. Small
+/// streams still use the same sequential fast path as [`parse_with_config`].
+///
+/// # Errors
+///
+/// Returns the first document or budget error in source order.
+///
+/// # Examples
+///
+/// ```
+/// let pool = noyalib::parallel::ThreadPoolBuilder::new()
+///     .num_threads(2)
+///     .build()
+///     .unwrap();
+/// let yaml = "---\nid: 1\n---\nid: 2\n---\nid: 3\n---\nid: 4\n";
+/// let docs = noyalib::parallel::parse_with_config_in_pool::<noyalib::Value>(
+///     yaml,
+///     &noyalib::ParserConfig::default(),
+///     &pool,
+/// )
+/// .unwrap();
+/// assert_eq!(docs.len(), 4);
+/// ```
+pub fn parse_with_config_in_pool<T>(
+    input: &str,
+    config: &ParserConfig,
+    pool: &ThreadPool,
+) -> Result<Vec<T>>
+where
+    T: serde_core::de::DeserializeOwned + Send + 'static,
+{
+    pool.install(|| parse_with_config(input, config))
+}
+
 /// Dynamic-tree variant of [`parse`]: returns a
 /// [`Vec<crate::Value>`]. Use when the caller wants to route
 /// documents to different typed handlers post-parse.
@@ -193,6 +235,19 @@ pub fn values(input: &str) -> Result<Vec<crate::Value>> {
 /// Returns the first document or budget error in source order.
 pub fn values_with_config(input: &str, config: &ParserConfig) -> Result<Vec<crate::Value>> {
     parse_with_config::<crate::Value>(input, config)
+}
+
+/// Dynamic-tree variant of [`parse_with_config_in_pool`].
+///
+/// # Errors
+///
+/// Returns the first document or budget error in source order.
+pub fn values_with_config_in_pool(
+    input: &str,
+    config: &ParserConfig,
+    pool: &ThreadPool,
+) -> Result<Vec<crate::Value>> {
+    parse_with_config_in_pool::<crate::Value>(input, config, pool)
 }
 
 /// Split `input` into per-document byte slices on YAML 1.2 `---`
@@ -421,5 +476,41 @@ mod tests {
         let parallel: Vec<Record> = parse(&yaml).unwrap();
         let sequential: Vec<Record> = crate::load_all_as(&yaml).unwrap();
         assert_eq!(parallel, sequential);
+    }
+
+    #[cfg_attr(
+        miri,
+        ignore = "rayon/crossbeam-epoch uses int-to-ptr casts unsupported under -Zmiri-strict-provenance"
+    )]
+    #[test]
+    fn configured_parse_uses_the_caller_owned_pool() {
+        use core::sync::atomic::{AtomicUsize, Ordering};
+
+        static OBSERVED_POOL_WIDTH: AtomicUsize = AtomicUsize::new(0);
+
+        #[derive(Debug)]
+        struct ObservedValue;
+
+        impl<'de> serde_core::Deserialize<'de> for ObservedValue {
+            fn deserialize<D>(deserializer: D) -> core::result::Result<Self, D::Error>
+            where
+                D: serde_core::Deserializer<'de>,
+            {
+                let _ =
+                    OBSERVED_POOL_WIDTH.fetch_max(rayon::current_num_threads(), Ordering::Relaxed);
+                let _ = <crate::Value as serde_core::Deserialize>::deserialize(deserializer)?;
+                Ok(Self)
+            }
+        }
+
+        OBSERVED_POOL_WIDTH.store(0, Ordering::Relaxed);
+        let pool = ThreadPoolBuilder::new().num_threads(2).build().unwrap();
+        let yaml = "---\nid: 1\n---\nid: 2\n---\nid: 3\n---\nid: 4\n";
+        let docs =
+            parse_with_config_in_pool::<ObservedValue>(yaml, &ParserConfig::default(), &pool)
+                .unwrap();
+
+        assert_eq!(docs.len(), 4);
+        assert_eq!(OBSERVED_POOL_WIDTH.load(Ordering::Relaxed), 2);
     }
 }

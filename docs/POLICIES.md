@@ -418,6 +418,10 @@ Per-host-triple training is required — a Mac-trained
   `noyalib::parallel::parse::<T>(input)` (gated
   behind the `parallel` feature). Each document parses on
   its own rayon job.
+- **Service-owned concurrency** uses
+  `parallel::parse_with_config_in_pool(input, config, pool)` so the caller
+  controls the worker count, thread lifecycle, names, and stack sizes without
+  touching Rayon's global pool.
 - The `Deserializer` itself is not `Sync`-after-construction
   in a useful way — there's no parallel access to a single
   document's events.
