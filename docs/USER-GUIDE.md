@@ -554,7 +554,7 @@ diagnostics list and offer autocomplete on the recoverable
 subtrees.
 
 ```rust
-// Cargo.toml: noyalib = { version = "0.0.49", features = ["recovery"] }
+// Cargo.toml: noyalib = { version = "0.0.50", features = ["recovery"] }
 use noyalib::recovery::parse_lenient;
 
 let half_typed = "name: noyalib\nfeatures: [recovery, sval\n# ^ unclosed\n";
@@ -574,23 +574,26 @@ See [`crates/noyalib/examples/recovery_lenient.rs`](../crates/noyalib/examples/r
 ## 10c. Native async parsing on tokio (`tokio` feature)
 
 For high-concurrency services parsing YAML from network sources,
-the `tokio` feature lets you skip `spawn_blocking`:
+the `tokio` feature provides bounded drain helpers and a backpressured
+document stream:
 
 ```rust,ignore
 // Needs an async runtime and, for pattern 2, `tokio-util` in *your*
 // Cargo.toml, so this block is shown rather than compiled here.
-// Cargo.toml: noyalib = { version = "0.0.49", features = ["tokio"] }
-use noyalib::tokio_async::{from_async_reader_multi, YamlDecoder};
+// Cargo.toml: noyalib = { version = "0.0.50", features = ["tokio"] }
+use noyalib::tokio_async::{async_yaml_stream, from_async_reader_multi};
 
 // Pattern 1: drain-and-parse
 let docs: Vec<MyDoc> = from_async_reader_multi(&mut reader).await?;
 
-// Pattern 2: streaming codec — for tower middleware pipelines
-let framed = tokio_util::codec::FramedRead::new(reader, YamlDecoder::<MyDoc>::new());
+// Pattern 2: backpressured stream, one parsed document per item
+let documents = async_yaml_stream::<_, MyDoc>(reader);
 ```
 
 Per-document boundaries follow the YAML 1.2.2 §9.1.2 `---`
-grammar — column-0 marker followed by whitespace or EOL.
+grammar: column-0 marker followed by whitespace or EOL. Parsing each
+complete document is synchronous when the stream is polled; the stream
+prevents additional reads until the consumer requests the next item.
 
 See [`crates/noyalib/examples/tokio_async_reader.rs`](../crates/noyalib/examples/tokio_async_reader.rs).
 
@@ -605,7 +608,7 @@ cost of serde monomorphisation. The adapter implements
 ```rust,ignore
 // `sval` and the `sval::Stream` you hand it are *your* dependencies,
 // so this block is shown rather than compiled here.
-// Cargo.toml: noyalib = { version = "0.0.49", features = ["sval"] }
+// Cargo.toml: noyalib = { version = "0.0.50", features = ["sval"] }
 let value: noyalib::Value = noyalib::from_str("name: noyalib")?;
 sval::Value::stream(&value, &mut my_stream)?;
 ```
