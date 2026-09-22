@@ -44,14 +44,14 @@
 
 ```toml
 [dependencies]
-noyalib = "0.0.48"
+noyalib = "0.0.49"
 ```
 
 `no_std` (alloc-only) builds:
 
 ```toml
 [dependencies]
-noyalib = { version = "0.0.48", default-features = false }
+noyalib = { version = "0.0.49", default-features = false }
 ```
 
 Core data binding (`from_str`, `to_string`, `Value`, schemas) and
@@ -153,7 +153,7 @@ and `thiserror` are all absent. `cargo audit`, `cargo deny`, and
 | [`cst::Document`](https://docs.rs/noyalib/latest/noyalib/cst/struct.Document.html) | Lossless CST. `doc.set("server.port", "9090")` rewrites only the touched span; comments + indentation preserved. Full guarded mutator family — `rename_key` / `rename_anchor` / `swap_items` / `move_item` and the auto-formatting `*_value` inserts via [`cst::Emit`](https://docs.rs/noyalib/latest/noyalib/cst/trait.Emit.html), each rolled back on any typed-value mismatch. |
 | [`policy::{DenyAnchors, DenyTags, MaxScalarLength}`](https://docs.rs/noyalib/latest/noyalib/policy/index.html) | Pluggable parser policies. Reject documents at parse time. |
 | [`schema_for`](https://docs.rs/noyalib/latest/noyalib/fn.schema_for.html), [`validate_against_schema`](https://docs.rs/noyalib/latest/noyalib/fn.validate_against_schema.html), [`coerce_to_schema`](https://docs.rs/noyalib/latest/noyalib/fn.coerce_to_schema.html) | JSON Schema 2020-12 codegen, validation, and schema-driven autofix. |
-| [`parallel::parse`](https://docs.rs/noyalib/latest/noyalib/parallel/fn.parse.html) | Multi-doc parse across the Rayon thread pool. Linear with cores. |
+| [`parallel::parse`](https://docs.rs/noyalib/latest/noyalib/parallel/fn.parse.html), [`parse_with_config_in_pool`](https://docs.rs/noyalib/latest/noyalib/parallel/fn.parse_with_config_in_pool.html) | Multi-doc parse across the global or a caller-owned Rayon pool. |
 | [`borrowed::from_str_borrowed`](https://docs.rs/noyalib/latest/noyalib/borrowed/fn.from_str_borrowed.html) | Zero-copy AST. Scalars borrow from input bytes (~18 % faster). |
 | [`compat::serde_yaml`](https://docs.rs/noyalib/latest/noyalib/compat/serde_yaml/index.html) | Drop-in shim — `use noyalib::compat::serde_yaml as serde_yaml`. |
 
@@ -203,7 +203,7 @@ the application needs.
 | `garde` | `garde` 0.22 | `Validated<T>` wrapper |
 | `validator` | `validator` 0.19 | `ValidatedValidator<T>` wrapper |
 | `robotics` | — | `Degrees` / `Radians` / `StrictFloat` newtypes |
-| `parallel` | `rayon` 1.10 | `noyalib::parallel::parse<T>` |
+| `parallel` | `rayon` 1.10 | `parallel::parse<T>` and `parse_with_config_in_pool<T>` |
 | `recovery` | — | `noyalib::recovery::parse_lenient` — best-effort parsing for LSP / IDE half-typed documents |
 | `sval` | `sval` 2 | `impl sval::Value` for `Value` / `Number` / `Mapping` / `MappingAny` / `TaggedValue`, `noyalib::sval_adapter::to_sval_writer` |
 | `tokio` | `tokio`, `tokio-util`, `bytes` | `noyalib::tokio_async::from_async_reader` / `from_async_reader_multi` and `YamlDecoder` codec for `tokio_util::codec::Framed` |

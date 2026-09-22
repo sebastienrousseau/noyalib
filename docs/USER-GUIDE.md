@@ -525,7 +525,23 @@ let docs: Vec<MyConfig> = noyalib::parallel::parse(stream)?;
 ```
 
 The pre-scan is `O(input_len)`; the per-document work
-parallelises across the Rayon thread pool.
+parallelises across the Rayon thread pool. Services can supply a bounded,
+caller-owned pool instead of using Rayon's global pool:
+
+```rust
+# let stream = "---\na: 1\n---\na: 2\n---\na: 3\n---\na: 4\n";
+let pool = rayon::ThreadPoolBuilder::new().num_threads(2).build()?;
+let docs = noyalib::parallel::parse_with_config_in_pool::<noyalib::Value>(
+    stream,
+    &noyalib::ParserConfig::default(),
+    &pool,
+)?;
+# assert_eq!(docs.len(), 4);
+# Ok::<(), Box<dyn std::error::Error>>(())
+```
+
+The pool owns the concurrency limit and lifecycle. Inputs with fewer than four
+documents remain sequential to avoid scheduling overhead.
 
 ## 10b. Error-recovering parser for LSP / IDE (`recovery` feature)
 
@@ -537,7 +553,7 @@ diagnostics list and offer autocomplete on the recoverable
 subtrees.
 
 ```rust
-// Cargo.toml: noyalib = { version = "0.0.48", features = ["recovery"] }
+// Cargo.toml: noyalib = { version = "0.0.49", features = ["recovery"] }
 use noyalib::recovery::parse_lenient;
 
 let half_typed = "name: noyalib\nfeatures: [recovery, sval\n# ^ unclosed\n";
@@ -562,7 +578,7 @@ the `tokio` feature lets you skip `spawn_blocking`:
 ```rust,ignore
 // Needs an async runtime and, for pattern 2, `tokio-util` in *your*
 // Cargo.toml, so this block is shown rather than compiled here.
-// Cargo.toml: noyalib = { version = "0.0.48", features = ["tokio"] }
+// Cargo.toml: noyalib = { version = "0.0.49", features = ["tokio"] }
 use noyalib::tokio_async::{from_async_reader_multi, YamlDecoder};
 
 // Pattern 1: drain-and-parse
@@ -588,7 +604,7 @@ cost of serde monomorphisation. The adapter implements
 ```rust,ignore
 // `sval` and the `sval::Stream` you hand it are *your* dependencies,
 // so this block is shown rather than compiled here.
-// Cargo.toml: noyalib = { version = "0.0.48", features = ["sval"] }
+// Cargo.toml: noyalib = { version = "0.0.49", features = ["sval"] }
 let value: noyalib::Value = noyalib::from_str("name: noyalib")?;
 sval::Value::stream(&value, &mut my_stream)?;
 ```
