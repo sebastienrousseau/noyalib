@@ -42,6 +42,168 @@ pub enum YamlVersion {
     V1_1,
 }
 
+/// Stable parser configuration presets.
+///
+/// Profiles select a complete semantic and resource-limit baseline. Use
+/// [`ParserConfig::profile`] when configuration must be named explicitly,
+/// such as at a service trust boundary. Callers can still refine individual
+/// settings with the existing builder methods.
+///
+/// # Examples
+///
+/// ```
+/// use noyalib::{ParserConfig, ParserProfile};
+///
+/// let cfg = ParserConfig::profile(ParserProfile::Strict);
+/// assert_eq!(cfg.max_depth, 64);
+/// ```
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[non_exhaustive]
+pub enum ParserProfile {
+    /// YAML 1.2 semantics with the standard resource budgets.
+    #[default]
+    Standard,
+    /// YAML 1.2 semantics with tighter budgets and validation for untrusted
+    /// input.
+    Strict,
+    /// Compatibility semantics matching `serde_yaml` 0.9.
+    ///
+    /// This profile retains the standard resource budgets. It is a migration
+    /// profile, not a hardened-input profile.
+    SerdeYaml,
+}
+
+/// Resource budgets enforced while parsing YAML.
+///
+/// This value separates denial-of-service controls from YAML semantics and
+/// post-parse integrations. Apply a complete budget set with
+/// [`ParserConfig::with_limits`], or read the active budgets with
+/// [`ParserConfig::limits`]. Existing `ParserConfig` limit fields remain
+/// public for backward compatibility.
+///
+/// # Examples
+///
+/// ```
+/// use noyalib::{ParserConfig, ParserLimits};
+///
+/// let mut limits = ParserLimits::strict();
+/// limits.max_document_length = 8 * 1024;
+/// let cfg = ParserConfig::new().with_limits(limits);
+/// assert_eq!(cfg.max_document_length, 8 * 1024);
+/// ```
+#[derive(Debug, Clone, Copy, PartialEq)]
+#[non_exhaustive]
+pub struct ParserLimits {
+    /// Maximum YAML structural recursion depth.
+    pub max_depth: usize,
+    /// Maximum bytes in one YAML document.
+    pub max_document_length: usize,
+    /// Maximum bytes in one multi-document stream.
+    pub max_stream_bytes: usize,
+    /// Maximum expansions of one anchor.
+    pub max_alias_expansions: usize,
+    /// Maximum keys in one mapping.
+    pub max_mapping_keys: usize,
+    /// Maximum elements in one sequence.
+    pub max_sequence_length: usize,
+    /// Maximum parser events across the input.
+    pub max_events: usize,
+    /// Maximum `Value` nodes across the input.
+    pub max_nodes: usize,
+    /// Maximum scalar bytes after alias expansion.
+    pub max_total_scalar_bytes: usize,
+    /// Maximum documents in one stream.
+    pub max_documents: usize,
+    /// Maximum merge-key entries across one document.
+    pub max_merge_keys: usize,
+    /// Optional maximum alias-to-anchor ratio.
+    pub alias_anchor_ratio: Option<f64>,
+    /// Optional transitive alias-expansion factor per parser event.
+    pub alias_jump_event_factor: Option<usize>,
+    /// Maximum `!include` recursion depth.
+    #[cfg(feature = "include")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "include")))]
+    pub max_include_depth: usize,
+    /// Maximum sources resolved by one include walk.
+    #[cfg(feature = "include")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "include")))]
+    pub max_include_sources: usize,
+    /// Maximum cumulative bytes returned by include resolvers.
+    #[cfg(feature = "include")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "include")))]
+    pub max_total_include_bytes: usize,
+}
+
+impl Default for ParserLimits {
+    fn default() -> Self {
+        Self {
+            max_depth: 128,
+            max_document_length: 64 * 1024 * 1024,
+            max_stream_bytes: 256 * 1024 * 1024,
+            max_alias_expansions: 1_024,
+            max_mapping_keys: 64 * 1024,
+            max_sequence_length: 64 * 1024,
+            max_events: 1_000_000,
+            max_nodes: 250_000,
+            max_total_scalar_bytes: 64 * 1024 * 1024,
+            max_documents: 1_000,
+            max_merge_keys: 10_000,
+            alias_anchor_ratio: Some(10.0),
+            alias_jump_event_factor: None,
+            #[cfg(feature = "include")]
+            max_include_depth: 24,
+            #[cfg(feature = "include")]
+            max_include_sources: 256,
+            #[cfg(feature = "include")]
+            max_total_include_bytes: 64 * 1024 * 1024,
+        }
+    }
+}
+
+impl ParserLimits {
+    /// Return the resource budgets associated with a named parser profile.
+    ///
+    /// The `SerdeYaml` profile uses the standard absolute budgets plus the
+    /// compatibility layer's transitive alias-expansion factor.
+    #[must_use]
+    pub fn profile(profile: ParserProfile) -> Self {
+        match profile {
+            ParserProfile::Standard => Self::default(),
+            ParserProfile::Strict => Self::strict(),
+            ParserProfile::SerdeYaml => Self {
+                alias_jump_event_factor: Some(100),
+                ..Self::default()
+            },
+        }
+    }
+
+    /// Return the tighter budgets used by [`ParserProfile::Strict`].
+    #[must_use]
+    pub const fn strict() -> Self {
+        Self {
+            max_depth: 64,
+            max_document_length: 1024 * 1024,
+            max_stream_bytes: 16 * 1024 * 1024,
+            max_alias_expansions: 100,
+            max_mapping_keys: 1_024,
+            max_sequence_length: 1_024,
+            max_events: 100_000,
+            max_nodes: 25_000,
+            max_total_scalar_bytes: 1024 * 1024,
+            max_documents: 100,
+            max_merge_keys: 1_000,
+            alias_anchor_ratio: Some(5.0),
+            alias_jump_event_factor: None,
+            #[cfg(feature = "include")]
+            max_include_depth: 8,
+            #[cfg(feature = "include")]
+            max_include_sources: 32,
+            #[cfg(feature = "include")]
+            max_total_include_bytes: 1024 * 1024,
+        }
+    }
+}
+
 /// Deserialization configuration.
 ///
 /// All fields are public, but the struct is annotated
@@ -319,20 +481,21 @@ pub struct ParserConfig {
 
 impl Default for ParserConfig {
     fn default() -> Self {
+        let limits = ParserLimits::default();
         Self {
             yaml_version: YamlVersion::V1_2,
-            max_depth: 128,
-            max_document_length: 1024 * 1024 * 64, // 64 MB
-            max_stream_bytes: 1024 * 1024 * 256,   // 256 MB
-            max_alias_expansions: 1024,
-            max_mapping_keys: 1024 * 64,
-            max_sequence_length: 1024 * 64,
-            max_events: 1_000_000,
-            max_nodes: 250_000,
-            max_total_scalar_bytes: 1024 * 1024 * 64, // 64 MB
-            max_documents: 1_000,
-            max_merge_keys: 10_000,
-            alias_anchor_ratio: Some(10.0),
+            max_depth: limits.max_depth,
+            max_document_length: limits.max_document_length,
+            max_stream_bytes: limits.max_stream_bytes,
+            max_alias_expansions: limits.max_alias_expansions,
+            max_mapping_keys: limits.max_mapping_keys,
+            max_sequence_length: limits.max_sequence_length,
+            max_events: limits.max_events,
+            max_nodes: limits.max_nodes,
+            max_total_scalar_bytes: limits.max_total_scalar_bytes,
+            max_documents: limits.max_documents,
+            max_merge_keys: limits.max_merge_keys,
+            alias_anchor_ratio: limits.alias_anchor_ratio,
             duplicate_key_policy: DuplicateKeyPolicy::default(),
             strict_booleans: false,
             legacy_booleans: false,
@@ -350,7 +513,7 @@ impl Default for ParserConfig {
             float_overflow_strings: false,
             integer_overflow_errors: false,
             non_scalar_key_policy: NonScalarKeyPolicy::Stringify,
-            alias_jump_event_factor: None,
+            alias_jump_event_factor: limits.alias_jump_event_factor,
             require_indent: RequireIndent::Unchecked,
             policies: Vec::new(),
             #[cfg(feature = "std")]
@@ -360,11 +523,11 @@ impl Default for ParserConfig {
             #[cfg(feature = "include")]
             include_resolver: None,
             #[cfg(feature = "include")]
-            max_include_depth: 24,
+            max_include_depth: limits.max_include_depth,
             #[cfg(feature = "include")]
-            max_include_sources: 256,
+            max_include_sources: limits.max_include_sources,
             #[cfg(feature = "include")]
-            max_total_include_bytes: 64 * 1024 * 1024,
+            max_total_include_bytes: limits.max_total_include_bytes,
         }
     }
 }
@@ -384,6 +547,30 @@ impl ParserConfig {
         Self::default()
     }
 
+    /// Create a configuration from a stable named profile.
+    ///
+    /// Profiles make trust-boundary configuration explicit and keep callers
+    /// independent from the individual fields that compose each baseline.
+    /// Builder methods can refine the returned configuration.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use noyalib::{ParserConfig, ParserProfile};
+    ///
+    /// let cfg = ParserConfig::profile(ParserProfile::Strict)
+    ///     .max_document_length(32 * 1024);
+    /// assert_eq!(cfg.max_document_length, 32 * 1024);
+    /// ```
+    #[must_use]
+    pub fn profile(profile: ParserProfile) -> Self {
+        match profile {
+            ParserProfile::Standard => Self::default(),
+            ParserProfile::Strict => Self::strict(),
+            ParserProfile::SerdeYaml => Self::serde_yaml_compat(),
+        }
+    }
+
     /// Create a strict configuration (YAML 1.2 strict) with tighter
     /// security limits suitable for untrusted input.
     ///
@@ -397,54 +584,12 @@ impl ParserConfig {
     #[must_use]
     pub fn strict() -> Self {
         Self {
-            yaml_version: YamlVersion::V1_2,
-            max_depth: 64,
-            max_document_length: 1024 * 1024,   // 1 MB
-            max_stream_bytes: 1024 * 1024 * 16, // 16 MB
-            max_alias_expansions: 100,
-            max_mapping_keys: 1024,
-            max_sequence_length: 1024,
-            max_events: 100_000,
-            max_nodes: 25_000,
-            max_total_scalar_bytes: 1024 * 1024, // 1 MB
-            max_documents: 100,
-            max_merge_keys: 1_000,
-            alias_anchor_ratio: Some(5.0),
             strict_booleans: true,
-            legacy_booleans: false,
             duplicate_key_policy: DuplicateKeyPolicy::Error,
-            tag_registry: None,
-            merge_key_policy: MergeKeyPolicy::default(),
-            no_schema: false,
-            legacy_octal_numbers: false,
-            ignore_binary_tag_for_string: false,
-            plain_scalar_strings: false,
-            legacy_sexagesimal: false,
-            #[cfg(feature = "lossless-u64")]
-            lossless_u64_integers: false,
-            leading_zero_integer_strings: false,
-            legacy_binary_numbers: false,
-            float_overflow_strings: false,
-            integer_overflow_errors: false,
-            non_scalar_key_policy: NonScalarKeyPolicy::Stringify,
-            alias_jump_event_factor: None,
             require_indent: RequireIndent::Even,
-            policies: Vec::new(),
-            #[cfg(feature = "std")]
-            properties: None,
             #[cfg(feature = "std")]
             strict_properties: true,
-            #[cfg(feature = "include")]
-            include_resolver: None,
-            // Strict mode tightens the include recursion ceiling
-            // proportionally to its other depth caps (max_depth
-            // 128 → 64, max_alias_expansions 1024 → 100).
-            #[cfg(feature = "include")]
-            max_include_depth: 8,
-            #[cfg(feature = "include")]
-            max_include_sources: 32,
-            #[cfg(feature = "include")]
-            max_total_include_bytes: 1024 * 1024,
+            ..Self::default().with_limits(ParserLimits::profile(ParserProfile::Strict))
         }
     }
 
@@ -490,11 +635,77 @@ impl ParserConfig {
             float_overflow_strings: true,
             integer_overflow_errors: true,
             non_scalar_key_policy: NonScalarKeyPolicy::Error,
-            alias_jump_event_factor: Some(100),
             #[cfg(feature = "lossless-u64")]
             lossless_u64_integers: true,
-            ..Self::default()
+            ..Self::default().with_limits(ParserLimits::profile(ParserProfile::SerdeYaml))
         }
+    }
+
+    /// Return the resource budgets currently applied to this configuration.
+    ///
+    /// Semantic settings, policies, property interpolation, tag registries,
+    /// and include resolvers are deliberately excluded.
+    #[must_use]
+    pub fn limits(&self) -> ParserLimits {
+        ParserLimits {
+            max_depth: self.max_depth,
+            max_document_length: self.max_document_length,
+            max_stream_bytes: self.max_stream_bytes,
+            max_alias_expansions: self.max_alias_expansions,
+            max_mapping_keys: self.max_mapping_keys,
+            max_sequence_length: self.max_sequence_length,
+            max_events: self.max_events,
+            max_nodes: self.max_nodes,
+            max_total_scalar_bytes: self.max_total_scalar_bytes,
+            max_documents: self.max_documents,
+            max_merge_keys: self.max_merge_keys,
+            alias_anchor_ratio: self.alias_anchor_ratio,
+            alias_jump_event_factor: self.alias_jump_event_factor,
+            #[cfg(feature = "include")]
+            max_include_depth: self.max_include_depth,
+            #[cfg(feature = "include")]
+            max_include_sources: self.max_include_sources,
+            #[cfg(feature = "include")]
+            max_total_include_bytes: self.max_total_include_bytes,
+        }
+    }
+
+    /// Replace every resource budget while preserving semantic settings and
+    /// installed integrations.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use noyalib::{ParserConfig, ParserLimits, YamlVersion};
+    ///
+    /// let cfg = ParserConfig::new()
+    ///     .version(YamlVersion::V1_1)
+    ///     .with_limits(ParserLimits::strict());
+    /// assert_eq!(cfg.yaml_version, YamlVersion::V1_1);
+    /// assert_eq!(cfg.max_depth, 64);
+    /// ```
+    #[must_use]
+    pub fn with_limits(mut self, limits: ParserLimits) -> Self {
+        self.max_depth = limits.max_depth;
+        self.max_document_length = limits.max_document_length;
+        self.max_stream_bytes = limits.max_stream_bytes;
+        self.max_alias_expansions = limits.max_alias_expansions;
+        self.max_mapping_keys = limits.max_mapping_keys;
+        self.max_sequence_length = limits.max_sequence_length;
+        self.max_events = limits.max_events;
+        self.max_nodes = limits.max_nodes;
+        self.max_total_scalar_bytes = limits.max_total_scalar_bytes;
+        self.max_documents = limits.max_documents;
+        self.max_merge_keys = limits.max_merge_keys;
+        self.alias_anchor_ratio = limits.alias_anchor_ratio;
+        self.alias_jump_event_factor = limits.alias_jump_event_factor;
+        #[cfg(feature = "include")]
+        {
+            self.max_include_depth = limits.max_include_depth;
+            self.max_include_sources = limits.max_include_sources;
+            self.max_total_include_bytes = limits.max_total_include_bytes;
+        }
+        self
     }
 
     /// Install a `${KEY}` substitution table consulted after

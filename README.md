@@ -59,14 +59,14 @@
 
 ```toml
 [dependencies]
-noyalib = "0.0.50"
+noyalib = "0.0.51"
 ```
 
 Disable the default `std` feature for `core` + `alloc` environments:
 
 ```toml
 [dependencies]
-noyalib = { version = "0.0.50", default-features = false }
+noyalib = { version = "0.0.51", default-features = false }
 ```
 
 Build the library and its test surface from source:
@@ -217,23 +217,25 @@ The complete feature-flag contract lives in
 ## Configuration
 
 `ParserConfig` and `SerializerConfig` expose explicit policy without changing
-the default typed API:
+the default typed API. Named parser profiles make trust boundaries explicit,
+while `ParserLimits` lets services replace resource budgets without changing
+YAML semantics:
 
 ```rust
-use noyalib::{from_str_with_config, DuplicateKeyPolicy, ParserConfig, Value};
+use noyalib::{
+    from_str_with_config, ParserConfig, ParserLimits, ParserProfile, Value,
+};
 
-let config = ParserConfig::new()
-    .max_depth(64)
-    .max_document_length(1_000_000)
-    .max_alias_expansions(100)
-    .duplicate_key_policy(DuplicateKeyPolicy::Error)
-    .strict_booleans(true);
+let mut limits = ParserLimits::strict();
+limits.max_document_length = 1_000_000;
+
+let config = ParserConfig::profile(ParserProfile::Strict).with_limits(limits);
 
 let value: Value = from_str_with_config("service: api\n", &config)?;
 # Ok::<(), noyalib::Error>(())
 ```
 
-Use `ParserConfig::strict()` as the starting point for untrusted input. The
+`ParserConfig::strict()` remains the concise alias for the strict profile. The
 configuration reference is in the [user guide](docs/USER-GUIDE.md).
 
 ---
