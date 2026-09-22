@@ -5,6 +5,21 @@ All notable changes to this project are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.0.51] - 2026-09-22
+
+### Added
+
+- Added stable `Standard`, `Strict`, and `SerdeYaml` parser profiles for
+  explicit trust-boundary and compatibility configuration.
+- Added `ParserLimits` extraction and replacement so callers can manage all
+  resource budgets independently from YAML semantics and integrations.
+
+### Changed
+
+- Derived default, strict, and serde-yaml compatibility budgets from one
+  resource-limit abstraction while preserving existing constructors and
+  public configuration fields.
+
 ## [v0.0.50] - 2026-09-22
 
 ### Added
