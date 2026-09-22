@@ -44,14 +44,14 @@
 
 ```toml
 [dependencies]
-noyalib = "0.0.51"
+noyalib = "0.0.52"
 ```
 
 `no_std` (alloc-only) builds:
 
 ```toml
 [dependencies]
-noyalib = { version = "0.0.51", default-features = false }
+noyalib = { version = "0.0.52", default-features = false }
 ```
 
 Core data binding (`from_str`, `to_string`, `Value`, schemas) and
@@ -193,10 +193,14 @@ let cfg = ParserConfig::new().legacy_booleans(true);
 All optional integrations are off by default. Enable only what
 the application needs.
 
+Structured diagnostics are part of the base API. Every `Error` exposes a
+stable code, severity, help text, and zero or more byte-based source labels
+through `Error::diagnostic()`. Renderer integrations remain opt-in.
+
 | Feature | Pulls in | Adds |
 |---|---|---|
 | `std` *(default)* | — | `from_reader`, `to_writer`, `Spanned<T>`, CST module |
-| `miette` | `miette` 7 | Rich terminal diagnostics with source spans |
+| `miette` | `miette` 7 | Render the shared diagnostics in terminals |
 | `schema` | `schemars`, `serde_json` | `JsonSchema` derive + `schema_for::<T>()` |
 | `validate-schema` | `schema` + `jsonschema` | `validate_against_schema`, `coerce_to_schema` |
 | `figment` | `figment` 0.10 | `noyalib::figment::Yaml` provider |

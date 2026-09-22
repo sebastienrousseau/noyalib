@@ -631,16 +631,19 @@ location info wherever possible.
   never panics on representable values.
 - Errors include a `Location { line, column, byte_offset }`
   whenever the underlying source span is available.
+- `Error::diagnostic()` is the canonical adapter boundary. It exposes stable
+  namespaced codes, protocol-neutral severity, help text, and ordered byte
+  spans without requiring a rendering dependency.
 - `Error: Send + Sync + 'static` — safe to propagate across
   threads and into `anyhow` / `eyre` / `Box<dyn Error>`.
 
 ### `miette` integration
 
 With `features = ["miette"]`, `Error` implements
-`miette::Diagnostic` so CLI tools render rich location-aware
-output (with the source snippet and a caret pointing at the
-offending byte). The `noyavalidate` binary is the canonical
-example.
+`miette::Diagnostic` by adapting `Error::diagnostic()`, so CLI tools render
+rich location-aware output without a second error-code or label mapping. The
+`noyavalidate` binary is the canonical example. The `ariadne` feature consumes
+the same payload.
 
 ### Truncation
 
