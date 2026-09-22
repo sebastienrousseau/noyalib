@@ -203,10 +203,12 @@ the shared parser limits:
   buffers round-trip identically to LF-on-Linux equivalents.
 - **`tokio_async::YamlDecoder`** exposes
   `max_frame_size(usize)`: when the inter-frame `BytesMut`
-  buffer exceeds the cap, the next `decode` call returns
+  holds an incomplete document beyond the cap, the next `decode` call returns
   `Error::Io(InvalidData)` rather than letting an adversarial
-  producer pin memory by streaming without `---`. The cap is
-  off by default — set it on untrusted-network inputs.
+  producer pin memory by streaming without `---`. Constructors derive the
+  cap from `ParserConfig::max_document_length`; callers may override it.
+  Multiple complete documents already present in one read are measured
+  independently rather than rejected by their aggregate buffered size.
 - **`sval_adapter`** forwards non-finite floats verbatim by
   default; use `to_sval_writer_with_config` with
   `SvalConfig::coerce_non_finite_to_null` to emit `Null`

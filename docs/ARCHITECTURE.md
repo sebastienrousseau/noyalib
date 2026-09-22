@@ -344,7 +344,7 @@ zero compile / binary-size cost for them.
 |---|---|---|---|
 | `recovery` | `recovery` | Wraps `from_str_with_config` in a three-pass retry loop (strict → `DuplicateKeyPolicy::Last` → line-truncation). Multi-document input split via the same `---` scanner the `parallel` module uses. Returns `ParseResult { value, errors, is_complete }`. Zero extra deps. | `crates/noyalib/src/recovery.rs` |
 | `sval_adapter` | `sval` | `impl sval::Value for Value` (and `Number` / `Mapping` / `MappingAny` / `TaggedValue`) — streams a noyalib value graph through any `sval::Stream` consumer. Bypasses the serde monomorphisation chain entirely. | `crates/noyalib/src/sval_adapter.rs` |
-| `tokio_async` | `tokio` | `from_async_reader` drains a `tokio::io::AsyncRead` to a `Vec<u8>` then runs the standard sync parser. `YamlDecoder` is a `tokio_util::codec::Decoder` that emits one document per `decode` call as soon as a column-0 `---` boundary lands in the buffer. | `crates/noyalib/src/tokio_async.rs` |
+| `tokio_async` | `tokio` | Bounded reader helpers drain an `AsyncRead` before parsing. `AsyncYamlStream` adds read-side backpressure and emits one document per poll through `YamlDecoder`; each complete document is still parsed synchronously. | `crates/noyalib/src/tokio_async.rs` |
 
 All three are pure-safe Rust (preserving the workspace
 `unsafe_code = "forbid"` invariant) and exercised by unit

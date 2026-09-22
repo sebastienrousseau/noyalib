@@ -15,10 +15,14 @@
 //!   `tokio::io::AsyncRead` into the caller's `T`.
 //! * `from_async_reader_multi` — drain every `---`-separated
 //!   document and return `Vec<T>`.
-//! * `YamlDecoder<T>` — `tokio_util::codec::Decoder`
-//!   implementation for plugging YAML parsing into a
-//!   `tokio_util::codec::Framed` pipeline (web-services /
-//!   tower-middleware integration).
+//! * [`AsyncYamlStream`](crate::tokio_async::AsyncYamlStream): a
+//!   backpressured `Stream` of parsed documents, constructed with
+//!   [`async_yaml_stream`](crate::tokio_async::async_yaml_stream) or
+//!   [`async_yaml_stream_with_config`](crate::tokio_async::async_yaml_stream_with_config).
+//! * [`YamlDecoder`](crate::tokio_async::YamlDecoder): the lower-level
+//!   `tokio_util::codec::Decoder`
+//!   used by the stream surface and available for custom framed
+//!   pipelines.
 //!
 //! # Backpressure
 //!
@@ -50,7 +54,7 @@
 use bytes::BytesMut;
 use core::marker::PhantomData;
 use tokio::io::{AsyncRead, AsyncReadExt as _};
-use tokio_util::codec::Decoder;
+use tokio_util::codec::{Decoder, FramedRead};
 
 use crate::de::{ParserConfig, from_slice_with_config};
 use crate::error::{Error, Result};
@@ -238,6 +242,39 @@ pub struct YamlDecoder<T> {
     _marker: PhantomData<fn() -> T>,
 }
 
+/// A backpressured asynchronous stream of YAML documents.
+///
+/// The reader is consumed through Tokio's [`AsyncRead`] contract. Each
+/// stream item is parsed only when the consumer polls for it, and source
+/// order is preserved. The decoder buffers at most one incomplete document
+/// up to its configured frame limit, although an individual read may also
+/// contain later complete documents that remain buffered until subsequent
+/// polls.
+///
+/// Construct this type with [`async_yaml_stream`] or
+/// [`async_yaml_stream_with_config`]. Consumers can use any compatible
+/// `StreamExt` implementation to await items.
+pub type AsyncYamlStream<R, T> = FramedRead<R, YamlDecoder<T>>;
+
+/// Wrap an asynchronous reader as a backpressured YAML document stream.
+///
+/// The default [`ParserConfig`] applies to each document independently.
+/// Use [`async_yaml_stream_with_config`] for custom limits and policies.
+#[must_use]
+pub fn async_yaml_stream<R, T>(reader: R) -> AsyncYamlStream<R, T> {
+    FramedRead::new(reader, YamlDecoder::new())
+}
+
+/// Wrap an asynchronous reader as a backpressured YAML document stream with
+/// caller-supplied parser limits and policies.
+#[must_use]
+pub fn async_yaml_stream_with_config<R, T>(
+    reader: R,
+    config: ParserConfig,
+) -> AsyncYamlStream<R, T> {
+    FramedRead::new(reader, YamlDecoder::with_config(config))
+}
+
 impl<T> Default for YamlDecoder<T> {
     fn default() -> Self {
         Self::new()
@@ -292,28 +329,28 @@ where
     type Error = Error;
 
     fn decode(&mut self, src: &mut BytesMut) -> core::result::Result<Option<T>, Error> {
-        // Frame-size guard (M7) — defended before any scanning
-        // work so adversarial slow-drip producers cannot pin
-        // arbitrary memory by streaming without `---`.
-        if let Some(max) = self.max_frame_size {
-            if src.len() > max {
-                return Err(Error::from(std::io::Error::new(
-                    std::io::ErrorKind::InvalidData,
-                    format!(
-                        "noyalib YamlDecoder: buffer {} > max_frame_size {}",
-                        src.len(),
-                        max
-                    ),
-                )));
-            }
-        }
-
         // C6 — iterate rather than recurse so an all-whitespace
         //      preamble (or repeated `---` markers preceding the
         //      first real document) cannot blow the stack.
         loop {
             let bytes: &[u8] = src.as_ref();
-            let Some(end) = find_doc_boundary(bytes) else {
+            let boundary = find_doc_boundary(bytes);
+
+            // Apply the cap to the next logical document, not the entire
+            // read buffer. A single AsyncRead poll may legally return several
+            // complete, individually bounded documents. Reject only when the
+            // first document or incomplete frame exceeds the limit.
+            if let Some(max) = self.max_frame_size {
+                let frame_len = boundary.unwrap_or(bytes.len());
+                if frame_len > max {
+                    return Err(Error::from(std::io::Error::new(
+                        std::io::ErrorKind::InvalidData,
+                        format!("noyalib YamlDecoder: frame {frame_len} > max_frame_size {max}"),
+                    )));
+                }
+            }
+
+            let Some(end) = boundary else {
                 return Ok(None);
             };
 
@@ -550,6 +587,38 @@ mod tests {
         let mut buf = BytesMut::from(&b"name: long-name-no-marker-yet-need-more-bytes"[..]);
         let err = decoder.decode(&mut buf).err().unwrap();
         assert!(err.to_string().contains("max_frame_size"));
+    }
+
+    #[test]
+    fn decoder_accepts_multiple_buffered_documents_beyond_frame_cap() {
+        let cfg = ParserConfig {
+            max_document_length: 28,
+            ..ParserConfig::default()
+        };
+        let mut decoder: YamlDecoder<Pkg> = YamlDecoder::with_config(cfg);
+        let mut buf = BytesMut::from(&b"name: a\nversion: '1'\n---\nname: b\nversion: '2'\n"[..]);
+        assert!(buf.len() > 28);
+
+        let first = decoder.decode(&mut buf).unwrap().unwrap();
+        assert_eq!(first.name, "a");
+        let second = decoder.decode_eof(&mut buf).unwrap().unwrap();
+        assert_eq!(second.name, "b");
+    }
+
+    #[test]
+    fn stream_constructors_preserve_decoder_configuration() {
+        let default_stream = async_yaml_stream::<_, Pkg>(&b""[..]);
+        assert_eq!(
+            default_stream.decoder().max_frame_size,
+            Some(ParserConfig::default().max_document_length)
+        );
+
+        let cfg = ParserConfig {
+            max_document_length: 17,
+            ..ParserConfig::default()
+        };
+        let configured_stream = async_yaml_stream_with_config::<_, Pkg>(&b""[..], cfg);
+        assert_eq!(configured_stream.decoder().max_frame_size, Some(17));
     }
 
     #[test]

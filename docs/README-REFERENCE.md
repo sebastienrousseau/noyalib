@@ -77,7 +77,7 @@ the template migration does not discard documentation.
 
 ```toml
 [dependencies]
-noyalib = "0.0.49"
+noyalib = "0.0.50"
 ```
 
 ### As a CLI tool
@@ -115,7 +115,7 @@ maintainer runbook.
 
 ```toml
 [dependencies]
-noyalib = { version = "0.0.49", default-features = false }
+noyalib = { version = "0.0.50", default-features = false }
 ```
 
 Requires `alloc`. Core data binding (`from_str`, `to_string`, `Value`,
@@ -154,7 +154,7 @@ the application needs.
 | `recovery` | — | `noyalib::recovery::parse_lenient` — best-effort tree + error list for LSP / IDE half-typed documents | `examples/recovery_lenient.rs`, `benches/v006_features.rs` |
 | `arbitrary` | `arbitrary` 1 | `arbitrary::Arbitrary` for `Value`, `Number`, `Tag`, `TaggedValue`, `Mapping`: structure-aware fuzz targets and property tests build valid trees from one generator | `fuzz/fuzz_targets/fuzz_value_roundtrip.rs` |
 | `sval` | `sval` 2 | `impl sval::Value` for `Value` / `Number` / `Mapping` / `MappingAny` / `TaggedValue`, `noyalib::sval_adapter::to_sval_writer` | `examples/sval_streaming.rs`, `benches/v006_features.rs` |
-| `tokio` | `tokio`, `tokio-util`, `bytes` | `noyalib::tokio_async::from_async_reader` / `from_async_reader_multi` and `YamlDecoder` codec for `tokio_util::codec::Framed` pipelines | `examples/tokio_async_reader.rs`, `benches/v006_features.rs` |
+| `tokio` | `tokio`, `tokio-util`, `bytes` | Bounded async readers, backpressured `AsyncYamlStream`, and the lower-level `YamlDecoder` codec | `examples/tokio_async_reader.rs`, `benches/v006_features.rs` |
 | `simd` | — | Forward-compat no-op — `noyalib::simd::*` is always available and the parser hot path uses it unconditionally | [Benchmarks](#benchmarks) |
 | `nightly-simd` | `simd` (nightly toolchain) | `core::simd`-backed `StructuralIter` (32-byte chunks) | [Benchmarks](#benchmarks) |
 | `compat-serde-yaml` | — | **behavioural** `serde_yaml` 0.9 shim (values, error text, and locations pinned by the live-captured 18-case contract suite); `noyalib-serde-yaml` packages it as a Cargo package-rename drop-in | [When not to use noyalib](#when-not-to-use-noyalib) |
@@ -166,7 +166,7 @@ the application needs.
 ```toml
 # Example: rich diagnostics + schema validation
 [dependencies]
-noyalib = { version = "0.0.49", features = ["miette", "validate-schema"] }
+noyalib = { version = "0.0.50", features = ["miette", "validate-schema"] }
 ```
 
 **Optional features:** `lossless-u64` preserves YAML integer scalars above
@@ -300,7 +300,7 @@ npm install @sebastienrousseau/noyalib-wasm
 
 ```toml
 # serde_yaml drop-in — the whole migration is this one line:
-serde_yaml = { package = "noyalib-serde-yaml", version = "=0.0.49" }
+serde_yaml = { package = "noyalib-serde-yaml", version = "=0.0.50" }
 ```
 
 Per-crate READMEs cover the surface specific to each artifact:
@@ -365,7 +365,7 @@ lines**:
 
 ```toml
 [dependencies]
-serde_yaml = { package = "noyalib-serde-yaml", version = "=0.0.49" }
+serde_yaml = { package = "noyalib-serde-yaml", version = "=0.0.50" }
 ```
 
 [`noyalib-serde-yaml`](https://github.com/sebastienrousseau/noyalib-serde-yaml)
@@ -398,7 +398,7 @@ and `yaml-spanned` with verified function tables for each.
 -[dependencies]
 -serde_yaml = "0.9"
 +[dependencies]
-+noyalib = "0.0.49"
++noyalib = "0.0.50"
 ```
 
 ```diff
@@ -1405,7 +1405,7 @@ disagreement on priorities.
 - **You have a hard dependency budget that cannot tolerate a
   Grisu / Ryu float formatter and a hash-randomised lookup
   table.** Default profile carries 8 runtime deps. `noyalib =
-  { version = "0.0.49", default-features = false, features =
+  { version = "0.0.50", default-features = false, features =
   ["std"] }` (or the equivalent `features = ["minimal"]`) drops
   to 5 — `itoa`, `ryu`, and `serde_ignored` become opt-in via
   the `fast-int` / `fast-float` / `strict-deserialise` features.

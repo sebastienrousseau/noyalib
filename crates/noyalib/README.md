@@ -44,14 +44,14 @@
 
 ```toml
 [dependencies]
-noyalib = "0.0.49"
+noyalib = "0.0.50"
 ```
 
 `no_std` (alloc-only) builds:
 
 ```toml
 [dependencies]
-noyalib = { version = "0.0.49", default-features = false }
+noyalib = { version = "0.0.50", default-features = false }
 ```
 
 Core data binding (`from_str`, `to_string`, `Value`, schemas) and
@@ -206,7 +206,7 @@ the application needs.
 | `parallel` | `rayon` 1.10 | `parallel::parse<T>` and `parse_with_config_in_pool<T>` |
 | `recovery` | — | `noyalib::recovery::parse_lenient` — best-effort parsing for LSP / IDE half-typed documents |
 | `sval` | `sval` 2 | `impl sval::Value` for `Value` / `Number` / `Mapping` / `MappingAny` / `TaggedValue`, `noyalib::sval_adapter::to_sval_writer` |
-| `tokio` | `tokio`, `tokio-util`, `bytes` | `noyalib::tokio_async::from_async_reader` / `from_async_reader_multi` and `YamlDecoder` codec for `tokio_util::codec::Framed` |
+| `tokio` | `tokio`, `tokio-util`, `bytes` | Bounded async readers, backpressured `AsyncYamlStream`, and the lower-level `YamlDecoder` codec |
 | `simd` | — | `noyalib::simd::*` primitives + parser hot path |
 | `nightly-simd` | `simd` (nightly) | `core::simd`-backed 32-byte structural-bitmask scanner |
 | `compat-serde-yaml` | — | `noyalib::compat::serde_yaml` shim for migration |

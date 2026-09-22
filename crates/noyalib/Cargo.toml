@@ -1,6 +1,6 @@
 [package]
 name = "noyalib"
-version = "0.0.49"
+version = "0.0.50"
 edition = "2024"
 rust-version = "1.86.0"
 license = "MIT OR Apache-2.0"
@@ -178,7 +178,7 @@ sval = { version = "2", optional = true, default-features = false }
 # `Arbitrary` for Value, Number, Tag, TaggedValue, Mapping (feature `arbitrary`).
 arbitrary = { version = "1", optional = true }
 # `tokio` async runtime — required by the `tokio` feature for
-# native `AsyncRead` parsing and the `YamlDecoder` codec. Default
+# native `AsyncRead` parsing, `AsyncYamlStream`, and the decoder. Default
 # features off; we only need the I/O bits.
 tokio = { version = "1", optional = true, default-features = false, features = ["io-util"] }
 tokio-util = { version = "0.7", optional = true, default-features = false, features = ["codec"] }
@@ -405,10 +405,9 @@ simd = []
 # as a dev-dep and gates the comparison bench arms on its presence.
 compare-saphyr = ["dep:serde-saphyr"]
 # Native async stream parsing on top of `tokio::io::AsyncRead`.
-# Adds `noyalib::tokio_async` with `from_async_reader`,
-# `from_async_reader_multi`, and a `YamlDecoder` codec for
-# `tokio_util::codec::Framed` pipelines. Off by default to keep
-# the dep list lean for sync-only callers.
+# Adds `noyalib::tokio_async` with bounded reader helpers,
+# `AsyncYamlStream`, and a `YamlDecoder` codec for custom framed pipelines.
+# Off by default to keep the dep list lean for sync-only callers.
 tokio = ["dep:tokio", "dep:tokio-util", "dep:bytes", "std"]
 # `sval` zero-allocation streaming serialization framework
 # adapter. Adds `impl sval::Value for Value` (and the other

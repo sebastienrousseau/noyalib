@@ -5,6 +5,19 @@ All notable changes to this project are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.0.50] - 2026-09-22
+
+### Added
+
+- Added `AsyncYamlStream` constructors for backpressured Tokio document
+  streams with default or caller-supplied parser configuration.
+
+### Fixed
+
+- Applied `YamlDecoder` frame limits to each logical document instead of the
+  aggregate read buffer, so several bounded documents delivered in one read
+  are accepted and emitted in source order.
+
 ## [v0.0.49] - 2026-09-22
 
 ### Added

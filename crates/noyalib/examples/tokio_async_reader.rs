@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 // Copyright (c) 2026 Noyalib. All rights reserved.
 
-//! `tokio_async` — parse a YAML stream from a tokio `AsyncRead`
-//! source without `spawn_blocking`, and from a
-//! `tokio_util::codec::Framed` pipeline.
+//! `tokio_async`: parse a YAML stream from a Tokio `AsyncRead`
+//! source with bounded buffering or a backpressured framed stream.
 //!
 //! Run: `cargo run --example tokio_async_reader --features tokio`
 
@@ -11,7 +10,7 @@
 #[tokio::main(flavor = "current_thread")]
 async fn main() {
     use bytes::BytesMut;
-    use noyalib::tokio_async::{YamlDecoder, from_async_reader_multi};
+    use noyalib::tokio_async::{YamlDecoder, async_yaml_stream, from_async_reader_multi};
 
     use tokio::io::BufReader;
     use tokio_util::codec::Decoder as _;
@@ -44,7 +43,14 @@ version: 0.0.6
         println!("  [{i}] {} {}", pkg.name, pkg.version);
     }
 
-    // ── Pattern 2: streaming codec via YamlDecoder directly ──
+    // ── Pattern 2: backpressured AsyncYamlStream ──
+    //
+    // A service can consume this with its preferred compatible
+    // `StreamExt::next`. Reading pauses until the next item is polled.
+    let document_stream = async_yaml_stream::<_, Pkg>(BufReader::new(&stream[..]));
+    drop(document_stream);
+
+    // ── Pattern 3: lower-level YamlDecoder control ──
     //
     // For brevity the example feeds the whole buffer in one shot
     // and drives `decode` / `decode_eof` by hand. In a real
@@ -63,13 +69,11 @@ version: 0.0.6
         println!("  [{i}] {} {}", pkg.name, pkg.version);
     }
 
-    // ── Pattern 3: untrusted-network frame-size cap (v0.0.6) ──
+    // ── Pattern 4: untrusted-network frame-size cap ──
     //
-    // Production services driving `YamlDecoder` over a network
-    // stream MUST cap inter-frame buffer growth or an adversarial
-    // producer that streams without `---` can pin arbitrary memory.
-    // Set the cap with `max_frame_size(usize)` — when the buffer
-    // exceeds it, the next `decode` call returns `Error::Io`.
+    // Constructors derive the cap from `max_document_length`.
+    // Services may tighten it with `max_frame_size(usize)`; when an
+    // incomplete frame exceeds it, `decode` returns `Error::Io`.
     let mut guarded = YamlDecoder::<Pkg>::new().max_frame_size(64);
     // Stream a single doc whose first line is longer than 64 bytes
     // and no `---` boundary lands inside the cap.
