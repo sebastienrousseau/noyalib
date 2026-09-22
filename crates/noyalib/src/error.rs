@@ -3,6 +3,9 @@
 
 //! Error handling types.
 
+use crate::diagnostic::{
+    Diagnostic, DiagnosticCode, DiagnosticLabel, DiagnosticSeverity, SourceSpan,
+};
 use crate::prelude::*;
 use core::fmt;
 
@@ -1193,6 +1196,161 @@ impl Error {
         }
     }
 
+    /// Convert this error into the canonical framework-neutral diagnostic.
+    ///
+    /// The returned payload carries a stable code, severity, rendered
+    /// message, optional help, and ordered source labels. Terminal, editor,
+    /// and service adapters should consume this method instead of maintaining
+    /// their own error-variant mappings.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use noyalib::{DiagnosticCode, Value, from_str};
+    /// let err = from_str::<Value>("key: [unclosed").unwrap_err();
+    /// let diagnostic = err.diagnostic();
+    /// assert_eq!(diagnostic.code(), DiagnosticCode::Parse);
+    /// assert!(diagnostic.primary_label().is_some());
+    /// ```
+    #[must_use]
+    pub fn diagnostic(&self) -> Diagnostic {
+        if let Self::Shared(error) = self {
+            return error.diagnostic();
+        }
+
+        let mut diagnostic = Diagnostic::new(
+            self.diagnostic_code(),
+            DiagnosticSeverity::Error,
+            self.to_string(),
+        );
+        if let Some(help) = self.diagnostic_help() {
+            diagnostic = diagnostic.with_help(help);
+        }
+
+        match self {
+            Self::ParseWithLocation { message, location }
+            | Self::DeserializeWithLocation { message, location } => diagnostic.with_label(
+                DiagnosticLabel::primary(SourceSpan::new(location.index(), 1), message.clone()),
+            ),
+            Self::UnknownAnchorAt {
+                name,
+                location,
+                suggestion,
+            } => {
+                let mut diagnostic = diagnostic.with_label(DiagnosticLabel::primary(
+                    SourceSpan::new(location.index(), 1),
+                    format!("unknown anchor '{name}'"),
+                ));
+                if let Some((suggestion, suggestion_location)) = suggestion {
+                    diagnostic = diagnostic.with_label(DiagnosticLabel::secondary(
+                        SourceSpan::new(suggestion_location.index(), 1),
+                        format!("did you mean '&{suggestion}'?"),
+                    ));
+                }
+                diagnostic
+            }
+            Self::DuplicateKeyAt { key, location, .. } => {
+                diagnostic.with_label(DiagnosticLabel::primary(
+                    SourceSpan::new(location.index(), 1),
+                    format!("duplicate key '{key}'"),
+                ))
+            }
+            Self::KeyCollisionAt { key, location, .. } => {
+                diagnostic.with_label(DiagnosticLabel::primary(
+                    SourceSpan::new(location.index(), 1),
+                    format!("key collision for '{key}'"),
+                ))
+            }
+            Self::IntegerOverflow {
+                location: Some(location),
+                ..
+            } => diagnostic.with_label(DiagnosticLabel::primary(
+                SourceSpan::new(location.index(), 1),
+                "integer is out of range",
+            )),
+            Self::NonScalarKey {
+                kind,
+                location: Some(location),
+            } => diagnostic.with_label(DiagnosticLabel::primary(
+                SourceSpan::new(location.index(), 1),
+                format!("{kind} key is not scalar"),
+            )),
+            Self::Message(message, Some(offset)) => diagnostic.with_label(
+                DiagnosticLabel::primary(SourceSpan::new(*offset, 1), message.clone()),
+            ),
+            _ => diagnostic,
+        }
+    }
+
+    /// Return the stable machine-readable diagnostic code.
+    #[must_use]
+    pub fn diagnostic_code(&self) -> DiagnosticCode {
+        match self {
+            Self::Parse(_) | Self::ParseWithLocation { .. } => DiagnosticCode::Parse,
+            Self::Serialize(_) => DiagnosticCode::Serialize,
+            Self::Deserialize(_) | Self::DeserializeWithLocation { .. } => {
+                DiagnosticCode::Deserialize
+            }
+            Self::TypeMismatch { .. } => DiagnosticCode::TypeMismatch,
+            Self::MissingField(_) => DiagnosticCode::MissingField,
+            Self::UnknownField(_) => DiagnosticCode::UnknownField,
+            Self::RecursionLimitExceeded { .. } => DiagnosticCode::RecursionLimit,
+            Self::RepetitionLimitExceeded => DiagnosticCode::RepetitionLimit,
+            Self::Budget(_) => DiagnosticCode::Budget,
+            Self::UnknownAnchor(_) | Self::UnknownAnchorAt { .. } => DiagnosticCode::UnknownAnchor,
+            Self::DuplicateKey(_) | Self::DuplicateKeyAt { .. } => DiagnosticCode::DuplicateKey,
+            Self::KeyCollision(_) | Self::KeyCollisionAt { .. } => DiagnosticCode::KeyCollision,
+            Self::IntegerOverflow { .. } => DiagnosticCode::IntegerOverflow,
+            Self::NonScalarKey { .. } => DiagnosticCode::NonScalarKey,
+            Self::EndOfStream => DiagnosticCode::EndOfStream,
+            Self::MoreThanOneDocument => DiagnosticCode::MoreThanOneDocument,
+            #[cfg(feature = "std")]
+            Self::Io(_) => DiagnosticCode::Io,
+            Self::Shared(error) => error.diagnostic_code(),
+            Self::ScalarInMergeElement
+            | Self::SequenceInMergeElement
+            | Self::TaggedInMerge
+            | Self::ScalarInMerge
+            | Self::Invalid(_)
+            | Self::EmptyTag
+            | Self::FailedToParseNumber(_)
+            | Self::Custom(_)
+            | Self::Message(_, _) => DiagnosticCode::Other,
+        }
+    }
+
+    fn diagnostic_help(&self) -> Option<String> {
+        match self {
+            Self::UnknownAnchorAt {
+                suggestion: Some((name, _)),
+                ..
+            } => Some(format!("did you mean '&{name}'?")),
+            Self::UnknownAnchor(_) => {
+                Some("define the anchor (&name) before referencing it".into())
+            }
+            Self::RecursionLimitExceeded { .. } => {
+                Some("increase ParserConfig::max_depth or simplify nesting".into())
+            }
+            Self::RepetitionLimitExceeded => {
+                Some("increase ParserConfig::max_alias_expansions or reduce alias usage".into())
+            }
+            Self::Budget(_) => {
+                Some("raise the matching ParserConfig::max_* limit or simplify the input".into())
+            }
+            Self::DuplicateKey(_) | Self::DuplicateKeyAt { .. } => {
+                Some("use DuplicateKeyPolicy::Last or ::Error to control behaviour".into())
+            }
+            Self::KeyCollision(_) | Self::KeyCollisionAt { .. } => Some(
+                "give the colliding keys distinct spellings, or quote them consistently".into(),
+            ),
+            Self::MoreThanOneDocument => {
+                Some("use noyalib::load_all() to parse multi-document streams".into())
+            }
+            Self::Shared(error) => error.diagnostic_help(),
+            _ => None,
+        }
+    }
+
     /// Format the error with source context. If the error carries a source
     /// location and the line is in range, the output includes a
     /// `line <n>:<col>` prefix, the offending line, and a caret (`^`)
@@ -1785,65 +1943,12 @@ pub type Result<T> = core::result::Result<T, Error>;
 #[cfg(feature = "miette")]
 impl miette::Diagnostic for Error {
     fn code<'a>(&'a self) -> Option<Box<dyn fmt::Display + 'a>> {
-        if let Self::Shared(arc) = self {
-            return arc.code();
-        }
-        let code = match self {
-            Self::Parse(_) | Self::ParseWithLocation { .. } => "noyalib::parse",
-            Self::Serialize(_) => "noyalib::serialize",
-            Self::Deserialize(_) | Self::DeserializeWithLocation { .. } => "noyalib::deserialize",
-            Self::TypeMismatch { .. } => "noyalib::type_mismatch",
-            Self::MissingField(_) => "noyalib::missing_field",
-            Self::UnknownField(_) => "noyalib::unknown_field",
-            Self::RecursionLimitExceeded { .. } => "noyalib::recursion_limit",
-            Self::RepetitionLimitExceeded => "noyalib::repetition_limit",
-            Self::Budget(_) => "noyalib::budget",
-            Self::UnknownAnchor(_) | Self::UnknownAnchorAt { .. } => "noyalib::unknown_anchor",
-            Self::DuplicateKey(_) | Self::DuplicateKeyAt { .. } => "noyalib::duplicate_key",
-            Self::KeyCollision(_) | Self::KeyCollisionAt { .. } => "noyalib::key_collision",
-            Self::IntegerOverflow { .. } => "noyalib::integer_overflow",
-            Self::NonScalarKey { .. } => "noyalib::non_scalar_key",
-            Self::EndOfStream => "noyalib::eof",
-            Self::MoreThanOneDocument => "noyalib::multi_document",
-            Self::Io(_) => "noyalib::io",
-            _ => "noyalib::error",
-        };
-        Some(Box::new(code))
+        Some(Box::new(self.diagnostic_code()))
     }
 
     fn help<'a>(&'a self) -> Option<Box<dyn fmt::Display + 'a>> {
-        let help: Option<String> = match self {
-            Self::UnknownAnchorAt {
-                suggestion: Some((name, _)),
-                ..
-            } => Some(format!("did you mean '&{name}'?")),
-            // `UnknownAnchor` (legacy, no location) gets a generic hint;
-            // `UnknownAnchorAt` without a similar-name suggestion stays
-            // `None` so the dual-label diagnostic speaks for itself.
-            Self::UnknownAnchor(_) => {
-                Some("define the anchor (&name) before referencing it".into())
-            }
-            Self::RecursionLimitExceeded { .. } => {
-                Some("increase ParserConfig::max_depth or simplify nesting".into())
-            }
-            Self::RepetitionLimitExceeded => {
-                Some("increase ParserConfig::max_alias_expansions or reduce alias usage".into())
-            }
-            Self::Budget(_) => {
-                Some("raise the matching ParserConfig::max_* limit or simplify the input".into())
-            }
-            Self::DuplicateKey(_) | Self::DuplicateKeyAt { .. } => {
-                Some("use DuplicateKeyPolicy::Last or ::Error to control behaviour".into())
-            }
-            Self::KeyCollision(_) | Self::KeyCollisionAt { .. } => Some(
-                "give the colliding keys distinct spellings, or quote them consistently".into(),
-            ),
-            Self::MoreThanOneDocument => {
-                Some("use noyalib::load_all() to parse multi-document streams".into())
-            }
-            _ => None,
-        };
-        help.map(|s| -> Box<dyn fmt::Display + 'a> { Box::new(s) })
+        self.diagnostic_help()
+            .map(|help| -> Box<dyn fmt::Display + 'a> { Box::new(help) })
     }
 
     fn source_code(&self) -> Option<&dyn miette::SourceCode> {
@@ -1854,47 +1959,23 @@ impl miette::Diagnostic for Error {
     }
 
     fn labels(&self) -> Option<Box<dyn Iterator<Item = miette::LabeledSpan> + '_>> {
-        match self {
-            Self::ParseWithLocation { message, location } => Some(Box::new(core::iter::once(
-                miette::LabeledSpan::new(Some(message.clone()), location.index(), 1),
-            ))),
-            Self::DeserializeWithLocation { message, location } => {
-                Some(Box::new(core::iter::once(miette::LabeledSpan::new(
-                    Some(message.clone()),
-                    location.index(),
-                    1,
-                ))))
-            }
-            Self::TypeMismatch {
-                expected: _,
-                found: _,
-            } => None,
-            Self::UnknownAnchorAt {
-                name,
-                location,
-                suggestion,
-            } => {
-                let mut labels = Vec::new();
-                labels.push(miette::LabeledSpan::new(
-                    Some(format!("unknown anchor '{name}'")),
-                    location.index(),
-                    1,
-                ));
-                if let Some((s_name, s_loc)) = suggestion {
-                    labels.push(miette::LabeledSpan::new(
-                        Some(format!("did you mean '&{s_name}'?")),
-                        s_loc.index(),
-                        1,
-                    ));
-                }
-                Some(Box::new(labels.into_iter()))
-            }
-            Self::Shared(arc) => arc.labels(),
-            Self::Message(msg, Some(offset)) => Some(Box::new(core::iter::once(
-                miette::LabeledSpan::new(Some(msg.clone()), *offset, 1),
-            ))),
-            _ => None,
+        let diagnostic = self.diagnostic();
+        if diagnostic.labels().is_empty() {
+            return None;
         }
+        let labels: Vec<_> = diagnostic
+            .labels()
+            .iter()
+            .map(|label| {
+                let span = label.span();
+                miette::LabeledSpan::new(
+                    Some(label.message().to_owned()),
+                    span.offset(),
+                    span.length(),
+                )
+            })
+            .collect();
+        Some(Box::new(labels.into_iter()))
     }
 }
 

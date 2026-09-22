@@ -85,13 +85,18 @@ EOF
 echo "Checking every documented installation configuration…"
 echo
 
-# README: `noyalib = "0.0.51"`, the default install.
+# README: `noyalib = "0.0.52"`, the default install.
 check "default" "" '
 fn main() {
     let v: noyalib::Value = noyalib::from_str("a: 1\nb: [1, 2]\n").expect("parse");
     assert_eq!(v.get("a").and_then(noyalib::Value::as_i64), Some(1));
     let out = noyalib::to_string(&v).expect("serialize");
     assert!(out.contains("a: 1"), "{out}");
+
+    let err = noyalib::from_str::<noyalib::Value>("a: [unclosed").unwrap_err();
+    let diagnostic = err.diagnostic();
+    assert_eq!(diagnostic.code(), noyalib::DiagnosticCode::Parse);
+    assert!(diagnostic.primary_label().is_some());
     println!("ok");
 }'
 

@@ -5,6 +5,22 @@ All notable changes to this project are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.0.52] - 2026-09-22
+
+### Added
+
+- Added framework-neutral `Diagnostic`, `DiagnosticCode`,
+  `DiagnosticSeverity`, `DiagnosticLabel`, and `SourceSpan` types to the
+  default and `no_std` public API.
+- Added `Error::diagnostic()` and `Error::diagnostic_code()` so editors,
+  services, and terminal renderers can consume one stable diagnostic model.
+
+### Changed
+
+- Derived the optional `miette` and `ariadne` adapters from the shared
+  diagnostic payload, including primary and secondary labels, help text,
+  severity, and stable namespaced codes.
+
 ## [v0.0.51] - 2026-09-22
 
 ### Added
