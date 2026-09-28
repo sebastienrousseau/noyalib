@@ -81,7 +81,7 @@ jobs:
 
       # The supply-chain probes score N/A without these; installing them
       # keeps the measured fraction of the rubric honest.
-      - uses: taiki-e/install-action@4076c08d76dba979c11a7285295b0716c1d67908 # v2.87.15
+      - uses: taiki-e/install-action@9983c65e42da123ff25d1f78505eb6de315aa172 # v2.87.20
         with:
           tool: cargo-deny,cargo-audit
       # Same install as shared-cargo-vet.yml: the prebuilt cargo-vet is
