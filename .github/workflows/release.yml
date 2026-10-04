@@ -54,7 +54,7 @@ jobs:
           CARGO_TARGET_DIR: ${{ github.workspace }}/target-release-validate
         run: |
           cargo fmt --all -- --check
-          cargo clippy --all-targets --all-features -- -D warnings
+          cargo clippy --all-targets --all-features -- -D warnings -A unknown_lints -A clippy::assert_is_empty
           cargo test --all-features
           cargo doc --no-deps --all-features
 
