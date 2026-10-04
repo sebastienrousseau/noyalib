@@ -59,14 +59,14 @@
 
 ```toml
 [dependencies]
-noyalib = "0.0.51"
+noyalib = "0.0.52"
 ```
 
 Disable the default `std` feature for `core` + `alloc` environments:
 
 ```toml
 [dependencies]
-noyalib = { version = "0.0.51", default-features = false }
+noyalib = { version = "0.0.52", default-features = false }
 ```
 
 Build the library and its test surface from source:
@@ -158,7 +158,7 @@ delivery surface while the core library remains dependency-focused.
 | Lossless tooling | CST edits that retain comments and layout | Stable |
 | YAML conformance | YAML 1.2 with an opt-in YAML 1.1 resolver | CI-gated |
 | Schemas | JSON Schema generation, validation, and coercion | Feature-gated |
-| Diagnostics | Source spans, `miette`, and `ariadne` integration | Feature-gated |
+| Diagnostics | Structured codes, source spans, `miette`, and `ariadne` | Core stable; renderers feature-gated |
 | Async and parallel | Tokio readers and Rayon multi-document parsing | Feature-gated |
 | Embedded targets | `no_std` with `alloc` | CI-gated |
 
@@ -205,8 +205,10 @@ See [`docs/BENCHMARKS.md`](docs/BENCHMARKS.md) for methodology and full results.
 - Byte-faithful CST editing with typed mutation and structural rollback checks.
 - Parser budgets for depth, document size, nodes, aliases, mappings, sequences,
   duplicate keys, and boolean resolution.
-- Optional schema, validation, diagnostics, Figment, Tokio, Rayon, `sval`, and
-  compatibility integrations.
+- Framework-neutral diagnostics with stable codes and source labels, plus
+  optional `miette` and `ariadne` renderers.
+- Optional schema, validation, Figment, Tokio, Rayon, `sval`, and compatibility
+  integrations.
 - Stable SIMD-assisted scanning with an opt-in nightly SIMD implementation.
 
 The complete feature-flag contract lives in

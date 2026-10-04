@@ -19,7 +19,7 @@ most call sites are mechanical to update.
 4. [Source spans (`Spanned<T>`)](#4-source-spans-spannedt)
 5. [Strict deserialise (typo detection)](#5-strict-deserialise-typo-detection)
 6. [Parser policies (defence in depth)](#6-parser-policies-defence-in-depth)
-7. [Diagnostics (`miette`-friendly errors)](#7-diagnostics-miette-friendly-errors)
+7. [Structured diagnostics](#7-structured-diagnostics)
 8. [Lossless edits (`cst::Document`)](#8-lossless-edits-cstdocument)
 9. [Schema validation and autofix](#9-schema-validation-and-autofix)
 10. [Multi-document streams + parallel parse](#10-multi-document-streams--parallel-parse)
@@ -271,11 +271,31 @@ key, policy, property, registry, and resolver settings.
 | `duplicate_key_policy` | `Last` | `Error` | Silent data loss |
 | `strict_booleans` | off | on | Norway problem |
 
-## 7. Diagnostics (`miette`-friendly errors)
+## 7. Structured diagnostics
 
 Every parse error carries `(line, column, byte_offset)` plus a
-machine-readable error code. The minimum, no-feature path
-renders a rustc-style snippet:
+machine-readable error code. The default API exposes a renderer-neutral
+payload for editors, services, and custom user interfaces:
+
+```rust
+use noyalib::{DiagnosticCode, Value};
+
+let err = noyalib::from_str::<Value>("port: [unclosed").unwrap_err();
+let diagnostic = err.diagnostic();
+assert_eq!(diagnostic.code(), DiagnosticCode::Parse);
+assert_eq!(diagnostic.code().as_str(), "noyalib::parse");
+
+if let Some(label) = diagnostic.primary_label() {
+    let byte_range = label.span().offset()..label.span().end();
+    println!("{} at {byte_range:?}", label.message());
+}
+```
+
+`SourceSpan` offsets and lengths are bytes in the original UTF-8 input.
+Protocol adapters must convert them when a client uses another coordinate
+system, such as the UTF-16 positions required by LSP.
+
+The minimum, no-feature path also renders a rustc-style snippet:
 
 ```rust
 use noyalib::Value;
@@ -290,9 +310,11 @@ println!("{}", err.format_with_source(input));
 //    |       ^^^^^^^^^ here
 ```
 
-Enable `--features miette` to surface this through the
-`miette::Diagnostic` interface — `cargo` / `rustc`-style ANSI
-output, error codes, help text, source-span underlining:
+Enable `--features miette` to render the same payload through the
+`miette::Diagnostic` interface with `cargo` / `rustc`-style ANSI output.
+Enable `--features ariadne` for an `ariadne::Report`; both adapters consume
+the canonical code, help, severity, and label list rather than maintaining
+their own mappings.
 
 ```rust,ignore
 // Needs `miette` in *your* Cargo.toml alongside noyalib's `miette`
@@ -561,7 +583,7 @@ diagnostics list and offer autocomplete on the recoverable
 subtrees.
 
 ```rust
-// Cargo.toml: noyalib = { version = "0.0.51", features = ["recovery"] }
+// Cargo.toml: noyalib = { version = "0.0.52", features = ["recovery"] }
 use noyalib::recovery::parse_lenient;
 
 let half_typed = "name: noyalib\nfeatures: [recovery, sval\n# ^ unclosed\n";
@@ -587,7 +609,7 @@ document stream:
 ```rust,ignore
 // Needs an async runtime and, for pattern 2, `tokio-util` in *your*
 // Cargo.toml, so this block is shown rather than compiled here.
-// Cargo.toml: noyalib = { version = "0.0.51", features = ["tokio"] }
+// Cargo.toml: noyalib = { version = "0.0.52", features = ["tokio"] }
 use noyalib::tokio_async::{async_yaml_stream, from_async_reader_multi};
 
 // Pattern 1: drain-and-parse
@@ -615,7 +637,7 @@ cost of serde monomorphisation. The adapter implements
 ```rust,ignore
 // `sval` and the `sval::Stream` you hand it are *your* dependencies,
 // so this block is shown rather than compiled here.
-// Cargo.toml: noyalib = { version = "0.0.51", features = ["sval"] }
+// Cargo.toml: noyalib = { version = "0.0.52", features = ["sval"] }
 let value: noyalib::Value = noyalib::from_str("name: noyalib")?;
 sval::Value::stream(&value, &mut my_stream)?;
 ```

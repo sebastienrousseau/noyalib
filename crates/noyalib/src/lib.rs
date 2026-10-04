@@ -558,9 +558,7 @@ pub mod compat;
 #[cfg(feature = "std")]
 pub mod cst;
 mod de;
-/// Spanned-to-miette diagnostic bridge (requires `miette` feature).
-#[cfg(feature = "miette")]
-#[cfg_attr(docsrs, doc(cfg(feature = "miette")))]
+/// Framework-neutral diagnostics and optional rendering bridges.
 pub mod diagnostic;
 /// Workspace-private `---` document-boundary scanner shared by
 /// `parallel::split`, `recovery::split_documents`, and
@@ -667,6 +665,7 @@ pub use de::{
 pub use de::{from_reader, from_reader_with_config};
 #[cfg(all(feature = "std", feature = "strict-deserialise"))]
 pub use de::{from_reader_strict, from_slice_strict, from_str_strict};
+pub use diagnostic::{Diagnostic, DiagnosticCode, DiagnosticLabel, DiagnosticSeverity, SourceSpan};
 #[cfg(feature = "std")]
 pub use document::{DocumentReadIterator, read, read_with_config};
 pub use document::{load_all, load_all_as, load_all_with_config, try_load_all};

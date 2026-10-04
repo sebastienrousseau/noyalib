@@ -20,6 +20,7 @@ crates/
 │   │   ├── streaming.rs  # zero-AST typed deserialise (hot path)
 │   │   ├── de.rs         # AST-shaped deserialise (Value path)
 │   │   ├── ser.rs        # serialiser
+│   │   ├── diagnostic.rs  # renderer-neutral codes, severity, and byte spans
 │   │   ├── value.rs      # 7-variant Value enum
 │   │   ├── borrowed.rs   # zero-copy AST
 │   │   ├── simd.rs       # find_any_of, SWAR decimals, structural-bitmask
@@ -43,6 +44,13 @@ ADR-0005, and the `xtask` crate was removed:
 
 The split satellite crates consume `noyalib` from crates.io via
 strict-lockstep `=X.Y.Z` version pins.
+
+Errors cross integration boundaries through `Error::diagnostic()`. That method
+produces the canonical `Diagnostic` payload used by terminal renderers and
+editor protocols. Optional adapters translate the payload into `miette` or
+`ariadne`; satellites must not duplicate the error-variant mapping. Source
+labels remain UTF-8 byte spans until the protocol boundary, where adapters
+perform any required coordinate conversion.
 
 The lib crate is `#![forbid(unsafe_code)]` workspace-wide. The
 satellite crates inherit the same forbid; only the third-party
