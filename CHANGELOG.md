@@ -5,6 +5,24 @@ All notable changes to this project are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.0.53] - 2026-10-06
+
+### Changed
+
+- Bumped `jsonschema` to 0.58 (the manifest requirement moves with the
+  lock), `smallvec` to 1.16.2 and `rustix` to 1.1.5, and refreshed the
+  cargo-vet exemptions for the new versions.
+- Moved the CI actions to current pins: `github/codeql-action` 4.38.2,
+  `dtolnay/rust-toolchain` and `taiki-e/install-action` 2.87.22.
+
+### Fixed
+
+- The strict rustdoc gate on Rust 1.99: the `cst` and `fmt` module docs
+  live in one place, so their intra-doc links resolve in module scope
+  instead of being reported as redundant without a span.
+- Clippy 1.99's `assert_is_empty` lint: every bare `is_empty` assertion
+  in the test suites now reports the value on failure.
+
 ## [v0.0.52] - 2026-09-22
 
 ### Added
