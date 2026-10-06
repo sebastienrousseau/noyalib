@@ -288,7 +288,7 @@ fn query_recursive_descent_into_sequence() {
 fn query_recursive_descent_into_tagged() {
     let v: Value = from_str("!Cfg\nname: alpha\n").expect("parse tagged");
     let r = v.query("..name");
-    assert!(!r.is_empty());
+    assert!(!r.is_empty(), "expected a non-empty value");
 }
 
 // ============================================================================

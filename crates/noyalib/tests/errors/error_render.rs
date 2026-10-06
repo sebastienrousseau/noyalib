@@ -83,7 +83,7 @@ fn cropped_region_clamps_at_bottom() {
 #[test]
 fn cropped_region_empty_source() {
     let r = CroppedRegion::extract("", 1, 2);
-    assert!(r.lines.is_empty());
+    assert!(r.lines.is_empty(), "expected empty, got {:?}", r.lines);
     assert_eq!(r.focus_line, 0);
 }
 

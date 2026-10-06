@@ -63,7 +63,11 @@ fn aliases_of_unknown_anchor_is_empty_not_error() {
     // "is this anchor referenced anywhere?" check pattern.
     let src = "x: 1\ny: 2\n";
     let doc = parse_document(src).unwrap();
-    assert!(doc.aliases_of("ghost").is_empty());
+    assert!(
+        doc.aliases_of("ghost").is_empty(),
+        "expected empty, got {:?}",
+        doc.aliases_of("ghost")
+    );
 }
 
 #[test]
@@ -139,7 +143,11 @@ fn materialise_inlines_scalar_anchor_text() {
 
     let out = doc.to_string();
     assert_eq!(out, "a: &n 7\nb: 7\n");
-    assert!(doc.aliases().is_empty());
+    assert!(
+        doc.aliases().is_empty(),
+        "expected empty, got {:?}",
+        doc.aliases()
+    );
     // The anchor itself is untouched — it still labels its value.
     assert_eq!(doc.anchors().len(), 1);
 }

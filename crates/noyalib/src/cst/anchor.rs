@@ -616,8 +616,16 @@ mod tests {
     #[test]
     fn no_anchors_no_aliases() {
         let doc = parse_document("a: 1\nb: 2\n").unwrap();
-        assert!(doc.anchors().is_empty());
-        assert!(doc.aliases().is_empty());
+        assert!(
+            doc.anchors().is_empty(),
+            "expected empty, got {:?}",
+            doc.anchors()
+        );
+        assert!(
+            doc.aliases().is_empty(),
+            "expected empty, got {:?}",
+            doc.aliases()
+        );
     }
 
     #[test]
@@ -658,7 +666,11 @@ mod tests {
         let mut doc = parse_document(src).unwrap();
         let n = doc.materialise_aliases_of("x").unwrap();
         assert_eq!(n, 3);
-        assert!(doc.aliases().is_empty());
+        assert!(
+            doc.aliases().is_empty(),
+            "expected empty, got {:?}",
+            doc.aliases()
+        );
         assert_eq!(doc.anchors().len(), 1);
     }
 

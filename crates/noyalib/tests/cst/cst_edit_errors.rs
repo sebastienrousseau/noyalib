@@ -198,7 +198,7 @@ fn remove_rejects_the_document_root() {
     let mut d = doc();
     let before = d.to_string();
     let err = d.remove("").expect_err("the root cannot be removed");
-    assert!(!err.to_string().is_empty());
+    assert!(!err.to_string().is_empty(), "expected a non-empty value");
     assert_eq!(d.to_string(), before);
 }
 
@@ -209,7 +209,7 @@ fn set_value_rejects_a_path_through_a_scalar() {
     let err = d
         .set_value("a.b", &Value::Bool(true))
         .expect_err("`a` is a scalar, so `a.b` addresses nothing");
-    assert!(!err.to_string().is_empty());
+    assert!(!err.to_string().is_empty(), "expected a non-empty value");
     assert_eq!(d.to_string(), before);
 }
 
@@ -274,7 +274,7 @@ fn a_nested_sequence_index_past_the_end_is_refused() {
         let err = d
             .set_value(path, &Value::Bool(true))
             .expect_err(&format!("`{path}` addresses nothing"));
-        assert!(!err.to_string().is_empty());
+        assert!(!err.to_string().is_empty(), "expected a non-empty value");
         assert_eq!(d.to_string(), before, "{path}: the document was modified");
     }
 }

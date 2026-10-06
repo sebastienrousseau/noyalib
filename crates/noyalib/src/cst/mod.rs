@@ -10,45 +10,48 @@
 //! `parse_document(s).unwrap().to_string()` is byte-identical to `s`
 //! for any input the parser accepts.
 //!
+//! The `Document` API depends on the parser's `SpanTree`, which lives
+//! under the `std` feature.
+//!
 //! The `Value` API (`from_str`, `to_string`, `StreamingDeserializer`)
 //! is unchanged. Trivia capture is enabled only on this path; the
 //! fast path pays no extra cost.
 //!
 //! # Current scope
 //!
-//! - **Read access.** [`Document::as_value`](crate::cst::Document::as_value)
-//!   for a typed view, [`Document::span_at`](crate::cst::Document::span_at)
-//!   / [`Document::get`](crate::cst::Document::get) for byte-range
+//! - **Read access.** [`Document::as_value`]
+//!   for a typed view, [`Document::span_at`]
+//!   / [`Document::get`] for byte-range
 //!   lookups by `path`, and
-//!   [`Document::syntax`](crate::cst::Document::syntax) for the green
+//!   [`Document::syntax`] for the green
 //!   tree itself.
-//! - **Mutation.** [`Document::replace_span`](crate::cst::Document::replace_span)
+//! - **Mutation.** [`Document::replace_span`]
 //!   (primitive byte replacement) and
-//!   [`Document::set`](crate::cst::Document::set) (path-targeted, the
+//!   [`Document::set`] (path-targeted, the
 //!   wrapper most callers want). Both re-parse on edit and reject
 //!   the change if the spliced source is invalid YAML, leaving the
 //!   document untouched.
-//!   [`Document::edit`](crate::cst::Document::edit) creates an
-//!   [`EditSession`](crate::cst::EditSession) that batches independent
+//!   [`Document::edit`] creates an
+//!   [`EditSession`] that batches independent
 //!   byte-range replacements and validates the assembled result once.
 //!
-//! - **Comments.** [`Document::comments_at`](crate::cst::Document::comments_at)
+//! - **Comments.** [`Document::comments_at`]
 //!   classifies the comments decorating a node into a
-//!   [`CommentBundle`](crate::cst::CommentBundle), and
-//!   [`Document::set_comment`](crate::cst::Document::set_comment) /
-//!   [`Document::remove_comment`](crate::cst::Document::remove_comment)
+//!   [`CommentBundle`], and
+//!   [`Document::set_comment`] /
+//!   [`Document::remove_comment`]
 //!   write them back, addressed by
-//!   [`CommentPosition`](crate::cst::CommentPosition). A leading block
+//!   [`CommentPosition`]. A leading block
 //!   is written at the node's own indentation. Both go through
 //!   `replace_span`, so they inherit its guard.
 //!
-//! - **Auto-formatting.** [`Emit`](crate::cst::Emit) turns a typed
+//! - **Auto-formatting.** [`Emit`] turns a typed
 //!   value into the YAML spelling that re-parses to exactly that
 //!   value at a given site, so
-//!   [`Document::insert_entry_value`](crate::cst::Document::insert_entry_value),
-//!   [`Document::push_back_value`](crate::cst::Document::push_back_value)
+//!   [`Document::insert_entry_value`],
+//!   [`Document::push_back_value`]
 //!   and
-//!   [`Document::insert_after_value`](crate::cst::Document::insert_after_value)
+//!   [`Document::insert_after_value`]
 //!   quote and escape what the fragment-taking mutators splice
 //!   verbatim.
 //!
@@ -70,22 +73,22 @@
 //!
 //! # Parser configuration
 //!
-//! [`parse_document`](crate::cst::parse_document) and
-//! [`parse_stream`](crate::cst::parse_stream) run under the default
+//! [`parse_document`] and
+//! [`parse_stream`] run under the default
 //! [`ParserConfig`](crate::ParserConfig), the same limits as
 //! [`from_str`](crate::from_str).
-//! [`parse_document_with_config`](crate::cst::parse_document_with_config)
-//! and [`parse_stream_with_config`](crate::cst::parse_stream_with_config)
+//! [`parse_document_with_config`]
+//! and [`parse_stream_with_config`]
 //! take one, mirroring [`from_str_with_config`](crate::from_str_with_config);
-//! the returned [`Document`](crate::cst::Document) keeps it for every
+//! the returned [`Document`] keeps it for every
 //! later re-parse of its own source, so an edit never falls back to
 //! the defaults.
 //!
 //! # Multi-document streams
 //!
-//! Use [`parse_stream`](crate::cst::parse_stream) for inputs
+//! Use [`parse_stream`] for inputs
 //! containing `---` / `...` separators — one
-//! [`Document`](crate::cst::Document) per logical YAML document,
+//! [`Document`] per logical YAML document,
 //! with each slice covering the exact bytes of that document so
 //! concatenation reproduces the input verbatim:
 //!

@@ -1480,14 +1480,14 @@ fn test_value_visitor_map() {
 #[test]
 fn test_mapping_new() {
     let map = Mapping::new();
-    assert!(map.is_empty());
+    assert!(map.is_empty(), "expected empty, got {map:?}");
     assert_eq!(map.len(), 0);
 }
 
 #[test]
 fn test_mapping_with_capacity() {
     let map = Mapping::with_capacity(10);
-    assert!(map.is_empty());
+    assert!(map.is_empty(), "expected empty, got {map:?}");
     assert!(map.capacity() >= 10);
 }
 
@@ -1528,7 +1528,7 @@ fn test_mapping_remove() {
     let removed = map.remove("key");
     assert_eq!(removed.unwrap().as_i64(), Some(42));
     assert!(!map.contains_key("key"));
-    assert!(map.is_empty());
+    assert!(map.is_empty(), "expected empty, got {map:?}");
 }
 
 #[test]
@@ -1548,7 +1548,7 @@ fn test_mapping_clear() {
     let _ = map.insert("b", Value::from(2));
 
     map.clear();
-    assert!(map.is_empty());
+    assert!(map.is_empty(), "expected empty, got {map:?}");
 }
 
 #[test]

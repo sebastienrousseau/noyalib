@@ -122,7 +122,7 @@ fn a_verbatim_splice_that_breaks_a_flow_collection_is_refused() {
     let mut doc = parse_document(src).unwrap();
     let (start, end) = doc.span_at("m.a").unwrap();
     let err = doc.replace_span(start, end, "x {y} z").unwrap_err();
-    assert!(!err.to_string().is_empty());
+    assert!(!err.to_string().is_empty(), "expected a non-empty value");
     assert_eq!(doc.to_string(), src, "a refused splice must not mutate");
     assert!(noyalib::from_str::<Value>(&doc.to_string()).is_ok());
 }

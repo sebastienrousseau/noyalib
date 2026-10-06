@@ -20,7 +20,7 @@ fn block_sequence_of_integers() {
 #[test]
 fn empty_block_sequence() {
     let v: Vec<String> = from_str("[]").unwrap();
-    assert!(v.is_empty());
+    assert!(v.is_empty(), "expected empty, got {v:?}");
 }
 
 #[test]

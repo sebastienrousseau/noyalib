@@ -49,7 +49,7 @@ fn test_roundtrip_multi_doc() {
 fn test_to_string_multi_empty() {
     let docs: Vec<i64> = vec![];
     let yaml = to_string_multi(&docs).unwrap();
-    assert!(yaml.is_empty());
+    assert!(yaml.is_empty(), "expected empty, got {yaml:?}");
 }
 
 #[test]

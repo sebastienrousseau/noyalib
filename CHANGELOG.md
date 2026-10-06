@@ -5,6 +5,46 @@ All notable changes to this project are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.0.53] - 2026-10-06
+
+### Added
+
+- `scripts/complexity-baseline.sh` and a `Complexity baseline` CI job:
+  clippy measures lines per function (ceiling 60) and cognitive
+  complexity (ceiling 15) against the committed
+  `scripts/complexity/baseline.tsv`, which lists the 110 functions over
+  a ceiling today and may only shrink.
+
+### Changed
+
+- Bumped `jsonschema` to 0.58 (the manifest requirement moves with the
+  lock), `smallvec` to 1.16.2 and `rustix` to 1.1.5, and refreshed the
+  cargo-vet exemptions for the new versions.
+- Moved the CI actions to current pins: `github/codeql-action` 4.38.2,
+  `dtolnay/rust-toolchain` and `taiki-e/install-action` 2.87.22.
+
+### Fixed
+
+- The strict rustdoc gate on Rust 1.99: the `cst` and `fmt` module docs
+  live in one place, so their intra-doc links resolve in module scope
+  instead of being reported as redundant without a span.
+- Clippy 1.99's `assert_is_empty` lint: every bare `is_empty` assertion
+  in the test suites now reports the value on failure.
+- The streaming deserializer, which serves typed targets with the
+  default configuration, now charges `max_events`, `max_nodes`,
+  `max_total_scalar_bytes`, `max_merge_keys`, `alias_anchor_ratio` and
+  the alias jump factor exactly as the two loaders do. Until now those
+  budgets were enforced only when the target was `Value`, so a typed
+  `from_str` with tightened limits still parsed an oversized document.
+  Its mapping-key and sequence-length limits also report
+  `Error::Budget` instead of a plain parse error, so every path returns
+  the same breach for the same input.
+- The ecosystem scorecard's `ci_main_green` probe reads the latest
+  completed run of the CI workflow. It used to read the newest run of
+  any workflow, so a passing monitor could hide a red main.
+- The WASM demo crate forbids unsafe code and denies missing docs like
+  every other crate root, which the scorecard counts.
+
 ## [v0.0.52] - 2026-09-22
 
 ### Added

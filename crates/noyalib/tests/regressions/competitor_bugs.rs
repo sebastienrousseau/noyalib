@@ -306,8 +306,16 @@ fn deeply_nested_flow_with_utf8() {
 fn empty_flow_collections() {
     let yaml = "empty_seq: []\nempty_map: {}\n";
     let v: Value = from_str(yaml).unwrap();
-    assert!(v["empty_seq"].as_sequence().unwrap().is_empty());
-    assert!(v["empty_map"].as_mapping().unwrap().is_empty());
+    assert!(
+        v["empty_seq"].as_sequence().unwrap().is_empty(),
+        "expected empty, got {:?}",
+        v["empty_seq"].as_sequence().unwrap()
+    );
+    assert!(
+        v["empty_map"].as_mapping().unwrap().is_empty(),
+        "expected empty, got {:?}",
+        v["empty_map"].as_mapping().unwrap()
+    );
 }
 
 #[test]

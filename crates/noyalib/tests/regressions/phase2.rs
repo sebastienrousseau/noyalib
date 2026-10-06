@@ -179,7 +179,7 @@ fn test_load_all_single_document() {
 fn test_load_all_empty() {
     let yaml = "";
     let docs: Vec<Value> = load_all(yaml).unwrap().filter_map(Result::ok).collect();
-    assert!(docs.is_empty());
+    assert!(docs.is_empty(), "expected empty, got {docs:?}");
 }
 
 #[test]
@@ -310,11 +310,11 @@ fn test_document_iterator_size_hint() {
 fn test_document_iterator_is_empty() {
     let yaml = "---\na: 1\n";
     let iter = try_load_all(yaml).unwrap();
-    assert!(!iter.is_empty());
+    assert!(!iter.is_empty(), "expected a non-empty value");
 
     // Empty iteration after consuming
     let empty_iter = try_load_all("").unwrap();
-    assert!(empty_iter.is_empty());
+    assert!(empty_iter.is_empty(), "expected empty, got {empty_iter:?}");
 }
 
 #[test]

@@ -177,7 +177,11 @@ mod tests {
 
     #[test]
     fn new_is_empty() {
-        assert!(TagRegistry::new().is_empty());
+        assert!(
+            TagRegistry::new().is_empty(),
+            "expected empty, got {:?}",
+            TagRegistry::new()
+        );
     }
 
     #[test]
@@ -198,7 +202,7 @@ mod tests {
     fn clear_empties() {
         let mut reg = TagRegistry::new().with("!a");
         reg.clear();
-        assert!(reg.is_empty());
+        assert!(reg.is_empty(), "expected empty, got {reg:?}");
     }
 
     #[test]

@@ -268,7 +268,7 @@ mod tests {
         let mut interner = KeyInterner::new();
         let a = interner.intern("k");
         interner.clear();
-        assert!(interner.is_empty());
+        assert!(interner.is_empty(), "expected empty, got {interner:?}");
         // The previously-issued Arc is still valid.
         assert_eq!(&*a, "k");
         // Re-interning the same key gets a *new* Arc since the
@@ -280,7 +280,7 @@ mod tests {
     #[test]
     fn with_capacity_constructs_empty_interner() {
         let interner = KeyInterner::with_capacity(128);
-        assert!(interner.is_empty());
+        assert!(interner.is_empty(), "expected empty, got {interner:?}");
         assert_eq!(interner.len(), 0);
     }
 

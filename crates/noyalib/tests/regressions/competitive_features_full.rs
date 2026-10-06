@@ -417,7 +417,7 @@ mod anchor_registry {
         assert_eq!(reg.len(), 2);
 
         reg.clear();
-        assert!(reg.is_empty());
+        assert!(reg.is_empty(), "expected empty, got {reg:?}");
         assert_eq!(reg.len(), 0);
         assert!(reg.resolve("a").is_none());
 
@@ -428,11 +428,11 @@ mod anchor_registry {
     #[test]
     fn len_and_is_empty() {
         let mut reg = AnchorRegistry::<u8>::new();
-        assert!(reg.is_empty());
+        assert!(reg.is_empty(), "expected empty, got {reg:?}");
         assert_eq!(reg.len(), 0);
 
         let _ = reg.register("x".into(), 1);
-        assert!(!reg.is_empty());
+        assert!(!reg.is_empty(), "expected a non-empty value");
         assert_eq!(reg.len(), 1);
 
         let _ = reg.register("y".into(), 2);
@@ -442,13 +442,13 @@ mod anchor_registry {
     #[test]
     fn default_constructor() {
         let reg = AnchorRegistry::<String>::default();
-        assert!(reg.is_empty());
+        assert!(reg.is_empty(), "expected empty, got {reg:?}");
     }
 
     #[test]
     fn arc_default_constructor() {
         let reg = ArcAnchorRegistry::<String>::default();
-        assert!(reg.is_empty());
+        assert!(reg.is_empty(), "expected empty, got {reg:?}");
     }
 
     #[test]
@@ -475,7 +475,7 @@ mod anchor_registry {
         let _ = reg.register("b".into(), 2);
         assert_eq!(reg.len(), 2);
         reg.clear();
-        assert!(reg.is_empty());
+        assert!(reg.is_empty(), "expected empty, got {reg:?}");
         let _ = reg.register("c".into(), 3);
         assert_eq!(*reg.resolve("c").unwrap(), 3);
     }
@@ -607,7 +607,7 @@ mod diagnostic_tests {
         let report = noyalib::diagnostic::spanned_error(yaml, &doc.value, "invalid");
         let diag: &dyn Diagnostic = report.as_ref();
         let labels: Vec<_> = diag.labels().unwrap().collect();
-        assert!(!labels.is_empty());
+        assert!(!labels.is_empty(), "expected a non-empty value");
         assert!(labels[0].label().unwrap().contains("invalid"));
     }
 
@@ -682,7 +682,7 @@ mod diagnostic_tests {
 
         // Verify the diagnostic renders without panicking.
         let rendered = format!("{report:?}");
-        assert!(!rendered.is_empty());
+        assert!(!rendered.is_empty(), "expected a non-empty value");
         assert!(report.to_string().contains("database port must be >= 1024"));
     }
 

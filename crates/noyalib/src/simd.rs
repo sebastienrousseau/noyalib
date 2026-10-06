@@ -1186,7 +1186,7 @@ mod tests {
     fn structural_iter_handles_empty_input() {
         let s = SimdScanner::new(b":");
         let positions: Vec<usize> = StructuralIter::new(&s, b"").collect();
-        assert!(positions.is_empty());
+        assert!(positions.is_empty(), "expected empty, got {positions:?}");
     }
 
     #[test]

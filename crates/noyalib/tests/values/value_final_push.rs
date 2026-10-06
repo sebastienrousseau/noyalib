@@ -63,7 +63,7 @@ fn final_value_mappingany_serialize() {
 #[test]
 fn final_value_mappingany_default_then_insert() {
     let mut m = MappingAny::default();
-    assert!(m.is_empty());
+    assert!(m.is_empty(), "expected empty, got {m:?}");
     let _ = m.insert(Value::from(true), Value::Null);
     assert_eq!(m.len(), 1);
 }
@@ -243,7 +243,7 @@ fn final_value_query_returns_empty_on_no_match() {
     let yaml = "items: [a, b, c]\n";
     let v: Value = noyalib::from_str(yaml).expect("parse");
     let r = v.query("$.nonexistent[*]");
-    assert!(r.is_empty());
+    assert!(r.is_empty(), "expected empty, got {r:?}");
 }
 
 #[test]
@@ -277,7 +277,7 @@ fn final_value_get_path_returns_none_on_missing() {
 #[test]
 fn final_value_mapping_with_capacity() {
     let m = Mapping::with_capacity(8);
-    assert!(m.is_empty());
+    assert!(m.is_empty(), "expected empty, got {m:?}");
     assert_eq!(m.len(), 0);
 }
 

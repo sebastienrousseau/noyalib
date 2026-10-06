@@ -88,5 +88,5 @@ fn clamped_span_handles_overflow() {
     assert_eq!(span.len(), 10);
 
     let degenerate = clamped_span(5, 5, 10);
-    assert!(!degenerate.is_empty());
+    assert!(!degenerate.is_empty(), "expected a non-empty value");
 }

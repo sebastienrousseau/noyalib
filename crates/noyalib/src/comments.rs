@@ -230,7 +230,7 @@ mod tests {
         // A comment indented by spaces on an otherwise-empty line
         // should classify as Line (no preceding content on this line).
         let cs = load_comments("k:\n  # indented\n  v: 1\n").unwrap();
-        assert!(!cs.is_empty());
+        assert!(!cs.is_empty(), "expected a non-empty value");
         assert_eq!(cs[0].kind, CommentKind::Line);
     }
 

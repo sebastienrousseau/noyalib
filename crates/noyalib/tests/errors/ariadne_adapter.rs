@@ -75,14 +75,14 @@ fn label_clamps_when_index_past_source_end() {
     report
         .write(("input.yaml", Source::from("")), &mut out)
         .unwrap();
-    assert!(!out.is_empty());
+    assert!(!out.is_empty(), "expected a non-empty value");
 }
 
 #[test]
 fn multibyte_unicode_at_label_does_not_panic() {
     let source = "name: 日本語\nbroken: [unclosed\n";
     let bytes = render(source);
-    assert!(!bytes.is_empty());
+    assert!(!bytes.is_empty(), "expected a non-empty value");
 }
 
 #[test]
@@ -118,5 +118,5 @@ fn label_span_handles_utf8_boundary() {
     report
         .write(("input.yaml", Source::from(source)), &mut out)
         .unwrap();
-    assert!(!out.is_empty());
+    assert!(!out.is_empty(), "expected a non-empty value");
 }

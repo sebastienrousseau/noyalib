@@ -182,7 +182,7 @@ fn error_recursion_limit() {
 #[test]
 fn error_repetition_limit() {
     let e = Error::RepetitionLimitExceeded;
-    assert!(!e.to_string().is_empty());
+    assert!(!e.to_string().is_empty(), "expected a non-empty value");
 }
 
 #[test]
@@ -230,7 +230,7 @@ fn error_failed_to_parse_number() {
 #[test]
 fn error_end_of_stream() {
     let e = Error::EndOfStream;
-    assert!(!e.to_string().is_empty());
+    assert!(!e.to_string().is_empty(), "expected a non-empty value");
 }
 
 #[test]

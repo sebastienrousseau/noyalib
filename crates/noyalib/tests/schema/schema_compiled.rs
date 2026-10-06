@@ -131,7 +131,7 @@ properties:
     );
     assert!(violations.iter().any(|v| v.keyword == "required"));
     for v in &violations {
-        assert!(!v.message.is_empty());
+        assert!(!v.message.is_empty(), "expected a non-empty value");
     }
 }
 
@@ -139,7 +139,11 @@ properties:
 fn iter_errors_empty_on_conforming_instance() {
     let schema = parse("type: object\n");
     let compiled = CompiledSchema::compile(&schema).unwrap();
-    assert!(compiled.iter_errors(&parse("a: 1\n")).unwrap().is_empty());
+    assert!(
+        compiled.iter_errors(&parse("a: 1\n")).unwrap().is_empty(),
+        "expected empty, got {:?}",
+        compiled.iter_errors(&parse("a: 1\n")).unwrap()
+    );
 }
 
 #[test]

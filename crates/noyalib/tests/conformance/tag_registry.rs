@@ -159,7 +159,7 @@ fn registry_contains_matches_registered() {
     assert!(reg.contains("!b"));
     assert!(!reg.contains("!c"));
     assert_eq!(reg.len(), 2);
-    assert!(!reg.is_empty());
+    assert!(!reg.is_empty(), "expected a non-empty value");
 }
 
 // ── Value target + registry: KeyCollision guard + streaming parity ───

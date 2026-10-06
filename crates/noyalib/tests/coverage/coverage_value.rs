@@ -41,7 +41,7 @@ fn mapping_clear() {
     let _ = m.insert("b", Value::from(2));
     assert_eq!(m.len(), 2);
     m.clear();
-    assert!(m.is_empty());
+    assert!(m.is_empty(), "expected empty, got {m:?}");
 }
 
 // ============================================================================
@@ -435,7 +435,7 @@ fn mapping_any_basic() {
     let _ = m.insert(Value::Bool(true), Value::from("yes"));
 
     assert_eq!(m.len(), 2);
-    assert!(!m.is_empty());
+    assert!(!m.is_empty(), "expected a non-empty value");
     assert!(m.contains_key(&Value::from(1)));
     assert_eq!(m.get(&Value::from(1)).unwrap().as_str(), Some("one"));
 }
@@ -507,7 +507,7 @@ fn mapping_any_clear() {
     let mut m = MappingAny::new();
     let _ = m.insert(Value::from("a"), Value::from(1));
     m.clear();
-    assert!(m.is_empty());
+    assert!(m.is_empty(), "expected empty, got {m:?}");
 }
 
 #[test]

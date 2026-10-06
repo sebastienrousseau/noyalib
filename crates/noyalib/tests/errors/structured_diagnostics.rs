@@ -19,7 +19,10 @@ fn parse_errors_expose_a_stable_code_and_primary_span() {
     assert_eq!(diagnostic.code(), DiagnosticCode::Parse);
     assert_eq!(diagnostic.code().as_str(), "noyalib::parse");
     assert_eq!(diagnostic.severity(), DiagnosticSeverity::Error);
-    assert!(!diagnostic.message().is_empty());
+    assert!(
+        !diagnostic.message().is_empty(),
+        "expected a non-empty value"
+    );
 
     let label = diagnostic
         .primary_label()
@@ -51,7 +54,11 @@ fn unknown_anchor_diagnostics_keep_primary_and_context_labels() {
 fn unlocated_errors_do_not_invent_source_spans() {
     let diagnostic = Error::Custom("service-defined failure".into()).diagnostic();
     assert_eq!(diagnostic.code(), DiagnosticCode::Other);
-    assert!(diagnostic.labels().is_empty());
+    assert!(
+        diagnostic.labels().is_empty(),
+        "expected empty, got {:?}",
+        diagnostic.labels()
+    );
     assert!(diagnostic.primary_label().is_none());
 }
 

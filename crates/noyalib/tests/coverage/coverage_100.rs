@@ -1480,7 +1480,7 @@ fn scan_error_display() {
     let yaml = r#"key: "\z""#;
     let err = from_str::<Value>(yaml).unwrap_err();
     let msg = format!("{err}");
-    assert!(!msg.is_empty());
+    assert!(!msg.is_empty(), "expected a non-empty value");
 }
 
 // ============================================================================
@@ -1807,7 +1807,7 @@ fn value_seq_access_empty() {
 
     let v = Value::Sequence(vec![]);
     let result: Vec<i64> = Vec::<i64>::deserialize(&v).unwrap();
-    assert!(result.is_empty());
+    assert!(result.is_empty(), "expected empty, got {result:?}");
 }
 
 #[test]
@@ -1833,7 +1833,7 @@ fn scan_error_display_format() {
     assert!(result.is_err());
     let err_str = result.unwrap_err().to_string();
     // The error message should contain useful info
-    assert!(!err_str.is_empty());
+    assert!(!err_str.is_empty(), "expected a non-empty value");
 }
 
 // --- scanner.rs: peek returning 0 at EOF (lines 170-173) ---

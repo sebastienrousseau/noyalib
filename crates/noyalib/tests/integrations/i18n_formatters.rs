@@ -97,8 +97,8 @@ fn message_formatter_works_through_dyn_dispatch() {
     let err = from_str::<Value>("a: [unclosed").unwrap_err();
     let dev = render_any(&DefaultFormatter, &err);
     let user = render_any(&UserFormatter, &err);
-    assert!(!dev.is_empty());
-    assert!(!user.is_empty());
+    assert!(!dev.is_empty(), "expected a non-empty value");
+    assert!(!user.is_empty(), "expected a non-empty value");
 }
 
 #[test]

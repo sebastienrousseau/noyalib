@@ -2230,7 +2230,11 @@ mod tests {
     fn comments_are_only_owned_when_capture_is_enabled() {
         let mut normal = Scanner::new("key: value # note\n");
         while !matches!(normal.next_token().unwrap().kind, TokenKind::StreamEnd) {}
-        assert!(normal.take_comments().is_empty());
+        assert!(
+            normal.take_comments().is_empty(),
+            "expected empty, got {:?}",
+            normal.take_comments()
+        );
 
         let mut capturing = Scanner::new("key: value # note\n");
         capturing.enable_comment_capture();

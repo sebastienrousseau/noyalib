@@ -358,7 +358,7 @@ fn flow_map_serialize_roundtrip() {
 fn flow_map_deref_into_inner_from_debug() {
     use noyalib::fmt::FlowMap;
     let fm: FlowMap<BTreeMap<String, i32>> = BTreeMap::new().into();
-    assert!(fm.is_empty()); // Deref
+    assert!(fm.is_empty(), "expected empty, got {fm:?}"); // Deref
     let _ = fm.into_inner();
     let fm2 = FlowMap(BTreeMap::<String, i32>::new());
     let debug = format!("{fm2:?}");
@@ -486,7 +486,11 @@ fn commented_roundtrip_loses_comment() {
     let yaml = to_string(&c).unwrap();
     let parsed: Commented<i32> = from_str(&yaml).unwrap();
     assert_eq!(*parsed, 99);
-    assert!(parsed.comment.is_empty()); // Comment lost on roundtrip
+    assert!(
+        parsed.comment.is_empty(),
+        "expected empty, got {:?}",
+        parsed.comment
+    ); // Comment lost on roundtrip
 }
 
 #[test]
@@ -523,7 +527,7 @@ fn space_after_deref_into_inner_from_debug() {
 #[test]
 fn load_all_empty_input() {
     let docs = load_all("").unwrap();
-    assert!(docs.is_empty());
+    assert!(docs.is_empty(), "expected empty, got {docs:?}");
     assert_eq!(docs.len(), 0);
 }
 
@@ -576,7 +580,7 @@ fn load_all_as_typed() {
 #[test]
 fn load_all_as_empty() {
     let docs: Vec<Value> = load_all_as("").unwrap();
-    assert!(docs.is_empty());
+    assert!(docs.is_empty(), "expected empty, got {docs:?}");
 }
 
 #[test]

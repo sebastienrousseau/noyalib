@@ -121,6 +121,38 @@ else
     bad "release artifact job must not cache its transient target tree"
 fi
 
+# ── complexity-baseline ────────────────────────────────────────────
+# The gate reads clippy JSON; --from-json feeds it a fixture so the
+# contract is tested without a cargo run. Exit codes: 0 agree,
+# 1 regression (new or grown), 2 improvement not yet recorded.
+CX="$SNAP/cx"; mkdir -p "$CX"
+cx_msg() { # lint file fn value ceiling
+    printf '{"reason":"compiler-message","message":{"code":{"code":"clippy::%s"},"message":"over (%s/%s)","spans":[{"file_name":"%s","text":[{"text":"fn %s() {"}]}]}}\n' \
+        "$1" "$4" "$5" "$2" "$3"
+}
+{ cx_msg too_many_lines src/a.rs foo 70 60; cx_msg cognitive_complexity src/b.rs bar 20 15; } > "$CX/base.json"
+{ cat "$CX/base.json"; cx_msg too_many_lines src/c.rs baz 61 60; } > "$CX/new.json"
+{ cx_msg too_many_lines src/a.rs foo 80 60; cx_msg cognitive_complexity src/b.rs bar 20 15; } > "$CX/grew.json"
+cx_msg too_many_lines src/a.rs foo 70 60 > "$CX/better.json"
+# cx <expected rc> <json> [--update] <description>
+cx() {
+    local want="$1" json="$2" desc="${*: -1}" got=0
+    shift 2
+    if [ "${1:-}" = --update ]; then set -- --update; else set --; fi
+    ./scripts/complexity-baseline.sh --baseline "$CX/baseline.tsv" --from-json "$json" "$@" >/dev/null 2>&1 || got=$?
+    if [ "$got" = "$want" ]; then ok; else bad "complexity: $desc (rc $got, want $want)"; fi
+}
+cx_entries() { grep -vc '^#' "$CX/baseline.tsv"; }
+cx 0 "$CX/base.json" --update "first --update must record the tree"
+if [ "$(cx_entries)" = 3 ]; then ok; else bad "complexity: baseline should hold a header and two entries"; fi
+cx 0 "$CX/base.json" "unchanged tree must pass"
+cx 1 "$CX/new.json" "a new offender must fail with 1"
+cx 1 "$CX/grew.json" "a grown offender must fail with 1"
+cx 1 "$CX/grew.json" --update "--update must refuse a regression"
+cx 2 "$CX/better.json" "an unrecorded improvement must fail with 2"
+cx 0 "$CX/better.json" --update "--update must record an improvement"
+if [ "$(cx_entries)" = 2 ]; then ok; else bad "complexity: baseline should shrink to a header and one entry"; fi
+
 # ── every gate script is exercised above ───────────────────────────
 # Without this, a new `scripts/check-*.sh` joins the release path with
 # no self-test and nobody notices — which is how three of the five got

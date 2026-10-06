@@ -136,7 +136,7 @@ fn final_de_wrap_err_attaches_location_when_span_present() {
     let res: Result<Doc, _> = from_str_with_config(yaml, &cfg);
     let err = res.expect_err("base64 decode error");
     let msg = err.to_string();
-    assert!(!msg.is_empty());
+    assert!(!msg.is_empty(), "expected a non-empty value");
 }
 
 // ── L1480, L1482, L1484 — deserialize_any over Bool / Float / Seq ──
@@ -689,7 +689,7 @@ fn final_streaming_newtype_with_core_str_tag() {
 #[test]
 fn final_streaming_seq_empty_happy_path() {
     let v: Vec<i64> = from_str("[]\n").unwrap();
-    assert!(v.is_empty());
+    assert!(v.is_empty(), "expected empty, got {v:?}");
 }
 
 // ── L919-L929 — deserialize_map with empty mapping ────────────────
@@ -697,7 +697,7 @@ fn final_streaming_seq_empty_happy_path() {
 #[test]
 fn final_streaming_map_empty_happy_path() {
     let m: BTreeMap<String, i64> = from_str("{}\n").unwrap();
-    assert!(m.is_empty());
+    assert!(m.is_empty(), "expected empty, got {m:?}");
 }
 
 // ── L960-L997 — deserialize_enum Tag-prefixed dispatch + scalar arm

@@ -73,7 +73,7 @@ fn set_returns_path_not_found_error() {
 fn set_with_invalid_replacement_is_atomic() {
     let mut doc = parse_document("name: foo\n").unwrap();
     let error = doc.set("name", "[").unwrap_err();
-    assert!(!error.to_string().is_empty());
+    assert!(!error.to_string().is_empty(), "expected a non-empty value");
     assert_eq!(doc.to_string(), "name: foo\n");
     doc.validate().expect("the original document stays valid");
     assert_eq!(doc.as_value()["name"].as_str(), Some("foo"));

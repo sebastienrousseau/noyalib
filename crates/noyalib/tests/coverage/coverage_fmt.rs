@@ -135,7 +135,7 @@ fn flow_seq_from() {
 fn flow_map_from() {
     let m = BTreeMap::new();
     let v: FlowMap<BTreeMap<String, i64>> = FlowMap::from(m);
-    assert!(v.0.is_empty());
+    assert!(v.0.is_empty(), "expected empty, got {:?}", v.0);
 }
 
 #[test]

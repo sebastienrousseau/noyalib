@@ -108,6 +108,11 @@ trusted publishing.
 ## House rules
 
 - CI must be green in the same session that turned it red.
+- Functions stay within 60 lines and a cognitive complexity of 15.
+  `scripts/complexity-baseline.sh` measures both with clippy against
+  the committed `scripts/complexity/baseline.tsv`; a function that
+  joins the list or grows fails CI, and an improvement is recorded
+  with `--update`, which refuses to record a regression.
 - Commits are signed; releases are signed tags (`KEYS.asc`).
 - Structure cleanups never couple to code changes.
 - New behaviour lands with its test in the same commit; a regression

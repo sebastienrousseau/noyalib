@@ -216,7 +216,7 @@ fn seq_block_strings() {
 #[test]
 fn seq_empty_flow() {
     let v: Vec<i64> = from_str("[]\n").unwrap();
-    assert!(v.is_empty());
+    assert!(v.is_empty(), "expected empty, got {v:?}");
 }
 
 #[test]
@@ -273,7 +273,7 @@ fn map_flow_style() {
 #[test]
 fn map_empty_flow() {
     let m: BTreeMap<String, i64> = from_str("{}\n").unwrap();
-    assert!(m.is_empty());
+    assert!(m.is_empty(), "expected empty, got {m:?}");
 }
 
 #[test]

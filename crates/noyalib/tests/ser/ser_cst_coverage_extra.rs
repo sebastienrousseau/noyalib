@@ -44,7 +44,7 @@ fn ser_ser_to_writer_with_config_writes_full_payload() {
     // Drives lines 361-363: `let s = to_string_with_config?; write_all(&s)`.
     let mut buf = Vec::<u8>::new();
     to_writer_with_config(&mut buf, &vec![1i32, 2, 3], &SerializerConfig::new()).unwrap();
-    assert!(!buf.is_empty());
+    assert!(!buf.is_empty(), "expected a non-empty value");
 }
 
 #[test]
@@ -65,7 +65,7 @@ fn ser_ser_to_writer_value_default_writes_payload() {
     let v: Value = to_value(&42i64).unwrap();
     let mut buf = Vec::<u8>::new();
     to_writer_value(&mut buf, &v).unwrap();
-    assert!(!buf.is_empty());
+    assert!(!buf.is_empty(), "expected a non-empty value");
 }
 
 #[test]
@@ -89,7 +89,7 @@ fn ser_ser_to_writer_multi_with_config_writes_full() {
     let docs = vec![1i32, 2];
     let mut buf = Vec::<u8>::new();
     to_writer_multi_with_config(&mut buf, &docs, &SerializerConfig::new()).unwrap();
-    assert!(!buf.is_empty());
+    assert!(!buf.is_empty(), "expected a non-empty value");
 }
 
 #[test]
@@ -161,10 +161,10 @@ fn ser_ser_to_writer_tracking_shared_default_and_with_config() {
     let doc = vec![shared.clone(), shared];
     let mut buf = Vec::<u8>::new();
     to_writer_tracking_shared(&mut buf, &doc).unwrap();
-    assert!(!buf.is_empty());
+    assert!(!buf.is_empty(), "expected a non-empty value");
     let mut buf2 = Vec::<u8>::new();
     to_writer_tracking_shared_with_config(&mut buf2, &doc, &SerializerConfig::new()).unwrap();
-    assert!(!buf2.is_empty());
+    assert!(!buf2.is_empty(), "expected a non-empty value");
 }
 
 // ============================================================================
@@ -458,7 +458,7 @@ fn ser_ser_flow_style_auto_threshold_below_uses_flow() {
         .flow_style(FlowStyle::Auto)
         .flow_threshold(10);
     let yaml = to_string_with_config(&v, &cfg).unwrap();
-    assert!(!yaml.is_empty());
+    assert!(!yaml.is_empty(), "expected a non-empty value");
 }
 
 #[test]
@@ -503,7 +503,7 @@ fn ser_ser_block_scalars_disabled() {
         .block_scalars(false)
         .block_scalar_threshold(0);
     let yaml = to_string_with_config(&"line1\nline2\n", &cfg).unwrap();
-    assert!(!yaml.is_empty());
+    assert!(!yaml.is_empty(), "expected a non-empty value");
 }
 
 #[test]

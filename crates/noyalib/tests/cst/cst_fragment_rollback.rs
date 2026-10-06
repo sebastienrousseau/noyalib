@@ -127,7 +127,7 @@ fn push_back_rolls_back_when_splice_validation_fails() {
         .push_back("", "\n|\n---")
         .expect_err("the hostile fragment must be refused");
 
-    assert!(!error.to_string().is_empty());
+    assert!(!error.to_string().is_empty(), "expected a non-empty value");
     assert_eq!(doc.source(), SOURCE);
     doc.validate().expect("the restored document remains valid");
 }
@@ -144,7 +144,7 @@ fn set_rejects_a_fragment_that_opens_another_document() {
         .set("", "\r\r\r---['\r---")
         .expect_err("a second document must be refused");
 
-    assert!(!error.to_string().is_empty());
+    assert!(!error.to_string().is_empty(), "expected a non-empty value");
     assert_eq!(doc.source(), SOURCE);
     doc.validate().expect("the original document remains valid");
 }

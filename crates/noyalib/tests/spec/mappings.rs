@@ -25,7 +25,7 @@ fn block_mapping_integer_values() {
 #[test]
 fn empty_mapping() {
     let m: HashMap<String, String> = from_str("{}").unwrap();
-    assert!(m.is_empty());
+    assert!(m.is_empty(), "expected empty, got {m:?}");
 }
 
 #[test]
