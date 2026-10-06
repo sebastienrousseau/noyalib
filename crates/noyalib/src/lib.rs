@@ -549,12 +549,6 @@ mod comments;
 /// add zero compile cost. See [`compat::serde_yaml`] for the
 /// `serde_yaml` 0.9 surface.
 pub mod compat;
-/// Side-table CST for byte-faithful round-tripping with typed
-/// path-targeted edits.
-///
-/// See `docs/design/green-tree.md` for the architectural plan. The
-/// `Document` API depends on the parser's `SpanTree`, which lives
-/// under the `std` feature.
 #[cfg(feature = "std")]
 pub mod cst;
 mod de;
@@ -574,7 +568,6 @@ mod error;
 #[cfg_attr(docsrs, doc(cfg(feature = "figment")))]
 pub mod figment;
 mod flattened;
-/// Formatting wrappers for per-value YAML output style control.
 pub mod fmt;
 /// Key interning for memory-efficient repeated-key workloads.
 pub mod interner;
