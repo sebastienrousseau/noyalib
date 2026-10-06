@@ -25,6 +25,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - The ecosystem scorecard's `ci_main_green` probe reads the latest
   completed run of the CI workflow. It used to read the newest run of
   any workflow, so a passing monitor could hide a red main.
+- The WASM demo crate forbids unsafe code and denies missing docs like
+  every other crate root, which the scorecard counts.
 
 ## [v0.0.52] - 2026-09-22
 

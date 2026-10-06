@@ -7,6 +7,9 @@
 //!
 //! Build: `cd demos/wasm && wasm-pack build --target web`
 
+#![forbid(unsafe_code)]
+#![deny(missing_docs)]
+
 use wasm_bindgen::prelude::*;
 
 /// Parse a YAML string and return a JS object.
