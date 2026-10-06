@@ -30,6 +30,15 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   instead of being reported as redundant without a span.
 - Clippy 1.99's `assert_is_empty` lint: every bare `is_empty` assertion
   in the test suites now reports the value on failure.
+- The streaming deserializer, which serves typed targets with the
+  default configuration, now charges `max_events`, `max_nodes`,
+  `max_total_scalar_bytes`, `max_merge_keys`, `alias_anchor_ratio` and
+  the alias jump factor exactly as the two loaders do. Until now those
+  budgets were enforced only when the target was `Value`, so a typed
+  `from_str` with tightened limits still parsed an oversized document.
+  Its mapping-key and sequence-length limits also report
+  `Error::Budget` instead of a plain parse error, so every path returns
+  the same breach for the same input.
 - The ecosystem scorecard's `ci_main_green` probe reads the latest
   completed run of the CI workflow. It used to read the newest run of
   any workflow, so a passing monitor could hide a red main.

@@ -54,7 +54,8 @@ use crate::prelude::{f64_fract, f64_mul_add};
 use crate::prelude::{FxHashMap, FxHashSet};
 use smallvec::SmallVec;
 
-use crate::error::{Error, Result, closest_name};
+use crate::error::{BudgetBreach, Error, Result, closest_name};
+use crate::parser::budget;
 use crate::parser::{Event, ParseConfig, Parser, ScalarStyle};
 use crate::value::Value;
 use core::fmt;
@@ -130,6 +131,21 @@ pub struct StreamingDeserializer<'a> {
     /// `config.max_document_length` so aliases cannot amplify beyond the
     /// document-length cap.
     alias_bytes: usize,
+    /// Raw parser events pulled so far, bounded by `config.max_events`.
+    event_count: usize,
+    /// Scalar and collection-start events pulled so far, bounded by
+    /// `config.max_nodes`.
+    node_count: usize,
+    /// Cumulative scalar bytes pulled so far, bounded by
+    /// `config.max_total_scalar_bytes`.
+    scalar_bytes: usize,
+    /// Anchor definitions seen so far: the denominator of
+    /// `config.alias_anchor_ratio`.
+    anchor_count: usize,
+    /// Merge keys expanded so far, bounded by `config.max_merge_keys`.
+    merge_key_count: usize,
+    /// Running alias jump charge, see `budget::jump_charge_exceeded`.
+    alias_jump_charge: usize,
 }
 
 impl fmt::Debug for StreamingDeserializer<'_> {
@@ -241,6 +257,12 @@ impl<'a> StreamingDeserializer<'a> {
             recording: None,
             alias_count: 0,
             alias_bytes: 0,
+            event_count: 0,
+            node_count: 0,
+            scalar_bytes: 0,
+            anchor_count: 0,
+            merge_key_count: 0,
+            alias_jump_charge: 0,
         }
     }
 
@@ -271,14 +293,68 @@ impl<'a> StreamingDeserializer<'a> {
         self
     }
 
+    /// The one place a raw event leaves the parser. Every budget the
+    /// loaders charge per parser event is charged here, so a budget
+    /// cannot exist on the loader paths without existing on this one.
+    /// Until v0.0.53 four of them (`max_events`, `max_nodes`,
+    /// `max_total_scalar_bytes`, `max_merge_keys`) and the alias ratio
+    /// were loader-only, and typed targets never saw them.
+    fn pull_parser_event(&mut self) -> Result<Event<'a>> {
+        let ev = self
+            .parser
+            .next_event()
+            .map_err(|e| Error::parse_at(&*e.message, self.input, e.index))?;
+        self.charge_event(&ev)?;
+        Ok(ev)
+    }
+
+    /// Mirror of the loader prologue: events, nodes, scalar bytes and
+    /// anchors, counted on raw parser events only. Replayed alias events
+    /// are charged through the alias budgets instead, as on the loaders.
+    fn charge_event(&mut self, ev: &Event<'_>) -> Result<()> {
+        self.event_count += 1;
+        if self.event_count > self.config.max_events {
+            return Err(Error::Budget(BudgetBreach::MaxEvents {
+                limit: self.config.max_events,
+                observed: self.event_count,
+            }));
+        }
+        let (is_node, anchored, scalar_len) = match ev {
+            Event::Scalar { value, anchor, .. } => (true, anchor.is_some(), Some(value.len())),
+            Event::SequenceStart { anchor, .. } | Event::MappingStart { anchor, .. } => {
+                (true, anchor.is_some(), None)
+            }
+            _ => (false, false, None),
+        };
+        if is_node {
+            self.node_count += 1;
+            if budget::nodes_exceeded(self.node_count, self.config.max_nodes) {
+                return Err(Error::Budget(BudgetBreach::MaxNodes {
+                    limit: self.config.max_nodes,
+                    observed: self.node_count,
+                }));
+            }
+        }
+        if let Some(len) = scalar_len {
+            self.scalar_bytes = self.scalar_bytes.saturating_add(len);
+            if self.scalar_bytes > self.config.max_total_scalar_bytes {
+                return Err(Error::Budget(BudgetBreach::MaxTotalScalarBytes {
+                    limit: self.config.max_total_scalar_bytes,
+                    observed: self.scalar_bytes,
+                }));
+            }
+        }
+        if anchored {
+            self.anchor_count = self.anchor_count.saturating_add(1);
+        }
+        Ok(())
+    }
+
     /// Peek without resolving anything. The merge-key path calls this so an
     /// `Event::Alias` is still visible as an alias.
     fn peek_parser_event(&mut self) -> Result<&Event<'a>> {
         if self.current.is_none() {
-            let event = self
-                .parser
-                .next_event()
-                .map_err(|e| Error::parse_at(&*e.message, self.input, e.index))?;
+            let event = self.pull_parser_event()?;
             self.current = Some(Lookahead::Raw(event));
         }
         Ok(self.current.as_ref().unwrap().event())
@@ -294,10 +370,7 @@ impl<'a> StreamingDeserializer<'a> {
                 Ok(ev)
             }
             None => {
-                let mut ev = self
-                    .parser
-                    .next_event()
-                    .map_err(|e| Error::parse_at(&*e.message, self.input, e.index))?;
+                let mut ev = self.pull_parser_event()?;
                 self.anchor_and_record(&mut ev);
                 Ok(ev)
             }
@@ -329,9 +402,7 @@ impl<'a> StreamingDeserializer<'a> {
             let raw = if let Some(ev) = ev_opt {
                 ev
             } else {
-                self.parser
-                    .next_event()
-                    .map_err(|e| Error::parse_at(&*e.message, self.input, e.index))?
+                self.pull_parser_event()?
             };
             let ev = self.process_event(raw)?;
             self.current = Some(Lookahead::Processed(ev));
@@ -391,10 +462,7 @@ impl<'a> StreamingDeserializer<'a> {
             return self.process_event(ev);
         }
 
-        let ev = self
-            .parser
-            .next_event()
-            .map_err(|e| Error::parse_at(&*e.message, self.input, e.index))?;
+        let ev = self.pull_parser_event()?;
         self.process_event(ev)
     }
 
@@ -502,27 +570,55 @@ impl<'a> StreamingDeserializer<'a> {
         }
     }
 
-    fn resolve_alias(&mut self, name: &str, alias_start: usize) -> Result<Event<'a>> {
+    /// Alias budgets in the loader's order: expansion count, alias to
+    /// anchor ratio, expanded bytes (the billion-laughs guard, under the
+    /// same document-length bound), then jump charge. Each error matches
+    /// the loader's for the same input.
+    fn charge_alias(&mut self, name: &str) -> Result<()> {
         self.alias_count += 1;
-        if self.alias_count > self.config.max_alias_expansions {
+        if budget::alias_count_exceeded(self.alias_count, self.config.max_alias_expansions) {
             return Err(Error::RepetitionLimitExceeded);
         }
-        // Estimate cumulative expansion cost (bytes) to guard against
-        // billion-laughs style amplification — the same document_length
-        // bound applies.
-        if let Some(buf_ref) = self.anchor_events.get(name) {
-            let bytes: usize = buf_ref
-                .iter()
-                .map(|ev| match ev {
-                    BufferedEvent::Scalar { value, .. } => value.len() + 8,
-                    _ => 4,
-                })
-                .sum();
-            self.alias_bytes = self.alias_bytes.saturating_add(bytes);
-            if self.alias_bytes > self.config.max_document_length {
+        if let Some(ratio) = self.config.alias_anchor_ratio {
+            if budget::alias_ratio_exceeded(self.alias_count, self.anchor_count, Some(ratio)) {
+                return Err(Error::Budget(BudgetBreach::AliasAnchorRatio {
+                    ratio,
+                    anchors: self.anchor_count,
+                    aliases: self.alias_count,
+                }));
+            }
+        }
+        let Some(buf_ref) = self.anchor_events.get(name) else {
+            return Ok(());
+        };
+        let (bytes, nodes) = buf_ref
+            .iter()
+            .fold((0usize, 0usize), |(b, n), ev| match ev {
+                BufferedEvent::Scalar { value, .. } => (b + value.len() + 8, n + 1),
+                BufferedEvent::SeqStart | BufferedEvent::MapStart => (b + 4, n + 1),
+                _ => (b + 4, n),
+            });
+        self.alias_bytes = self.alias_bytes.saturating_add(bytes);
+        if self.alias_bytes > self.config.max_document_length {
+            return Err(Error::RepetitionLimitExceeded);
+        }
+        if let Some(factor) = self.config.alias_jump_event_factor {
+            let (charge, over) = budget::jump_charge_exceeded(
+                self.alias_jump_charge,
+                nodes,
+                self.event_count,
+                factor,
+            );
+            self.alias_jump_charge = charge;
+            if over {
                 return Err(Error::RepetitionLimitExceeded);
             }
         }
+        Ok(())
+    }
+
+    fn resolve_alias(&mut self, name: &str, alias_start: usize) -> Result<Event<'a>> {
+        self.charge_alias(name)?;
         let buf = self
             .anchor_events
             .get(name)
@@ -541,6 +637,13 @@ impl<'a> StreamingDeserializer<'a> {
     }
 
     fn inject_multi_merge_mapping_contents(&mut self, sources: &[(String, usize)]) -> Result<()> {
+        self.merge_key_count = self.merge_key_count.saturating_add(1);
+        if self.merge_key_count > self.config.max_merge_keys {
+            return Err(Error::Budget(BudgetBreach::MaxMergeKeys {
+                limit: self.config.max_merge_keys,
+                observed: self.merge_key_count,
+            }));
+        }
         let local_buf = self.buffer_rest_of_mapping()?;
         let mut seen_keys = extract_local_keys(&local_buf);
         let mut filtered_sources: SmallVec<[SmallVec<[BufferedEvent; SMALL_VEC_SIZE]>; 2]> =
@@ -1360,10 +1463,10 @@ impl<'de> serde_core::de::SeqAccess<'de> for StreamingSeqAccess<'_, 'de> {
         }
         self.count += 1;
         if self.count > self.de.config.max_sequence_length {
-            return Err(Error::Parse(format!(
-                "sequence exceeds maximum length of {}",
-                self.de.config.max_sequence_length
-            )));
+            return Err(Error::Budget(BudgetBreach::MaxSequenceLength {
+                limit: self.de.config.max_sequence_length,
+                observed: self.count,
+            }));
         }
         seed.deserialize(&mut *self.de).map(Some)
     }
@@ -1554,10 +1657,10 @@ impl<'de> serde_core::de::MapAccess<'de> for StreamingMapAccess<'_, 'de> {
             }
             self.key_count += 1;
             if self.key_count > self.de.config.max_mapping_keys {
-                return Err(Error::Parse(format!(
-                    "mapping exceeds maximum of {} keys",
-                    self.de.config.max_mapping_keys
-                )));
+                return Err(Error::Budget(BudgetBreach::MaxMappingKeys {
+                    limit: self.de.config.max_mapping_keys,
+                    observed: self.key_count,
+                }));
             }
             self.de.raw_str_mode = true;
             let res = seed.deserialize(&mut *self.de).map(Some);
