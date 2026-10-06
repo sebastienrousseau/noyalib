@@ -561,10 +561,13 @@ probe_repo() {
 
     # main must actually be green right now.
     local concl
-    concl=$(gh run list --repo "$OWNER/$repo" --branch main --limit 1 --json conclusion --jq '.[0].conclusion' 2>/dev/null)
+    # Filter to the CI workflow and to completed runs: the newest run on
+    # main is often a monitor or scorecard workflow, and an in-progress CI
+    # run has no conclusion yet. Either would misreport a red main.
+    concl=$(gh run list --repo "$OWNER/$repo" --branch main --workflow CI --status completed --limit 1 --json conclusion --jq '.[0].conclusion' 2>/dev/null)
     record "$repo" ci_main_green release 3 "${concl:-unknown}" \
       "$([ "$concl" = "success" ] && echo 1.0000 || { [ -z "$concl" ] && echo NA || echo 0.0000; })" \
-      "gh run list --branch main --limit 1 --json conclusion"
+      "gh run list --branch main --workflow CI --status completed --limit 1 --json conclusion"
 
     # crates.io must carry the version the tree claims.
     if [ -n "$ver" ]; then

@@ -22,6 +22,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   instead of being reported as redundant without a span.
 - Clippy 1.99's `assert_is_empty` lint: every bare `is_empty` assertion
   in the test suites now reports the value on failure.
+- The ecosystem scorecard's `ci_main_green` probe reads the latest
+  completed run of the CI workflow. It used to read the newest run of
+  any workflow, so a passing monitor could hide a red main.
 
 ## [v0.0.52] - 2026-09-22
 
