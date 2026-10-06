@@ -13,12 +13,20 @@ release under [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 these files carry the narrative for the releases that had one — why a
 change was made, what it broke, what to do about it.
 
-Notes exist for **v0.0.1 – v0.0.17**. From **v0.0.18** onward the
+Notes exist for **v0.0.1 – v0.0.17**. From **v0.0.18** to **v0.0.53** the
 changelog entries carry that narrative themselves, so there are no
 separate files; see the changelog for those releases.
 
+From **v0.0.54** onward every release has a file again, in a fixed shape:
+it opens with the `## Highlights ⭐️` bullets the GitHub release page is
+composed from at release time (the rest of the page, What's Changed,
+Checksums and the Full Changelog link, is generated). The release workflow
+refuses a tag whose Highlights file is missing, and
+`scripts/verify-release-versions.sh` checks for it before that.
+
 | Version | Date | Notes |
 |---|---|---|
+| [`v0.0.54`](v0.0.54.md) | unreleased | Reader entry points bounded at `max_document_length` before buffering. |
 | [`v0.0.17`](v0.0.17.md) | 2026-07-25 | Lockstep-only release; no code change in the core crate. |
 | [`v0.0.16`](v0.0.16.md) | 2026-07-24 | Build fix, MSRV raise, and dependency refresh — `main` had been left unbuildable under `cargo check --all-targets`. |
 | [`v0.0.15`](v0.0.15.md) | 2026-07-12 | Completes loader parity and hardens coverage. |
