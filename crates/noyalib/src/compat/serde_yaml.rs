@@ -595,15 +595,13 @@ where
 /// assert_eq!(m["port"], 8080);
 /// ```
 #[cfg(feature = "std")]
-pub fn from_reader<R, T>(mut reader: R) -> Result<T>
+pub fn from_reader<R, T>(reader: R) -> Result<T>
 where
     R: std::io::Read,
     T: serde_core::de::DeserializeOwned + 'static,
 {
-    let mut buf = String::new();
-    let _ = reader
-        .read_to_string(&mut buf)
-        .map_err(|e| Error::from(crate::error::Error::Io(e)))?;
+    let buf = crate::de::read_to_string_bounded(reader, &crate::ParserConfig::serde_yaml_compat())
+        .map_err(Error::from)?;
     from_str(&buf)
 }
 

@@ -361,14 +361,47 @@ where
 /// assert!(noyalib::from_reader_strict::<_, Config>(&yaml[..]).is_err());
 /// ```
 #[cfg(all(feature = "std", feature = "strict-deserialise"))]
-pub fn from_reader_strict<R, T>(mut reader: R) -> Result<T>
+pub fn from_reader_strict<R, T>(reader: R) -> Result<T>
 where
     R: io::Read,
     T: for<'de> serde_core::Deserialize<'de> + 'static,
 {
-    let mut s = String::new();
-    let _ = reader.read_to_string(&mut s).map_err(Error::Io)?;
+    let s = read_to_string_bounded(reader, &ParserConfig::default())?;
     from_str_strict(&s)
+}
+
+/// Read a `std::io::Read` source into a `String`, stopping one byte past
+/// the configured `max_document_length` so an unbounded or hostile
+/// reader cannot fill memory before the length budget is checked.
+///
+/// Returns the same `Error::Parse` message as the `&str` entry points
+/// when the limit is exceeded, and `Error::Io` (`InvalidData`) when the
+/// bytes are not valid UTF-8, matching `read_to_string`.
+#[cfg(feature = "std")]
+pub(crate) fn read_to_string_bounded<R>(mut reader: R, config: &ParserConfig) -> Result<String>
+where
+    R: io::Read,
+{
+    use io::Read as _;
+    let max_len = parser::ParseConfig::from(config).max_document_length;
+    let limit = u64::try_from(max_len).unwrap_or(u64::MAX).saturating_add(1);
+    let mut buf = Vec::new();
+    let _ = reader
+        .by_ref()
+        .take(limit)
+        .read_to_end(&mut buf)
+        .map_err(Error::Io)?;
+    if buf.len() > max_len {
+        return Err(Error::Parse(format!(
+            "document exceeds maximum length of {max_len} bytes"
+        )));
+    }
+    String::from_utf8(buf).map_err(|_| {
+        Error::Io(io::Error::new(
+            io::ErrorKind::InvalidData,
+            "stream did not contain valid UTF-8",
+        ))
+    })
 }
 
 /// Deserialize YAML from a `&str` with a custom [`ParserConfig`].
@@ -1079,7 +1112,10 @@ where
 /// # Errors
 ///
 /// - `Error::Io` — the underlying reader returns an I/O error.
-/// - All variants documented on [`from_str_with_config`].
+/// - All variants documented on [`from_str_with_config`]. The reader
+///   is read at most one byte past `max_document_length`, so an
+///   oversized or unbounded source fails the length budget without
+///   being buffered first.
 ///
 /// # Examples
 ///
@@ -1092,13 +1128,12 @@ where
 /// ```
 #[cfg(feature = "std")]
 #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
-pub fn from_reader_with_config<R, T>(mut reader: R, config: &ParserConfig) -> Result<T>
+pub fn from_reader_with_config<R, T>(reader: R, config: &ParserConfig) -> Result<T>
 where
     R: io::Read,
     T: for<'de> serde_core::Deserialize<'de> + 'static,
 {
-    let mut s = String::new();
-    let _ = reader.read_to_string(&mut s).map_err(Error::Io)?;
+    let s = read_to_string_bounded(reader, config)?;
     from_str_with_config(&s, config)
 }
 

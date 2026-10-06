@@ -5,6 +5,18 @@ All notable changes to this project are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Security
+
+- `from_reader`, `from_reader_with_config`, `from_reader_strict` and
+  `compat::serde_yaml::from_reader` read at most one byte past
+  `max_document_length` before failing the length budget. They used to
+  buffer the whole source with `read_to_string` first, so an unbounded or
+  hostile reader could exhaust memory before any limit applied; the
+  `&str` and `&[u8]` entry points and the Tokio decoder's frame cap were
+  already bounded. Follow-up to GHSA-4xcc-23fx-w2wj.
+
 ## [v0.0.53] - 2026-10-06
 
 ### Added
