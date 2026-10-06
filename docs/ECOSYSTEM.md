@@ -219,11 +219,11 @@ Ranked by measured gap times incumbent strength.
 
 **Rating: B+ (88.2% weighted)** — 134 executed probes, 12 scored N/A.
 
-Measured 2026-10-06T08:08:01Z on `aarch64-apple-darwin`, rustc 1.98.1 (48a229cea 2026-09-01). Rubric executed: 92%.
+Measured 2026-10-06T20:33:18Z on `aarch64-apple-darwin`, rustc 1.98.1 (48a229cea 2026-09-01). Rubric executed: 92%.
 
 | Repo | Metric | Measured | Score | Probe |
 |---|---|---|---:|---|
-| `noyalib` | tests | 6457 passed / 0 failed | 1.00 | `cargo test --workspace --locked` |
+| `noyalib` | tests | 6472 passed / 0 failed | 1.00 | `cargo test --workspace --locked` |
 | `noyalib` | clippy | 0 diagnostics (rc=0) | 1.00 | `cargo clippy --workspace --all-targets --locked -- -D warnings` |
 | `noyalib` | rustfmt | clean | 1.00 | `cargo fmt --all --check` |
 | `noyalib` | unsafe_forbidden | 2/2 crate roots | 1.00 | `grep -l 'forbid(unsafe_code)' on every lib.rs/main.rs` |
@@ -244,8 +244,8 @@ Measured 2026-10-06T08:08:01Z on `aarch64-apple-darwin`, rustc 1.98.1 (48a229cea
 | `noyalib` | release_sigstore | 3 .bundle assets | 1.00 | `gh release view --json assets \| grep '\.bundle$'` |
 | `noyalib` | release_sbom | 6 sbom assets | 1.00 | `gh release view --json assets \| grep -i sbom` |
 | `noyalib` | dependabot_open | 0 open alerts | 1.00 | `gh api /repos/sebastienrousseau/noyalib/dependabot/alerts?state=open` |
-| `noyalib` | ci_main_green | failure | 0.00 | `gh run list --branch main --workflow CI --status completed --limit 1 --json conclusion` |
-| `noyalib` | crates_io_current | tree 0.0.53 / crates.io 0.0.52 | 0.00 | `crates.io/api/v1/crates/noyalib .max_stable_version` |
+| `noyalib` | ci_main_green | success | 1.00 | `gh run list --branch main --workflow CI --status completed --limit 1 --json conclusion` |
+| `noyalib` | crates_io_current | tree 0.0.54 / crates.io 0.0.53 | 0.00 | `crates.io/api/v1/crates/noyalib .max_stable_version` |
 | `noyalib` | openssf_scorecard | 8.4/10 | 0.84 | `api.securityscorecards.dev/projects/github.com/sebastienrousseau/noyalib .score` |
 | `noya-cli` | tests | 85 passed / 0 failed | 1.00 | `cargo test --workspace --locked` |
 | `noya-cli` | clippy | 0 diagnostics (rc=0) | 1.00 | `cargo clippy --workspace --all-targets --locked -- -D warnings` |
@@ -269,7 +269,7 @@ Measured 2026-10-06T08:08:01Z on `aarch64-apple-darwin`, rustc 1.98.1 (48a229cea
 | `noya-cli` | release_sbom | 6 sbom assets | 1.00 | `gh release view --json assets \| grep -i sbom` |
 | `noya-cli` | dependabot_open | 0 open alerts | 1.00 | `gh api /repos/sebastienrousseau/noya-cli/dependabot/alerts?state=open` |
 | `noya-cli` | ci_main_green | success | 1.00 | `gh run list --branch main --workflow CI --status completed --limit 1 --json conclusion` |
-| `noya-cli` | crates_io_current | tree 0.0.53 / crates.io 0.0.51 | 0.00 | `crates.io/api/v1/crates/noya-cli .max_stable_version` |
+| `noya-cli` | crates_io_current | tree 0.0.54 / crates.io 0.0.53 | 0.00 | `crates.io/api/v1/crates/noya-cli .max_stable_version` |
 | `noya-cli` | openssf_scorecard | 8.4/10 | 0.84 | `api.securityscorecards.dev/projects/github.com/sebastienrousseau/noya-cli .score` |
 | `noyalib-lsp` | tests | 67 passed / 0 failed | 1.00 | `cargo test --workspace --locked` |
 | `noyalib-lsp` | clippy | 0 diagnostics (rc=0) | 1.00 | `cargo clippy --workspace --all-targets --locked -- -D warnings` |
@@ -293,8 +293,8 @@ Measured 2026-10-06T08:08:01Z on `aarch64-apple-darwin`, rustc 1.98.1 (48a229cea
 | `noyalib-lsp` | release_sbom | 6 sbom assets | 1.00 | `gh release view --json assets \| grep -i sbom` |
 | `noyalib-lsp` | dependabot_open | 0 open alerts | 1.00 | `gh api /repos/sebastienrousseau/noyalib-lsp/dependabot/alerts?state=open` |
 | `noyalib-lsp` | ci_main_green | success | 1.00 | `gh run list --branch main --workflow CI --status completed --limit 1 --json conclusion` |
-| `noyalib-lsp` | crates_io_current | tree 0.0.53 / crates.io 0.0.51 | 0.00 | `crates.io/api/v1/crates/noyalib-lsp .max_stable_version` |
-| `noyalib-lsp` | openssf_scorecard | 8/10 | 0.80 | `api.securityscorecards.dev/projects/github.com/sebastienrousseau/noyalib-lsp .score` |
+| `noyalib-lsp` | crates_io_current | tree 0.0.54 / crates.io 0.0.53 | 0.00 | `crates.io/api/v1/crates/noyalib-lsp .max_stable_version` |
+| `noyalib-lsp` | openssf_scorecard | 8.2/10 | 0.82 | `api.securityscorecards.dev/projects/github.com/sebastienrousseau/noyalib-lsp .score` |
 | `noyalib-mcp` | tests | 67 passed / 0 failed | 1.00 | `cargo test --workspace --locked` |
 | `noyalib-mcp` | clippy | 0 diagnostics (rc=0) | 1.00 | `cargo clippy --workspace --all-targets --locked -- -D warnings` |
 | `noyalib-mcp` | rustfmt | clean | 1.00 | `cargo fmt --all --check` |
@@ -305,7 +305,7 @@ Measured 2026-10-06T08:08:01Z on `aarch64-apple-darwin`, rustc 1.98.1 (48a229cea
 | `noyalib-mcp` | readme_examples | compile | 1.00 | `scripts/check-readme-examples.sh` |
 | `noyalib-mcp` | bench_methodology | 1/3 disclosed (host, toolchain, command) | 0.33 | `grep host/toolchain/repro-command in docs/BENCHMARKS.md` |
 | `noyalib-mcp` | audit_vulnerabilities | 0 advisories | 1.00 | `cargo-audit audit --json \| .vulnerabilities.count` |
-| `noyalib-mcp` | deny_check | pass | 1.00 | `cargo deny check (advisories, bans, licenses, sources)` |
+| `noyalib-mcp` | deny_check | fail | 0.00 | `cargo deny check (advisories, bans, licenses, sources)` |
 | `noyalib-mcp` | vet_audited | pass | 1.00 | `cargo vet --locked` |
 | `noyalib-mcp` | reuse_compliance | compliant | 1.00 | `reuse lint (REUSE 3.3)` |
 | `noyalib-mcp` | dependency_closure | 132 unique runtime crates (leaf, not scored) | n/a | `cargo tree -e normal --prefix none --no-dedupe \| sort -u — recorded, not scored: a leaf binary's tree is not inherited` |
@@ -317,7 +317,7 @@ Measured 2026-10-06T08:08:01Z on `aarch64-apple-darwin`, rustc 1.98.1 (48a229cea
 | `noyalib-mcp` | release_sbom | 6 sbom assets | 1.00 | `gh release view --json assets \| grep -i sbom` |
 | `noyalib-mcp` | dependabot_open | 0 open alerts | 1.00 | `gh api /repos/sebastienrousseau/noyalib-mcp/dependabot/alerts?state=open` |
 | `noyalib-mcp` | ci_main_green | success | 1.00 | `gh run list --branch main --workflow CI --status completed --limit 1 --json conclusion` |
-| `noyalib-mcp` | crates_io_current | tree 0.0.53 / crates.io 0.0.52 | 0.00 | `crates.io/api/v1/crates/noyalib-mcp .max_stable_version` |
+| `noyalib-mcp` | crates_io_current | tree 0.0.54 / crates.io 0.0.53 | 0.00 | `crates.io/api/v1/crates/noyalib-mcp .max_stable_version` |
 | `noyalib-mcp` | openssf_scorecard | 8.4/10 | 0.84 | `api.securityscorecards.dev/projects/github.com/sebastienrousseau/noyalib-mcp .score` |
 | `noyalib-wasm` | tests | 46 passed / 0 failed | 1.00 | `cargo test --workspace --locked` |
 | `noyalib-wasm` | clippy | 0 diagnostics (rc=0) | 1.00 | `cargo clippy --workspace --all-targets --locked -- -D warnings` |
@@ -341,7 +341,7 @@ Measured 2026-10-06T08:08:01Z on `aarch64-apple-darwin`, rustc 1.98.1 (48a229cea
 | `noyalib-wasm` | release_sbom | 6 sbom assets | 1.00 | `gh release view --json assets \| grep -i sbom` |
 | `noyalib-wasm` | dependabot_open | 0 open alerts | 1.00 | `gh api /repos/sebastienrousseau/noyalib-wasm/dependabot/alerts?state=open` |
 | `noyalib-wasm` | ci_main_green | success | 1.00 | `gh run list --branch main --workflow CI --status completed --limit 1 --json conclusion` |
-| `noyalib-wasm` | crates_io_current | tree 0.0.53 / crates.io 0.0.51 | 0.00 | `crates.io/api/v1/crates/noyalib-wasm .max_stable_version` |
+| `noyalib-wasm` | crates_io_current | tree 0.0.54 / crates.io 0.0.53 | 0.00 | `crates.io/api/v1/crates/noyalib-wasm .max_stable_version` |
 | `noyalib-wasm` | openssf_scorecard | 8.4/10 | 0.84 | `api.securityscorecards.dev/projects/github.com/sebastienrousseau/noyalib-wasm .score` |
 | `noyalib-serde-yaml` | tests | 6 passed / 0 failed | 1.00 | `cargo test --workspace --locked` |
 | `noyalib-serde-yaml` | clippy | 0 diagnostics (rc=0) | 1.00 | `cargo clippy --workspace --all-targets --locked -- -D warnings` |
@@ -365,9 +365,9 @@ Measured 2026-10-06T08:08:01Z on `aarch64-apple-darwin`, rustc 1.98.1 (48a229cea
 | `noyalib-serde-yaml` | release_sbom | 4 sbom assets | 1.00 | `gh release view --json assets \| grep -i sbom` |
 | `noyalib-serde-yaml` | dependabot_open | 0 open alerts | 1.00 | `gh api /repos/sebastienrousseau/noyalib-serde-yaml/dependabot/alerts?state=open` |
 | `noyalib-serde-yaml` | ci_main_green | success | 1.00 | `gh run list --branch main --workflow CI --status completed --limit 1 --json conclusion` |
-| `noyalib-serde-yaml` | crates_io_current | tree 0.0.53 / crates.io 0.0.51 | 0.00 | `crates.io/api/v1/crates/noyalib-serde-yaml .max_stable_version` |
+| `noyalib-serde-yaml` | crates_io_current | tree 0.0.54 / crates.io 0.0.53 | 0.00 | `crates.io/api/v1/crates/noyalib-serde-yaml .max_stable_version` |
 | `noyalib-serde-yaml` | openssf_scorecard | 7.3/10 | 0.73 | `api.securityscorecards.dev/projects/github.com/sebastienrousseau/noyalib-serde-yaml .score` |
-| `ecosystem` | version_lockstep | core 0.0.53 not tagged yet | n/a | `git tag -l v0.0.53 in noyalib (pending release; satellites pin only published versions)` |
+| `ecosystem` | version_lockstep | core 0.0.54 not tagged yet | n/a | `git tag -l v0.0.54 in noyalib (pending release; satellites pin only published versions)` |
 | `ecosystem` | host_coverage | 6/6 hosts present | 1.00 | `directory presence for noyalib noya-cli noyalib-lsp noyalib-mcp noyalib-wasm noyalib-serde-yaml` |
 
 <sub>Generated by `scripts/ecosystem-scorecard.sh` v1.0.0. Regenerate rather than edit.</sub>
