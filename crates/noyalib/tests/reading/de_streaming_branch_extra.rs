@@ -268,14 +268,14 @@ a:
 fn branch_streaming_empty_mapping() {
     let yaml = "{}\n";
     let m: BTreeMap<String, i64> = from_str(yaml).expect("empty map");
-    assert!(m.is_empty());
+    assert!(m.is_empty(), "expected empty, got {m:?}");
 }
 
 #[test]
 fn branch_streaming_empty_sequence() {
     let yaml = "[]\n";
     let v: Vec<i64> = from_str(yaml).expect("empty seq");
-    assert!(v.is_empty());
+    assert!(v.is_empty(), "expected empty, got {v:?}");
 }
 
 // ── streaming.rs: scalar shapes (bool, float, negative int) ────────

@@ -791,7 +791,7 @@ mod tests {
     fn inline_comment_on_simple_value() {
         let doc = parse_document("port: 8080  # the listen port\n").unwrap();
         let b = doc.comments_at("port");
-        assert!(b.before.is_empty());
+        assert!(b.before.is_empty(), "expected empty, got {:?}", b.before);
         assert_eq!(b.inline.as_ref().unwrap().text, " the listen port");
     }
 
@@ -828,7 +828,11 @@ mod tests {
         )
         .unwrap();
         let name = doc.comments_at("name");
-        assert!(name.before.is_empty());
+        assert!(
+            name.before.is_empty(),
+            "expected empty, got {:?}",
+            name.before
+        );
         let version = doc.comments_at("version");
         assert_eq!(version.before.len(), 1);
         assert!(version.before[0].text.contains("belongs to version"));
@@ -852,7 +856,7 @@ mod tests {
     fn unknown_path_returns_empty_bundle() {
         let doc = parse_document("a: 1\n").unwrap();
         let b = doc.comments_at("nonexistent");
-        assert!(b.is_empty());
+        assert!(b.is_empty(), "expected empty, got {b:?}");
     }
 
     #[test]

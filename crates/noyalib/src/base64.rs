@@ -158,8 +158,16 @@ mod tests {
 
     #[test]
     fn roundtrip_empty() {
-        assert!(decode("").unwrap().is_empty());
-        assert!(encode(&[]).is_empty());
+        assert!(
+            decode("").unwrap().is_empty(),
+            "expected empty, got {:?}",
+            decode("").unwrap()
+        );
+        assert!(
+            encode(&[]).is_empty(),
+            "expected empty, got {:?}",
+            encode(&[])
+        );
     }
 
     #[test]

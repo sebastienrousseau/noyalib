@@ -414,7 +414,7 @@ fn cropped_region_extract_happy_path() {
 #[test]
 fn cropped_region_extract_empty_source() {
     let r = CroppedRegion::extract("", 1, 1);
-    assert!(r.lines.is_empty());
+    assert!(r.lines.is_empty(), "expected empty, got {:?}", r.lines);
     assert_eq!(r.focus_line, 0);
 }
 
@@ -547,7 +547,7 @@ fn display_every_variant() {
     ];
     for e in cases {
         let s = format!("{e}");
-        assert!(!s.is_empty());
+        assert!(!s.is_empty(), "expected a non-empty value");
     }
 }
 
@@ -586,7 +586,7 @@ fn budget_breach_display_all_variants() {
     ];
     for c in cases {
         let s = format!("{c}");
-        assert!(!s.is_empty());
+        assert!(!s.is_empty(), "expected a non-empty value");
     }
 }
 

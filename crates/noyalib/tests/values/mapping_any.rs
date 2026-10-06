@@ -15,14 +15,14 @@ use noyalib::{Mapping, MappingAny, Value, from_str, to_string};
 #[test]
 fn test_mapping_any_new() {
     let map = MappingAny::new();
-    assert!(map.is_empty());
+    assert!(map.is_empty(), "expected empty, got {map:?}");
     assert_eq!(map.len(), 0);
 }
 
 #[test]
 fn test_mapping_any_with_capacity() {
     let map = MappingAny::with_capacity(10);
-    assert!(map.is_empty());
+    assert!(map.is_empty(), "expected empty, got {map:?}");
     assert!(map.capacity() >= 10);
 }
 
@@ -105,7 +105,7 @@ fn test_mapping_any_remove_entry() {
     let (k, v) = map.remove_entry(&Value::from("key")).unwrap();
     assert_eq!(k.as_str(), Some("key"));
     assert_eq!(v.as_str(), Some("value"));
-    assert!(map.is_empty());
+    assert!(map.is_empty(), "expected empty, got {map:?}");
 }
 
 #[test]
@@ -128,7 +128,7 @@ fn test_mapping_any_clear() {
     let _ = map.insert(Value::from("b"), Value::from(2));
 
     map.clear();
-    assert!(map.is_empty());
+    assert!(map.is_empty(), "expected empty, got {map:?}");
 }
 
 // ============================================================================
@@ -652,5 +652,5 @@ fn test_mapping_any_clone() {
 #[test]
 fn test_mapping_any_default() {
     let map = MappingAny::default();
-    assert!(map.is_empty());
+    assert!(map.is_empty(), "expected empty, got {map:?}");
 }

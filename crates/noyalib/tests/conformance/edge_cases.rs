@@ -247,7 +247,7 @@ fn test_empty_sequence() {
     let yaml = "items: []\n";
     let value: Value = from_str(yaml).unwrap();
     let items = value.get("items").unwrap().as_sequence().unwrap();
-    assert!(items.is_empty());
+    assert!(items.is_empty(), "expected empty, got {items:?}");
 }
 
 #[test]
@@ -255,7 +255,7 @@ fn test_empty_mapping() {
     let yaml = "config: {}\n";
     let value: Value = from_str(yaml).unwrap();
     let config = value.get("config").unwrap().as_mapping().unwrap();
-    assert!(config.is_empty());
+    assert!(config.is_empty(), "expected empty, got {config:?}");
 }
 
 #[test]
@@ -763,7 +763,7 @@ fn test_load_all_empty() {
 
     let yaml = "";
     let docs: Vec<_> = load_all(yaml).unwrap().filter_map(Result::ok).collect();
-    assert!(docs.is_empty());
+    assert!(docs.is_empty(), "expected empty, got {docs:?}");
 }
 
 #[test]

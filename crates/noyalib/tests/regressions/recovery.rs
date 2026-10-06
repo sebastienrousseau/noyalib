@@ -12,7 +12,7 @@ use noyalib::recovery::{LenientConfig, parse_lenient, parse_lenient_with};
 fn clean_input_returns_complete_result() {
     let r = parse_lenient("name: noyalib\nversion: 0.0.6\n");
     assert!(r.is_complete);
-    assert!(r.errors.is_empty());
+    assert!(r.errors.is_empty(), "expected empty, got {:?}", r.errors);
     let m = r.value.as_mapping().unwrap();
     assert_eq!(m.get("name").unwrap().as_str(), Some("noyalib"));
 }
@@ -21,7 +21,7 @@ fn clean_input_returns_complete_result() {
 fn malformed_flow_collects_error() {
     let r = parse_lenient("a: [unclosed\n");
     assert!(!r.is_complete);
-    assert!(!r.errors.is_empty());
+    assert!(!r.errors.is_empty(), "expected a non-empty value");
 }
 
 #[test]

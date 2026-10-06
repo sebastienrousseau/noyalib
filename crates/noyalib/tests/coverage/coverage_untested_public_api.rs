@@ -63,7 +63,7 @@ fn comments_at_unknown_path_is_empty() {
     let src = "# lead\na: 1\n";
     let doc = noyalib::cst::parse_document(src).unwrap();
     let b = doc.comments_at("does-not-exist");
-    assert!(b.before.is_empty());
+    assert!(b.before.is_empty(), "expected empty, got {:?}", b.before);
     assert!(b.inline.is_none());
 }
 
@@ -72,7 +72,7 @@ fn comments_at_key_without_comments_is_empty() {
     let src = "a: 1\nb: 2\n";
     let doc = noyalib::cst::parse_document(src).unwrap();
     let b = doc.comments_at("b");
-    assert!(b.before.is_empty());
+    assert!(b.before.is_empty(), "expected empty, got {:?}", b.before);
     assert!(b.inline.is_none());
 }
 

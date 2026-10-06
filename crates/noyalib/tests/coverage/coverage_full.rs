@@ -1267,7 +1267,7 @@ fn document_iterator_len_and_empty() {
     let yaml = "---\na: 1\n---\nb: 2";
     let iter = noyalib::load_all(yaml).unwrap();
     assert_eq!(iter.len(), 2);
-    assert!(!iter.is_empty());
+    assert!(!iter.is_empty(), "expected a non-empty value");
 
     let empty_iter = noyalib::load_all("---\n...").unwrap();
     // Even an explicit empty doc produces one document
@@ -1351,7 +1351,7 @@ fn to_writer_basic() {
     let v = Value::from("test");
     let mut buf = Vec::new();
     noyalib::to_writer(&mut buf, &v).unwrap();
-    assert!(!buf.is_empty());
+    assert!(!buf.is_empty(), "expected a non-empty value");
 }
 
 #[test]

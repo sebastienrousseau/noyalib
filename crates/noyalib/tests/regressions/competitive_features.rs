@@ -195,12 +195,12 @@ mod anchor_registry {
     #[test]
     fn rc_len_and_clear() {
         let mut reg = AnchorRegistry::<i32>::new();
-        assert!(reg.is_empty());
+        assert!(reg.is_empty(), "expected empty, got {reg:?}");
         let _ = reg.register("a".into(), 1);
         let _ = reg.register("b".into(), 2);
         assert_eq!(reg.len(), 2);
         reg.clear();
-        assert!(reg.is_empty());
+        assert!(reg.is_empty(), "expected empty, got {reg:?}");
     }
 
     #[test]
@@ -231,12 +231,12 @@ mod anchor_registry {
     #[test]
     fn arc_len_and_clear() {
         let mut reg = ArcAnchorRegistry::<i32>::new();
-        assert!(reg.is_empty());
+        assert!(reg.is_empty(), "expected empty, got {reg:?}");
         let _ = reg.register("a".into(), 1);
         let _ = reg.register("b".into(), 2);
         assert_eq!(reg.len(), 2);
         reg.clear();
-        assert!(reg.is_empty());
+        assert!(reg.is_empty(), "expected empty, got {reg:?}");
     }
 
     #[test]
@@ -254,13 +254,13 @@ mod anchor_registry {
     #[test]
     fn rc_default() {
         let reg = AnchorRegistry::<String>::default();
-        assert!(reg.is_empty());
+        assert!(reg.is_empty(), "expected empty, got {reg:?}");
     }
 
     #[test]
     fn arc_default() {
         let reg = ArcAnchorRegistry::<String>::default();
-        assert!(reg.is_empty());
+        assert!(reg.is_empty(), "expected empty, got {reg:?}");
     }
 
     #[test]

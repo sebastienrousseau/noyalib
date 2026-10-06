@@ -146,7 +146,7 @@ fn invalid_syntax_produces_parse_error() {
     let mut de = StreamingDeserializer::new(yaml);
     let err = <BTreeMap<String, String>>::deserialize(&mut de).unwrap_err();
     // A parse error surfaces — exact wording depends on the parser.
-    assert!(!err.to_string().is_empty());
+    assert!(!err.to_string().is_empty(), "expected a non-empty value");
 }
 
 // ── Config plumbing: security limits apply ─────────────────────────────

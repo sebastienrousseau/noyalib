@@ -206,7 +206,10 @@ fn comment_editors_take_a_quoted_key() {
     let mut doc = parse_document("'*': star\n").unwrap();
     doc.set_inline_comment(r#"["*"]"#, "wild").unwrap();
     assert!(doc.to_string().contains("# wild"), "{doc}");
-    assert!(!doc.comments_at(r#"["*"]"#).is_empty());
+    assert!(
+        !doc.comments_at(r#"["*"]"#).is_empty(),
+        "expected a non-empty value"
+    );
 }
 
 #[test]

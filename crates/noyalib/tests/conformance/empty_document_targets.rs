@@ -23,13 +23,13 @@ struct S {
 #[test]
 fn comment_only_document_is_empty_mapping() {
     let m: Mapping = from_str("# c\n").expect("comment-only document should deserialize");
-    assert!(m.is_empty());
+    assert!(m.is_empty(), "expected empty, got {m:?}");
 }
 
 #[test]
 fn empty_document_is_empty_mapping() {
     let m: Mapping = from_str("").expect("empty document should deserialize");
-    assert!(m.is_empty());
+    assert!(m.is_empty(), "expected empty, got {m:?}");
 }
 
 #[test]
@@ -50,7 +50,7 @@ fn empty_document_as_value_is_still_null() {
 #[test]
 fn whitespace_only_document_behaves_like_empty() {
     let m: Mapping = from_str("   \n\t\n  ").expect("whitespace-only document should deserialize");
-    assert!(m.is_empty());
+    assert!(m.is_empty(), "expected empty, got {m:?}");
 
     let v: Value = from_str("   \n\t\n  ").expect("whitespace-only document parses as Value::Null");
     assert!(v.is_null());
@@ -59,7 +59,7 @@ fn whitespace_only_document_behaves_like_empty() {
 #[test]
 fn document_end_marker_only_behaves_like_empty() {
     let m: Mapping = from_str("---\n").expect("a bare `---` document should deserialize");
-    assert!(m.is_empty());
+    assert!(m.is_empty(), "expected empty, got {m:?}");
 
     let v: Value = from_str("---\n").expect("a bare `---` document parses as Value::Null");
     assert!(v.is_null());

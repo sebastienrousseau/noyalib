@@ -77,7 +77,7 @@ fn flatten_value_with_no_residue() {
         Value::Mapping(m) => m,
         other => panic!("expected empty Mapping, got {other:?}"),
     };
-    assert!(extra.is_empty());
+    assert!(extra.is_empty(), "expected empty, got {extra:?}");
 }
 
 // ── Documented limitation: flatten Spanned<Value> ────────────────────

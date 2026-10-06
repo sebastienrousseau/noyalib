@@ -135,10 +135,10 @@ fn main() {
         let _ = reg.register("b".into(), "beta".into());
         let _ = reg.register("c".into(), "gamma".into());
         assert_eq!(reg.len(), 3);
-        assert!(!reg.is_empty());
+        assert!(!reg.is_empty(), "expected a non-empty value");
 
         reg.clear();
-        assert!(reg.is_empty());
+        assert!(reg.is_empty(), "expected empty, got {reg:?}");
         assert_eq!(reg.len(), 0);
         assert!(reg.resolve("a").is_none());
 
@@ -156,7 +156,7 @@ fn main() {
     // ── Default constructor and is_empty ─────────────────────────────
     support::task("Default constructor starts empty", || {
         let reg = AnchorRegistry::<()>::default();
-        assert!(reg.is_empty());
+        assert!(reg.is_empty(), "expected empty, got {reg:?}");
         assert_eq!(reg.len(), 0);
     });
 

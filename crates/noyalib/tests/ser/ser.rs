@@ -692,7 +692,7 @@ fn test_serialize_string_quoting_rules() {
     // String with newline
     let value = Value::String("line1\nline2".to_string());
     let yaml = to_string(&value).unwrap();
-    assert!(!yaml.is_empty());
+    assert!(!yaml.is_empty(), "expected a non-empty value");
 
     // String with hash
     let value = Value::String("# comment".to_string());

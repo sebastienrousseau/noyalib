@@ -46,7 +46,7 @@ fn set_path_refuses_when_the_root_is_not_a_mapping() {
         let err = doc
             .set_path("newkey", &Value::from(1_i64))
             .expect_err("cannot create a key under a non-mapping root");
-        assert!(!err.to_string().is_empty());
+        assert!(!err.to_string().is_empty(), "expected a non-empty value");
         assert_eq!(
             doc.to_string(),
             before,

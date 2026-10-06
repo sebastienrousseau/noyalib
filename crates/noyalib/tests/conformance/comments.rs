@@ -52,13 +52,13 @@ fn end_stops_at_line_break() {
 #[test]
 fn empty_input_returns_no_comments() {
     let cs = load_comments("").unwrap();
-    assert!(cs.is_empty());
+    assert!(cs.is_empty(), "expected empty, got {cs:?}");
 }
 
 #[test]
 fn document_without_comments_returns_empty() {
     let cs = load_comments("a: 1\nb: 2\n").unwrap();
-    assert!(cs.is_empty());
+    assert!(cs.is_empty(), "expected empty, got {cs:?}");
 }
 
 #[test]
@@ -66,7 +66,7 @@ fn hash_inside_quoted_string_is_not_a_comment() {
     let yaml = r#"k: "not a # comment"
 "#;
     let cs = load_comments(yaml).unwrap();
-    assert!(cs.is_empty());
+    assert!(cs.is_empty(), "expected empty, got {cs:?}");
 }
 
 #[test]

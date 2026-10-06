@@ -646,7 +646,7 @@ fn coverage_doc_parse_stream_just_directives_end_marker() {
     // valid stream — the slice for the empty segment hits
     // `s == e { continue; }`.
     let docs = parse_stream("---\nfoo: 1\n...\n").unwrap();
-    assert!(!docs.is_empty());
+    assert!(!docs.is_empty(), "expected a non-empty value");
 }
 
 // ── span_at("") — empty-segments fast path in walk_path (L1169-1170) ─

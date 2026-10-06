@@ -914,13 +914,13 @@ k:
 #[test]
 fn r3_top_level_empty_mapping_value() {
     let m: BTreeMap<String, BTreeMap<String, i64>> = from_str("k: {}\n").unwrap();
-    assert!(m["k"].is_empty());
+    assert!(m["k"].is_empty(), "expected empty, got {:?}", m["k"]);
 }
 
 #[test]
 fn r3_top_level_empty_sequence_value() {
     let m: BTreeMap<String, Vec<i64>> = from_str("k: []\n").unwrap();
-    assert!(m["k"].is_empty());
+    assert!(m["k"].is_empty(), "expected empty, got {:?}", m["k"]);
 }
 
 #[test]

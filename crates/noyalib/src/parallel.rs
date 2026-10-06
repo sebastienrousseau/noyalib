@@ -294,7 +294,7 @@ mod tests {
 
     #[test]
     fn split_handles_empty_input() {
-        assert!(split("").is_empty());
+        assert!(split("").is_empty(), "expected empty, got {:?}", split(""));
     }
 
     #[test]

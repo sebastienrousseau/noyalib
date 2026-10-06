@@ -577,7 +577,7 @@ fn scan_error_display() {
     let result: Result<Value, _> = from_str("key: \"\\q\"");
     let err = result.unwrap_err();
     let msg = err.to_string();
-    assert!(!msg.is_empty());
+    assert!(!msg.is_empty(), "expected a non-empty value");
 }
 
 #[test]
@@ -1028,7 +1028,11 @@ fn commented_roundtrip_no_comment() {
     // Deserialize back — comment is lost
     let rt: Commented<String> = from_str(&yaml).unwrap();
     assert_eq!(rt.value, "hello");
-    assert!(rt.comment.is_empty());
+    assert!(
+        rt.comment.is_empty(),
+        "expected empty, got {:?}",
+        rt.comment
+    );
 }
 
 // ═══════════════════════════════════════════════════════════════════════

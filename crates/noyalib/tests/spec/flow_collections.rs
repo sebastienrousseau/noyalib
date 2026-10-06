@@ -22,7 +22,7 @@ fn flow_sequence_integers() {
 #[test]
 fn flow_sequence_empty() {
     let v: Vec<i64> = from_str("[]").unwrap();
-    assert!(v.is_empty());
+    assert!(v.is_empty(), "expected empty, got {v:?}");
 }
 
 #[test]
@@ -41,7 +41,7 @@ fn flow_mapping_basic() {
 #[test]
 fn flow_mapping_empty() {
     let m: HashMap<String, i64> = from_str("{}").unwrap();
-    assert!(m.is_empty());
+    assert!(m.is_empty(), "expected empty, got {m:?}");
 }
 
 #[test]

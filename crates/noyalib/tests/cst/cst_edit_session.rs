@@ -83,7 +83,7 @@ fn invalid_ranges_are_refused_before_commit() {
     );
     assert!(edit.replace_span(4, 3, "x").is_err());
     assert!(edit.replace_span(4, 5, "x").is_err());
-    assert!(edit.is_empty());
+    assert!(edit.is_empty(), "expected empty, got {edit:?}");
 }
 
 #[test]

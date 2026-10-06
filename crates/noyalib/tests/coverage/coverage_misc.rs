@@ -253,7 +253,7 @@ mod borrowed_extra {
     fn query_no_match_returns_empty() {
         let v: BorrowedValue<'_> = from_str_borrowed("a: 1\n").unwrap();
         let results = v.query("nonexistent.path");
-        assert!(results.is_empty());
+        assert!(results.is_empty(), "expected empty, got {results:?}");
     }
 
     #[test]

@@ -889,7 +889,7 @@ b:
     fn mapping_submodule_path_resolves() {
         use super::mapping::Mapping as MappingAlias;
         let m: MappingAlias = MappingAlias::new();
-        assert!(m.is_empty());
+        assert!(m.is_empty(), "expected empty, got {m:?}");
     }
 
     #[test]

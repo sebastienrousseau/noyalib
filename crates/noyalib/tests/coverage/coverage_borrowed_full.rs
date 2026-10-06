@@ -395,7 +395,7 @@ fn query_recursive_through_nested_sequences() {
     let yaml = "a:\n  - b:\n    - c: found\n";
     let v: BorrowedValue<'_> = from_str_borrowed(yaml).unwrap();
     let results = v.query("..c");
-    assert!(!results.is_empty());
+    assert!(!results.is_empty(), "expected a non-empty value");
     assert_eq!(results[0].as_str(), Some("found"));
 }
 
@@ -404,7 +404,7 @@ fn query_recursive_on_scalar_returns_nothing() {
     let v: BorrowedValue<'_> = from_str_borrowed("42").unwrap();
     let results = v.query("..any_key");
     // Recursive descent into a scalar yields no results.
-    assert!(results.is_empty());
+    assert!(results.is_empty(), "expected empty, got {results:?}");
 }
 
 #[test]
@@ -412,7 +412,7 @@ fn query_wildcard_on_scalar_returns_empty() {
     let v: BorrowedValue<'_> = from_str_borrowed("42").unwrap();
     let results = v.query("*");
     // Wildcard on scalar → nothing.
-    assert!(results.is_empty());
+    assert!(results.is_empty(), "expected empty, got {results:?}");
 }
 
 // ── Tagged scalars (force the "return BorrowedValue::String" branch) ─────
@@ -494,14 +494,14 @@ fn borrowed_folded_block_scalar() {
 fn query_recursive_descent_on_empty_mapping() {
     let v: BorrowedValue<'_> = from_str_borrowed("{}").unwrap();
     let results = v.query("..anything");
-    assert!(results.is_empty());
+    assert!(results.is_empty(), "expected empty, got {results:?}");
 }
 
 #[test]
 fn query_recursive_descent_on_empty_sequence() {
     let v: BorrowedValue<'_> = from_str_borrowed("[]").unwrap();
     let results = v.query("..anything");
-    assert!(results.is_empty());
+    assert!(results.is_empty(), "expected empty, got {results:?}");
 }
 
 // ── Hit the recursion-limit branches in the borrowed path ──────────────

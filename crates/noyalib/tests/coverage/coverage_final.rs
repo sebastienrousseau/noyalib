@@ -917,7 +917,7 @@ fn error_format_with_source_shows_location() {
     let err = from_str::<Value>(yaml).unwrap_err();
     let display = err.format_with_source(yaml);
     // The formatted output should contain contextual information
-    assert!(!display.is_empty());
+    assert!(!display.is_empty(), "expected a non-empty value");
 }
 
 // ── Roundtrip: comprehensive ────────────────────────────────────────────

@@ -1385,7 +1385,7 @@ fn document_try_load_all() {
 fn document_load_all_empty() {
     let yaml = "";
     let docs: Vec<_> = noyalib::load_all(yaml).unwrap().collect();
-    assert!(docs.is_empty());
+    assert!(docs.is_empty(), "expected empty, got {docs:?}");
 }
 
 // ============================================================================
@@ -1728,7 +1728,7 @@ fn document_single_empty() {
     let yaml = "---\n...\n";
     let docs: Vec<_> = noyalib::load_all(yaml).unwrap().collect();
     // Empty doc resolves to null
-    assert!(!docs.is_empty());
+    assert!(!docs.is_empty(), "expected a non-empty value");
 }
 
 // ============================================================================
@@ -1751,7 +1751,7 @@ fn tagged_value_roundtrip() {
     // Verify it parsed successfully — tag handling depends on schema
     assert!(v.is_tagged() || v.as_str().is_some());
     let yaml_out = to_string(&v).unwrap();
-    assert!(!yaml_out.is_empty());
+    assert!(!yaml_out.is_empty(), "expected a non-empty value");
 }
 
 // ============================================================================
@@ -2328,13 +2328,13 @@ fn scanner_complex_flow_key() {
 #[test]
 fn scanner_empty_flow_sequence() {
     let v: Vec<i32> = from_str("[]").unwrap();
-    assert!(v.is_empty());
+    assert!(v.is_empty(), "expected empty, got {v:?}");
 }
 
 #[test]
 fn scanner_empty_flow_mapping() {
     let v: HashMap<String, i32> = from_str("{}").unwrap();
-    assert!(v.is_empty());
+    assert!(v.is_empty(), "expected empty, got {v:?}");
 }
 
 #[test]
@@ -2891,7 +2891,7 @@ fn ser_nested_sequence() {
         Value::Sequence(vec![Value::from(3), Value::from(4)]),
     ]);
     let yaml = to_string(&val).unwrap();
-    assert!(!yaml.is_empty());
+    assert!(!yaml.is_empty(), "expected a non-empty value");
     // Roundtrip
     let back: Value = from_str(&yaml).unwrap();
     assert_eq!(val, back);
@@ -3017,7 +3017,7 @@ fn value_into_indexmap_mapping_any() {
 fn mapping_with_capacity() {
     let m = Mapping::with_capacity(10);
     assert!(m.capacity() >= 10);
-    assert!(m.is_empty());
+    assert!(m.is_empty(), "expected empty, got {m:?}");
 }
 
 #[test]

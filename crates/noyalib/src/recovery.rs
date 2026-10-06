@@ -382,7 +382,7 @@ mod tests {
     fn valid_input_is_complete() {
         let r = parse_lenient("a: 1\nb: 2\n");
         assert!(r.is_complete);
-        assert!(r.errors.is_empty());
+        assert!(r.errors.is_empty(), "expected empty, got {:?}", r.errors);
         let m = r.value.as_mapping().unwrap();
         assert!(m.contains_key("a"));
         assert!(m.contains_key("b"));
@@ -392,7 +392,7 @@ mod tests {
     fn empty_input_is_complete() {
         let r = parse_lenient("");
         assert!(r.is_complete);
-        assert!(r.errors.is_empty());
+        assert!(r.errors.is_empty(), "expected empty, got {:?}", r.errors);
         assert!(matches!(r.value, Value::Null));
     }
 
@@ -419,7 +419,7 @@ mod tests {
         // truncation makes this valid.
         let r = parse_lenient("[\n");
         assert!(!r.is_complete);
-        assert!(!r.errors.is_empty());
+        assert!(!r.errors.is_empty(), "expected a non-empty value");
     }
 
     #[test]
@@ -429,7 +429,7 @@ mod tests {
         assert!(!r.is_complete);
         // The recoverer should salvage at least the strict-error
         // for the malformed third line.
-        assert!(!r.errors.is_empty());
+        assert!(!r.errors.is_empty(), "expected a non-empty value");
         // Best-effort tree: should contain `a` (and may contain `b`).
         if let Value::Mapping(m) = &r.value {
             assert!(m.contains_key("a"));
@@ -471,8 +471,13 @@ mod tests {
     #[test]
     fn split_documents_handles_empty() {
         let cfg = ParserConfig::default();
-        assert!(split_documents("", &cfg).unwrap().is_empty());
-        assert!(split_documents("   \n", &cfg).unwrap().is_empty());
+        let docs = split_documents("", &cfg).unwrap();
+        assert!(docs.is_empty(), "expected empty, got {docs:?}");
+        assert!(
+            split_documents("   \n", &cfg).unwrap().is_empty(),
+            "expected empty, got {:?}",
+            split_documents("   \n", &cfg).unwrap()
+        );
     }
 
     #[test]

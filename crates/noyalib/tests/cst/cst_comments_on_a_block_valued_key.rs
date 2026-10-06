@@ -55,7 +55,11 @@ fn a_comment_indented_inside_the_block_is_not_the_keys() {
     // It sits below the key, so no upward walk from the key's line reaches
     // it. It belongs to the entry it precedes.
     let doc = parse_document("k:\n  # about n\n  n: 1\n").unwrap();
-    assert!(doc.comments_at("k").before.is_empty());
+    assert!(
+        doc.comments_at("k").before.is_empty(),
+        "expected empty, got {:?}",
+        doc.comments_at("k").before
+    );
     assert_eq!(
         doc.comments_at("k.n")
             .before

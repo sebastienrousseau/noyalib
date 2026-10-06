@@ -31,9 +31,9 @@ struct Doc {
 fn empty_stream_yields_zero_documents() {
     let iter: DocumentReadIterator<Value> = read(Cursor::new("")).unwrap();
     assert_eq!(iter.len(), 0);
-    assert!(iter.is_empty());
+    assert!(iter.is_empty(), "expected empty, got {iter:?}");
     let collected: Vec<_> = iter.collect();
-    assert!(collected.is_empty());
+    assert!(collected.is_empty(), "expected empty, got {collected:?}");
 }
 
 #[test]

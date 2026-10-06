@@ -32,7 +32,7 @@ fn load_all_multiple_documents() {
 #[test]
 fn load_all_empty_string() {
     let docs: Vec<Value> = load_all("").unwrap().map(|r| r.unwrap()).collect();
-    assert!(docs.is_empty());
+    assert!(docs.is_empty(), "expected empty, got {docs:?}");
 }
 
 #[test]
@@ -67,14 +67,14 @@ fn document_iterator_len() {
     let yaml = "---\na: 1\n---\nb: 2\n";
     let iter = load_all(yaml).unwrap();
     assert_eq!(iter.len(), 2);
-    assert!(!iter.is_empty());
+    assert!(!iter.is_empty(), "expected a non-empty value");
 }
 
 #[test]
 fn document_iterator_empty() {
     let iter = load_all("").unwrap();
     assert_eq!(iter.len(), 0);
-    assert!(iter.is_empty());
+    assert!(iter.is_empty(), "expected empty, got {iter:?}");
 }
 
 #[test]
@@ -191,7 +191,7 @@ fn load_all_as_invalid_yaml() {
 #[test]
 fn load_all_as_empty() {
     let docs: Vec<i64> = load_all_as("").unwrap();
-    assert!(docs.is_empty());
+    assert!(docs.is_empty(), "expected empty, got {docs:?}");
 }
 
 // ============================================================================

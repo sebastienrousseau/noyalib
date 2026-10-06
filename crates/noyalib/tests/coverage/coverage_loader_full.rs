@@ -111,7 +111,7 @@ fn alias_outside_document_via_ast() {
     let yaml = "a: &x 1\nb: *x\n";
     let result = load_all(yaml).unwrap();
     let docs: Vec<_> = result.filter_map(Result::ok).collect();
-    assert!(!docs.is_empty());
+    assert!(!docs.is_empty(), "expected a non-empty value");
 }
 
 // ── Unknown anchor on AST path ──────────────────────────────────────────

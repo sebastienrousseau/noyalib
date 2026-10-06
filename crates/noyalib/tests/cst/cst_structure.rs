@@ -112,7 +112,11 @@ fn flow_mapping_is_flat_in_phase_1() {
     let doc = parse_document("{a: 1, b: 2}\n").unwrap();
     let fm = first_node_of(doc.syntax(), SyntaxKind::FlowMapping).expect("FlowMapping");
     // Flat: no MappingEntry composites inside.
-    assert!(entries_of(fm).is_empty());
+    assert!(
+        entries_of(fm).is_empty(),
+        "expected empty, got {:?}",
+        entries_of(fm)
+    );
     // But the brace tokens and scalars are direct leaves.
     let leaf_kinds = token_kinds_of(fm);
     assert!(leaf_kinds.contains(&SyntaxKind::OpenBrace));
@@ -124,7 +128,11 @@ fn flow_mapping_is_flat_in_phase_1() {
 fn flow_sequence_is_flat_in_phase_1() {
     let doc = parse_document("[a, b, c]\n").unwrap();
     let fs = first_node_of(doc.syntax(), SyntaxKind::FlowSequence).expect("FlowSequence");
-    assert!(entries_of(fs).is_empty());
+    assert!(
+        entries_of(fs).is_empty(),
+        "expected empty, got {:?}",
+        entries_of(fs)
+    );
     let leaf_kinds = token_kinds_of(fs);
     assert!(leaf_kinds.contains(&SyntaxKind::OpenBracket));
     assert!(leaf_kinds.contains(&SyntaxKind::CloseBracket));
