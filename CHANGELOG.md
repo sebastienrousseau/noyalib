@@ -7,6 +7,14 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [v0.0.53] - 2026-10-06
 
+### Added
+
+- `scripts/complexity-baseline.sh` and a `Complexity baseline` CI job:
+  clippy measures lines per function (ceiling 60) and cognitive
+  complexity (ceiling 15) against the committed
+  `scripts/complexity/baseline.tsv`, which lists the 110 functions over
+  a ceiling today and may only shrink.
+
 ### Changed
 
 - Bumped `jsonschema` to 0.58 (the manifest requirement moves with the

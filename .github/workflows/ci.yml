@@ -129,6 +129,27 @@ jobs:
           key: shipped-size
       - run: ./scripts/size-monitor.sh
 
+  complexity-baseline:
+    # Per-function ceilings (60 lines, cognitive complexity 15) from
+    # the repository standard, enforced against a committed baseline
+    # that may only shrink (scripts/complexity/baseline.tsv). A
+    # function that joins the list or grows fails the job; so does an
+    # improvement nobody recorded with --update, so the file always
+    # states the truth.
+    name: Complexity baseline
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: dtolnay/rust-toolchain@7e38f4b43b4db5c8dd498af069a4f6196df1d067 # master
+        with:
+          toolchain: stable
+          components: clippy
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+        with:
+          key: complexity-baseline
+      - run: ./scripts/complexity-baseline.sh
+
   docs-lint:
     # Dogfooded from shared-docs-lint.yml: markdownlint + codespell
     # over the caller's .markdownlint.yaml / .codespellrc. Part of

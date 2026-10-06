@@ -1,0 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Noyalib
+# SPDX-License-Identifier: MIT OR Apache-2.0
+#
+# Thresholds for scripts/complexity-baseline.sh only. The script points
+# CLIPPY_CONF_DIR here so the ordinary clippy run keeps its own limits.
+too-many-lines-threshold = 60
+cognitive-complexity-threshold = 15
