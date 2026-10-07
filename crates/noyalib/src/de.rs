@@ -219,10 +219,7 @@ where
         p.check_value(&value)?;
     }
     let spans = span_context::build_span_map(&value, &span_tree);
-    let ctx = span_context::SpanContext {
-        spans,
-        source: s.into(),
-    };
+    let ctx = span_context::SpanContext::new(spans, s.into());
     let _guard = span_context::set_span_context(ctx);
     let de = Deserializer::with_options(
         &value,
@@ -536,10 +533,7 @@ where
             p.check_value(&value)?;
         }
         let spans = span_context::build_span_map(&value, &span_tree);
-        let ctx = span_context::SpanContext {
-            spans,
-            source: s.into(),
-        };
+        let ctx = span_context::SpanContext::new(spans, s.into());
         let _guard = span_context::set_span_context(ctx);
         let de = Deserializer::with_options(
             &value,

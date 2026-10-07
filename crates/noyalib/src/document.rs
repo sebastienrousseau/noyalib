@@ -238,13 +238,11 @@ where
         let pairs = parser::parse(input, &parse_config)?;
         let mut results = Vec::with_capacity(pairs.len());
         let source: Arc<str> = input.into();
+        let lines = span_context::SharedLineIndex::default();
 
         for (value, span_tree) in &pairs {
             let spans = span_context::build_span_map(value, span_tree);
-            let ctx = span_context::SpanContext {
-                spans,
-                source: source.clone(),
-            };
+            let ctx = span_context::SpanContext::with_lines(spans, source.clone(), lines.clone());
             let _guard = span_context::set_span_context(ctx);
             let typed: T = crate::from_value(value)?;
             results.push(typed);

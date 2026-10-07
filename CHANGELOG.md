@@ -42,6 +42,10 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   cap (64 times `max_document_length`). They used to read the whole
   source first, so a 1 GiB reader cost about 780 MB before the cap was
   checked.
+- `Spanned<T>` locations come from a line index built once per source
+  and a per-value cache. Each `Spanned` value used to rescan the source
+  from byte 0 twelve times, so 40,000 spanned values in a debug build
+  took about a minute.
 
 ### Added
 

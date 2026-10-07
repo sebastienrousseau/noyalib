@@ -3,9 +3,15 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 // Copyright (c) 2026 Noyalib. All rights reserved.
 
+use crate::error::Location;
 use crate::prelude::*;
+#[cfg(not(feature = "std"))]
+use alloc::rc::Rc;
+use core::cell::OnceCell;
 #[cfg(feature = "std")]
 use core::cell::RefCell;
+#[cfg(feature = "std")]
+use std::rc::Rc;
 
 use crate::prelude::FxHashMap;
 
@@ -49,6 +55,113 @@ pub struct SpanContext {
     pub spans: FxHashMap<usize, (usize, usize)>,
     /// The original source string (for `Location::from_index`).
     pub source: Arc<str>,
+    /// Line and character index over `source`, built on first use and
+    /// shared by every context over the same source.
+    lines: SharedLineIndex,
+}
+
+/// A lazily built [`LineIndex`], shareable between the span contexts of
+/// one multi-document source so the index is built once per source.
+pub(crate) type SharedLineIndex = Rc<OnceCell<LineIndex>>;
+
+impl SpanContext {
+    /// A context over `source` with its own line index.
+    pub(crate) fn new(spans: FxHashMap<usize, (usize, usize)>, source: Arc<str>) -> Self {
+        Self::with_lines(spans, source, SharedLineIndex::default())
+    }
+
+    /// A context whose line index is shared with other contexts over
+    /// the same `source`.
+    pub(crate) fn with_lines(
+        spans: FxHashMap<usize, (usize, usize)>,
+        source: Arc<str>,
+        lines: SharedLineIndex,
+    ) -> Self {
+        Self {
+            spans,
+            source,
+            lines,
+        }
+    }
+
+    /// The [`Location`] of byte `index` in the source; equal to
+    /// [`Location::from_index`] but answered from the index, so each
+    /// call costs a binary search instead of a scan from byte 0.
+    pub(crate) fn location(&self, index: usize) -> Location {
+        self.lines
+            .get_or_init(|| LineIndex::new(&self.source))
+            .location(self.source.as_bytes(), index)
+    }
+}
+
+/// Byte positions of every line start, plus a running character count
+/// sampled every [`LineIndex::STRIDE`] bytes. Together they answer a
+/// line/column query in `O(log lines + STRIDE)`.
+#[derive(Debug)]
+pub(crate) struct LineIndex {
+    line_starts: Vec<usize>,
+    /// `chars_at[k]` is the number of characters in the first
+    /// `k * STRIDE` bytes of the source.
+    chars_at: Vec<usize>,
+}
+
+impl LineIndex {
+    /// Sampling interval of the character count. Small, so a column on
+    /// a long line costs a short scan; the samples take one `usize` per
+    /// `STRIDE` bytes of source.
+    const STRIDE: usize = 128;
+
+    pub(crate) fn new(source: &str) -> Self {
+        let bytes = source.as_bytes();
+        let mut line_starts = vec![0];
+        line_starts.extend(
+            bytes
+                .iter()
+                .enumerate()
+                .filter(|&(_, &b)| b == b'\n')
+                .map(|(i, _)| i + 1),
+        );
+        let mut chars_at = Vec::with_capacity(bytes.len() / Self::STRIDE + 2);
+        let mut chars = 0;
+        chars_at.push(0);
+        for chunk in bytes.chunks(Self::STRIDE) {
+            chars += count_chars(chunk);
+            chars_at.push(chars);
+        }
+        Self {
+            line_starts,
+            chars_at,
+        }
+    }
+
+    /// Characters wholly or partly in `bytes[..pos]`, `pos` clamped to
+    /// the source length.
+    fn chars_before(&self, bytes: &[u8], pos: usize) -> usize {
+        let pos = pos.min(bytes.len());
+        let block = pos / Self::STRIDE;
+        self.chars_at[block] + count_chars(&bytes[block * Self::STRIDE..pos])
+    }
+
+    /// Same result as [`Location::from_index`] over the indexed source.
+    pub(crate) fn location(&self, bytes: &[u8], index: usize) -> Location {
+        // Line starts at or before `index`: one per newline before it,
+        // plus the start of the source.
+        let line = self.line_starts.partition_point(|&start| start <= index);
+        let line_start = self.line_starts[line - 1];
+        let end = index.min(bytes.len());
+        let column = if end - line_start <= Self::STRIDE {
+            1 + count_chars(&bytes[line_start..end])
+        } else {
+            1 + self.chars_before(bytes, end) - self.chars_before(bytes, line_start)
+        };
+        Location::new(line, column, index)
+    }
+}
+
+/// Characters beginning in `bytes`: every byte that is not a UTF-8
+/// continuation byte.
+fn count_chars(bytes: &[u8]) -> usize {
+    bytes.iter().filter(|&&b| b & 0xC0 != 0x80).count()
 }
 
 // Thread-local storage requires `std::thread` and is unavailable under
@@ -121,10 +234,11 @@ impl Drop for SpanContextGuard {
 /// guard's `SpanContext` directly, avoiding a map clone per parse).
 #[cfg(feature = "std")]
 pub(crate) fn set_span_context(ctx: SpanContext) -> SpanContextGuard {
-    let thread_local_ctx = SpanContext {
-        spans: FxHashMap::default(),
-        source: Arc::clone(&ctx.source),
-    };
+    let thread_local_ctx = SpanContext::with_lines(
+        FxHashMap::default(),
+        Arc::clone(&ctx.source),
+        Rc::clone(&ctx.lines),
+    );
     tls::SPAN_CONTEXT.with(|cell| {
         *cell.borrow_mut() = Some(thread_local_ctx);
     });
@@ -172,5 +286,44 @@ fn walk(value: &Value, tree: &SpanTree, map: &mut FxHashMap<usize, (usize, usize
         }
         // An alias site maps to the anchor's spans; walk through it.
         SpanTree::Alias(inner) => walk(value, inner, map),
+    }
+}
+
+#[cfg(test)]
+mod line_index_tests {
+    use super::*;
+
+    #[test]
+    fn line_index_matches_from_index_everywhere() {
+        let filler = "x".repeat(LineIndex::STRIDE + 7);
+        let sources = [
+            String::new(),
+            "a".to_string(),
+            "a: 1\nb: 2\n".to_string(),
+            "\n\n\nx".to_string(),
+            "é: ü\n  - 日本\r\nend 🦀\n".to_string(),
+            format!("k: {filler}é\n{filler}\n🦀{filler}"),
+        ];
+        for source in &sources {
+            let index = LineIndex::new(source);
+            for i in 0..=source.len() + 2 {
+                assert_eq!(
+                    index.location(source.as_bytes(), i),
+                    Location::from_index(source, i),
+                    "source {source:?} index {i}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn contexts_share_one_index() {
+        let source: Arc<str> = "a: 1\n".into();
+        let lines = SharedLineIndex::default();
+        let first = SpanContext::with_lines(FxHashMap::default(), source.clone(), lines.clone());
+        let second = SpanContext::with_lines(FxHashMap::default(), source, lines.clone());
+        assert_eq!(first.location(3).line(), 1);
+        assert!(lines.get().is_some());
+        assert_eq!(second.location(5).line(), 2);
     }
 }
