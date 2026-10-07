@@ -163,9 +163,13 @@ Reference: [`SECURITY.md`](../SECURITY.md) at the repo root.
   use `unsafe` (`indexmap`, `rustc-hash`, `ryu`, `itoa`,
   `memchr`, `smallvec`) are checked under Miri on every PR
   (focused) and weekly (full + big-endian).
-- No network I/O, no filesystem writes from the library
-  itself, no environment-variable reads. The `noya-cli` binaries
-  do read files; the library does not.
+- No network I/O and no filesystem writes from the library
+  itself, and no environment-variable reads at run time (the build
+  script reads `RUSTC` and `NOYALIB_COVERAGE`). The library reads
+  files only when asked to: `SafeFileResolver` (`include_fs`) under
+  its root, and the `figment` provider's `Yaml::file` and
+  `Yaml::file_with_config`. JSON Schema `$ref` never resolves outside
+  the schema document. The `noya-cli` binaries read and write files.
 
 ### Resource-limit gates
 
