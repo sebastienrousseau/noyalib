@@ -742,7 +742,8 @@ mod table {
                     .iter()
                     .any(|p| name.starts_with(p) || name == p.trim_end_matches('_'));
                     if parse_like {
-                        out.push((name, path.display().to_string()));
+                        // `/` on every platform, so the skips below match on Windows.
+                        out.push((name, path.display().to_string().replace('\\', "/")));
                     }
                 }
             }
