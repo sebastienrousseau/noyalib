@@ -63,6 +63,12 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   `Yaml::file` now stops reading one byte past the limit instead of
   reading the whole file first.
 
+### Changed
+
+- `!!binary` decoding is canonical: a padded final group whose unused
+  bits are not zero (`QR==`, `QUJ=`) is refused instead of decoding to
+  the same bytes as its canonical form (`QQ==`, `QUI=`).
+
 ### Added
 
 - `IncludeRequest::max_bytes`: the most bytes the loader will accept
