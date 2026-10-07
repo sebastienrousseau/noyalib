@@ -870,7 +870,7 @@ impl<'a, 'c> BorrowedBuilder<'a, 'c> {
             .anchors
             .get(anchor)
             .ok_or_else(|| Error::Parse(format!("unknown anchor: '{anchor}'")))?;
-        self.meter.charge_expansion(cost, self.config)?;
+        self.meter.charge_expansion(cost, self.depth, self.config)?;
         let referent = referent.clone();
         // Special-case: alias used as a mapping key. We need the
         // alias's resolved value to be a string for it to function as

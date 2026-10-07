@@ -434,7 +434,7 @@ impl<'a> Loader<'a> {
                 &self.earlier_anchor_defs,
             ));
         };
-        self.meter.charge_expansion(cost, self.config)?;
+        self.meter.charge_expansion(cost, self.depth, self.config)?;
         Ok((value.clone(), span_tree.clone()))
     }
 
@@ -1114,7 +1114,7 @@ impl<'a> NoSpanLoader<'a> {
                 &self.earlier_anchor_defs,
             ));
         };
-        self.meter.charge_expansion(cost, self.config)?;
+        self.meter.charge_expansion(cost, self.depth, self.config)?;
         Ok(value.clone())
     }
 

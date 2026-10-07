@@ -22,6 +22,13 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   ceiling on expanded bytes now holds on the typed path too. The
   loaders charge an alias before cloning it. Documents with large alias
   expansions that fit the old estimate can now be refused.
+- An alias can no longer build a value deeper than `max_depth`. Each
+  alias is charged its anchored subtree's height on top of the depth
+  where it stands; before, a chain of anchors each nested inside the
+  previous one passed the depth check line by line and expanded a 22 KB
+  document into a value 10,000 levels deep, which overflowed the stack
+  (aborting the process) on drop or any recursive walk. Every entry
+  point now refuses it with `RecursionLimitExceeded`.
 
 ## [v0.0.54] - 2026-10-07
 

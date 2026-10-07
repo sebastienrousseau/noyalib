@@ -229,12 +229,26 @@ impl Meter {
     }
 
     /// Charge what one alias expands to, before anything is copied: the
-    /// bytes it allocates and the serde_yaml-profile jump charge.
+    /// nesting it adds below `site_depth` (the collections already open
+    /// where the alias stands), the bytes it allocates, and the
+    /// serde_yaml-profile jump charge.
+    ///
+    /// The depth charge is what keeps an expanded tree inside
+    /// `max_depth`. Every anchored node passes the depth check where it
+    /// is written, but an alias splices a whole subtree in at once: an
+    /// anchor nested `d` deep, aliased inside another `d` deep, and so
+    /// on, builds a tree `d` times the chain length deep from a
+    /// document whose every line is shallow.
     pub(crate) fn charge_expansion(
         &mut self,
         cost: &AliasCost,
+        site_depth: usize,
         config: &ParseConfig,
     ) -> Result<()> {
+        let depth = site_depth.saturating_add(cost.height);
+        if budget::depth_exceeded(depth, config.max_depth) {
+            return Err(Error::RecursionLimitExceeded { depth });
+        }
         let (bytes, over) = budget::alias_bytes_exceeded(
             self.alias_bytes,
             cost.bytes(),

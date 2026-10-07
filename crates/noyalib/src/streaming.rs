@@ -522,7 +522,7 @@ impl<'a> StreamingDeserializer<'a> {
     fn charge_alias(&mut self, name: &str) -> Result<()> {
         self.meter.charge_alias(&self.config)?;
         match self.anchor_costs.get(name) {
-            Some(cost) => self.meter.charge_expansion(cost, &self.config),
+            Some(cost) => self.meter.charge_expansion(cost, self.depth, &self.config),
             None => Ok(()),
         }
     }

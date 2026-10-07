@@ -3,10 +3,11 @@
 
 //! Parser budgets, policies and hostile input.
 //!
-//! 9 files, compiled into one test binary.
+//! 10 files, compiled into one test binary.
 
 #![allow(missing_docs)]
 
+mod alias_depth;
 mod alias_expansion;
 mod budget_breach;
 mod dos_hardening;
