@@ -26,6 +26,7 @@ refuses a tag whose Highlights file is missing, and
 
 | Version | Date | Notes |
 |---|---|---|
+| [`v0.0.55`](v0.0.55.md) | unreleased | Security hardening from the v0.0.54 family audit. |
 | [`v0.0.54`](v0.0.54.md) | 2026-10-07 | Reader entry points bounded at `max_document_length` before buffering. |
 | [`v0.0.17`](v0.0.17.md) | 2026-07-25 | Lockstep-only release; no code change in the core crate. |
 | [`v0.0.16`](v0.0.16.md) | 2026-07-24 | Build fix, MSRV raise, and dependency refresh — `main` had been left unbuildable under `cargo check --all-targets`. |
