@@ -21,6 +21,16 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   (including the source an edit would commit) enforces
   `max_document_length`. The CST stream used to accept any number of
   documents, even under `ParserConfig::strict()`.
+- `cst::format` no longer changes what a document means. It used to
+  drop the space after a tag or anchor (`!foo "bar"` became the tag
+  `!foo"bar"`), join `...` onto the previous line, write a value that
+  sat on the line below its key at the key's column, and drop the
+  space in `*a :` and `: value`; 45 of the yaml-test-suite documents
+  came out changed or invalid. Every output is now checked to parse to
+  the input's values, and an input the formatter cannot re-lay out
+  safely is refused with an error instead of being rewritten (two
+  suite documents today). A comment on its own line after a scalar
+  now stays on its own line instead of being folded onto the entry.
 
 ### Added
 

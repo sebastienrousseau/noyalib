@@ -3,11 +3,11 @@
 
 //! Formatter for YAML CST.
 
-use crate::cst::document::parse_stream_inner;
+use crate::cst::document::{Document, parse_stream_inner};
 use crate::cst::green::{GreenChild, GreenNode};
 use crate::cst::syntax::SyntaxKind;
 use crate::de::ParserConfig;
-use crate::error::Result;
+use crate::error::{Error, Result};
 use crate::parser::ParseConfig;
 use crate::prelude::*;
 
@@ -27,6 +27,18 @@ impl Default for FormatConfig {
 /// Auto-formats a messy YAML file into a canonical style based on the CST.
 ///
 /// This uses the default configuration (2 spaces indentation).
+///
+/// The output always parses to the same values as the input. A stream
+/// the formatter cannot re-layout without changing its meaning (for
+/// example a multi-line flow collection whose continuation lines would
+/// end up at or left of a re-indented key) is refused with an error
+/// rather than rewritten.
+///
+/// # Errors
+///
+/// Returns the parse error of an invalid input, a budget error under
+/// the default [`ParserConfig`], or an error when the input cannot be
+/// re-laid out without changing its meaning.
 pub fn format(input: &str) -> Result<String> {
     format_with_config(input, &FormatConfig::default())
 }
@@ -50,7 +62,9 @@ pub fn format_with_config(input: &str, config: &FormatConfig) -> Result<String> 
 ///
 /// # Errors
 ///
-/// Returns the parse or budget error the input trips under `parser`.
+/// Returns the parse or budget error the input trips under `parser`,
+/// or an error when the input cannot be re-laid out without changing
+/// its meaning (see [`format`]).
 ///
 /// # Examples
 ///
@@ -74,14 +88,45 @@ pub fn format_with_parser_config(
     if input.trim().is_empty() {
         return Ok(String::new());
     }
-    let docs = parse_stream_inner(input, &ParseConfig::from(parser), parser.max_stream_bytes)?;
+    let parse_config = ParseConfig::from(parser);
+    let docs = parse_stream_inner(input, &parse_config, parser.max_stream_bytes)?;
     let mut output = String::with_capacity(input.len());
-    for doc in docs {
+    for doc in &docs {
         let mut formatter = Formatter::new(doc.source(), config);
         formatter.format_node(doc.syntax(), 0)?;
         output.push_str(&formatter.finish());
     }
+    ensure_same_meaning(&docs, &output, &parse_config, parser.max_stream_bytes)?;
     Ok(output)
+}
+
+/// Refuse `output` unless it parses, under the same configuration, to
+/// the values of `docs`.
+///
+/// The formatter re-lays out text token by token and does not model
+/// every YAML layout rule, so this check is what makes its contract
+/// hold: the output means what the input meant, or `format` returns an
+/// error and the caller keeps the input.
+fn ensure_same_meaning(
+    docs: &[Document],
+    output: &str,
+    config: &ParseConfig,
+    max_stream_bytes: usize,
+) -> Result<()> {
+    let refused = || {
+        Error::Parse(
+            "format: the input cannot be re-laid out without changing its meaning; \
+             it was left unformatted"
+                .into(),
+        )
+    };
+    let after = parse_stream_inner(output, config, max_stream_bytes).map_err(|_| refused())?;
+    let same = after.len() == docs.len()
+        && after
+            .iter()
+            .zip(docs)
+            .all(|(a, b)| *a.as_value() == *b.as_value());
+    if same { Ok(()) } else { Err(refused()) }
 }
 
 struct Formatter<'a> {
@@ -92,6 +137,11 @@ struct Formatter<'a> {
     at_line_start: bool,
     /// Whether the last thing written was a space.
     last_was_space: bool,
+    /// The last token written, ignoring whitespace. A tag, anchor or
+    /// alias must be separated from what follows it: `!foo "bar"`
+    /// written as `!foo"bar"` is one tag and an empty scalar, and
+    /// `*a :` written as `*a:` is an alias named `a:`.
+    last_token: Option<SyntaxKind>,
 }
 
 impl<'a> Formatter<'a> {
@@ -103,6 +153,7 @@ impl<'a> Formatter<'a> {
             indent_level: 0,
             at_line_start: true,
             last_was_space: false,
+            last_token: None,
         }
     }
 
@@ -233,15 +284,21 @@ impl<'a> Formatter<'a> {
             SyntaxKind::Whitespace | SyntaxKind::Bom => {
                 // Skip
             }
-            SyntaxKind::DocStart => {
-                self.write_raw("---");
+            SyntaxKind::DocStart | SyntaxKind::DocEnd => {
+                // A marker is only a marker at the start of a line:
+                // `Document...` is a plain scalar.
                 self.newline();
-            }
-            SyntaxKind::DocEnd => {
-                self.write_raw("...");
+                self.write_raw(if kind == SyntaxKind::DocStart {
+                    "---"
+                } else {
+                    "..."
+                });
                 self.newline();
             }
             SyntaxKind::ColonIndicator => {
+                if self.after_node_property() {
+                    self.ensure_space();
+                }
                 self.write_raw(":");
             }
             SyntaxKind::DashIndicator => {
@@ -256,9 +313,44 @@ impl<'a> Formatter<'a> {
                 } else {
                     text
                 };
+                self.separate_from_property();
                 self.write_raw(trimmed);
+                // A scalar token can carry the line break that ends
+                // it (`: a` / `: b` under an empty key); keep it.
+                if trimmed.len() < text.len() && text.trim_end_matches([' ', '\t']).ends_with('\n')
+                {
+                    self.newline();
+                }
             }
             _ => {}
+        }
+        if kind != SyntaxKind::Whitespace {
+            self.last_token = Some(kind);
+        }
+    }
+
+    /// Whether the last token was a tag, anchor or alias.
+    fn after_node_property(&self) -> bool {
+        matches!(
+            self.last_token,
+            Some(SyntaxKind::TagMark | SyntaxKind::AnchorMark | SyntaxKind::AliasMark)
+        )
+    }
+
+    /// Keep the space between a tag, anchor or indicator and the
+    /// content that follows it (`: a` is a value, `:a` a plain scalar).
+    fn separate_from_property(&mut self) {
+        if matches!(
+            self.last_token,
+            Some(
+                SyntaxKind::TagMark
+                    | SyntaxKind::AnchorMark
+                    | SyntaxKind::ColonIndicator
+                    | SyntaxKind::DashIndicator
+                    | SyntaxKind::QuestionIndicator
+            )
+        ) {
+            self.ensure_space();
         }
     }
 
@@ -301,198 +393,217 @@ impl<'a> Formatter<'a> {
     }
 
     fn format_mapping_entry(&mut self, node: &GreenNode, base: usize) -> Result<()> {
-        let mut pos = base;
-        let mut saw_colon = false;
-        // An explicit key (`? key`) needs the space after its indicator
-        // as much as a sequence item needs the one after `-`: `?[a, b]`
-        // is a plain scalar, not an explicit key (found by the
-        // ultra-complex fixture).
-        let mut saw_question = false;
         // A value whose tag or anchor sits alone on the line after the
         // colon (`k:` / `  !!pairs` / `  - a`) is written as `k: !!pairs`:
         // the line break is dropped and the property joins the key line,
         // where it needs no indentation of its own (found by the
         // ultra-complex fixture, which lost the property's indent).
         let children: Vec<&GreenChild> = node.children().collect();
-        let mut drop_newline_at: Option<usize> = None;
-        if let Some(colon) = children.iter().position(|c| {
-            matches!(
-                c,
-                GreenChild::Token {
-                    kind: SyntaxKind::ColonIndicator,
-                    ..
-                }
-            )
-        }) {
-            let mut i = colon + 1;
-            let is_ws = |c: &GreenChild| {
-                matches!(
-                    c,
-                    GreenChild::Token {
-                        kind: SyntaxKind::Whitespace,
-                        ..
-                    }
-                )
-            };
-            while i < children.len() && is_ws(children[i]) {
-                i += 1;
-            }
-            if i < children.len()
-                && matches!(
-                    children[i],
-                    GreenChild::Token {
-                        kind: SyntaxKind::Newline,
-                        ..
-                    }
-                )
-            {
-                let newline = i;
-                i += 1;
-                while i < children.len() && is_ws(children[i]) {
-                    i += 1;
-                }
-                if i < children.len()
-                    && matches!(
-                        children[i],
-                        GreenChild::Token {
-                            kind: SyntaxKind::TagMark | SyntaxKind::AnchorMark,
-                            ..
-                        }
-                    )
-                {
-                    drop_newline_at = Some(newline);
-                }
-            }
-        }
-
+        let drop_newline_at = property_on_next_line(&children);
+        let mut state = EntryState::default();
+        let mut pos = base;
         for (index, child) in children.iter().enumerate() {
             match child {
-                GreenChild::Token { kind, len } => {
+                GreenChild::Token { kind, len } if drop_newline_at != Some(index) => {
                     let text = &self.source[pos..pos + *len as usize];
-                    if drop_newline_at == Some(index) {
-                        pos += child.text_len();
-                        continue;
-                    }
-                    if (saw_colon || saw_question)
-                        && !matches!(
-                            kind,
-                            SyntaxKind::ColonIndicator
-                                | SyntaxKind::Newline
-                                | SyntaxKind::Whitespace
-                                | SyntaxKind::Comment
-                        )
-                    {
-                        self.ensure_space();
-                    }
-                    if matches!(kind, SyntaxKind::ColonIndicator) {
-                        // An explicit key's value indicator starts its own
-                        // line: `? a` / `: b`. On the key's line it would
-                        // turn the key into a mapping (`? a: b`).
-                        if saw_question && !self.at_line_start {
-                            self.newline();
-                        }
-                        saw_colon = true;
-                        saw_question = false;
-                    }
-                    if matches!(kind, SyntaxKind::QuestionIndicator) {
-                        saw_question = true;
-                    }
-                    self.handle_token(*kind, text);
+                    self.entry_token(&mut state, *kind, text);
                 }
-                GreenChild::Node(inner) => {
-                    if saw_question && !saw_colon {
-                        self.ensure_space();
-                        // A mapping used as an explicit key continues on
-                        // the lines below the `?`, and those lines must
-                        // be indented past it or they become entries of
-                        // the surrounding mapping instead. Without this
-                        // the key is torn apart and the value is lost
-                        // (found by formatting the spec-torture corpus).
-                        if inner.kind() == SyntaxKind::BlockMapping {
-                            self.indent_level += 1;
-                            self.format_node(inner, pos)?;
-                            self.indent_level -= 1;
-                        } else {
-                            self.format_node(inner, pos)?;
-                        }
-                    } else if saw_colon {
-                        if matches!(
-                            inner.kind(),
-                            SyntaxKind::BlockMapping | SyntaxKind::BlockSequence
-                        ) {
-                            self.newline();
-                            self.indent_level += 1;
-                            self.format_node(inner, pos)?;
-                            self.indent_level -= 1;
-                        } else {
-                            self.ensure_space();
-                            self.format_node(inner, pos)?;
-                        }
-                    } else {
-                        self.format_node(inner, pos)?;
-                    }
-                }
+                GreenChild::Token { .. } => {}
+                GreenChild::Node(inner) => self.entry_node(&mut state, inner, pos)?,
             }
             pos += child.text_len();
         }
-        self.newline();
+        self.end_entry(&state);
         Ok(())
+    }
+
+    /// Write one token of a mapping entry.
+    fn entry_token(&mut self, state: &mut EntryState, kind: SyntaxKind, text: &str) {
+        // An explicit key (`? key`) needs the space after its indicator
+        // as much as a sequence item needs the one after `-`: `?[a, b]`
+        // is a plain scalar, not an explicit key (found by the
+        // ultra-complex fixture).
+        if (state.saw_colon || state.saw_question) && !is_layout_token(kind) {
+            if state.saw_colon {
+                self.indent_value_on_next_line(state);
+            }
+            self.ensure_space();
+        }
+        match kind {
+            SyntaxKind::ColonIndicator => {
+                // An explicit key's value indicator starts its own
+                // line: `? a` / `: b`. On the key's line it would
+                // turn the key into a mapping (`? a: b`).
+                if state.saw_question && !self.at_line_start {
+                    self.newline();
+                }
+                state.saw_colon = true;
+                state.saw_question = false;
+            }
+            SyntaxKind::QuestionIndicator => state.saw_question = true,
+            SyntaxKind::Newline | SyntaxKind::Comment if state.saw_colon => {
+                state.value_on_next_line = true;
+            }
+            _ => {}
+        }
+        self.handle_token(kind, text);
+    }
+
+    /// Write one child node of a mapping entry.
+    fn entry_node(&mut self, state: &mut EntryState, inner: &GreenNode, pos: usize) -> Result<()> {
+        let block = matches!(
+            inner.kind(),
+            SyntaxKind::BlockMapping | SyntaxKind::BlockSequence
+        );
+        if state.saw_question && !state.saw_colon {
+            self.ensure_space();
+            // A mapping used as an explicit key continues on
+            // the lines below the `?`, and those lines must
+            // be indented past it or they become entries of
+            // the surrounding mapping instead. Without this
+            // the key is torn apart and the value is lost
+            // (found by formatting the spec-torture corpus).
+            let nested = inner.kind() == SyntaxKind::BlockMapping;
+            return self.format_nested(inner, pos, nested);
+        }
+        if !state.saw_colon {
+            return self.format_node(inner, pos);
+        }
+        if block {
+            self.newline();
+            return self.format_nested(inner, pos, true);
+        }
+        self.indent_value_on_next_line(state);
+        self.ensure_space();
+        self.format_node(inner, pos)
+    }
+
+    /// A scalar or flow value that starts on the line below its key
+    /// (`key:` / `  value`) must stay indented past the key, or it
+    /// becomes a key of its own.
+    fn indent_value_on_next_line(&mut self, state: &mut EntryState) {
+        if state.value_on_next_line && !state.value_indented {
+            self.indent_level += 1;
+            state.value_indented = true;
+        }
+    }
+
+    fn end_entry(&mut self, state: &EntryState) {
+        if state.value_indented {
+            self.indent_level -= 1;
+        }
+        self.newline();
+    }
+
+    /// Format `inner`, one level deeper when `deeper` is set.
+    fn format_nested(&mut self, inner: &GreenNode, pos: usize, deeper: bool) -> Result<()> {
+        if !deeper {
+            return self.format_node(inner, pos);
+        }
+        self.indent_level += 1;
+        let result = self.format_node(inner, pos);
+        self.indent_level -= 1;
+        result
     }
 
     fn format_sequence_item(&mut self, node: &GreenNode, base: usize) -> Result<()> {
         let mut pos = base;
-        let mut saw_dash = false;
+        let mut state = EntryState::default();
 
         for child in node.children() {
             match child {
                 GreenChild::Token { kind, len } => {
                     let text = &self.source[pos..pos + *len as usize];
-                    if saw_dash
-                        && !matches!(
-                            kind,
-                            SyntaxKind::DashIndicator
-                                | SyntaxKind::Newline
-                                | SyntaxKind::Whitespace
-                                | SyntaxKind::Comment
-                        )
-                    {
-                        self.ensure_space();
-                    }
-                    if matches!(kind, SyntaxKind::DashIndicator) {
-                        saw_dash = true;
-                    }
-                    self.handle_token(*kind, text);
+                    self.item_token(&mut state, *kind, text);
                 }
-                GreenChild::Node(inner) => {
-                    if saw_dash {
-                        if matches!(
-                            inner.kind(),
-                            SyntaxKind::BlockMapping | SyntaxKind::BlockSequence
-                        ) {
-                            self.ensure_space();
-                            self.indent_level += 1;
-                            self.format_node(inner, pos)?;
-                            self.indent_level -= 1;
-                        } else {
-                            self.ensure_space();
-                            self.format_node(inner, pos)?;
-                        }
-                    } else {
-                        self.format_node(inner, pos)?;
+                GreenChild::Node(inner) if state.saw_colon => {
+                    // `saw_colon` stands for "saw the dash" here.
+                    let block = matches!(
+                        inner.kind(),
+                        SyntaxKind::BlockMapping | SyntaxKind::BlockSequence
+                    );
+                    if !block {
+                        self.indent_value_on_next_line(&mut state);
                     }
+                    self.ensure_space();
+                    self.format_nested(inner, pos, block)?;
                 }
+                GreenChild::Node(inner) => self.format_node(inner, pos)?,
             }
             pos += child.text_len();
         }
-        self.newline();
+        self.end_entry(&state);
         Ok(())
     }
 
+    /// Write one token of a sequence item.
+    fn item_token(&mut self, state: &mut EntryState, kind: SyntaxKind, text: &str) {
+        if state.saw_colon && !is_layout_token(kind) && kind != SyntaxKind::DashIndicator {
+            self.indent_value_on_next_line(state);
+            self.ensure_space();
+        }
+        match kind {
+            SyntaxKind::DashIndicator => state.saw_colon = true,
+            SyntaxKind::Newline | SyntaxKind::Comment if state.saw_colon => {
+                state.value_on_next_line = true;
+            }
+            _ => {}
+        }
+        self.handle_token(kind, text);
+    }
+
     fn write_verbatim(&mut self, node: &GreenNode, base: usize) {
+        self.separate_from_property();
         self.indent();
         let text = node.text(&self.source[base..base + node.text_len()]);
         self.out.push_str(&text);
         self.at_line_start = text.ends_with('\n');
         self.last_was_space = text.ends_with(' ');
+        self.last_token = Some(node.kind());
     }
+}
+
+/// Where a mapping entry is in its layout.
+#[derive(Default)]
+struct EntryState {
+    /// The value indicator (or, for a sequence item, the dash) has
+    /// been written.
+    saw_colon: bool,
+    /// An explicit-key indicator has been written and its value
+    /// indicator has not.
+    saw_question: bool,
+    /// A line break or comment followed the value indicator.
+    value_on_next_line: bool,
+    /// The value was indented one level for being on its own line.
+    value_indented: bool,
+}
+
+/// Tokens that carry layout only and never need a separating space.
+fn is_layout_token(kind: SyntaxKind) -> bool {
+    matches!(
+        kind,
+        SyntaxKind::ColonIndicator
+            | SyntaxKind::Newline
+            | SyntaxKind::Whitespace
+            | SyntaxKind::Comment
+    )
+}
+
+/// The index of the line break after an entry's colon when the next
+/// thing on the following line is a tag or anchor (`k:` / `  !!pairs`).
+fn property_on_next_line(children: &[&GreenChild]) -> Option<usize> {
+    let is = |c: &GreenChild, kinds: &[SyntaxKind]| matches!(c, GreenChild::Token { kind, .. } if kinds.contains(kind));
+    let colon = children
+        .iter()
+        .position(|c| is(c, &[SyntaxKind::ColonIndicator]))?;
+    let mut rest = children[colon + 1..]
+        .iter()
+        .enumerate()
+        .filter(|(_, c)| !is(c, &[SyntaxKind::Whitespace]));
+    let (offset, newline) = rest.next()?;
+    if !is(newline, &[SyntaxKind::Newline]) {
+        return None;
+    }
+    let (_, next) = rest.next()?;
+    is(next, &[SyntaxKind::TagMark, SyntaxKind::AnchorMark]).then_some(colon + 1 + offset)
 }

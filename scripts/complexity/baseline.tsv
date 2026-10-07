@@ -6,10 +6,9 @@
 # an improvement. The script refuses to record a regression.
 # ceilings: too_many_lines 60, cognitive_complexity 15 (scripts/complexity/clippy.toml)
 # measured with: clippy 0.1.98 (48a229ceae 2026-09-01)
-# entries: 110
+# entries: 107
 lint	file	function	value
 cognitive_complexity	crates/noyalib/examples/cst_surgical_edit.rs	main	24
-cognitive_complexity	crates/noyalib/src/cst/format.rs	format_mapping_entry	23
 cognitive_complexity	crates/noyalib/src/parser/events.rs	parse_node	18
 cognitive_complexity	crates/noyalib/src/parser/loader.rs	process_event	22
 cognitive_complexity	crates/noyalib/src/parser/loader.rs	push_node	18
@@ -78,7 +77,6 @@ too_many_lines	crates/noyalib/examples/types.rs	main	71
 too_many_lines	crates/noyalib/examples/untagged.rs	main	100
 too_many_lines	crates/noyalib/src/borrowed.rs	process	117
 too_many_lines	crates/noyalib/src/cst/builder.rs	document_boundaries	61
-too_many_lines	crates/noyalib/src/cst/builder.rs	handle_token	70
 too_many_lines	crates/noyalib/src/cst/document.rs	entry_key_site	76
 too_many_lines	crates/noyalib/src/cst/document.rs	entry_line_span	173
 too_many_lines	crates/noyalib/src/cst/document.rs	guarded_insert	77
@@ -90,7 +88,6 @@ too_many_lines	crates/noyalib/src/cst/document.rs	replace_collection_value	65
 too_many_lines	crates/noyalib/src/cst/document.rs	set_value	62
 too_many_lines	crates/noyalib/src/cst/document.rs	shape_excluding	63
 too_many_lines	crates/noyalib/src/cst/document.rs	swap_items	77
-too_many_lines	crates/noyalib/src/cst/format.rs	format_mapping_entry	117
 too_many_lines	crates/noyalib/src/de.rs	from_str_with_config	72
 too_many_lines	crates/noyalib/src/error.rs	diagnostic	64
 too_many_lines	crates/noyalib/src/error.rs	fmt	80
