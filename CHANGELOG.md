@@ -7,6 +7,37 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [v0.0.55] - Unreleased
 
+### Fixed
+
+- `cst::Document::set`, `replace_span` and the other fragment editors
+  return `Error::RecursionLimitExceeded` for a fragment nested deeper
+  than the document's `max_depth`. The local re-parse behind an edit
+  built its green tree with no depth limit, so a fragment such as
+  100,000 nested `[` overflowed the stack and aborted the process.
+  Dropping a green tree no longer recurses per nesting level, and a
+  token over 4 GiB is an error rather than a panic.
+- `cst::parse_stream`, `cst::parse_stream_with_config` and `cst::format`
+  enforce `max_documents` and `max_stream_bytes`, and every CST parse
+  (including the source an edit would commit) enforces
+  `max_document_length`. The CST stream used to accept any number of
+  documents, even under `ParserConfig::strict()`.
+- `cst::format` no longer changes what a document means. It used to
+  drop the space after a tag or anchor (`!foo "bar"` became the tag
+  `!foo"bar"`), join `...` onto the previous line, write a value that
+  sat on the line below its key at the key's column, and drop the
+  space in `*a :` and `: value`; 45 of the yaml-test-suite documents
+  came out changed or invalid. Every output is now checked to parse to
+  the input's values, and an input the formatter cannot re-lay out
+  safely is refused with an error instead of being rewritten (two
+  suite documents today). A comment on its own line after a scalar
+  now stays on its own line instead of being folded onto the entry.
+
+### Added
+
+- `cst::format_with_parser_config` formats under a caller-chosen
+  `ParserConfig`. `format` and `format_with_config` keep parsing under
+  `ParserConfig::default()`.
+
 ## [v0.0.54] - 2026-10-07
 
 ### Security
