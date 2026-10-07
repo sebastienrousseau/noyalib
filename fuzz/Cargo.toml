@@ -140,3 +140,17 @@ path = "fuzz_targets/fuzz_query_path.rs"
 test = false
 doc = false
 bench = false
+
+[[bin]]
+name = "fuzz_cst_set"
+path = "fuzz_targets/fuzz_cst_set.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fuzz_cst_format_roundtrip"
+path = "fuzz_targets/fuzz_cst_format_roundtrip.rs"
+test = false
+doc = false
+bench = false
