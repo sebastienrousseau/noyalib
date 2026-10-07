@@ -31,12 +31,53 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   safely is refused with an error instead of being rewritten (two
   suite documents today). A comment on its own line after a scalar
   now stays on its own line instead of being folded onto the entry.
+- A tag read from a document is always written back as an ordinary
+  tag. The serializer recognised its formatting hints (comments, flow
+  wrappers, block-scalar styles, anchors) by a `__noya_` tag name, so a
+  document declaring `%TAG !n! __noya_`, a verbatim `!<__noya_commented>`
+  or a `TaggedValue` read from JSON could steer the emitter and, through
+  a comment hint, add keys on re-serialisation. Only the `fmt` and anchor
+  wrapper types can create those hints now; `Tag::new("__noya_...")` is
+  an ordinary tag.
+- Strings inside flow collections are quoted when they hold a flow
+  indicator (`,` `[` `]` `{` `}`). Under `FlowStyle::Flow`,
+  `FlowStyle::Auto`, `FlowSeq` and `FlowMap`, the string `viewer, admin`
+  was written as `[viewer, admin]` and read back as two items, and a
+  flow-mapping value could add a key. Everything nested in a flow
+  collection is now written in flow form: a multi-line string is
+  double-quoted instead of a block scalar, a mapping inside `FlowSeq`
+  is braced, and `Commented` / `SpaceAfter` hints inside one are
+  dropped rather than breaking the line.
+- `Commented` comment text holding a line break (LF, CR, NEL, LS, PS)
+  is written as several `# ` lines instead of raw, where the text after
+  the break was read as YAML and could add keys. A comment on a value
+  that ends in a block scalar goes below it instead of into its content,
+  and characters no YAML stream may carry are replaced with U+FFFD.
+- A mapping key that is the string `<<` is quoted, so it no longer
+  becomes a merge key on reload.
+- A multi-line string under `quote_all`, or starting with `...`, is
+  double-quoted. It was single-quoted with raw line breaks, which fold
+  to spaces on re-parse.
+- `document_end(true)` after a keep-chomped block scalar (`|+`) no
+  longer adds an extra line to the value.
+- A tag whose body starts with `<` (`!<x`) is written in the verbatim
+  form; written as it stands it opened a verbatim tag and the output
+  did not parse.
 
 ### Added
 
 - `cst::format_with_parser_config` formats under a caller-chosen
   `ParserConfig`. `format` and `format_with_config` keep parsing under
   `ParserConfig::default()`.
+
+### Changed
+
+- A property test writes arbitrary strings (line breaks of every kind,
+  BOM, tabs, flow indicators, `# `, `: `, document markers, `<<`, node
+  indicators) as keys, values and sequence items under every
+  combination of `flow_style`, `scalar_style`, `quote_all`,
+  `prefer_single_quotes` and the document markers, and requires each to
+  read back unchanged. CI runs 64 cases; set `PROPTEST_CASES` for more.
 
 ## [v0.0.54] - 2026-10-07
 

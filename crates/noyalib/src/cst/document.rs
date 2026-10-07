@@ -6303,10 +6303,7 @@ fn entry_indent_column(source: &str, pos: usize) -> usize {
 /// the first byte. `m: {a: x, y}` written for the string `x, y` reads
 /// back as two entries; `{a: x {y}}` does not parse at all (#332).
 pub(super) fn is_plain_safe_in_flow(s: &str) -> bool {
-    is_plain_safe(s)
-        && !s
-            .bytes()
-            .any(|b| matches!(b, b',' | b'[' | b']' | b'{' | b'}'))
+    is_plain_safe(s) && !crate::ser::has_flow_indicator(s)
 }
 
 /// `true` if `s` can be safely emitted as a YAML plain scalar without

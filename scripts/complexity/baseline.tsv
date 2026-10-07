@@ -6,7 +6,7 @@
 # an improvement. The script refuses to record a regression.
 # ceilings: too_many_lines 60, cognitive_complexity 15 (scripts/complexity/clippy.toml)
 # measured with: clippy 0.1.98 (48a229ceae 2026-09-01)
-# entries: 107
+# entries: 102
 lint	file	function	value
 cognitive_complexity	crates/noyalib/examples/cst_surgical_edit.rs	main	24
 cognitive_complexity	crates/noyalib/src/parser/events.rs	parse_node	18
@@ -17,8 +17,6 @@ cognitive_complexity	crates/noyalib/src/parser/scanner/scalars.rs	fetch_plain_sc
 cognitive_complexity	crates/noyalib/src/parser/scanner/scalars.rs	scan_block_scalar	38
 cognitive_complexity	crates/noyalib/src/parser/scanner/scalars.rs	scan_double_quoted_scalar	21
 cognitive_complexity	crates/noyalib/src/parser/scanner/scalars.rs	scan_single_quoted_scalar	19
-cognitive_complexity	crates/noyalib/src/ser.rs	write_internal_tag	17
-cognitive_complexity	crates/noyalib/src/ser.rs	write_string	21
 cognitive_complexity	crates/noyalib/src/streaming.rs	resolve_plain_ext	16
 cognitive_complexity	crates/noyalib/tests/coverage/coverage_100.rs	scanner_double_quoted_escapes	17
 cognitive_complexity	crates/noyalib/tests/coverage/coverage_boost.rs	number_methods	24
@@ -106,9 +104,6 @@ too_many_lines	crates/noyalib/src/parser/scanner/scalars.rs	scan_block_scalar	18
 too_many_lines	crates/noyalib/src/parser/scanner/scalars.rs	scan_double_quoted_scalar	162
 too_many_lines	crates/noyalib/src/parser/scanner/scalars.rs	scan_single_quoted_scalar	90
 too_many_lines	crates/noyalib/src/path.rs	parse_query_path_checked	90
-too_many_lines	crates/noyalib/src/ser.rs	write_internal_tag	89
-too_many_lines	crates/noyalib/src/ser.rs	write_string	108
-too_many_lines	crates/noyalib/src/ser.rs	write_value	88
 too_many_lines	crates/noyalib/src/streaming.rs	next_key_seed	113
 too_many_lines	crates/noyalib/src/value.rs	expand_placeholders	100
 too_many_lines	crates/noyalib/src/value/number.rs	cmp	74

@@ -83,3 +83,18 @@ fn serde_json_interop_still_sees_a_single_entry_map() {
     let json = serde_json::to_string(&tagged).unwrap();
     assert_eq!(json, r##"{"!Color":"#ff8800"}"##);
 }
+
+#[test]
+fn tag_body_starting_with_angle_bracket_is_spelled_verbatim() {
+    // `!<` opens the verbatim form, so a shorthand whose body starts
+    // with `<` cannot be written as it stands: `!<< ""` failed to parse.
+    for tag in ["!<<", "!<x", "!!<x"] {
+        let v = Value::Tagged(Box::new(TaggedValue::new(
+            Tag::new(tag),
+            Value::String(String::new()),
+        )));
+        let out = to_string_value(&v).unwrap();
+        let back: Value = from_str(&out).unwrap_or_else(|e| panic!("{tag}: {out:?}: {e}"));
+        assert_eq!(back, v, "{tag}: emitted {out:?}");
+    }
+}
