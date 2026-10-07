@@ -38,6 +38,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   to spaces on re-parse.
 - `document_end(true)` after a keep-chomped block scalar (`|+`) no
   longer adds an extra line to the value.
+- A tag whose body starts with `<` (`!<x`) is written in the verbatim
+  form; written as it stands it opened a verbatim tag and the output
+  did not parse.
 
 ## [v0.0.54] - 2026-10-07
 
