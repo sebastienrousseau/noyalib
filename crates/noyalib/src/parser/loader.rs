@@ -9,14 +9,12 @@ use crate::de::RequireIndent;
 use crate::error::{Error, Result};
 use crate::parser::budget;
 use crate::parser::events::Event;
+use crate::parser::meter::{AliasCost, Meter};
 use crate::prelude::IndexMap;
 use crate::prelude::*;
 #[cfg(feature = "std")]
 use crate::span_context::SpanTree;
 use crate::value::{Mapping, Number, Tag, TaggedValue, Value};
-
-/// Overhead in bytes accounted for each node in a mapping or sequence.
-const NODE_OVERHEAD: usize = 32;
 
 /// The YAML merge key (`<<`).
 const MERGE_KEY: &str = "<<";
@@ -364,7 +362,9 @@ enum Frame {
 struct Loader<'a> {
     docs: Vec<(Value, SpanTree)>,
     stack: Vec<Frame>,
-    anchor_map: IndexMap<String, (Value, SpanTree)>,
+    /// Anchored nodes, each with the cost of expanding it, measured once
+    /// when the anchor closes so an alias is charged before it is copied.
+    anchor_map: IndexMap<String, (Value, SpanTree, AliasCost)>,
     /// Source byte-index of each anchor's definition (parity with
     /// the streaming path's `anchor_def_spans`) — powers the
     /// "did you mean …?" affordance on `Error::UnknownAnchorAt`.
@@ -374,24 +374,11 @@ struct Loader<'a> {
     /// (YAML 1.2.2 §3.2.2.2); when an alias names one of these the
     /// error says so instead of only "unknown anchor".
     earlier_anchor_defs: IndexMap<String, usize>,
-    alias_count: usize,
-    alias_bytes: usize,
+    /// Every budget counter, charged in the order all loaders share.
+    meter: Meter,
     config: &'a ParseConfig,
     depth: usize,
     in_document: bool,
-    /// Total parser events seen (for `max_events`).
-    event_count: usize,
-    /// Total AST value nodes authored (for `max_nodes`).
-    node_count: usize,
-    /// Cumulative scalar bytes seen (for `max_total_scalar_bytes`).
-    scalar_bytes: usize,
-    /// Anchor count (for `alias_anchor_ratio` denominator).
-    anchor_count: usize,
-    /// Merge-key occurrences (for `max_merge_keys`).
-    merge_key_count: usize,
-    /// Cumulative node charge from alias expansions (for
-    /// `alias_jump_event_factor`).
-    alias_jump_charge: usize,
 }
 
 #[cfg(feature = "std")]
@@ -420,6 +407,37 @@ impl<'a> Loader<'a> {
         key_collision_at(key, self.parent_path(), key_start, input)
     }
 
+    /// Charge and expand `*anchor`, met at `alias_start`.
+    ///
+    /// Every budget is charged from the anchor's stored cost before the
+    /// anchored tree is cloned, so a refused expansion allocates nothing.
+    fn resolve_alias(
+        &mut self,
+        anchor: &str,
+        alias_start: usize,
+        input: &str,
+    ) -> Result<(Value, SpanTree)> {
+        if !self.in_document {
+            return Err(Error::parse_at(
+                "alias outside document",
+                input,
+                alias_start,
+            ));
+        }
+        self.meter.charge_alias(self.config)?;
+        let Some((value, span_tree, cost)) = self.anchor_map.get(anchor) else {
+            return Err(missing_anchor(
+                anchor,
+                alias_start,
+                input,
+                &self.anchor_def_spans,
+                &self.earlier_anchor_defs,
+            ));
+        };
+        self.meter.charge_expansion(cost, self.config)?;
+        Ok((value.clone(), span_tree.clone()))
+    }
+
     fn new(config: &'a ParseConfig) -> Self {
         // Pre-size the loader's mutable buffers with conservative
         // capacity hints so the typical YAML document parses
@@ -433,17 +451,10 @@ impl<'a> Loader<'a> {
             anchor_map: IndexMap::with_capacity(4),
             anchor_def_spans: IndexMap::with_capacity(4),
             earlier_anchor_defs: IndexMap::new(),
-            alias_count: 0,
-            alias_bytes: 0,
+            meter: Meter::default(),
             config,
             depth: 0,
             in_document: false,
-            event_count: 0,
-            node_count: 0,
-            scalar_bytes: 0,
-            anchor_count: 0,
-            merge_key_count: 0,
-            alias_jump_charge: 0,
         }
     }
 
@@ -452,58 +463,7 @@ impl<'a> Loader<'a> {
     }
 
     fn process_event(&mut self, event: Event<'_>, input: &str) -> Result<()> {
-        if !self.config.policies.is_empty() {
-            run_event_policies(&event, &self.config.policies)?;
-        }
-        // ── Budget: total events ─────────────────────────────────
-        self.event_count += 1;
-        if self.event_count > self.config.max_events {
-            return Err(Error::Budget(crate::BudgetBreach::MaxEvents {
-                limit: self.config.max_events,
-                observed: self.event_count,
-            }));
-        }
-        // ── Budget: total AST nodes ─────────────────────────────
-        // Each scalar/sequence/mapping event authors exactly one
-        // `Value` node — empty collections (`[]`/`{}`) included — so a
-        // node-dense payload that stays under the byte and event caps
-        // is still bounded. Alias expansions are bounded separately by
-        // the alias budget and the cumulative scalar-byte cap.
-        if matches!(
-            &event,
-            Event::Scalar { .. } | Event::SequenceStart { .. } | Event::MappingStart { .. }
-        ) {
-            self.node_count += 1;
-            if budget::nodes_exceeded(self.node_count, self.config.max_nodes) {
-                return Err(Error::Budget(crate::BudgetBreach::MaxNodes {
-                    limit: self.config.max_nodes,
-                    observed: self.node_count,
-                }));
-            }
-        }
-        // ── Budget: cumulative scalar bytes (per-Scalar event) ──
-        if let Event::Scalar { value, .. } = &event {
-            self.scalar_bytes = self.scalar_bytes.saturating_add(value.len());
-            if self.scalar_bytes > self.config.max_total_scalar_bytes {
-                return Err(Error::Budget(crate::BudgetBreach::MaxTotalScalarBytes {
-                    limit: self.config.max_total_scalar_bytes,
-                    observed: self.scalar_bytes,
-                }));
-            }
-        }
-        // ── Budget: anchor / alias counters ─────────────────────
-        if let Event::Scalar {
-            anchor: Some(_), ..
-        }
-        | Event::SequenceStart {
-            anchor: Some(_), ..
-        }
-        | Event::MappingStart {
-            anchor: Some(_), ..
-        } = &event
-        {
-            self.anchor_count = self.anchor_count.saturating_add(1);
-        }
+        self.meter.charge_event(&event, self.config)?;
         match event {
             Event::StreamStart | Event::StreamEnd => {}
             Event::DocumentStart => {
@@ -511,122 +471,12 @@ impl<'a> Loader<'a> {
                 self.anchor_map.clear();
                 self.earlier_anchor_defs
                     .extend(self.anchor_def_spans.drain(..));
-                self.alias_count = 0;
-                self.alias_bytes = 0;
-                // Budget: max_documents
-                if self.docs.len() + 1 > self.config.max_documents {
-                    return Err(Error::Budget(crate::BudgetBreach::MaxDocuments {
-                        limit: self.config.max_documents,
-                        observed: self.docs.len() + 1,
-                    }));
-                }
             }
             Event::DocumentEnd => {
                 self.in_document = false;
             }
             Event::Alias { anchor, span } => {
-                if !self.in_document {
-                    return Err(Error::parse_at("alias outside document", input, span.start));
-                }
-                self.alias_count += 1;
-                if budget::alias_count_exceeded(self.alias_count, self.config.max_alias_expansions)
-                {
-                    return Err(Error::RepetitionLimitExceeded);
-                }
-                // Budget: alias_anchor_ratio heuristic.
-                // Trips when aliases vastly outnumber anchors —
-                // a billion-laughs amplification fingerprint.
-                if let Some(ratio) = self.config.alias_anchor_ratio {
-                    if budget::alias_ratio_exceeded(
-                        self.alias_count,
-                        self.anchor_count,
-                        Some(ratio),
-                    ) {
-                        return Err(Error::Budget(crate::BudgetBreach::AliasAnchorRatio {
-                            ratio,
-                            anchors: self.anchor_count,
-                            aliases: self.alias_count,
-                        }));
-                    }
-                }
-
-                // An anchor that this document has opened but not yet
-                // finished: the alias points inside the node being
-                // built. YAML allows a cyclic representation graph; a
-                // `Value` is a tree and cannot hold one, so say that
-                // rather than calling the anchor unknown.
-                if !self.anchor_map.contains_key(&anchor) {
-                    if let Some(&defined_at) = self.anchor_def_spans.get(anchor.as_str()) {
-                        return Err(Error::parse_at(
-                            format!(
-                                "alias `*{anchor}` points at `&{anchor}`, still being defined at {}; a self-referential node cannot be represented as a tree",
-                                crate::error::Location::from_index(input, defined_at)
-                            ),
-                            input,
-                            span.start,
-                        ));
-                    }
-                }
-                let (value, span_tree) =
-                    self.anchor_map.get(&anchor).cloned().ok_or_else(|| {
-                        let alias_loc = crate::error::Location::from_index(input, span.start);
-                        let suggestion = crate::error::closest_name(
-                            &anchor,
-                            self.anchor_def_spans.keys().map(|s| s.as_str()),
-                        )
-                        .and_then(|s| {
-                            self.anchor_def_spans.get(s).map(|&idx| {
-                                (
-                                    s.to_string(),
-                                    crate::error::Location::from_index(input, idx),
-                                )
-                            })
-                        })
-                        .or_else(|| {
-                            self.earlier_anchor_defs.get(anchor.as_str()).map(|&idx| {
-                                (
-                                    anchor.clone(),
-                                    crate::error::Location::from_index(input, idx),
-                                )
-                            })
-                        });
-                        Error::UnknownAnchorAt {
-                            name: anchor.clone(),
-                            location: alias_loc,
-                            suggestion,
-                        }
-                    })?;
-
-                // serde_yaml-profile transitive repetition budget:
-                // charge the expanded subtree's node count and refuse
-                // once the cumulative charge exceeds `events × factor`
-                // — the rule behind serde_yaml's "repetition limit
-                // exceeded" (it caps alias jumps at events × 100).
-                if let Some(factor) = self.config.alias_jump_event_factor {
-                    let (charge, over) = budget::jump_charge_exceeded(
-                        self.alias_jump_charge,
-                        count_value_nodes(&value),
-                        self.event_count,
-                        factor,
-                    );
-                    self.alias_jump_charge = charge;
-                    if over {
-                        return Err(Error::RepetitionLimitExceeded);
-                    }
-                }
-                // Bound cumulative alias expansion by the document length
-                // limit — a classic billion-laughs vector amplifies well
-                // beyond the raw input size.
-                let (bytes, over) = budget::alias_bytes_exceeded(
-                    self.alias_bytes,
-                    estimate_value_size(&value),
-                    self.config.max_document_length,
-                );
-                self.alias_bytes = bytes;
-                if over {
-                    return Err(Error::RepetitionLimitExceeded);
-                }
-
+                let (value, span_tree) = self.resolve_alias(&anchor, span.start, input)?;
                 // Wrap the anchor's cloned tree so span resolution can tell it
                 // reached this value *through* an alias — a read resolves
                 // through (issue #149), a write must refuse (would splice the
@@ -704,7 +554,8 @@ impl<'a> Loader<'a> {
                 };
                 if let Some(name) = anchor {
                     let _ = self.anchor_def_spans.insert(name.clone(), span.start);
-                    let _ = self.anchor_map.insert(name, (v.clone(), st.clone()));
+                    let cost = AliasCost::of_value(&v);
+                    let _ = self.anchor_map.insert(name, (v.clone(), st.clone(), cost));
                 }
                 self.push_node(v, st, input, is_plain_merge_candidate)?;
             }
@@ -756,7 +607,8 @@ impl<'a> Loader<'a> {
                         items: span_items,
                     };
                     if let Some(name) = anchor {
-                        let _ = self.anchor_map.insert(name, (v.clone(), st.clone()));
+                        let cost = AliasCost::of_value(&v);
+                        let _ = self.anchor_map.insert(name, (v.clone(), st.clone(), cost));
                     }
                     // A sequence or mapping is never the string `<<`.
                     self.push_node(v, st, input, false)?;
@@ -812,7 +664,8 @@ impl<'a> Loader<'a> {
                         entries: span_entries,
                     };
                     if let Some(name) = anchor {
-                        let _ = self.anchor_map.insert(name, (v.clone(), st.clone()));
+                        let cost = AliasCost::of_value(&v);
+                        let _ = self.anchor_map.insert(name, (v.clone(), st.clone(), cost));
                     }
                     // A sequence or mapping is never the string `<<`.
                     self.push_node(v, st, input, false)?;
@@ -968,13 +821,7 @@ impl<'a> Loader<'a> {
                     ));
                 }
                 if is_merge && !merge_treat_as_ordinary {
-                    self.merge_key_count = self.merge_key_count.saturating_add(1);
-                    if self.merge_key_count > self.config.max_merge_keys {
-                        return Err(Error::Budget(crate::BudgetBreach::MaxMergeKeys {
-                            limit: self.config.max_merge_keys,
-                            observed: self.merge_key_count,
-                        }));
-                    }
+                    self.meter.charge_merge_key(self.config)?;
                     merge_values.push(value);
                 } else {
                     if map.len() >= self.config.max_mapping_keys {
@@ -1086,21 +933,6 @@ fn apply_merge(map: &mut Mapping, merge_value: Value) -> Result<()> {
     Ok(())
 }
 
-fn estimate_value_size(v: &Value) -> usize {
-    match v {
-        Value::Null | Value::Bool(_) | Value::Number(_) => NODE_OVERHEAD,
-        Value::String(s) => NODE_OVERHEAD + s.len(),
-        Value::Sequence(s) => NODE_OVERHEAD + s.iter().map(estimate_value_size).sum::<usize>(),
-        Value::Mapping(m) => {
-            NODE_OVERHEAD
-                + m.iter()
-                    .map(|(k, v)| k.len() + estimate_value_size(v))
-                    .sum::<usize>()
-        }
-        Value::Tagged(tagged) => NODE_OVERHEAD + estimate_value_size(tagged.value()),
-    }
-}
-
 // ── Span-free loader (no_std path) ──────────────────────────────────────
 //
 // Only compiled when the `std` feature is disabled. The `std` build
@@ -1207,7 +1039,8 @@ enum NoSpanFrame {
 struct NoSpanLoader<'a> {
     docs: Vec<Value>,
     stack: Vec<NoSpanFrame>,
-    anchor_map: IndexMap<String, Value>,
+    /// Anchored values with their expansion cost (see [`Loader`]).
+    anchor_map: IndexMap<String, (Value, AliasCost)>,
     // Source byte-index of each anchor's definition, keyed by name.
     // Populated alongside `anchor_map` so an unknown-alias error can
     // point at the closest known definition — the same "did you mean
@@ -1218,23 +1051,8 @@ struct NoSpanLoader<'a> {
     /// (YAML 1.2.2 §3.2.2.2); when an alias names one of these the
     /// error says so instead of only "unknown anchor".
     earlier_anchor_defs: IndexMap<String, usize>,
-    alias_count: usize,
-    alias_bytes: usize,
-    // Merge-key occurrences seen across the current document (for
-    // `max_merge_keys`). Mirrors the span-full loader's counter so a
-    // billion-merges DoS is refused on the `Value` fast path too.
-    merge_key_count: usize,
-    /// Total parser events seen (for `max_events`).
-    event_count: usize,
-    /// Total AST value nodes authored (for `max_nodes`).
-    node_count: usize,
-    /// Cumulative scalar bytes seen (for `max_total_scalar_bytes`).
-    scalar_bytes: usize,
-    /// Anchors defined (denominator for the `alias_anchor_ratio` heuristic).
-    anchor_count: usize,
-    /// Cumulative node charge from alias expansions (for
-    /// `alias_jump_event_factor`).
-    alias_jump_charge: usize,
+    /// Every budget counter, shared with the span-full loader's order.
+    meter: Meter,
     config: &'a ParseConfig,
     depth: usize,
     in_document: bool,
@@ -1270,18 +1088,34 @@ impl<'a> NoSpanLoader<'a> {
             anchor_map: IndexMap::default(),
             anchor_def_spans: IndexMap::default(),
             earlier_anchor_defs: IndexMap::default(),
-            alias_count: 0,
-            alias_bytes: 0,
-            merge_key_count: 0,
-            event_count: 0,
-            node_count: 0,
-            scalar_bytes: 0,
-            anchor_count: 0,
-            alias_jump_charge: 0,
+            meter: Meter::default(),
             config,
             depth: 0,
             in_document: false,
         }
+    }
+
+    /// Charge and expand `*anchor`; see [`Loader::resolve_alias`].
+    fn resolve_alias(&mut self, anchor: &str, alias_start: usize, input: &str) -> Result<Value> {
+        if !self.in_document {
+            return Err(Error::parse_at(
+                "alias outside document",
+                input,
+                alias_start,
+            ));
+        }
+        self.meter.charge_alias(self.config)?;
+        let Some((value, cost)) = self.anchor_map.get(anchor) else {
+            return Err(missing_anchor(
+                anchor,
+                alias_start,
+                input,
+                &self.anchor_def_spans,
+                &self.earlier_anchor_defs,
+            ));
+        };
+        self.meter.charge_expansion(cost, self.config)?;
+        Ok(value.clone())
     }
 
     #[allow(dead_code)] // load_all_no_spans drains `self.docs` directly today.
@@ -1290,53 +1124,7 @@ impl<'a> NoSpanLoader<'a> {
     }
 
     fn process_event(&mut self, event: Event<'_>, input: &str) -> Result<()> {
-        if !self.config.policies.is_empty() {
-            run_event_policies(&event, &self.config.policies)?;
-        }
-        // Budget parity with the span-full Loader (see its `process_event`):
-        // total events, cumulative scalar bytes, and the anchor counter that
-        // the `alias_anchor_ratio` heuristic divides by.
-        self.event_count += 1;
-        if self.event_count > self.config.max_events {
-            return Err(Error::Budget(crate::BudgetBreach::MaxEvents {
-                limit: self.config.max_events,
-                observed: self.event_count,
-            }));
-        }
-        // Budget parity: total AST nodes (see the span-full Loader).
-        if matches!(
-            &event,
-            Event::Scalar { .. } | Event::SequenceStart { .. } | Event::MappingStart { .. }
-        ) {
-            self.node_count += 1;
-            if budget::nodes_exceeded(self.node_count, self.config.max_nodes) {
-                return Err(Error::Budget(crate::BudgetBreach::MaxNodes {
-                    limit: self.config.max_nodes,
-                    observed: self.node_count,
-                }));
-            }
-        }
-        if let Event::Scalar { value, .. } = &event {
-            self.scalar_bytes = self.scalar_bytes.saturating_add(value.len());
-            if self.scalar_bytes > self.config.max_total_scalar_bytes {
-                return Err(Error::Budget(crate::BudgetBreach::MaxTotalScalarBytes {
-                    limit: self.config.max_total_scalar_bytes,
-                    observed: self.scalar_bytes,
-                }));
-            }
-        }
-        if let Event::Scalar {
-            anchor: Some(_), ..
-        }
-        | Event::SequenceStart {
-            anchor: Some(_), ..
-        }
-        | Event::MappingStart {
-            anchor: Some(_), ..
-        } = &event
-        {
-            self.anchor_count = self.anchor_count.saturating_add(1);
-        }
+        self.meter.charge_event(&event, self.config)?;
         match event {
             Event::StreamStart | Event::StreamEnd => {}
             Event::DocumentStart => {
@@ -1344,123 +1132,12 @@ impl<'a> NoSpanLoader<'a> {
                 self.anchor_map.clear();
                 self.earlier_anchor_defs
                     .extend(self.anchor_def_spans.drain(..));
-                // Reset the per-document alias budget, matching the span-full
-                // Loader (see DocumentStart above). Without this, alias counts
-                // accumulate across a multi-document stream, so a stream whose
-                // documents are each within budget can be spuriously rejected
-                // on the no-span path — a std/no_std divergence.
-                self.alias_count = 0;
-                self.alias_bytes = 0;
-                // Budget: max_documents (mirror the span-full Loader).
-                // `from_str::<Value>` always routes through this loader, so
-                // without this the fast path silently materialises the whole
-                // stream past the caller's document limit.
-                if self.docs.len() + 1 > self.config.max_documents {
-                    return Err(Error::Budget(crate::BudgetBreach::MaxDocuments {
-                        limit: self.config.max_documents,
-                        observed: self.docs.len() + 1,
-                    }));
-                }
             }
             Event::DocumentEnd => {
                 self.in_document = false;
             }
             Event::Alias { anchor, span } => {
-                if !self.in_document {
-                    return Err(Error::parse_at("alias outside document", input, span.start));
-                }
-                self.alias_count += 1;
-                if budget::alias_count_exceeded(self.alias_count, self.config.max_alias_expansions)
-                {
-                    return Err(Error::RepetitionLimitExceeded);
-                }
-                // Budget: alias_anchor_ratio (billion-laughs amplification
-                // fingerprint), mirroring the span-full Loader.
-                if let Some(ratio) = self.config.alias_anchor_ratio {
-                    if budget::alias_ratio_exceeded(
-                        self.alias_count,
-                        self.anchor_count,
-                        Some(ratio),
-                    ) {
-                        return Err(Error::Budget(crate::BudgetBreach::AliasAnchorRatio {
-                            ratio,
-                            anchors: self.anchor_count,
-                            aliases: self.alias_count,
-                        }));
-                    }
-                }
-                // An anchor that this document has opened but not yet
-                // finished: the alias points inside the node being
-                // built. YAML allows a cyclic representation graph; a
-                // `Value` is a tree and cannot hold one, so say that
-                // rather than calling the anchor unknown.
-                if !self.anchor_map.contains_key(&anchor) {
-                    if let Some(&defined_at) = self.anchor_def_spans.get(anchor.as_str()) {
-                        return Err(Error::parse_at(
-                            format!(
-                                "alias `*{anchor}` points at `&{anchor}`, still being defined at {}; a self-referential node cannot be represented as a tree",
-                                crate::error::Location::from_index(input, defined_at)
-                            ),
-                            input,
-                            span.start,
-                        ));
-                    }
-                }
-                let value = self.anchor_map.get(&anchor).cloned().ok_or_else(|| {
-                    let alias_loc = crate::error::Location::from_index(input, span.start);
-                    let suggestion = crate::error::closest_name(
-                        &anchor,
-                        self.anchor_def_spans.keys().map(|s| s.as_str()),
-                    )
-                    .and_then(|s| {
-                        self.anchor_def_spans.get(s).map(|&idx| {
-                            (
-                                s.to_string(),
-                                crate::error::Location::from_index(input, idx),
-                            )
-                        })
-                    })
-                    .or_else(|| {
-                        self.earlier_anchor_defs.get(anchor.as_str()).map(|&idx| {
-                            (
-                                anchor.clone(),
-                                crate::error::Location::from_index(input, idx),
-                            )
-                        })
-                    });
-                    Error::UnknownAnchorAt {
-                        name: anchor,
-                        location: alias_loc,
-                        suggestion,
-                    }
-                })?;
-                // serde_yaml-profile transitive repetition budget —
-                // see the span-full loader's twin for the rationale.
-                if let Some(factor) = self.config.alias_jump_event_factor {
-                    let (charge, over) = budget::jump_charge_exceeded(
-                        self.alias_jump_charge,
-                        count_value_nodes(&value),
-                        self.event_count,
-                        factor,
-                    );
-                    self.alias_jump_charge = charge;
-                    if over {
-                        return Err(Error::RepetitionLimitExceeded);
-                    }
-                }
-                // Bound cumulative alias expansion by both the crate-level
-                // hard cap and the caller-supplied `max_document_length`.
-                // Mirrors the span-full loader (billion-laughs guard) so
-                // the `Value` fast path can't outrun either budget.
-                let (bytes, over) = budget::alias_bytes_exceeded(
-                    self.alias_bytes,
-                    estimate_value_size(&value),
-                    self.config.max_document_length,
-                );
-                self.alias_bytes = bytes;
-                if over {
-                    return Err(Error::RepetitionLimitExceeded);
-                }
+                let value = self.resolve_alias(&anchor, span.start, input)?;
                 self.push_value(value, false, span.start, input)?;
             }
             Event::Scalar {
@@ -1513,7 +1190,8 @@ impl<'a> NoSpanLoader<'a> {
                 let is_plain_merge_candidate = matches!(style, crate::parser::ScalarStyle::Plain);
                 if let Some(name) = anchor {
                     let _ = self.anchor_def_spans.insert(name.clone(), span.start);
-                    let _ = self.anchor_map.insert(name, v.clone());
+                    let cost = AliasCost::of_value(&v);
+                    let _ = self.anchor_map.insert(name, (v.clone(), cost));
                 }
                 self.push_value(v, is_plain_merge_candidate, span.start, input)?;
             }
@@ -1544,7 +1222,8 @@ impl<'a> NoSpanLoader<'a> {
                     let inner = Value::Sequence(items);
                     let v = wrap_with_tag(inner, tag.as_ref(), self.config.tag_registry.as_deref());
                     if let Some(name) = anchor {
-                        let _ = self.anchor_map.insert(name, v.clone());
+                        let cost = AliasCost::of_value(&v);
+                        let _ = self.anchor_map.insert(name, (v.clone(), cost));
                     }
                     self.push_value(v, false, start, input)?;
                 }
@@ -1583,7 +1262,8 @@ impl<'a> NoSpanLoader<'a> {
                     let inner = Value::Mapping(map);
                     let v = wrap_with_tag(inner, tag.as_ref(), self.config.tag_registry.as_deref());
                     if let Some(name) = anchor {
-                        let _ = self.anchor_map.insert(name, v.clone());
+                        let cost = AliasCost::of_value(&v);
+                        let _ = self.anchor_map.insert(name, (v.clone(), cost));
                     }
                     self.push_value(v, false, start, input)?;
                 }
@@ -1702,13 +1382,7 @@ impl<'a> NoSpanLoader<'a> {
                     ));
                 }
                 if is_merge && !merge_treat_as_ordinary {
-                    self.merge_key_count = self.merge_key_count.saturating_add(1);
-                    if self.merge_key_count > self.config.max_merge_keys {
-                        return Err(Error::Budget(crate::BudgetBreach::MaxMergeKeys {
-                            limit: self.config.max_merge_keys,
-                            observed: self.merge_key_count,
-                        }));
-                    }
+                    self.meter.charge_merge_key(self.config)?;
                     merge_values.push(value);
                 } else {
                     if map.len() >= self.config.max_mapping_keys {
@@ -1917,18 +1591,6 @@ fn key_collision_at(key: String, parent: Option<String>, key_start: usize, input
         path: entry_path(parent, &key),
         location: crate::error::Location::from_index(input, key_start),
         key,
-    }
-}
-
-/// Total nodes in a value tree — the charge one alias expansion adds
-/// to the serde_yaml-style repetition budget
-/// (`ParserConfig::alias_jump_event_factor`).
-fn count_value_nodes(value: &Value) -> usize {
-    match value {
-        Value::Sequence(items) => 1 + items.iter().map(count_value_nodes).sum::<usize>(),
-        Value::Mapping(map) => 1 + map.values().map(count_value_nodes).sum::<usize>(),
-        Value::Tagged(t) => 1 + count_value_nodes(t.value()),
-        _ => 1,
     }
 }
 
@@ -2224,69 +1886,43 @@ fn parse_tagged_integer(rest: &str, radix: u32, lossless_u64: bool) -> Option<Va
     None
 }
 
-/// Run every registered policy against this parser event. The
-/// loader calls this on each event before further processing; the
-/// first policy to reject aborts the parse.
-fn run_event_policies(
-    event: &Event<'_>,
-    policies: &[Arc<dyn crate::policy::Policy>],
-) -> Result<()> {
-    use crate::policy::{PolicyEvent, PolicyEventKind};
-    let (kind, anchor, tag, scalar) = match event {
-        Event::Scalar {
-            value, anchor, tag, ..
-        } => {
-            let tag_str = tag.as_ref().map(|(h, s)| format!("{h}{s}"));
-            (
-                Some(PolicyEventKind::Scalar),
-                anchor.as_deref(),
-                tag_str,
-                Some(value.as_ref()),
-            )
-        }
-        Event::SequenceStart { anchor, tag, .. } => {
-            let tag_str = tag.as_ref().map(|(h, s)| format!("{h}{s}"));
-            (
-                Some(PolicyEventKind::SequenceStart),
-                anchor.as_deref(),
-                tag_str,
-                None,
-            )
-        }
-        Event::MappingStart { anchor, tag, .. } => {
-            let tag_str = tag.as_ref().map(|(h, s)| format!("{h}{s}"));
-            (
-                Some(PolicyEventKind::MappingStart),
-                anchor.as_deref(),
-                tag_str,
-                None,
-            )
-        }
-        Event::Alias { .. } => (
-            // `Event::Alias.anchor` carries the *target* anchor name,
-            // not a fresh definition — surface this as a pure Alias
-            // kind without an `anchor` field so policies can
-            // distinguish "this node is anchored" from "this node
-            // dereferences an existing anchor".
-            Some(PolicyEventKind::Alias),
-            None,
-            None,
-            None,
-        ),
-        _ => (None, None, None, None),
-    };
-    if let Some(kind) = kind {
-        let projected = PolicyEvent {
-            kind,
-            anchor,
-            tag: tag.as_deref(),
-            scalar,
-        };
-        for p in policies {
-            p.check_event(projected)?;
-        }
+/// The refusal for an alias whose anchor is not available.
+///
+/// Either the anchor is still open (the alias points inside the node
+/// being built: YAML allows a cyclic graph, a `Value` tree cannot hold
+/// one), or it is unknown in this document, in which case the error
+/// suggests the closest defined name or says the anchor belongs to an
+/// earlier document (anchors do not cross `---`, YAML 1.2.2 §3.2.2.2).
+fn missing_anchor(
+    anchor: &str,
+    alias_start: usize,
+    input: &str,
+    defined: &IndexMap<String, usize>,
+    earlier: &IndexMap<String, usize>,
+) -> Error {
+    let at = |idx: usize| crate::error::Location::from_index(input, idx);
+    if let Some(&defined_at) = defined.get(anchor) {
+        return Error::parse_at(
+            format!(
+                "alias `*{anchor}` points at `&{anchor}`, still being defined at {}; a self-referential node cannot be represented as a tree",
+                at(defined_at)
+            ),
+            input,
+            alias_start,
+        );
     }
-    Ok(())
+    let suggestion = crate::error::closest_name(anchor, defined.keys().map(String::as_str))
+        .and_then(|s| defined.get(s).map(|&idx| (s.to_string(), at(idx))))
+        .or_else(|| {
+            earlier
+                .get(anchor)
+                .map(|&idx| (anchor.to_string(), at(idx)))
+        });
+    Error::UnknownAnchorAt {
+        name: anchor.to_string(),
+        location: at(alias_start),
+        suggestion,
+    }
 }
 
 #[cfg(test)]

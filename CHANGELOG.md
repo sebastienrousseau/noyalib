@@ -7,6 +7,22 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [v0.0.55] - Unreleased
 
+### Fixed
+
+- `borrowed::from_str_borrowed*` enforces every budget the owned loader
+  does: the alias expansion size estimate (a 540-byte billion-laughs
+  document is now refused at once instead of expanding to gigabytes),
+  `max_events`, `max_nodes`, `max_total_scalar_bytes`,
+  `max_mapping_keys`, `max_sequence_length`, `max_documents`,
+  `max_merge_keys`, `alias_anchor_ratio`, the duplicate-key policy and
+  the event policies. All loaders now charge one shared meter.
+- Alias expansion is estimated the same way on every path, at the size
+  of a `Value` per node (it was 32 bytes on the loaders and 8 on the
+  typed path, a fraction of the real allocation), and the 32 MiB
+  ceiling on expanded bytes now holds on the typed path too. The
+  loaders charge an alias before cloning it. Documents with large alias
+  expansions that fit the old estimate can now be refused.
+
 ## [v0.0.54] - 2026-10-07
 
 ### Security
