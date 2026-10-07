@@ -90,19 +90,31 @@ struct SimpleKey {
     json_like: bool,
     /// Byte offset of the start of the line the key begins on.
     line_start: usize,
-    /// True once the key can no longer be a valid implicit key (see
+    /// True once the key can no longer be completed by a `:` (see
     /// [`Scanner::stale_simple_keys`]). A stale key no longer holds back
     /// the token queue; a `:` that would complete it is rejected.
     stale: bool,
 }
 
 /// YAML 1.2.2 §7.4.2 / §8.2.2: an implicit key is at most 1024 Unicode
-/// characters, counted from its first character to the `:`.
+/// characters, counted from its first character to the `:`. Enforced for
+/// keys holding a flow collection (see [`MAX_SCALAR_KEY_TOKENS`]).
 const MAX_IMPLICIT_KEY_CHARS: usize = 1024;
 
 /// A UTF-8 character is at most four bytes, so a key spanning more bytes
 /// than this is longer than [`MAX_IMPLICIT_KEY_CHARS`] whatever it holds.
 const MAX_IMPLICIT_KEY_BYTES: usize = 4 * MAX_IMPLICIT_KEY_CHARS;
+
+/// Tokens a key made of one scalar or alias can span: its anchor, its tag
+/// and the node itself. A key spanning more holds a flow collection.
+///
+/// The length limit is applied only to such keys. A scalar key holds at
+/// most this many tokens in the queue however long it is, so it costs
+/// nothing to wait for its `:`, and noyalib's own serializer writes long
+/// string keys as implicit keys, so rejecting them would break round
+/// trips. Flow-collection keys are what can hold an unbounded number of
+/// tokens.
+const MAX_SCALAR_KEY_TOKENS: usize = 3;
 
 /// Lookup table for bytes that are blanks (space, tab) or line breaks (LF, CR).
 /// Index by byte value for O(1) classification — replaces per-call branching.
@@ -1109,12 +1121,14 @@ impl<'a> Scanner<'a> {
     /// collection before the first event. A key is stale once the next
     /// token is on a later line (block context only; a `:` there is
     /// already rejected or treated as a separate pair by
-    /// `fetch_value`) or more than [`MAX_IMPLICIT_KEY_BYTES`] bytes
-    /// away. Flow-mapping keys are not limited by the spec and are left
-    /// alone.
+    /// `fetch_value`), or once it holds a flow collection (more than
+    /// [`MAX_SCALAR_KEY_TOKENS`] tokens) and is more than
+    /// [`MAX_IMPLICIT_KEY_BYTES`] bytes away. Flow-mapping keys are not
+    /// limited by the spec and are left alone.
     fn stale_simple_keys(&mut self) -> ScanResult<()> {
         let line_start = self.pos.saturating_sub(self.col);
         let pos = self.pos;
+        let next_token = self.tokens_produced + (self.tokens.len() - self.tokens_consumed);
         for (level, sk) in self.simple_keys.iter_mut().enumerate() {
             if !sk.possible || sk.stale {
                 continue;
@@ -1123,15 +1137,18 @@ impl<'a> Scanner<'a> {
             if !is_block && self.flow_stack.get(level - 1) != Some(&true) {
                 continue;
             }
+            let holds_collection =
+                next_token.saturating_sub(sk.token_number) > MAX_SCALAR_KEY_TOKENS;
             let too_far = pos.saturating_sub(sk.index) > MAX_IMPLICIT_KEY_BYTES;
-            sk.stale = too_far || (is_block && sk.line_start != line_start);
+            sk.stale = (holds_collection && too_far) || (is_block && sk.line_start != line_start);
         }
         Ok(())
     }
 
     /// Whether the pending key `sk` is longer than an implicit key may
     /// be, measured up to the current `:`. Only block-context and
-    /// flow-sequence keys are limited (see [`Self::stale_simple_keys`]).
+    /// flow-sequence keys holding a flow collection are limited (see
+    /// [`Self::stale_simple_keys`] and [`MAX_SCALAR_KEY_TOKENS`]).
     fn implicit_key_too_long(&self, sk: &SimpleKey) -> bool {
         let limited = self.flow_level == 0 || self.flow_stack.last() == Some(&true);
         if !limited {
@@ -1139,6 +1156,10 @@ impl<'a> Scanner<'a> {
         }
         if sk.stale {
             return true;
+        }
+        let next_token = self.tokens_produced + (self.tokens.len() - self.tokens_consumed);
+        if next_token.saturating_sub(sk.token_number) <= MAX_SCALAR_KEY_TOKENS {
+            return false;
         }
         let span = &self.input[sk.index.min(self.pos)..self.pos];
         if span.len() <= MAX_IMPLICIT_KEY_CHARS {

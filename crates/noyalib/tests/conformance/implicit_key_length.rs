@@ -1,16 +1,22 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 // Copyright (c) 2026 Noyalib. All rights reserved.
 
-//! Implicit keys are limited to one line and 1024 characters.
+//! Implicit keys holding a flow collection are limited to 1024
+//! characters; implicit keys stay limited to one line.
 //!
 //! YAML 1.2.2 §8.2.2 (block mappings) and §7.4.2 (single pairs in a
 //! flow sequence) restrict an implicit key to a single line and at most
-//! 1024 Unicode characters. Explicit `?` keys and keys inside a flow
-//! mapping have no such limit. The scanner relies on the limit to stop
-//! holding back tokens for a key that can no longer complete, so a large
-//! flow collection at document start is streamed instead of buffered.
+//! 1024 Unicode characters. The scanner relies on the limit to stop
+//! holding back the tokens of a flow collection that can no longer be a
+//! key, so a large flow collection at document start is streamed
+//! instead of buffered.
+//!
+//! Scalar keys keep no length limit: a scalar is one token however long
+//! it is, so waiting for its `:` costs nothing, and noyalib's serializer
+//! writes long string keys as implicit keys. Explicit `?` keys and keys
+//! inside a flow mapping have no limit in the spec.
 
-use noyalib::{Value, from_str};
+use noyalib::{Mapping, Value, from_str, to_string};
 
 fn parses(src: &str) -> bool {
     from_str::<Value>(src).is_ok()
@@ -23,50 +29,84 @@ fn err(src: &str) -> String {
     }
 }
 
-#[test]
-fn block_key_of_1024_characters_is_accepted() {
-    let key = "k".repeat(1024);
-    let v: Value = from_str(&format!("{key}: v\n")).expect("1024 characters is the limit");
-    assert_eq!(v.get(key.as_str()).and_then(Value::as_str), Some("v"));
+/// A flow-sequence key of exactly `chars` characters: `[a, a, …, a]`.
+fn seq_key(chars: usize) -> String {
+    assert!(chars >= 3 && chars % 3 == 0);
+    format!("[{}a]", "a, ".repeat(chars / 3 - 1))
 }
 
 #[test]
-fn block_key_of_1025_characters_is_rejected() {
-    let msg = err(&format!("{}: v\n", "k".repeat(1025)));
+fn flow_collection_block_key_of_1024_characters_is_accepted() {
+    // 1023 characters of key plus the `:` position is the limit.
+    let key = format!("{}{}", seq_key(1020), " ".repeat(4));
+    assert!(parses(&format!("{key}: v\n")));
+}
+
+#[test]
+fn flow_collection_block_key_over_1024_characters_is_rejected() {
+    let key = format!("{}{}", seq_key(1020), " ".repeat(5));
+    assert!(!parses(&format!("{key}: v\n")));
+    let msg = err(&format!("{}: v\n", seq_key(1035)));
+    assert!(msg.contains("longer than 1024 characters"), "{msg}");
+    let msg = err(&format!("{}: v\n", seq_key(30_000)));
     assert!(msg.contains("longer than 1024 characters"), "{msg}");
 }
 
 #[test]
 fn limit_counts_characters_not_bytes() {
-    // 1024 two-byte characters: 2048 bytes, still within the limit.
-    assert!(parses(&format!("{}: v\n", "é".repeat(1024))));
-    assert!(!parses(&format!("{}: v\n", "é".repeat(1025))));
-    // Four-byte characters: 4096 bytes is exactly 1024 characters.
-    assert!(parses(&format!("{}: v\n", "😀".repeat(1024))));
-    assert!(!parses(&format!("{}: v\n", "😀".repeat(1025))));
+    // `[a, "…"]`: 7 characters around the quoted text.
+    let key = |n: usize, c: &str| format!("[a, \"{}\"]", c.repeat(n));
+    assert!(parses(&format!("{}: v\n", key(1017, "é"))));
+    assert!(!parses(&format!("{}: v\n", key(1018, "é"))));
+    assert!(parses(&format!("{}: v\n", key(1017, "😀"))));
+    assert!(!parses(&format!("{}: v\n", key(1018, "😀"))));
 }
 
 #[test]
-fn quoted_and_flow_block_keys_are_limited_too() {
-    assert!(parses(&format!("\"{}\": v\n", "k".repeat(1022))));
-    assert!(!parses(&format!("\"{}\": v\n", "k".repeat(1023))));
-    assert!(!parses(&format!("[{}a]: v\n", "a,".repeat(3000))));
+fn flow_sequence_single_pair_collection_key_is_limited() {
+    assert!(parses(&format!("[{}: v]\n", seq_key(900))));
+    assert!(!parses(&format!("[{}: v]\n", seq_key(1050))));
+    assert!(!parses(&format!("[{}: v]\n", seq_key(30_000))));
 }
 
 #[test]
-fn flow_sequence_single_pair_key_is_limited() {
-    assert!(parses(&format!("[{}: v]\n", "k".repeat(1024))));
-    assert!(!parses(&format!("[{}: v]\n", "k".repeat(1025))));
-    assert!(!parses(&format!("[{}: v]\n", "k".repeat(10_000))));
+fn long_scalar_keys_are_still_accepted() {
+    for key in [
+        "k".repeat(5000),
+        format!("\"{}\"", "k".repeat(5000)),
+        format!("&a !!str {}", "k".repeat(5000)),
+    ] {
+        assert!(
+            parses(&format!("{key}: v\n")),
+            "block key of {} bytes",
+            key.len()
+        );
+        assert!(
+            parses(&format!("[{key}: v]\n")),
+            "flow pair of {} bytes",
+            key.len()
+        );
+    }
+}
+
+#[test]
+fn serialized_long_string_keys_round_trip() {
+    let mut map = Mapping::new();
+    let _ = map.insert("k".repeat(5000), Value::from("v"));
+    let _ = map.insert(format!("[{}]", "a,".repeat(3000)), Value::from(1));
+    let value = Value::Mapping(map);
+    let yaml = to_string(&value).expect("serialize");
+    let back: Value = from_str(&yaml).expect("re-parse serialized long keys");
+    assert_eq!(back, value);
 }
 
 #[test]
 fn flow_mapping_and_explicit_keys_are_not_limited() {
-    let key = "k".repeat(10_000);
+    let key = seq_key(30_000);
     let v: Value = from_str(&format!("{{{key}: v}}\n")).expect("flow mapping key");
-    assert_eq!(v.get(key.as_str()).and_then(Value::as_str), Some("v"));
+    assert_eq!(v.as_mapping().map(Mapping::len), Some(1));
     let v: Value = from_str(&format!("? {key}\n: v\n")).expect("explicit key");
-    assert_eq!(v.get(key.as_str()).and_then(Value::as_str), Some("v"));
+    assert_eq!(v.as_mapping().map(Mapping::len), Some(1));
 }
 
 #[test]
@@ -91,7 +131,7 @@ fn long_collections_without_a_colon_are_values() {
             .collect::<String>()
     );
     let v: Value = from_str(&json).expect("multi-line JSON object");
-    assert_eq!(v.as_mapping().map(|m| m.len()), Some(3001));
+    assert_eq!(v.as_mapping().map(Mapping::len), Some(3001));
 }
 
 #[test]
