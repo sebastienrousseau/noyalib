@@ -246,6 +246,13 @@ pub(crate) struct Scanner<'a> {
     line_end_memo: (usize, usize, bool),
     /// Span end of the token most recently appended to `tokens`.
     last_token_end: usize,
+    /// Every simple key below this level is dead (not possible, or
+    /// stale). Keys only change at the top of the stack, and a live
+    /// key's token number grows with its level, so the oldest live key
+    /// at or above this level is the only one that can hold the queue.
+    /// Keeping the floor makes the staleness and queue checks O(1)
+    /// amortised instead of a walk of the whole stack per token.
+    live_key_floor: usize,
 }
 
 /// Compact record of the most recent emit, used by guard checks
@@ -451,6 +458,7 @@ impl<'a> Scanner<'a> {
             pending_property_col: None,
             line_end_memo: (usize::MAX, 0, false),
             last_token_end: 0,
+            live_key_floor: 0,
         }
     }
 
@@ -546,12 +554,16 @@ impl<'a> Scanner<'a> {
         if self.tokens_consumed >= self.tokens.len() {
             return true;
         }
-        // Fast path: if no simple key is possible, no need to scan the list.
-        // In most YAML, simple_keys has 0-2 entries with possible=true.
+        // Only the oldest live key can hold the head of the queue: live
+        // keys' token numbers grow with their level (see
+        // `live_key_floor`).
         let next_token = self.tokens_produced;
         self.simple_keys
+            .get(self.live_key_floor..)
+            .unwrap_or_default()
             .iter()
-            .any(|sk| sk.possible && !sk.stale && sk.token_number == next_token)
+            .find(|sk| sk.possible && !sk.stale)
+            .is_some_and(|sk| sk.token_number == next_token)
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────
@@ -1093,6 +1105,8 @@ impl<'a> Scanner<'a> {
             last.possible = false;
             *last = sk;
         }
+        let top = self.simple_keys.len().saturating_sub(1);
+        self.live_key_floor = self.live_key_floor.min(top);
     }
 
     #[inline]
@@ -1125,24 +1139,41 @@ impl<'a> Scanner<'a> {
     /// [`MAX_SCALAR_KEY_TOKENS`] tokens) and is more than
     /// [`MAX_IMPLICIT_KEY_BYTES`] bytes away. Flow-mapping keys are not
     /// limited by the spec and are left alone.
+    ///
+    /// Only the oldest live key is examined, and the floor below which
+    /// every key is dead moves up past each key that dies, so the work is
+    /// O(1) amortised per token. An older key is always at least as far
+    /// from the current position, and holds at least as many tokens, as a
+    /// younger one, so a younger key cannot go stale first. The exception
+    /// is a younger key above a flow-mapping key, which never goes stale;
+    /// that key holds the queue anyway, and `fetch_value` measures the
+    /// younger key's length itself.
     fn stale_simple_keys(&mut self) -> ScanResult<()> {
-        let line_start = self.pos.saturating_sub(self.col);
-        let pos = self.pos;
-        let next_token = self.tokens_produced + (self.tokens.len() - self.tokens_consumed);
-        for (level, sk) in self.simple_keys.iter_mut().enumerate() {
-            if !sk.possible || sk.stale {
-                continue;
+        while let Some(sk) = self.simple_keys.get(self.live_key_floor) {
+            if sk.possible && !sk.stale {
+                if !self.simple_key_is_stale(self.live_key_floor, sk) {
+                    break;
+                }
+                self.simple_keys[self.live_key_floor].stale = true;
             }
-            let is_block = level == 0;
-            if !is_block && self.flow_stack.get(level - 1) != Some(&true) {
-                continue;
-            }
-            let holds_collection =
-                next_token.saturating_sub(sk.token_number) > MAX_SCALAR_KEY_TOKENS;
-            let too_far = pos.saturating_sub(sk.index) > MAX_IMPLICIT_KEY_BYTES;
-            sk.stale = (holds_collection && too_far) || (is_block && sk.line_start != line_start);
+            self.live_key_floor += 1;
         }
         Ok(())
+    }
+
+    /// Whether the live key `sk` at stack `level` can no longer be
+    /// completed by a `:` (see [`Self::stale_simple_keys`]).
+    fn simple_key_is_stale(&self, level: usize, sk: &SimpleKey) -> bool {
+        let is_block = level == 0;
+        if !is_block && self.flow_stack.get(level - 1) != Some(&true) {
+            return false;
+        }
+        if is_block && sk.line_start != self.pos.saturating_sub(self.col) {
+            return true;
+        }
+        let next_token = self.tokens_produced + (self.tokens.len() - self.tokens_consumed);
+        let holds_collection = next_token.saturating_sub(sk.token_number) > MAX_SCALAR_KEY_TOKENS;
+        holds_collection && self.pos.saturating_sub(sk.index) > MAX_IMPLICIT_KEY_BYTES
     }
 
     /// Whether the pending key `sk` is longer than an implicit key may
@@ -1164,6 +1195,9 @@ impl<'a> Scanner<'a> {
         let span = &self.input[sk.index.min(self.pos)..self.pos];
         if span.len() <= MAX_IMPLICIT_KEY_CHARS {
             return false;
+        }
+        if span.len() > MAX_IMPLICIT_KEY_BYTES {
+            return true;
         }
         // Count characters by their leading bytes; continuation bytes
         // are `0b10xx_xxxx`.
@@ -1611,6 +1645,7 @@ impl<'a> Scanner<'a> {
         // Pop the simple-key context that was pushed when this flow
         // collection was opened.
         let _ = self.simple_keys.pop();
+        self.live_key_floor = self.live_key_floor.min(self.simple_keys.len());
         self.flow_level -= 1;
         let _ = self.flow_stack.pop();
         self.simple_key_allowed = false;
