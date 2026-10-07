@@ -46,6 +46,11 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   and a per-value cache. Each `Spanned` value used to rescan the source
   from byte 0 twelve times, so 40,000 spanned values in a debug build
   took about a minute.
+- `YamlDecoder` resumes its `---` boundary scan where the previous
+  `decode` call stopped. It rescanned the whole buffered frame on every
+  read, so 8 MiB arriving in 8 KiB reads took 196 s in a debug build.
+  A frame is also always capped by `max_document_length`, even when
+  `max_frame_size` is set higher.
 
 ### Added
 

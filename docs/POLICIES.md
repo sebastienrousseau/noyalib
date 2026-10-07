@@ -206,9 +206,12 @@ the shared parser limits:
   holds an incomplete document beyond the cap, the next `decode` call returns
   `Error::Io(InvalidData)` rather than letting an adversarial
   producer pin memory by streaming without `---`. Constructors derive the
-  cap from `ParserConfig::max_document_length`; callers may override it.
+  cap from `ParserConfig::max_document_length`; callers may tighten it,
+  and `max_document_length` caps a frame whatever `max_frame_size` says.
   Multiple complete documents already present in one read are measured
   independently rather than rejected by their aggregate buffered size.
+  The boundary scan resumes where the previous `decode` stopped, so a
+  frame arriving in many small reads is scanned once, not once per read.
 - **`sval_adapter`** forwards non-finite floats verbatim by
   default; use `to_sval_writer_with_config` with
   `SvalConfig::coerce_non_finite_to_null` to emit `Null`
