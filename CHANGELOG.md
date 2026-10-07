@@ -26,6 +26,18 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   double-quoted instead of a block scalar, a mapping inside `FlowSeq`
   is braced, and `Commented` / `SpaceAfter` hints inside one are
   dropped rather than breaking the line.
+- `Commented` comment text holding a line break (LF, CR, NEL, LS, PS)
+  is written as several `# ` lines instead of raw, where the text after
+  the break was read as YAML and could add keys. A comment on a value
+  that ends in a block scalar goes below it instead of into its content,
+  and characters no YAML stream may carry are replaced with U+FFFD.
+- A mapping key that is the string `<<` is quoted, so it no longer
+  becomes a merge key on reload.
+- A multi-line string under `quote_all`, or starting with `...`, is
+  double-quoted. It was single-quoted with raw line breaks, which fold
+  to spaces on re-parse.
+- `document_end(true)` after a keep-chomped block scalar (`|+`) no
+  longer adds an extra line to the value.
 
 ## [v0.0.54] - 2026-10-07
 

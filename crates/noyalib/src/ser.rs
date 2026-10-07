@@ -650,7 +650,12 @@ fn value_to_string(value: &Value, config: &SerializerConfig) -> Result<String> {
     }
     write_value(&mut output, value, 0, true, &Cx::new(config), 0)?;
     if config.document_end {
-        output.push_str("\n...");
+        // A block scalar ends its own last line; a second break before
+        // `...` would be read as one more kept line under `|+`.
+        if !output.ends_with('\n') {
+            output.push('\n');
+        }
+        output.push_str("...");
     }
     Ok(output)
 }
@@ -1038,9 +1043,18 @@ fn needs_double_quoted_escape(s: &str) -> bool {
 /// escapes instead. Found by fuzz_roundtrip: a multi-line key
 /// emitted as a `|-` block produced YAML that no longer parsed
 /// ("expected block mapping key or end").
+///
+/// A plain `<<` key is the merge key: on reload its value is merged into
+/// the mapping instead of kept under the key, so the string `<<` is
+/// always quoted as a key.
 fn write_key_string(output: &mut String, s: &str, indent: usize, config: &Cx<'_>) {
     if s.contains('\n') {
         write_double_quoted(output, s);
+    } else if s == "<<" {
+        match quoted_style(s, config.prefer_single_quotes) {
+            StrStyle::Single => write_single_quoted(output, s),
+            _ => write_double_quoted(output, s),
+        }
     } else {
         write_string(output, s, indent, config);
     }
@@ -1086,11 +1100,7 @@ fn string_style(s: &str, config: &Cx<'_>) -> StrStyle {
     // re-parse, so a string it cannot carry verbatim falls back to
     // double quotes regardless of the setting.
     if config.quote_all || s.starts_with("...") {
-        return if needs_double_quoted_escape(s) {
-            StrStyle::Double
-        } else {
-            StrStyle::Single
-        };
+        return quoted_style(s, true);
     }
 
     // Fast path: short ASCII strings that are clearly safe as plain
@@ -1123,9 +1133,11 @@ fn string_style(s: &str, config: &Cx<'_>) -> StrStyle {
 }
 
 /// Single quotes when they are preferred and can carry `s` verbatim,
-/// double quotes otherwise.
+/// double quotes otherwise. Single quotes cannot carry a control
+/// character (a line break folds to a space on re-parse) nor any
+/// character only a double-quoted escape spells faithfully.
 fn quoted_style(s: &str, prefer_single: bool) -> StrStyle {
-    if prefer_single && single_quote_safe(s) {
+    if prefer_single && single_quote_safe(s) && !needs_double_quoted_escape(s) {
         StrStyle::Single
     } else {
         StrStyle::Double
@@ -1702,10 +1714,13 @@ fn write_internal_tag(
         }
         // value is a sequence [inner_value, comment_string]
         (crate::fmt::MAGIC_COMMENTED, Value::Sequence(seq)) if seq.len() == 2 => {
+            let start = output.len();
             write_value(output, &seq[0], indent, is_root, config, depth)?;
             if let Value::String(comment) = &seq[1] {
-                output.push_str(" # ");
-                output.push_str(comment);
+                // A value that spans lines may end inside a block scalar,
+                // where `# ...` is content: its comment goes below it.
+                let inline = !output[start..].contains('\n');
+                write_comment(output, comment, inline, config.indent * indent);
             }
             Ok(())
         }
@@ -1739,6 +1754,39 @@ fn write_internal_tag(
         // A directive holding a shape it does not apply to falls through
         // to regular output.
         _ => write_value(output, value, indent, is_root, config, depth),
+    }
+}
+
+/// Write `comment` after a value: its first line on the value's line when
+/// `inline`, every other line as a `# ` line of its own at `column`.
+///
+/// Comment text is never written raw. A line break in it (LF, CR, NEL,
+/// LS, PS, all of which the reader treats as one) would end the comment
+/// and turn the rest into YAML, so `x\nrole: admin` used to add a key; it
+/// starts a new comment line instead. A character no YAML stream may
+/// carry (other C0/C1 controls, a BOM, U+FFFE/U+FFFF) is replaced with
+/// U+FFFD so the document stays loadable. The column only has to sit
+/// left of any block scalar body in the value, which a trailing comment
+/// line then cleanly ends.
+fn write_comment(output: &mut String, comment: &str, inline: bool, column: usize) {
+    let is_break = |c: char| matches!(c, '\n' | '\r' | '\u{85}' | '\u{2028}' | '\u{2029}');
+    for (i, line) in comment.split(is_break).enumerate() {
+        if i == 0 && inline {
+            output.push_str(" #");
+        } else {
+            start_line(output, column);
+            output.push('#');
+        }
+        if !line.is_empty() {
+            output.push(' ');
+        }
+        output.extend(line.chars().map(|c| {
+            if needs_double_quoted_escape(&c.to_string()) {
+                '\u{fffd}'
+            } else {
+                c
+            }
+        }));
     }
 }
 

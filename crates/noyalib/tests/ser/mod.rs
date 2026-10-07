@@ -3,8 +3,8 @@
 
 //! The serializer suites: emission, quoting, block scalars and formatting.
 //!
-//! 18 files, compiled into one test binary instead of
-//! 18 executables. The files themselves are unchanged.
+//! 19 files, compiled into one test binary instead of
+//! 19 executables. The files themselves are unchanged.
 
 #![allow(missing_docs)]
 
@@ -16,6 +16,7 @@ mod ser_colon_hash_plain;
 mod ser_compact_list_depth;
 mod ser_cst_coverage_extra;
 mod ser_directive_tags;
+mod ser_emitter_edge_cases;
 mod ser_entry_points_and_fmt_tags;
 mod ser_flow_quoting;
 mod ser_line_break_characters;
