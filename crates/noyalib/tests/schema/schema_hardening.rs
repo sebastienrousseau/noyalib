@@ -315,3 +315,45 @@ fn backtracking_opt_in_is_bounded_by_its_limit() {
     let msg = compiled.validate(&instance).unwrap_err().to_string();
     assert!(msg.contains("200 total"), "{msg}");
 }
+
+#[test]
+fn cst_coerce_to_schema_refuses_file_refs_too() {
+    let dir = std::env::temp_dir().join(format!("noyalib-schema-cst-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let target = dir.join("t.json");
+    std::fs::write(
+        &target,
+        r#"{"type":"object","properties":{"p":{"type":"integer"}}}"#,
+    )
+    .unwrap();
+    let schema: noyalib::Value =
+        noyalib::from_str(&format!("$ref: \"file://{}\"\n", target.display())).unwrap();
+    let mut doc = noyalib::cst::parse_document("p: \"1\"\n").unwrap();
+    let result = noyalib::cst::coerce_to_schema(&mut doc, &schema);
+    let _ = std::fs::remove_dir_all(&dir);
+    assert!(
+        result.is_err(),
+        "a file:// $ref must be refused: {result:?}"
+    );
+}
+
+#[test]
+fn coerce_paths_refuse_oversized_schemas() {
+    let mut value: noyalib::Value = noyalib::from_str("a: 1\n").unwrap();
+    let mut nested = String::from("x: ");
+    for _ in 0..200 {
+        nested.push_str("{x: ");
+    }
+    nested.push('1');
+    for _ in 0..200 {
+        nested.push('}');
+    }
+    let deep: noyalib::Value =
+        noyalib::from_str_with_config(&nested, &noyalib::ParserConfig::new().max_depth(512))
+            .unwrap();
+    let err = noyalib::coerce_to_schema(&mut value, &deep).unwrap_err();
+    assert!(err.to_string().contains("recursion depth limit"), "{err}");
+    let mut doc = noyalib::cst::parse_document("a: 1\n").unwrap();
+    let err = noyalib::cst::coerce_to_schema(&mut doc, &deep).unwrap_err();
+    assert!(err.to_string().contains("recursion depth limit"), "{err}");
+}

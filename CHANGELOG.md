@@ -10,8 +10,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ### Security
 
 - Schema validation never resolves a `$ref` outside the schema
-  document. `validate_against_schema`, `CompiledSchema` and
-  `coerce_to_schema` install a retriever that refuses every external
+  document. `validate_against_schema`, `CompiledSchema`,
+  `coerce_to_schema` and `cst::coerce_to_schema` install a retriever
+  that refuses every external
   reference (`file:`, `http:`, `https:` and any other scheme). Before,
   a build that enabled `jsonschema`'s `resolve-file` or `resolve-http`
   feature through another crate let a schema read local files, whose

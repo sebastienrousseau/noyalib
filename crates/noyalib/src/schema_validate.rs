@@ -629,6 +629,22 @@ fn hardened_options() -> jsonschema::ValidationOptions<'static> {
         .with_pattern_options(jsonschema::PatternOptions::regex())
 }
 
+/// Compile `schema` for a coercion pass: the same hardened options and
+/// default size limits as [`CompiledSchema::compile`], with errors
+/// prefixed by `context` (the calling function's name).
+pub(crate) fn compile_for_coercion(schema: &Value, context: &str) -> Result<jsonschema::Validator> {
+    let schema_json = value_to_json(schema)
+        .map_err(|e| Error::Custom(format!("{context}: schema -> JSON: {e}")))?;
+    check_schema_shape(
+        &schema_json,
+        DEFAULT_MAX_SCHEMA_NODES,
+        DEFAULT_MAX_SCHEMA_DEPTH,
+    )?;
+    hardened_options()
+        .build(&schema_json)
+        .map_err(|e| Error::Custom(format!("{context}: schema is not a valid JSON Schema: {e}")))
+}
+
 /// Refuse a schema over the node or nesting limit before compiling it.
 /// Iterative, so the walk itself cannot exhaust the stack.
 fn check_schema_shape(
@@ -742,13 +758,7 @@ pub fn coerce_to_schema(value: &mut Value, schema: &Value) -> Result<usize> {
     use jsonschema::JsonType;
     use jsonschema::error::{TypeKind, ValidationErrorKind};
 
-    let schema_json = value_to_json(schema)
-        .map_err(|e| Error::Custom(format!("coerce_to_schema: schema -> JSON: {e}")))?;
-    let validator = hardened_options().build(&schema_json).map_err(|e| {
-        Error::Custom(format!(
-            "coerce_to_schema: schema is not a valid JSON Schema: {e}"
-        ))
-    })?;
+    let validator = compile_for_coercion(schema, "coerce_to_schema")?;
 
     let mut applied: usize = 0;
     // Cap the fix-loop to bound total work even on adversarial
