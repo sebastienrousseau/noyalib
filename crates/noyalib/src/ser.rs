@@ -1207,14 +1207,18 @@ fn is_plain_safe(s: &str, in_flow: bool) -> bool {
     {
         return false;
     }
-    // A colon or a hash counts only where YAML gives it meaning; see
-    // `colon_ends_plain` and `hash_starts_comment`.
-    !bytes.iter().enumerate().any(|(i, &b)| {
-        b < 128
-            && NEEDS_QUOTE_BYTE[b as usize]
-            && !(b == b':' && !colon_ends_plain(bytes, i))
-            && !(b == b'#' && !hash_starts_comment(bytes, i))
-    })
+    !(0..bytes.len()).any(|i| byte_forces_quotes(bytes, i))
+}
+
+/// Whether the byte at `i` keeps a string from being plain. A colon or a
+/// hash counts only where YAML gives it meaning; see `colon_ends_plain`
+/// and `hash_starts_comment`.
+fn byte_forces_quotes(bytes: &[u8], i: usize) -> bool {
+    match bytes[i] {
+        b':' => colon_ends_plain(bytes, i),
+        b'#' => hash_starts_comment(bytes, i),
+        b => b < 128 && NEEDS_QUOTE_BYTE[b as usize],
+    }
 }
 
 /// Whether `s` can be represented as a YAML single-quoted scalar with no
