@@ -9,6 +9,11 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Fixed
 
+- `read_with_config` holds each document in the stream to
+  `max_document_length`. Its stream cap allows up to 64 documents' worth
+  of bytes, so a single document over the limit was read and parsed
+  where every other entry point refuses it.
+
 - `cst::Document::set`, `replace_span` and the other fragment editors
   return `Error::RecursionLimitExceeded` for a fragment nested deeper
   than the document's `max_depth`. The local re-parse behind an edit

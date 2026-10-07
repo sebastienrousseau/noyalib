@@ -478,6 +478,17 @@ where
     let buf = String::from_utf8(bytes).map_err(|_| {
         Error::Parse("reader I/O failed: stream did not contain valid UTF-8".into())
     })?;
+    // The stream may hold up to 64 documents' worth of bytes, but each
+    // document is still held to `max_document_length`, as every other
+    // entry point holds it.
+    for doc in crate::doc_boundary::split_documents_checked(&buf, config.max_documents)? {
+        if doc.len() > config.max_document_length {
+            return Err(Error::Parse(format!(
+                "document exceeds maximum length of {} bytes",
+                config.max_document_length
+            )));
+        }
+    }
     let parse_config = parser::ParseConfig::from(config);
     let pairs = parser::parse(&buf, &parse_config)?;
     let docs: Vec<Value> = pairs.into_iter().map(|(value, _)| value).collect();

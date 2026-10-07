@@ -530,19 +530,7 @@ mod table {
 
     /// Cells known not to hold yet, each with what closes it. Remove an
     /// entry when its fix lands; the table then holds the cell.
-    const KNOWN_GAPS: &[(&str, &str, &str)] = &[
-        (
-            "read_with_config<Value>",
-            "max_document_length",
-            "read_with_config reads the whole reader before any length check; \
-             the bounded-read fix for read_with_config closes it",
-        ),
-        (
-            "read_with_config<Value>",
-            "max_stream_bytes",
-            "same bounded-read fix",
-        ),
-    ];
+    const KNOWN_GAPS: &[(&str, &str, &str)] = &[];
 
     fn known_gap(ep: &str, limit: &str) -> bool {
         // A frame decoder sees frames, not a stream length.
