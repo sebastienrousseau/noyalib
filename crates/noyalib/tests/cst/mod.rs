@@ -18,6 +18,7 @@ mod cst_crlf_splices;
 mod cst_decorated_and_crlf_edits;
 mod cst_document_coverage;
 mod cst_document_final_push;
+mod cst_edit_depth;
 mod cst_edit_errors;
 mod cst_edit_session;
 mod cst_emit;

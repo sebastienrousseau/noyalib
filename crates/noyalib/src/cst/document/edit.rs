@@ -137,12 +137,12 @@ impl Document {
             let indent = entry_indent_column(&self.source, n_old_start);
             let ctx = SubtreeContext::block_at(indent);
 
-            match parse_subtree(fragment, ctx, cand.kind) {
+            match parse_subtree(fragment, ctx, cand.kind, self.config.max_depth) {
                 Ok(new_sub)
                     if new_sub.kind() == cand.kind && new_sub.text_len() == fragment.len() =>
                 {
                     let new_root =
-                        rebuild_with_splice(&self.green, n_old_start, n_old_end, new_sub);
+                        rebuild_with_splice(&self.green, n_old_start, n_old_end, new_sub)?;
                     return Some((new_root, scope_for_kind(cand.kind)));
                 }
                 Ok(_) | Err(_) => {

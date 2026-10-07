@@ -7,6 +7,16 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [v0.0.55] - Unreleased
 
+### Fixed
+
+- `cst::Document::set`, `replace_span` and the other fragment editors
+  return `Error::RecursionLimitExceeded` for a fragment nested deeper
+  than the document's `max_depth`. The local re-parse behind an edit
+  built its green tree with no depth limit, so a fragment such as
+  100,000 nested `[` overflowed the stack and aborted the process.
+  Dropping a green tree no longer recurses per nesting level, and a
+  token over 4 GiB is an error rather than a panic.
+
 ## [v0.0.54] - 2026-10-07
 
 ### Security

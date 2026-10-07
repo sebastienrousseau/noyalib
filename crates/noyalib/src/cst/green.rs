@@ -176,16 +176,31 @@ impl GreenNode {
     /// Build a green node from its kind and children. The total
     /// `text_len` is summed from the children — callers do not need
     /// to compute it separately.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the children's total length exceeds `u32::MAX`
+    /// bytes. The crate's own builders use the fallible form and
+    /// return an error instead.
     #[must_use]
     pub fn new(kind: SyntaxKind, children: Vec<GreenChild>) -> Self {
-        let text_len: usize = children.iter().map(GreenChild::text_len).sum();
-        let text_len = u32::try_from(text_len)
-            .expect("YAML document exceeds 4 GiB — parser cap should have rejected this earlier");
-        Self {
+        Self::try_new(kind, children)
+            .expect("YAML document exceeds 4 GiB — parser cap should have rejected this earlier")
+    }
+
+    /// Fallible [`Self::new`]: `None` when the children's total
+    /// length does not fit the `u32` length field.
+    pub(crate) fn try_new(kind: SyntaxKind, children: Vec<GreenChild>) -> Option<Self> {
+        let mut total: usize = 0;
+        for child in &children {
+            total = total.checked_add(child.text_len())?;
+        }
+        let text_len = u32::try_from(total).ok()?;
+        Some(Self {
             kind,
             text_len,
             children: Arc::from(children),
-        }
+        })
     }
 
     /// Classification of this node.
@@ -228,4 +243,41 @@ impl GreenNode {
         }
         pos
     }
+}
+
+impl Drop for GreenNode {
+    /// Release the subtree without recursion.
+    ///
+    /// The derived drop would recurse once per nesting level, so a
+    /// deep enough tree would exhaust the stack while it is being
+    /// freed. Each uniquely owned child list is detached and pushed on
+    /// a heap stack instead, so every node is dropped with an empty
+    /// child list. Shared lists (still referenced by another tree after
+    /// an edit) only lose a reference count.
+    fn drop(&mut self) {
+        if !has_node_child(&self.children) {
+            return;
+        }
+        let mut pending = vec![core::mem::replace(&mut self.children, empty_children())];
+        while let Some(mut list) = pending.pop() {
+            let Some(children) = Arc::get_mut(&mut list) else {
+                continue;
+            };
+            for child in children.iter_mut() {
+                if let GreenChild::Node(node) = child {
+                    if has_node_child(&node.children) {
+                        pending.push(core::mem::replace(&mut node.children, empty_children()));
+                    }
+                }
+            }
+        }
+    }
+}
+
+fn has_node_child(children: &[GreenChild]) -> bool {
+    children.iter().any(|c| matches!(c, GreenChild::Node(_)))
+}
+
+fn empty_children() -> Arc<[GreenChild]> {
+    Arc::from(Vec::new())
 }
