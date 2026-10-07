@@ -150,6 +150,15 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Changed
 
+- A verbatim tag `!<x>` now names exactly the tag `x`, as YAML 1.2.2
+  §6.8.2.1 defines it. It was scanned like the shorthand `!x`, so `!<int>`
+  was read as the core integer tag, `!<foo>` as the local tag `!foo`, and
+  `!<tag:yaml.org,2002:int>` as an unknown local tag instead of an
+  integer. A document using `%TAG !! ` with an empty prefix therefore did
+  not survive a round trip: `!!int 1` came back as the integer 1 and
+  `!!int 1 - 3` as output that did not parse. The serializer now writes
+  the whole tag inside `!<...>`.
+
 - **Breaking (parse behaviour):** an implicit mapping key that holds a
   flow collection (for example `[a, b, ...]: v`) and is longer than 1024
   characters is now rejected with "implicit mapping key is longer than

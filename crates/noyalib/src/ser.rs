@@ -851,7 +851,7 @@ fn write_user_tag(
 /// A tag whose body holds characters the shorthand spelling cannot
 /// carry -- flow indicators, blanks, or an interior `!` (a handle
 /// separator there) -- is emitted in the verbatim form `!<...>`, which
-/// re-parses to exactly the stored tag (`!<!str>` is `!!str`). Emitting
+/// re-parses to exactly the stored tag (`!<!!str>` is `!!str`). Emitting
 /// it raw produced YAML that split at the first such byte:
 /// `!<tag:example.com,2026:x>` re-emitted as shorthand died at the comma
 /// (found by fuzz_roundtrip).
@@ -879,7 +879,7 @@ fn write_tag_spelling(output: &mut String, tag_str: &str) {
         }
         Some(_) if needs_verbatim => {
             output.push_str("!<");
-            output.push_str(&tag_str[1..]);
+            output.push_str(tag_str);
             output.push('>');
         }
         Some(_) => output.push_str(tag_str),

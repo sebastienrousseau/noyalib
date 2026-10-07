@@ -2177,7 +2177,6 @@ impl<'a> Scanner<'a> {
             // but the *control* range must go: an accepted `\n`, NUL or
             // DEL round-trips into emitted YAML that no longer parses
             // (found by fuzz_roundtrip on `!<\x7f…\t>`).
-            handle = Cow::Borrowed("!");
             self.advance(); // skip '<'
             let start = self.pos;
             while !self.is_eof() && self.peek() != b'>' {
@@ -2198,7 +2197,7 @@ impl<'a> Scanner<'a> {
                 // or more.
                 return Err(self.error("verbatim tag must not be empty (`!<>`)"));
             }
-            suffix = Cow::Borrowed(self.slice_str(start, self.pos));
+            (handle, suffix) = split_verbatim_tag(self.slice_str(start, self.pos));
             // The closing `>` is part of the production, not optional:
             // an unterminated `!<…` at end of input used to be accepted
             // with whatever it had swallowed as the tag name, and the
@@ -2372,6 +2371,24 @@ fn floor_char_boundary(s: &str, mut index: usize) -> usize {
         index = index.saturating_sub(1);
     }
     index
+}
+
+/// Split a verbatim tag's URI into the handle and suffix the loader
+/// resolves. A verbatim tag names its URI exactly (YAML 1.2.2 §6.8.2.1),
+/// so it must not fall under the `!`-handle shorthand rules: `!<int>` is
+/// the URI `int`, not the core integer tag, and not the local tag `!int`.
+/// The core namespace keeps its meaning, and `!<!x>` spells the local
+/// tag `!x`.
+fn split_verbatim_tag(uri: &str) -> (Cow<'_, str>, Cow<'_, str>) {
+    const CORE: &str = "tag:yaml.org,2002:";
+    let (handle, rest) = if let Some(rest) = uri.strip_prefix(CORE) {
+        (CORE, rest)
+    } else if let Some(rest) = uri.strip_prefix('!') {
+        ("!", rest)
+    } else {
+        ("", uri)
+    };
+    (Cow::Borrowed(handle), Cow::Borrowed(rest))
 }
 
 #[cfg(test)]
