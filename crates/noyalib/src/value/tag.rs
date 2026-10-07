@@ -78,8 +78,26 @@ pub fn check_for_tag<T: fmt::Display>(value: &T) -> MaybeTag<String> {
 /// assert_eq!(tag.as_str(), "!custom");
 /// assert_eq!(Tag::new("!foo"), Tag::new("foo"));
 /// ```
-#[derive(Debug, Clone)]
-pub struct Tag(String);
+#[derive(Clone)]
+pub struct Tag(String, bool);
+
+// The `bool` marks an emitter directive: a formatting hint (comment,
+// flow wrapper, block-scalar style, anchor) that only this crate's
+// serializer creates, from the `fmt` and anchor wrapper types. It is set
+// by `Tag::directive` alone, so no tag string from a document, from
+// `Tag::new` or from another serde format can ever steer the emitter;
+// such a tag is always written back as the ordinary tag it is.
+
+impl fmt::Debug for Tag {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut t = f.debug_tuple("Tag");
+        let _ = t.field(&self.0);
+        if self.1 {
+            let _ = t.field(&"directive");
+        }
+        t.finish()
+    }
+}
 
 impl Tag {
     /// Creates a new tag from a string.
@@ -93,7 +111,29 @@ impl Tag {
     /// ```
     #[must_use]
     pub fn new(tag: impl Into<String>) -> Self {
-        Self(tag.into())
+        Self(tag.into(), false)
+    }
+
+    /// An emitter directive named by one of the `fmt` magic names. Only
+    /// the crate's own serializer calls this.
+    pub(crate) fn directive(name: &'static str) -> Self {
+        Self(name.to_owned(), true)
+    }
+
+    /// Whether this tag is an emitter directive rather than a YAML tag.
+    pub(crate) fn is_directive(&self) -> bool {
+        self.1
+    }
+
+    /// The magic name of a directive, `None` for an ordinary tag.
+    fn directive_name(&self) -> Option<&'static str> {
+        if !self.1 {
+            return None;
+        }
+        crate::fmt::DIRECTIVES
+            .iter()
+            .copied()
+            .find(|name| *name == self.0)
     }
 
     /// Returns the tag as a string slice.
@@ -162,7 +202,7 @@ impl From<&str> for Tag {
 
 impl From<String> for Tag {
     fn from(s: String) -> Self {
-        Self(s)
+        Self::new(s)
     }
 }
 
@@ -174,7 +214,7 @@ impl AsRef<str> for Tag {
 
 impl PartialEq for Tag {
     fn eq(&self, other: &Self) -> bool {
-        nobang(&self.0) == nobang(&other.0)
+        self.1 == other.1 && nobang(&self.0) == nobang(&other.0)
     }
 }
 
@@ -183,6 +223,7 @@ impl Eq for Tag {}
 impl Hash for Tag {
     fn hash<H: Hasher>(&self, state: &mut H) {
         nobang(&self.0).hash(state);
+        self.1.hash(state);
     }
 }
 
@@ -194,7 +235,9 @@ impl PartialOrd for Tag {
 
 impl Ord for Tag {
     fn cmp(&self, other: &Self) -> Ordering {
-        nobang(&self.0).cmp(nobang(&other.0))
+        nobang(&self.0)
+            .cmp(nobang(&other.0))
+            .then(self.1.cmp(&other.1))
     }
 }
 
@@ -330,6 +373,12 @@ impl serde_core::Serialize for TaggedValue {
         // serializer recognises the name, not the shape, when it
         // rebuilds `Value::Tagged` -- so a genuine mapping whose only
         // key starts with `!` is never mistaken for a tag (#377).
+        // A directive goes back out under its own magic name, so a
+        // `Value` built by `to_value` keeps steering the emitter when it
+        // is serialised again, and is never confused with a tag.
+        if let Some(name) = self.tag.directive_name() {
+            return serializer.serialize_newtype_struct(name, self.value());
+        }
         serializer.serialize_newtype_struct(crate::fmt::MAGIC_TAGGED, &TaggedWire(self))
     }
 }

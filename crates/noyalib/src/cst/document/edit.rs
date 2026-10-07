@@ -4,7 +4,9 @@
 //! Atomic source splicing and local green-tree repair.
 
 use super::{Document, RepairScope, entry_indent_column, walk_tokens};
-use crate::cst::builder::{SubtreeContext, parse_subtree, rebuild_with_splice};
+use crate::cst::builder::{
+    SubtreeContext, check_document_length, parse_subtree, rebuild_with_splice,
+};
 use crate::cst::green::{GreenChild, GreenNode};
 use crate::cst::syntax::SyntaxKind;
 use crate::error::{Error, Result};
@@ -54,6 +56,7 @@ impl Document {
         new_source.push_str(&self.source[..start]);
         new_source.push_str(replacement);
         new_source.push_str(&self.source[end..]);
+        check_document_length(&new_source, &self.config)?;
 
         // A local green-tree repair avoids rebuilding unchanged CST
         // nodes, but it is not a document-level validity proof. Parse
@@ -137,12 +140,12 @@ impl Document {
             let indent = entry_indent_column(&self.source, n_old_start);
             let ctx = SubtreeContext::block_at(indent);
 
-            match parse_subtree(fragment, ctx, cand.kind) {
+            match parse_subtree(fragment, ctx, cand.kind, self.config.max_depth) {
                 Ok(new_sub)
                     if new_sub.kind() == cand.kind && new_sub.text_len() == fragment.len() =>
                 {
                     let new_root =
-                        rebuild_with_splice(&self.green, n_old_start, n_old_end, new_sub);
+                        rebuild_with_splice(&self.green, n_old_start, n_old_end, new_sub)?;
                     return Some((new_root, scope_for_kind(cand.kind)));
                 }
                 Ok(_) | Err(_) => {

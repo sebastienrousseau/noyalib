@@ -35,7 +35,7 @@ likely to cost something. The `benches/` directory measures them.
 
 ## Module map
 
-73 modules.
+74 modules.
 
 | Module | Lines | Purpose |
 | --- | --- | --- |
@@ -81,6 +81,7 @@ likely to cost something. The `benches/` directory measures them.
 | `parser/budget.rs` | 253 | The resource budgets the loaders enforce, as pure predicates. |
 | `parser/events.rs` | 789 | YAML 1.2 event-based parser. |
 | `parser/loader.rs` | 2515 | Event-to-Value tree builder with security limits. |
+| `parser/meter.rs` | 328 | The stateful half of the budgets: one meter every loader charges. |
 | `parser/mod.rs` | 92 | Native YAML 1.2 parser. |
 | `parser/scanner/scalars.rs` | 1191 | Scalar scanning for the YAML scanner: plain, single/double-quoted |
 | `parser/scanner.rs` | 2351 | YAML 1.2 lexical scanner. |

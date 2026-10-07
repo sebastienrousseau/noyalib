@@ -127,6 +127,6 @@ pub use document::{
 };
 pub use emit::{Emit, EmitCtx};
 pub use entry::Entry;
-pub use format::{FormatConfig, format, format_with_config};
+pub use format::{FormatConfig, format, format_with_config, format_with_parser_config};
 pub use green::{GreenChild, GreenNode};
 pub use syntax::SyntaxKind;

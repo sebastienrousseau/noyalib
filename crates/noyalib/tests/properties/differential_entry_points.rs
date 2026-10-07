@@ -205,11 +205,18 @@ fn the_parallel_split_finds_the_same_document_boundaries() {
 /// So the test is not "these agree" but "they differ only where the
 /// shim says they will". Each exception quotes the reason from the
 /// shim's own documentation, and an *undocumented* difference fails.
-const DOCUMENTED_FACADE_DEVIATIONS: &[(&str, &str)] = &[(
-    "a merge key",
-    "`<<` merge keys stay literal entries (alias values resolved) — \
-     serde_yaml 0.9 requires an explicit merge step",
-)];
+const DOCUMENTED_FACADE_DEVIATIONS: &[(&str, &str)] = &[
+    (
+        "a merge key",
+        "`<<` merge keys stay literal entries (alias values resolved) — \
+         serde_yaml 0.9 requires an explicit merge step",
+    ),
+    (
+        "duplicate keys",
+        "a duplicate mapping key is refused when the target is `Value` \
+         (`duplicate entry with key \"k\"`), as serde_yaml 0.9 refuses it",
+    ),
+];
 
 #[cfg(feature = "compat-serde-yaml")]
 #[test]

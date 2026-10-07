@@ -3281,7 +3281,11 @@ fn parse_document_inner(input: &str, config: ParseConfig) -> Result<Document> {
 /// assert_eq!(joined, src);
 /// ```
 pub fn parse_stream(input: &str) -> Result<Vec<Document>> {
-    parse_stream_inner(input, &ParseConfig::default())
+    parse_stream_inner(
+        input,
+        &ParseConfig::default(),
+        ParserConfig::default().max_stream_bytes,
+    )
 }
 
 /// Parse a YAML stream into one [`Document`] per logical document
@@ -3309,7 +3313,7 @@ pub fn parse_stream(input: &str) -> Result<Vec<Document>> {
 /// assert_eq!(joined, src);
 /// ```
 pub fn parse_stream_with_config(input: &str, config: &ParserConfig) -> Result<Vec<Document>> {
-    parse_stream_inner(input, &ParseConfig::from(config))
+    parse_stream_inner(input, &ParseConfig::from(config), config.max_stream_bytes)
 }
 
 /// Shared body of [`parse_stream`] and [`parse_stream_with_config`].
@@ -3318,10 +3322,32 @@ pub fn parse_stream_with_config(input: &str, config: &ParserConfig) -> Result<Ve
 /// locations come back relative to that slice; they are re-anchored on
 /// `input` before the error is returned, so a caller sees the same
 /// positions the typed loaders report for the same bytes.
-fn parse_stream_inner(input: &str, config: &ParseConfig) -> Result<Vec<Document>> {
+///
+/// The stream as a whole is held to `max_stream_bytes` and its
+/// document count to `max_documents`, both checked before any document
+/// is parsed; each document is held to `max_document_length` by
+/// [`parse_full`].
+pub(crate) fn parse_stream_inner(
+    input: &str,
+    config: &ParseConfig,
+    max_stream_bytes: usize,
+) -> Result<Vec<Document>> {
+    if input.len() > max_stream_bytes {
+        return Err(Error::Parse(format!(
+            "stream of {} bytes exceeds max_stream_bytes of {max_stream_bytes}",
+            input.len()
+        )));
+    }
     let bounds = document_boundaries(input)?;
     if bounds.len() <= 1 {
         return Ok(vec![parse_document_inner(input, config.clone())?]);
+    }
+    let documents = bounds.iter().filter(|(s, e)| s != e).count();
+    if documents > config.max_documents {
+        return Err(Error::Budget(crate::BudgetBreach::MaxDocuments {
+            limit: config.max_documents,
+            observed: documents,
+        }));
     }
     let mut out = Vec::with_capacity(bounds.len());
     for (s, e) in bounds {
@@ -6277,10 +6303,7 @@ fn entry_indent_column(source: &str, pos: usize) -> usize {
 /// the first byte. `m: {a: x, y}` written for the string `x, y` reads
 /// back as two entries; `{a: x {y}}` does not parse at all (#332).
 pub(super) fn is_plain_safe_in_flow(s: &str) -> bool {
-    is_plain_safe(s)
-        && !s
-            .bytes()
-            .any(|b| matches!(b, b',' | b'[' | b']' | b'{' | b'}'))
+    is_plain_safe(s) && !crate::ser::has_flow_indicator(s)
 }
 
 /// `true` if `s` can be safely emitted as a YAML plain scalar without

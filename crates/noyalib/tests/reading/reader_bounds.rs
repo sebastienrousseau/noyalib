@@ -112,3 +112,41 @@ fn compat_reader_is_bounded() {
     assert!(err.to_string().contains("exceeds maximum length"), "{err}");
     assert!(src.served <= cap + SLACK, "read {} bytes", src.served);
 }
+
+#[test]
+fn read_with_config_stops_at_its_stream_cap() {
+    // The multi-document reader caps the whole stream at 64 times
+    // `max_document_length`; it must stop reading there too.
+    let cfg = ParserConfig::default().max_document_length(64);
+    let cap = 64 * 64;
+    let mut src = Big::over(cap);
+    let err = noyalib::read_with_config::<_, Value>(&mut src, &cfg).unwrap_err();
+    assert!(err.to_string().contains("64×"), "unexpected error: {err}");
+    assert!(src.served <= cap + SLACK, "read {} bytes", src.served);
+}
+
+#[test]
+fn read_with_config_still_reads_ordinary_streams() {
+    let stream = "a: 1\n---\nb: 2\n---\nc: 3\n";
+    let cfg = ParserConfig::default().max_document_length(stream.len());
+    let n = noyalib::read_with_config::<_, Value>(stream.as_bytes(), &cfg)
+        .unwrap()
+        .count();
+    assert_eq!(n, 3);
+}
+
+#[test]
+fn read_with_config_reports_invalid_utf8() {
+    let bytes: &[u8] = b"key: \xff\xfe\n";
+    let err = noyalib::read_with_config::<_, Value>(bytes, &ParserConfig::default()).unwrap_err();
+    assert!(err.to_string().contains("UTF-8"), "{err}");
+}
+
+#[test]
+fn read_with_config_honours_max_stream_bytes() {
+    let cfg = ParserConfig::default().max_stream_bytes(1_000);
+    let mut src = Big::over(1_000);
+    let err = noyalib::read_with_config::<_, Value>(&mut src, &cfg).unwrap_err();
+    assert!(err.to_string().contains("max_stream_bytes"), "{err}");
+    assert!(src.served <= 1_000 + SLACK, "read {} bytes", src.served);
+}

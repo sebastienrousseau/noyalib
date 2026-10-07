@@ -39,15 +39,33 @@ pub(crate) struct ParsedDocument {
 /// under the limits the document was opened with.
 #[cfg(feature = "std")]
 pub(crate) fn parse_full(input: &str, cfg: &ParseConfig) -> Result<ParsedDocument> {
+    check_document_length(input, cfg)?;
     let (value, span_tree) = crate::parser::parse_exactly_one(input, cfg)?;
     let source: Arc<str> = Arc::from(input);
-    let green = build_green_tree(&source)?;
+    let green = build_green_tree(&source, cfg.max_depth)?;
     Ok(ParsedDocument {
         green,
         value,
         span_tree,
         source,
     })
+}
+
+/// Refuse a document longer than `cfg.max_document_length`, with the
+/// error the typed `&str` entry points return for the same input.
+///
+/// Every CST parse of a whole document (the initial parse, each
+/// document of a stream, and the source an edit would commit) runs
+/// this first.
+#[cfg(feature = "std")]
+pub(crate) fn check_document_length(input: &str, cfg: &ParseConfig) -> Result<()> {
+    if input.len() > cfg.max_document_length {
+        return Err(Error::Parse(format!(
+            "document exceeds maximum length of {} bytes",
+            cfg.max_document_length
+        )));
+    }
+    Ok(())
 }
 
 /// Indentation / flow context for re-parsing a sub-tree.
@@ -88,15 +106,15 @@ pub(crate) fn parse_subtree(
     fragment: &str,
     ctx: SubtreeContext,
     expected: SyntaxKind,
+    max_depth: usize,
 ) -> Result<GreenNode> {
     use SyntaxKind as S;
     match expected {
-        S::BlockMapping | S::BlockSequence => parse_block_collection(fragment, ctx, expected),
-        S::MappingEntry | S::SequenceItem => parse_block_entry(fragment, ctx, expected),
-        S::Document => {
-            let arc: Arc<str> = Arc::from(fragment);
-            build_green_tree(&arc)
+        S::BlockMapping | S::BlockSequence => {
+            parse_block_collection(fragment, ctx, expected, max_depth)
         }
+        S::MappingEntry | S::SequenceItem => parse_block_entry(fragment, ctx, expected, max_depth),
+        S::Document => build_green_tree(fragment, max_depth),
         _ => Err(Error::Parse(format!(
             "parse_subtree: unsupported expected kind {expected:?}"
         ))),
@@ -108,10 +126,10 @@ fn parse_block_collection(
     fragment: &str,
     ctx: SubtreeContext,
     expected: SyntaxKind,
+    max_depth: usize,
 ) -> Result<GreenNode> {
     let modified = prepend_first_line_indent(fragment, ctx.indent);
-    let arc: Arc<str> = Arc::from(modified.as_str());
-    let parsed = build_green_tree(&arc)?;
+    let parsed = build_green_tree(&modified, max_depth)?;
     first_node_of_kind(&parsed, expected).ok_or_else(|| {
         Error::Parse(format!(
             "parse_subtree: re-parsed fragment did not contain a {expected:?} at root"
@@ -124,6 +142,7 @@ fn parse_block_entry(
     fragment: &str,
     ctx: SubtreeContext,
     expected: SyntaxKind,
+    max_depth: usize,
 ) -> Result<GreenNode> {
     if fragment.trim().is_empty() {
         return Err(Error::Parse(
@@ -143,8 +162,7 @@ fn parse_block_entry(
         SyntaxKind::SequenceItem => wrapped.push_str("- 0\n"),
         _ => unreachable!("guarded by caller"),
     }
-    let arc: Arc<str> = Arc::from(wrapped.as_str());
-    let parsed = build_green_tree(&arc)?;
+    let parsed = build_green_tree(&wrapped, max_depth)?;
     let parent_kind = match expected {
         SyntaxKind::MappingEntry => SyntaxKind::BlockMapping,
         SyntaxKind::SequenceItem => SyntaxKind::BlockSequence,
@@ -274,7 +292,13 @@ pub(crate) fn document_boundaries(input: &str) -> Result<Vec<(usize, usize)>> {
 /// Run the recording scanner over `source` and assemble the result
 /// into a green tree. Drains the token stream so any scanner-level
 /// error surfaces here rather than later.
-pub(crate) fn build_green_tree(source: &str) -> Result<GreenNode> {
+///
+/// `max_depth` is the document's [`ParseConfig::max_depth`]. The
+/// builder refuses a tree that nests deeper than the loader would
+/// accept, so a fragment that never reaches the full parse (the
+/// local repair behind an edit) cannot build a tree whose recursive
+/// walkers exhaust the stack.
+pub(crate) fn build_green_tree(source: &str, max_depth: usize) -> Result<GreenNode> {
     let mut scanner = Scanner::new(source);
     scanner.enable_recording();
 
@@ -292,7 +316,7 @@ pub(crate) fn build_green_tree(source: &str) -> Result<GreenNode> {
     let comments = scanner.take_comments();
     drop(scanner);
 
-    Ok(assemble(trivia, tokens, comments))
+    assemble(trivia, tokens, comments, max_depth)
 }
 
 /// Merge the three streams (trivia, tokens, comments) into a nested
@@ -303,8 +327,9 @@ fn assemble(
     trivia: Vec<Trivia>,
     tokens: Vec<RecordedToken>,
     comments: Vec<ScannedComment>,
-) -> GreenNode {
-    let mut builder = TreeBuilder::new();
+    max_depth: usize,
+) -> Result<GreenNode> {
+    let mut builder = TreeBuilder::new(max_depth);
 
     let mut trivia_iter = trivia.into_iter().peekable();
     let mut token_iter = tokens.into_iter().peekable();
@@ -319,15 +344,15 @@ fn assemble(
             (None, None, None) => break,
             (_, Some(tk), c) if min_or_max(c) >= tk && min_or_max(nt) >= tk => {
                 let tok = token_iter.next().expect("peeked Some");
-                builder.handle_token(tok);
+                builder.handle_token(&tok)?;
             }
             (Some(t), _, c) if min_or_max(c) >= t => {
                 let triv = trivia_iter.next().expect("peeked Some");
-                builder.push_leaf(child_from_trivia(triv));
+                builder.push_leaf(child_from_trivia(&triv)?);
             }
             (_, _, Some(_)) => {
                 let cmt = comment_iter.next().expect("peeked Some");
-                builder.push_leaf(child_from_comment(cmt));
+                builder.push_leaf(token_child(SyntaxKind::Comment, cmt.end - cmt.start)?);
             }
             _ => crate::error::invariant_violated(
                 "trivia/comment merge: at least one peek was Some by guard",
@@ -343,6 +368,17 @@ fn min_or_max(opt: Option<usize>) -> usize {
     opt.unwrap_or(usize::MAX)
 }
 
+/// The deepest frame stack the builder accepts for a document whose
+/// loader allows `max_depth` levels of YAML nesting.
+///
+/// A block collection takes two frames per level (the collection and
+/// the entry or item that holds the next one); a flow collection takes
+/// one. The document frame and the outermost collection add a small
+/// constant.
+fn frame_limit(max_depth: usize) -> usize {
+    max_depth.saturating_mul(2).saturating_add(4)
+}
+
 struct Frame {
     kind: SyntaxKind,
     children: Vec<GreenChild>,
@@ -350,16 +386,17 @@ struct Frame {
 
 struct TreeBuilder {
     stack: Vec<Frame>,
+    max_depth: usize,
 }
 
 impl TreeBuilder {
-    fn new() -> Self {
+    fn new(max_depth: usize) -> Self {
         let mut stack = Vec::with_capacity(8);
         stack.push(Frame {
             kind: SyntaxKind::Document,
             children: Vec::new(),
         });
-        Self { stack }
+        Self { stack, max_depth }
     }
 
     fn top_kind(&self) -> SyntaxKind {
@@ -374,29 +411,37 @@ impl TreeBuilder {
             .push(child);
     }
 
-    fn push_frame(&mut self, kind: SyntaxKind) {
+    fn push_frame(&mut self, kind: SyntaxKind) -> Result<()> {
+        if self.stack.len() >= frame_limit(self.max_depth) {
+            return Err(Error::RecursionLimitExceeded {
+                depth: self.stack.len(),
+            });
+        }
         self.stack.push(Frame {
             kind,
             children: Vec::new(),
         });
+        Ok(())
     }
 
-    fn pop_frame(&mut self) {
+    fn pop_frame(&mut self) -> Result<()> {
         if self.stack.len() <= 1 {
-            return;
+            return Ok(());
         }
         let frame = self.stack.pop().expect("len > 1");
-        let node = GreenNode::new(frame.kind, frame.children);
+        let node = GreenNode::try_new(frame.kind, frame.children).ok_or_else(too_long)?;
         self.push_leaf(GreenChild::Node(node));
+        Ok(())
     }
 
-    fn close_open_entry(&mut self) {
+    fn close_open_entry(&mut self) -> Result<()> {
         if matches!(
             self.top_kind(),
             SyntaxKind::MappingEntry | SyntaxKind::SequenceItem
         ) {
-            self.pop_frame();
+            self.pop_frame()?;
         }
+        Ok(())
     }
 
     fn nearest_container_kind(&self) -> SyntaxKind {
@@ -413,114 +458,127 @@ impl TreeBuilder {
         SyntaxKind::Document
     }
 
-    fn handle_token(&mut self, tok: RecordedToken) {
+    /// Open an entry frame of `entry` kind when the nearest container
+    /// is `container`, closing the previous entry first.
+    fn open_entry_in(&mut self, container: SyntaxKind, entry: SyntaxKind) -> Result<()> {
+        if self.nearest_container_kind() == container {
+            self.close_open_entry()?;
+            self.push_frame(entry)?;
+        }
+        Ok(())
+    }
+
+    /// Push a closing bracket and pop its frame when it is the top.
+    fn close_flow(&mut self, frame: SyntaxKind, leaf: GreenChild) -> Result<()> {
+        self.push_leaf(leaf);
+        if self.top_kind() == frame {
+            self.pop_frame()?;
+        }
+        Ok(())
+    }
+
+    fn handle_token(&mut self, tok: &RecordedToken) -> Result<()> {
         use RecordedTokenKind as R;
         use SyntaxKind as S;
 
+        let leaf = || token_child(leaf_kind(tok.kind), tok.end - tok.start);
         match tok.kind {
             R::BlockMapStart => self.push_frame(S::BlockMapping),
             R::BlockSeqStart => self.push_frame(S::BlockSequence),
             R::BlockEnd => {
-                self.close_open_entry();
+                self.close_open_entry()?;
                 if matches!(self.top_kind(), S::BlockMapping | S::BlockSequence) {
-                    self.pop_frame();
+                    self.pop_frame()?;
                 }
+                Ok(())
             }
-            R::SyntheticKey => {
-                if matches!(self.nearest_container_kind(), S::BlockMapping) {
-                    self.close_open_entry();
-                    self.push_frame(S::MappingEntry);
-                }
-            }
+            R::SyntheticKey => self.open_entry_in(S::BlockMapping, S::MappingEntry),
             R::QuestionIndicator => {
-                if matches!(self.nearest_container_kind(), S::BlockMapping) {
-                    self.close_open_entry();
-                    self.push_frame(S::MappingEntry);
-                }
-                self.push_leaf(leaf_token(S::QuestionIndicator, tok.end - tok.start));
+                self.open_entry_in(S::BlockMapping, S::MappingEntry)?;
+                self.push_leaf(leaf()?);
+                Ok(())
             }
             R::DashIndicator => {
-                if matches!(self.nearest_container_kind(), S::BlockSequence) {
-                    self.close_open_entry();
-                    self.push_frame(S::SequenceItem);
-                }
-                self.push_leaf(leaf_token(S::DashIndicator, tok.end - tok.start));
+                self.open_entry_in(S::BlockSequence, S::SequenceItem)?;
+                self.push_leaf(leaf()?);
+                Ok(())
             }
-            R::OpenBrace => {
-                self.push_frame(S::FlowMapping);
-                self.push_leaf(leaf_token(S::OpenBrace, tok.end - tok.start));
+            R::OpenBrace | R::OpenBracket => {
+                let frame = if tok.kind == R::OpenBrace {
+                    S::FlowMapping
+                } else {
+                    S::FlowSequence
+                };
+                self.push_frame(frame)?;
+                self.push_leaf(leaf()?);
+                Ok(())
             }
-            R::CloseBrace => {
-                self.push_leaf(leaf_token(S::CloseBrace, tok.end - tok.start));
-                if matches!(self.top_kind(), S::FlowMapping) {
-                    self.pop_frame();
-                }
+            R::CloseBrace => self.close_flow(S::FlowMapping, leaf()?),
+            R::CloseBracket => self.close_flow(S::FlowSequence, leaf()?),
+            _ => {
+                self.push_leaf(leaf()?);
+                Ok(())
             }
-            R::OpenBracket => {
-                self.push_frame(S::FlowSequence);
-                self.push_leaf(leaf_token(S::OpenBracket, tok.end - tok.start));
-            }
-            R::CloseBracket => {
-                self.push_leaf(leaf_token(S::CloseBracket, tok.end - tok.start));
-                if matches!(self.top_kind(), S::FlowSequence) {
-                    self.pop_frame();
-                }
-            }
-            R::DocStart => self.push_leaf(leaf_token(S::DocStart, tok.end - tok.start)),
-            R::DocEnd => self.push_leaf(leaf_token(S::DocEnd, tok.end - tok.start)),
-            R::ColonIndicator => {
-                self.push_leaf(leaf_token(S::ColonIndicator, tok.end - tok.start));
-            }
-            R::Comma => self.push_leaf(leaf_token(S::Comma, tok.end - tok.start)),
-            R::AnchorMark => self.push_leaf(leaf_token(S::AnchorMark, tok.end - tok.start)),
-            R::AliasMark => self.push_leaf(leaf_token(S::AliasMark, tok.end - tok.start)),
-            R::TagMark => self.push_leaf(leaf_token(S::TagMark, tok.end - tok.start)),
-            R::PlainScalar => self.push_leaf(leaf_token(S::PlainScalar, tok.end - tok.start)),
-            R::SingleQuotedScalar => {
-                self.push_leaf(leaf_token(S::SingleQuotedScalar, tok.end - tok.start));
-            }
-            R::DoubleQuotedScalar => {
-                self.push_leaf(leaf_token(S::DoubleQuotedScalar, tok.end - tok.start));
-            }
-            R::LiteralScalar => self.push_leaf(leaf_token(S::LiteralScalar, tok.end - tok.start)),
-            R::FoldedScalar => self.push_leaf(leaf_token(S::FoldedScalar, tok.end - tok.start)),
         }
     }
 
-    fn finish(mut self) -> GreenNode {
+    fn finish(mut self) -> Result<GreenNode> {
         while self.stack.len() > 1 {
-            self.pop_frame();
+            self.pop_frame()?;
         }
         let root = self.stack.pop().expect("Document frame");
-        GreenNode::new(SyntaxKind::Document, root.children)
+        GreenNode::try_new(SyntaxKind::Document, root.children).ok_or_else(too_long)
     }
 }
 
-fn leaf_token(kind: SyntaxKind, len: usize) -> GreenChild {
-    GreenChild::Token {
-        kind,
-        len: u32::try_from(len).expect("token length exceeds 4 GiB cap"),
+/// The green-tree kind of a recorded token's leaf. Structural tokens
+/// that only open or close a frame have no leaf of their own; they
+/// map to the document kind, which the caller never pushes as a leaf.
+fn leaf_kind(kind: RecordedTokenKind) -> SyntaxKind {
+    use RecordedTokenKind as R;
+    use SyntaxKind as S;
+    match kind {
+        R::QuestionIndicator => S::QuestionIndicator,
+        R::DashIndicator => S::DashIndicator,
+        R::OpenBrace => S::OpenBrace,
+        R::CloseBrace => S::CloseBrace,
+        R::OpenBracket => S::OpenBracket,
+        R::CloseBracket => S::CloseBracket,
+        R::DocStart => S::DocStart,
+        R::DocEnd => S::DocEnd,
+        R::ColonIndicator => S::ColonIndicator,
+        R::Comma => S::Comma,
+        R::AnchorMark => S::AnchorMark,
+        R::AliasMark => S::AliasMark,
+        R::TagMark => S::TagMark,
+        R::PlainScalar => S::PlainScalar,
+        R::SingleQuotedScalar => S::SingleQuotedScalar,
+        R::DoubleQuotedScalar => S::DoubleQuotedScalar,
+        R::LiteralScalar => S::LiteralScalar,
+        R::FoldedScalar => S::FoldedScalar,
+        R::BlockMapStart | R::BlockSeqStart | R::BlockEnd | R::SyntheticKey => S::Document,
     }
 }
 
-fn child_from_trivia(t: Trivia) -> GreenChild {
+/// The error for a token or tree whose length does not fit the
+/// green tree's `u32` length field.
+fn too_long() -> Error {
+    Error::Parse("CST input exceeds the 4 GiB green-tree length limit".into())
+}
+
+fn token_child(kind: SyntaxKind, len: usize) -> Result<GreenChild> {
+    let len = u32::try_from(len).map_err(|_| too_long())?;
+    Ok(GreenChild::Token { kind, len })
+}
+
+fn child_from_trivia(t: &Trivia) -> Result<GreenChild> {
     let kind = match t.kind {
         TriviaKind::Whitespace => SyntaxKind::Whitespace,
         TriviaKind::Newline => SyntaxKind::Newline,
         TriviaKind::Bom => SyntaxKind::Bom,
         TriviaKind::Directive => SyntaxKind::Directive,
     };
-    GreenChild::Token {
-        kind,
-        len: u32::try_from(t.end - t.start).expect("trivia length exceeds 4 GiB cap"),
-    }
-}
-
-fn child_from_comment(c: ScannedComment) -> GreenChild {
-    GreenChild::Token {
-        kind: SyntaxKind::Comment,
-        len: u32::try_from(c.end - c.start).expect("comment length exceeds 4 GiB cap"),
-    }
+    token_child(kind, t.end - t.start)
 }
 
 /// Splice `spliced` into `old_root` at the position currently
@@ -530,7 +588,8 @@ fn child_from_comment(c: ScannedComment) -> GreenChild {
 /// the path are reused via `Arc<[GreenChild]>` clones, not
 /// rebuilt.
 ///
-/// Returns the new root. Time is `O(depth × siblings_per_level)` —
+/// Returns the new root, or `None` when the result would exceed the
+/// green tree's 4 GiB length limit. Time is `O(depth × siblings_per_level)` —
 /// independent of the total tree size.
 #[cfg(feature = "std")]
 pub(crate) fn rebuild_with_splice(
@@ -538,7 +597,7 @@ pub(crate) fn rebuild_with_splice(
     splice_old_start: usize,
     splice_old_end: usize,
     spliced: GreenNode,
-) -> GreenNode {
+) -> Option<GreenNode> {
     splice_recursive(old_root, splice_old_start, splice_old_end, spliced, 0)
 }
 
@@ -549,7 +608,7 @@ fn splice_recursive(
     splice_old_end: usize,
     spliced: GreenNode,
     base: usize,
-) -> GreenNode {
+) -> Option<GreenNode> {
     let mut new_children = Vec::with_capacity(node.children().count());
     let mut pos = base;
     let mut consumed = false;
@@ -577,7 +636,7 @@ fn splice_recursive(
                 GreenChild::Node(inner) => {
                     let s = spliced_opt.take().expect("path-unique splice target");
                     let new_inner =
-                        splice_recursive(inner, splice_old_start, splice_old_end, s, child_start);
+                        splice_recursive(inner, splice_old_start, splice_old_end, s, child_start)?;
                     new_children.push(GreenChild::Node(new_inner));
                     consumed = true;
                 }
@@ -593,5 +652,31 @@ fn splice_recursive(
         pos += len;
     }
 
-    GreenNode::new(node.kind(), new_children)
+    GreenNode::try_new(node.kind(), new_children)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_token_over_u32_max_is_an_error_not_a_panic() {
+        let over = u32::MAX as usize + 1;
+        assert!(token_child(SyntaxKind::PlainScalar, over).is_err());
+        assert!(token_child(SyntaxKind::PlainScalar, u32::MAX as usize).is_ok());
+    }
+
+    #[test]
+    fn a_node_over_u32_max_is_refused() {
+        let big = GreenChild::Token {
+            kind: SyntaxKind::PlainScalar,
+            len: u32::MAX,
+        };
+        let one = GreenChild::Token {
+            kind: SyntaxKind::PlainScalar,
+            len: 1,
+        };
+        assert!(GreenNode::try_new(SyntaxKind::Document, vec![big.clone()]).is_some());
+        assert!(GreenNode::try_new(SyntaxKind::Document, vec![big, one]).is_none());
+    }
 }

@@ -19,7 +19,11 @@
 //! ```
 
 use crate::error::{Error, Result};
-use crate::parser::{Event, ParseConfig, Parser, ScalarStyle};
+use crate::parser::meter::{AliasCost, CostTally, Meter};
+use crate::parser::{
+    Event, InternalDuplicateKeyPolicy, InternalMergeKeyPolicy, ParseConfig, Parser, ScalarStyle,
+    budget,
+};
 use crate::path::{QueryPath, QuerySegment, parse_query_path};
 use crate::prelude::IndexMap;
 use crate::prelude::*;
@@ -603,18 +607,17 @@ pub fn from_str_borrowed_with_config<'a>(
         let event = parser
             .next_event()
             .map_err(|e| Error::parse_at(&*e.message, input, e.index))?;
-        match builder.process(event, input)? {
-            BuilderState::Continue => {}
-            BuilderState::Done => break,
+        if matches!(event, Event::StreamEnd) {
+            break;
         }
+        builder.process(event)?;
     }
 
-    Ok(builder.into_value())
-}
-
-enum BuilderState {
-    Continue,
-    Done,
+    let value = builder.into_value();
+    if !user_config.policies.is_empty() {
+        crate::policy::check_document(&user_config.policies, &value.clone().into_owned())?;
+    }
+    Ok(value)
 }
 
 enum Frame<'a> {
@@ -630,49 +633,33 @@ enum Frame<'a> {
     ),
 }
 
-struct BorrowedBuilder<'a> {
+/// The plain `<<` key that the owned loaders read as a merge.
+const MERGE_KEY: &str = "<<";
+
+struct BorrowedBuilder<'a, 'c> {
     stack: Vec<Frame<'a>>,
     result: Option<BorrowedValue<'a>>,
-    max_depth: usize,
+    config: &'c ParseConfig,
     depth: usize,
-    in_document: bool,
-    /// Anchor → value table. Eager resolution: when an `Alias`
-    /// event arrives we clone the anchored value into the tree.
-    /// String fields are `Cow::Borrowed` so a clone is mostly
-    /// cheap — only sequences and mappings duplicate, and that
-    /// matches the owned-`Value` path's behaviour.
-    anchors: FxHashMap<String, BorrowedValue<'a>>,
-    /// Cumulative count of aliases expanded so far. Capped by
-    /// `max_alias_expansions` to neutralise YAML bomb / billion
-    /// laughs payloads on the borrowed path the same way the
-    /// owned path does.
-    alias_expansions: usize,
-    max_alias_expansions: usize,
-    strict_booleans: bool,
-    legacy_booleans: bool,
-    no_schema: bool,
-    legacy_octal_numbers: bool,
-    legacy_sexagesimal: bool,
-    lossless_u64_integers: bool,
+    /// Anchor → value table, with the measured cost of expanding each.
+    /// Eager resolution: an `Alias` event clones the anchored value into
+    /// the tree (string fields stay `Cow::Borrowed`, so only sequences
+    /// and mappings duplicate), after the cost is charged.
+    anchors: FxHashMap<String, (BorrowedValue<'a>, AliasCost)>,
+    /// The budget meter the owned loaders and the streaming
+    /// deserializer charge, so every limit holds here too.
+    meter: Meter,
 }
 
-impl<'a> BorrowedBuilder<'a> {
-    fn new(config: &ParseConfig) -> Self {
+impl<'a, 'c> BorrowedBuilder<'a, 'c> {
+    fn new(config: &'c ParseConfig) -> Self {
         Self {
             stack: Vec::new(),
             result: None,
-            max_depth: config.max_depth,
+            config,
             depth: 0,
-            in_document: false,
             anchors: FxHashMap::default(),
-            alias_expansions: 0,
-            max_alias_expansions: config.max_alias_expansions,
-            strict_booleans: config.strict_booleans,
-            legacy_booleans: config.legacy_booleans,
-            no_schema: config.no_schema,
-            legacy_octal_numbers: config.legacy_octal_numbers,
-            legacy_sexagesimal: config.legacy_sexagesimal,
-            lossless_u64_integers: config.lossless_u64_integers(),
+            meter: Meter::new(config),
         }
     }
 
@@ -697,21 +684,18 @@ impl<'a> BorrowedBuilder<'a> {
         // well-formed payload, and `BorrowedValue` has no `Tagged`
         // variant for a custom tag to live in — both are recorded in
         // `differential_readers.rs` rather than silently differing.
-        if is_core_string_tag(tag) {
+        if is_core_string_tag(tag) || style != ScalarStyle::Plain {
             return BorrowedValue::String(value);
         }
-        if style != ScalarStyle::Plain {
-            return BorrowedValue::String(value);
-        }
-
+        let c = self.config;
         match crate::streaming::resolve_plain_ext(
             &value,
-            self.strict_booleans,
-            self.legacy_booleans,
-            self.no_schema,
-            self.legacy_octal_numbers,
-            self.legacy_sexagesimal,
-            self.lossless_u64_integers,
+            c.strict_booleans,
+            c.legacy_booleans,
+            c.no_schema,
+            c.legacy_octal_numbers,
+            c.legacy_sexagesimal,
+            c.lossless_u64_integers(),
         ) {
             crate::streaming::Scalar::Null => BorrowedValue::Null,
             crate::streaming::Scalar::Bool(b) => BorrowedValue::Bool(b),
@@ -729,27 +713,60 @@ impl<'a> BorrowedBuilder<'a> {
         }
     }
 
-    fn push_value(&mut self, value: BorrowedValue<'a>) {
-        match self.stack.last_mut() {
-            Some(Frame::Sequence(seq, _)) => seq.push(value),
-            Some(Frame::MappingValue(map, key, _)) => {
-                let k = core::mem::replace(key, Cow::Borrowed(""));
-                let _ = map.insert(k, value);
-                // Transition back to key state
-                let (map, anchor) = match self.stack.pop() {
-                    Some(Frame::MappingValue(m, _, a)) => (m, a),
-                    _ => crate::error::invariant_violated(
-                        "stack frame must be MappingValue immediately after value emit",
-                    ),
-                };
+    /// Place a finished value: into the open sequence or mapping, under
+    /// the same length, key-count and duplicate-key rules the owned
+    /// loaders apply, or as the document's root.
+    fn push_value(&mut self, value: BorrowedValue<'a>) -> Result<()> {
+        match self.stack.pop() {
+            Some(Frame::Sequence(mut seq, anchor)) => {
+                if seq.len() >= self.config.max_sequence_length {
+                    return Err(Error::Budget(crate::BudgetBreach::MaxSequenceLength {
+                        limit: self.config.max_sequence_length,
+                        observed: seq.len() + 1,
+                    }));
+                }
+                seq.push(value);
+                self.stack.push(Frame::Sequence(seq, anchor));
+            }
+            Some(Frame::MappingValue(mut map, key, anchor)) => {
+                self.insert_entry(&mut map, key, value)?;
                 self.stack.push(Frame::MappingKey(map, anchor));
             }
-            Some(Frame::MappingKey(_, _)) => {
-                // This shouldn't happen — keys should transition to MappingValue
+            // A key arrives through `set_key`, never here; keep the frame.
+            Some(frame @ Frame::MappingKey(..)) => self.stack.push(frame),
+            None => self.result = Some(value),
+        }
+        Ok(())
+    }
+
+    fn insert_entry(
+        &self,
+        map: &mut IndexMap<Cow<'a, str>, BorrowedValue<'a>, FxBuildHasher>,
+        key: Cow<'a, str>,
+        value: BorrowedValue<'a>,
+    ) -> Result<()> {
+        if map.len() >= self.config.max_mapping_keys {
+            return Err(Error::Budget(crate::BudgetBreach::MaxMappingKeys {
+                limit: self.config.max_mapping_keys,
+                observed: map.len() + 1,
+            }));
+        }
+        match self.config.duplicate_key_policy {
+            InternalDuplicateKeyPolicy::First if map.contains_key(&key) => {}
+            InternalDuplicateKeyPolicy::Error if map.contains_key(&key) => {
+                return Err(Error::DuplicateKey(key.into_owned()));
             }
-            None => {
-                self.result = Some(value);
+            _ => {
+                let _ = map.insert(key, value);
             }
+        }
+        Ok(())
+    }
+
+    /// Turn the open mapping's key state into its value state.
+    fn set_key(&mut self, key: Cow<'a, str>) {
+        if let Some(Frame::MappingKey(map, anchor)) = self.stack.pop() {
+            self.stack.push(Frame::MappingValue(map, key, anchor));
         }
     }
 
@@ -757,24 +774,19 @@ impl<'a> BorrowedBuilder<'a> {
     /// resolve to a clone of it. No-op when `anchor` is `None`.
     fn record_anchor(&mut self, anchor: Option<String>, value: &BorrowedValue<'a>) {
         if let Some(name) = anchor {
-            let _ = self.anchors.insert(name, value.clone());
+            let cost = borrowed_cost(value);
+            let _ = self.anchors.insert(name, (value.clone(), cost));
         }
     }
 
-    fn process(&mut self, event: Event<'a>, _input: &str) -> Result<BuilderState> {
+    fn process(&mut self, event: Event<'a>) -> Result<()> {
+        self.meter.charge_event(&event, self.config)?;
         match event {
-            Event::StreamStart => Ok(BuilderState::Continue),
-            Event::StreamEnd => Ok(BuilderState::Done),
-            Event::DocumentStart => {
-                self.in_document = true;
-                Ok(BuilderState::Continue)
-            }
             Event::DocumentEnd => {
-                self.in_document = false;
                 // Per YAML spec each document has its own anchor
                 // namespace. Reset between documents to match.
                 self.anchors.clear();
-                Ok(BuilderState::Continue)
+                Ok(())
             }
             Event::Scalar {
                 value,
@@ -782,117 +794,154 @@ impl<'a> BorrowedBuilder<'a> {
                 anchor,
                 tag,
                 ..
-            } => {
-                // Check if this is a mapping key
-                if let Some(Frame::MappingKey(_, _)) = self.stack.last_mut() {
-                    let key = value;
-                    let (map, frame_anchor) = match self.stack.pop() {
-                        Some(Frame::MappingKey(m, a)) => (m, a),
-                        _ => crate::error::invariant_violated(
-                            "stack frame must be MappingKey when consuming a mapping key",
-                        ),
-                    };
-                    self.stack.push(Frame::MappingValue(map, key, frame_anchor));
-                    return Ok(BuilderState::Continue);
-                }
-
-                let resolved = self.resolve_scalar(value, style, tag.as_ref());
-                self.record_anchor(anchor, &resolved);
-                self.push_value(resolved);
-                Ok(BuilderState::Continue)
-            }
+            } => self.on_scalar(value, style, anchor, tag.as_ref()),
             Event::SequenceStart { anchor, .. } => {
-                self.depth += 1;
-                if self.depth > self.max_depth {
-                    return Err(Error::RecursionLimitExceeded { depth: self.depth });
-                }
+                self.open_collection()?;
                 self.stack
                     .push(Frame::Sequence(Vec::with_capacity(4), anchor));
-                Ok(BuilderState::Continue)
-            }
-            Event::SequenceEnd { .. } => {
-                self.depth = self.depth.saturating_sub(1);
-                let (seq, anchor) = match self.stack.pop() {
-                    Some(Frame::Sequence(s, a)) => (s, a),
-                    _ => return Err(Error::Invalid("unexpected sequence end".to_string())),
-                };
-                let value = BorrowedValue::Sequence(seq);
-                self.record_anchor(anchor, &value);
-                self.push_value(value);
-                Ok(BuilderState::Continue)
+                Ok(())
             }
             Event::MappingStart { anchor, .. } => {
-                self.depth += 1;
-                if self.depth > self.max_depth {
-                    return Err(Error::RecursionLimitExceeded { depth: self.depth });
-                }
+                self.open_collection()?;
                 self.stack.push(Frame::MappingKey(
                     IndexMap::with_capacity_and_hasher(4, FxBuildHasher),
                     anchor,
                 ));
-                Ok(BuilderState::Continue)
+                Ok(())
             }
-            Event::MappingEnd { .. } => {
-                self.depth = self.depth.saturating_sub(1);
-                let (map, anchor) = match self.stack.pop() {
-                    Some(Frame::MappingKey(m, a)) => (m, a),
-                    Some(Frame::MappingValue(m, _, a)) => (m, a),
-                    _ => return Err(Error::Invalid("unexpected mapping end".to_string())),
-                };
-                let value = BorrowedValue::Mapping(map);
-                self.record_anchor(anchor, &value);
-                self.push_value(value);
-                Ok(BuilderState::Continue)
+            Event::SequenceEnd { .. } | Event::MappingEnd { .. } => self.close_collection(),
+            Event::Alias { anchor, .. } => self.on_alias(&anchor),
+            Event::StreamStart | Event::StreamEnd | Event::DocumentStart => Ok(()),
+        }
+    }
+
+    fn on_scalar(
+        &mut self,
+        value: Cow<'a, str>,
+        style: ScalarStyle,
+        anchor: Option<String>,
+        tag: Option<&(String, String)>,
+    ) -> Result<()> {
+        if let Some(Frame::MappingKey(..)) = self.stack.last() {
+            if style == ScalarStyle::Plain && value == MERGE_KEY {
+                self.charge_merge_key()?;
             }
-            Event::Alias { anchor, .. } => {
-                // Bound expansion to neutralise YAML bombs the same
-                // way the owned path does.
-                self.alias_expansions += 1;
-                if self.alias_expansions > self.max_alias_expansions {
-                    return Err(Error::Parse(format!(
-                        "alias expansions exceeded limit of {}",
-                        self.max_alias_expansions
-                    )));
+            self.set_key(value);
+            return Ok(());
+        }
+        let resolved = self.resolve_scalar(value, style, tag);
+        self.record_anchor(anchor, &resolved);
+        self.push_value(resolved)
+    }
+
+    /// A plain `<<` key is a merge on the owned paths; the borrowed tree
+    /// keeps it as an ordinary key, but it is charged and refused there
+    /// exactly as the owned loaders do so the budget means one thing.
+    fn charge_merge_key(&mut self) -> Result<()> {
+        match self.config.merge_key_policy {
+            InternalMergeKeyPolicy::AsOrdinary => Ok(()),
+            InternalMergeKeyPolicy::Error => Err(Error::Custom(
+                "merge key `<<` rejected by MergeKeyPolicy::Error".to_owned(),
+            )),
+            InternalMergeKeyPolicy::Auto => self.meter.charge_merge_key(self.config),
+        }
+    }
+
+    fn open_collection(&mut self) -> Result<()> {
+        self.depth += 1;
+        if budget::depth_exceeded(self.depth, self.config.max_depth) {
+            return Err(Error::RecursionLimitExceeded { depth: self.depth });
+        }
+        Ok(())
+    }
+
+    fn close_collection(&mut self) -> Result<()> {
+        self.depth = self.depth.saturating_sub(1);
+        let (value, anchor) = match self.stack.pop() {
+            Some(Frame::Sequence(s, a)) => (BorrowedValue::Sequence(s), a),
+            Some(Frame::MappingKey(m, a) | Frame::MappingValue(m, _, a)) => {
+                (BorrowedValue::Mapping(m), a)
+            }
+            None => return Err(Error::Invalid("unexpected collection end".to_string())),
+        };
+        self.record_anchor(anchor, &value);
+        self.push_value(value)
+    }
+
+    fn on_alias(&mut self, anchor: &str) -> Result<()> {
+        self.meter.charge_alias(self.config)?;
+        let (referent, cost) = self
+            .anchors
+            .get(anchor)
+            .ok_or_else(|| Error::Parse(format!("unknown anchor: '{anchor}'")))?;
+        self.meter.charge_expansion(cost, self.depth, self.config)?;
+        let referent = referent.clone();
+        // Special-case: alias used as a mapping key. We need the
+        // alias's resolved value to be a string for it to function as
+        // one, mirroring how YAML 1.2 treats key aliases on the owned
+        // path.
+        if let Some(Frame::MappingKey(..)) = self.stack.last() {
+            let key = alias_key(referent)?;
+            self.set_key(key);
+            return Ok(());
+        }
+        self.push_value(referent)
+    }
+}
+
+/// The key an alias stands for when it is used as a mapping key. A
+/// scalar renders as its text, matching the owned path's mapping-key
+/// coercion; a collection cannot be a key here.
+fn alias_key(referent: BorrowedValue<'_>) -> Result<Cow<'_, str>> {
+    match referent {
+        BorrowedValue::String(s) => Ok(s),
+        BorrowedValue::Bool(b) => Ok(Cow::Owned(b.to_string())),
+        BorrowedValue::Number(n) => Ok(Cow::Owned(n.to_string())),
+        BorrowedValue::Null => Ok(Cow::Borrowed("null")),
+        BorrowedValue::Sequence(_) | BorrowedValue::Mapping(_) => Err(Error::Invalid(
+            "alias resolved to a non-scalar cannot be used as a mapping key".to_string(),
+        )),
+    }
+}
+
+/// The expansion cost of an anchored borrowed value, by the estimator
+/// the owned loaders use. Walks without recursion.
+fn borrowed_cost(root: &BorrowedValue<'_>) -> AliasCost {
+    enum Step<'v, 'a> {
+        Visit(&'v BorrowedValue<'a>),
+        Close,
+    }
+    let mut tally = CostTally::default();
+    let mut pending = vec![Step::Visit(root)];
+    while let Some(step) = pending.pop() {
+        let value = match step {
+            Step::Visit(value) => value,
+            Step::Close => {
+                tally.close();
+                continue;
+            }
+        };
+        match value {
+            BorrowedValue::String(s) => tally.scalar(s.len()),
+            BorrowedValue::Sequence(items) => {
+                tally.open();
+                pending.push(Step::Close);
+                pending.extend(items.iter().map(Step::Visit));
+            }
+            BorrowedValue::Mapping(map) => {
+                tally.open();
+                pending.push(Step::Close);
+                for (key, item) in map {
+                    tally.scalar(key.len());
+                    pending.push(Step::Visit(item));
                 }
-                let referent = self
-                    .anchors
-                    .get(&anchor)
-                    .cloned()
-                    .ok_or_else(|| Error::Parse(format!("unknown anchor: '{anchor}'")))?;
-                // Special-case: alias used as a mapping key. We need
-                // the alias's resolved value to be a string for it to
-                // function as one, mirroring how YAML 1.2 treats key
-                // aliases on the owned path.
-                if let Some(Frame::MappingKey(_, _)) = self.stack.last_mut() {
-                    let key = match referent {
-                        BorrowedValue::String(s) => s,
-                        // For any other shape, fall back to a debug
-                        // rendering — matches the owned path's
-                        // mapping-key coercion behaviour.
-                        BorrowedValue::Bool(b) => Cow::Owned(b.to_string()),
-                        BorrowedValue::Number(n) => Cow::Owned(n.to_string()),
-                        BorrowedValue::Null => Cow::Borrowed("null"),
-                        BorrowedValue::Sequence(_) | BorrowedValue::Mapping(_) => {
-                            return Err(Error::Invalid(
-                                "alias resolved to a non-scalar cannot be used as a mapping key"
-                                    .to_string(),
-                            ));
-                        }
-                    };
-                    let (map, frame_anchor) = match self.stack.pop() {
-                        Some(Frame::MappingKey(m, a)) => (m, a),
-                        _ => crate::error::invariant_violated(
-                            "stack frame must be MappingKey when consuming an alias key",
-                        ),
-                    };
-                    self.stack.push(Frame::MappingValue(map, key, frame_anchor));
-                    return Ok(BuilderState::Continue);
-                }
-                self.push_value(referent);
-                Ok(BuilderState::Continue)
+            }
+            BorrowedValue::Null | BorrowedValue::Bool(_) | BorrowedValue::Number(_) => {
+                tally.scalar(0);
             }
         }
     }
+    tally.finish()
 }
 
 /// Whether `tag` is YAML's core-schema string tag, in any of its

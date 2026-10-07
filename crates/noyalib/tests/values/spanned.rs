@@ -57,3 +57,52 @@ fn test_spanned_in_struct() {
     assert_eq!(parsed.name.value, "myapp");
     assert_eq!(parsed.port.value, 8080);
 }
+
+/// Many `Spanned` values in one large document: each location lookup
+/// must not rescan the source from byte 0.
+fn many_spanned_doc(items: usize) -> String {
+    (0..items).map(|i| format!("- {i}\n")).collect()
+}
+
+#[test]
+fn spanned_locations_stay_linear_on_large_documents() {
+    let yaml = many_spanned_doc(40_000);
+    let start = std::time::Instant::now();
+    let items: Vec<Spanned<u32>> = from_str(&yaml).unwrap();
+    let elapsed = start.elapsed();
+    eprintln!("40,000 spanned values in {elapsed:?}");
+    assert_eq!(items.len(), 40_000);
+    let last = &items[39_999];
+    assert_eq!(last.start.line(), 40_000);
+    assert_eq!(last.start.column(), 3);
+    assert_eq!(
+        last.start,
+        noyalib::Location::from_index(&yaml, last.start.index())
+    );
+    assert!(
+        elapsed < std::time::Duration::from_secs(20),
+        "40,000 spanned values took {elapsed:?}"
+    );
+}
+
+#[test]
+fn spanned_locations_on_one_long_line() {
+    let yaml = format!(
+        "[{}]",
+        (0..3_000)
+            .map(|i| format!("é{i}"))
+            .collect::<Vec<_>>()
+            .join(", ")
+    );
+    let items: Vec<Spanned<String>> = from_str(&yaml).unwrap();
+    for item in [&items[0], &items[1_499], &items[2_999]] {
+        assert_eq!(
+            item.start,
+            noyalib::Location::from_index(&yaml, item.start.index())
+        );
+        assert_eq!(
+            item.end,
+            noyalib::Location::from_index(&yaml, item.end.index())
+        );
+    }
+}

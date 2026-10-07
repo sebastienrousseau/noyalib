@@ -338,3 +338,65 @@ mod shim_errors {
         assert!(err.location().is_some());
     }
 }
+
+// ── from_str_multi parses under the shim's profile ─────────────────
+//
+// `compat::serde_yaml::from_str_multi` went through `load_all_as`,
+// which parses under noyalib's defaults, so the same document read
+// differently through `from_str` and `from_str_multi` and the
+// serde_yaml repetition budget did not apply to streams.
+
+#[test]
+fn from_str_multi_resolves_scalars_like_from_str() {
+    use noyalib::compat::serde_yaml as syml;
+    let one: Value = syml::from_str("a: 0123\n").unwrap();
+    let many: Vec<Value> = syml::from_str_multi("a: 0123\n---\nb: 1\n").unwrap();
+    assert_eq!(one["a"].as_str(), Some("0123"));
+    assert_eq!(
+        many[0], one,
+        "the first document reads as from_str reads it"
+    );
+}
+
+#[test]
+fn from_str_multi_keeps_merge_keys_literal_like_from_str() {
+    use noyalib::compat::serde_yaml as syml;
+    let doc = "base: &b {x: 1}\nm:\n  <<: *b\n";
+    let one: Value = syml::from_str(doc).unwrap();
+    let many: Vec<Value> = syml::from_str_multi(doc).unwrap();
+    assert!(one["m"].get("<<").is_some());
+    assert_eq!(many[0], one);
+}
+
+#[test]
+fn from_str_multi_applies_the_repetition_budget() {
+    use noyalib::compat::serde_yaml as syml;
+    let err = syml::from_str_multi::<Value>(ALIAS_BOMB).unwrap_err();
+    assert_eq!(err.to_string(), "repetition limit exceeded");
+}
+
+// ── duplicate keys ─────────────────────────────────────────────────
+//
+// serde_yaml 0.9.34 refuses a duplicate key when the target is its
+// `Value` (`duplicate entry with key "role"`) and lets a map target
+// keep the last entry; the 18-case contract pins the second.
+
+#[test]
+fn a_value_target_refuses_duplicate_keys_like_serde_yaml() {
+    use noyalib::compat::serde_yaml as syml;
+    let yaml = "role: user\nrole: admin\n";
+    let err = syml::from_str::<Value>(yaml).unwrap_err();
+    assert_eq!(err.to_string(), "duplicate entry with key \"role\"");
+    let err = syml::from_str_multi::<Value>(yaml).unwrap_err();
+    assert_eq!(err.to_string(), "duplicate entry with key \"role\"");
+}
+
+#[test]
+fn a_map_target_keeps_the_last_duplicate_like_serde_yaml() {
+    use noyalib::compat::serde_yaml as syml;
+    let yaml = "role: user\nrole: admin\n";
+    let m: std::collections::HashMap<String, String> = syml::from_str(yaml).unwrap();
+    assert_eq!(m["role"], "admin");
+    let j: serde_json::Value = syml::from_str(yaml).unwrap();
+    assert_eq!(j["role"], "admin");
+}

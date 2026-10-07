@@ -477,6 +477,10 @@ pub struct ParserConfig {
     #[cfg(feature = "include")]
     #[cfg_attr(docsrs, doc(cfg(feature = "include")))]
     pub max_total_include_bytes: usize,
+    /// Stream-wide budget counters, attached by the multi-document entry
+    /// points that parse each document separately so the stream-wide
+    /// budgets keep their meaning. Never set by callers.
+    pub(crate) stream_tally: Option<Arc<crate::parser::meter::StreamTally>>,
 }
 
 impl Default for ParserConfig {
@@ -528,6 +532,7 @@ impl Default for ParserConfig {
             max_include_sources: limits.max_include_sources,
             #[cfg(feature = "include")]
             max_total_include_bytes: limits.max_total_include_bytes,
+            stream_tally: None,
         }
     }
 }

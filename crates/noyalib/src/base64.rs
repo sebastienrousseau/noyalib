@@ -9,6 +9,11 @@
 //! under a mapping key, so the decoder has to skip those interior
 //! spaces / tabs / newlines before it builds the byte stream.
 //!
+//! Decoding is canonical (RFC 4648 §3.5): the bits a padded final
+//! quartet does not use must be zero. Otherwise `QQ==` and `QR==` would
+//! both decode to `A`, and two different scalars would carry the same
+//! value, which matters to anything that compares or signs the text.
+//!
 //! We hand-roll a minimal codec here rather than pulling the
 //! `base64` crate as a runtime dep — the surface we need is small,
 //! the spec is fixed, and avoiding a new transitive dep keeps the
@@ -73,12 +78,20 @@ pub(crate) fn decode(input: &str) -> Result<Vec<u8>, &'static str> {
                 out.push(((v >> 8) & 0xff) as u8);
                 out.push((v & 0xff) as u8);
             }
-            // Final quartet with one byte of payload (`Xx==`).
+            // Final quartet with one byte of payload (`Xx==`); the low
+            // four bits of `x` are padding and must be zero.
             (-2, -2) if i + 4 == buf.len() => {
+                if q1 & 0x0f != 0 {
+                    return Err("non-canonical base64: padding bits are not zero");
+                }
                 out.push(((b0 >> 16) & 0xff) as u8);
             }
-            // Final quartet with two bytes of payload (`XYZ=`).
+            // Final quartet with two bytes of payload (`XYZ=`); the low
+            // two bits of `Z` are padding and must be zero.
             (q2, -2) if q2 >= 0 && i + 4 == buf.len() => {
+                if q2 & 0x03 != 0 {
+                    return Err("non-canonical base64: padding bits are not zero");
+                }
                 let v = b0 | ((q2 as u32) << 6);
                 out.push(((v >> 16) & 0xff) as u8);
                 out.push(((v >> 8) & 0xff) as u8);

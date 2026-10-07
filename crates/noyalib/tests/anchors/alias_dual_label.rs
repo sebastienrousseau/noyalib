@@ -205,3 +205,42 @@ mod miette_render {
         );
     }
 }
+
+/// Many long anchors and an unknown long alias: the "did you mean"
+/// search must not run a full edit distance against every anchor.
+fn many_long_anchors() -> String {
+    let long = "a".repeat(1_000);
+    let mut doc = String::new();
+    for i in 0..1_000 {
+        doc.push_str(&format!("k{i}: &{long}{i} v\n"));
+    }
+    doc.push_str(&format!("x: *{long}zz\n"));
+    doc
+}
+
+#[test]
+fn unknown_alias_suggestion_cost_is_bounded_on_every_loader() {
+    let doc = many_long_anchors();
+    let start = std::time::Instant::now();
+    let value = from_str::<Value>(&doc);
+    let typed = from_str::<std::collections::BTreeMap<String, String>>(&doc);
+    let elapsed = start.elapsed();
+    for err in [value.unwrap_err(), typed.unwrap_err()] {
+        assert!(err.to_string().contains("zz"), "{err}");
+    }
+    assert!(
+        elapsed < std::time::Duration::from_secs(10),
+        "unknown-alias suggestions took {elapsed:?}"
+    );
+}
+
+#[test]
+fn unknown_alias_suggestion_still_finds_near_misses() {
+    let doc = "base: &server_config 1\nx: *server_confg\n";
+    for err in [
+        from_str::<Value>(doc).unwrap_err(),
+        from_str::<std::collections::BTreeMap<String, u32>>(doc).unwrap_err(),
+    ] {
+        assert!(err.to_string().contains("server_config"), "{err}");
+    }
+}
