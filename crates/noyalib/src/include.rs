@@ -58,6 +58,13 @@ pub struct IncludeRequest<'a> {
     /// nested include, …). Resolvers can refuse to resolve
     /// beyond a certain depth or use this for diagnostics.
     pub depth: usize,
+    /// The most bytes this source may hold: the smaller of
+    /// [`crate::ParserConfig::max_document_length`] and what remains
+    /// of [`crate::ParserConfig::max_total_include_bytes`]. The loader
+    /// refuses a longer source after the resolver returns, so a
+    /// resolver should stop reading one byte past this limit (as
+    /// [`SafeFileResolver`] does) rather than buffer the whole input.
+    pub max_bytes: usize,
 }
 
 /// What a resolver returns: the YAML text plus a stable

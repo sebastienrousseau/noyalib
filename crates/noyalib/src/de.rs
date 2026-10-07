@@ -783,28 +783,21 @@ type IncludeVisited = FxHashSet<String>;
 #[cfg(feature = "include")]
 fn apply_includes(value: &mut Value, config: &ParserConfig) -> Result<()> {
     if let Some(resolver) = config.include_resolver.as_ref() {
-        let parse_config = parser::ParseConfig::from(config);
-        // Prelude set, not `std::collections`: `include` without `std`
-        // is a valid combination (the resolver trait is `no_std`; only
-        // `include_fs` implies `std`).
-        let mut visited: IncludeVisited = IncludeVisited::default();
-        let mut next_id: usize = 1;
-        let mut include_sources = 0usize;
-        let mut include_bytes = 0usize;
-        resolve_includes_recursive(
-            value,
+        let mut walk = IncludeWalk {
             resolver,
-            &parse_config,
-            config.max_include_depth,
-            0,
-            0,
-            &mut visited,
-            &mut next_id,
-            config.max_include_sources,
-            config.max_total_include_bytes,
-            &mut include_sources,
-            &mut include_bytes,
-        )?;
+            parse_config: parser::ParseConfig::from(config),
+            max_include_depth: config.max_include_depth,
+            max_include_sources: config.max_include_sources,
+            max_total_include_bytes: config.max_total_include_bytes,
+            // Prelude set, not `std::collections`: `include` without
+            // `std` is a valid combination (the resolver trait is
+            // `no_std`; only `include_fs` implies `std`).
+            visited: IncludeVisited::default(),
+            next_id: 1,
+            sources: 0,
+            bytes: 0,
+        };
+        walk.walk(value, IncludeAt::default())?;
         enforce_expanded_node_budget(value, config.max_nodes)?;
     }
     Ok(())
@@ -859,169 +852,148 @@ fn apply_includes(_value: &mut Value, _config: &ParserConfig) -> Result<()> {
     Ok(())
 }
 
+/// Where the include walk is: how many includes deep, which source,
+/// and how many collections enclose the current node in the final,
+/// substituted tree.
 #[cfg(feature = "include")]
-#[allow(clippy::too_many_arguments)]
-fn resolve_includes_recursive(
-    value: &mut Value,
-    resolver: &crate::include::IncludeResolver,
-    parse_config: &parser::ParseConfig,
-    max_depth: usize,
-    depth: usize,
+#[derive(Debug, Clone, Copy, Default)]
+struct IncludeAt {
+    include_depth: usize,
     from_id: usize,
-    visited: &mut IncludeVisited,
-    next_id: &mut usize,
+    tree_depth: usize,
+}
+
+/// State of one `!include` resolution pass. Every budget is charged
+/// here, once per source, so no path through the walk can skip one.
+#[cfg(feature = "include")]
+struct IncludeWalk<'a> {
+    resolver: &'a crate::include::IncludeResolver,
+    parse_config: parser::ParseConfig,
+    max_include_depth: usize,
     max_include_sources: usize,
     max_total_include_bytes: usize,
-    include_sources: &mut usize,
-    include_bytes: &mut usize,
-) -> Result<()> {
-    if depth > max_depth {
-        return Err(Error::RecursionLimitExceeded { depth });
+    visited: IncludeVisited,
+    next_id: usize,
+    sources: usize,
+    bytes: usize,
+}
+
+#[cfg(feature = "include")]
+impl IncludeWalk<'_> {
+    /// Replace every `!include` node under `value`. Recursion follows
+    /// the final tree's nesting, which `load` keeps within the parser's
+    /// `max_depth`, so the walk's own stack use is bounded too.
+    fn walk(&mut self, value: &mut Value, at: IncludeAt) -> Result<()> {
+        if let Value::Tagged(tagged) = value {
+            if tagged.tag().as_str() == "!include" {
+                let spec = tagged.value().as_str().map(str::to_owned).ok_or_else(|| {
+                    Error::Custom("!include directive expects a scalar string spec".into())
+                })?;
+                *value = self.load(&spec, at)?;
+                return Ok(());
+            }
+        }
+        let inner = IncludeAt {
+            tree_depth: at.tree_depth + 1,
+            ..at
+        };
+        match value {
+            Value::Tagged(tagged) => self.walk(tagged.value_mut(), at),
+            Value::Sequence(seq) => seq.iter_mut().try_for_each(|v| self.walk(v, inner)),
+            Value::Mapping(map) => map.values_mut().try_for_each(|v| self.walk(v, inner)),
+            Value::Null | Value::Bool(_) | Value::Number(_) | Value::String(_) => Ok(()),
+        }
     }
-    match value {
-        Value::Tagged(boxed) => {
-            if boxed.tag().as_str() == "!include" {
-                let spec = match boxed.value().as_str() {
-                    Some(s) => s.to_string(),
-                    None => {
-                        return Err(Error::Custom(
-                            "!include directive expects a scalar string spec".into(),
-                        ));
-                    }
-                };
-                let (path, fragment) = crate::include::split_fragment(&spec);
-                let req = crate::include::IncludeRequest {
-                    spec: &spec,
-                    from_id,
-                    depth,
-                };
-                let source = resolver.resolve(req)?;
-                *include_sources = include_sources.saturating_add(1);
-                if *include_sources > max_include_sources {
-                    return Err(Error::Budget(crate::BudgetBreach::MaxIncludeSources {
-                        limit: max_include_sources,
-                        observed: *include_sources,
-                    }));
-                }
-                *include_bytes = include_bytes.saturating_add(source.bytes.len());
-                if *include_bytes > max_total_include_bytes {
-                    return Err(Error::Budget(crate::BudgetBreach::MaxIncludeBytes {
-                        limit: max_total_include_bytes,
-                        observed: *include_bytes,
-                    }));
-                }
-                let identity = source.name.clone();
-                if !visited.insert(identity.clone()) {
-                    return Err(Error::Custom(format!(
-                        "!include cycle detected: canonical source `{identity}` is already in the resolution chain"
-                    )));
-                }
-                let id = *next_id;
-                *next_id += 1;
-                // `parse_exactly_one_value`, not the `std`-only
-                // unchecked `parse_one_value`: available on every
-                // target, and a multi-document include is rejected
-                // instead of silently truncated to its first document
-                // — the same single-document policy `from_str` follows
-                // (#351).
-                let mut included = parser::parse_exactly_one_value(&source.bytes, parse_config)?;
-                // Recurse into the included document's own
-                // `!include` nodes — depth + 1.
-                resolve_includes_recursive(
-                    &mut included,
-                    resolver,
-                    parse_config,
-                    max_depth,
-                    depth + 1,
-                    id,
-                    visited,
-                    next_id,
-                    max_include_sources,
-                    max_total_include_bytes,
-                    include_sources,
-                    include_bytes,
-                )?;
-                // Fragment selection: if `spec` was `foo.yaml#anchor`,
-                // narrow to the named anchor inside the included
-                // document. Fragments resolve against mapping keys
-                // (the conventional YAML "anchor-as-key" pattern);
-                // see `examples/include_directive.rs`.
-                if let Some(frag) = fragment {
-                    if let Some(map) = included.as_mapping() {
-                        match map.get(frag) {
-                            Some(v) => *value = v.clone(),
-                            None => {
-                                return Err(Error::Custom(format!(
-                                    "!include fragment `#{frag}` not found in `{path}`"
-                                )));
-                            }
-                        }
-                    } else {
-                        return Err(Error::Custom(format!(
-                            "!include fragment `#{frag}` requires a mapping-shaped \
-                             included document; `{path}` is not a mapping"
-                        )));
-                    }
-                } else {
-                    *value = included;
-                }
-                let _ = visited.remove(&identity);
-            } else {
-                resolve_includes_recursive(
-                    boxed.value_mut(),
-                    resolver,
-                    parse_config,
-                    max_depth,
-                    depth,
-                    from_id,
-                    visited,
-                    next_id,
-                    max_include_sources,
-                    max_total_include_bytes,
-                    include_sources,
-                    include_bytes,
-                )?;
-            }
+
+    /// Resolve, charge and parse one include, then resolve the
+    /// includes inside it.
+    fn load(&mut self, spec: &str, at: IncludeAt) -> Result<Value> {
+        let include_depth = at.include_depth + 1;
+        if include_depth > self.max_include_depth {
+            return Err(Error::RecursionLimitExceeded {
+                depth: include_depth,
+            });
         }
-        Value::Sequence(seq) => {
-            for v in seq {
-                resolve_includes_recursive(
-                    v,
-                    resolver,
-                    parse_config,
-                    max_depth,
-                    depth,
-                    from_id,
-                    visited,
-                    next_id,
-                    max_include_sources,
-                    max_total_include_bytes,
-                    include_sources,
-                    include_bytes,
-                )?;
-            }
+        let remaining = self.max_total_include_bytes.saturating_sub(self.bytes);
+        let req = crate::include::IncludeRequest {
+            spec,
+            from_id: at.from_id,
+            depth: at.include_depth,
+            max_bytes: remaining.min(self.parse_config.max_document_length),
+        };
+        let source = self.resolver.resolve(req)?;
+        self.charge(&source)?;
+        let identity = source.name;
+        if !self.visited.insert(identity.clone()) {
+            return Err(Error::Custom(format!(
+                "!include cycle detected: canonical source `{identity}` is already in the resolution chain"
+            )));
         }
-        Value::Mapping(map) => {
-            for v in map.values_mut() {
-                resolve_includes_recursive(
-                    v,
-                    resolver,
-                    parse_config,
-                    max_depth,
-                    depth,
-                    from_id,
-                    visited,
-                    next_id,
-                    max_include_sources,
-                    max_total_include_bytes,
-                    include_sources,
-                    include_bytes,
-                )?;
-            }
-        }
-        Value::Null | Value::Bool(_) | Value::Number(_) | Value::String(_) => {}
+        let id = self.next_id;
+        self.next_id += 1;
+        // The included root takes the place of the `!include` node, so
+        // only the nesting left under the including document's position
+        // is available to it. `parse_exactly_one_value` rejects a
+        // multi-document include instead of truncating it (#351).
+        let mut source_config = self.parse_config.clone();
+        source_config.max_depth = source_config.max_depth.saturating_sub(at.tree_depth);
+        let mut included = parser::parse_exactly_one_value(&source.bytes, &source_config)?;
+        let nested = IncludeAt {
+            include_depth,
+            from_id: id,
+            tree_depth: at.tree_depth,
+        };
+        self.walk(&mut included, nested)?;
+        let _ = self.visited.remove(&identity);
+        select_include_fragment(included, spec)
     }
-    Ok(())
+
+    /// Charge one resolved source against the source-count, total-byte
+    /// and per-document length budgets.
+    fn charge(&mut self, source: &crate::include::InputSource) -> Result<()> {
+        self.sources = self.sources.saturating_add(1);
+        if self.sources > self.max_include_sources {
+            return Err(Error::Budget(crate::BudgetBreach::MaxIncludeSources {
+                limit: self.max_include_sources,
+                observed: self.sources,
+            }));
+        }
+        self.bytes = self.bytes.saturating_add(source.bytes.len());
+        if self.bytes > self.max_total_include_bytes {
+            return Err(Error::Budget(crate::BudgetBreach::MaxIncludeBytes {
+                limit: self.max_total_include_bytes,
+                observed: self.bytes,
+            }));
+        }
+        let max_len = self.parse_config.max_document_length;
+        if source.bytes.len() > max_len {
+            return Err(Error::Parse(format!(
+                "included document `{}` exceeds maximum length of {max_len} bytes",
+                source.name
+            )));
+        }
+        Ok(())
+    }
+}
+
+/// Narrow an included document to its `#fragment` key, when the spec
+/// names one. Fragments resolve against mapping keys (the conventional
+/// YAML "anchor-as-key" pattern); see `examples/include_directive.rs`.
+#[cfg(feature = "include")]
+fn select_include_fragment(included: Value, spec: &str) -> Result<Value> {
+    let (path, fragment) = crate::include::split_fragment(spec);
+    let Some(frag) = fragment else {
+        return Ok(included);
+    };
+    let Some(map) = included.as_mapping() else {
+        return Err(Error::Custom(format!(
+            "!include fragment `#{frag}` requires a mapping-shaped \
+             included document; `{path}` is not a mapping"
+        )));
+    };
+    map.get(frag)
+        .cloned()
+        .ok_or_else(|| Error::Custom(format!("!include fragment `#{frag}` not found in `{path}`")))
 }
 
 /// Deserialize YAML from a byte slice.

@@ -27,6 +27,22 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   against a 1 MiB instance used to build a 1 GB error string. Schemas
   over 100,000 nodes or 128 levels of nesting are refused before
   compiling. All four limits are configurable on the builder.
+- `!include` resolution charges nesting depth across include levels:
+  an included document only gets the `max_depth` left at the position
+  of its `!include`. Each level used to get the full budget, so 24
+  levels of 120-deep documents built a 2,880-deep tree and overflowed
+  the stack. Each included source is also held to
+  `max_document_length`.
+- `SafeFileResolver` reads only regular files and stops one byte past
+  the remaining include budget. A FIFO under the root used to block the
+  parse forever, and an oversized file was read whole before the byte
+  budget applied. Its error messages and source names give paths
+  relative to the root instead of absolute host paths.
+
+### Added
+
+- `IncludeRequest::max_bytes`: the most bytes the loader will accept
+  for the requested source, so custom resolvers can stop reading early.
 
 ## [v0.0.54] - 2026-10-07
 
