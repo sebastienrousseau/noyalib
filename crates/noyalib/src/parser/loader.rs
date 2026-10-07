@@ -58,6 +58,9 @@ pub struct ParseConfig {
     /// registered tag's scalar as if untagged (matching the streaming path)
     /// instead of producing a [`Value::Tagged`].
     pub tag_registry: Option<Arc<crate::TagRegistry>>,
+    /// Stream-wide budget counters shared with the other documents of
+    /// the same stream; see [`crate::parser::meter::StreamTally`].
+    pub(crate) stream_tally: Option<Arc<crate::parser::meter::StreamTally>>,
 }
 
 impl Default for ParseConfig {
@@ -93,6 +96,7 @@ impl Default for ParseConfig {
             plain_scalar_strings: false,
             policies: Vec::new(),
             tag_registry: None,
+            stream_tally: None,
         }
     }
 }
@@ -151,6 +155,7 @@ impl From<&crate::de::ParserConfig> for ParseConfig {
             plain_scalar_strings: c.plain_scalar_strings,
             policies: c.policies.clone(),
             tag_registry: c.tag_registry.clone(),
+            stream_tally: c.stream_tally.clone(),
         }
     }
 }
@@ -451,7 +456,7 @@ impl<'a> Loader<'a> {
             anchor_map: IndexMap::with_capacity(4),
             anchor_def_spans: IndexMap::with_capacity(4),
             earlier_anchor_defs: IndexMap::new(),
-            meter: Meter::default(),
+            meter: Meter::new(config),
             config,
             depth: 0,
             in_document: false,
@@ -1088,7 +1093,7 @@ impl<'a> NoSpanLoader<'a> {
             anchor_map: IndexMap::default(),
             anchor_def_spans: IndexMap::default(),
             earlier_anchor_defs: IndexMap::default(),
-            meter: Meter::default(),
+            meter: Meter::new(config),
             config,
             depth: 0,
             in_document: false,

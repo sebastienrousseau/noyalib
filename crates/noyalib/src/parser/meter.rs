@@ -20,6 +20,7 @@ use crate::error::{BudgetBreach, Error, Result};
 use crate::parser::{Event, ParseConfig, budget};
 use crate::prelude::*;
 use crate::value::Value;
+use core::sync::atomic::{AtomicUsize, Ordering};
 
 /// Bytes charged for each node an alias expansion materialises.
 ///
@@ -128,6 +129,47 @@ impl CostTally {
     }
 }
 
+/// Stream-wide counters shared by the per-document parses of one
+/// multi-document stream.
+///
+/// A single loader charges `max_events`, `max_nodes`,
+/// `max_total_scalar_bytes`, `max_merge_keys` and `max_documents` across
+/// the whole stream. The entry points that split a stream and parse each
+/// document separately (`parallel`, `recovery`, the Tokio readers) give
+/// every document a fresh [`Meter`], which on its own would reset those
+/// budgets per document; sharing one tally between them keeps the
+/// stream-wide meaning. Atomic, because `parallel` parses documents on
+/// several threads at once.
+#[derive(Debug, Default)]
+pub(crate) struct StreamTally {
+    events: AtomicUsize,
+    nodes: AtomicUsize,
+    scalar_bytes: AtomicUsize,
+    merge_keys: AtomicUsize,
+    documents: AtomicUsize,
+}
+
+impl StreamTally {
+    /// `config` with a fresh tally attached, for the per-document parses
+    /// of one stream.
+    #[cfg(any(feature = "parallel", feature = "recovery", feature = "tokio"))]
+    #[must_use]
+    pub(crate) fn share(config: &crate::ParserConfig) -> crate::ParserConfig {
+        let mut shared = config.clone();
+        shared.stream_tally = Some(Arc::new(Self::default()));
+        shared
+    }
+}
+
+/// Add `by` to a counter and return the total to compare with the limit:
+/// the stream-wide total when a tally is shared, the local one otherwise.
+fn tally(local: &mut usize, shared: Option<&AtomicUsize>, by: usize) -> usize {
+    *local = local.saturating_add(by);
+    shared.map_or(*local, |s| {
+        s.fetch_add(by, Ordering::Relaxed).saturating_add(by)
+    })
+}
+
 /// Running counters for one parse, charged in one fixed order.
 #[derive(Debug, Default)]
 pub(crate) struct Meter {
@@ -140,9 +182,21 @@ pub(crate) struct Meter {
     alias_bytes: usize,
     jump_charge: usize,
     merge_keys: usize,
+    /// The stream this parse is one document of, if any.
+    shared: Option<Arc<StreamTally>>,
 }
 
 impl Meter {
+    /// A meter for one parse under `config`, joined to the stream's
+    /// shared tally when the caller attached one.
+    #[must_use]
+    pub(crate) fn new(config: &ParseConfig) -> Self {
+        Self {
+            shared: config.stream_tally.clone(),
+            ..Self::default()
+        }
+    }
+
     /// Run the event policies and charge the per-event budgets: events,
     /// nodes, scalar bytes and anchors, then the document count when a
     /// document starts. Alias and merge counters are per document and
@@ -151,11 +205,11 @@ impl Meter {
         if !config.policies.is_empty() {
             run_event_policies(event, &config.policies)?;
         }
-        self.events = self.events.saturating_add(1);
-        if self.events > config.max_events {
+        let events = tally(&mut self.events, self.shared.as_ref().map(|t| &t.events), 1);
+        if events > config.max_events {
             return Err(Error::Budget(BudgetBreach::MaxEvents {
                 limit: config.max_events,
-                observed: self.events,
+                observed: events,
             }));
         }
         match event {
@@ -172,11 +226,11 @@ impl Meter {
     }
 
     fn charge_node(&mut self, anchored: bool, config: &ParseConfig) -> Result<()> {
-        self.nodes = self.nodes.saturating_add(1);
-        if budget::nodes_exceeded(self.nodes, config.max_nodes) {
+        let nodes = tally(&mut self.nodes, self.shared.as_ref().map(|t| &t.nodes), 1);
+        if budget::nodes_exceeded(nodes, config.max_nodes) {
             return Err(Error::Budget(BudgetBreach::MaxNodes {
                 limit: config.max_nodes,
-                observed: self.nodes,
+                observed: nodes,
             }));
         }
         if anchored {
@@ -186,11 +240,12 @@ impl Meter {
     }
 
     fn charge_scalar_bytes(&mut self, len: usize, config: &ParseConfig) -> Result<()> {
-        self.scalar_bytes = self.scalar_bytes.saturating_add(len);
-        if self.scalar_bytes > config.max_total_scalar_bytes {
+        let shared = self.shared.as_ref().map(|t| &t.scalar_bytes);
+        let bytes = tally(&mut self.scalar_bytes, shared, len);
+        if bytes > config.max_total_scalar_bytes {
             return Err(Error::Budget(BudgetBreach::MaxTotalScalarBytes {
                 limit: config.max_total_scalar_bytes,
-                observed: self.scalar_bytes,
+                observed: bytes,
             }));
         }
         Ok(())
@@ -199,11 +254,15 @@ impl Meter {
     fn start_document(&mut self, config: &ParseConfig) -> Result<()> {
         self.aliases = 0;
         self.alias_bytes = 0;
-        self.documents = self.documents.saturating_add(1);
-        if self.documents > config.max_documents {
+        let documents = tally(
+            &mut self.documents,
+            self.shared.as_ref().map(|t| &t.documents),
+            1,
+        );
+        if documents > config.max_documents {
             return Err(Error::Budget(BudgetBreach::MaxDocuments {
                 limit: config.max_documents,
-                observed: self.documents,
+                observed: documents,
             }));
         }
         Ok(())
@@ -271,11 +330,15 @@ impl Meter {
 
     /// Charge one merge key (`<<`) that will be expanded.
     pub(crate) fn charge_merge_key(&mut self, config: &ParseConfig) -> Result<()> {
-        self.merge_keys = self.merge_keys.saturating_add(1);
-        if self.merge_keys > config.max_merge_keys {
+        let merges = tally(
+            &mut self.merge_keys,
+            self.shared.as_ref().map(|t| &t.merge_keys),
+            1,
+        );
+        if merges > config.max_merge_keys {
             return Err(Error::Budget(BudgetBreach::MaxMergeKeys {
                 limit: config.max_merge_keys,
-                observed: self.merge_keys,
+                observed: merges,
             }));
         }
         Ok(())

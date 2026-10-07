@@ -231,10 +231,12 @@ impl<'a> StreamingDeserializer<'a> {
     where
         C: Into<ParseConfig>,
     {
+        let config: ParseConfig = config.into();
+        let meter = Meter::new(&config);
         StreamingDeserializer {
             parser: Parser::new(input),
             input,
-            config: config.into(),
+            config,
             tag_registry: None,
             depth: 0,
             current: None,
@@ -244,7 +246,7 @@ impl<'a> StreamingDeserializer<'a> {
             replay_stack: Vec::new(),
             recording: None,
             anchor_costs: FxHashMap::default(),
-            meter: Meter::default(),
+            meter,
             started: false,
         }
     }

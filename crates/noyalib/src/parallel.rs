@@ -124,7 +124,17 @@ where
 {
     const SEQUENTIAL_DOCUMENTS: usize = 4;
 
+    if input.len() > config.max_stream_bytes {
+        return Err(crate::Error::Parse(format!(
+            "stream exceeds max_stream_bytes of {} bytes",
+            config.max_stream_bytes
+        )));
+    }
     crate::doc_boundary::validate_document_budget(input, config.max_documents)?;
+    // Every document is parsed separately; one shared tally keeps the
+    // stream-wide budgets (events, nodes, scalar bytes, merge keys,
+    // documents) charged across all of them, as a single loader would.
+    let config = &crate::parser::meter::StreamTally::share(config);
     let mut chunks = crate::doc_boundary::DocumentStream::new(input, config.max_documents);
     let mut prefix = Vec::with_capacity(SEQUENTIAL_DOCUMENTS);
     while prefix.len() < SEQUENTIAL_DOCUMENTS {

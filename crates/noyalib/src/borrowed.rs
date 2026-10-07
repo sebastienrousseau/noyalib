@@ -659,7 +659,7 @@ impl<'a, 'c> BorrowedBuilder<'a, 'c> {
             config,
             depth: 0,
             anchors: FxHashMap::default(),
-            meter: Meter::default(),
+            meter: Meter::new(config),
         }
     }
 
