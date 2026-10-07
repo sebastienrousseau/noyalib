@@ -39,6 +39,7 @@ pub(crate) struct ParsedDocument {
 /// under the limits the document was opened with.
 #[cfg(feature = "std")]
 pub(crate) fn parse_full(input: &str, cfg: &ParseConfig) -> Result<ParsedDocument> {
+    check_document_length(input, cfg)?;
     let (value, span_tree) = crate::parser::parse_exactly_one(input, cfg)?;
     let source: Arc<str> = Arc::from(input);
     let green = build_green_tree(&source, cfg.max_depth)?;
@@ -48,6 +49,23 @@ pub(crate) fn parse_full(input: &str, cfg: &ParseConfig) -> Result<ParsedDocumen
         span_tree,
         source,
     })
+}
+
+/// Refuse a document longer than `cfg.max_document_length`, with the
+/// error the typed `&str` entry points return for the same input.
+///
+/// Every CST parse of a whole document (the initial parse, each
+/// document of a stream, and the source an edit would commit) runs
+/// this first.
+#[cfg(feature = "std")]
+pub(crate) fn check_document_length(input: &str, cfg: &ParseConfig) -> Result<()> {
+    if input.len() > cfg.max_document_length {
+        return Err(Error::Parse(format!(
+            "document exceeds maximum length of {} bytes",
+            cfg.max_document_length
+        )));
+    }
+    Ok(())
 }
 
 /// Indentation / flow context for re-parsing a sub-tree.

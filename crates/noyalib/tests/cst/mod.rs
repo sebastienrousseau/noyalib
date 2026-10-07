@@ -60,6 +60,7 @@ mod cst_set_value_flow_context;
 mod cst_set_value_noop;
 mod cst_smart_styling;
 mod cst_stream;
+mod cst_stream_limits;
 mod cst_structure;
 mod cst_style_heuristics;
 mod cst_swap_items;

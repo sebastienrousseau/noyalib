@@ -16,6 +16,17 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   100,000 nested `[` overflowed the stack and aborted the process.
   Dropping a green tree no longer recurses per nesting level, and a
   token over 4 GiB is an error rather than a panic.
+- `cst::parse_stream`, `cst::parse_stream_with_config` and `cst::format`
+  enforce `max_documents` and `max_stream_bytes`, and every CST parse
+  (including the source an edit would commit) enforces
+  `max_document_length`. The CST stream used to accept any number of
+  documents, even under `ParserConfig::strict()`.
+
+### Added
+
+- `cst::format_with_parser_config` formats under a caller-chosen
+  `ParserConfig`. `format` and `format_with_config` keep parsing under
+  `ParserConfig::default()`.
 
 ## [v0.0.54] - 2026-10-07
 

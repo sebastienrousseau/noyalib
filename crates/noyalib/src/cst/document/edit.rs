@@ -4,7 +4,9 @@
 //! Atomic source splicing and local green-tree repair.
 
 use super::{Document, RepairScope, entry_indent_column, walk_tokens};
-use crate::cst::builder::{SubtreeContext, parse_subtree, rebuild_with_splice};
+use crate::cst::builder::{
+    SubtreeContext, check_document_length, parse_subtree, rebuild_with_splice,
+};
 use crate::cst::green::{GreenChild, GreenNode};
 use crate::cst::syntax::SyntaxKind;
 use crate::error::{Error, Result};
@@ -54,6 +56,7 @@ impl Document {
         new_source.push_str(&self.source[..start]);
         new_source.push_str(replacement);
         new_source.push_str(&self.source[end..]);
+        check_document_length(&new_source, &self.config)?;
 
         // A local green-tree repair avoids rebuilding unchanged CST
         // nodes, but it is not a document-level validity proof. Parse

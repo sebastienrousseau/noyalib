@@ -3,10 +3,12 @@
 
 //! Formatter for YAML CST.
 
-use crate::cst::document::parse_stream;
+use crate::cst::document::parse_stream_inner;
 use crate::cst::green::{GreenChild, GreenNode};
 use crate::cst::syntax::SyntaxKind;
+use crate::de::ParserConfig;
 use crate::error::Result;
+use crate::parser::ParseConfig;
 use crate::prelude::*;
 
 /// Configuration for the formatter.
@@ -31,11 +33,48 @@ pub fn format(input: &str) -> Result<String> {
 
 /// Auto-formats a messy YAML file into a canonical style based on the CST,
 /// using the provided configuration.
+///
+/// The input is parsed under [`ParserConfig::default`]; use
+/// [`format_with_parser_config`] to choose the limits.
 pub fn format_with_config(input: &str, config: &FormatConfig) -> Result<String> {
+    format_with_parser_config(input, config, &ParserConfig::default())
+}
+
+/// Auto-formats a YAML stream under the given formatter and parser
+/// configuration.
+///
+/// The input is parsed as by [`crate::cst::parse_stream_with_config`]:
+/// `max_stream_bytes`, `max_documents`, `max_document_length` and the
+/// other limits of `parser` apply, so a formatter that runs on
+/// untrusted input can bound the work it does.
+///
+/// # Errors
+///
+/// Returns the parse or budget error the input trips under `parser`.
+///
+/// # Examples
+///
+/// ```
+/// use noyalib::cst::{FormatConfig, format_with_parser_config};
+/// use noyalib::ParserConfig;
+///
+/// let strict = ParserConfig::strict();
+/// let out = format_with_parser_config("a:   1\n", &FormatConfig::default(), &strict).unwrap();
+/// assert_eq!(out, "a: 1\n");
+///
+/// let one_doc = ParserConfig::new().max_documents(1);
+/// let stream = "--- 1\n--- 2\n";
+/// assert!(format_with_parser_config(stream, &FormatConfig::default(), &one_doc).is_err());
+/// ```
+pub fn format_with_parser_config(
+    input: &str,
+    config: &FormatConfig,
+    parser: &ParserConfig,
+) -> Result<String> {
     if input.trim().is_empty() {
         return Ok(String::new());
     }
-    let docs = parse_stream(input)?;
+    let docs = parse_stream_inner(input, &ParseConfig::from(parser), parser.max_stream_bytes)?;
     let mut output = String::with_capacity(input.len());
     for doc in docs {
         let mut formatter = Formatter::new(doc.source(), config);
