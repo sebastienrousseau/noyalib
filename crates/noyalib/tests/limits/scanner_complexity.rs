@@ -70,3 +70,23 @@ fn long_flow_line_parses_in_linear_time_cst() {
         let _ = noyalib::cst::parse_document(s).expect("valid input");
     });
 }
+
+/// `max_events` must be able to refuse a huge flow collection at
+/// document start after a handful of events. The scanner used to hold
+/// every token of the collection as a possible implicit key first; the
+/// queue bound itself is pinned by the scanner's unit tests.
+#[test]
+fn max_events_refuses_a_ten_megabyte_flow_collection() {
+    use noyalib::{BudgetBreach, Error, ParserConfig, Value};
+    let cfg = ParserConfig::default()
+        .max_document_length(64 * 1024 * 1024)
+        .max_events(10);
+    let one_line = format!("[{}a]\n", "a,".repeat(5 * 1024 * 1024));
+    let many_lines = format!("[{}a]\n", "a,\n".repeat(3_500_000));
+    for input in [&one_line, &many_lines] {
+        match noyalib::from_str_with_config::<Value>(input, &cfg) {
+            Err(Error::Budget(BudgetBreach::MaxEvents { limit: 10, .. })) => {}
+            other => panic!("expected the max_events budget, got {other:?}"),
+        }
+    }
+}

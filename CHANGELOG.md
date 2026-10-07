@@ -7,6 +7,20 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [v0.0.55] - Unreleased
 
+### Changed
+
+- **Breaking (parse behaviour):** an implicit mapping key longer than
+  1024 characters is now rejected with "implicit mapping key is longer
+  than 1024 characters", as YAML 1.2.2 requires for block mappings
+  (§8.2.2) and single pairs in a flow sequence (§7.4.2). Explicit `?`
+  keys and keys inside a flow mapping keep no limit. The scanner relies
+  on this limit to stop holding back tokens for a key that can no longer
+  complete: a flow collection at the start of a document used to be
+  tokenised whole before the first event, so `max_events` and the other
+  budgets could not refuse a multi-megabyte collection until it had all
+  been buffered (10 MB queued about 10 million tokens). It is now
+  streamed.
+
 ### Fixed
 
 - Parsing a long line is linear in its length again. Each plain scalar
