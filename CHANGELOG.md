@@ -52,6 +52,11 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   read, so 8 MiB arriving in 8 KiB reads took 196 s in a debug build.
   A frame is also always capped by `max_document_length`, even when
   `max_frame_size` is set higher.
+- The "did you mean" suggestion for an unknown alias compares only
+  names up to 64 characters whose length is within two of the alias,
+  and at most 4,096 of them. It ran a full edit distance against every
+  anchor, so 1,000 anchors of 1,000 characters took 433 s in a debug
+  build to report one unknown alias.
 
 ### Added
 
