@@ -654,3 +654,29 @@ fn splice_recursive(
 
     GreenNode::try_new(node.kind(), new_children)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_token_over_u32_max_is_an_error_not_a_panic() {
+        let over = u32::MAX as usize + 1;
+        assert!(token_child(SyntaxKind::PlainScalar, over).is_err());
+        assert!(token_child(SyntaxKind::PlainScalar, u32::MAX as usize).is_ok());
+    }
+
+    #[test]
+    fn a_node_over_u32_max_is_refused() {
+        let big = GreenChild::Token {
+            kind: SyntaxKind::PlainScalar,
+            len: u32::MAX,
+        };
+        let one = GreenChild::Token {
+            kind: SyntaxKind::PlainScalar,
+            len: 1,
+        };
+        assert!(GreenNode::try_new(SyntaxKind::Document, vec![big.clone()]).is_some());
+        assert!(GreenNode::try_new(SyntaxKind::Document, vec![big, one]).is_none());
+    }
+}
