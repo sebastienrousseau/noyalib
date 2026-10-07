@@ -38,6 +38,10 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   parse forever, and an oversized file was read whole before the byte
   budget applied. Its error messages and source names give paths
   relative to the root instead of absolute host paths.
+- `read` and `read_with_config` stop reading one byte past their stream
+  cap (64 times `max_document_length`). They used to read the whole
+  source first, so a 1 GiB reader cost about 780 MB before the cap was
+  checked.
 
 ### Added
 

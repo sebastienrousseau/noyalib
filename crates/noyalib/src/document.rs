@@ -414,18 +414,29 @@ where
     R: std::io::Read,
     T: for<'de> serde_core::Deserialize<'de> + 'static,
 {
-    let mut buf = String::new();
+    use std::io::Read as _;
+
+    // Soft cap on the *aggregated* multi-document buffer to bound
+    // memory regardless of per-document caps. Reading stops one byte
+    // past it, so an unbounded reader is refused without being
+    // buffered first.
+    let cap = config.max_document_length.saturating_mul(64);
+    let limit = u64::try_from(cap).unwrap_or(u64::MAX).saturating_add(1);
+    let mut bytes = Vec::new();
     let _read_bytes = reader
-        .read_to_string(&mut buf)
+        .by_ref()
+        .take(limit)
+        .read_to_end(&mut bytes)
         .map_err(|e| Error::Parse(format!("reader I/O failed: {e}")))?;
-    if buf.len() > config.max_document_length.saturating_mul(64) {
-        // Soft cap on the *aggregated* multi-document buffer to
-        // bound memory regardless of per-document caps.
+    if bytes.len() > cap {
         return Err(Error::Parse(format!(
             "reader payload exceeds 64× max_document_length ({} bytes)",
             config.max_document_length
         )));
     }
+    let buf = String::from_utf8(bytes).map_err(|_| {
+        Error::Parse("reader I/O failed: stream did not contain valid UTF-8".into())
+    })?;
     let parse_config = parser::ParseConfig::from(config);
     let pairs = parser::parse(&buf, &parse_config)?;
     let docs: Vec<Value> = pairs.into_iter().map(|(value, _)| value).collect();
