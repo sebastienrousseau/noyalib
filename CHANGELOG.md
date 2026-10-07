@@ -38,10 +38,11 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   parse forever, and an oversized file was read whole before the byte
   budget applied. Its error messages and source names give paths
   relative to the root instead of absolute host paths.
-- `read` and `read_with_config` stop reading one byte past their stream
-  cap (64 times `max_document_length`). They used to read the whole
-  source first, so a 1 GiB reader cost about 780 MB before the cap was
-  checked.
+- `read` and `read_with_config` honour `max_stream_bytes` and stop
+  reading one byte past their stream cap (`max_stream_bytes`, or 64
+  times `max_document_length` when smaller). They used to read the
+  whole source first, so a 1 GiB reader cost about 780 MB before the
+  cap was checked, and `max_stream_bytes` was ignored.
 - `Spanned<T>` locations come from a line index built once per source
   and a per-value cache. Each `Spanned` value used to rescan the source
   from byte 0 twelve times, so 40,000 spanned values in a debug build

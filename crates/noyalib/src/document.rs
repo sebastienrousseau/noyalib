@@ -414,11 +414,12 @@ where
 {
     use std::io::Read as _;
 
-    // Soft cap on the *aggregated* multi-document buffer to bound
-    // memory regardless of per-document caps. Reading stops one byte
-    // past it, so an unbounded reader is refused without being
-    // buffered first.
-    let cap = config.max_document_length.saturating_mul(64);
+    // Cap on the *aggregated* multi-document buffer: `max_stream_bytes`,
+    // or 64 times `max_document_length` when that is smaller. Reading
+    // stops one byte past it, so an unbounded reader is refused
+    // without being buffered first.
+    let doc_cap = config.max_document_length.saturating_mul(64);
+    let cap = config.max_stream_bytes.min(doc_cap);
     let limit = u64::try_from(cap).unwrap_or(u64::MAX).saturating_add(1);
     let mut bytes = Vec::new();
     let _read_bytes = reader
@@ -427,10 +428,14 @@ where
         .read_to_end(&mut bytes)
         .map_err(|e| Error::Parse(format!("reader I/O failed: {e}")))?;
     if bytes.len() > cap {
-        return Err(Error::Parse(format!(
-            "reader payload exceeds 64× max_document_length ({} bytes)",
-            config.max_document_length
-        )));
+        return Err(Error::Parse(if cap < doc_cap {
+            format!("reader payload exceeds max_stream_bytes ({cap} bytes)")
+        } else {
+            format!(
+                "reader payload exceeds 64× max_document_length ({} bytes)",
+                config.max_document_length
+            )
+        }));
     }
     let buf = String::from_utf8(bytes).map_err(|_| {
         Error::Parse("reader I/O failed: stream did not contain valid UTF-8".into())

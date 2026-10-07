@@ -141,3 +141,12 @@ fn read_with_config_reports_invalid_utf8() {
     let err = noyalib::read_with_config::<_, Value>(bytes, &ParserConfig::default()).unwrap_err();
     assert!(err.to_string().contains("UTF-8"), "{err}");
 }
+
+#[test]
+fn read_with_config_honours_max_stream_bytes() {
+    let cfg = ParserConfig::default().max_stream_bytes(1_000);
+    let mut src = Big::over(1_000);
+    let err = noyalib::read_with_config::<_, Value>(&mut src, &cfg).unwrap_err();
+    assert!(err.to_string().contains("max_stream_bytes"), "{err}");
+    assert!(src.served <= 1_000 + SLACK, "read {} bytes", src.served);
+}
