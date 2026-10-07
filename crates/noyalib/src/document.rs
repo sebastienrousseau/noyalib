@@ -152,6 +152,9 @@ pub fn load_all_with_config(input: &str, config: &ParserConfig) -> Result<Docume
     #[cfg(feature = "std")]
     {
         let pairs = parser::parse(input, &parse_config)?;
+        for (doc, _) in &pairs {
+            crate::policy::check_document(&config.policies, doc)?;
+        }
         let (docs, span_trees): (Vec<_>, Vec<_>) = pairs.into_iter().unzip();
         let total = docs.len();
         Ok(DocumentIterator {
@@ -164,6 +167,9 @@ pub fn load_all_with_config(input: &str, config: &ParserConfig) -> Result<Docume
     #[cfg(not(feature = "std"))]
     {
         let docs = parser::parse_all_values(input, &parse_config)?;
+        for doc in &docs {
+            crate::policy::check_document(&config.policies, doc)?;
+        }
         let total = docs.len();
         Ok(DocumentIterator {
             docs: docs.into_iter(),
@@ -231,7 +237,37 @@ pub fn load_all_as<T>(input: &str) -> Result<Vec<T>>
 where
     T: for<'de> serde_core::Deserialize<'de> + 'static,
 {
-    let parse_config = parser::ParseConfig::from(&ParserConfig::default());
+    load_all_as_with_config(input, &ParserConfig::default())
+}
+
+/// [`load_all_as`] with a custom [`ParserConfig`]: its limits, its
+/// scalar-resolution and merge settings, and its policies.
+///
+/// # Errors
+///
+/// Returns an error if the stream exceeds a configured limit, a policy
+/// refuses a document, parsing fails, or a document cannot be
+/// deserialized into `T`.
+///
+/// # Examples
+///
+/// ```
+/// use noyalib::{load_all_as_with_config, ParserConfig};
+/// let cfg = ParserConfig::strict();
+/// let docs: Vec<i32> = load_all_as_with_config("1\n---\n2\n", &cfg).unwrap();
+/// assert_eq!(docs, vec![1, 2]);
+/// ```
+pub fn load_all_as_with_config<T>(input: &str, config: &ParserConfig) -> Result<Vec<T>>
+where
+    T: for<'de> serde_core::Deserialize<'de> + 'static,
+{
+    if input.len() > config.max_document_length {
+        return Err(Error::Parse(format!(
+            "document exceeds maximum length of {} bytes",
+            config.max_document_length
+        )));
+    }
+    let parse_config = parser::ParseConfig::from(config);
 
     #[cfg(feature = "std")]
     {
@@ -240,6 +276,7 @@ where
         let source: Arc<str> = input.into();
 
         for (value, span_tree) in &pairs {
+            crate::policy::check_document(&config.policies, value)?;
             let spans = span_context::build_span_map(value, span_tree);
             let ctx = span_context::SpanContext {
                 spans,
@@ -258,6 +295,7 @@ where
         let docs = parser::parse_all_values(input, &parse_config)?;
         let mut results = Vec::with_capacity(docs.len());
         for value in &docs {
+            crate::policy::check_document(&config.policies, value)?;
             let typed: T = crate::from_value(value)?;
             results.push(typed);
         }
@@ -429,6 +467,9 @@ where
     let parse_config = parser::ParseConfig::from(config);
     let pairs = parser::parse(&buf, &parse_config)?;
     let docs: Vec<Value> = pairs.into_iter().map(|(value, _)| value).collect();
+    for doc in &docs {
+        crate::policy::check_document(&config.policies, doc)?;
+    }
     Ok(DocumentReadIterator {
         docs: docs.into_iter(),
         _phantom: PhantomData,

@@ -63,12 +63,71 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - A tag whose body starts with `<` (`!<x`) is written in the verbatim
   form; written as it stands it opened a verbatim tag and the output
   did not parse.
+- `borrowed::from_str_borrowed*` enforces every budget the owned loader
+  does: the alias expansion size estimate (a 540-byte billion-laughs
+  document is now refused at once instead of expanding to gigabytes),
+  `max_events`, `max_nodes`, `max_total_scalar_bytes`,
+  `max_mapping_keys`, `max_sequence_length`, `max_documents`,
+  `max_merge_keys`, `alias_anchor_ratio`, the duplicate-key policy and
+  the event policies. All loaders now charge one shared meter.
+- Alias expansion is estimated the same way on every path, at the size
+  of a `Value` per node (it was 32 bytes on the loaders and 8 on the
+  typed path, a fraction of the real allocation), and the 32 MiB
+  ceiling on expanded bytes now holds on the typed path too. The
+  loaders charge an alias before cloning it. Documents with large alias
+  expansions that fit the old estimate can now be refused.
+- An alias can no longer build a value deeper than `max_depth`. Each
+  alias is charged its anchored subtree's height on top of the depth
+  where it stands; before, a chain of anchors each nested inside the
+  previous one passed the depth check line by line and expanded a 22 KB
+  document into a value 10,000 levels deep, which overflowed the stack
+  (aborting the process) on drop or any recursive walk. Every entry
+  point now refuses it with `RecursionLimitExceeded`.
+- `from_str_borrowing` and `from_str_borrowing_with_config` refuse a
+  second document or a trailing syntax error, as `from_str` does; they
+  used to return the first document and ignore the rest, so the same
+  bytes read differently through the two APIs. A
+  `StreamingDeserializer` built with `with_config` now enforces
+  `max_document_length`.
+- Parser policies hold on every entry point. `from_str_borrowing_with_config`
+  ignored them all, `DenyAnchors` included, and the borrowed API,
+  `load_all_with_config`, `read_with_config` and the `no_std` typed path
+  skipped the whole-document `check_value` hook. Event checks now run
+  in the shared budget meter and whole-document checks through one
+  helper every loader calls.
+- Values a typed target skips (`IgnoredAny`, unknown struct fields) are
+  charged like values it reads: `max_depth`, `max_sequence_length`,
+  `max_mapping_keys`, `max_merge_keys` and `DuplicateKeyPolicy::Error`
+  now apply to them, so hostile content under an ignored field is
+  refused as it is for a `Value` target.
+- The multi-document entry points that parse each document separately
+  (`parallel`, `recovery`, `tokio_async::from_async_reader_multi*` and
+  `YamlDecoder`) charge `max_events`, `max_nodes`,
+  `max_total_scalar_bytes`, `max_merge_keys` and `max_documents` across
+  the whole stream, as `load_all` does, instead of resetting them per
+  document. `YamlDecoder` now enforces `max_documents`, and `parallel`
+  and `recovery` enforce `max_stream_bytes`.
+- `compat::serde_yaml::from_str_multi` parses under the shim's
+  serde_yaml profile, as `from_str` does; it used noyalib's defaults, so
+  a stream read differently from the same single document (`0123`,
+  literal `<<` keys) and escaped the serde_yaml repetition budget.
+- The `compat::serde_yaml` shim refuses a duplicate mapping key when the
+  target is `Value`, with serde_yaml 0.9's wording (`duplicate entry
+  with key "k"`); map targets keep the last entry, as upstream does.
+  Struct targets still keep the last entry where upstream reports
+  `duplicate field`.
 
 ### Added
 
 - `cst::format_with_parser_config` formats under a caller-chosen
   `ParserConfig`. `format` and `format_with_config` keep parsing under
   `ParserConfig::default()`.
+- `StreamingDeserializer::end`, which requires that nothing follows the
+  value just deserialized. Call it after `T::deserialize(&mut de)` when
+  driving the deserializer directly.
+- `load_all_as_with_config`, the configurable form of `load_all_as`.
+  `load_all_as` now also refuses input over `max_document_length`, as
+  `load_all` does.
 
 ### Changed
 
@@ -78,6 +137,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   combination of `flow_style`, `scalar_style`, `quote_all`,
   `prefer_single_quotes` and the document markers, and requires each to
   read back unchanged. CI runs 64 cases; set `PROPTEST_CASES` for more.
+
 
 ## [v0.0.54] - 2026-10-07
 

@@ -171,6 +171,9 @@ where
     // finding C2), then deserialise each document under the
     // caller's config so every per-document limit fires.
     let docs = crate::doc_boundary::split_documents_checked(text, config.max_documents)?;
+    // One tally for the stream: the stream-wide budgets are charged
+    // across documents rather than reset for each.
+    let config = &crate::parser::meter::StreamTally::share(config);
     let mut results = Vec::with_capacity(docs.len());
     for doc in docs {
         results.push(crate::from_str_with_config::<T>(doc, config)?);
@@ -286,18 +289,17 @@ impl<T> YamlDecoder<T> {
     /// frame-size cap defaults to `max_document_length`.
     #[must_use]
     pub fn new() -> Self {
-        let config = ParserConfig::default();
-        let max_frame_size = Some(config.max_document_length);
-        Self {
-            config,
-            max_frame_size,
-            _marker: PhantomData,
-        }
+        Self::with_config(ParserConfig::default())
     }
 
     /// Create a decoder with a caller-supplied [`ParserConfig`].
+    ///
+    /// The stream-wide budgets (`max_documents`, `max_events`,
+    /// `max_nodes`, `max_total_scalar_bytes`, `max_merge_keys`) are
+    /// charged across every document the decoder yields, not per frame.
     #[must_use]
     pub fn with_config(config: ParserConfig) -> Self {
+        let config = crate::parser::meter::StreamTally::share(&config);
         let max_frame_size = Some(config.max_document_length);
         Self {
             config,

@@ -68,3 +68,74 @@ fn from_str_multi_still_returns_every_document() {
         load_all_as("1\n---\n2\n---\n3\n").expect("multi-doc entry point still works");
     assert_eq!(docs, vec![1, 2, 3]);
 }
+
+// ── Every single-document entry point reads to the end ─────────────
+//
+// `from_str_borrowing*` and a directly driven `StreamingDeserializer`
+// stopped as soon as the target was complete, so they returned the
+// first document of `role: user\n---\nrole: admin` where `from_str`
+// refused the stream: two components reading the same bytes saw
+// different data. Trailing syntax errors and undefined aliases in the
+// second document went unread too.
+
+#[derive(Debug, Deserialize)]
+struct Role<'a> {
+    #[allow(dead_code)]
+    role: &'a str,
+}
+
+const TRAILING: [&str; 4] = [
+    "role: user\n---\nrole: admin\n",
+    "role: user\n...\n%YAML 1.2\n---\nrole: admin\n",
+    "role: user\n---\n[unterminated\n",
+    "role: user\n---\n{a: *undefined_alias}\n",
+];
+
+#[test]
+fn from_str_borrowing_refuses_what_from_str_refuses() {
+    for yaml in TRAILING {
+        assert!(
+            from_str::<Value>(yaml).is_err(),
+            "from_str refuses {yaml:?}"
+        );
+        let err = noyalib::from_str_borrowing::<Role<'_>>(yaml)
+            .expect_err(&format!("from_str_borrowing must refuse {yaml:?}"));
+        if yaml.ends_with("admin\n") {
+            assert_eq!(err.to_string(), EXPECTED_MESSAGE, "{yaml:?}");
+        }
+    }
+}
+
+#[test]
+fn streaming_deserializer_end_refuses_trailing_input() {
+    for yaml in TRAILING {
+        let mut de = noyalib::StreamingDeserializer::new(yaml);
+        let first = Role::deserialize(&mut de).expect("the first document reads");
+        assert_eq!(first.role, "user");
+        assert!(de.end().is_err(), "end() must refuse {yaml:?}");
+    }
+}
+
+#[test]
+fn borrowing_still_accepts_one_document_with_markers() {
+    for yaml in [
+        "---\nrole: user\n",
+        "role: user\n...\n",
+        "---\nrole: user\n...\n",
+    ] {
+        let r: Role<'_> = noyalib::from_str_borrowing(yaml).expect("one document");
+        assert_eq!(r.role, "user");
+        let mut de = noyalib::StreamingDeserializer::new(yaml);
+        let _ = Role::deserialize(&mut de).expect("reads");
+        de.end().expect("nothing trails one document");
+    }
+}
+
+#[test]
+fn a_directly_built_streaming_deserializer_enforces_max_document_length() {
+    let yaml = format!("k: {}\n", "x".repeat(100));
+    let cfg = noyalib::ParserConfig::default().max_document_length(64);
+    let mut de = noyalib::StreamingDeserializer::with_config(&yaml, &cfg);
+    let err = Value::deserialize(&mut de).expect_err("over the length limit");
+    assert!(err.to_string().contains("maximum length of 64"), "{err}");
+}
