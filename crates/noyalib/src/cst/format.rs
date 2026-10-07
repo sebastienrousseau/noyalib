@@ -64,7 +64,7 @@ pub fn format_with_config(input: &str, config: &FormatConfig) -> Result<String> 
 ///
 /// Returns the parse or budget error the input trips under `parser`,
 /// or an error when the input cannot be re-laid out without changing
-/// its meaning (see [`format`]).
+/// its meaning (see [`format()`]).
 ///
 /// # Examples
 ///
