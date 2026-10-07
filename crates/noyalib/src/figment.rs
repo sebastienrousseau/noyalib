@@ -86,14 +86,16 @@ impl Format for Yaml {
         // figment's typed targets are profile shapes, not `Value`,
         // so the tag-preserving path would never have applied
         // anyway.
-        parse(s, &ParserConfig::default())
+        parse(s, &ParserConfig::default()).map_err(to_figment)
     }
 
     fn from_path<T: serde_core::de::DeserializeOwned>(path: &Path) -> Result<T, Self::Error> {
         // figment's default reads the whole file first; stop one byte
         // past the length limit instead.
         let config = ParserConfig::default();
-        parse(&read_bounded(path, &config)?, &config)
+        read_bounded(path, &config)
+            .and_then(|text| parse(&text, &config))
+            .map_err(to_figment)
     }
 }
 
@@ -188,7 +190,7 @@ impl Provider for YamlWithConfig {
         let text = match &self.source {
             Source::String(s) => s.as_str(),
             Source::File(path) => {
-                file_text = read_bounded(path, &self.config)?;
+                file_text = read_bounded(path, &self.config).map_err(to_figment)?;
                 file_text.as_str()
             }
         };
@@ -196,21 +198,22 @@ impl Provider for YamlWithConfig {
             Some(profile) => parse::<Dict>(text, &self.config).map(|dict| profile.collect(dict)),
             None => parse(text, &self.config),
         }
+        .map_err(to_figment)
     }
 }
 
-/// Parse `s` under `config` into a figment-facing error.
-fn parse<T: serde_core::de::DeserializeOwned>(
-    s: &str,
-    config: &ParserConfig,
-) -> Result<T, FigmentError> {
+/// Parse `s` under `config`.
+fn parse<T: serde_core::de::DeserializeOwned>(s: &str, config: &ParserConfig) -> crate::Result<T> {
     crate::de::from_str_typed_no_tag_preserve::<T>(s, config)
-        .map_err(|e| FigmentError::from(e.to_string()))
 }
 
 /// Read `path`, stopping one byte past `config.max_document_length`.
-fn read_bounded(path: &Path, config: &ParserConfig) -> Result<String, FigmentError> {
-    let file = std::fs::File::open(path)
-        .map_err(|e| FigmentError::from(format!("{}: {e}", path.display())))?;
-    crate::de::read_to_string_bounded(file, config).map_err(|e| FigmentError::from(e.to_string()))
+fn read_bounded(path: &Path, config: &ParserConfig) -> crate::Result<String> {
+    let file = std::fs::File::open(path).map_err(crate::Error::Io)?;
+    crate::de::read_to_string_bounded(file, config)
+}
+
+/// figment's error type carries the message as text.
+fn to_figment(error: crate::Error) -> FigmentError {
+    FigmentError::from(error.to_string())
 }

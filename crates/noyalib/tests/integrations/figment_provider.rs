@@ -215,7 +215,7 @@ fn configured_provider_supports_profiles() {
     let yaml = "default:\n  name: base\n  port: 1\nprod:\n  port: 2\n";
     let figment = Figment::new()
         .merge(Yaml::string_with_config(yaml, noyalib::ParserConfig::default()).nested());
-    let cfg: Cfg = figment.clone().select("prod").extract().unwrap();
+    let cfg: Cfg = figment.select("prod").extract().unwrap();
     assert_eq!(
         cfg,
         Cfg {
