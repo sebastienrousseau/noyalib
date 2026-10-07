@@ -53,12 +53,24 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   the whole stream, as `load_all` does, instead of resetting them per
   document. `YamlDecoder` now enforces `max_documents`, and `parallel`
   and `recovery` enforce `max_stream_bytes`.
+- `compat::serde_yaml::from_str_multi` parses under the shim's
+  serde_yaml profile, as `from_str` does; it used noyalib's defaults, so
+  a stream read differently from the same single document (`0123`,
+  literal `<<` keys) and escaped the serde_yaml repetition budget.
+- The `compat::serde_yaml` shim refuses a duplicate mapping key when the
+  target is `Value`, with serde_yaml 0.9's wording (`duplicate entry
+  with key "k"`); map targets keep the last entry, as upstream does.
+  Struct targets still keep the last entry where upstream reports
+  `duplicate field`.
 
 ### Added
 
 - `StreamingDeserializer::end`, which requires that nothing follows the
   value just deserialized. Call it after `T::deserialize(&mut de)` when
   driving the deserializer directly.
+- `load_all_as_with_config`, the configurable form of `load_all_as`.
+  `load_all_as` now also refuses input over `max_document_length`, as
+  `load_all` does.
 
 ## [v0.0.54] - 2026-10-07
 

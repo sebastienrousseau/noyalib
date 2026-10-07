@@ -393,6 +393,9 @@ fn render_upstream_style(
             "repetition limit exceeded".to_owned()
         }
         E::RecursionLimitExceeded { .. } => "recursion limit exceeded".to_owned(),
+        E::DuplicateKey(key) | E::DuplicateKeyAt { key, .. } => {
+            format!("duplicate entry with key {key:?}")
+        }
         // `invalid type: sequence, expected a string key` — noyalib's
         // own wording already matches upstream, and upstream carries
         // the position only in `location()`, not in `Display`.
@@ -543,8 +546,11 @@ pub mod with {
 /// leading-zero integers stay strings and `0b11` is 3, a literal
 /// float overflow stays a string, `u64`-range integers keep full
 /// precision and one past `u64::MAX` errors, non-scalar keys error,
-/// and transitive alias expansion is budgeted exactly as upstream
-/// ("repetition limit exceeded"). Callers who want noyalib's own
+/// transitive alias expansion is budgeted exactly as upstream
+/// ("repetition limit exceeded"), and a duplicate mapping key is
+/// refused when the target is [`Value`] (`duplicate entry with key
+/// "k"`), as upstream refuses it for its own `Value`; a map target keeps
+/// the last entry, as upstream does. Callers who want noyalib's own
 /// (spec-strict) defaults should use [`crate::from_str`] directly.
 ///
 /// # Examples
@@ -558,8 +564,21 @@ pub fn from_str<T>(s: &str) -> Result<T>
 where
     T: serde_core::de::DeserializeOwned + 'static,
 {
-    crate::from_str_with_config(s, &crate::ParserConfig::serde_yaml_compat())
+    crate::from_str_with_config(s, &compat_config::<T>())
         .map_err(|e| Error::from_noyalib_with_input(e, s))
+}
+
+/// The configuration the shim parses under for target `T`:
+/// [`crate::ParserConfig::serde_yaml_compat`], plus serde_yaml's refusal
+/// of a duplicate mapping key when the target is a [`Value`]
+/// (`duplicate entry with key "k"`). Map targets keep the last entry,
+/// as upstream does.
+fn compat_config<T: 'static>() -> crate::ParserConfig {
+    let mut config = crate::ParserConfig::serde_yaml_compat();
+    if core::any::TypeId::of::<T>() == core::any::TypeId::of::<Value>() {
+        config.duplicate_key_policy = crate::DuplicateKeyPolicy::Error;
+    }
+    config
 }
 
 /// Deserialize a YAML document from a byte slice.
@@ -706,7 +725,8 @@ pub fn from_str_multi<T>(s: &str) -> Result<Vec<T>>
 where
     T: serde_core::de::DeserializeOwned + 'static,
 {
-    crate::load_all_as::<T>(s).map_err(|e| Error::from_noyalib_with_input(e, s))
+    crate::load_all_as_with_config::<T>(s, &compat_config::<T>())
+        .map_err(|e| Error::from_noyalib_with_input(e, s))
 }
 
 #[cfg(test)]

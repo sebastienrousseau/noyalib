@@ -661,7 +661,9 @@ pub use de::{from_reader_strict, from_slice_strict, from_str_strict};
 pub use diagnostic::{Diagnostic, DiagnosticCode, DiagnosticLabel, DiagnosticSeverity, SourceSpan};
 #[cfg(feature = "std")]
 pub use document::{DocumentReadIterator, read, read_with_config};
-pub use document::{load_all, load_all_as, load_all_with_config, try_load_all};
+pub use document::{
+    load_all, load_all_as, load_all_as_with_config, load_all_with_config, try_load_all,
+};
 pub use error::{BudgetBreach, CroppedRegion, Error, ErrorKind, Location, RenderOptions, Result};
 pub use flattened::Flattened;
 pub use fmt::{Commented, FlowMap, FlowSeq, FoldStr, FoldString, LitStr, LitString, SpaceAfter};
