@@ -41,6 +41,11 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   skipped the whole-document `check_value` hook. Event checks now run
   in the shared budget meter and whole-document checks through one
   helper every loader calls.
+- Values a typed target skips (`IgnoredAny`, unknown struct fields) are
+  charged like values it reads: `max_depth`, `max_sequence_length`,
+  `max_mapping_keys`, `max_merge_keys` and `DuplicateKeyPolicy::Error`
+  now apply to them, so hostile content under an ignored field is
+  refused as it is for a `Value` target.
 
 ### Added
 

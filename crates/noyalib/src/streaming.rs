@@ -55,6 +55,7 @@ use crate::prelude::{FxHashMap, FxHashSet};
 use smallvec::SmallVec;
 
 use crate::error::{BudgetBreach, Error, Result, closest_name};
+use crate::parser::budget;
 use crate::parser::meter::{AliasCost, CostTally, Meter};
 use crate::parser::{Event, ParseConfig, Parser, ScalarStyle};
 use crate::value::Value;
@@ -699,28 +700,99 @@ impl<'a> StreamingDeserializer<'a> {
         }
     }
 
+    /// Consume one whole value without building it (`IgnoredAny`, unknown
+    /// fields, the rest of an abandoned collection).
+    ///
+    /// Skipped content is charged like content that is deserialized:
+    /// nesting against `max_depth`, entries against `max_sequence_length`
+    /// and `max_mapping_keys`, plain `<<` keys against `max_merge_keys`,
+    /// and repeated keys under `DuplicateKeyPolicy::Error`. Iterative, so
+    /// a deep value cannot exhaust the stack.
     fn skip_value(&mut self) -> Result<()> {
-        // Iterative traversal — pathologically deep YAML would blow the
-        // stack in a recursive implementation.
-        let mut balance: i64 = 0;
+        let base = self.depth;
+        let result = self.skip_value_levels();
+        // Restore on Ok and Err alike (issue #46).
+        self.depth = base;
+        result
+    }
+
+    fn skip_value_levels(&mut self) -> Result<()> {
+        let mut levels: Vec<SkipLevel> = Vec::new();
         loop {
-            match self.next_event()? {
-                Event::Scalar { .. } | Event::Alias { .. } if balance == 0 => {
-                    return Ok(());
+            let ev = self.next_event()?;
+            let opens = match &ev {
+                Event::Scalar { value, style, .. } => {
+                    self.skip_note_node(levels.last_mut(), Some((value, *style)))?;
+                    None
                 }
-                Event::Scalar { .. } | Event::Alias { .. } => {}
-                Event::SequenceStart { .. } | Event::MappingStart { .. } => {
-                    balance += 1;
-                }
+                Event::SequenceStart { .. } => Some(false),
+                Event::MappingStart { .. } => Some(true),
                 Event::SequenceEnd { .. } | Event::MappingEnd { .. } => {
-                    balance -= 1;
-                    if balance <= 0 {
-                        return Ok(());
-                    }
+                    let _ = levels.pop();
+                    self.depth = self.depth.saturating_sub(1);
+                    None
                 }
-                _ => {}
+                _ => continue,
+            };
+            if let Some(is_map) = opens {
+                self.skip_note_node(levels.last_mut(), None)?;
+                self.depth += 1;
+                if budget::depth_exceeded(self.depth, self.config.max_depth) {
+                    return Err(Error::RecursionLimitExceeded { depth: self.depth });
+                }
+                levels.push(SkipLevel::new(is_map));
+            }
+            if levels.is_empty() {
+                return Ok(());
             }
         }
+    }
+
+    /// Charge one skipped node to the collection it sits in: an entry of a
+    /// sequence, or a key or value of a mapping. `scalar` is the node's
+    /// text and style when it is a scalar.
+    fn skip_note_node(
+        &mut self,
+        level: Option<&mut SkipLevel>,
+        scalar: Option<(&Cow<'_, str>, ScalarStyle)>,
+    ) -> Result<()> {
+        let Some(level) = level else {
+            return Ok(());
+        };
+        if !level.is_map {
+            level.entries += 1;
+            if level.entries > self.config.max_sequence_length {
+                return Err(Error::Budget(BudgetBreach::MaxSequenceLength {
+                    limit: self.config.max_sequence_length,
+                    observed: level.entries,
+                }));
+            }
+            return Ok(());
+        }
+        level.expecting_key = !level.expecting_key;
+        if level.expecting_key {
+            // That node was the value; the next one is a key.
+            return Ok(());
+        }
+        level.entries += 1;
+        if level.entries > self.config.max_mapping_keys {
+            return Err(Error::Budget(BudgetBreach::MaxMappingKeys {
+                limit: self.config.max_mapping_keys,
+                observed: level.entries,
+            }));
+        }
+        let Some((key, style)) = scalar else {
+            return Ok(());
+        };
+        if style == ScalarStyle::Plain && key == "<<" {
+            self.meter.charge_merge_key(&self.config)?;
+        }
+        if self.config.duplicate_key_policy == crate::parser::InternalDuplicateKeyPolicy::Error
+            && !level.keys.insert(key.to_string())
+        {
+            return Err(Error::DuplicateKey(key.to_string()));
+        }
+        Ok(())
     }
 
     /// Peek the next event and, if it carries a tag, take it out of the
@@ -1882,6 +1954,29 @@ fn parse_plain_float(s: &str) -> Option<f64> {
         return None;
     }
     s.parse::<f64>().ok()
+}
+
+/// What `skip_value` tracks for each collection it is inside.
+#[derive(Debug)]
+struct SkipLevel {
+    is_map: bool,
+    /// Sequence items, or mapping keys, seen so far.
+    entries: usize,
+    /// For a mapping: whether the next node is a key.
+    expecting_key: bool,
+    /// Scalar keys seen, kept only under `DuplicateKeyPolicy::Error`.
+    keys: FxHashSet<String>,
+}
+
+impl SkipLevel {
+    fn new(is_map: bool) -> Self {
+        Self {
+            is_map,
+            entries: 0,
+            expecting_key: true,
+            keys: FxHashSet::default(),
+        }
+    }
 }
 
 /// The refusal for an input longer than `max_document_length`.

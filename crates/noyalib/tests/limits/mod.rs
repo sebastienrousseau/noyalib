@@ -3,7 +3,7 @@
 
 //! Parser budgets, policies and hostile input.
 //!
-//! 10 files, compiled into one test binary.
+//! 11 files, compiled into one test binary.
 
 #![allow(missing_docs)]
 
@@ -15,5 +15,6 @@ mod max_nodes_budget;
 mod multi_document_rejection;
 mod policy;
 mod require_indent;
+mod skipped_values;
 mod streaming_budget_parity;
 mod stress_load;
