@@ -27,7 +27,19 @@ noyalib enforces safety at the compiler level:
 
 - `#![forbid(unsafe_code)]` — zero unsafe blocks, guaranteed.
 - No C dependencies, no FFI calls. Pure Rust only.
-- No network I/O, no file system writes, no environment variable reads.
+- No network I/O and no file system writes, in any feature combination.
+- No file system reads except where the caller asks for one: the
+  `include_fs` feature's `SafeFileResolver` reads regular files under
+  the root it is given, and the `figment` feature's `Yaml::file` and
+  `Yaml::file_with_config` read the path they are given. Both stop one
+  byte past the configured length budget.
+- JSON Schema `$ref` never resolves outside the schema document: every
+  validator refuses `file:`, `http:`, `https:` and any other external
+  reference, even when another crate in the build turns on
+  `jsonschema`'s resolvers.
+- No environment variable reads at run time. The build script reads
+  `RUSTC` and `NOYALIB_COVERAGE` at build time only, and runs
+  `rustc --version` to detect a nightly toolchain.
 
 ### Parser Hardening
 
@@ -54,12 +66,12 @@ mitigations:
 | `noyalib::recovery::parse_lenient` | `---`-marker count cap (defeats marker-spam OOM) | `ParserConfig::max_documents` |
 | `noyalib::recovery::parse_lenient` | Cumulative byte budget across line-truncation retries (defeats O(n²) re-parse on 10k-line malformed input) | `LenientConfig::truncation_event_budget` (default 1 MiB) |
 | `noyalib::tokio_async::from_async_reader` | Bounded `AsyncReadExt::take(max_document_length)` drain (defeats slow-drip OOM) | `ParserConfig::max_document_length` |
-| `noyalib::tokio_async::YamlDecoder` | Optional inter-frame buffer cap (defeats codec buffer pinning by adversarial producer) | `YamlDecoder::max_frame_size(usize)` |
+| `noyalib::tokio_async::YamlDecoder` | Inter-frame buffer cap (defeats codec buffer pinning by adversarial producer) | `YamlDecoder::max_frame_size(usize)`, never above `ParserConfig::max_document_length` |
 
-Untrusted-input deployments driving `YamlDecoder` over a network
-stream **should** call `max_frame_size(_)` to a sane upper bound;
-the default `None` matches the trust contract of a process-local
-in-memory consumer.
+`YamlDecoder` caps every frame at `max_document_length` (64 MiB by
+default) whatever `max_frame_size` says. Untrusted-input deployments
+driving it over a network stream should lower `max_document_length`,
+or call `max_frame_size(_)`, to the largest document they expect.
 
 #### `max_depth` guard correctness (issue #46)
 

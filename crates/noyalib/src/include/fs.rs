@@ -46,6 +46,18 @@ pub enum SymlinkPolicy {
 /// and symlink targets outside the root are rejected before content is
 /// read.
 ///
+/// # What is read
+///
+/// Only regular files are read. A directory, FIFO, socket or device is
+/// refused, and on Unix the file is opened non-blocking so that a FIFO
+/// planted under the root cannot stall the parse before it is refused.
+/// At most [`IncludeRequest::max_bytes`] plus one bytes are read, so an
+/// oversized file costs no more memory than the budget it exceeds.
+///
+/// Paths in error messages and [`InputSource::name`] are relative to
+/// the root: a document author learns nothing about where the root
+/// sits on the host.
+///
 /// # Symlinks
 ///
 /// Controlled by [`SymlinkPolicy`]. On Unix, the default
@@ -53,7 +65,13 @@ pub enum SymlinkPolicy {
 /// the directory capability. [`SymlinkPolicy::Reject`] opens each
 /// directory component and the final file without following
 /// symlinks, avoiding a metadata-then-open race. Windows enforces
-/// the same policies through canonical path and metadata checks.
+/// the same policies through canonical path and metadata checks; there
+/// the path is canonicalised and then opened by name, so a link swapped
+/// in between those two steps is not detected. The regular-file check
+/// runs on the opened handle on every platform, which also refuses
+/// Windows device names such as `CON` or `NUL`. Hard links are not
+/// symlinks and are followed on every platform: a hard link inside the
+/// root to a file outside it is read.
 ///
 /// # Examples
 ///
@@ -68,7 +86,6 @@ pub enum SymlinkPolicy {
 /// ```
 #[derive(Debug, Clone)]
 pub struct SafeFileResolver {
-    root: std::path::PathBuf,
     symlink_policy: SymlinkPolicy,
     capability: Arc<RootCapability>,
 }
@@ -110,7 +127,6 @@ impl SafeFileResolver {
             Err(error) => RootCapability::Failed(error.to_string()),
         };
         Self {
-            root,
             symlink_policy: SymlinkPolicy::default(),
             capability: Arc::new(capability),
         }
@@ -132,8 +148,6 @@ impl SafeFileResolver {
     }
 
     fn resolve(&self, req: IncludeRequest<'_>) -> Result<InputSource> {
-        use std::io::Read as _;
-
         // Strip the optional `#anchor` fragment. The loader handles anchor
         // selection after parse, so the resolver only needs the path portion.
         let (path_part, _fragment) = split_fragment(req.spec);
@@ -141,32 +155,50 @@ impl SafeFileResolver {
             Error::Custom(format!("include resolver: `{path_part}` {message}"))
         })?;
         let capability = self.root_capability()?;
-        let (mut file, display_path) =
+        let (file, name) =
             open_from_root(capability, &relative, self.symlink_policy).map_err(|error| {
                 Error::Custom(format!(
                     "include resolver: `{}` escapes sandbox root, contains a rejected symlink, or cannot read securely: {error}",
-                    self.root.join(&relative).display()
+                    relative.display()
                 ))
             })?;
-        let mut bytes = String::new();
-        let _bytes_read = file.read_to_string(&mut bytes).map_err(|error| {
+        let bytes = read_regular_file(file, req.max_bytes).map_err(|error| {
             Error::Custom(format!(
                 "include resolver: cannot read `{}`: {error}",
-                display_path.display()
+                name.display()
             ))
         })?;
-        Ok(InputSource::new(display_path.display().to_string(), bytes))
+        Ok(InputSource::new(name.display().to_string(), bytes))
     }
 
     fn root_capability(&self) -> Result<&RootCapability> {
         match self.capability.as_ref() {
             ready @ RootCapability::Ready { .. } => Ok(ready),
             RootCapability::Failed(error) => Err(Error::Custom(format!(
-                "include resolver: cannot open root `{}`: {error}",
-                self.root.display()
+                "include resolver: cannot open root: {error}"
             ))),
         }
     }
+}
+
+/// Read `file` if it is a regular file, stopping one byte past
+/// `max_bytes` so the caller's budget check sees the overrun without
+/// the whole file being buffered.
+fn read_regular_file(file: std::fs::File, max_bytes: usize) -> std::io::Result<String> {
+    use std::io::Read as _;
+
+    if !file.metadata()?.is_file() {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::InvalidInput,
+            "not a regular file",
+        ));
+    }
+    let limit = u64::try_from(max_bytes)
+        .unwrap_or(u64::MAX)
+        .saturating_add(1);
+    let mut bytes = String::new();
+    let _read = file.take(limit).read_to_string(&mut bytes)?;
+    Ok(bytes)
 }
 
 fn normalize_relative_path(path: &str) -> core::result::Result<std::path::PathBuf, &'static str> {
@@ -237,20 +269,25 @@ fn open_from_root(
         unreachable!("failed root capabilities are rejected before open")
     };
     let active_root = current_root_path(dir).unwrap_or_else(|_| canonical_root.clone());
-    let (open_path, identity) = if policy == SymlinkPolicy::FollowWithinRoot {
+    let open_path = if policy == SymlinkPolicy::FollowWithinRoot {
         let canonical = std::fs::canonicalize(active_root.join(relative))?;
-        let beneath = canonical.strip_prefix(&active_root).map_err(|_| {
-            std::io::Error::new(
-                std::io::ErrorKind::PermissionDenied,
-                "resolved path escapes sandbox root",
-            )
-        })?;
-        (beneath.to_path_buf(), canonical)
+        canonical
+            .strip_prefix(&active_root)
+            .map_err(|_| {
+                std::io::Error::new(
+                    std::io::ErrorKind::PermissionDenied,
+                    "resolved path escapes sandbox root",
+                )
+            })?
+            .to_path_buf()
     } else {
-        (relative.to_path_buf(), active_root.join(relative))
+        relative.to_path_buf()
     };
     let file = open_relative_nofollow(dir, &open_path)?;
-    Ok((file, identity))
+    // The root-relative path is the source's identity: canonical within
+    // the root (symlinks resolved, or rejected), so cycle detection
+    // still sees one name per file, and free of the host's layout.
+    Ok((file, open_path))
 }
 
 #[cfg(all(unix, target_vendor = "apple"))]
@@ -291,19 +328,19 @@ fn open_from_root(
         unreachable!("failed root capabilities are rejected before open")
     };
     let canonical = std::fs::canonicalize(canonical_root.join(relative))?;
-    if !canonical.starts_with(canonical_root) {
+    let Ok(beneath) = canonical.strip_prefix(canonical_root) else {
         return Err(std::io::Error::new(
             std::io::ErrorKind::PermissionDenied,
             "resolved path escapes sandbox root",
         ));
-    }
+    };
     if policy == SymlinkPolicy::Reject && path_contains_symlink(canonical_root, relative)? {
         return Err(std::io::Error::new(
             std::io::ErrorKind::PermissionDenied,
             "symlink rejected by policy",
         ));
     }
-    Ok((std::fs::File::open(&canonical)?, canonical))
+    Ok((std::fs::File::open(&canonical)?, beneath.to_path_buf()))
 }
 
 #[cfg(unix)]
@@ -335,10 +372,13 @@ fn open_relative_nofollow(
             )?;
         }
     }
+    // `NONBLOCK`: opening a FIFO for reading otherwise waits for a
+    // writer. The regular-file check after the open refuses it; for a
+    // regular file the flag has no effect on reads.
     let fd = rustix::fs::openat(
         &parent,
         file_name,
-        OFlags::RDONLY | OFlags::NOFOLLOW | OFlags::CLOEXEC,
+        OFlags::RDONLY | OFlags::NOFOLLOW | OFlags::CLOEXEC | OFlags::NONBLOCK,
         Mode::empty(),
     )?;
     Ok(std::fs::File::from(fd))

@@ -128,6 +128,12 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - `load_all_as_with_config`, the configurable form of `load_all_as`.
   `load_all_as` now also refuses input over `max_document_length`, as
   `load_all` does.
+- `IncludeRequest::max_bytes`: the most bytes the loader will accept
+  for the requested source, so custom resolvers can stop reading early.
+- `noyalib::figment::Yaml::string_with_config` and `file_with_config`
+  build a `YamlWithConfig` provider that parses under a caller-supplied
+  `ParserConfig`, with `nested()` and `profile()` like figment's own
+  providers.
 
 ### Changed
 
@@ -137,6 +143,66 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   combination of `flow_style`, `scalar_style`, `quote_all`,
   `prefer_single_quotes` and the document markers, and requires each to
   read back unchanged. CI runs 64 cases; set `PROPTEST_CASES` for more.
+- `!!binary` decoding is canonical: a padded final group whose unused
+  bits are not zero (`QR==`, `QUJ=`) is refused instead of decoding to
+  the same bytes as its canonical form (`QQ==`, `QUI=`).
+
+### Security
+
+- Schema validation never resolves a `$ref` outside the schema
+  document. `validate_against_schema`, `CompiledSchema`,
+  `coerce_to_schema` and `cst::coerce_to_schema` install a retriever
+  that refuses every external
+  reference (`file:`, `http:`, `https:` and any other scheme). Before,
+  a build that enabled `jsonschema`'s `resolve-file` or `resolve-http`
+  feature through another crate let a schema read local files, whose
+  contents could surface in validation errors, or fetch URLs.
+- Schema `pattern` and `patternProperties` compile with a linear-time
+  regex engine. A hostile pattern used to backtrack for minutes per
+  request. Lookaround and backreferences now fail to compile unless
+  `CompiledSchemaBuilder::backtracking_patterns(limit)` opts back in
+  under a step limit.
+- Schema validation runs the validator once and caps what it collects:
+  at most 100 violations and 64 KiB of message text by default, each
+  message cut at 1 KiB, with the total still reported. An 18 KB schema
+  against a 1 MiB instance used to build a 1 GB error string. Schemas
+  over 100,000 nodes or 128 levels of nesting are refused before
+  compiling. All four limits are configurable on the builder.
+- `!include` resolution charges nesting depth across include levels:
+  an included document only gets the `max_depth` left at the position
+  of its `!include`. Each level used to get the full budget, so 24
+  levels of 120-deep documents built a 2,880-deep tree and overflowed
+  the stack. Each included source is also held to
+  `max_document_length`.
+- `SafeFileResolver` reads only regular files and stops one byte past
+  the remaining include budget. A FIFO under the root used to block the
+  parse forever, and an oversized file was read whole before the byte
+  budget applied. Its error messages and source names give paths
+  relative to the root instead of absolute host paths.
+- `read` and `read_with_config` honour `max_stream_bytes` and stop
+  reading one byte past their stream cap (`max_stream_bytes`, or 64
+  times `max_document_length` when smaller). They used to read the
+  whole source first, so a 1 GiB reader cost about 780 MB before the
+  cap was checked, and `max_stream_bytes` was ignored.
+- `Spanned<T>` locations come from a line index built once per source
+  and a per-value cache. Each `Spanned` value used to rescan the source
+  from byte 0 twelve times, so 40,000 spanned values in a debug build
+  took about a minute.
+- `YamlDecoder` resumes its `---` boundary scan where the previous
+  `decode` call stopped. It rescanned the whole buffered frame on every
+  read, so 8 MiB arriving in 8 KiB reads took 196 s in a debug build.
+  A frame is also always capped by `max_document_length`, even when
+  `max_frame_size` is set higher.
+- The "did you mean" suggestion for an unknown alias compares only
+  names up to 64 characters whose length is within two of the alias,
+  and at most 4,096 of them. It ran a full edit distance against every
+  anchor, so 1,000 anchors of 1,000 characters took 433 s in a debug
+  build to report one unknown alias.
+- The figment `Yaml` provider applies `max_document_length`. An
+  oversized document failed the streaming walker's check without a
+  location, fell through to the AST path and was parsed anyway.
+  `Yaml::file` now stops reading one byte past the limit instead of
+  reading the whole file first.
 
 
 ## [v0.0.54] - 2026-10-07

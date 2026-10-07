@@ -179,3 +179,39 @@ secret: !!binary SGVsbG8sIFdvcmxkIQ==
     let v: S = noyalib::from_str_with_config(yaml, &cfg).unwrap();
     assert_eq!(v.secret, b"Hello, World!");
 }
+
+#[derive(Debug, serde::Deserialize)]
+struct Bin(#[serde(with = "serde_bytes")] Vec<u8>);
+
+#[derive(Debug, serde::Deserialize)]
+struct Holder {
+    data: Bin,
+}
+
+#[test]
+fn binary_rejects_non_canonical_padding_bits() {
+    // `QR==` and `QUJ=` carry set bits in the padding position; they
+    // would decode to the same bytes as the canonical `QQ==` / `QUI=`,
+    // so two different scalars would mean the same value.
+    for bad in ["QR==", "QZ==", "QUJ=", "QUL="] {
+        let top = noyalib::from_str::<Bin>(&format!("!!binary {bad}\n"));
+        assert!(top.is_err(), "{bad} must be refused: {top:?}");
+        // The nested shape goes through the AST deserializer rather
+        // than the streaming one.
+        let nested = noyalib::from_str::<Holder>(&format!("data: !!binary {bad}\n"));
+        assert!(
+            nested.is_err(),
+            "{bad} must be refused when nested: {nested:?}"
+        );
+    }
+    for (good, bytes) in [
+        ("QQ==", &b"A"[..]),
+        ("QUI=", &b"AB"[..]),
+        ("QUJD", &b"ABC"[..]),
+    ] {
+        let top = noyalib::from_str::<Bin>(&format!("!!binary {good}\n")).unwrap();
+        assert_eq!(top.0, bytes);
+        let nested = noyalib::from_str::<Holder>(&format!("data: !!binary {good}\n")).unwrap();
+        assert_eq!(nested.data.0, bytes);
+    }
+}

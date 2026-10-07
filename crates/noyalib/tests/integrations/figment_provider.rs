@@ -162,3 +162,94 @@ service:
     assert_eq!(svc.host, "api.example.com");
     assert_eq!(svc.port, 8080);
 }
+
+#[test]
+fn string_provider_applies_the_default_document_length() {
+    // One byte over the default `max_document_length`, as comments so
+    // the parse itself is cheap if the limit is skipped.
+    let limit = noyalib::ParserConfig::default().max_document_length;
+    let mut yaml = String::with_capacity(limit + 1024);
+    yaml.push_str("name: x\nport: 1\n");
+    let line = format!("# {}\n", "c".repeat(1000));
+    while yaml.len() <= limit {
+        yaml.push_str(&line);
+    }
+    let res: Result<Cfg, _> = Figment::new().merge(Yaml::string(&yaml)).extract();
+    let err = res.expect_err("a document over max_document_length must be refused");
+    assert!(err.to_string().contains("maximum length"), "{err}");
+}
+
+#[test]
+fn configured_string_provider_applies_its_limits() {
+    let yaml = "name: noyalib\nport: 8080\n";
+    let tight = noyalib::ParserConfig::new().max_document_length(8);
+    let res: Result<Cfg, _> = Figment::new()
+        .merge(Yaml::string_with_config(yaml, tight))
+        .extract();
+    assert!(res.unwrap_err().to_string().contains("maximum length"));
+
+    let cfg: Cfg = Figment::new()
+        .merge(Yaml::string_with_config(
+            yaml,
+            noyalib::ParserConfig::strict(),
+        ))
+        .extract()
+        .unwrap();
+    assert_eq!(cfg.port, 8080);
+}
+
+#[test]
+fn configured_provider_applies_parser_policy() {
+    let yaml = "name: a\nname: b\nport: 1\n";
+    let res: Result<Cfg, _> = Figment::new()
+        .merge(Yaml::string_with_config(
+            yaml,
+            noyalib::ParserConfig::strict(),
+        ))
+        .extract();
+    assert!(res.is_err(), "strict refuses the duplicate key");
+}
+
+#[test]
+fn configured_provider_supports_profiles() {
+    let yaml = "default:\n  name: base\n  port: 1\nprod:\n  port: 2\n";
+    let figment = Figment::new()
+        .merge(Yaml::string_with_config(yaml, noyalib::ParserConfig::default()).nested());
+    let cfg: Cfg = figment.select("prod").extract().unwrap();
+    assert_eq!(
+        cfg,
+        Cfg {
+            name: "base".into(),
+            port: 2
+        }
+    );
+
+    let flat = "name: p\nport: 3\n";
+    let cfg: Cfg = Figment::new()
+        .merge(Yaml::string_with_config(flat, noyalib::ParserConfig::default()).profile("prod"))
+        .select("prod")
+        .extract()
+        .unwrap();
+    assert_eq!(cfg.port, 3);
+}
+
+#[test]
+fn file_providers_stop_reading_at_the_limit() {
+    let dir = std::env::temp_dir().join(format!("noyalib-figment-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let path = dir.join("big.yaml");
+    std::fs::write(&path, format!("name: x\nport: 1\n# {}\n", "c".repeat(4096))).unwrap();
+    let tight = noyalib::ParserConfig::new().max_document_length(64);
+    let res: Result<Cfg, _> = Figment::new()
+        .merge(Yaml::file_with_config(&path, tight))
+        .extract();
+    let ok: Result<Cfg, _> = Figment::new()
+        .merge(Yaml::file_with_config(
+            &path,
+            noyalib::ParserConfig::default(),
+        ))
+        .extract();
+    let _ = std::fs::remove_dir_all(&dir);
+    assert!(res.unwrap_err().to_string().contains("maximum length"));
+    assert_eq!(ok.unwrap().port, 1);
+}

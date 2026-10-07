@@ -274,14 +274,12 @@ where
         let pairs = parser::parse(input, &parse_config)?;
         let mut results = Vec::with_capacity(pairs.len());
         let source: Arc<str> = input.into();
+        let lines = span_context::SharedLineIndex::default();
 
         for (value, span_tree) in &pairs {
             crate::policy::check_document(&config.policies, value)?;
             let spans = span_context::build_span_map(value, span_tree);
-            let ctx = span_context::SpanContext {
-                spans,
-                source: source.clone(),
-            };
+            let ctx = span_context::SpanContext::with_lines(spans, source.clone(), lines.clone());
             let _guard = span_context::set_span_context(ctx);
             let typed: T = crate::from_value(value)?;
             results.push(typed);
@@ -452,18 +450,34 @@ where
     R: std::io::Read,
     T: for<'de> serde_core::Deserialize<'de> + 'static,
 {
-    let mut buf = String::new();
+    use std::io::Read as _;
+
+    // Cap on the *aggregated* multi-document buffer: `max_stream_bytes`,
+    // or 64 times `max_document_length` when that is smaller. Reading
+    // stops one byte past it, so an unbounded reader is refused
+    // without being buffered first.
+    let doc_cap = config.max_document_length.saturating_mul(64);
+    let cap = config.max_stream_bytes.min(doc_cap);
+    let limit = u64::try_from(cap).unwrap_or(u64::MAX).saturating_add(1);
+    let mut bytes = Vec::new();
     let _read_bytes = reader
-        .read_to_string(&mut buf)
+        .by_ref()
+        .take(limit)
+        .read_to_end(&mut bytes)
         .map_err(|e| Error::Parse(format!("reader I/O failed: {e}")))?;
-    if buf.len() > config.max_document_length.saturating_mul(64) {
-        // Soft cap on the *aggregated* multi-document buffer to
-        // bound memory regardless of per-document caps.
-        return Err(Error::Parse(format!(
-            "reader payload exceeds 64× max_document_length ({} bytes)",
-            config.max_document_length
-        )));
+    if bytes.len() > cap {
+        return Err(Error::Parse(if cap < doc_cap {
+            format!("reader payload exceeds max_stream_bytes ({cap} bytes)")
+        } else {
+            format!(
+                "reader payload exceeds 64× max_document_length ({} bytes)",
+                config.max_document_length
+            )
+        }));
     }
+    let buf = String::from_utf8(bytes).map_err(|_| {
+        Error::Parse("reader I/O failed: stream did not contain valid UTF-8".into())
+    })?;
     let parse_config = parser::ParseConfig::from(config);
     let pairs = parser::parse(&buf, &parse_config)?;
     let docs: Vec<Value> = pairs.into_iter().map(|(value, _)| value).collect();
