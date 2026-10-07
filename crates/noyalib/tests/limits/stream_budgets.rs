@@ -7,7 +7,7 @@
 //! One loader charges `max_events`, `max_nodes`,
 //! `max_total_scalar_bytes` and `max_documents` across a whole stream.
 //! The entry points that split a stream and parse each document on its
-//! own (`parallel`, `recovery`, the Tokio readers) used to give every
+//! own (`parallel`, `recovery`, the Tokio readers, the CST stream) used to give every
 //! document a fresh budget, so four documents each under a limit passed
 //! together even when the stream was far over it. `max_stream_bytes`
 //! was only enforced by the Tokio multi-document reader.
@@ -44,6 +44,11 @@ fn readers() -> Vec<(&'static str, MultiReader)> {
             .map(|d| d.count())
             .map_err(|e| e.to_string())
     })];
+    r.push(("cst::parse_stream_with_config", |s, c| {
+        noyalib::cst::parse_stream_with_config(s, c)
+            .map(|d| d.len())
+            .map_err(|e| e.to_string())
+    }));
     #[cfg(feature = "parallel")]
     r.push(("parallel::values_with_config", |s, c| {
         noyalib::parallel::values_with_config(s, c)
@@ -144,4 +149,18 @@ fn yaml_decoder_enforces_max_documents_across_frames() {
     assert!(err.contains("document"), "{err}");
     let ok = decode_all(&yaml, &ParserConfig::default().max_documents(5)).expect("five fit");
     assert_eq!(ok, 5);
+}
+
+#[test]
+fn cst_stream_documents_are_edited_on_their_own_budget() {
+    // Two documents use 32 of the stream's 40 events. Editing one
+    // re-parses only that document, so it must not be charged against
+    // what the stream already spent.
+    let src = "---\n[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]\n".repeat(2);
+    let cfg = ParserConfig::default().max_events(40);
+    let mut docs = noyalib::cst::parse_stream_with_config(&src, &cfg).unwrap();
+    for doc in &mut docs {
+        doc.set("[0]", "9").unwrap();
+    }
+    assert!(docs[1].source().contains("[9, 1"), "{}", docs[1].source());
 }

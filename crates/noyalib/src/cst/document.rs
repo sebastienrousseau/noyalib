@@ -3349,13 +3349,20 @@ pub(crate) fn parse_stream_inner(
             observed: documents,
         }));
     }
+    // One tally for the whole stream, so `max_events`, `max_nodes`,
+    // `max_total_scalar_bytes` and `max_merge_keys` hold across
+    // documents as they do in `load_all`. Each document keeps a config
+    // without it: its later re-parses (edits) are charged on their own.
+    let mut shared = config.clone();
+    shared.stream_tally = Some(Arc::default());
     let mut out = Vec::with_capacity(bounds.len());
     for (s, e) in bounds {
         if s == e {
             continue;
         }
-        let doc = parse_document_inner(&input[s..e], config.clone())
+        let mut doc = parse_document_inner(&input[s..e], shared.clone())
             .map_err(|err| cross_document_anchor_hint(err.relocate(input, s), &input[..s]))?;
+        doc.config.stream_tally = None;
         out.push(doc);
     }
     Ok(out)

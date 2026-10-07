@@ -106,12 +106,13 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   now apply to them, so hostile content under an ignored field is
   refused as it is for a `Value` target.
 - The multi-document entry points that parse each document separately
-  (`parallel`, `recovery`, `tokio_async::from_async_reader_multi*` and
-  `YamlDecoder`) charge `max_events`, `max_nodes`,
+  (`parallel`, `recovery`, `tokio_async::from_async_reader_multi*`,
+  `YamlDecoder` and `cst::parse_stream*`) charge `max_events`, `max_nodes`,
   `max_total_scalar_bytes`, `max_merge_keys` and `max_documents` across
   the whole stream, as `load_all` does, instead of resetting them per
   document. `YamlDecoder` now enforces `max_documents`, and `parallel`
-  and `recovery` enforce `max_stream_bytes`.
+  and `recovery` enforce `max_stream_bytes`. Documents from a CST stream keep their own
+  budget for later edits.
 - `compat::serde_yaml::from_str_multi` parses under the shim's
   serde_yaml profile, as `from_str` does; it used noyalib's defaults, so
   a stream read differently from the same single document (`0123`,
