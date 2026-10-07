@@ -2549,6 +2549,33 @@ mod tests {
         }
     }
 
+    /// Deep flow nesting keeps one pending simple key per level; the
+    /// staleness and queue checks must not walk every level per token.
+    /// Linear work grows about eight times between the two depths,
+    /// quadratic work about sixty-four times.
+    #[test]
+    fn deep_flow_nesting_scans_in_linear_time() {
+        fn drain(depth: usize) -> core::time::Duration {
+            let input = format!("{}{}", "[".repeat(depth), "]".repeat(depth));
+            let start = std::time::Instant::now();
+            let mut scanner = Scanner::new(&input);
+            while let Ok(token) = scanner.next_token() {
+                if matches!(token.kind, TokenKind::StreamEnd) {
+                    break;
+                }
+            }
+            start.elapsed()
+        }
+        let small = (0..5).map(|_| drain(5_000)).min().unwrap_or_default();
+        let large = (0..3).map(|_| drain(40_000)).min().unwrap_or_default();
+        let small = small.max(core::time::Duration::from_micros(200));
+        let ratio = large.as_secs_f64() / small.as_secs_f64();
+        assert!(
+            ratio < 24.0,
+            "8x deeper took {ratio:.1}x ({small:?} -> {large:?})"
+        );
+    }
+
     /// The memoised line-end lookup must agree with a fresh scan at every
     /// position, in forward order (the memo's use) and backwards (where the
     /// memo must be discarded).

@@ -71,26 +71,6 @@ fn long_flow_line_parses_in_linear_time_cst() {
     });
 }
 
-/// Deep flow nesting keeps one pending simple key per level. The
-/// staleness check must not walk every level for every token, or a
-/// 40,000-deep fragment costs seconds before the depth limit refuses it.
-#[cfg(feature = "std")]
-#[test]
-fn deep_flow_nesting_is_refused_in_linear_time() {
-    fn refuse(depth: usize) {
-        let deep = format!("{}{}", "[".repeat(depth), "]".repeat(depth));
-        let mut doc = noyalib::cst::parse_document("m:\n  a: 1\n").expect("valid");
-        assert!(doc.set("m.a", &deep).is_err(), "depth {depth} accepted");
-    }
-    let t_small = fastest(5, || refuse(5_000)).max(Duration::from_micros(200));
-    let t_large = fastest(3, || refuse(40_000));
-    let ratio = t_large.as_secs_f64() / t_small.as_secs_f64();
-    assert!(
-        ratio < 24.0,
-        "8x deeper nesting took {ratio:.1}x as long ({t_small:?} -> {t_large:?})",
-    );
-}
-
 /// `max_events` must be able to refuse a huge flow collection at
 /// document start after a handful of events. The scanner used to hold
 /// every token of the collection as a possible implicit key first; the
