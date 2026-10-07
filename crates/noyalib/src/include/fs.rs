@@ -55,8 +55,9 @@ pub enum SymlinkPolicy {
 /// oversized file costs no more memory than the budget it exceeds.
 ///
 /// Paths in error messages and [`InputSource::name`] are relative to
-/// the root: a document author learns nothing about where the root
-/// sits on the host.
+/// the root and use `/` separators on every platform: a document author
+/// learns nothing about where the root sits on the host, and a source
+/// has the same name on Windows as elsewhere.
 ///
 /// # Symlinks
 ///
@@ -159,16 +160,16 @@ impl SafeFileResolver {
             open_from_root(capability, &relative, self.symlink_policy).map_err(|error| {
                 Error::Custom(format!(
                     "include resolver: `{}` escapes sandbox root, contains a rejected symlink, or cannot read securely: {error}",
-                    relative.display()
+                    slash_path(&relative)
                 ))
             })?;
         let bytes = read_regular_file(file, req.max_bytes).map_err(|error| {
             Error::Custom(format!(
                 "include resolver: cannot read `{}`: {error}",
-                name.display()
+                slash_path(&name)
             ))
         })?;
-        Ok(InputSource::new(name.display().to_string(), bytes))
+        Ok(InputSource::new(slash_path(&name), bytes))
     }
 
     fn root_capability(&self) -> Result<&RootCapability> {
@@ -199,6 +200,16 @@ fn read_regular_file(file: std::fs::File, max_bytes: usize) -> std::io::Result<S
     let mut bytes = String::new();
     let _read = file.take(limit).read_to_string(&mut bytes)?;
     Ok(bytes)
+}
+
+/// A root-relative path written with `/` between its components, so
+/// error messages and source names read the same on every platform.
+fn slash_path(path: &std::path::Path) -> String {
+    let parts: Vec<_> = path
+        .components()
+        .map(|c| c.as_os_str().to_string_lossy())
+        .collect();
+    parts.join("/")
 }
 
 fn normalize_relative_path(path: &str) -> core::result::Result<std::path::PathBuf, &'static str> {
@@ -400,4 +411,19 @@ fn path_contains_symlink(
         }
     }
     Ok(false)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::slash_path;
+    use std::path::Path;
+
+    #[test]
+    fn source_names_use_forward_slashes_on_every_platform() {
+        // `join` writes the platform separator (`\` on Windows); the
+        // name a document author sees must not depend on it.
+        let nested = Path::new("sub").join("deeper").join("a.yaml");
+        assert_eq!(slash_path(&nested), "sub/deeper/a.yaml");
+        assert_eq!(slash_path(Path::new("a.yaml")), "a.yaml");
+    }
 }

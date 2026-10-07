@@ -214,7 +214,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   the remaining include budget. A FIFO under the root used to block the
   parse forever, and an oversized file was read whole before the byte
   budget applied. Its error messages and source names give paths
-  relative to the root instead of absolute host paths.
+  relative to the root, with `/` separators on every platform, instead
+  of absolute host paths.
 - `read` and `read_with_config` honour `max_stream_bytes` and stop
   reading one byte past their stream cap (`max_stream_bytes`, or 64
   times `max_document_length` when smaller). They used to read the

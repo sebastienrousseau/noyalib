@@ -258,7 +258,10 @@ fn error_caps_are_configurable() {
         .max_error_bytes(0)
         .build()
         .unwrap();
-    assert!(compiled.iter_errors(&instance).unwrap().is_empty());
+    assert_eq!(
+        compiled.iter_errors(&instance).unwrap(),
+        Vec::<noyalib::SchemaViolation>::new()
+    );
 }
 
 #[test]
