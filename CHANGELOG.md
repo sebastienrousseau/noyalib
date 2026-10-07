@@ -7,6 +7,16 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [v0.0.55] - Unreleased
 
+### Security
+
+- Schema validation never resolves a `$ref` outside the schema
+  document. `validate_against_schema`, `CompiledSchema` and
+  `coerce_to_schema` install a retriever that refuses every external
+  reference (`file:`, `http:`, `https:` and any other scheme). Before,
+  a build that enabled `jsonschema`'s `resolve-file` or `resolve-http`
+  feature through another crate let a schema read local files, whose
+  contents could surface in validation errors, or fetch URLs.
+
 ## [v0.0.54] - 2026-10-07
 
 ### Security

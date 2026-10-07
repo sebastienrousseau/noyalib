@@ -5,11 +5,13 @@
 //! requires implementations to refuse auto-dereferencing external
 //! `$ref` URIs and to bound schema depth and validation time.
 //!
-//! noyalib satisfies both today, but by construction rather than by
-//! contract: external resolution is off because `jsonschema` is
-//! declared `default-features = false`, and the depth bound belongs to
-//! that crate. Either could be undone by a dependency bump or a stray
-//! feature without anything noticing.
+//! External resolution is refused by an explicit retriever installed on
+//! every validator. The test build enables `jsonschema`'s
+//! `resolve-file` feature on purpose, mirroring a consumer whose build
+//! unifies it in, so the refusal is proven under the hostile
+//! configuration rather than the default one. The depth bound belongs
+//! to the parser and to `jsonschema`, and could be undone by a
+//! dependency bump without anything noticing.
 //!
 //! These tests turn the accidents into guarantees. If one fails, the
 //! property it protects has been lost — do not relax the test.
@@ -129,4 +131,68 @@ fn local_defs_refs_still_work() {
     validate_against_schema_str("p: 8080", schema).expect("local $ref must resolve");
     let _ = validate_against_schema_str("p: text", schema)
         .expect_err("local $ref must still enforce its type");
+}
+
+#[test]
+fn file_ref_is_refused_and_contents_never_leak() {
+    // The dev-dependency on `jsonschema` with `resolve-file` mirrors a
+    // consumer whose build unifies that feature in. The refusal must
+    // hold anyway, and the referenced file's contents must not reach
+    // the error text.
+    let dir = std::env::temp_dir().join(format!("noyalib-schema-ref-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let target = dir.join("leak.json");
+    std::fs::write(&target, r#"{"const":"TOPSECRET-4242"}"#).unwrap();
+    let schema = format!("{{\"$ref\": \"file://{}\"}}", target.display());
+    let result = validate_against_schema_str("a: 1", &schema);
+    let _ = std::fs::remove_dir_all(&dir);
+    let msg = result
+        .expect_err("a file:// $ref must be refused")
+        .to_string();
+    assert!(
+        !msg.contains("TOPSECRET-4242"),
+        "file contents leaked through the error: {msg}"
+    );
+    assert!(
+        msg.contains("external") || msg.contains("not present in a registry"),
+        "expected a refusal to resolve externally, got: {msg}"
+    );
+}
+
+#[test]
+fn file_ref_via_id_base_is_refused() {
+    let dir = std::env::temp_dir().join(format!("noyalib-schema-id-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    std::fs::write(dir.join("t.json"), r#"{"const":"TOPSECRET-77"}"#).unwrap();
+    let schema = format!(
+        "{{\"$id\": \"file://{}/\", \"$ref\": \"t.json\"}}",
+        dir.display()
+    );
+    let result = validate_against_schema_str("a: 1", &schema);
+    let _ = std::fs::remove_dir_all(&dir);
+    let msg = result
+        .expect_err("a relative file $ref must be refused")
+        .to_string();
+    assert!(!msg.contains("TOPSECRET-77"), "leaked: {msg}");
+}
+
+#[test]
+fn coerce_to_schema_refuses_file_refs_too() {
+    let dir = std::env::temp_dir().join(format!("noyalib-schema-coerce-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let target = dir.join("t.json");
+    std::fs::write(
+        &target,
+        r#"{"type":"object","properties":{"p":{"type":"integer"}}}"#,
+    )
+    .unwrap();
+    let schema: noyalib::Value =
+        noyalib::from_str(&format!("$ref: \"file://{}\"\n", target.display())).unwrap();
+    let mut data: noyalib::Value = noyalib::from_str("p: \"1\"\n").unwrap();
+    let result = noyalib::coerce_to_schema(&mut data, &schema);
+    let _ = std::fs::remove_dir_all(&dir);
+    assert!(
+        result.is_err(),
+        "a file:// $ref must be refused: {result:?}"
+    );
 }

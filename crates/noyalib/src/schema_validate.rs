@@ -16,11 +16,13 @@
 //!
 //! Two properties hold and are pinned by `tests/schema_hardening.rs`:
 //!
-//! - **External `$ref` is never dereferenced.** A schema referencing a
-//!   remote URI is refused, not fetched. `jsonschema` is declared
-//!   `default-features = false`, so its `resolve-http` support is
-//!   absent; the tests assert both the refusal and that it is fast,
-//!   since a network attempt would be slow.
+//! - **External `$ref` is never dereferenced.** A schema referencing
+//!   anything outside the document (`http:`, `https:`, `file:`, or any
+//!   other URI) is refused, not fetched or read. Every validator is
+//!   built with an explicit retriever that refuses all external
+//!   references, so the guarantee holds even when another crate in the
+//!   build enables `jsonschema`'s `resolve-http` or `resolve-file`
+//!   features through Cargo feature unification.
 //! - **Schema recursion is bounded.** Deeply nested schemas are refused
 //!   with `recursion depth limit exceeded` rather than exhausting the
 //!   stack — a stack overflow aborts the process instead of returning an
@@ -29,9 +31,9 @@
 //! Local `$ref` and `$defs` are unaffected; they are the composition
 //! mechanism JSON Schema 2020-12 tool definitions rely on.
 //!
-//! Both properties are inherited from how the dependency is configured
-//! rather than implemented here, which is exactly why they are tested:
-//! a feature flag or a dependency bump could remove either silently.
+//! The depth bound is inherited from the dependency and the parser
+//! rather than implemented here, which is exactly why it is tested: a
+//! feature flag or a dependency bump could remove it silently.
 //!
 //! # Examples
 //!
@@ -341,7 +343,7 @@ impl CompiledSchemaBuilder {
         let schema_json = self
             .schema_json
             .map_err(|e| Error::Custom(format!("validate_against_schema: schema -> JSON: {e}")))?;
-        let mut options = jsonschema::options();
+        let mut options = hardened_options();
         if let Some(yes) = self.validate_formats {
             options = options.should_validate_formats(yes);
         }
@@ -394,6 +396,47 @@ pub fn validate_against_schema_str(yaml: &str, schema_yaml: &str) -> Result<()> 
     let schema: Value = crate::from_str(schema_yaml)?;
     validate_against_schema(&value, &schema)
 }
+
+/// Validator options every schema in this module is compiled with.
+///
+/// The retriever is set explicitly rather than left to `jsonschema`'s
+/// default: with that crate's `resolve-file` or `resolve-http` feature
+/// switched on anywhere in the build, its default retriever reads files
+/// and fetches URLs named by `$ref`.
+fn hardened_options() -> jsonschema::ValidationOptions<'static> {
+    jsonschema::options().with_retriever(RefuseExternalRefs)
+}
+
+/// A `$ref` retriever that refuses every reference it is asked for.
+///
+/// `jsonschema` consults the retriever only for resources that are not
+/// already part of the schema document, so in-document `$ref` and
+/// `$defs` are unaffected.
+struct RefuseExternalRefs;
+
+impl jsonschema::Retrieve for RefuseExternalRefs {
+    fn retrieve(
+        &self,
+        uri: &jsonschema::Uri<String>,
+    ) -> core::result::Result<serde_json::Value, Box<dyn core::error::Error + Send + Sync>> {
+        Err(Box::new(ExternalRefRefused(uri.as_str().to_string())))
+    }
+}
+
+#[derive(Debug)]
+struct ExternalRefRefused(String);
+
+impl fmt::Display for ExternalRefRefused {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "external $ref `{}` refused: only references inside the schema document are resolved",
+            self.0
+        )
+    }
+}
+
+impl core::error::Error for ExternalRefRefused {}
 
 /// Convert a [`Value`] tree to a [`serde_json::Value`] via the
 /// existing `Serialize` impl on `Value`. Lossless for every
@@ -448,7 +491,7 @@ pub fn coerce_to_schema(value: &mut Value, schema: &Value) -> Result<usize> {
 
     let schema_json = value_to_json(schema)
         .map_err(|e| Error::Custom(format!("coerce_to_schema: schema -> JSON: {e}")))?;
-    let validator = jsonschema::validator_for(&schema_json).map_err(|e| {
+    let validator = hardened_options().build(&schema_json).map_err(|e| {
         Error::Custom(format!(
             "coerce_to_schema: schema is not a valid JSON Schema: {e}"
         ))
