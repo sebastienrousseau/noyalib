@@ -196,3 +196,122 @@ fn coerce_to_schema_refuses_file_refs_too() {
         "a file:// $ref must be refused: {result:?}"
     );
 }
+
+#[test]
+fn backtracking_pattern_is_bounded() {
+    // A lookaround pattern over many failing items is the classic
+    // catastrophic-backtracking shape. It must either be refused at
+    // compile time or finish quickly.
+    let schema = "type: array\nitems:\n  type: string\n  pattern: '^(\\w+\\s?)*$(?<=x)'\n";
+    let item = format!("{}!", "a".repeat(40));
+    let items: String = (0..200).map(|_| format!("- \"{item}\"\n")).collect();
+    let start = std::time::Instant::now();
+    let _ = validate_against_schema_str(&items, schema);
+    let elapsed = start.elapsed();
+    assert!(
+        elapsed < std::time::Duration::from_secs(1),
+        "200 items took {elapsed:?}"
+    );
+}
+
+#[test]
+fn error_report_is_bounded() {
+    // Many failing subschemas against one large instance must not
+    // multiply into an error string the size of both.
+    use noyalib::{CompiledSchema, Value};
+    let mut schema = String::from("allOf:\n");
+    for _ in 0..1_000 {
+        schema.push_str("  - type: integer\n");
+    }
+    let schema: Value = noyalib::from_str(&schema).unwrap();
+    let instance = Value::String("x".repeat(1024 * 1024));
+    let compiled = CompiledSchema::compile(&schema).unwrap();
+    let msg = compiled.validate(&instance).unwrap_err().to_string();
+    assert!(
+        msg.len() <= 128 * 1024,
+        "error report is {} bytes",
+        msg.len()
+    );
+    assert!(msg.contains("1000 total"), "the total is still reported");
+    assert!(msg.contains("more not shown"), "the cut is visible");
+    let violations = compiled.iter_errors(&instance).unwrap();
+    let total: usize = violations.iter().map(|v| v.message.len()).sum();
+    assert!(total <= 128 * 1024, "violations carry {total} bytes");
+}
+
+#[test]
+fn error_caps_are_configurable() {
+    use noyalib::{CompiledSchema, Value};
+    let schema: Value = noyalib::from_str("type: array\nitems: {type: integer}\n").unwrap();
+    let instance: Value = noyalib::from_str("[a, b, c, d, e]").unwrap();
+    let compiled = CompiledSchema::builder(&schema)
+        .max_errors(2)
+        .build()
+        .unwrap();
+    assert_eq!(compiled.iter_errors(&instance).unwrap().len(), 2);
+    let msg = compiled.validate(&instance).unwrap_err().to_string();
+    assert!(
+        msg.contains("5 total") && msg.contains("3 more not shown"),
+        "{msg}"
+    );
+    let compiled = CompiledSchema::builder(&schema)
+        .max_error_bytes(0)
+        .build()
+        .unwrap();
+    assert!(compiled.iter_errors(&instance).unwrap().is_empty());
+}
+
+#[test]
+fn oversized_schemas_are_refused() {
+    use noyalib::{CompiledSchema, Value};
+    let schema: Value = noyalib::from_str("allOf: [{type: integer}, {type: integer}]\n").unwrap();
+    let err = CompiledSchema::builder(&schema)
+        .max_schema_nodes(3)
+        .build()
+        .unwrap_err();
+    assert!(err.to_string().contains("nodes"), "{err}");
+    let err = CompiledSchema::builder(&schema)
+        .max_schema_depth(1)
+        .build()
+        .unwrap_err();
+    assert!(err.to_string().contains("recursion depth limit"), "{err}");
+    assert!(CompiledSchema::compile(&schema).is_ok());
+}
+
+#[test]
+fn lookaround_patterns_need_an_explicit_opt_in() {
+    use noyalib::{CompiledSchema, Value};
+    let schema: Value = noyalib::from_str("type: string\npattern: '^(?!tmp)'\n").unwrap();
+    let err = CompiledSchema::compile(&schema).unwrap_err().to_string();
+    assert!(err.contains("not a valid JSON Schema"), "{err}");
+    let compiled = CompiledSchema::builder(&schema)
+        .backtracking_patterns(10_000)
+        .build()
+        .unwrap();
+    assert!(compiled.validate(&Value::from("ok")).is_ok());
+    assert!(compiled.validate(&Value::from("tmpfile")).is_err());
+    // Linear-time patterns keep working with no opt-in.
+    let schema: Value = noyalib::from_str("type: string\npattern: '^[a-z]+$'\n").unwrap();
+    let compiled = CompiledSchema::compile(&schema).unwrap();
+    assert!(compiled.validate(&Value::from("abc")).is_ok());
+    assert!(compiled.validate(&Value::from("ABC")).is_err());
+}
+
+#[test]
+fn backtracking_opt_in_is_bounded_by_its_limit() {
+    // With the opt-in, the step limit is what bounds the work: each
+    // item stops after at most 10,000 steps.
+    use noyalib::{CompiledSchema, Value};
+    let schema: Value = noyalib::from_str(
+        "type: array\nitems:\n  type: string\n  pattern: '^(\\w+\\s?)*$(?<=x)'\n",
+    )
+    .unwrap();
+    let compiled = CompiledSchema::builder(&schema)
+        .backtracking_patterns(10_000)
+        .build()
+        .unwrap();
+    let item = Value::from(format!("{}!", "a".repeat(40)));
+    let instance = Value::Sequence((0..200).map(|_| item.clone()).collect());
+    let msg = compiled.validate(&instance).unwrap_err().to_string();
+    assert!(msg.contains("200 total"), "{msg}");
+}

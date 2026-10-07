@@ -16,6 +16,17 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   a build that enabled `jsonschema`'s `resolve-file` or `resolve-http`
   feature through another crate let a schema read local files, whose
   contents could surface in validation errors, or fetch URLs.
+- Schema `pattern` and `patternProperties` compile with a linear-time
+  regex engine. A hostile pattern used to backtrack for minutes per
+  request. Lookaround and backreferences now fail to compile unless
+  `CompiledSchemaBuilder::backtracking_patterns(limit)` opts back in
+  under a step limit.
+- Schema validation runs the validator once and caps what it collects:
+  at most 100 violations and 64 KiB of message text by default, each
+  message cut at 1 KiB, with the total still reported. An 18 KB schema
+  against a 1 MiB instance used to build a 1 GB error string. Schemas
+  over 100,000 nodes or 128 levels of nesting are refused before
+  compiling. All four limits are configurable on the builder.
 
 ## [v0.0.54] - 2026-10-07
 
