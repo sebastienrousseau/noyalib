@@ -65,13 +65,16 @@ pub struct SpanContext {
 pub(crate) type SharedLineIndex = Rc<OnceCell<LineIndex>>;
 
 impl SpanContext {
-    /// A context over `source` with its own line index.
+    /// A context over `source` with its own line index. Contexts are
+    /// only built by the span-tracking `std` loaders.
+    #[cfg(feature = "std")]
     pub(crate) fn new(spans: FxHashMap<usize, (usize, usize)>, source: Arc<str>) -> Self {
         Self::with_lines(spans, source, SharedLineIndex::default())
     }
 
     /// A context whose line index is shared with other contexts over
     /// the same `source`.
+    #[cfg(feature = "std")]
     pub(crate) fn with_lines(
         spans: FxHashMap<usize, (usize, usize)>,
         source: Arc<str>,
@@ -289,7 +292,7 @@ fn walk(value: &Value, tree: &SpanTree, map: &mut FxHashMap<usize, (usize, usize
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "std"))]
 mod line_index_tests {
     use super::*;
 
