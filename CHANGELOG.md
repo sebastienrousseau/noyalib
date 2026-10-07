@@ -17,6 +17,15 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   a comment hint, add keys on re-serialisation. Only the `fmt` and anchor
   wrapper types can create those hints now; `Tag::new("__noya_...")` is
   an ordinary tag.
+- Strings inside flow collections are quoted when they hold a flow
+  indicator (`,` `[` `]` `{` `}`). Under `FlowStyle::Flow`,
+  `FlowStyle::Auto`, `FlowSeq` and `FlowMap`, the string `viewer, admin`
+  was written as `[viewer, admin]` and read back as two items, and a
+  flow-mapping value could add a key. Everything nested in a flow
+  collection is now written in flow form: a multi-line string is
+  double-quoted instead of a block scalar, a mapping inside `FlowSeq`
+  is braced, and `Commented` / `SpaceAfter` hints inside one are
+  dropped rather than breaking the line.
 
 ## [v0.0.54] - 2026-10-07
 

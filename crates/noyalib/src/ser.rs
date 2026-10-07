@@ -648,7 +648,7 @@ fn value_to_string(value: &Value, config: &SerializerConfig) -> Result<String> {
     if config.document_start {
         output.push_str("---\n");
     }
-    write_value(&mut output, value, 0, true, config, 0)?;
+    write_value(&mut output, value, 0, true, &Cx::new(config), 0)?;
     if config.document_end {
         output.push_str("\n...");
     }
@@ -685,12 +685,48 @@ fn write_indent(output: &mut String, total_spaces: usize) {
     }
 }
 
+/// The emitter's context: the caller's configuration, and whether the
+/// writer is inside a flow collection. Inside one, every nested
+/// collection is written in flow form too (block layout does not parse
+/// there), a string never takes a block scalar, and a plain scalar must
+/// not contain a flow indicator. Dereferences to the configuration.
+#[derive(Debug, Clone, Copy)]
+struct Cx<'a> {
+    cfg: &'a SerializerConfig,
+    in_flow: bool,
+}
+
+impl<'a> Cx<'a> {
+    fn new(cfg: &'a SerializerConfig) -> Self {
+        Self {
+            cfg,
+            in_flow: false,
+        }
+    }
+
+    /// The context for the contents of a flow collection.
+    fn flow(self) -> Self {
+        Self {
+            in_flow: true,
+            ..self
+        }
+    }
+}
+
+impl core::ops::Deref for Cx<'_> {
+    type Target = SerializerConfig;
+
+    fn deref(&self) -> &SerializerConfig {
+        self.cfg
+    }
+}
+
 fn write_value(
     output: &mut String,
     value: &Value,
     indent: usize,
     is_root: bool,
-    config: &SerializerConfig,
+    config: &Cx<'_>,
     depth: usize,
 ) -> Result<()> {
     if depth > config.max_depth {
@@ -769,7 +805,7 @@ fn write_user_tag(
     output: &mut String,
     tagged: &TaggedValue,
     indent: usize,
-    config: &SerializerConfig,
+    config: &Cx<'_>,
     depth: usize,
 ) -> Result<()> {
     let tag_str = tagged.tag().as_str();
@@ -782,16 +818,26 @@ fn write_user_tag(
     // from the single-entry mapping keyed by its `!`-leading spelling,
     // so emit that mapping with a quoted key and let it re-parse as what
     // it is (found by fuzz_roundtrip on the key `"!\t"`).
-    if tag_str.bytes().any(|b| b < 0x20 || b == 0x7f || b == b'>') {
+    let as_mapping = tag_str.bytes().any(|b| b < 0x20 || b == 0x7f || b == b'>');
+    // Inside a flow collection that mapping needs its own braces.
+    let braced = as_mapping && config.in_flow;
+    if braced {
+        output.push('{');
+    }
+    if as_mapping {
         write_key_string(output, tag_str, indent, config);
         output.push(':');
     } else {
         write_tag_spelling(output, tag_str);
     }
-    if indicator_takes_a_space(inner) {
+    if indicator_takes_a_space(inner, config) {
         output.push(' ');
     }
-    write_value(output, inner, indent, false, config, depth + 1)
+    write_value(output, inner, indent, false, config, depth + 1)?;
+    if braced {
+        output.push('}');
+    }
+    Ok(())
 }
 
 /// Write a tag in the shortest spelling that re-parses to exactly the
@@ -992,7 +1038,7 @@ fn needs_double_quoted_escape(s: &str) -> bool {
 /// escapes instead. Found by fuzz_roundtrip: a multi-line key
 /// emitted as a `|-` block produced YAML that no longer parsed
 /// ("expected block mapping key or end").
-fn write_key_string(output: &mut String, s: &str, indent: usize, config: &SerializerConfig) {
+fn write_key_string(output: &mut String, s: &str, indent: usize, config: &Cx<'_>) {
     if s.contains('\n') {
         write_double_quoted(output, s);
     } else {
@@ -1000,172 +1046,159 @@ fn write_key_string(output: &mut String, s: &str, indent: usize, config: &Serial
     }
 }
 
-fn write_string(output: &mut String, s: &str, indent: usize, config: &SerializerConfig) {
-    let bytes = s.as_bytes();
+/// The style [`write_string`] gives a string scalar.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum StrStyle {
+    Plain,
+    Single,
+    Double,
+    Block,
+}
 
+fn write_string(output: &mut String, s: &str, indent: usize, config: &Cx<'_>) {
+    match string_style(s, config) {
+        StrStyle::Plain => output.push_str(s),
+        StrStyle::Single => write_single_quoted(output, s),
+        StrStyle::Double => write_double_quoted(output, s),
+        StrStyle::Block => write_block_scalar(output, s, indent, config),
+    }
+}
+
+/// Choose the style for a string scalar in the writer's context. Every
+/// choice must read back as exactly `s`.
+fn string_style(s: &str, config: &Cx<'_>) -> StrStyle {
     // Empty string must be quoted
-    if bytes.is_empty() {
-        if config.prefer_single_quotes {
-            output.push_str("''");
+    if s.is_empty() {
+        return if config.prefer_single_quotes {
+            StrStyle::Single
         } else {
-            output.push_str("\"\"");
-        }
-        return;
+            StrStyle::Double
+        };
     }
 
-    // Force-quote all strings when configured. Single-quoted style has
-    // no escapes, so a string only double-quoted style can carry still
-    // falls back regardless of the setting.
-    if config.quote_all {
-        if needs_double_quoted_escape(s) {
-            write_double_quoted(output, s);
+    // Force-quote all strings when configured. A scalar starting with
+    // `...` emitted at the start of a line reads back as the
+    // document-end marker (explicit-key emission places keys at column
+    // 0), so it can never go plain either -- same family as the `-`
+    // first-byte rule, which already covers `---` (found by
+    // fuzz_roundtrip on a `? ...` explicit key). Single-quoted style has
+    // no escapes, and a line break inside it folds to a space on
+    // re-parse, so a string it cannot carry verbatim falls back to
+    // double quotes regardless of the setting.
+    if config.quote_all || s.starts_with("...") {
+        return if needs_double_quoted_escape(s) {
+            StrStyle::Double
         } else {
-            write_single_quoted(output, s);
-        }
-        return;
+            StrStyle::Single
+        };
     }
 
-    // A scalar starting with `...` emitted at the start of a line
-    // reads back as the document-end marker (explicit-key emission
-    // places keys at column 0), so it can never go plain — same
-    // family as the `-` first-byte rule below, which already covers
-    // `---` (found by fuzz_roundtrip on a `? ...` explicit key).
-    if s.starts_with("...") {
-        if needs_double_quoted_escape(s) {
-            write_double_quoted(output, s);
-        } else {
-            write_single_quoted(output, s);
-        }
-        return;
-    }
-
-    // Fast path: short ASCII strings that are clearly safe as plain scalars.
-    // Avoids the full lookup table scan for the majority of mapping keys.
-    //
-    // The intent is: short, alnum-bounded, no newline. All four conditions
-    // below are ANDed — `||` binds looser than `&&`, and an earlier version
-    // of this guard read `a && b && c && !config.block_scalars ||
-    // no_newline`, which let *every* newline-free string take the fast path
-    // regardless of its first byte (`"-"` slipped through unquoted and
-    // re-parsed as a block sequence entry, not a scalar). The first/last
-    // alnum checks already exclude every `FIRST_CHAR_QUOTE` member (none of
-    // them are alphanumeric) and tab (also not alphanumeric), but the
-    // explicit `FIRST_CHAR_QUOTE` check is kept here too as defense in
-    // depth against the alnum check alone being loosened later.
-    if bytes.len() <= 64
-        && bytes[0].is_ascii_alphanumeric()
-        && bytes[bytes.len() - 1].is_ascii_alphanumeric()
-        && bytes.iter().all(|&b| b != b'\n')
-        && !(bytes[0] < 128 && FIRST_CHAR_QUOTE[bytes[0] as usize])
-    {
-        let safe = bytes.iter().all(|&b| {
-            b.is_ascii_alphanumeric() || b == b'_' || b == b'-' || b == b'.' || b == b'/'
-        });
-        if safe
-            && !matches!(
-                s,
-                "true"
-                    | "false"
-                    | "null"
-                    | "~"
-                    | "True"
-                    | "False"
-                    | "TRUE"
-                    | "FALSE"
-                    | "Null"
-                    | "NULL"
-            )
-            && !looks_like_number(s)
-        {
-            output.push_str(s);
-            return;
-        }
+    // Fast path: short ASCII strings that are clearly safe as plain
+    // scalars, in every context (no flow indicator can pass the byte
+    // filter). Avoids the full scan for the majority of mapping keys.
+    if is_simple_plain(s) {
+        return StrStyle::Plain;
     }
 
     // Block scalar for multiline strings -- unless the string carries a
     // character a block scalar cannot represent: `str::lines` and the
-    // block's own line breaks erase a `\r` (#335).
-    if config.block_scalars && !needs_double_quoted_escape(s) {
-        let newlines = bytes.iter().filter(|&&b| b == b'\n').count();
+    // block's own line breaks erase a `\r` (#335). A flow collection
+    // cannot hold a block scalar at all.
+    if config.block_scalars && !config.in_flow && !needs_double_quoted_escape(s) {
+        let newlines = s.bytes().filter(|&b| b == b'\n').count();
         if newlines >= config.block_scalar_threshold {
-            write_block_scalar(output, s, indent, config);
-            return;
+            return StrStyle::Block;
         }
     }
 
     // CR and the Unicode line separators are representable only with
     // double-quoted escapes (#335).
     if needs_double_quoted_escape(s) {
-        write_double_quoted(output, s);
-        return;
+        return StrStyle::Double;
     }
-
-    // Single-pass quoting decision
-    let mut needs_quotes = false;
-    let mut has_control = false;
-
-    // Check first character
-    if bytes[0] < 128 && FIRST_CHAR_QUOTE[bytes[0] as usize] {
-        needs_quotes = true;
+    if is_plain_safe(s, config.in_flow) {
+        return StrStyle::Plain;
     }
+    quoted_style(s, config.prefer_single_quotes)
+}
 
-    // A leading or trailing tab must quote. `NEEDS_QUOTE_BYTE` deliberately
-    // excludes tab so an *interior* tab stays unescaped in a plain scalar,
-    // but YAML 1.2 still requires quoting when a plain scalar's content
-    // starts or ends in white space (tab included), or the boundary is
-    // lost on re-parse.
-    if bytes[0] == b'\t' || bytes[bytes.len() - 1] == b'\t' {
-        needs_quotes = true;
+/// Single quotes when they are preferred and can carry `s` verbatim,
+/// double quotes otherwise.
+fn quoted_style(s: &str, prefer_single: bool) -> StrStyle {
+    if prefer_single && single_quote_safe(s) {
+        StrStyle::Single
+    } else {
+        StrStyle::Double
     }
+}
 
-    // Check last character (trailing space)
-    if bytes[bytes.len() - 1] == b' ' {
-        needs_quotes = true;
+/// Short, alnum-bounded, built only from bytes that never need quoting,
+/// and not a word or number the resolver would turn into another type.
+///
+/// The conditions are all ANDed. An earlier version of this guard read
+/// `a && b && c && !config.block_scalars || no_newline`, which let
+/// *every* newline-free string take the fast path regardless of its
+/// first byte (`"-"` slipped through unquoted and re-parsed as a block
+/// sequence entry, not a scalar). The alnum bounds already exclude every
+/// `FIRST_CHAR_QUOTE` member and tab.
+fn is_simple_plain(s: &str) -> bool {
+    let bytes = s.as_bytes();
+    bytes.len() <= 64
+        && bytes.first().is_some_and(u8::is_ascii_alphanumeric)
+        && bytes.last().is_some_and(u8::is_ascii_alphanumeric)
+        && bytes
+            .iter()
+            .all(|&b| b.is_ascii_alphanumeric() || matches!(b, b'_' | b'-' | b'.' | b'/'))
+        && !is_reserved_word(s)
+        && !looks_like_number(s)
+}
+
+/// The plain spellings that resolve to a boolean or null.
+fn is_reserved_word(s: &str) -> bool {
+    matches!(
+        s,
+        "true" | "false" | "null" | "~" | "True" | "False" | "TRUE" | "FALSE" | "Null" | "NULL"
+    )
+}
+
+/// A flow indicator: inside `[...]` / `{...}` it ends or nests a
+/// collection wherever it appears in a plain scalar (YAML 1.2 §7.3.3,
+/// `ns-plain-safe(c)`), not only at the first byte. Shared with the CST
+/// editor's plain-scalar check for flow leaves.
+pub(crate) fn has_flow_indicator(s: &str) -> bool {
+    s.bytes()
+        .any(|b| matches!(b, b',' | b'[' | b']' | b'{' | b'}'))
+}
+
+/// Whether `s` can be written as a plain scalar and read back unchanged,
+/// in block context or (`in_flow`) inside a flow collection, where
+/// `[viewer, admin]` written for the one string `viewer, admin` reads
+/// back as two items.
+fn is_plain_safe(s: &str, in_flow: bool) -> bool {
+    let bytes = s.as_bytes();
+    let (first, last) = (bytes[0], bytes[bytes.len() - 1]);
+    // A leading or trailing tab must quote. `NEEDS_QUOTE_BYTE`
+    // deliberately excludes tab so an *interior* tab stays unescaped in
+    // a plain scalar, but YAML 1.2 still requires quoting when a plain
+    // scalar's content starts or ends in white space (tab included), or
+    // the boundary is lost on re-parse. A trailing space likewise.
+    if (first < 128 && FIRST_CHAR_QUOTE[first as usize])
+        || first == b'\t'
+        || matches!(last, b'\t' | b' ')
+        || is_reserved_word(s)
+        || looks_like_number(s)
+        || (in_flow && has_flow_indicator(s))
+    {
+        return false;
     }
-
-    // Reserved words
-    if !needs_quotes {
-        needs_quotes = matches!(
-            s,
-            "true" | "false" | "null" | "~" | "True" | "False" | "TRUE" | "FALSE" | "Null" | "NULL"
-        ) || looks_like_number(s);
-    }
-
-    // Single pass through interior bytes. A colon or a hash counts only
-    // where YAML gives it meaning; see `colon_ends_plain` and
-    // `hash_starts_comment`.
-    if !needs_quotes {
-        for (i, &b) in bytes.iter().enumerate() {
-            if b >= 128 || !NEEDS_QUOTE_BYTE[b as usize] {
-                continue;
-            }
-            if (b == b':' && !colon_ends_plain(bytes, i))
-                || (b == b'#' && !hash_starts_comment(bytes, i))
-            {
-                continue;
-            }
-            if b < 0x20 && b != b'\t' {
-                has_control = true;
-            }
-            needs_quotes = true;
-            // Don't break - we need to know if there are control chars
-        }
-    }
-
-    if !needs_quotes {
-        // Plain scalar - zero-copy output
-        output.push_str(s);
-        return;
-    }
-
-    if config.prefer_single_quotes && single_quote_safe(s) {
-        write_single_quoted(output, s);
-        return;
-    }
-
-    // Use double quotes for all quoted strings
-    let _ = has_control;
-    write_double_quoted(output, s);
+    // A colon or a hash counts only where YAML gives it meaning; see
+    // `colon_ends_plain` and `hash_starts_comment`.
+    !bytes.iter().enumerate().any(|(i, &b)| {
+        b < 128
+            && NEEDS_QUOTE_BYTE[b as usize]
+            && !(b == b':' && !colon_ends_plain(bytes, i))
+            && !(b == b'#' && !hash_starts_comment(bytes, i))
+    })
 }
 
 /// Whether `s` can be represented as a YAML single-quoted scalar with no
@@ -1368,7 +1401,7 @@ fn write_block_scalar(output: &mut String, s: &str, indent: usize, config: &Seri
 /// `Tagged` values are conservatively treated as block-only: they carry
 /// anchors, custom tags, and the internal block-scalar/anchor magic tags that
 /// have no valid flow representation here.
-fn auto_flow_eligible(value: &Value, config: &SerializerConfig) -> bool {
+fn auto_flow_eligible(value: &Value, config: &Cx<'_>) -> bool {
     match value {
         Value::Sequence(s) => {
             s.len() <= config.flow_threshold && s.iter().all(|v| auto_flow_eligible(v, config))
@@ -1383,10 +1416,13 @@ fn auto_flow_eligible(value: &Value, config: &SerializerConfig) -> bool {
 
 /// Decide whether a collection of `len` items holding `values` should render
 /// in flow style under the active `config`.
-fn use_flow<'a, I>(len: usize, values: impl Fn() -> I, config: &SerializerConfig) -> bool
+fn use_flow<'a, I>(len: usize, values: impl Fn() -> I, config: &Cx<'_>) -> bool
 where
     I: Iterator<Item = &'a Value>,
 {
+    if config.in_flow {
+        return true;
+    }
     match config.flow_style {
         FlowStyle::Block => false,
         FlowStyle::Flow => true,
@@ -1401,7 +1437,7 @@ fn write_sequence(
     seq: &Sequence,
     indent: usize,
     is_root: bool,
-    config: &SerializerConfig,
+    config: &Cx<'_>,
     depth: usize,
 ) -> Result<()> {
     if seq.is_empty() {
@@ -1431,7 +1467,7 @@ fn write_sequence(
                     }
                     write_key_string(output, k, indent + 1, config);
                     output.push(':');
-                    if indicator_takes_a_space(v) {
+                    if indicator_takes_a_space(v, config) {
                         output.push(' ');
                     }
                     // `compact_list_indent`: a sequence value starts at its
@@ -1441,7 +1477,7 @@ fn write_sequence(
                     // that is itself a sequence item. Every other
                     // block-layout value (a mapping, or a sequence with the
                     // option off) still gets the extra level.
-                    let next_indent = if needs_block_layout(v) {
+                    let next_indent = if needs_block_layout(v, config) {
                         if config.compact_list_indent && matches!(v, Value::Sequence(_)) {
                             indent + 1
                         } else {
@@ -1463,7 +1499,7 @@ fn write_sequence(
                 write_sequence(output, inner, indent + 1, true, config, depth + 1)?;
             }
             _ => {
-                if indicator_takes_a_space(value) {
+                if indicator_takes_a_space(value, config) {
                     output.push(' ');
                 }
                 // A block collection item nests one level under the dash.
@@ -1474,7 +1510,7 @@ fn write_sequence(
                 // sequence's own level. One level deeper put the body four
                 // columns past the dash under a `|2` indicator, and the
                 // surplus read back as content (#387).
-                let item_indent = if needs_block_layout(value) {
+                let item_indent = if needs_block_layout(value, config) {
                     indent + 1
                 } else {
                     indent
@@ -1503,8 +1539,8 @@ fn write_sequence(
 /// [`write_mapping`] has always applied this rule; [`write_sequence`] carried
 /// its own copy of the key-writing and did not, which is the whole of the bug
 /// this function exists to stop recurring. One rule, one place, both callers.
-fn indicator_takes_a_space(value: &Value) -> bool {
-    !needs_block_layout(value)
+fn indicator_takes_a_space(value: &Value, config: &Cx<'_>) -> bool {
+    !needs_block_layout(value, config)
         || matches!(
             value,
             Value::Tagged(t) if !t.tag().is_directive()
@@ -1526,23 +1562,31 @@ fn indicator_takes_a_space(value: &Value) -> bool {
 /// meant to be under — the value silently becomes null and its contents move
 /// up a level. `SpaceAfter`/`Commented` around a struct did exactly that
 /// until this function learned to look through them.
-fn needs_block_layout(v: &Value) -> bool {
+/// A non-empty collection the writer will lay out in block form, not
+/// in flow form (`[...]` / `{...}` on the current line).
+fn is_block_collection(v: &Value, config: &Cx<'_>) -> bool {
+    match v {
+        Value::Mapping(m) => {
+            !m.is_empty() && !use_flow(m.len(), || m.iter().map(|(_, v)| v), config)
+        }
+        Value::Sequence(s) => !s.is_empty() && !use_flow(s.len(), || s.iter(), config),
+        _ => false,
+    }
+}
+
+fn needs_block_layout(v: &Value, config: &Cx<'_>) -> bool {
     let Value::Tagged(t) = v else {
-        return match v {
-            Value::Mapping(m) => !m.is_empty(),
-            Value::Sequence(s) => !s.is_empty(),
-            _ => false,
-        };
+        return is_block_collection(v, config);
     };
     let inner = t.value();
     if !t.tag().is_directive() {
-        return needs_block_layout(inner);
+        return needs_block_layout(inner, config);
     }
     match t.tag().as_str() {
         // `[id, inner]` — `&id` goes on the key's line, the inner value
         // lays itself out from there.
         crate::fmt::MAGIC_ANCHOR_DEF => match inner {
-            Value::Sequence(seq) if seq.len() == 2 => needs_block_layout(&seq[1]),
+            Value::Sequence(seq) if seq.len() == 2 => needs_block_layout(&seq[1], config),
             _ => false,
         },
         // `*id` is always inline.
@@ -1551,26 +1595,26 @@ fn needs_block_layout(v: &Value) -> bool {
         // anything else, the writer falls back to plain output, and the
         // layout has to follow the fallback rather than the wrapper's name.
         crate::fmt::MAGIC_FLOW_SEQ => {
-            !matches!(inner, Value::Sequence(_)) && needs_block_layout(inner)
+            !matches!(inner, Value::Sequence(_)) && needs_block_layout(inner, config)
         }
         crate::fmt::MAGIC_FLOW_MAP => {
-            !matches!(inner, Value::Mapping(_)) && needs_block_layout(inner)
+            !matches!(inner, Value::Mapping(_)) && needs_block_layout(inner, config)
         }
         // A block-scalar wrapper around a string writes its own `|`/`>`
         // header; around anything else it falls back the same way.
         crate::fmt::MAGIC_LIT_STR | crate::fmt::MAGIC_FOLD_STR => {
-            !matches!(inner, Value::String(_)) && needs_block_layout(inner)
+            !matches!(inner, Value::String(_)) && needs_block_layout(inner, config)
         }
         // `[inner, comment]` — the comment is appended to whatever `inner`
         // emits, so the layout is entirely `inner`'s.
         crate::fmt::MAGIC_COMMENTED => match inner {
-            Value::Sequence(seq) if seq.len() == 2 => needs_block_layout(&seq[0]),
-            other => needs_block_layout(other),
+            Value::Sequence(seq) if seq.len() == 2 => needs_block_layout(&seq[0], config),
+            other => needs_block_layout(other, config),
         },
         // A trailing blank line does not change how the value itself lays out.
-        crate::fmt::MAGIC_SPACE_AFTER => needs_block_layout(inner),
+        crate::fmt::MAGIC_SPACE_AFTER => needs_block_layout(inner, config),
         // Any other directive falls through to plain output.
-        _ => needs_block_layout(inner),
+        _ => needs_block_layout(inner, config),
     }
 }
 
@@ -1579,7 +1623,7 @@ fn write_mapping(
     map: &Mapping,
     indent: usize,
     is_root: bool,
-    config: &SerializerConfig,
+    config: &Cx<'_>,
     depth: usize,
 ) -> Result<()> {
     if map.is_empty() {
@@ -1598,10 +1642,10 @@ fn write_mapping(
         write_key_string(output, key, indent, config);
 
         output.push(':');
-        if indicator_takes_a_space(value) {
+        if indicator_takes_a_space(value, config) {
             output.push(' ');
         }
-        let next_indent = if needs_block_layout(value) {
+        let next_indent = if needs_block_layout(value, config) {
             // `compact_list_indent`: when on, sequence values
             // under a mapping key align with the key column
             // instead of being bumped one indent level deeper.
@@ -1628,7 +1672,7 @@ fn write_internal_tag(
     value: &Value,
     indent: usize,
     is_root: bool,
-    config: &SerializerConfig,
+    config: &Cx<'_>,
     depth: usize,
 ) -> Result<()> {
     match (tag, value) {
@@ -1638,6 +1682,16 @@ fn write_internal_tag(
         (crate::fmt::MAGIC_FLOW_MAP, Value::Mapping(map)) => {
             write_flow_mapping(output, map, config, depth)
         }
+        // Inside a flow collection a block scalar cannot appear, a
+        // comment would swallow the rest of the line, and a blank line
+        // has no meaning: the value is written on its own.
+        (
+            crate::fmt::MAGIC_LIT_STR
+            | crate::fmt::MAGIC_FOLD_STR
+            | crate::fmt::MAGIC_COMMENTED
+            | crate::fmt::MAGIC_SPACE_AFTER,
+            _,
+        ) if config.in_flow => write_flow_hinted(output, tag, value, config, depth),
         (crate::fmt::MAGIC_LIT_STR, Value::String(s)) => {
             write_literal_block(output, s, indent, config);
             Ok(())
@@ -1688,6 +1742,22 @@ fn write_internal_tag(
     }
 }
 
+/// A block-only directive met inside a flow collection: write the value
+/// it wraps (for a comment, the first element of `[value, comment]`).
+fn write_flow_hinted(
+    output: &mut String,
+    tag: &str,
+    value: &Value,
+    config: &Cx<'_>,
+    depth: usize,
+) -> Result<()> {
+    let inner = match (tag, value) {
+        (crate::fmt::MAGIC_COMMENTED, Value::Sequence(seq)) if seq.len() == 2 => &seq[0],
+        _ => value,
+    };
+    write_value(output, inner, 0, false, config, depth)
+}
+
 /// Emit `&id` before the inner value. For block collections the inner
 /// starts on a new line; for scalars it follows on the same line.
 fn write_anchor_def(
@@ -1695,13 +1765,13 @@ fn write_anchor_def(
     id: &str,
     inner: &Value,
     indent: usize,
-    config: &SerializerConfig,
+    config: &Cx<'_>,
     depth: usize,
 ) -> Result<()> {
     output.push('&');
     output.push_str(id);
     match inner {
-        Value::Mapping(m) if !m.is_empty() => {
+        Value::Mapping(m) if is_block_collection(inner, config) => {
             output.push('\n');
             write_indent(output, config.indent * indent);
             // `is_root = true` suppresses the leading newline
@@ -1709,7 +1779,7 @@ fn write_anchor_def(
             // the first key are correctly adjacent.
             write_mapping(output, m, indent, true, config, depth + 1)
         }
-        Value::Sequence(s) if !s.is_empty() => {
+        Value::Sequence(s) if is_block_collection(inner, config) => {
             output.push('\n');
             write_indent(output, config.indent * indent);
             write_sequence(output, s, indent, true, config, depth + 1)
@@ -1724,9 +1794,10 @@ fn write_anchor_def(
 fn write_flow_sequence(
     output: &mut String,
     seq: &Sequence,
-    config: &SerializerConfig,
+    config: &Cx<'_>,
     depth: usize,
 ) -> Result<()> {
+    let config = &config.flow();
     output.push('[');
     for (i, value) in seq.iter().enumerate() {
         if i > 0 {
@@ -1741,9 +1812,10 @@ fn write_flow_sequence(
 fn write_flow_mapping(
     output: &mut String,
     map: &Mapping,
-    config: &SerializerConfig,
+    config: &Cx<'_>,
     depth: usize,
 ) -> Result<()> {
+    let config = &config.flow();
     output.push('{');
     for (i, (key, value)) in map.iter().enumerate() {
         if i > 0 {
@@ -1814,7 +1886,7 @@ pub fn to_string_multi_with_config<T: serde_core::Serialize>(
         }
         output.push_str("---\n");
         let v = to_value(value)?;
-        write_value(&mut output, &v, 0, true, config, 0)?;
+        write_value(&mut output, &v, 0, true, &Cx::new(config), 0)?;
         output.push('\n');
     }
     Ok(output)
