@@ -7,6 +7,16 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [v0.0.55] - Unreleased
 
+### Fixed
+
+- Parsing a long line is linear in its length again. Each plain scalar
+  searched to the end of its line for a comment or line break, so a
+  single line of many short flow entries cost the line length once per
+  entry (400 KB took seconds, 1.6 MB close to a minute) before any
+  budget could refuse it. The search result is now reused for the rest
+  of the line, and the token queue no longer shifts a long backlog every
+  256 tokens. Parse results are unchanged.
+
 ## [v0.0.54] - 2026-10-07
 
 ### Security

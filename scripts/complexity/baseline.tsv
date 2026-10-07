@@ -14,7 +14,7 @@ cognitive_complexity	crates/noyalib/src/parser/events.rs	parse_node	18
 cognitive_complexity	crates/noyalib/src/parser/loader.rs	process_event	22
 cognitive_complexity	crates/noyalib/src/parser/loader.rs	push_node	18
 cognitive_complexity	crates/noyalib/src/parser/loader.rs	push_value	17
-cognitive_complexity	crates/noyalib/src/parser/scanner/scalars.rs	fetch_plain_scalar	47
+cognitive_complexity	crates/noyalib/src/parser/scanner/scalars.rs	fetch_plain_scalar	40
 cognitive_complexity	crates/noyalib/src/parser/scanner/scalars.rs	scan_block_scalar	38
 cognitive_complexity	crates/noyalib/src/parser/scanner/scalars.rs	scan_double_quoted_scalar	21
 cognitive_complexity	crates/noyalib/src/parser/scanner/scalars.rs	scan_single_quoted_scalar	19
@@ -104,7 +104,7 @@ too_many_lines	crates/noyalib/src/parser/scanner.rs	fetch_next_token	103
 too_many_lines	crates/noyalib/src/parser/scanner.rs	fetch_tag	135
 too_many_lines	crates/noyalib/src/parser/scanner.rs	fetch_value	122
 too_many_lines	crates/noyalib/src/parser/scanner.rs	skip_to_next_token	85
-too_many_lines	crates/noyalib/src/parser/scanner/scalars.rs	fetch_plain_scalar	228
+too_many_lines	crates/noyalib/src/parser/scanner/scalars.rs	fetch_plain_scalar	199
 too_many_lines	crates/noyalib/src/parser/scanner/scalars.rs	scan_block_scalar	187
 too_many_lines	crates/noyalib/src/parser/scanner/scalars.rs	scan_double_quoted_scalar	162
 too_many_lines	crates/noyalib/src/parser/scanner/scalars.rs	scan_single_quoted_scalar	90

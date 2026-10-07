@@ -15,6 +15,46 @@ use crate::prelude::*;
 impl Scanner<'_> {
     // ── Scalars ──────────────────────────────────────────────────────────
 
+    /// Distance from `self.pos` to the first line break, or to the first
+    /// `#` preceded by a blank (a comment), whichever comes first, and
+    /// whether that terminator is a line break. Without one, the distance
+    /// to the end of input and `false`.
+    ///
+    /// The answer is memoised: a later call at a position between the
+    /// memo's start and its terminator has the same terminator, because
+    /// no break or comment lies in between. A `#` exactly at the call
+    /// position is not a comment for that call (it has no preceding byte
+    /// in the slice), so a memo ending on such a `#` is not reused there.
+    pub(super) fn plain_line_end(&mut self) -> (usize, bool) {
+        let pos = self.pos;
+        let (from, end, is_break) = self.line_end_memo;
+        let reusable =
+            from <= pos && (pos < end || (pos == end && (is_break || end == self.input.len())));
+        if !reusable {
+            let (rel, brk) = Self::scan_line_end(&self.input[pos..]);
+            self.line_end_memo = (pos, pos + rel, brk);
+        }
+        let (_, end, is_break) = self.line_end_memo;
+        (end - pos, is_break)
+    }
+
+    /// Uncached form of [`Self::plain_line_end`] over `remaining`.
+    pub(super) fn scan_line_end(remaining: &[u8]) -> (usize, bool) {
+        let mut offset = 0;
+        while let Some(p) = memchr::memchr3(b'\n', b'\r', b'#', &remaining[offset..]) {
+            let abs = offset + p;
+            if remaining[abs] != b'#' {
+                return (abs, true);
+            }
+            // Only a comment if preceded by whitespace.
+            if abs > 0 && Self::is_blank(remaining[abs - 1]) {
+                return (abs, false);
+            }
+            offset = abs + 1;
+        }
+        (remaining.len(), false)
+    }
+
     pub(super) fn fetch_plain_scalar(&mut self) -> ScanResult<()> {
         self.save_simple_key();
         self.simple_key_allowed = false;
@@ -25,49 +65,13 @@ impl Scanner<'_> {
         // Detect this case and emit directly from the input slice without
         // allocating `whitespace` or entering the multiline folding loop.
         {
+            // Find first line break or comment. A `#` is only a comment
+            // when preceded by whitespace (YAML 1.2 rule).
+            let (search_end, ends_on_break) = self.plain_line_end();
+            let is_single_line = !ends_on_break;
             let remaining = &self.input[self.pos..];
             let in_flow = self.flow_level > 0;
             let mut len = 0;
-            let mut is_single_line = true;
-
-            // Find first line break or comment. A `#` is only a comment
-            // when preceded by whitespace (YAML 1.2 rule).
-            //
-            // Use memchr for large remaining slices (>32 bytes) where SIMD
-            // pays off; fall back to a simple scan for short scalars.
-            let mut search_end = remaining.len();
-            if remaining.len() > 32 {
-                let mut offset = 0;
-                while let Some(p) = memchr::memchr3(b'\n', b'\r', b'#', &remaining[offset..]) {
-                    let abs = offset + p;
-                    if remaining[abs] == b'#' {
-                        // Only a comment if preceded by whitespace.
-                        if abs > 0 && Self::is_blank(remaining[abs - 1]) {
-                            search_end = abs;
-                            break;
-                        }
-                        // Not a comment — keep scanning after this `#`.
-                        offset = abs + 1;
-                        continue;
-                    }
-                    // Line break found.
-                    search_end = abs;
-                    is_single_line = false;
-                    break;
-                }
-            } else {
-                for (i, &b) in remaining.iter().enumerate() {
-                    if b == b'\n' || b == b'\r' {
-                        search_end = i;
-                        is_single_line = false;
-                        break;
-                    }
-                    if b == b'#' && i > 0 && Self::is_blank(remaining[i - 1]) {
-                        search_end = i;
-                        break;
-                    }
-                }
-            }
 
             // Hot-path SIMD: every byte that isn't in the boundary
             // candidate set just increments `len` after the existing

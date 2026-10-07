@@ -212,6 +212,12 @@ pub(crate) struct Scanner<'a> {
     /// than the parent block — H7J7 (`key: &x\n!!map\n  a: b`) puts
     /// the tag at column 0 ≤ parent indent, which is invalid.
     pending_property_col: Option<i32>,
+    /// Memo of the last plain-scalar line scan: scanning from byte
+    /// `.0`, the first line break or comment `#` is at `.1`, and `.2`
+    /// says whether it is a break. Plain scalars on one line reuse it,
+    /// so a line of many short scalars is scanned once instead of once
+    /// per scalar.
+    line_end_memo: (usize, usize, bool),
 }
 
 /// Compact record of the most recent emit, used by guard checks
@@ -415,6 +421,7 @@ impl<'a> Scanner<'a> {
             in_document_body: false,
             last_emitted_kind: LastEmitted::Other,
             pending_property_col: None,
+            line_end_memo: (usize::MAX, 0, false),
         }
     }
 
@@ -489,8 +496,12 @@ impl<'a> Scanner<'a> {
             self.tokens_consumed += 1;
             self.tokens_produced += 1;
             // Compact when we've consumed enough to avoid unbounded growth.
-            // Use a higher threshold to amortize the O(n) shift cost.
-            if self.tokens_consumed > 256 {
+            // Shift only once the consumed prefix is at least half the
+            // queue, so each shift moves no more tokens than were consumed
+            // since the last one and the total cost stays linear. With a
+            // fixed threshold alone, a long backlog (for example a pending
+            // simple key's tokens) was shifted again every 256 tokens.
+            if self.tokens_consumed > 256 && self.tokens_consumed * 2 >= self.tokens.len() {
                 drop(self.tokens.drain(..self.tokens_consumed));
                 self.tokens_consumed = 0;
             }
@@ -2351,5 +2362,53 @@ mod tests {
                 "BOM-prefixed input {bommed:?} should scan identically to {plain:?}",
             );
         }
+    }
+
+    /// The memoised line-end lookup must agree with a fresh scan at every
+    /// position, in forward order (the memo's use) and backwards (where the
+    /// memo must be discarded).
+    #[test]
+    fn line_end_memo_matches_a_fresh_scan() {
+        let inputs = [
+            "a,b,c\nd",
+            "#a #b\n#c",
+            "a#b #c\r\nd # e",
+            "a\tb\t#c",
+            "no terminator at all",
+            "x #",
+            "\n\n\r",
+            "",
+        ];
+        for input in inputs {
+            let mut scanner = Scanner::new(input);
+            let forward: Vec<usize> = (0..=input.len()).collect();
+            let backward: Vec<usize> = forward.iter().rev().copied().collect();
+            for pos in forward.into_iter().chain(backward) {
+                scanner.pos = pos;
+                let fresh = Scanner::scan_line_end(&input.as_bytes()[pos..]);
+                assert_eq!(scanner.plain_line_end(), fresh, "{input:?} at {pos}");
+            }
+        }
+    }
+
+    /// Handing out tokens from a long backlog must not shift the backlog
+    /// again every 256 tokens. A flow-mapping key has no length limit, so a
+    /// long flow sequence used as one is held whole until its `:`.
+    #[test]
+    fn queue_compaction_waits_for_half_the_queue() {
+        let input = format!("{{[{}a]: v}}\n", "a,".repeat(100_000));
+        let mut scanner = Scanner::new(&input);
+        let mut shifts = 0;
+        let mut last_consumed = 0;
+        while let Ok(token) = scanner.next_token() {
+            if scanner.tokens_consumed < last_consumed {
+                shifts += 1;
+            }
+            last_consumed = scanner.tokens_consumed;
+            if matches!(token.kind, TokenKind::StreamEnd) {
+                break;
+            }
+        }
+        assert!(shifts <= 40, "queue shifted {shifts} times");
     }
 }
