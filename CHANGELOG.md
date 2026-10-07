@@ -35,6 +35,12 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   bytes read differently through the two APIs. A
   `StreamingDeserializer` built with `with_config` now enforces
   `max_document_length`.
+- Parser policies hold on every entry point. `from_str_borrowing_with_config`
+  ignored them all, `DenyAnchors` included, and the borrowed API,
+  `load_all_with_config`, `read_with_config` and the `no_std` typed path
+  skipped the whole-document `check_value` hook. Event checks now run
+  in the shared budget meter and whole-document checks through one
+  helper every loader calls.
 
 ### Added
 

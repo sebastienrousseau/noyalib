@@ -151,6 +151,13 @@ where
             parse_config.max_document_length
         )));
     }
+    // Event policies run inside the streaming deserializer's meter; the
+    // whole-document checks need the document, so build it first when a
+    // policy is registered.
+    if !config.policies.is_empty() {
+        let document = parser::parse_exactly_one_value(s, &parse_config)?;
+        crate::policy::check_document(&config.policies, &document)?;
+    }
     let mut de = crate::streaming::StreamingDeserializer::with_config(s, parse_config);
     if let Some(registry) = config.tag_registry.as_ref() {
         de = de.with_tag_registry(Arc::clone(registry));
@@ -517,9 +524,7 @@ where
         let mut value = parser::parse_exactly_one_value(s, &parse_config)?;
         apply_includes(&mut value, config)?;
         apply_properties(&mut value, config)?;
-        for p in &config.policies {
-            p.check_value(&value)?;
-        }
+        crate::policy::check_document(&config.policies, &value)?;
         let boxed: Box<dyn core::any::Any> = Box::new(value);
         // SAFETY-by-construction: `is_value_target::<T>()` already
         // verified `TypeId::of::<T>() == TypeId::of::<Value>()`, so
@@ -536,9 +541,7 @@ where
         let (mut value, span_tree) = parser::parse_exactly_one(s, &parse_config)?;
         apply_includes(&mut value, config)?;
         apply_properties(&mut value, config)?;
-        for p in &config.policies {
-            p.check_value(&value)?;
-        }
+        crate::policy::check_document(&config.policies, &value)?;
         let spans = span_context::build_span_map(&value, &span_tree);
         let ctx = span_context::SpanContext {
             spans,
@@ -560,6 +563,7 @@ where
     #[cfg(not(feature = "std"))]
     {
         let value = parser::parse_exactly_one_value(s, &parse_config)?;
+        crate::policy::check_document(&config.policies, &value)?;
         let de = Deserializer::with_options(
             &value,
             None,

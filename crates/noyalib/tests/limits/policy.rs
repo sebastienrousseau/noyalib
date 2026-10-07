@@ -147,3 +147,79 @@ fn policies_route_through_ast_path_to_enforce_contract() {
         "policy must fire even on inputs that would normally stream"
     );
 }
+
+// ── Every entry point enforces policies ────────────────────────────
+//
+// `from_str_borrowing_with_config` ignored every policy, DenyAnchors
+// included; the borrowed API, `load_all_with_config` and
+// `read_with_config` skipped the whole-document `check_value` hook.
+// A caller who set a policy to refuse anchors still got them.
+
+/// Refuses any document that has a top-level `forbidden` key.
+#[derive(Debug)]
+struct NoForbiddenKey;
+
+impl Policy for NoForbiddenKey {
+    fn check_value(&self, value: &Value) -> noyalib::Result<()> {
+        if value.get("forbidden").is_some() {
+            return Err(noyalib::Error::Deserialize("policy NoForbiddenKey".into()));
+        }
+        Ok(())
+    }
+}
+
+type Reader = fn(&str, &ParserConfig) -> noyalib::Result<()>;
+
+fn policy_entry_points() -> Vec<(&'static str, Reader)> {
+    vec![
+        ("from_str_with_config<Value>", |s, c| {
+            from_str_with_config::<Value>(s, c).map(drop)
+        }),
+        ("from_str_with_config<BTreeMap>", |s, c| {
+            from_str_with_config::<std::collections::BTreeMap<String, Value>>(s, c).map(drop)
+        }),
+        ("from_str_borrowing_with_config", |s, c| {
+            noyalib::from_str_borrowing_with_config::<std::collections::BTreeMap<&str, Value>>(s, c)
+                .map(drop)
+        }),
+        ("borrowed::from_str_borrowed_with_config", |s, c| {
+            noyalib::borrowed::from_str_borrowed_with_config(s, c).map(drop)
+        }),
+        ("load_all_with_config", |s, c| {
+            noyalib::load_all_with_config(s, c).map(drop)
+        }),
+        ("read_with_config", |s, c| {
+            noyalib::read_with_config::<_, Value>(std::io::Cursor::new(s.to_owned()), c).map(drop)
+        }),
+    ]
+}
+
+/// Every entry point that accepts `allowed` and refuses `refused` with
+/// a message naming `marker`; the names of those that do not.
+fn not_enforcing(cfg: &ParserConfig, refused: &str, allowed: &str, marker: &str) -> Vec<String> {
+    let mut gaps = Vec::new();
+    for (name, read) in policy_entry_points() {
+        match read(refused, cfg) {
+            Err(e) if e.to_string().contains(marker) => {}
+            other => gaps.push(format!("{name} accepted or misreported: {other:?}")),
+        }
+        if let Err(e) = read(allowed, cfg) {
+            gaps.push(format!("{name} refused clean input: {e}"));
+        }
+    }
+    gaps
+}
+
+#[test]
+fn deny_anchors_holds_on_every_entry_point() {
+    let cfg = ParserConfig::new().with_policy(DenyAnchors);
+    let gaps = not_enforcing(&cfg, "a: &x 1\nb: *x\n", "a: 1\nb: 2\n", "DenyAnchors");
+    assert!(gaps.is_empty(), "{gaps:#?}");
+}
+
+#[test]
+fn whole_document_policies_hold_on_every_entry_point() {
+    let cfg = ParserConfig::new().with_policy(NoForbiddenKey);
+    let gaps = not_enforcing(&cfg, "ok: 1\nforbidden: 2\n", "ok: 1\n", "NoForbiddenKey");
+    assert!(gaps.is_empty(), "{gaps:#?}");
+}

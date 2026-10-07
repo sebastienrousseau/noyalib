@@ -248,6 +248,20 @@ impl Policy for MaxScalarLength {
     }
 }
 
+/// Run every policy's [`Policy::check_value`] on one parsed document.
+///
+/// Event checks run inside the shared budget meter, which every loader
+/// charges; this is the matching hook for the whole-document checks, and
+/// every entry point that produces a document calls it (after include
+/// and property expansion where those apply), so a policy means the same
+/// thing whichever API read the input.
+pub(crate) fn check_document(policies: &[Arc<dyn Policy>], value: &Value) -> Result<()> {
+    for p in policies {
+        p.check_value(value)?;
+    }
+    Ok(())
+}
+
 fn is_core_tag(tag: &str) -> bool {
     matches!(
         tag,

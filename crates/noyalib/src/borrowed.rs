@@ -613,7 +613,11 @@ pub fn from_str_borrowed_with_config<'a>(
         builder.process(event)?;
     }
 
-    Ok(builder.into_value())
+    let value = builder.into_value();
+    if !user_config.policies.is_empty() {
+        crate::policy::check_document(&user_config.policies, &value.clone().into_owned())?;
+    }
+    Ok(value)
 }
 
 enum Frame<'a> {

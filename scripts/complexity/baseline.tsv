@@ -89,7 +89,7 @@ too_many_lines	crates/noyalib/src/cst/document.rs	set_value	62
 too_many_lines	crates/noyalib/src/cst/document.rs	shape_excluding	63
 too_many_lines	crates/noyalib/src/cst/document.rs	swap_items	77
 too_many_lines	crates/noyalib/src/cst/format.rs	format_mapping_entry	117
-too_many_lines	crates/noyalib/src/de.rs	from_str_with_config	72
+too_many_lines	crates/noyalib/src/de.rs	from_str_with_config	69
 too_many_lines	crates/noyalib/src/error.rs	diagnostic	64
 too_many_lines	crates/noyalib/src/error.rs	fmt	80
 too_many_lines	crates/noyalib/src/parser/events.rs	parse_node	141

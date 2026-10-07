@@ -152,6 +152,9 @@ pub fn load_all_with_config(input: &str, config: &ParserConfig) -> Result<Docume
     #[cfg(feature = "std")]
     {
         let pairs = parser::parse(input, &parse_config)?;
+        for (doc, _) in &pairs {
+            crate::policy::check_document(&config.policies, doc)?;
+        }
         let (docs, span_trees): (Vec<_>, Vec<_>) = pairs.into_iter().unzip();
         let total = docs.len();
         Ok(DocumentIterator {
@@ -164,6 +167,9 @@ pub fn load_all_with_config(input: &str, config: &ParserConfig) -> Result<Docume
     #[cfg(not(feature = "std"))]
     {
         let docs = parser::parse_all_values(input, &parse_config)?;
+        for doc in &docs {
+            crate::policy::check_document(&config.policies, doc)?;
+        }
         let total = docs.len();
         Ok(DocumentIterator {
             docs: docs.into_iter(),
@@ -429,6 +435,9 @@ where
     let parse_config = parser::ParseConfig::from(config);
     let pairs = parser::parse(&buf, &parse_config)?;
     let docs: Vec<Value> = pairs.into_iter().map(|(value, _)| value).collect();
+    for doc in &docs {
+        crate::policy::check_document(&config.policies, doc)?;
+    }
     Ok(DocumentReadIterator {
         docs: docs.into_iter(),
         _phantom: PhantomData,
