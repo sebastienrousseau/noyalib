@@ -57,11 +57,20 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   and at most 4,096 of them. It ran a full edit distance against every
   anchor, so 1,000 anchors of 1,000 characters took 433 s in a debug
   build to report one unknown alias.
+- The figment `Yaml` provider applies `max_document_length`. An
+  oversized document failed the streaming walker's check without a
+  location, fell through to the AST path and was parsed anyway.
+  `Yaml::file` now stops reading one byte past the limit instead of
+  reading the whole file first.
 
 ### Added
 
 - `IncludeRequest::max_bytes`: the most bytes the loader will accept
   for the requested source, so custom resolvers can stop reading early.
+- `noyalib::figment::Yaml::string_with_config` and `file_with_config`
+  build a `YamlWithConfig` provider that parses under a caller-supplied
+  `ParserConfig`, with `nested()` and `profile()` like figment's own
+  providers.
 
 ## [v0.0.54] - 2026-10-07
 

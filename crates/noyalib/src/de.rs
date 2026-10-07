@@ -193,6 +193,15 @@ pub(crate) fn from_str_typed_no_tag_preserve<T>(s: &str, config: &ParserConfig) 
 where
     T: for<'de> serde_core::Deserialize<'de>,
 {
+    // Checked up front: the streaming walker's length error carries no
+    // location, so it would otherwise fall through to the AST path
+    // below, which does not check the length again.
+    if s.len() > config.max_document_length {
+        return Err(Error::Parse(format!(
+            "document exceeds maximum length of {} bytes",
+            config.max_document_length
+        )));
+    }
     let stream_eligible = config.merge_key_policy == MergeKeyPolicy::Auto
         && !config.ignore_binary_tag_for_string
         && config.policies.is_empty();
