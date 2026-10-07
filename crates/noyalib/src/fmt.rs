@@ -33,6 +33,19 @@ pub(crate) const MAGIC_COMMENTED: &str = "__noya_commented";
 pub(crate) const MAGIC_SPACE_AFTER: &str = "__noya_space_after";
 pub(crate) const MAGIC_ANCHOR_DEF: &str = "__noya_anchor_def";
 pub(crate) const MAGIC_ANCHOR_REF: &str = "__noya_anchor_ref";
+/// Every magic name the serializer turns into an emitter directive
+/// (`Tag::directive`). `MAGIC_TAGGED` is not one: it rebuilds an
+/// ordinary tag.
+pub(crate) const DIRECTIVES: [&str; 8] = [
+    MAGIC_FLOW_SEQ,
+    MAGIC_FLOW_MAP,
+    MAGIC_LIT_STR,
+    MAGIC_FOLD_STR,
+    MAGIC_COMMENTED,
+    MAGIC_SPACE_AFTER,
+    MAGIC_ANCHOR_DEF,
+    MAGIC_ANCHOR_REF,
+];
 /// Newtype name `TaggedValue::serialize` wraps its single-entry-map wire
 /// form in. A serializer with no tag concept (`serde_json`) passes a
 /// newtype through and still sees `{"!tag": value}`; this crate's own

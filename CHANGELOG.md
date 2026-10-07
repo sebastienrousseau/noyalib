@@ -7,6 +7,17 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [v0.0.55] - Unreleased
 
+### Fixed
+
+- A tag read from a document is always written back as an ordinary
+  tag. The serializer recognised its formatting hints (comments, flow
+  wrappers, block-scalar styles, anchors) by a `__noya_` tag name, so a
+  document declaring `%TAG !n! __noya_`, a verbatim `!<__noya_commented>`
+  or a `TaggedValue` read from JSON could steer the emitter and, through
+  a comment hint, add keys on re-serialisation. Only the `fmt` and anchor
+  wrapper types can create those hints now; `Tag::new("__noya_...")` is
+  an ordinary tag.
+
 ## [v0.0.54] - 2026-10-07
 
 ### Security

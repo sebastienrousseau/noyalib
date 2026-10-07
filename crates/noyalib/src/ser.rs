@@ -699,7 +699,33 @@ fn write_value(
     match value {
         Value::Null => output.push_str("null"),
         Value::Bool(b) => output.push_str(if *b { "true" } else { "false" }),
-        Value::Number(Number::Integer(n)) => {
+        Value::Number(n) => write_number(output, n),
+        Value::String(s) => write_string(output, s, indent, config),
+        Value::Sequence(seq) => write_sequence(output, seq, indent, is_root, config, depth)?,
+        Value::Mapping(map) => write_mapping(output, map, indent, is_root, config, depth)?,
+        // Only the serializer's own wrapper types create a directive
+        // (`Tag::directive`); a tag read from a document or built with
+        // `Tag::new` is written back as the tag it is, whatever its name.
+        Value::Tagged(tagged) if tagged.tag().is_directive() => {
+            let tag_str = tagged.tag().as_str();
+            write_internal_tag(
+                output,
+                tag_str,
+                tagged.value(),
+                indent,
+                is_root,
+                config,
+                depth,
+            )?;
+        }
+        Value::Tagged(tagged) => write_user_tag(output, tagged, indent, config, depth)?,
+    }
+    Ok(())
+}
+
+fn write_number(output: &mut String, n: &Number) {
+    match n {
+        Number::Integer(n) => {
             #[cfg(feature = "fast-int")]
             {
                 let mut buf = itoa::Buffer::new();
@@ -711,7 +737,7 @@ fn write_value(
             }
         }
         #[cfg(feature = "lossless-u64")]
-        Value::Number(Number::Unsigned(n)) => {
+        Number::Unsigned(n) => {
             #[cfg(feature = "fast-int")]
             {
                 let mut buf = itoa::Buffer::new();
@@ -722,102 +748,87 @@ fn write_value(
                 let _ = write!(output, "{n}");
             }
         }
-        Value::Number(Number::Float(n)) => {
-            // Shared with `Number`'s `Display` impl (see #348) so the
-            // two never disagree on how a float prints.
+        // Shared with `Number`'s `Display` impl (see #348) so the
+        // two never disagree on how a float prints.
+        Number::Float(n) => {
             let _ = crate::value::write_float(output, *n);
         }
-        Value::String(s) => write_string(output, s, indent, config),
-        Value::Sequence(seq) => write_sequence(output, seq, indent, is_root, config, depth)?,
-        Value::Mapping(map) => write_mapping(output, map, indent, is_root, config, depth)?,
-        Value::Tagged(tagged) => {
-            let tag_str = tagged.tag().as_str();
-            if tag_str.starts_with("__noya_") {
-                write_internal_tag(
-                    output,
-                    tag_str,
-                    tagged.value(),
-                    indent,
-                    is_root,
-                    config,
-                    depth,
-                )?;
-            } else {
-                // Write the tag, then its payload. A scalar payload sits on
-                // this same line after a space (`!tag value`); a non-empty
-                // mapping/sequence payload starts block layout on the next
-                // line instead, with no trailing space after the tag (that
-                // space would never be followed by anything, so it would
-                // survive only as trailing whitespace). `indent` here is
-                // already the slot this caller computed for the *whole*
-                // tagged value via `needs_block_layout`/`indicator_takes_a_space`
-                // above (see `write_mapping`/`write_sequence`), so the
-                // payload is written at that same `indent`, not one deeper.
-                // A tag whose body holds characters the shorthand
-                // spelling cannot carry — flow indicators, blanks, or
-                // an interior `!` (a handle separator there) — is
-                // emitted in the verbatim form `!<...>`, which
-                // re-parses to exactly the stored tag (`!<!str>` is
-                // `!!str`). Emitting it raw produced YAML that split
-                // at the first such byte: `!<tag:example.com,2026:x>`
-                // re-emitted as shorthand died at the comma (found by
-                // fuzz_roundtrip).
-                // …and a tag body NO spelling can carry — a control
-                // character (the scanner rejects those in shorthand
-                // and verbatim forms alike; a tab is one) or a `>`
-                // (verbatim's terminator, rejected in shorthand as a
-                // non-URI char) — resolves the serde-model ambiguity
-                // the other way: in the serde data model a tagged
-                // value is indistinguishable from the single-entry
-                // mapping keyed by its `!`-leading spelling, so emit
-                // that mapping with a quoted key and let it re-parse
-                // as what it is (found by fuzz_roundtrip on the key
-                // `"!\t"`).
-                if tag_str.bytes().any(|b| b < 0x20 || b == 0x7f || b == b'>') {
-                    write_key_string(output, tag_str, indent, config);
-                    output.push(':');
-                    let inner = tagged.value();
-                    if indicator_takes_a_space(inner) {
-                        output.push(' ');
-                    }
-                    write_value(output, inner, indent, false, config, depth + 1)?;
-                    return Ok(());
-                }
-                let shorthand_body = tag_str
-                    .strip_prefix("!!")
-                    .or_else(|| tag_str.strip_prefix('!'));
-                let needs_verbatim = shorthand_body.is_some_and(|body| {
-                    body.bytes().any(|b| {
-                        matches!(b, b',' | b'[' | b']' | b'{' | b'}' | b'!' | b' ' | b'\t')
-                    })
-                });
-                match shorthand_body {
-                    // A tag a `%TAG` directive resolved is held as a
-                    // bare URI with no `!`. Written as it stands it is
-                    // not a tag at all, and the document reads back as a
-                    // plain scalar, so the value is lost. The verbatim
-                    // form carries it without needing the directive.
-                    None => {
-                        output.push_str("!<");
-                        output.push_str(tag_str);
-                        output.push('>');
-                    }
-                    Some(_) if needs_verbatim => {
-                        output.push_str("!<");
-                        output.push_str(&tag_str[1..]);
-                        output.push('>');
-                    }
-                    Some(_) => output.push_str(tag_str),
-                }
-                let inner = tagged.value();
-                if indicator_takes_a_space(inner) {
-                    output.push(' ');
-                }
-                write_value(output, inner, indent, false, config, depth + 1)?;
-            }
-        }
     }
-    Ok(())
+}
+
+/// Write the tag, then its payload. A scalar payload sits on this same
+/// line after a space (`!tag value`); a non-empty mapping/sequence
+/// payload starts block layout on the next line instead, with no
+/// trailing space after the tag (that space would never be followed by
+/// anything, so it would survive only as trailing whitespace). `indent`
+/// here is already the slot this caller computed for the *whole* tagged
+/// value via `needs_block_layout`/`indicator_takes_a_space` (see
+/// `write_mapping`/`write_sequence`), so the payload is written at that
+/// same `indent`, not one deeper.
+fn write_user_tag(
+    output: &mut String,
+    tagged: &TaggedValue,
+    indent: usize,
+    config: &SerializerConfig,
+    depth: usize,
+) -> Result<()> {
+    let tag_str = tagged.tag().as_str();
+    let inner = tagged.value();
+    // A tag body NO spelling can carry -- a control character (the
+    // scanner rejects those in shorthand and verbatim forms alike; a tab
+    // is one) or a `>` (verbatim's terminator, rejected in shorthand as
+    // a non-URI char) -- resolves the serde-model ambiguity the other
+    // way: in the serde data model a tagged value is indistinguishable
+    // from the single-entry mapping keyed by its `!`-leading spelling,
+    // so emit that mapping with a quoted key and let it re-parse as what
+    // it is (found by fuzz_roundtrip on the key `"!\t"`).
+    if tag_str.bytes().any(|b| b < 0x20 || b == 0x7f || b == b'>') {
+        write_key_string(output, tag_str, indent, config);
+        output.push(':');
+    } else {
+        write_tag_spelling(output, tag_str);
+    }
+    if indicator_takes_a_space(inner) {
+        output.push(' ');
+    }
+    write_value(output, inner, indent, false, config, depth + 1)
+}
+
+/// Write a tag in the shortest spelling that re-parses to exactly the
+/// stored tag.
+///
+/// A tag whose body holds characters the shorthand spelling cannot
+/// carry -- flow indicators, blanks, or an interior `!` (a handle
+/// separator there) -- is emitted in the verbatim form `!<...>`, which
+/// re-parses to exactly the stored tag (`!<!str>` is `!!str`). Emitting
+/// it raw produced YAML that split at the first such byte:
+/// `!<tag:example.com,2026:x>` re-emitted as shorthand died at the comma
+/// (found by fuzz_roundtrip).
+fn write_tag_spelling(output: &mut String, tag_str: &str) {
+    let shorthand_body = tag_str
+        .strip_prefix("!!")
+        .or_else(|| tag_str.strip_prefix('!'));
+    let needs_verbatim = shorthand_body.is_some_and(|body| {
+        body.bytes()
+            .any(|b| matches!(b, b',' | b'[' | b']' | b'{' | b'}' | b'!' | b' ' | b'\t'))
+    });
+    match shorthand_body {
+        // A tag a `%TAG` directive resolved is held as a bare URI with
+        // no `!`. Written as it stands it is not a tag at all, and the
+        // document reads back as a plain scalar, so the value is lost.
+        // The verbatim form carries it without needing the directive.
+        None => {
+            output.push_str("!<");
+            output.push_str(tag_str);
+            output.push('>');
+        }
+        Some(_) if needs_verbatim => {
+            output.push_str("!<");
+            output.push_str(&tag_str[1..]);
+            output.push('>');
+        }
+        Some(_) => output.push_str(tag_str),
+    }
 }
 
 /// Fast check whether a plain scalar would be interpreted as a number by a YAML
@@ -1496,8 +1507,8 @@ fn indicator_takes_a_space(value: &Value) -> bool {
     !needs_block_layout(value)
         || matches!(
             value,
-            Value::Tagged(t) if t.tag().as_str() == crate::fmt::MAGIC_ANCHOR_DEF
-                || !t.tag().as_str().starts_with("__noya_")
+            Value::Tagged(t) if !t.tag().is_directive()
+                || t.tag().as_str() == crate::fmt::MAGIC_ANCHOR_DEF
         )
 }
 
@@ -1524,6 +1535,9 @@ fn needs_block_layout(v: &Value) -> bool {
         };
     };
     let inner = t.value();
+    if !t.tag().is_directive() {
+        return needs_block_layout(inner);
+    }
     match t.tag().as_str() {
         // `[id, inner]` — `&id` goes on the key's line, the inner value
         // lays itself out from there.
@@ -1555,8 +1569,7 @@ fn needs_block_layout(v: &Value) -> bool {
         },
         // A trailing blank line does not change how the value itself lays out.
         crate::fmt::MAGIC_SPACE_AFTER => needs_block_layout(inner),
-        // Any other internal tag falls through to plain output, as does a
-        // user-visible tag.
+        // Any other directive falls through to plain output.
         _ => needs_block_layout(inner),
     }
 }
@@ -1618,52 +1631,31 @@ fn write_internal_tag(
     config: &SerializerConfig,
     depth: usize,
 ) -> Result<()> {
-    match tag {
-        crate::fmt::MAGIC_FLOW_SEQ => {
-            if let Value::Sequence(seq) = value {
-                write_flow_sequence(output, seq, config, depth)?;
-            } else {
-                write_value(output, value, indent, is_root, config, depth)?;
-            }
+    match (tag, value) {
+        (crate::fmt::MAGIC_FLOW_SEQ, Value::Sequence(seq)) => {
+            write_flow_sequence(output, seq, config, depth)
         }
-        crate::fmt::MAGIC_FLOW_MAP => {
-            if let Value::Mapping(map) = value {
-                write_flow_mapping(output, map, config, depth)?;
-            } else {
-                write_value(output, value, indent, is_root, config, depth)?;
-            }
+        (crate::fmt::MAGIC_FLOW_MAP, Value::Mapping(map)) => {
+            write_flow_mapping(output, map, config, depth)
         }
-        crate::fmt::MAGIC_LIT_STR => {
-            if let Value::String(s) = value {
-                write_literal_block(output, s, indent, config);
-            } else {
-                write_value(output, value, indent, is_root, config, depth)?;
-            }
+        (crate::fmt::MAGIC_LIT_STR, Value::String(s)) => {
+            write_literal_block(output, s, indent, config);
+            Ok(())
         }
-        crate::fmt::MAGIC_FOLD_STR => {
-            if let Value::String(s) = value {
-                write_folded_block(output, s, indent, config);
-            } else {
-                write_value(output, value, indent, is_root, config, depth)?;
-            }
+        (crate::fmt::MAGIC_FOLD_STR, Value::String(s)) => {
+            write_folded_block(output, s, indent, config);
+            Ok(())
         }
-        crate::fmt::MAGIC_COMMENTED => {
-            // value is a sequence [inner_value, comment_string]
-            if let Value::Sequence(seq) = value {
-                if seq.len() == 2 {
-                    write_value(output, &seq[0], indent, is_root, config, depth)?;
-                    if let Value::String(comment) = &seq[1] {
-                        output.push_str(" # ");
-                        output.push_str(comment);
-                    }
-                } else {
-                    write_value(output, value, indent, is_root, config, depth)?;
-                }
-            } else {
-                write_value(output, value, indent, is_root, config, depth)?;
+        // value is a sequence [inner_value, comment_string]
+        (crate::fmt::MAGIC_COMMENTED, Value::Sequence(seq)) if seq.len() == 2 => {
+            write_value(output, &seq[0], indent, is_root, config, depth)?;
+            if let Value::String(comment) = &seq[1] {
+                output.push_str(" # ");
+                output.push_str(comment);
             }
+            Ok(())
         }
-        crate::fmt::MAGIC_SPACE_AFTER => {
+        (crate::fmt::MAGIC_SPACE_AFTER, _) => {
             write_value(output, value, indent, is_root, config, depth)?;
             output.push('\n');
             // `start_line` opens the next entry with a newline only when the
@@ -1674,53 +1666,59 @@ fn write_internal_tag(
             if !is_root {
                 output.push('\n');
             }
+            Ok(())
         }
-        crate::fmt::MAGIC_ANCHOR_DEF => {
-            // value is a sequence [String(id), inner_value]. Emit "&id" before
-            // the inner value. For block collections the inner starts on a new
-            // line; for scalars it follows on the same line.
-            if let Value::Sequence(seq) = value {
-                if seq.len() == 2 {
-                    if let Value::String(id) = &seq[0] {
-                        let inner = &seq[1];
-                        output.push('&');
-                        output.push_str(id);
-                        match inner {
-                            Value::Mapping(m) if !m.is_empty() => {
-                                output.push('\n');
-                                write_indent(output, config.indent * indent);
-                                // `is_root = true` suppresses the leading newline
-                                // inside write_mapping so the anchor line and
-                                // the first key are correctly adjacent.
-                                write_mapping(output, m, indent, true, config, depth + 1)?;
-                            }
-                            Value::Sequence(s) if !s.is_empty() => {
-                                output.push('\n');
-                                write_indent(output, config.indent * indent);
-                                write_sequence(output, s, indent, true, config, depth + 1)?;
-                            }
-                            _ => {
-                                output.push(' ');
-                                write_value(output, inner, indent, false, config, depth + 1)?;
-                            }
-                        }
-                    }
-                }
+        // value is a sequence [String(id), inner_value]
+        (crate::fmt::MAGIC_ANCHOR_DEF, Value::Sequence(seq)) => {
+            if let [Value::String(id), inner] = seq.as_slice() {
+                write_anchor_def(output, id, inner, indent, config, depth)?;
             }
+            Ok(())
         }
-        crate::fmt::MAGIC_ANCHOR_REF => {
-            // value is String(id). Emit "*id".
-            if let Value::String(id) = value {
-                output.push('*');
-                output.push_str(id);
-            }
+        // value is String(id). Emit "*id".
+        (crate::fmt::MAGIC_ANCHOR_REF, Value::String(id)) => {
+            output.push('*');
+            output.push_str(id);
+            Ok(())
+        }
+        (crate::fmt::MAGIC_ANCHOR_DEF | crate::fmt::MAGIC_ANCHOR_REF, _) => Ok(()),
+        // A directive holding a shape it does not apply to falls through
+        // to regular output.
+        _ => write_value(output, value, indent, is_root, config, depth),
+    }
+}
+
+/// Emit `&id` before the inner value. For block collections the inner
+/// starts on a new line; for scalars it follows on the same line.
+fn write_anchor_def(
+    output: &mut String,
+    id: &str,
+    inner: &Value,
+    indent: usize,
+    config: &SerializerConfig,
+    depth: usize,
+) -> Result<()> {
+    output.push('&');
+    output.push_str(id);
+    match inner {
+        Value::Mapping(m) if !m.is_empty() => {
+            output.push('\n');
+            write_indent(output, config.indent * indent);
+            // `is_root = true` suppresses the leading newline
+            // inside write_mapping so the anchor line and
+            // the first key are correctly adjacent.
+            write_mapping(output, m, indent, true, config, depth + 1)
+        }
+        Value::Sequence(s) if !s.is_empty() => {
+            output.push('\n');
+            write_indent(output, config.indent * indent);
+            write_sequence(output, s, indent, true, config, depth + 1)
         }
         _ => {
-            // Unknown internal tag — fall through to regular output
-            write_value(output, value, indent, is_root, config, depth)?;
+            output.push(' ');
+            write_value(output, inner, indent, false, config, depth + 1)
         }
     }
-    Ok(())
 }
 
 fn write_flow_sequence(
@@ -2001,7 +1999,7 @@ impl serde_core::ser::Serializer for Serializer {
             | crate::fmt::MAGIC_SPACE_AFTER => {
                 let inner = value.serialize(Self)?;
                 Ok(Value::Tagged(Box::new(TaggedValue::new(
-                    Tag::new(name),
+                    Tag::directive(name),
                     inner,
                 ))))
             }
@@ -2009,7 +2007,7 @@ impl serde_core::ser::Serializer for Serializer {
                 // value is a tuple (inner_value, comment_string)
                 let inner = value.serialize(Self)?;
                 Ok(Value::Tagged(Box::new(TaggedValue::new(
-                    Tag::new(name),
+                    Tag::directive(name),
                     inner,
                 ))))
             }
@@ -2018,7 +2016,7 @@ impl serde_core::ser::Serializer for Serializer {
                 // ANCHOR_REF: value serializes as String(id).
                 let inner = value.serialize(Self)?;
                 Ok(Value::Tagged(Box::new(TaggedValue::new(
-                    Tag::new(name),
+                    Tag::directive(name),
                     inner,
                 ))))
             }
