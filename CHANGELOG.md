@@ -42,6 +42,15 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   form; written as it stands it opened a verbatim tag and the output
   did not parse.
 
+### Changed
+
+- A property test writes arbitrary strings (line breaks of every kind,
+  BOM, tabs, flow indicators, `# `, `: `, document markers, `<<`, node
+  indicators) as keys, values and sequence items under every
+  combination of `flow_style`, `scalar_style`, `quote_all`,
+  `prefer_single_quotes` and the document markers, and requires each to
+  read back unchanged. CI runs 64 cases; set `PROPTEST_CASES` for more.
+
 ## [v0.0.54] - 2026-10-07
 
 ### Security

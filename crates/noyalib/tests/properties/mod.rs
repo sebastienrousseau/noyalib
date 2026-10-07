@@ -16,6 +16,7 @@ mod properties_interpolation;
 mod property_interpolation;
 mod proptest;
 mod proptest_emitter_paths;
+mod serializer_config_round_trip;
 mod set_value_roundtrip_prop;
 mod simd_equivalence;
 mod span_tree_invariants;
