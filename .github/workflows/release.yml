@@ -436,27 +436,6 @@ jobs:
           name: release-artifacts
           path: artifacts
 
-      - name: Generate release notes
-        run: |
-          TAG="${GITHUB_REF_NAME}"
-          PREV_TAG=$(git tag --sort=-version:refname | grep -v "$TAG" | head -1 || echo "")
-          if [ -n "$PREV_TAG" ]; then
-            RANGE="${PREV_TAG}..${TAG}"
-          else
-            RANGE="${TAG}"
-          fi
-          {
-            echo "## What's Changed"
-            echo ""
-            git log "$RANGE" --pretty=format:"- %s (%h)" --no-merges
-            echo ""
-            echo ""
-            echo "## Checksums"
-            echo '```'
-            cat artifacts/target/package/SHA256SUMS.txt
-            echo '```'
-          } > RELEASE_NOTES.md
-
       - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -493,8 +472,42 @@ jobs:
           )
           shopt -u nullglob
           printf 'attaching %s\n' "${assets[@]}"
+          # Release page in the house shape: hand-written Highlights kept
+          # in the repository, GitHub's generated What's Changed, and a
+          # SHA-256 of every asset attached. The Highlights file is
+          # required; the version gate checks for it before the tag.
+          NOTES="docs/release-notes/${GITHUB_REF_NAME}.md"
+          [ -f "$NOTES" ] || { echo "::error::$NOTES is missing; every release needs hand-written Highlights"; exit 1; }
+          PREV_TAG=$(git tag --sort=-version:refname | grep -vx "$GITHUB_REF_NAME" | head -1 || true)
+          GEN=$(gh api -X POST "repos/${GITHUB_REPOSITORY}/releases/generate-notes" \
+            -f tag_name="$GITHUB_REF_NAME" ${PREV_TAG:+-f previous_tag_name="$PREV_TAG"} --jq .body \
+            | sed '/^\*\*Full Changelog\*\*/d')
+          if ! printf '%s\n' "$GEN" | grep -q "^## What's Changed"; then
+            # No pull request behind this tag: list its commits in the same shape.
+            GEN=$(printf "## What's Changed\n"; gh api "repos/${GITHUB_REPOSITORY}/compare/${PREV_TAG:-$(git rev-list --max-parents=0 HEAD | tail -1)}...${GITHUB_REF_NAME}" \
+              --jq '.commits[] | "* \(.commit.message | split("\n")[0]) by @\(.author.login // .commit.author.name) in \(.html_url)"')
+          fi
+          {
+            awk '/^## Highlights/{p=1} p && /^## / && !/^## Highlights/{exit} p' "$NOTES"
+            echo
+            printf '%s\n' "$GEN"
+            echo
+            echo "## Checksums"
+            echo
+            echo "SHA-256 of every asset attached to this release:"
+            echo
+            echo '```text'
+            for f in "${assets[@]}"; do printf '%s  %s\n' "$(sha256sum "$f" | cut -d' ' -f1)" "$(basename "$f")"; done | sort -k2
+            echo '```'
+            echo
+            if [ -n "$PREV_TAG" ]; then
+              echo "**Full Changelog**: https://github.com/${GITHUB_REPOSITORY}/compare/${PREV_TAG}...${GITHUB_REF_NAME}"
+            else
+              echo "**Full Changelog**: https://github.com/${GITHUB_REPOSITORY}/commits/${GITHUB_REF_NAME}"
+            fi
+          } > RELEASE_NOTES.md
           gh release create "$GITHUB_REF_NAME" \
-            --title "noyalib $GITHUB_REF_NAME" \
+            --title "noyalib ${GITHUB_REF_NAME#v}" \
             --notes-file RELEASE_NOTES.md \
             "${assets[@]}"
 

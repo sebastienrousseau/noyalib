@@ -5,6 +5,33 @@ All notable changes to this project are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.0.54] - 2026-10-07
+
+### Security
+
+- `from_reader`, `from_reader_with_config`, `from_reader_strict` and
+  `compat::serde_yaml::from_reader` read at most one byte past
+  `max_document_length` before failing the length budget. They used to
+  buffer the whole source with `read_to_string` first, so an unbounded or
+  hostile reader could exhaust memory before any limit applied; the
+  `&str` and `&[u8]` entry points and the Tokio decoder's frame cap were
+  already bounded. Follow-up to GHSA-4xcc-23fx-w2wj.
+
+### Changed
+
+- The GitHub release page is composed by the release workflow in the
+  family's house shape: title `noyalib <version>`, the hand-written
+  Highlights from `docs/release-notes/v<version>.md`, the generated
+  What's Changed, a SHA-256 of every attached asset and the Full
+  Changelog link. `scripts/verify-release-versions.sh` refuses a tag
+  whose Highlights file is missing.
+- The satellites ship in lockstep at 0.0.54. `noyalib-mcp` confines its
+  file tools to a root directory (`--root`) and parses under the strict
+  YAML 1.2 profile by default (`--profile standard` restores the
+  previous behaviour); both can refuse input accepted before.
+  `noya-cli` writes in place atomically and gains
+  `noyavalidate --strict`.
+
 ## [v0.0.53] - 2026-10-06
 
 ### Added
