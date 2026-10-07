@@ -29,6 +29,18 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   document into a value 10,000 levels deep, which overflowed the stack
   (aborting the process) on drop or any recursive walk. Every entry
   point now refuses it with `RecursionLimitExceeded`.
+- `from_str_borrowing` and `from_str_borrowing_with_config` refuse a
+  second document or a trailing syntax error, as `from_str` does; they
+  used to return the first document and ignore the rest, so the same
+  bytes read differently through the two APIs. A
+  `StreamingDeserializer` built with `with_config` now enforces
+  `max_document_length`.
+
+### Added
+
+- `StreamingDeserializer::end`, which requires that nothing follows the
+  value just deserialized. Call it after `T::deserialize(&mut de)` when
+  driving the deserializer directly.
 
 ## [v0.0.54] - 2026-10-07
 

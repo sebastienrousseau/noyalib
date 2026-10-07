@@ -129,6 +129,10 @@ pub struct StreamingDeserializer<'a> {
     anchor_costs: FxHashMap<String, AliasCost>,
     /// Every budget counter, charged in the order the loaders use.
     meter: Meter,
+    /// Whether the first event has been pulled. The document-length
+    /// check runs then, so a deserializer built directly with
+    /// [`Self::with_config`] enforces `max_document_length` too.
+    started: bool,
 }
 
 impl fmt::Debug for StreamingDeserializer<'_> {
@@ -240,6 +244,7 @@ impl<'a> StreamingDeserializer<'a> {
             recording: None,
             anchor_costs: FxHashMap::default(),
             meter: Meter::default(),
+            started: false,
         }
     }
 
@@ -270,6 +275,44 @@ impl<'a> StreamingDeserializer<'a> {
         self
     }
 
+    /// Require that the input holds nothing after the value just
+    /// deserialized: no second document, no trailing syntax error.
+    ///
+    /// `T::deserialize(&mut de)` stops as soon as `T` is complete, so a
+    /// caller driving the deserializer directly must call this after it,
+    /// as [`crate::from_str`] does, or bytes past the first document are
+    /// never read. Without it, `a: 1\n---\na: 2` deserializes as `1`
+    /// where `from_str` refuses the stream.
+    ///
+    /// # Errors
+    ///
+    /// [`Error::MoreThanOneDocument`] when another document follows, or
+    /// the parse error of whatever follows the value.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use noyalib::StreamingDeserializer;
+    /// use serde_core::Deserialize as _;
+    ///
+    /// let mut de = StreamingDeserializer::new("1\n---\n2\n");
+    /// let first = i32::deserialize(&mut de).unwrap();
+    /// assert_eq!(first, 1);
+    /// assert!(de.end().is_err());
+    /// ```
+    pub fn end(&mut self) -> Result<()> {
+        // Stop *at* `StreamEnd`: querying past it returns a benign
+        // "parser has already finished" error.
+        loop {
+            match self.next_event()? {
+                Event::StreamEnd => return Ok(()),
+                Event::DocumentEnd | Event::StreamStart => {}
+                Event::DocumentStart => return Err(Error::MoreThanOneDocument),
+                _ => return Ok(()),
+            }
+        }
+    }
+
     /// The one place a raw event leaves the parser. Every budget the
     /// loaders charge per parser event is charged here, so a budget
     /// cannot exist on the loader paths without existing on this one.
@@ -277,6 +320,12 @@ impl<'a> StreamingDeserializer<'a> {
     /// `max_total_scalar_bytes`, `max_merge_keys`) and the alias ratio
     /// were loader-only, and typed targets never saw them.
     fn pull_parser_event(&mut self) -> Result<Event<'a>> {
+        if !self.started {
+            self.started = true;
+            if self.input.len() > self.config.max_document_length {
+                return Err(document_too_long(self.config.max_document_length));
+            }
+        }
         let ev = self
             .parser
             .next_event()
@@ -1773,10 +1822,7 @@ where
 {
     let parse_config = ParseConfig::from(config);
     if s.len() > parse_config.max_document_length {
-        return Some(Err(Error::Parse(format!(
-            "document exceeds maximum length of {} bytes",
-            parse_config.max_document_length
-        ))));
+        return Some(Err(document_too_long(parse_config.max_document_length)));
     }
     let mut de = StreamingDeserializer::with_config(s, parse_config);
     if let Some(registry) = config.tag_registry.as_ref() {
@@ -1800,16 +1846,7 @@ where
             // than one document — `from_str`/`from_str_with_config` only
             // support exactly one (`from_str_multi` is the multi-document
             // entry point). See #351.
-            loop {
-                match de.next_event() {
-                    Ok(Event::StreamEnd) => break,
-                    Ok(Event::DocumentEnd | Event::StreamStart) => continue,
-                    Ok(Event::DocumentStart) => return Some(Err(Error::MoreThanOneDocument)),
-                    Ok(_) => break,
-                    Err(e) => return Some(Err(e)),
-                }
-            }
-            Some(Ok(val))
+            Some(de.end().map(|()| val))
         }
         Err(ref e) => {
             if is_fallback_error(e) {
@@ -1845,6 +1882,11 @@ fn parse_plain_float(s: &str) -> Option<f64> {
         return None;
     }
     s.parse::<f64>().ok()
+}
+
+/// The refusal for an input longer than `max_document_length`.
+fn document_too_long(max: usize) -> Error {
+    Error::Parse(format!("document exceeds maximum length of {max} bytes"))
 }
 
 /// The expansion cost of a recorded anchor buffer, by the estimator the

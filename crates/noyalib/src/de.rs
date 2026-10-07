@@ -155,7 +155,11 @@ where
     if let Some(registry) = config.tag_registry.as_ref() {
         de = de.with_tag_registry(Arc::clone(registry));
     }
-    T::deserialize(&mut de)
+    let value = T::deserialize(&mut de)?;
+    // Same end-of-stream rule as `from_str`: a second document or a
+    // trailing syntax error is refused, not silently ignored.
+    de.end()?;
+    Ok(value)
 }
 
 /// Compile-time-ish check: is the deserialise target `T` exactly
