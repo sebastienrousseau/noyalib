@@ -88,7 +88,33 @@ struct SimpleKey {
     /// collection).  In flow context, `:` is a valid value indicator after
     /// a JSON-like key even without trailing whitespace.
     json_like: bool,
+    /// Byte offset of the start of the line the key begins on.
+    line_start: usize,
+    /// True once the key can no longer be completed by a `:` (see
+    /// [`Scanner::stale_simple_keys`]). A stale key no longer holds back
+    /// the token queue; a `:` that would complete it is rejected.
+    stale: bool,
 }
+
+/// YAML 1.2.2 §7.4.2 / §8.2.2: an implicit key is at most 1024 Unicode
+/// characters, counted from its first character to the `:`. Enforced for
+/// keys holding a flow collection (see [`MAX_SCALAR_KEY_TOKENS`]).
+const MAX_IMPLICIT_KEY_CHARS: usize = 1024;
+
+/// A UTF-8 character is at most four bytes, so a key spanning more bytes
+/// than this is longer than [`MAX_IMPLICIT_KEY_CHARS`] whatever it holds.
+const MAX_IMPLICIT_KEY_BYTES: usize = 4 * MAX_IMPLICIT_KEY_CHARS;
+
+/// Tokens a key made of one scalar or alias can span: its anchor, its tag
+/// and the node itself. A key spanning more holds a flow collection.
+///
+/// The length limit is applied only to such keys. A scalar key holds at
+/// most this many tokens in the queue however long it is, so it costs
+/// nothing to wait for its `:`, and noyalib's own serializer writes long
+/// string keys as implicit keys, so rejecting them would break round
+/// trips. Flow-collection keys are what can hold an unbounded number of
+/// tokens.
+const MAX_SCALAR_KEY_TOKENS: usize = 3;
 
 /// Lookup table for bytes that are blanks (space, tab) or line breaks (LF, CR).
 /// Index by byte value for O(1) classification — replaces per-call branching.
@@ -212,6 +238,21 @@ pub(crate) struct Scanner<'a> {
     /// than the parent block — H7J7 (`key: &x\n!!map\n  a: b`) puts
     /// the tag at column 0 ≤ parent indent, which is invalid.
     pending_property_col: Option<i32>,
+    /// Memo of the last plain-scalar line scan: scanning from byte
+    /// `.0`, the first line break or comment `#` is at `.1`, and `.2`
+    /// says whether it is a break. Plain scalars on one line reuse it,
+    /// so a line of many short scalars is scanned once instead of once
+    /// per scalar.
+    line_end_memo: (usize, usize, bool),
+    /// Span end of the token most recently appended to `tokens`.
+    last_token_end: usize,
+    /// Every simple key below this level is dead (not possible, or
+    /// stale). Keys only change at the top of the stack, and a live
+    /// key's token number grows with its level, so the oldest live key
+    /// at or above this level is the only one that can hold the queue.
+    /// Keeping the floor makes the staleness and queue checks O(1)
+    /// amortised instead of a walk of the whole stack per token.
+    live_key_floor: usize,
 }
 
 /// Compact record of the most recent emit, used by guard checks
@@ -415,6 +456,9 @@ impl<'a> Scanner<'a> {
             in_document_body: false,
             last_emitted_kind: LastEmitted::Other,
             pending_property_col: None,
+            line_end_memo: (usize::MAX, 0, false),
+            last_token_end: 0,
+            live_key_floor: 0,
         }
     }
 
@@ -489,8 +533,12 @@ impl<'a> Scanner<'a> {
             self.tokens_consumed += 1;
             self.tokens_produced += 1;
             // Compact when we've consumed enough to avoid unbounded growth.
-            // Use a higher threshold to amortize the O(n) shift cost.
-            if self.tokens_consumed > 256 {
+            // Shift only once the consumed prefix is at least half the
+            // queue, so each shift moves no more tokens than were consumed
+            // since the last one and the total cost stays linear. With a
+            // fixed threshold alone, a long backlog (for example a pending
+            // simple key's tokens) was shifted again every 256 tokens.
+            if self.tokens_consumed > 256 && self.tokens_consumed * 2 >= self.tokens.len() {
                 drop(self.tokens.drain(..self.tokens_consumed));
                 self.tokens_consumed = 0;
             }
@@ -506,12 +554,16 @@ impl<'a> Scanner<'a> {
         if self.tokens_consumed >= self.tokens.len() {
             return true;
         }
-        // Fast path: if no simple key is possible, no need to scan the list.
-        // In most YAML, simple_keys has 0-2 entries with possible=true.
+        // Only the oldest live key can hold the head of the queue: live
+        // keys' token numbers grow with their level (see
+        // `live_key_floor`).
         let next_token = self.tokens_produced;
         self.simple_keys
+            .get(self.live_key_floor..)
+            .unwrap_or_default()
             .iter()
-            .any(|sk| sk.possible && sk.token_number == next_token)
+            .find(|sk| sk.possible && !sk.stale)
+            .is_some_and(|sk| sk.token_number == next_token)
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────
@@ -666,6 +718,7 @@ impl<'a> Scanner<'a> {
             start: self.mark,
             end: self.pos,
         };
+        self.last_token_end = span.end;
         self.tokens.push(Token { kind, span });
     }
 
@@ -1004,14 +1057,12 @@ impl<'a> Scanner<'a> {
                 start: mark,
                 end: mark,
             };
-            match number {
-                Some(n) => {
-                    let idx = n - self.tokens_produced;
-                    self.insert_token(idx, kind, span);
-                }
-                None => {
-                    self.tokens.push(Token { kind, span });
-                }
+            if let Some(n) = number {
+                let idx = n - self.tokens_produced;
+                self.insert_token(idx, kind, span);
+            } else {
+                self.last_token_end = span.end;
+                self.tokens.push(Token { kind, span });
             }
         }
     }
@@ -1046,12 +1097,16 @@ impl<'a> Scanner<'a> {
             token_number: self.tokens_produced + (self.tokens.len() - self.tokens_consumed),
             index: self.pos,
             json_like,
+            line_start: self.pos.saturating_sub(self.col),
+            stale: false,
         };
         // Inline remove_simple_key for the common case (not required).
         if let Some(last) = self.simple_keys.last_mut() {
             last.possible = false;
             *last = sk;
         }
+        let top = self.simple_keys.len().saturating_sub(1);
+        self.live_key_floor = self.live_key_floor.min(top);
     }
 
     #[inline]
@@ -1070,10 +1125,84 @@ impl<'a> Scanner<'a> {
         Ok(())
     }
 
+    /// Mark simple keys that can no longer become implicit keys.
+    ///
+    /// YAML 1.2.2 restricts an implicit key in block context (§8.2.2)
+    /// and in a flow-sequence single pair (§7.4.2) to one line and at
+    /// most 1024 characters. A pending key holds every later token in
+    /// the queue until its `:` arrives or it is ruled out, so without
+    /// this check a flow collection at document start buffered the whole
+    /// collection before the first event. A key is stale once the next
+    /// token is on a later line (block context only; a `:` there is
+    /// already rejected or treated as a separate pair by
+    /// `fetch_value`), or once it holds a flow collection (more than
+    /// [`MAX_SCALAR_KEY_TOKENS`] tokens) and is more than
+    /// [`MAX_IMPLICIT_KEY_BYTES`] bytes away. Flow-mapping keys are not
+    /// limited by the spec and are left alone.
+    ///
+    /// Only the oldest live key is examined, and the floor below which
+    /// every key is dead moves up past each key that dies, so the work is
+    /// O(1) amortised per token. An older key is always at least as far
+    /// from the current position, and holds at least as many tokens, as a
+    /// younger one, so a younger key cannot go stale first. The exception
+    /// is a younger key above a flow-mapping key, which never goes stale;
+    /// that key holds the queue anyway, and `fetch_value` measures the
+    /// younger key's length itself.
     fn stale_simple_keys(&mut self) -> ScanResult<()> {
-        // In this implementation we don't enforce the 1024-char limit for
-        // simple keys in block context (yaml-rust2 also relaxes this).
+        while let Some(sk) = self.simple_keys.get(self.live_key_floor) {
+            if sk.possible && !sk.stale {
+                if !self.simple_key_is_stale(self.live_key_floor, sk) {
+                    break;
+                }
+                self.simple_keys[self.live_key_floor].stale = true;
+            }
+            self.live_key_floor += 1;
+        }
         Ok(())
+    }
+
+    /// Whether the live key `sk` at stack `level` can no longer be
+    /// completed by a `:` (see [`Self::stale_simple_keys`]).
+    fn simple_key_is_stale(&self, level: usize, sk: &SimpleKey) -> bool {
+        let is_block = level == 0;
+        if !is_block && self.flow_stack.get(level - 1) != Some(&true) {
+            return false;
+        }
+        if is_block && sk.line_start != self.pos.saturating_sub(self.col) {
+            return true;
+        }
+        let next_token = self.tokens_produced + (self.tokens.len() - self.tokens_consumed);
+        let holds_collection = next_token.saturating_sub(sk.token_number) > MAX_SCALAR_KEY_TOKENS;
+        holds_collection && self.pos.saturating_sub(sk.index) > MAX_IMPLICIT_KEY_BYTES
+    }
+
+    /// Whether the pending key `sk` is longer than an implicit key may
+    /// be, measured up to the current `:`. Only block-context and
+    /// flow-sequence keys holding a flow collection are limited (see
+    /// [`Self::stale_simple_keys`] and [`MAX_SCALAR_KEY_TOKENS`]).
+    fn implicit_key_too_long(&self, sk: &SimpleKey) -> bool {
+        let limited = self.flow_level == 0 || self.flow_stack.last() == Some(&true);
+        if !limited {
+            return false;
+        }
+        if sk.stale {
+            return true;
+        }
+        let next_token = self.tokens_produced + (self.tokens.len() - self.tokens_consumed);
+        if next_token.saturating_sub(sk.token_number) <= MAX_SCALAR_KEY_TOKENS {
+            return false;
+        }
+        let span = &self.input[sk.index.min(self.pos)..self.pos];
+        if span.len() <= MAX_IMPLICIT_KEY_CHARS {
+            return false;
+        }
+        if span.len() > MAX_IMPLICIT_KEY_BYTES {
+            return true;
+        }
+        // Count characters by their leading bytes; continuation bytes
+        // are `0b10xx_xxxx`.
+        let chars = span.iter().filter(|&&b| (b as i8) >= -0x40).count();
+        chars > MAX_IMPLICIT_KEY_CHARS
     }
 
     // ── Main dispatch ────────────────────────────────────────────────────
@@ -1246,6 +1375,8 @@ impl<'a> Scanner<'a> {
             token_number: 0,
             index: 0,
             json_like: false,
+            line_start: 0,
+            stale: false,
         });
         // Skip BOM if present.
         if self.pos + 2 < self.input.len()
@@ -1479,6 +1610,8 @@ impl<'a> Scanner<'a> {
             token_number: 0,
             index: 0,
             json_like: false,
+            line_start: 0,
+            stale: false,
         });
         self.simple_key_allowed = true;
         self.mark = self.pos;
@@ -1512,6 +1645,7 @@ impl<'a> Scanner<'a> {
         // Pop the simple-key context that was pushed when this flow
         // collection was opened.
         let _ = self.simple_keys.pop();
+        self.live_key_floor = self.live_key_floor.min(self.simple_keys.len());
         self.flow_level -= 1;
         let _ = self.flow_stack.pop();
         self.simple_key_allowed = false;
@@ -1710,109 +1844,177 @@ impl<'a> Scanner<'a> {
         Ok(())
     }
 
+    /// End of the pending simple key `sk`, with trailing blanks and line
+    /// breaks trimmed.
+    fn simple_key_end(&self, sk: &SimpleKey) -> usize {
+        // The latest emitted token's source span is the
+        // simple key's actual end; trimming its trailing
+        // whitespace strips the `\n` the multi-line plain
+        // scalar reader consumes during termination.
+        // Clamp `key_end` to be at least `sk.index` — degenerate
+        // streams (`:\n*\n…`) can leave the simple-key tracker
+        // ahead of every emitted token's span end, in which
+        // case `tokens.last().span.end < sk.index` and the
+        // slice below would panic with "starts at X but ends
+        // at Y (X > Y)". An empty slice is the correct content
+        // for "no key seen yet" — the implicit-key-spans-newline
+        // check below will see an empty buffer and fall through.
+        // A stale key no longer holds the queue, so its tokens may
+        // have been handed out and compacted away; use the end
+        // recorded at emission instead.
+        let key_end = if sk.stale {
+            self.last_token_end
+        } else {
+            self.tokens.last().map_or(sk.index, |t| t.span.end)
+        }
+        .max(sk.index);
+        let mut e = key_end;
+        while e > sk.index
+            && matches!(
+                self.input.get(e - 1).copied(),
+                Some(b' ' | b'\t' | b'\n' | b'\r')
+            )
+        {
+            e -= 1;
+        }
+        e
+    }
+
+    /// Apply the YAML 1.2.2 §7.4.2 single-line rules to the pending key
+    /// `sk` at a `:`. Returns `Ok(true)` when the key was invalidated and
+    /// `fetch_value` must return so the `:` is dispatched again without it.
+    fn check_implicit_key_lines(&mut self, sk: &SimpleKey) -> ScanResult<bool> {
+        // Two distinct YAML 1.2.2 §7.4.2 rules conflated as
+        // "implicit key" violations:
+        //
+        //   (rule 2)  the key itself spans a `\n` —
+        //             `"c\n d": 1` (7LBH/D49Q) or
+        //             `c\n d: 1` (G7JE). Error.
+        //
+        //   (rule 1)  the key ends on one line and `:` lands
+        //             on the next — `&b b\n: *a` (6M2F). The
+        //             key is *single-line* but the `:` is for
+        //             a *different* (empty implicit) pair.
+        //             Invalidate, fall through to else.
+        let key_end_trimmed = self.simple_key_end(sk);
+        let key_content = &self.input[sk.index..key_end_trimmed];
+        let key_has_newline = key_content.iter().any(|&b| b == b'\n' || b == b'\r');
+
+        if key_has_newline && self.flow_level == 0 {
+            // When `?` introduced the key, the simple-key
+            // tracker is permitted to span newlines (the key
+            // is *explicit*, not implicit). Invalidate the
+            // tracker and fall through to the else branch so
+            // the `:` is emitted as the explicit-key value
+            // indicator (JTV5, M5DY). Without `?`, this is
+            // the genuine "implicit key spans newlines" error.
+            if self.explicit_key_pending {
+                if let Some(last) = self.simple_keys.last_mut() {
+                    last.possible = false;
+                }
+                return Ok(true);
+            }
+            return Err(
+                self.error("implicit mapping key in block context cannot span multiple lines")
+            );
+        }
+
+        let between_has_newline = self.input[key_end_trimmed..self.pos]
+            .iter()
+            .any(|&b| b == b'\n' || b == b'\r');
+
+        if between_has_newline {
+            if self.flow_level == 0 {
+                // Rule 1: Key ends on line N, ':' on line N+1.
+                // Invalidate the simple key so it doesn't get retroactively
+                // converted to a mapping, but don't error (6M2F).
+                if let Some(last) = self.simple_keys.last_mut() {
+                    last.possible = false;
+                }
+                return Ok(true);
+            } else {
+                // In flow context, Rule 1 is generally allowed (4MUZ).
+                // BUT in a flow sequence (where we are looking for a
+                // single-pair mapping), the colon must be on the same
+                // line as the key (DK4H, ZXT5).
+                let in_flow_seq = self.flow_stack.last().copied().unwrap_or(false);
+
+                if in_flow_seq {
+                    return Err(self.error("implicit mapping key in flow sequence must be on the same line as the colon"));
+                }
+
+                if key_has_newline
+                    && (self.pos == 0
+                        || (self.input[self.pos - 1] != b' ' && self.input[self.pos - 1] != b'\t'))
+                {
+                    return Err(
+                        self.error("implicit mapping key cannot span multiple lines (flow)")
+                    );
+                }
+            }
+        }
+        Ok(false)
+    }
+
+    /// Open a block mapping at the column of the simple key `sk` that a
+    /// `:` has just completed in block context.
+    fn roll_indent_for_simple_key(&mut self, sk: &SimpleKey) -> ScanResult<()> {
+        self.reject_block_inline_with_doc_start("':'")?;
+        // A line break is LF, CR, or CRLF (YAML 1.2.2 §5.4);
+        // scan back for either so a key following a lone CR
+        // (classic-Mac) is measured from its true line start.
+        // Matching only `\n` over-counts such a key's column,
+        // splitting the mapping (the same failure the BOM case
+        // below guards against).
+        let mut line_start = self.input[..sk.index]
+            .iter()
+            .rposition(|&b| b == b'\n' || b == b'\r')
+            .map_or(0, |nl| nl + 1);
+        // A leading BOM occupies the first three bytes of the
+        // stream but contributes no visual column. Exclude it so a
+        // first-line key is measured from column 0 (consistent with
+        // `self.col`, which is reset after the BOM in
+        // `fetch_stream_start`). Without this the key's indent is
+        // over-counted by 3, so a following sibling at column 0 is
+        // misread as a dedent and the mapping is split in two.
+        if line_start == 0 && self.input.starts_with(&[0xEF, 0xBB, 0xBF]) {
+            line_start = 3;
+        }
+        let leading = &self.input[line_start..sk.index];
+        // YAML 1.2.2 §6.1: block-mapping key indentation
+        // must be spaces only. A tab in the leading
+        // whitespace before a block-mapping key (DK95
+        // sub-case 7: `  \tb: 2`) is an indentation tab.
+        // Plain-scalar continuation (DK95 sub-case 1
+        // `\tbar` after `foo:`) is unaffected — no Key
+        // promotion happens for the continuation line.
+        if leading.contains(&b'\t') {
+            return Err(
+                self.error("tab characters are not allowed in block-mapping key indentation")
+            );
+        }
+        let col = (sk.index - line_start) as i32;
+        self.roll_indent(
+            col,
+            Some(sk.token_number),
+            TokenKind::BlockMappingStart,
+            sk.index,
+        );
+        Ok(())
+    }
+
     fn fetch_value(&mut self) -> ScanResult<()> {
         // Check if there's a pending simple key.
         if let Some(sk) = self.simple_keys.last().cloned() {
-            if sk.possible {
-                // Two distinct YAML 1.2.2 §7.4.2 rules conflated as
-                // "implicit key" violations:
-                //
-                //   (rule 2)  the key itself spans a `\n` —
-                //             `"c\n d": 1` (7LBH/D49Q) or
-                //             `c\n d: 1` (G7JE). Error.
-                //
-                //   (rule 1)  the key ends on one line and `:` lands
-                //             on the next — `&b b\n: *a` (6M2F). The
-                //             key is *single-line* but the `:` is for
-                //             a *different* (empty implicit) pair.
-                //             Invalidate, fall through to else.
-                //
-                // The latest emitted token's source span is the
-                // simple key's actual end; trimming its trailing
-                // whitespace strips the `\n` the multi-line plain
-                // scalar reader consumes during termination.
-                // Clamp `key_end` to be at least `sk.index` — degenerate
-                // streams (`:\n*\n…`) can leave the simple-key tracker
-                // ahead of every emitted token's span end, in which
-                // case `tokens.last().span.end < sk.index` and the
-                // slice below would panic with "starts at X but ends
-                // at Y (X > Y)". An empty slice is the correct content
-                // for "no key seen yet" — the implicit-key-spans-newline
-                // check below will see an empty buffer and fall through.
-                let key_end = self
-                    .tokens
-                    .last()
-                    .map_or(sk.index, |t| t.span.end)
-                    .max(sk.index);
-                let key_end_trimmed = {
-                    let mut e = key_end;
-                    while e > sk.index
-                        && matches!(
-                            self.input.get(e - 1).copied(),
-                            Some(b' ' | b'\t' | b'\n' | b'\r')
-                        )
-                    {
-                        e -= 1;
-                    }
-                    e
-                };
+            if sk.possible && self.check_implicit_key_lines(&sk)? {
+                return Ok(());
+            }
 
-                let key_content = &self.input[sk.index..key_end_trimmed];
-                let key_has_newline = key_content.iter().any(|&b| b == b'\n' || b == b'\r');
-
-                if key_has_newline && self.flow_level == 0 {
-                    // When `?` introduced the key, the simple-key
-                    // tracker is permitted to span newlines (the key
-                    // is *explicit*, not implicit). Invalidate the
-                    // tracker and fall through to the else branch so
-                    // the `:` is emitted as the explicit-key value
-                    // indicator (JTV5, M5DY). Without `?`, this is
-                    // the genuine "implicit key spans newlines" error.
-                    if self.explicit_key_pending {
-                        if let Some(last) = self.simple_keys.last_mut() {
-                            last.possible = false;
-                        }
-                        return Ok(());
-                    }
-                    return Err(self.error(
-                        "implicit mapping key in block context cannot span multiple lines",
-                    ));
-                }
-
-                let between_has_newline = self.input[key_end_trimmed..self.pos]
-                    .iter()
-                    .any(|&b| b == b'\n' || b == b'\r');
-
-                if between_has_newline {
-                    if self.flow_level == 0 {
-                        // Rule 1: Key ends on line N, ':' on line N+1.
-                        // Invalidate the simple key so it doesn't get retroactively
-                        // converted to a mapping, but don't error (6M2F).
-                        if let Some(last) = self.simple_keys.last_mut() {
-                            last.possible = false;
-                        }
-                        return Ok(());
-                    } else {
-                        // In flow context, Rule 1 is generally allowed (4MUZ).
-                        // BUT in a flow sequence (where we are looking for a
-                        // single-pair mapping), the colon must be on the same
-                        // line as the key (DK4H, ZXT5).
-                        let in_flow_seq = self.flow_stack.last().copied().unwrap_or(false);
-
-                        if in_flow_seq {
-                            return Err(self.error("implicit mapping key in flow sequence must be on the same line as the colon"));
-                        }
-
-                        if key_has_newline
-                            && (self.pos == 0
-                                || (self.input[self.pos - 1] != b' '
-                                    && self.input[self.pos - 1] != b'\t'))
-                        {
-                            return Err(self
-                                .error("implicit mapping key cannot span multiple lines (flow)"));
-                        }
-                    }
-                }
+            if sk.possible && self.implicit_key_too_long(&sk) {
+                return Err(ScanError {
+                    message: Cow::Borrowed("implicit mapping key is longer than 1024 characters"),
+                    index: sk.index,
+                });
             }
 
             if sk.possible {
@@ -1826,47 +2028,7 @@ impl<'a> Scanner<'a> {
 
                 // Roll indent for block mapping.
                 if self.flow_level == 0 {
-                    self.reject_block_inline_with_doc_start("':'")?;
-                    // A line break is LF, CR, or CRLF (YAML 1.2.2 §5.4);
-                    // scan back for either so a key following a lone CR
-                    // (classic-Mac) is measured from its true line start.
-                    // Matching only `\n` over-counts such a key's column,
-                    // splitting the mapping (the same failure the BOM case
-                    // below guards against).
-                    let mut line_start = self.input[..sk.index]
-                        .iter()
-                        .rposition(|&b| b == b'\n' || b == b'\r')
-                        .map_or(0, |nl| nl + 1);
-                    // A leading BOM occupies the first three bytes of the
-                    // stream but contributes no visual column. Exclude it so a
-                    // first-line key is measured from column 0 (consistent with
-                    // `self.col`, which is reset after the BOM in
-                    // `fetch_stream_start`). Without this the key's indent is
-                    // over-counted by 3, so a following sibling at column 0 is
-                    // misread as a dedent and the mapping is split in two.
-                    if line_start == 0 && self.input.starts_with(&[0xEF, 0xBB, 0xBF]) {
-                        line_start = 3;
-                    }
-                    let leading = &self.input[line_start..sk.index];
-                    // YAML 1.2.2 §6.1: block-mapping key indentation
-                    // must be spaces only. A tab in the leading
-                    // whitespace before a block-mapping key (DK95
-                    // sub-case 7: `  \tb: 2`) is an indentation tab.
-                    // Plain-scalar continuation (DK95 sub-case 1
-                    // `\tbar` after `foo:`) is unaffected — no Key
-                    // promotion happens for the continuation line.
-                    if leading.contains(&b'\t') {
-                        return Err(self.error(
-                            "tab characters are not allowed in block-mapping key indentation",
-                        ));
-                    }
-                    let col = (sk.index - line_start) as i32;
-                    self.roll_indent(
-                        col,
-                        Some(sk.token_number),
-                        TokenKind::BlockMappingStart,
-                        sk.index,
-                    );
+                    self.roll_indent_for_simple_key(&sk)?;
                 }
 
                 if let Some(last) = self.simple_keys.last_mut() {
@@ -2351,5 +2513,114 @@ mod tests {
                 "BOM-prefixed input {bommed:?} should scan identically to {plain:?}",
             );
         }
+    }
+
+    /// Pull `count` tokens and return the largest number of tokens that
+    /// were queued but not yet handed out, and the furthest byte scanned.
+    fn peak_queue(input: &str, count: usize) -> (usize, usize) {
+        let mut scanner = Scanner::new(input);
+        let mut peak = 0;
+        for _ in 0..count {
+            let _ = scanner.next_token().expect("token");
+            peak = peak.max(scanner.tokens.len() - scanner.tokens_consumed);
+        }
+        (peak, scanner.pos)
+    }
+
+    /// A flow collection at document start might be an implicit key, so the
+    /// scanner holds its tokens until the key is ruled out. An implicit key
+    /// is limited to one line and 1024 characters, so a 10 MB collection
+    /// must not be tokenised whole before the first token is handed out.
+    #[test]
+    fn ten_megabyte_flow_collection_streams_from_document_start() {
+        let one_line = format!("[{}a]\n", "a,".repeat(5 * 1024 * 1024));
+        let many_lines = format!("[{}a]\n", "a,\n".repeat(3_500_000));
+        for (name, input) in [("one line", &one_line), ("one entry per line", &many_lines)] {
+            assert!(input.len() >= 10 * 1024 * 1024);
+            let (peak, pos) = peak_queue(input, 10);
+            assert!(
+                peak <= 4_200,
+                "{name}: {peak} tokens queued for 10 handed out"
+            );
+            assert!(
+                pos <= 16 * 1024,
+                "{name}: scanned {pos} bytes for 10 tokens"
+            );
+        }
+    }
+
+    /// Deep flow nesting keeps one pending simple key per level; the
+    /// staleness and queue checks must not walk every level per token.
+    /// Linear work grows about eight times between the two depths,
+    /// quadratic work about sixty-four times.
+    #[test]
+    fn deep_flow_nesting_scans_in_linear_time() {
+        fn drain(depth: usize) -> core::time::Duration {
+            let input = format!("{}{}", "[".repeat(depth), "]".repeat(depth));
+            let start = std::time::Instant::now();
+            let mut scanner = Scanner::new(&input);
+            while let Ok(token) = scanner.next_token() {
+                if matches!(token.kind, TokenKind::StreamEnd) {
+                    break;
+                }
+            }
+            start.elapsed()
+        }
+        let small = (0..5).map(|_| drain(5_000)).min().unwrap_or_default();
+        let large = (0..3).map(|_| drain(40_000)).min().unwrap_or_default();
+        let small = small.max(core::time::Duration::from_micros(200));
+        let ratio = large.as_secs_f64() / small.as_secs_f64();
+        assert!(
+            ratio < 24.0,
+            "8x deeper took {ratio:.1}x ({small:?} -> {large:?})"
+        );
+    }
+
+    /// The memoised line-end lookup must agree with a fresh scan at every
+    /// position, in forward order (the memo's use) and backwards (where the
+    /// memo must be discarded).
+    #[test]
+    fn line_end_memo_matches_a_fresh_scan() {
+        let inputs = [
+            "a,b,c\nd",
+            "#a #b\n#c",
+            "a#b #c\r\nd # e",
+            "a\tb\t#c",
+            "no terminator at all",
+            "x #",
+            "\n\n\r",
+            "",
+        ];
+        for input in inputs {
+            let mut scanner = Scanner::new(input);
+            let forward: Vec<usize> = (0..=input.len()).collect();
+            let backward: Vec<usize> = forward.iter().rev().copied().collect();
+            for pos in forward.into_iter().chain(backward) {
+                scanner.pos = pos;
+                let fresh = Scanner::scan_line_end(&input.as_bytes()[pos..]);
+                assert_eq!(scanner.plain_line_end(), fresh, "{input:?} at {pos}");
+            }
+        }
+    }
+
+    /// Handing out tokens from a long backlog must not shift the backlog
+    /// again every 256 tokens. A flow-mapping key has no length limit, so a
+    /// long flow sequence used as one is held whole until its `:`.
+    #[test]
+    fn queue_compaction_waits_for_half_the_queue() {
+        let input = format!("{{[{}a]: v}}\n", "a,".repeat(100_000));
+        let mut scanner = Scanner::new(&input);
+        let mut shifts = 0;
+        let mut last_consumed = 0;
+        while let Ok(token) = scanner.next_token() {
+            if scanner.tokens_consumed < last_consumed {
+                shifts += 1;
+            }
+            last_consumed = scanner.tokens_consumed;
+            if matches!(token.kind, TokenKind::StreamEnd) {
+                break;
+            }
+        }
+        assert!(shifts <= 40, "queue shifted {shifts} times");
     }
 }

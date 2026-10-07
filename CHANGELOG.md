@@ -122,6 +122,14 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   Struct targets still keep the last entry where upstream reports
   `duplicate field`.
 
+- Parsing a long line is linear in its length again. Each plain scalar
+  searched to the end of its line for a comment or line break, so a
+  single line of many short flow entries cost the line length once per
+  entry (400 KB took seconds, 1.6 MB close to a minute) before any
+  budget could refuse it. The search result is now reused for the rest
+  of the line, and the token queue no longer shifts a long backlog every
+  256 tokens. Parse results are unchanged.
+
 ### Added
 
 - `cst::format_with_parser_config` formats under a caller-chosen
@@ -141,6 +149,20 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   providers.
 
 ### Changed
+
+- **Breaking (parse behaviour):** an implicit mapping key that holds a
+  flow collection (for example `[a, b, ...]: v`) and is longer than 1024
+  characters is now rejected with "implicit mapping key is longer than
+  1024 characters", as YAML 1.2.2 requires for block mappings (§8.2.2)
+  and single pairs in a flow sequence (§7.4.2). Scalar keys keep no
+  length limit, so long string keys written by `to_string` still parse;
+  explicit `?` keys and keys inside a flow mapping are not limited by
+  the spec. The scanner relies on this limit to stop holding back the
+  tokens of a collection that can no longer be a key: a flow collection
+  at the start of a document used to be tokenised whole before the first
+  event, so `max_events` and the other budgets could not refuse a
+  multi-megabyte collection until it had all been buffered (10 MB queued
+  about 10 million tokens). It is now streamed.
 
 - A property test writes arbitrary strings (line breaks of every kind,
   BOM, tabs, flow indicators, `# `, `: `, document markers, `<<`, node
