@@ -409,3 +409,15 @@ fn question_mark_may_start_a_flow_key() {
     let v: Value = from_str("[?=?)\r@]").unwrap();
     assert_eq!(v[0].as_str(), Some("?=?) @"));
 }
+
+#[test]
+fn tab_only_line_is_white_space() {
+    // Found by fuzz_serde_yaml_compat (input `\t`): libyaml rejects a
+    // tab that starts a line ("cannot start any token"). A line of only
+    // white space, or white space and a comment, is an l-comment line
+    // (YAML 1.2.2 §6.6), so `\t` alone is an empty stream.
+    let v: Value = from_str("\t").unwrap();
+    assert!(v.is_null());
+    let v: Value = from_str("k: 1\n\t\n\t# note\n").unwrap();
+    assert_eq!(v["k"].as_i64(), Some(1));
+}

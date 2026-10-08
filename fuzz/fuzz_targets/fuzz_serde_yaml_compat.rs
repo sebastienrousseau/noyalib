@@ -105,5 +105,17 @@ fn known_reject_divergence(s: &str) -> bool {
     // yaml-test-suite blesses them and noyalib passes it 406/406 —
     // but libyaml wants a key before the `:` in block context
     // ("did not find expected key").
-    s.lines().any(|l| l.trim_start().starts_with(':'))
+    if s.lines().any(|l| l.trim_start().starts_with(':')) {
+        return true;
+    }
+    // A line holding only white space (tabs included) or a comment is
+    // an l-comment line (§6.6): `\t` alone is a valid empty stream, and
+    // `k: 1\n\t# note` a valid mapping. libyaml rejects a tab that
+    // starts such a line ("cannot start any token"); the spec, and
+    // noyalib, accept it.
+    s.lines().any(|l| {
+        let t = l.trim_start_matches(' ');
+        let rest = t.trim_start_matches([' ', '\t']);
+        t.starts_with('\t') && (rest.is_empty() || rest.starts_with('#'))
+    })
 }
