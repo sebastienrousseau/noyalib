@@ -111,11 +111,13 @@ fi
 # target/package while verifying the unpacked crate. Letting rust-cache
 # traverse that target tree during post-job cleanup produces ENOENT error
 # annotations even when every release step succeeded. The artifact job only
-# needs registry and installed-tool caching.
+# needs registry and installed-tool caching. Since v0.0.55 it restores
+# no cache at all (a restored cache could feed what ships), which meets
+# the contract too.
 artifact_job=$(sed -n '/^  artifacts:/,/^  reproducible:/p' \
     .github/workflows/release.yml)
-artifact_cache=$(grep -A3 'Swatinem/rust-cache@' <<<"$artifact_job")
-if grep -q -- 'cache-targets: false' <<<"$artifact_cache"; then
+artifact_cache=$(grep -A3 'Swatinem/rust-cache@' <<<"$artifact_job" || true)
+if [ -z "$artifact_cache" ] || grep -q -- 'cache-targets: false' <<<"$artifact_cache"; then
     ok
 else
     bad "release artifact job must not cache its transient target tree"
