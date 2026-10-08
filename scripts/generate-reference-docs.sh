@@ -55,8 +55,17 @@ def variants(block_name):
 kinds = variants("ErrorKind")
 errs = variants("Error")
 
-# `code()` is the stable string a tool matches on; read it from the impl.
-codes = dict(re.findall(r'Self::([A-Za-z0-9]+)[^=]*=>\s*"(noyalib::[a-z_]+)"', error_rs))
+# `code()` is the stable string a tool matches on. `Error::diagnostic_code`
+# maps each variant to a `DiagnosticCode`, and `DiagnosticCode::as_str`
+# spells it; read both.
+diagnostic_rs = (SRC / "diagnostic.rs").read_text()
+spellings = dict(re.findall(r'Self::([A-Za-z0-9]+)\s*=>\s*"(noyalib::[a-z_]+)"', diagnostic_rs))
+code_fn = error_rs[error_rs.index("pub fn diagnostic_code(&self)"):]
+code_fn = code_fn[: code_fn.index("\n    }\n")]
+codes = {}
+for arm, code in re.findall(r'((?:\|?\s*Self::[A-Za-z0-9]+[^=|]*)+)=>\s*\{?\s*DiagnosticCode::([A-Za-z0-9]+)', code_fn):
+    for name in re.findall(r'Self::([A-Za-z0-9]+)', arm):
+        codes[name] = spellings[code]
 
 # REUSE-IgnoreStart
 # These are the headers written into the *generated* files. Without the
@@ -95,7 +104,7 @@ out += ["", "## Variants", "",
         "| Variant | `code()` | Raised when |",
         "| --- | --- | --- |"]
 for name, doc in errs:
-    code = codes.get(name, "`noyalib::error`")
+    code = codes.get(name, "noyalib::error")
     out.append(f"| `Error::{name}` | `{code}` | {doc or '—'} |")
 
 out += ["", "## Reading an error against its source", "",
