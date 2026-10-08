@@ -13,6 +13,7 @@ mod competitive_features_full;
 mod competitor_bugs;
 mod cst_unicode_space;
 mod duplicate_key_identity;
+mod escaped_break_empty_lines;
 mod feature_matrix;
 mod fmt;
 mod folded_spaced_lines;

@@ -50,6 +50,11 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   characters (§5.1), comments and directive lines included; `#]\0`
   and `a: 1 # x\x01` used to parse. serde_yaml refuses them too. Found
   by the `fuzz_serde_yaml_compat` target.
+- **Breaking (parse behaviour):** in a double-quoted scalar, each empty
+  line after an escaped line break (`\` at the end of a line) is a line
+  feed (YAML 1.2.2 §7.3.1). They were folded as after an unescaped
+  break, so `"a\` + empty line + `b"` read `"a b"` where libyaml and
+  the spec read `"a\nb"`. Found by the `fuzz_diff` target.
 
 ## [v0.0.56] - 2026-10-08
 

@@ -553,8 +553,7 @@ impl Scanner<'_> {
         self.advance(); // skip opening "
 
         let mut string = String::new();
-        let mut whitespace = String::new();
-        let mut leading_break = false;
+        let mut fold = QuotedFold::default();
 
         loop {
             if self.is_eof() {
@@ -564,206 +563,196 @@ impl Scanner<'_> {
             match self.peek() {
                 b'"' => {
                     // Flush any pending whitespace before closing.
-                    if leading_break {
-                        if whitespace.is_empty() {
-                            string.push(' ');
-                        } else {
-                            string.push_str(&whitespace);
-                        }
-                    } else if !whitespace.is_empty() {
-                        string.push_str(&whitespace);
-                    }
+                    fold.flush(&mut string);
                     self.advance();
                     return Ok(string);
                 }
                 b'\\' => {
                     // Flush pending whitespace.
-                    if leading_break {
-                        if whitespace.is_empty() {
-                            string.push(' ');
-                        } else {
-                            string.push_str(&whitespace);
-                        }
-                        whitespace.clear();
-                        leading_break = false;
-                    } else if !whitespace.is_empty() {
-                        string.push_str(&whitespace);
-                        whitespace.clear();
-                    }
-
-                    self.advance(); // skip '\'
-                    if self.is_eof() {
-                        return Err(self.error("unexpected end of input in escape sequence"));
-                    }
-                    let escaped = self.peek();
-                    self.advance();
-                    match escaped {
-                        b'0' => string.push('\0'),
-                        b'a' => string.push('\x07'),
-                        b'b' => string.push('\x08'),
-                        b't' | b'\t' => string.push('\t'),
-                        b'n' => string.push('\n'),
-                        b'v' => string.push('\x0B'),
-                        b'f' => string.push('\x0C'),
-                        b'r' => string.push('\r'),
-                        b'e' => string.push('\x1B'),
-                        b' ' => string.push(' '),
-                        b'"' => string.push('"'),
-                        b'/' => string.push('/'),
-                        b'\\' => string.push('\\'),
-                        b'N' => string.push('\u{0085}'), // NEL
-                        b'_' => string.push('\u{00A0}'), // NBSP
-                        b'L' => string.push('\u{2028}'), // LS
-                        b'P' => string.push('\u{2029}'), // PS
-                        b'x' => {
-                            let ch = self.scan_hex_escape(2)?;
-                            string.push(ch);
-                        }
-                        b'u' => {
-                            // JSON-style UTF-16 surrogate pair escape:
-                            // `𝄞` encodes U+1D11E (𝄞). When
-                            // we see a high surrogate, peek for a
-                            // following `\uXXXX` low surrogate and pair
-                            // them. Lone or reversed surrogates fall
-                            // through to `scan_hex_escape_pair`'s
-                            // existing rejection path.
-                            let ch = self.scan_unicode_4()?;
-                            string.push(ch);
-                        }
-                        b'U' => {
-                            let ch = self.scan_hex_escape(8)?;
-                            string.push(ch);
-                        }
-                        b'\r' | b'\n' => {
-                            // Line break escape — fold.
-                            if escaped == b'\r' && self.peek() == b'\n' {
-                                self.advance();
-                            }
-                            // Skip leading whitespace on next line.
-                            while Self::is_blank(self.peek()) {
-                                self.advance();
-                            }
-                        }
-                        _ => {
-                            return Err(ScanError {
-                                message: Cow::Owned(format!(
-                                    "unknown escape character '\\{}'",
-                                    escaped as char
-                                )),
-                                index: self.pos - 1,
-                            });
-                        }
-                    }
+                    fold.flush(&mut string);
+                    self.scan_double_escape(&mut string, &mut fold)?;
                 }
-                c if Self::is_break(c) => {
-                    // Line folding in double-quoted scalars per YAML 1.2.2
-                    // §7.3.2 / §6.5: trailing whitespace before a break is
-                    // stripped; an "empty line" (a line containing only
-                    // whitespace, *or* nothing) between content lines
-                    // contributes a preserved `\n`. Each break is handled
-                    // in its own loop iteration so blanks-between-breaks
-                    // are recognised as empty lines.
-                    if leading_break {
-                        // We're already in a break sequence — the previous
-                        // iteration ended on a break and its trailing
-                        // blanks have been consumed below. Reaching another
-                        // break means the line in between was empty.
-                        whitespace.push('\n');
-                    } else {
-                        // First break of a sequence — discard any buffered
-                        // trailing whitespace before this break.
-                        whitespace.clear();
-                        leading_break = true;
-                    }
-
-                    if self.peek() == b'\r' && self.peek_at(1) == b'\n' {
-                        self.advance_by(2);
-                    } else {
-                        self.advance();
-                    }
-
-                    self.reject_doc_marker_in_quoted("double-quoted")?;
-
-                    // YAML 1.2.2 §6.1: only spaces count as
-                    // indentation. Count leading *spaces* before any
-                    // tab so the continuation-indent check uses the
-                    // space-only column, not `self.col` (which counts
-                    // tabs as columns and would mask a tab-as-indent
-                    // bug in DK95 sub-case 2).
-                    let space_indent = {
-                        let mut n = 0;
-                        while self.input.get(self.pos + n).copied() == Some(b' ') {
-                            n += 1;
-                        }
-                        n as i32
-                    };
-
-                    // Skip leading blanks on the new line.
-                    while Self::is_blank(self.peek()) {
-                        self.advance();
-                    }
-
-                    self.require_quoted_continuation_indent_spaces("double-quoted", space_indent)?;
-                }
+                c if Self::is_break(c) => self.scan_double_break(&mut fold)?,
                 _ => {
-                    if leading_break {
-                        if whitespace.is_empty() {
-                            string.push(' ');
-                        } else {
-                            string.push_str(&whitespace);
-                        }
-                        whitespace.clear();
-                        leading_break = false;
-                    } else if !whitespace.is_empty() {
-                        string.push_str(&whitespace);
-                        whitespace.clear();
-                    }
-
-                    // Handle whitespace chars specially for folding.
-                    if Self::is_blank(self.peek()) {
-                        let start = self.pos;
-                        while Self::is_blank(self.peek()) {
-                            self.advance();
-                        }
-                        if Self::is_break(self.peek())
-                            || self.peek() == b'"'
-                            || self.peek() == b'\\'
-                        {
-                            whitespace.push_str(self.slice_str(start, self.pos));
-                            continue;
-                        }
-                        string.push_str(self.slice_str(start, self.pos));
-                    } else {
-                        // Bulk-copy a content run up to the next interesting
-                        // byte. All needles are ASCII (<0x80) so they never
-                        // appear as UTF-8 continuation bytes — slicing on
-                        // a needle hit is always char-boundary safe.
-                        let start = self.pos;
-                        let len =
-                            crate::simd::clean_prefix_len(&self.input[self.pos..], b"\"\\\n\r \t");
-                        let len = if len == 0 { 1 } else { len };
-                        self.advance_by(len);
-                        let run = self.slice_str(start, self.pos);
-                        // §5.1 c-printable governs the raw stream:
-                        // controls reach a double-quoted scalar via
-                        // escapes, never as raw bytes (matches the
-                        // plain/single-quoted/block enforcement; found
-                        // by the serde_yaml parity fuzzer — libyaml
-                        // rejects them everywhere).
-                        if run.bytes().any(|b| b < 0x20 || b == 0x7f) {
-                            return Err(ScanError {
-                                message: Cow::Borrowed(
-                                    "double-quoted scalar contains a raw control character — \
-                                     use an escape (\\x.., \\u....) instead",
-                                ),
-                                index: start,
-                            });
-                        }
-                        string.push_str(run);
-                    }
+                    fold.flush(&mut string);
+                    self.scan_double_content(&mut string, &mut fold)?;
                 }
             }
         }
+    }
+
+    /// Read an escape sequence after its `\`, appending its character to
+    /// `string`, or recording an escaped line break in `fold`.
+    fn scan_double_escape(&mut self, string: &mut String, fold: &mut QuotedFold) -> ScanResult<()> {
+        self.advance(); // skip '\'
+        if self.is_eof() {
+            return Err(self.error("unexpected end of input in escape sequence"));
+        }
+        let escaped = self.peek();
+        self.advance();
+        match escaped {
+            b'0' => string.push('\0'),
+            b'a' => string.push('\x07'),
+            b'b' => string.push('\x08'),
+            b't' | b'\t' => string.push('\t'),
+            b'n' => string.push('\n'),
+            b'v' => string.push('\x0B'),
+            b'f' => string.push('\x0C'),
+            b'r' => string.push('\r'),
+            b'e' => string.push('\x1B'),
+            b' ' => string.push(' '),
+            b'"' => string.push('"'),
+            b'/' => string.push('/'),
+            b'\\' => string.push('\\'),
+            b'N' => string.push('\u{0085}'), // NEL
+            b'_' => string.push('\u{00A0}'), // NBSP
+            b'L' => string.push('\u{2028}'), // LS
+            b'P' => string.push('\u{2029}'), // PS
+            b'x' => {
+                let ch = self.scan_hex_escape(2)?;
+                string.push(ch);
+            }
+            b'u' => {
+                // JSON-style UTF-16 surrogate pair escape:
+                // `𝄞` encodes U+1D11E (𝄞). When
+                // we see a high surrogate, peek for a
+                // following `\uXXXX` low surrogate and pair
+                // them. Lone or reversed surrogates fall
+                // through to `scan_hex_escape_pair`'s
+                // existing rejection path.
+                let ch = self.scan_unicode_4()?;
+                string.push(ch);
+            }
+            b'U' => {
+                let ch = self.scan_hex_escape(8)?;
+                string.push(ch);
+            }
+            b'\r' | b'\n' => {
+                // Line break escape (s-double-escaped, YAML 1.2.2
+                // §7.3.1): the break itself is excluded content, and
+                // each empty line after it is a line feed, not a fold.
+                if escaped == b'\r' && self.peek() == b'\n' {
+                    self.advance();
+                }
+                // Skip leading whitespace on next line.
+                while Self::is_blank(self.peek()) {
+                    self.advance();
+                }
+                fold.leading_break = true;
+                fold.escaped_break = true;
+            }
+            _ => {
+                return Err(ScanError {
+                    message: Cow::Owned(format!(
+                        "unknown escape character '\\{}'",
+                        escaped as char
+                    )),
+                    index: self.pos - 1,
+                });
+            }
+        }
+        Ok(())
+    }
+
+    /// Consume a line break inside a double-quoted scalar and the next
+    /// line's leading blanks, recording the break in `fold`.
+    fn scan_double_break(&mut self, fold: &mut QuotedFold) -> ScanResult<()> {
+        // Line folding in double-quoted scalars per YAML 1.2.2
+        // §7.3.2 / §6.5: trailing whitespace before a break is
+        // stripped; an "empty line" (a line containing only
+        // whitespace, *or* nothing) between content lines
+        // contributes a preserved `\n`. Each break is handled
+        // in its own loop iteration so blanks-between-breaks
+        // are recognised as empty lines.
+        if fold.leading_break {
+            // We're already in a break sequence — the previous
+            // iteration ended on a break and its trailing
+            // blanks have been consumed below. Reaching another
+            // break means the line in between was empty.
+            fold.whitespace.push('\n');
+        } else {
+            // First break of a sequence — discard any buffered
+            // trailing whitespace before this break.
+            fold.whitespace.clear();
+            fold.leading_break = true;
+        }
+
+        if self.peek() == b'\r' && self.peek_at(1) == b'\n' {
+            self.advance_by(2);
+        } else {
+            self.advance();
+        }
+
+        self.reject_doc_marker_in_quoted("double-quoted")?;
+
+        // YAML 1.2.2 §6.1: only spaces count as
+        // indentation. Count leading *spaces* before any
+        // tab so the continuation-indent check uses the
+        // space-only column, not `self.col` (which counts
+        // tabs as columns and would mask a tab-as-indent
+        // bug in DK95 sub-case 2).
+        let space_indent = {
+            let mut n = 0;
+            while self.input.get(self.pos + n).copied() == Some(b' ') {
+                n += 1;
+            }
+            n as i32
+        };
+
+        // Skip leading blanks on the new line.
+        while Self::is_blank(self.peek()) {
+            self.advance();
+        }
+
+        self.require_quoted_continuation_indent_spaces("double-quoted", space_indent)
+    }
+
+    /// Read a run of content (or of blanks) inside a double-quoted
+    /// scalar into `string`; blanks that end the line wait in `fold`.
+    fn scan_double_content(
+        &mut self,
+        string: &mut String,
+        fold: &mut QuotedFold,
+    ) -> ScanResult<()> {
+        // Handle whitespace chars specially for folding.
+        if Self::is_blank(self.peek()) {
+            let start = self.pos;
+            while Self::is_blank(self.peek()) {
+                self.advance();
+            }
+            if Self::is_break(self.peek()) || self.peek() == b'"' || self.peek() == b'\\' {
+                fold.whitespace.push_str(self.slice_str(start, self.pos));
+                return Ok(());
+            }
+            string.push_str(self.slice_str(start, self.pos));
+            return Ok(());
+        }
+        // Bulk-copy a content run up to the next interesting
+        // byte. All needles are ASCII (<0x80) so they never
+        // appear as UTF-8 continuation bytes — slicing on
+        // a needle hit is always char-boundary safe.
+        let start = self.pos;
+        let len = crate::simd::clean_prefix_len(&self.input[self.pos..], b"\"\\\n\r \t");
+        let len = if len == 0 { 1 } else { len };
+        self.advance_by(len);
+        let run = self.slice_str(start, self.pos);
+        // §5.1 c-printable governs the raw stream:
+        // controls reach a double-quoted scalar via
+        // escapes, never as raw bytes (matches the
+        // plain/single-quoted/block enforcement; found
+        // by the serde_yaml parity fuzzer — libyaml
+        // rejects them everywhere).
+        if run.bytes().any(|b| b < 0x20 || b == 0x7f) {
+            return Err(ScanError {
+                message: Cow::Borrowed(
+                    "double-quoted scalar contains a raw control character — \
+                     use an escape (\\x.., \\u....) instead",
+                ),
+                index: start,
+            });
+        }
+        string.push_str(run);
+        Ok(())
     }
 
     fn scan_hex_escape(&mut self, digits: usize) -> ScanResult<char> {
@@ -867,5 +856,37 @@ impl Scanner<'_> {
             message: Cow::Owned(format!("invalid Unicode code point U+{code:04X}")),
             index: start,
         })
+    }
+}
+
+/// Whitespace a double-quoted scalar holds back until the next content
+/// shows whether it folds.
+#[derive(Default)]
+struct QuotedFold {
+    /// Trailing blanks of the current line, or the `\n` of each empty
+    /// line in a break sequence.
+    whitespace: String,
+    /// A line break was crossed since the last content.
+    leading_break: bool,
+    /// That break was escaped (`\` at the end of the line): it adds
+    /// nothing itself, so no folding space either.
+    escaped_break: bool,
+}
+
+impl QuotedFold {
+    /// Write the pending whitespace to `out` before more content: a
+    /// lone unescaped break folds to a space, while the `\n` of empty
+    /// lines and a line's blanks are kept as they are.
+    fn flush(&mut self, out: &mut String) {
+        if self.leading_break && self.whitespace.is_empty() {
+            if !self.escaped_break {
+                out.push(' ');
+            }
+        } else {
+            out.push_str(&self.whitespace);
+        }
+        self.whitespace.clear();
+        self.leading_break = false;
+        self.escaped_break = false;
     }
 }
