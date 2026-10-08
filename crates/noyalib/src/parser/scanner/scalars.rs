@@ -383,15 +383,19 @@ impl Scanner<'_> {
     /// branch-free enough for LLVM to vectorise, and outside the
     /// scanner's per-byte hot loops.
     pub(super) fn check_scalar_printable(&self, s: &str) -> ScanResult<()> {
-        if s.bytes()
-            .any(|b| (b < 0x20 && b != b'\t' && b != b'\n') || b == 0x7f)
-        {
+        if s.bytes().any(Self::is_raw_control) {
             return Err(self.error(
                 "scalar contains a raw control character — YAML content is limited to \
                  printable characters (use an escape in a double-quoted scalar)",
             ));
         }
         Ok(())
+    }
+
+    /// A C0 control character other than tab and line feed, or DEL:
+    /// outside c-printable (YAML 1.2.2 §5.1) and never valid raw.
+    pub(super) fn is_raw_control(b: u8) -> bool {
+        (b < 0x20 && b != b'\t' && b != b'\n') || b == 0x7f
     }
 
     pub(super) fn fetch_quoted_scalar(&mut self, double: bool) -> ScanResult<()> {

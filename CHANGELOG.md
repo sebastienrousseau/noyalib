@@ -37,6 +37,12 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   (YAML 1.2.2 §8.1.3): its extra spaces are content and the breaks
   around it are not folded, so `>\n  a\n    \n  b\n` is `"a\n  \nb\n"`.
   It used to be dropped (`"a\nb\n"`). Found by the `fuzz_diff` target.
+- **Breaking (parse behaviour):** a raw control character (C0 other
+  than tab, or DEL) in a comment is an error, as it already was in
+  scalar content. YAML 1.2.2 limits the whole stream to printable
+  characters (§5.1), comments and directive lines included; `#]\0`
+  and `a: 1 # x\x01` used to parse. serde_yaml refuses them too. Found
+  by the `fuzz_serde_yaml_compat` target.
 
 ## [v0.0.56] - 2026-10-08
 

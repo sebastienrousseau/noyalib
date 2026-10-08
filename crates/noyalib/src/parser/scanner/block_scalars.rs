@@ -173,6 +173,9 @@ impl Scanner<'_> {
                 return Err(self.error("comment indicator '#' must be preceded by a space or tab"));
             }
             while !self.is_eof() && !Self::is_break(self.peek()) {
+                if Self::is_raw_control(self.peek()) {
+                    return Err(self.error("comment contains a raw control character"));
+                }
                 self.advance();
             }
         }
