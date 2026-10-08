@@ -39,22 +39,33 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          persist-credentials: false
           fetch-depth: 0
       - name: Verify PR commits are signed (via GitHub API)
         env:
           GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
+          set -euo pipefail
+          # --paginate: the endpoint returns 30 commits per page by
+          # default, so a longer PR used to have its later commits
+          # skipped (and anything after commit 30 went unchecked).
+          COMMITS=$(gh api --paginate "repos/${REPO}/pulls/${PR_NUMBER}/commits" --jq '.[].sha')
+          COUNT=0
           UNSIGNED=""
-          for COMMIT in $(gh api repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/commits --jq '.[].sha'); do
-            VERIFIED=$(gh api repos/${{ github.repository }}/git/commits/$COMMIT --jq '.verification.verified')
+          while IFS= read -r COMMIT; do
+            [ -n "$COMMIT" ] || continue
+            COUNT=$((COUNT + 1))
+            VERIFIED=$(gh api "repos/${REPO}/git/commits/${COMMIT}" --jq '.verification.verified')
             if [ "$VERIFIED" != "true" ]; then
-              MSG=$(gh api repos/${{ github.repository }}/git/commits/$COMMIT --jq '.message' | head -1)
-              echo "::error::Unverified commit: $COMMIT ($MSG)"
-              UNSIGNED="$UNSIGNED $COMMIT"
+              MSG=$(gh api "repos/${REPO}/git/commits/${COMMIT}" --jq '.message' | head -1)
+              echo "::error::Unverified commit: ${COMMIT} (${MSG})"
+              UNSIGNED="${UNSIGNED} ${COMMIT}"
             fi
-          done
+          done <<< "$COMMITS"
           if [ -n "$UNSIGNED" ]; then
             echo "::error::Unverified commits detected. All PR commits must be signed."
             exit 1
           fi
-          echo "All commits are verified."
+          echo "All ${COUNT} commits are verified."

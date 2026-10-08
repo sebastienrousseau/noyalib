@@ -563,3 +563,206 @@ fn resolver_observes_increasing_depth() {
     let observed = depths.lock().unwrap().clone();
     assert_eq!(observed, vec![0, 1]);
 }
+
+/// Resolver that hands out `doc0`, `doc1`, ... each nesting `per`
+/// flow sequences around an include of the next one.
+fn nested_chain_resolver(levels: usize, per: usize) -> IncludeResolver {
+    IncludeResolver::new(move |req: IncludeRequest<'_>| -> Result<InputSource> {
+        let i: usize = req.spec.trim_start_matches("doc").parse().unwrap();
+        let inner = if i + 1 < levels {
+            format!("!include doc{}", i + 1)
+        } else {
+            "leaf".to_string()
+        };
+        let text = format!("{}{}{}\n", "[".repeat(per), inner, "]".repeat(per));
+        Ok(InputSource::new(req.spec, text))
+    })
+}
+
+#[test]
+fn nesting_depth_is_charged_across_include_levels() {
+    // Three levels of six nested sequences make an 18-deep tree;
+    // `max_depth(10)` must refuse it even though each source alone
+    // is only 6 deep.
+    let cfg = ParserConfig::new()
+        .max_depth(10)
+        .include_resolver(nested_chain_resolver(3, 6));
+    let res: Result<Value> = from_str_with_config("!include doc0\n", &cfg);
+    assert!(
+        matches!(res, Err(noyalib::Error::RecursionLimitExceeded { .. })),
+        "cumulative depth must be refused: {res:?}"
+    );
+    // Three levels of three (9 deep) fit under the same limit.
+    let cfg = ParserConfig::new()
+        .max_depth(10)
+        .include_resolver(nested_chain_resolver(3, 3));
+    let v: Value = from_str_with_config("!include doc0\n", &cfg).unwrap();
+    assert!(v.is_sequence());
+}
+
+#[test]
+fn nesting_depth_counts_the_including_documents_position() {
+    // The include sits four collections deep, the included source
+    // adds seven more: eleven exceeds ten.
+    let cfg = ParserConfig::new()
+        .max_depth(10)
+        .include_resolver(nested_chain_resolver(1, 7));
+    let res: Result<Value> = from_str_with_config("a: {b: {c: [!include doc0]}}\n", &cfg);
+    assert!(
+        res.is_err(),
+        "position plus included depth must count: {res:?}"
+    );
+}
+
+#[test]
+fn deep_include_chain_under_defaults_does_not_exhaust_the_stack() {
+    // 24 include levels of 120 nested sequences each, under default
+    // limits, on a 2 MiB thread stack. Unbounded, this builds a
+    // 2,880-deep tree and overflows the stack walking it.
+    let handle = std::thread::Builder::new()
+        .stack_size(2 * 1024 * 1024)
+        .spawn(|| {
+            let cfg = ParserConfig::new().include_resolver(nested_chain_resolver(24, 120));
+            let res: Result<Value> = from_str_with_config("!include doc0\n", &cfg);
+            res.is_err()
+        })
+        .unwrap();
+    assert!(handle.join().unwrap(), "the deep chain must be refused");
+}
+
+#[test]
+fn max_document_length_applies_to_each_included_source() {
+    let body: &'static str = Box::leak(format!("k: {}\n", "x".repeat(200)).into_boxed_str());
+    let mut files = HashMap::new();
+    let _ = files.insert("big.yaml", body);
+    let cfg = ParserConfig::new()
+        .max_document_length(100)
+        .include_resolver(mem_resolver(files));
+    let res: Result<Value> = from_str_with_config("a: !include big.yaml\n", &cfg);
+    let err = res.expect_err("an included source over max_document_length must be refused");
+    assert!(err.to_string().contains("maximum length"), "got: {err}");
+}
+
+#[test]
+fn resolver_is_told_the_remaining_byte_budget() {
+    let seen = Arc::new(Mutex::new(Vec::new()));
+    let seen2 = Arc::clone(&seen);
+    let resolver = IncludeResolver::new(move |req: IncludeRequest<'_>| -> Result<InputSource> {
+        seen2.lock().unwrap().push(req.max_bytes);
+        Ok(InputSource::new(req.spec, "0123456789\n"))
+    });
+    let cfg = ParserConfig::new()
+        .max_total_include_bytes(1_000)
+        .max_document_length(500)
+        .include_resolver(resolver);
+    let _: Value = from_str_with_config("a: !include x\nb: !include y\n", &cfg).unwrap();
+    let seen = seen.lock().unwrap();
+    // The first request is capped by max_document_length, the second
+    // still is: 1,000 - 11 bytes remain, more than 500.
+    assert_eq!(*seen, vec![500, 500]);
+}
+
+#[cfg(feature = "include_fs")]
+mod safe_file_budgets {
+    use super::*;
+    use noyalib::include::SafeFileResolver;
+
+    fn temp_dir(name: &str) -> std::path::PathBuf {
+        let d = std::env::temp_dir().join(format!("noyalib-include-budget-{name}"));
+        let _ = std::fs::remove_dir_all(&d);
+        std::fs::create_dir_all(&d).unwrap();
+        d
+    }
+
+    #[test]
+    fn oversized_file_is_not_read_past_the_budget() {
+        let dir = temp_dir("oversized");
+        let f = std::fs::File::create(dir.join("huge.yaml")).unwrap();
+        f.set_len(64 * 1024 * 1024).unwrap();
+        let cfg = ParserConfig::new()
+            .max_total_include_bytes(1024 * 1024)
+            .include_resolver(SafeFileResolver::new(&dir).into_resolver());
+        let res: Result<Value> = from_str_with_config("k: !include huge.yaml\n", &cfg);
+        let _ = std::fs::remove_dir_all(&dir);
+        match res {
+            Err(noyalib::Error::Budget(noyalib::BudgetBreach::MaxIncludeBytes {
+                limit,
+                observed,
+            })) => assert!(
+                observed <= limit + 1,
+                "read {observed} bytes against a {limit}-byte budget"
+            ),
+            other => panic!("expected the include byte budget to trip: {other:?}"),
+        }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn fifo_is_refused_without_blocking() {
+        let dir = temp_dir("fifo");
+        let pipe = dir.join("pipe.yaml");
+        let status = std::process::Command::new("mkfifo")
+            .arg(&pipe)
+            .status()
+            .unwrap();
+        assert!(status.success());
+        let (tx, rx) = std::sync::mpsc::channel();
+        let root = dir.clone();
+        let _ = std::thread::spawn(move || {
+            let cfg =
+                ParserConfig::new().include_resolver(SafeFileResolver::new(&root).into_resolver());
+            let res: Result<Value> = from_str_with_config("k: !include pipe.yaml\n", &cfg);
+            let _ = tx.send(res.map(|_| ()).map_err(|e| e.to_string()));
+        });
+        let outcome = rx.recv_timeout(std::time::Duration::from_secs(5));
+        let _ = std::fs::remove_dir_all(&dir);
+        let msg = outcome
+            .expect("including a FIFO must not block")
+            .expect_err("a FIFO is not a regular file");
+        assert!(msg.contains("regular file"), "got: {msg}");
+    }
+
+    #[test]
+    fn directory_is_refused() {
+        let dir = temp_dir("dir");
+        std::fs::create_dir_all(dir.join("sub.yaml")).unwrap();
+        let cfg = ParserConfig::new().include_resolver(SafeFileResolver::new(&dir).into_resolver());
+        let res: Result<Value> = from_str_with_config("k: !include sub.yaml\n", &cfg);
+        let _ = std::fs::remove_dir_all(&dir);
+        assert!(res.is_err(), "a directory must be refused");
+    }
+
+    #[test]
+    fn errors_name_paths_relative_to_the_root() {
+        let dir = temp_dir("relative-errors");
+        let canonical = std::fs::canonicalize(&dir).unwrap();
+        let cfg = ParserConfig::new().include_resolver(SafeFileResolver::new(&dir).into_resolver());
+        let res: Result<Value> = from_str_with_config("k: !include sub/missing.yaml\n", &cfg);
+        let _ = std::fs::remove_dir_all(&dir);
+        let msg = res.expect_err("a missing file must error").to_string();
+        assert!(msg.contains("sub/missing.yaml"), "got: {msg}");
+        for absolute in [dir.display().to_string(), canonical.display().to_string()] {
+            assert!(!msg.contains(&absolute), "absolute path leaked: {msg}");
+        }
+    }
+
+    #[test]
+    fn source_names_are_relative_to_the_root() {
+        // The cycle error quotes the source's identity, which is the
+        // `InputSource::name` the resolver returned.
+        let dir = temp_dir("relative-names");
+        std::fs::create_dir_all(dir.join("sub")).unwrap();
+        std::fs::write(dir.join("sub/a.yaml"), "k: !include sub/a.yaml\n").unwrap();
+        let cfg = ParserConfig::new().include_resolver(SafeFileResolver::new(&dir).into_resolver());
+        let canonical = std::fs::canonicalize(&dir).unwrap();
+        let res: Result<Value> = from_str_with_config("k: !include sub/a.yaml\n", &cfg);
+        let _ = std::fs::remove_dir_all(&dir);
+        let msg = res.expect_err("a self-include must error").to_string();
+        assert!(msg.contains("cycle"), "got: {msg}");
+        assert!(msg.contains("`sub/a.yaml`"), "got: {msg}");
+        assert!(
+            !msg.contains(&canonical.display().to_string()),
+            "absolute path leaked: {msg}"
+        );
+    }
+}

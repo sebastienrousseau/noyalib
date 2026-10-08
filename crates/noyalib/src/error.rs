@@ -1979,20 +1979,58 @@ impl miette::Diagnostic for Error {
     }
 }
 
+/// Longest anchor name, in characters, that the "did you mean"
+/// suggestion compares. Typos worth suggesting a fix for are in short
+/// names; comparing long ones costs the product of their lengths.
+const MAX_SUGGESTION_NAME_CHARS: usize = 64;
+
+/// Most anchor names the suggestion search examines.
+const MAX_SUGGESTION_CANDIDATES: usize = 4096;
+
+/// Largest edit distance still offered as a suggestion.
+const MAX_SUGGESTION_DISTANCE: usize = 2;
+
+/// The known name closest to `name` within two edits, if any.
+///
+/// Bounded so that an unknown alias in a document with many long
+/// anchors costs little: names longer than
+/// [`MAX_SUGGESTION_NAME_CHARS`] are not compared, candidates whose
+/// length differs by more than two cannot be within two edits and are
+/// skipped, and at most [`MAX_SUGGESTION_CANDIDATES`] are examined.
 pub(crate) fn closest_name<'a>(
     name: &str,
     names: impl Iterator<Item = &'a str>,
 ) -> Option<&'a str> {
+    let target_len = bounded_char_count(name)?;
     let mut best_dist = usize::MAX;
     let mut best_name = None;
-    for n in names {
+    for n in names.take(MAX_SUGGESTION_CANDIDATES) {
+        let Some(len) = bounded_char_count(n) else {
+            continue;
+        };
+        if len.abs_diff(target_len) > MAX_SUGGESTION_DISTANCE {
+            continue;
+        }
         let dist = edit_distance(name, n);
-        if dist < best_dist && dist <= 2 {
+        if dist < best_dist && dist <= MAX_SUGGESTION_DISTANCE {
             best_dist = dist;
             best_name = Some(n);
         }
     }
     best_name
+}
+
+/// `s`'s length in characters, or `None` past
+/// [`MAX_SUGGESTION_NAME_CHARS`]; never walks further than that.
+fn bounded_char_count(s: &str) -> Option<usize> {
+    let mut count = 0;
+    for _ in s.chars() {
+        count += 1;
+        if count > MAX_SUGGESTION_NAME_CHARS {
+            return None;
+        }
+    }
+    Some(count)
 }
 
 fn edit_distance(a: &str, b: &str) -> usize {

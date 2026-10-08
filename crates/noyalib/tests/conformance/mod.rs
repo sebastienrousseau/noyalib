@@ -3,7 +3,7 @@
 
 //! YAML spec conformance, tags, comments and document shape.
 //!
-//! 22 files, compiled into one test binary.
+//! 23 files, compiled into one test binary.
 
 #![allow(missing_docs)]
 
@@ -16,6 +16,7 @@ mod edge_audit;
 mod edge_cases;
 mod empty_document_targets;
 mod flow_block_scalar_indicator;
+mod implicit_key_length;
 mod implicit_null_at_eof;
 mod legacy_sexagesimal;
 mod multi_doc;

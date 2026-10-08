@@ -171,6 +171,9 @@ where
     // finding C2), then deserialise each document under the
     // caller's config so every per-document limit fires.
     let docs = crate::doc_boundary::split_documents_checked(text, config.max_documents)?;
+    // One tally for the stream: the stream-wide budgets are charged
+    // across documents rather than reset for each.
+    let config = &crate::parser::meter::StreamTally::share(config);
     let mut results = Vec::with_capacity(docs.len());
     for doc in docs {
         results.push(crate::from_str_with_config::<T>(doc, config)?);
@@ -236,9 +239,14 @@ pub struct YamlDecoder<T> {
     config: ParserConfig,
     /// Hard cap on the `BytesMut` buffer size between `decode`
     /// calls. Constructors derive it from
-    /// `ParserConfig::max_document_length`; callers may tighten or
-    /// raise it explicitly with [`Self::max_frame_size`].
+    /// `ParserConfig::max_document_length`; callers may tighten it
+    /// with [`Self::max_frame_size`]. A larger value has no effect:
+    /// `max_document_length` always caps a frame as well.
     max_frame_size: Option<usize>,
+    /// Offset in the buffered frame up to which the boundary scan has
+    /// already looked and found nothing, so the next `decode` resumes
+    /// there instead of rescanning from the start.
+    scanned: usize,
     _marker: PhantomData<fn() -> T>,
 }
 
@@ -286,22 +294,22 @@ impl<T> YamlDecoder<T> {
     /// frame-size cap defaults to `max_document_length`.
     #[must_use]
     pub fn new() -> Self {
-        let config = ParserConfig::default();
-        let max_frame_size = Some(config.max_document_length);
-        Self {
-            config,
-            max_frame_size,
-            _marker: PhantomData,
-        }
+        Self::with_config(ParserConfig::default())
     }
 
     /// Create a decoder with a caller-supplied [`ParserConfig`].
+    ///
+    /// The stream-wide budgets (`max_documents`, `max_events`,
+    /// `max_nodes`, `max_total_scalar_bytes`, `max_merge_keys`) are
+    /// charged across every document the decoder yields, not per frame.
     #[must_use]
     pub fn with_config(config: ParserConfig) -> Self {
+        let config = crate::parser::meter::StreamTally::share(&config);
         let max_frame_size = Some(config.max_document_length);
         Self {
             config,
             max_frame_size,
+            scanned: 0,
             _marker: PhantomData,
         }
     }
@@ -310,10 +318,50 @@ impl<T> YamlDecoder<T> {
     /// `BytesMut` passed to `decode` exceeds `max`, the next
     /// `decode` call returns an `Error::Io` with `InvalidData`
     /// rather than letting the buffer grow without bound.
+    ///
+    /// The configured `max_document_length` caps a frame too, so a
+    /// value above it has no effect: a frame the parser would refuse is
+    /// never buffered in full.
     #[must_use]
     pub fn max_frame_size(mut self, max: usize) -> Self {
         self.max_frame_size = Some(max);
         self
+    }
+
+    /// Refuse a frame longer than `max_frame_size` or
+    /// `max_document_length`, whichever is smaller.
+    fn check_frame_len(&self, frame_len: usize) -> core::result::Result<(), Error> {
+        let doc_max = self.config.max_document_length;
+        let (max, name) = match self.max_frame_size {
+            Some(frame_max) if frame_max <= doc_max => (frame_max, "max_frame_size"),
+            _ => (doc_max, "max_document_length"),
+        };
+        if frame_len > max {
+            return Err(Error::from(std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                format!("noyalib YamlDecoder: frame {frame_len} > {name} {max}"),
+            )));
+        }
+        Ok(())
+    }
+
+    /// The next document boundary in `bytes`, resuming the scan where
+    /// the previous call on the same frame stopped. A marker needs
+    /// three bytes and the byte before it, so every position before
+    /// `len - 2` has had its final answer once scanned.
+    ///
+    /// This relies on `decode` seeing one growing buffer, as
+    /// `FramedRead` guarantees; a buffer shorter than the scanned
+    /// offset is treated as a new frame.
+    fn next_boundary(&mut self, bytes: &[u8]) -> Option<usize> {
+        if self.scanned > bytes.len() {
+            self.scanned = 0;
+        }
+        let found = crate::doc_boundary::next_marker_after(bytes, self.scanned);
+        if found.is_none() {
+            self.scanned = self.scanned.max(bytes.len().saturating_sub(2));
+        }
+        found
     }
 }
 
@@ -333,22 +381,13 @@ where
         //      preamble (or repeated `---` markers preceding the
         //      first real document) cannot blow the stack.
         loop {
-            let bytes: &[u8] = src.as_ref();
-            let boundary = find_doc_boundary(bytes);
+            let boundary = self.next_boundary(src.as_ref());
 
             // Apply the cap to the next logical document, not the entire
             // read buffer. A single AsyncRead poll may legally return several
             // complete, individually bounded documents. Reject only when the
             // first document or incomplete frame exceeds the limit.
-            if let Some(max) = self.max_frame_size {
-                let frame_len = boundary.unwrap_or(bytes.len());
-                if frame_len > max {
-                    return Err(Error::from(std::io::Error::new(
-                        std::io::ErrorKind::InvalidData,
-                        format!("noyalib YamlDecoder: frame {frame_len} > max_frame_size {max}"),
-                    )));
-                }
-            }
+            self.check_frame_len(boundary.unwrap_or(src.len()))?;
 
             let Some(end) = boundary else {
                 return Ok(None);
@@ -356,8 +395,10 @@ where
 
             // Split off everything up to (but not including) the
             // next `---` marker; the marker stays in `src` to be
-            // picked up by the following call.
+            // picked up by the following call. The buffer now starts a
+            // new frame, so the scan starts over.
             let doc = src.split_to(end);
+            self.scanned = 0;
             if doc.iter().all(u8::is_ascii_whitespace) {
                 // Skip an all-whitespace preamble silently and
                 // retry from the new buffer head; no recursion.
@@ -380,9 +421,11 @@ where
         }
         if src.iter().all(u8::is_ascii_whitespace) {
             src.clear();
+            self.scanned = 0;
             return Ok(None);
         }
         let doc = src.split();
+        self.scanned = 0;
         let parsed = from_slice_with_config::<T>(&doc, &self.config)?;
         Ok(Some(parsed))
     }
@@ -398,6 +441,7 @@ where
 /// callers may use [`bytes::BytesMut::split_to`] to consume the
 /// preceding document while leaving the marker available for the
 /// next frame.
+#[cfg(test)]
 fn find_doc_boundary(bytes: &[u8]) -> Option<usize> {
     crate::doc_boundary::next_marker_after(bytes, 0)
 }
@@ -645,6 +689,71 @@ mod tests {
             err.kind(),
             crate::error::ErrorKind::DuplicateKey | crate::error::ErrorKind::KeyCollision
         ));
+    }
+
+    #[test]
+    fn decoder_frame_cap_never_exceeds_max_document_length() {
+        // Raising `max_frame_size` past `max_document_length` cannot
+        // let a frame buffer beyond what the parser would accept.
+        let cfg = ParserConfig {
+            max_document_length: 16,
+            ..ParserConfig::default()
+        };
+        let mut decoder: YamlDecoder<Pkg> = YamlDecoder::with_config(cfg).max_frame_size(1 << 20);
+        let mut buf = BytesMut::from(&b"name: long-name-without-boundary-at-all"[..]);
+        let err = decoder.decode(&mut buf).unwrap_err();
+        assert!(err.to_string().contains("max_document_length 16"), "{err}");
+    }
+
+    #[test]
+    fn decoder_finds_boundaries_split_across_reads() {
+        let input = b"name: a\nversion: '1'\n---\nname: b\nversion: '2'\n";
+        for split in 0..=input.len() {
+            let mut decoder: YamlDecoder<Pkg> = YamlDecoder::new();
+            let mut buf = BytesMut::from(&input[..split]);
+            let mut out = Vec::new();
+            if let Some(doc) = decoder.decode(&mut buf).unwrap() {
+                out.push(doc);
+            }
+            buf.extend_from_slice(&input[split..]);
+            while let Some(doc) = decoder.decode(&mut buf).unwrap() {
+                out.push(doc);
+            }
+            if let Some(doc) = decoder.decode_eof(&mut buf).unwrap() {
+                out.push(doc);
+            }
+            let names: Vec<_> = out.iter().map(|p| p.name.as_str()).collect();
+            assert_eq!(names, ["a", "b"], "split at {split}");
+        }
+    }
+
+    #[test]
+    fn decoder_scan_resumes_instead_of_rescanning() {
+        // 8 MiB arriving in 8 KiB reads with no boundary until the
+        // end. Rescanning the whole buffer on every read is quadratic.
+        let cfg = ParserConfig {
+            max_document_length: 16 << 20,
+            ..ParserConfig::default()
+        };
+        let mut decoder: YamlDecoder<crate::Value> = YamlDecoder::with_config(cfg);
+        let mut chunk = Vec::new();
+        while chunk.len() < 8 << 10 {
+            chunk.extend_from_slice(b"# padding line\n");
+        }
+        let mut buf = BytesMut::new();
+        let start = std::time::Instant::now();
+        for _ in 0..1024 {
+            buf.extend_from_slice(&chunk);
+            assert!(decoder.decode(&mut buf).unwrap().is_none());
+        }
+        buf.extend_from_slice(b"k: v\n---\n");
+        let doc = decoder.decode(&mut buf).unwrap().unwrap();
+        let elapsed = start.elapsed();
+        assert_eq!(doc["k"].as_str(), Some("v"));
+        assert!(
+            elapsed < std::time::Duration::from_secs(10),
+            "8 MiB in 8 KiB reads took {elapsed:?}"
+        );
     }
 
     #[test]

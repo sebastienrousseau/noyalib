@@ -865,6 +865,9 @@ pub(crate) struct SpannedMapAccess<'de> {
     ignore_binary_tag_for_string: bool,
     plain_scalar_strings: bool,
     fields: core::slice::Iter<'static, &'static str>,
+    /// Start and end locations, computed on the first location field
+    /// and reused for the other five.
+    locations: Option<(crate::error::Location, crate::error::Location)>,
 }
 
 impl<'de> SpannedMapAccess<'de> {
@@ -880,7 +883,27 @@ impl<'de> SpannedMapAccess<'de> {
             ignore_binary_tag_for_string,
             plain_scalar_strings,
             fields: crate::spanned::SPANNED_FIELDS.iter(),
+            locations: None,
         }
+    }
+
+    /// The value's start and end locations, looked up once.
+    fn locations(&mut self) -> (crate::error::Location, crate::error::Location) {
+        let (value, span_ctx) = (self.value, self.span_ctx);
+        *self.locations.get_or_insert_with(|| {
+            let ptr: *const Value = value;
+            let addr = ptr as usize;
+            // The context's line index answers each lookup with a
+            // binary search; scanning from byte 0 per field made a
+            // document of many `Spanned` values quadratic.
+            span_ctx
+                .and_then(|ctx| {
+                    ctx.spans
+                        .get(&addr)
+                        .map(|&(start, end)| (ctx.location(start), ctx.location(end)))
+                })
+                .unwrap_or_default()
+        })
     }
 }
 
@@ -921,19 +944,7 @@ impl<'de> serde_core::de::MapAccess<'de> for SpannedMapAccess<'de> {
             return de.wrap_err(seed.deserialize(de));
         }
 
-        let ptr: *const Value = self.value;
-        let addr = ptr as usize;
-        let span = self.span_ctx.and_then(|ctx| ctx.spans.get(&addr));
-        let loc = if let Some(s) = span {
-            crate::error::Location::from_index(&self.span_ctx.unwrap().source, s.0)
-        } else {
-            crate::error::Location::default()
-        };
-        let end_loc = if let Some(s) = span {
-            crate::error::Location::from_index(&self.span_ctx.unwrap().source, s.1)
-        } else {
-            crate::error::Location::default()
-        };
+        let (loc, end_loc) = self.locations();
 
         let val = match last_field {
             SPANNED_FIELD_START_LINE => loc.line(),

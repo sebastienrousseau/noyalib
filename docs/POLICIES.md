@@ -163,9 +163,13 @@ Reference: [`SECURITY.md`](../SECURITY.md) at the repo root.
   use `unsafe` (`indexmap`, `rustc-hash`, `ryu`, `itoa`,
   `memchr`, `smallvec`) are checked under Miri on every PR
   (focused) and weekly (full + big-endian).
-- No network I/O, no filesystem writes from the library
-  itself, no environment-variable reads. The `noya-cli` binaries
-  do read files; the library does not.
+- No network I/O and no filesystem writes from the library
+  itself, and no environment-variable reads at run time (the build
+  script reads `RUSTC` and `NOYALIB_COVERAGE`). The library reads
+  files only when asked to: `SafeFileResolver` (`include_fs`) under
+  its root, and the `figment` provider's `Yaml::file` and
+  `Yaml::file_with_config`. JSON Schema `$ref` never resolves outside
+  the schema document. The `noya-cli` binaries read and write files.
 
 ### Resource-limit gates
 
@@ -206,9 +210,12 @@ the shared parser limits:
   holds an incomplete document beyond the cap, the next `decode` call returns
   `Error::Io(InvalidData)` rather than letting an adversarial
   producer pin memory by streaming without `---`. Constructors derive the
-  cap from `ParserConfig::max_document_length`; callers may override it.
+  cap from `ParserConfig::max_document_length`; callers may tighten it,
+  and `max_document_length` caps a frame whatever `max_frame_size` says.
   Multiple complete documents already present in one read are measured
   independently rather than rejected by their aggregate buffered size.
+  The boundary scan resumes where the previous `decode` stopped, so a
+  frame arriving in many small reads is scanned once, not once per read.
 - **`sval_adapter`** forwards non-finite floats verbatim by
   default; use `to_sval_writer_with_config` with
   `SvalConfig::coerce_non_finite_to_null` to emit `Null`

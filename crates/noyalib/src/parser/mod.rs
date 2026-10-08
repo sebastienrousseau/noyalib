@@ -10,11 +10,13 @@
 pub(crate) mod budget;
 mod events;
 mod loader;
+pub(crate) mod meter;
 mod scanner;
 
 pub(crate) use events::{Event, Parser};
 pub(crate) use loader::{
-    DuplicateKeyPolicy as InternalDuplicateKeyPolicy, ParseConfig, value_to_key_string,
+    DuplicateKeyPolicy as InternalDuplicateKeyPolicy, MergeKeyPolicy as InternalMergeKeyPolicy,
+    ParseConfig, value_to_key_string,
 };
 pub(crate) use scanner::ScalarStyle;
 // CST builder is the only consumer; gate the re-exports to match.

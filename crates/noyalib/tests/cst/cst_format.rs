@@ -279,11 +279,12 @@ fn numeric_values_preserved() {
 #[test]
 fn cov_standalone_comment_folds_onto_previous_mapping_entry() {
     // A comment on its own line is parsed as a trailing child of the
-    // preceding entry, so the canonicaliser folds it up onto that
-    // entry's line (current formatter behaviour).
+    // preceding entry. The scalar token before it carries the line
+    // break, so the comment stays on its own line rather than being
+    // folded onto the entry.
     let input = "a: 1\n# middle\nb: 2\n";
     let formatted = format(input).unwrap();
-    assert_eq!(formatted, "a: 1 # middle\nb: 2\n");
+    assert_eq!(formatted, "a: 1\n# middle\nb: 2\n");
 }
 
 #[test]
@@ -309,7 +310,7 @@ fn cov_blank_lines_between_sequence_items_collapse() {
 fn cov_standalone_comment_folds_onto_previous_sequence_item() {
     let input = "- 1\n# between\n- 2\n";
     let formatted = format(input).unwrap();
-    assert_eq!(formatted, "- 1 # between\n- 2\n");
+    assert_eq!(formatted, "- 1\n# between\n- 2\n");
 }
 
 #[test]
@@ -419,7 +420,9 @@ fn cov_malformed_bare_colon_value() {
     // `: novalue` recovers into a BlockMapping whose children include a
     // bare colon token (no key node) — the token arm of
     // format_block_mapping.
-    assert_eq!(format(": novalue\n").unwrap(), ":novalue\n");
+    // The space after the bare colon is kept: `:novalue` would be a
+    // plain scalar, not a value under an empty key.
+    assert_eq!(format(": novalue\n").unwrap(), ": novalue\n");
 }
 
 #[test]

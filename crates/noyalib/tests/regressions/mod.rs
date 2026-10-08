@@ -3,7 +3,7 @@
 
 //! Issue repros, release-phase sweeps and competitive checks.
 //!
-//! 22 files, compiled into one test binary.
+//! 23 files, compiled into one test binary.
 
 #![allow(missing_docs)]
 
@@ -30,3 +30,4 @@ mod review_fixes;
 mod set_fragment_containment;
 mod shaped_document_paths;
 mod type_mismatch_and_config_surface;
+mod verbatim_tags;

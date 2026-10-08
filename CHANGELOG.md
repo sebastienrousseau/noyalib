@@ -5,6 +5,244 @@ All notable changes to this project are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.0.55] - Unreleased
+
+### Fixed
+
+- `read_with_config` holds each document in the stream to
+  `max_document_length`. Its stream cap allows up to 64 documents' worth
+  of bytes, so a single document over the limit was read and parsed
+  where every other entry point refuses it.
+
+- `cst::Document::set`, `replace_span` and the other fragment editors
+  return `Error::RecursionLimitExceeded` for a fragment nested deeper
+  than the document's `max_depth`. The local re-parse behind an edit
+  built its green tree with no depth limit, so a fragment such as
+  100,000 nested `[` overflowed the stack and aborted the process.
+  Dropping a green tree no longer recurses per nesting level, and a
+  token over 4 GiB is an error rather than a panic.
+- `cst::parse_stream`, `cst::parse_stream_with_config` and `cst::format`
+  enforce `max_documents` and `max_stream_bytes`, and every CST parse
+  (including the source an edit would commit) enforces
+  `max_document_length`. The CST stream used to accept any number of
+  documents, even under `ParserConfig::strict()`.
+- `cst::format` no longer changes what a document means. It used to
+  drop the space after a tag or anchor (`!foo "bar"` became the tag
+  `!foo"bar"`), join `...` onto the previous line, write a value that
+  sat on the line below its key at the key's column, and drop the
+  space in `*a :` and `: value`; 45 of the yaml-test-suite documents
+  came out changed or invalid. Every output is now checked to parse to
+  the input's values, and an input the formatter cannot re-lay out
+  safely is refused with an error instead of being rewritten (two
+  suite documents today). A comment on its own line after a scalar
+  now stays on its own line instead of being folded onto the entry.
+- A tag read from a document is always written back as an ordinary
+  tag. The serializer recognised its formatting hints (comments, flow
+  wrappers, block-scalar styles, anchors) by a `__noya_` tag name, so a
+  document declaring `%TAG !n! __noya_`, a verbatim `!<__noya_commented>`
+  or a `TaggedValue` read from JSON could steer the emitter and, through
+  a comment hint, add keys on re-serialisation. Only the `fmt` and anchor
+  wrapper types can create those hints now; `Tag::new("__noya_...")` is
+  an ordinary tag.
+- Strings inside flow collections are quoted when they hold a flow
+  indicator (`,` `[` `]` `{` `}`). Under `FlowStyle::Flow`,
+  `FlowStyle::Auto`, `FlowSeq` and `FlowMap`, the string `viewer, admin`
+  was written as `[viewer, admin]` and read back as two items, and a
+  flow-mapping value could add a key. Everything nested in a flow
+  collection is now written in flow form: a multi-line string is
+  double-quoted instead of a block scalar, a mapping inside `FlowSeq`
+  is braced, and `Commented` / `SpaceAfter` hints inside one are
+  dropped rather than breaking the line.
+- `Commented` comment text holding a line break (LF, CR, NEL, LS, PS)
+  is written as several `# ` lines instead of raw, where the text after
+  the break was read as YAML and could add keys. A comment on a value
+  that ends in a block scalar goes below it instead of into its content,
+  and characters no YAML stream may carry are replaced with U+FFFD.
+- A mapping key that is the string `<<` is quoted, so it no longer
+  becomes a merge key on reload.
+- A multi-line string under `quote_all`, or starting with `...`, is
+  double-quoted. It was single-quoted with raw line breaks, which fold
+  to spaces on re-parse.
+- `document_end(true)` after a keep-chomped block scalar (`|+`) no
+  longer adds an extra line to the value.
+- A tag whose body starts with `<` (`!<x`) is written in the verbatim
+  form; written as it stands it opened a verbatim tag and the output
+  did not parse.
+- `borrowed::from_str_borrowed*` enforces every budget the owned loader
+  does: the alias expansion size estimate (a 540-byte billion-laughs
+  document is now refused at once instead of expanding to gigabytes),
+  `max_events`, `max_nodes`, `max_total_scalar_bytes`,
+  `max_mapping_keys`, `max_sequence_length`, `max_documents`,
+  `max_merge_keys`, `alias_anchor_ratio`, the duplicate-key policy and
+  the event policies. All loaders now charge one shared meter.
+- Alias expansion is estimated the same way on every path, at the size
+  of a `Value` per node (it was 32 bytes on the loaders and 8 on the
+  typed path, a fraction of the real allocation), and the 32 MiB
+  ceiling on expanded bytes now holds on the typed path too. The
+  loaders charge an alias before cloning it. Documents with large alias
+  expansions that fit the old estimate can now be refused.
+- An alias can no longer build a value deeper than `max_depth`. Each
+  alias is charged its anchored subtree's height on top of the depth
+  where it stands; before, a chain of anchors each nested inside the
+  previous one passed the depth check line by line and expanded a 22 KB
+  document into a value 10,000 levels deep, which overflowed the stack
+  (aborting the process) on drop or any recursive walk. Every entry
+  point now refuses it with `RecursionLimitExceeded`.
+- `from_str_borrowing` and `from_str_borrowing_with_config` refuse a
+  second document or a trailing syntax error, as `from_str` does; they
+  used to return the first document and ignore the rest, so the same
+  bytes read differently through the two APIs. A
+  `StreamingDeserializer` built with `with_config` now enforces
+  `max_document_length`.
+- Parser policies hold on every entry point. `from_str_borrowing_with_config`
+  ignored them all, `DenyAnchors` included, and the borrowed API,
+  `load_all_with_config`, `read_with_config` and the `no_std` typed path
+  skipped the whole-document `check_value` hook. Event checks now run
+  in the shared budget meter and whole-document checks through one
+  helper every loader calls.
+- Values a typed target skips (`IgnoredAny`, unknown struct fields) are
+  charged like values it reads: `max_depth`, `max_sequence_length`,
+  `max_mapping_keys`, `max_merge_keys` and `DuplicateKeyPolicy::Error`
+  now apply to them, so hostile content under an ignored field is
+  refused as it is for a `Value` target.
+- The multi-document entry points that parse each document separately
+  (`parallel`, `recovery`, `tokio_async::from_async_reader_multi*`,
+  `YamlDecoder` and `cst::parse_stream*`) charge `max_events`, `max_nodes`,
+  `max_total_scalar_bytes`, `max_merge_keys` and `max_documents` across
+  the whole stream, as `load_all` does, instead of resetting them per
+  document. `YamlDecoder` now enforces `max_documents`, and `parallel`
+  and `recovery` enforce `max_stream_bytes`. Documents from a CST stream keep their own
+  budget for later edits.
+- `compat::serde_yaml::from_str_multi` parses under the shim's
+  serde_yaml profile, as `from_str` does; it used noyalib's defaults, so
+  a stream read differently from the same single document (`0123`,
+  literal `<<` keys) and escaped the serde_yaml repetition budget.
+- The `compat::serde_yaml` shim refuses a duplicate mapping key when the
+  target is `Value`, with serde_yaml 0.9's wording (`duplicate entry
+  with key "k"`); map targets keep the last entry, as upstream does.
+  Struct targets still keep the last entry where upstream reports
+  `duplicate field`.
+
+- Parsing a long line is linear in its length again. Each plain scalar
+  searched to the end of its line for a comment or line break, so a
+  single line of many short flow entries cost the line length once per
+  entry (400 KB took seconds, 1.6 MB close to a minute) before any
+  budget could refuse it. The search result is now reused for the rest
+  of the line, and the token queue no longer shifts a long backlog every
+  256 tokens. Parse results are unchanged.
+
+### Added
+
+- `cst::format_with_parser_config` formats under a caller-chosen
+  `ParserConfig`. `format` and `format_with_config` keep parsing under
+  `ParserConfig::default()`.
+- `StreamingDeserializer::end`, which requires that nothing follows the
+  value just deserialized. Call it after `T::deserialize(&mut de)` when
+  driving the deserializer directly.
+- `load_all_as_with_config`, the configurable form of `load_all_as`.
+  `load_all_as` now also refuses input over `max_document_length`, as
+  `load_all` does.
+- `IncludeRequest::max_bytes`: the most bytes the loader will accept
+  for the requested source, so custom resolvers can stop reading early.
+- `noyalib::figment::Yaml::string_with_config` and `file_with_config`
+  build a `YamlWithConfig` provider that parses under a caller-supplied
+  `ParserConfig`, with `nested()` and `profile()` like figment's own
+  providers.
+
+### Changed
+
+- A verbatim tag `!<x>` now names exactly the tag `x`, as YAML 1.2.2
+  §6.8.2.1 defines it. It was scanned like the shorthand `!x`, so `!<int>`
+  was read as the core integer tag, `!<foo>` as the local tag `!foo`, and
+  `!<tag:yaml.org,2002:int>` as an unknown local tag instead of an
+  integer. A document using `%TAG !! ` with an empty prefix therefore did
+  not survive a round trip: `!!int 1` came back as the integer 1 and
+  `!!int 1 - 3` as output that did not parse. The serializer now writes
+  the whole tag inside `!<...>`.
+
+- **Breaking (parse behaviour):** an implicit mapping key that holds a
+  flow collection (for example `[a, b, ...]: v`) and is longer than 1024
+  characters is now rejected with "implicit mapping key is longer than
+  1024 characters", as YAML 1.2.2 requires for block mappings (§8.2.2)
+  and single pairs in a flow sequence (§7.4.2). Scalar keys keep no
+  length limit, so long string keys written by `to_string` still parse;
+  explicit `?` keys and keys inside a flow mapping are not limited by
+  the spec. The scanner relies on this limit to stop holding back the
+  tokens of a collection that can no longer be a key: a flow collection
+  at the start of a document used to be tokenised whole before the first
+  event, so `max_events` and the other budgets could not refuse a
+  multi-megabyte collection until it had all been buffered (10 MB queued
+  about 10 million tokens). It is now streamed.
+
+- A property test writes arbitrary strings (line breaks of every kind,
+  BOM, tabs, flow indicators, `# `, `: `, document markers, `<<`, node
+  indicators) as keys, values and sequence items under every
+  combination of `flow_style`, `scalar_style`, `quote_all`,
+  `prefer_single_quotes` and the document markers, and requires each to
+  read back unchanged. CI runs 64 cases; set `PROPTEST_CASES` for more.
+- `!!binary` decoding is canonical: a padded final group whose unused
+  bits are not zero (`QR==`, `QUJ=`) is refused instead of decoding to
+  the same bytes as its canonical form (`QQ==`, `QUI=`).
+
+### Security
+
+- Schema validation never resolves a `$ref` outside the schema
+  document. `validate_against_schema`, `CompiledSchema`,
+  `coerce_to_schema` and `cst::coerce_to_schema` install a retriever
+  that refuses every external
+  reference (`file:`, `http:`, `https:` and any other scheme). Before,
+  a build that enabled `jsonschema`'s `resolve-file` or `resolve-http`
+  feature through another crate let a schema read local files, whose
+  contents could surface in validation errors, or fetch URLs.
+- Schema `pattern` and `patternProperties` compile with a linear-time
+  regex engine. A hostile pattern used to backtrack for minutes per
+  request. Lookaround and backreferences now fail to compile unless
+  `CompiledSchemaBuilder::backtracking_patterns(limit)` opts back in
+  under a step limit.
+- Schema validation runs the validator once and caps what it collects:
+  at most 100 violations and 64 KiB of message text by default, each
+  message cut at 1 KiB, with the total still reported. An 18 KB schema
+  against a 1 MiB instance used to build a 1 GB error string. Schemas
+  over 100,000 nodes or 128 levels of nesting are refused before
+  compiling. All four limits are configurable on the builder.
+- `!include` resolution charges nesting depth across include levels:
+  an included document only gets the `max_depth` left at the position
+  of its `!include`. Each level used to get the full budget, so 24
+  levels of 120-deep documents built a 2,880-deep tree and overflowed
+  the stack. Each included source is also held to
+  `max_document_length`.
+- `SafeFileResolver` reads only regular files and stops one byte past
+  the remaining include budget. A FIFO under the root used to block the
+  parse forever, and an oversized file was read whole before the byte
+  budget applied. Its error messages and source names give paths
+  relative to the root, with `/` separators on every platform, instead
+  of absolute host paths.
+- `read` and `read_with_config` honour `max_stream_bytes` and stop
+  reading one byte past their stream cap (`max_stream_bytes`, or 64
+  times `max_document_length` when smaller). They used to read the
+  whole source first, so a 1 GiB reader cost about 780 MB before the
+  cap was checked, and `max_stream_bytes` was ignored.
+- `Spanned<T>` locations come from a line index built once per source
+  and a per-value cache. Each `Spanned` value used to rescan the source
+  from byte 0 twelve times, so 40,000 spanned values in a debug build
+  took about a minute.
+- `YamlDecoder` resumes its `---` boundary scan where the previous
+  `decode` call stopped. It rescanned the whole buffered frame on every
+  read, so 8 MiB arriving in 8 KiB reads took 196 s in a debug build.
+  A frame is also always capped by `max_document_length`, even when
+  `max_frame_size` is set higher.
+- The "did you mean" suggestion for an unknown alias compares only
+  names up to 64 characters whose length is within two of the alias,
+  and at most 4,096 of them. It ran a full edit distance against every
+  anchor, so 1,000 anchors of 1,000 characters took 433 s in a debug
+  build to report one unknown alias.
+- The figment `Yaml` provider applies `max_document_length`. An
+  oversized document failed the streaming walker's check without a
+  location, fell through to the AST path and was parsed anyway.
+  `Yaml::file` now stops reading one byte past the limit instead of
+  reading the whole file first.
+
+
 ## [v0.0.54] - 2026-10-07
 
 ### Security

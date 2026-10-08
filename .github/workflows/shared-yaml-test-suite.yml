@@ -37,9 +37,12 @@ jobs:
       NOYALIB_SUITE_DIR: ${{ github.workspace }}/.noyalib-core/crates/noyalib/tests/yaml-test-suite
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - name: Fetch the suite from the core at the pinned commit
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          persist-credentials: false
           repository: sebastienrousseau/noyalib
           # `github.job_workflow_sha` is the commit of this reusable
           # workflow file, i.e. the core SHA the caller pins. Read it
@@ -48,10 +51,10 @@ jobs:
           ref: ${{ fromJSON(toJSON(github)).job_workflow_sha }}
           path: .noyalib-core
           sparse-checkout: crates/noyalib/tests/yaml-test-suite
-      - uses: dtolnay/rust-toolchain@7e38f4b43b4db5c8dd498af069a4f6196df1d067 # master
+      - uses: dtolnay/rust-toolchain@7e38f4b43b4db5c8dd498af069a4f6196df1d067
         with:
           toolchain: stable
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
         with:
           key: yaml-test-suite
       - name: Count the cases on disk

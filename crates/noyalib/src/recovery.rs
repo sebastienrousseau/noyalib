@@ -155,6 +155,16 @@ pub fn parse_lenient_with(input: &str, config: &LenientConfig) -> ParseResult {
     let bom_skip = crate::doc_boundary::strip_bom(input.as_bytes());
     let input = &input[bom_skip..];
 
+    if input.len() > config.base_config.max_stream_bytes {
+        return ParseResult {
+            value: Value::Null,
+            errors: vec![Error::Parse(format!(
+                "stream exceeds max_stream_bytes of {} bytes",
+                config.base_config.max_stream_bytes
+            ))],
+            is_complete: false,
+        };
+    }
     if let Err(error) =
         crate::doc_boundary::validate_document_budget(input, config.base_config.max_documents)
     {
@@ -165,6 +175,10 @@ pub fn parse_lenient_with(input: &str, config: &LenientConfig) -> ParseResult {
         };
     }
 
+    // The strict pass of every document charges one stream-wide tally,
+    // so the stream budgets are not reset per document; the salvage
+    // passes stay per document, or retrying would charge it twice.
+    let strict = crate::parser::meter::StreamTally::share(&config.base_config);
     let mut docs =
         crate::doc_boundary::DocumentStream::new(input, config.base_config.max_documents);
     let first = match docs.next() {
@@ -194,7 +208,7 @@ pub fn parse_lenient_with(input: &str, config: &LenientConfig) -> ParseResult {
             };
         }
         None => {
-            let (value, errors) = recover_one(first, config, config.max_errors);
+            let (value, errors) = recover_one(first, config, &strict, config.max_errors);
             let is_complete = errors.is_empty();
             return ParseResult {
                 value,
@@ -225,7 +239,7 @@ pub fn parse_lenient_with(input: &str, config: &LenientConfig) -> ParseResult {
             values.push(Value::Null);
             continue;
         }
-        let (value, doc_errors) = recover_one(doc, config, budget);
+        let (value, doc_errors) = recover_one(doc, config, &strict, budget);
         budget = budget.saturating_sub(doc_errors.len());
         errors.extend(doc_errors);
         values.push(value);
@@ -247,13 +261,18 @@ pub fn parse_lenient_with(input: &str, config: &LenientConfig) -> ParseResult {
 /// encountered (every pass that emitted an `Err` contributes one
 /// entry). Bounded by `budget` — once exhausted, the recoverer
 /// returns whatever it has and stops.
-fn recover_one(input: &str, config: &LenientConfig, budget: usize) -> (Value, Vec<Error>) {
+fn recover_one(
+    input: &str,
+    config: &LenientConfig,
+    strict: &ParserConfig,
+    budget: usize,
+) -> (Value, Vec<Error>) {
     if budget == 0 {
         return (Value::Null, Vec::new());
     }
 
-    // Pass 1: strict.
-    let strict_err = match from_str_with_config::<Value>(input, &config.base_config) {
+    // Pass 1: strict, under the stream-wide tally.
+    let strict_err = match from_str_with_config::<Value>(input, strict) {
         Ok(v) => return (v, Vec::new()),
         Err(e) => e,
     };

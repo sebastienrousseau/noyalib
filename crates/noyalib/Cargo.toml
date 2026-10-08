@@ -1,6 +1,6 @@
 [package]
 name = "noyalib"
-version = "0.0.54"
+version = "0.0.55"
 edition = "2024"
 rust-version = "1.86.0"
 license = "MIT OR Apache-2.0"
@@ -224,6 +224,11 @@ serde_ignored = "0.1"
 # only enables `io-util`; tests need `macros` and the
 # `current-thread` runtime to execute `#[tokio::test]` cases.
 tokio = { version = "1", features = ["macros", "rt", "io-util"] }
+# Reproduces a consumer build that unifies `jsonschema`'s file
+# resolver in, so `tests/schema/schema_hardening.rs` proves external
+# `$ref` stays refused regardless of the features another crate
+# enables. Adds no crates: `resolve-file` has no dependencies.
+jsonschema = { version = "0.58", default-features = false, features = ["resolve-file"] }
 
 [[bench]]
 name = "benchmarks"

@@ -661,7 +661,9 @@ pub use de::{from_reader_strict, from_slice_strict, from_str_strict};
 pub use diagnostic::{Diagnostic, DiagnosticCode, DiagnosticLabel, DiagnosticSeverity, SourceSpan};
 #[cfg(feature = "std")]
 pub use document::{DocumentReadIterator, read, read_with_config};
-pub use document::{load_all, load_all_as, load_all_with_config, try_load_all};
+pub use document::{
+    load_all, load_all_as, load_all_as_with_config, load_all_with_config, try_load_all,
+};
 pub use error::{BudgetBreach, CroppedRegion, Error, ErrorKind, Location, RenderOptions, Result};
 pub use flattened::Flattened;
 pub use fmt::{Commented, FlowMap, FlowSeq, FoldStr, FoldString, LitStr, LitString, SpaceAfter};
@@ -676,8 +678,10 @@ pub use schema_codegen::{JsonSchema, schema_for, schema_for_yaml};
 #[cfg(feature = "validate-schema")]
 #[cfg_attr(docsrs, doc(cfg(feature = "validate-schema")))]
 pub use schema_validate::{
-    CompiledSchema, CompiledSchemaBuilder, SchemaViolation, coerce_to_schema,
-    validate_against_schema, validate_against_schema_str,
+    CompiledSchema, CompiledSchemaBuilder, DEFAULT_MAX_SCHEMA_DEPTH,
+    DEFAULT_MAX_SCHEMA_ERROR_BYTES, DEFAULT_MAX_SCHEMA_ERRORS, DEFAULT_MAX_SCHEMA_NODES,
+    MAX_SCHEMA_MESSAGE_BYTES, SchemaViolation, coerce_to_schema, validate_against_schema,
+    validate_against_schema_str,
 };
 pub use ser::{
     FlowStyle, ScalarStyle, Serializer, SerializerConfig, to_fmt_writer, to_fmt_writer_with_config,

@@ -56,6 +56,7 @@ use smallvec::SmallVec;
 
 use crate::error::{BudgetBreach, Error, Result, closest_name};
 use crate::parser::budget;
+use crate::parser::meter::{AliasCost, CostTally, Meter};
 use crate::parser::{Event, ParseConfig, Parser, ScalarStyle};
 use crate::value::Value;
 use core::fmt;
@@ -124,28 +125,15 @@ pub struct StreamingDeserializer<'a> {
     anchor_def_spans: FxHashMap<String, usize>,
     replay_stack: Vec<SmallVec<[BufferedEvent; SMALL_VEC_SIZE]>>,
     recording: Option<(String, usize, SmallVec<[BufferedEvent; SMALL_VEC_SIZE]>)>,
-    /// Count of alias expansions — bounded by `config.max_alias_expansions`
-    /// to prevent billion-laughs style amplification attacks.
-    alias_count: usize,
-    /// Cumulative alias-expanded byte volume, bounded by
-    /// `config.max_document_length` so aliases cannot amplify beyond the
-    /// document-length cap.
-    alias_bytes: usize,
-    /// Raw parser events pulled so far, bounded by `config.max_events`.
-    event_count: usize,
-    /// Scalar and collection-start events pulled so far, bounded by
-    /// `config.max_nodes`.
-    node_count: usize,
-    /// Cumulative scalar bytes pulled so far, bounded by
-    /// `config.max_total_scalar_bytes`.
-    scalar_bytes: usize,
-    /// Anchor definitions seen so far: the denominator of
-    /// `config.alias_anchor_ratio`.
-    anchor_count: usize,
-    /// Merge keys expanded so far, bounded by `config.max_merge_keys`.
-    merge_key_count: usize,
-    /// Running alias jump charge, see `budget::jump_charge_exceeded`.
-    alias_jump_charge: usize,
+    /// Measured cost of each recorded anchor, kept beside
+    /// `anchor_events` so an alias is charged before it is replayed.
+    anchor_costs: FxHashMap<String, AliasCost>,
+    /// Every budget counter, charged in the order the loaders use.
+    meter: Meter,
+    /// Whether the first event has been pulled. The document-length
+    /// check runs then, so a deserializer built directly with
+    /// [`Self::with_config`] enforces `max_document_length` too.
+    started: bool,
 }
 
 impl fmt::Debug for StreamingDeserializer<'_> {
@@ -243,10 +231,12 @@ impl<'a> StreamingDeserializer<'a> {
     where
         C: Into<ParseConfig>,
     {
+        let config: ParseConfig = config.into();
+        let meter = Meter::new(&config);
         StreamingDeserializer {
             parser: Parser::new(input),
             input,
-            config: config.into(),
+            config,
             tag_registry: None,
             depth: 0,
             current: None,
@@ -255,14 +245,9 @@ impl<'a> StreamingDeserializer<'a> {
             anchor_def_spans: FxHashMap::default(),
             replay_stack: Vec::new(),
             recording: None,
-            alias_count: 0,
-            alias_bytes: 0,
-            event_count: 0,
-            node_count: 0,
-            scalar_bytes: 0,
-            anchor_count: 0,
-            merge_key_count: 0,
-            alias_jump_charge: 0,
+            anchor_costs: FxHashMap::default(),
+            meter,
+            started: false,
         }
     }
 
@@ -293,6 +278,44 @@ impl<'a> StreamingDeserializer<'a> {
         self
     }
 
+    /// Require that the input holds nothing after the value just
+    /// deserialized: no second document, no trailing syntax error.
+    ///
+    /// `T::deserialize(&mut de)` stops as soon as `T` is complete, so a
+    /// caller driving the deserializer directly must call this after it,
+    /// as [`crate::from_str`] does, or bytes past the first document are
+    /// never read. Without it, `a: 1\n---\na: 2` deserializes as `1`
+    /// where `from_str` refuses the stream.
+    ///
+    /// # Errors
+    ///
+    /// [`Error::MoreThanOneDocument`] when another document follows, or
+    /// the parse error of whatever follows the value.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use noyalib::StreamingDeserializer;
+    /// use serde_core::Deserialize as _;
+    ///
+    /// let mut de = StreamingDeserializer::new("1\n---\n2\n");
+    /// let first = i32::deserialize(&mut de).unwrap();
+    /// assert_eq!(first, 1);
+    /// assert!(de.end().is_err());
+    /// ```
+    pub fn end(&mut self) -> Result<()> {
+        // Stop *at* `StreamEnd`: querying past it returns a benign
+        // "parser has already finished" error.
+        loop {
+            match self.next_event()? {
+                Event::StreamEnd => return Ok(()),
+                Event::DocumentEnd | Event::StreamStart => {}
+                Event::DocumentStart => return Err(Error::MoreThanOneDocument),
+                _ => return Ok(()),
+            }
+        }
+    }
+
     /// The one place a raw event leaves the parser. Every budget the
     /// loaders charge per parser event is charged here, so a budget
     /// cannot exist on the loader paths without existing on this one.
@@ -300,6 +323,12 @@ impl<'a> StreamingDeserializer<'a> {
     /// `max_total_scalar_bytes`, `max_merge_keys`) and the alias ratio
     /// were loader-only, and typed targets never saw them.
     fn pull_parser_event(&mut self) -> Result<Event<'a>> {
+        if !self.started {
+            self.started = true;
+            if self.input.len() > self.config.max_document_length {
+                return Err(document_too_long(self.config.max_document_length));
+            }
+        }
         let ev = self
             .parser
             .next_event()
@@ -308,46 +337,10 @@ impl<'a> StreamingDeserializer<'a> {
         Ok(ev)
     }
 
-    /// Mirror of the loader prologue: events, nodes, scalar bytes and
-    /// anchors, counted on raw parser events only. Replayed alias events
-    /// are charged through the alias budgets instead, as on the loaders.
+    /// The loader prologue, from the meter all loaders share. Replayed
+    /// alias events are charged through the alias budgets instead.
     fn charge_event(&mut self, ev: &Event<'_>) -> Result<()> {
-        self.event_count += 1;
-        if self.event_count > self.config.max_events {
-            return Err(Error::Budget(BudgetBreach::MaxEvents {
-                limit: self.config.max_events,
-                observed: self.event_count,
-            }));
-        }
-        let (is_node, anchored, scalar_len) = match ev {
-            Event::Scalar { value, anchor, .. } => (true, anchor.is_some(), Some(value.len())),
-            Event::SequenceStart { anchor, .. } | Event::MappingStart { anchor, .. } => {
-                (true, anchor.is_some(), None)
-            }
-            _ => (false, false, None),
-        };
-        if is_node {
-            self.node_count += 1;
-            if budget::nodes_exceeded(self.node_count, self.config.max_nodes) {
-                return Err(Error::Budget(BudgetBreach::MaxNodes {
-                    limit: self.config.max_nodes,
-                    observed: self.node_count,
-                }));
-            }
-        }
-        if let Some(len) = scalar_len {
-            self.scalar_bytes = self.scalar_bytes.saturating_add(len);
-            if self.scalar_bytes > self.config.max_total_scalar_bytes {
-                return Err(Error::Budget(BudgetBreach::MaxTotalScalarBytes {
-                    limit: self.config.max_total_scalar_bytes,
-                    observed: self.scalar_bytes,
-                }));
-            }
-        }
-        if anchored {
-            self.anchor_count = self.anchor_count.saturating_add(1);
-        }
-        Ok(())
+        self.meter.charge_event(ev, &self.config)
     }
 
     /// Peek without resolving anything. The merge-key path calls this so an
@@ -528,8 +521,7 @@ impl<'a> StreamingDeserializer<'a> {
                         style: *style,
                     });
                     if *depth == 0 {
-                        let (name, _, events) = self.recording.take().unwrap();
-                        let _ = self.anchor_events.insert(name, events);
+                        self.finish_recording();
                     }
                 }
                 Event::SequenceStart { .. } => {
@@ -540,8 +532,7 @@ impl<'a> StreamingDeserializer<'a> {
                     buf.push(BufferedEvent::SeqEnd);
                     *depth -= 1;
                     if *depth == 0 {
-                        let (name, _, events) = self.recording.take().unwrap();
-                        let _ = self.anchor_events.insert(name, events);
+                        self.finish_recording();
                     }
                 }
                 Event::MappingStart { .. } => {
@@ -552,8 +543,7 @@ impl<'a> StreamingDeserializer<'a> {
                     buf.push(BufferedEvent::MapEnd);
                     *depth -= 1;
                     if *depth == 0 {
-                        let (name, _, events) = self.recording.take().unwrap();
-                        let _ = self.anchor_events.insert(name, events);
+                        self.finish_recording();
                     }
                 }
                 Event::Alias { anchor, .. } => {
@@ -561,8 +551,7 @@ impl<'a> StreamingDeserializer<'a> {
                         anchor: anchor.clone(),
                     });
                     if *depth == 0 {
-                        let (name, _, events) = self.recording.take().unwrap();
-                        let _ = self.anchor_events.insert(name, events);
+                        self.finish_recording();
                     }
                 }
                 _ => {}
@@ -570,51 +559,24 @@ impl<'a> StreamingDeserializer<'a> {
         }
     }
 
-    /// Alias budgets in the loader's order: expansion count, alias to
-    /// anchor ratio, expanded bytes (the billion-laughs guard, under the
-    /// same document-length bound), then jump charge. Each error matches
-    /// the loader's for the same input.
+    /// Store the anchor being recorded, with its measured cost.
+    fn finish_recording(&mut self) {
+        if let Some((name, _, events)) = self.recording.take() {
+            let _ = self.anchor_costs.insert(name.clone(), buffer_cost(&events));
+            let _ = self.anchor_events.insert(name, events);
+        }
+    }
+
+    /// Alias budgets from the shared meter: the occurrence charges, then
+    /// the expansion cost of the recorded buffer, measured by the same
+    /// estimator the loaders use. An unknown anchor is charged as an
+    /// occurrence and refused by the caller.
     fn charge_alias(&mut self, name: &str) -> Result<()> {
-        self.alias_count += 1;
-        if budget::alias_count_exceeded(self.alias_count, self.config.max_alias_expansions) {
-            return Err(Error::RepetitionLimitExceeded);
+        self.meter.charge_alias(&self.config)?;
+        match self.anchor_costs.get(name) {
+            Some(cost) => self.meter.charge_expansion(cost, self.depth, &self.config),
+            None => Ok(()),
         }
-        if let Some(ratio) = self.config.alias_anchor_ratio {
-            if budget::alias_ratio_exceeded(self.alias_count, self.anchor_count, Some(ratio)) {
-                return Err(Error::Budget(BudgetBreach::AliasAnchorRatio {
-                    ratio,
-                    anchors: self.anchor_count,
-                    aliases: self.alias_count,
-                }));
-            }
-        }
-        let Some(buf_ref) = self.anchor_events.get(name) else {
-            return Ok(());
-        };
-        let (bytes, nodes) = buf_ref
-            .iter()
-            .fold((0usize, 0usize), |(b, n), ev| match ev {
-                BufferedEvent::Scalar { value, .. } => (b + value.len() + 8, n + 1),
-                BufferedEvent::SeqStart | BufferedEvent::MapStart => (b + 4, n + 1),
-                _ => (b + 4, n),
-            });
-        self.alias_bytes = self.alias_bytes.saturating_add(bytes);
-        if self.alias_bytes > self.config.max_document_length {
-            return Err(Error::RepetitionLimitExceeded);
-        }
-        if let Some(factor) = self.config.alias_jump_event_factor {
-            let (charge, over) = budget::jump_charge_exceeded(
-                self.alias_jump_charge,
-                nodes,
-                self.event_count,
-                factor,
-            );
-            self.alias_jump_charge = charge;
-            if over {
-                return Err(Error::RepetitionLimitExceeded);
-            }
-        }
-        Ok(())
     }
 
     fn resolve_alias(&mut self, name: &str, alias_start: usize) -> Result<Event<'a>> {
@@ -637,13 +599,7 @@ impl<'a> StreamingDeserializer<'a> {
     }
 
     fn inject_multi_merge_mapping_contents(&mut self, sources: &[(String, usize)]) -> Result<()> {
-        self.merge_key_count = self.merge_key_count.saturating_add(1);
-        if self.merge_key_count > self.config.max_merge_keys {
-            return Err(Error::Budget(BudgetBreach::MaxMergeKeys {
-                limit: self.config.max_merge_keys,
-                observed: self.merge_key_count,
-            }));
-        }
+        self.meter.charge_merge_key(&self.config)?;
         let local_buf = self.buffer_rest_of_mapping()?;
         let mut seen_keys = extract_local_keys(&local_buf);
         let mut filtered_sources: SmallVec<[SmallVec<[BufferedEvent; SMALL_VEC_SIZE]>; 2]> =
@@ -746,28 +702,99 @@ impl<'a> StreamingDeserializer<'a> {
         }
     }
 
+    /// Consume one whole value without building it (`IgnoredAny`, unknown
+    /// fields, the rest of an abandoned collection).
+    ///
+    /// Skipped content is charged like content that is deserialized:
+    /// nesting against `max_depth`, entries against `max_sequence_length`
+    /// and `max_mapping_keys`, plain `<<` keys against `max_merge_keys`,
+    /// and repeated keys under `DuplicateKeyPolicy::Error`. Iterative, so
+    /// a deep value cannot exhaust the stack.
     fn skip_value(&mut self) -> Result<()> {
-        // Iterative traversal — pathologically deep YAML would blow the
-        // stack in a recursive implementation.
-        let mut balance: i64 = 0;
+        let base = self.depth;
+        let result = self.skip_value_levels();
+        // Restore on Ok and Err alike (issue #46).
+        self.depth = base;
+        result
+    }
+
+    fn skip_value_levels(&mut self) -> Result<()> {
+        let mut levels: Vec<SkipLevel> = Vec::new();
         loop {
-            match self.next_event()? {
-                Event::Scalar { .. } | Event::Alias { .. } if balance == 0 => {
-                    return Ok(());
+            let ev = self.next_event()?;
+            let opens = match &ev {
+                Event::Scalar { value, style, .. } => {
+                    self.skip_note_node(levels.last_mut(), Some((value, *style)))?;
+                    None
                 }
-                Event::Scalar { .. } | Event::Alias { .. } => {}
-                Event::SequenceStart { .. } | Event::MappingStart { .. } => {
-                    balance += 1;
-                }
+                Event::SequenceStart { .. } => Some(false),
+                Event::MappingStart { .. } => Some(true),
                 Event::SequenceEnd { .. } | Event::MappingEnd { .. } => {
-                    balance -= 1;
-                    if balance <= 0 {
-                        return Ok(());
-                    }
+                    let _ = levels.pop();
+                    self.depth = self.depth.saturating_sub(1);
+                    None
                 }
-                _ => {}
+                _ => continue,
+            };
+            if let Some(is_map) = opens {
+                self.skip_note_node(levels.last_mut(), None)?;
+                self.depth += 1;
+                if budget::depth_exceeded(self.depth, self.config.max_depth) {
+                    return Err(Error::RecursionLimitExceeded { depth: self.depth });
+                }
+                levels.push(SkipLevel::new(is_map));
+            }
+            if levels.is_empty() {
+                return Ok(());
             }
         }
+    }
+
+    /// Charge one skipped node to the collection it sits in: an entry of a
+    /// sequence, or a key or value of a mapping. `scalar` is the node's
+    /// text and style when it is a scalar.
+    fn skip_note_node(
+        &mut self,
+        level: Option<&mut SkipLevel>,
+        scalar: Option<(&Cow<'_, str>, ScalarStyle)>,
+    ) -> Result<()> {
+        let Some(level) = level else {
+            return Ok(());
+        };
+        if !level.is_map {
+            level.entries += 1;
+            if level.entries > self.config.max_sequence_length {
+                return Err(Error::Budget(BudgetBreach::MaxSequenceLength {
+                    limit: self.config.max_sequence_length,
+                    observed: level.entries,
+                }));
+            }
+            return Ok(());
+        }
+        level.expecting_key = !level.expecting_key;
+        if level.expecting_key {
+            // That node was the value; the next one is a key.
+            return Ok(());
+        }
+        level.entries += 1;
+        if level.entries > self.config.max_mapping_keys {
+            return Err(Error::Budget(BudgetBreach::MaxMappingKeys {
+                limit: self.config.max_mapping_keys,
+                observed: level.entries,
+            }));
+        }
+        let Some((key, style)) = scalar else {
+            return Ok(());
+        };
+        if style == ScalarStyle::Plain && key == "<<" {
+            self.meter.charge_merge_key(&self.config)?;
+        }
+        if self.config.duplicate_key_policy == crate::parser::InternalDuplicateKeyPolicy::Error
+            && !level.keys.insert(key.to_string())
+        {
+            return Err(Error::DuplicateKey(key.to_string()));
+        }
+        Ok(())
     }
 
     /// Peek the next event and, if it carries a tag, take it out of the
@@ -1869,10 +1896,7 @@ where
 {
     let parse_config = ParseConfig::from(config);
     if s.len() > parse_config.max_document_length {
-        return Some(Err(Error::Parse(format!(
-            "document exceeds maximum length of {} bytes",
-            parse_config.max_document_length
-        ))));
+        return Some(Err(document_too_long(parse_config.max_document_length)));
     }
     let mut de = StreamingDeserializer::with_config(s, parse_config);
     if let Some(registry) = config.tag_registry.as_ref() {
@@ -1896,16 +1920,7 @@ where
             // than one document — `from_str`/`from_str_with_config` only
             // support exactly one (`from_str_multi` is the multi-document
             // entry point). See #351.
-            loop {
-                match de.next_event() {
-                    Ok(Event::StreamEnd) => break,
-                    Ok(Event::DocumentEnd | Event::StreamStart) => continue,
-                    Ok(Event::DocumentStart) => return Some(Err(Error::MoreThanOneDocument)),
-                    Ok(_) => break,
-                    Err(e) => return Some(Err(e)),
-                }
-            }
-            Some(Ok(val))
+            Some(de.end().map(|()| val))
         }
         Err(ref e) => {
             if is_fallback_error(e) {
@@ -1941,6 +1956,50 @@ fn parse_plain_float(s: &str) -> Option<f64> {
         return None;
     }
     s.parse::<f64>().ok()
+}
+
+/// What `skip_value` tracks for each collection it is inside.
+#[derive(Debug)]
+struct SkipLevel {
+    is_map: bool,
+    /// Sequence items, or mapping keys, seen so far.
+    entries: usize,
+    /// For a mapping: whether the next node is a key.
+    expecting_key: bool,
+    /// Scalar keys seen, kept only under `DuplicateKeyPolicy::Error`.
+    keys: FxHashSet<String>,
+}
+
+impl SkipLevel {
+    fn new(is_map: bool) -> Self {
+        Self {
+            is_map,
+            entries: 0,
+            expecting_key: true,
+            keys: FxHashSet::default(),
+        }
+    }
+}
+
+/// The refusal for an input longer than `max_document_length`.
+fn document_too_long(max: usize) -> Error {
+    Error::Parse(format!("document exceeds maximum length of {max} bytes"))
+}
+
+/// The expansion cost of a recorded anchor buffer, by the estimator the
+/// loaders use for an anchored value. Aliases inside the buffer cost
+/// nothing here: each is charged when it is replayed.
+fn buffer_cost(events: &[BufferedEvent]) -> AliasCost {
+    let mut tally = CostTally::default();
+    for ev in events {
+        match ev {
+            BufferedEvent::Scalar { value, .. } => tally.scalar(value.len()),
+            BufferedEvent::SeqStart | BufferedEvent::MapStart => tally.open(),
+            BufferedEvent::SeqEnd | BufferedEvent::MapEnd => tally.close(),
+            BufferedEvent::Alias { .. } => {}
+        }
+    }
+    tally.finish()
 }
 
 fn is_fallback_error(e: &Error) -> bool {

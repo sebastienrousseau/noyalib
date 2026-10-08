@@ -1,0 +1,5 @@
+---
+top1: &node1
+  &k1 key1: one
+top6: &val6
+  six

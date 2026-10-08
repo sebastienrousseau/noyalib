@@ -27,7 +27,19 @@ noyalib enforces safety at the compiler level:
 
 - `#![forbid(unsafe_code)]` — zero unsafe blocks, guaranteed.
 - No C dependencies, no FFI calls. Pure Rust only.
-- No network I/O, no file system writes, no environment variable reads.
+- No network I/O and no file system writes, in any feature combination.
+- No file system reads except where the caller asks for one: the
+  `include_fs` feature's `SafeFileResolver` reads regular files under
+  the root it is given, and the `figment` feature's `Yaml::file` and
+  `Yaml::file_with_config` read the path they are given. Both stop one
+  byte past the configured length budget.
+- JSON Schema `$ref` never resolves outside the schema document: every
+  validator refuses `file:`, `http:`, `https:` and any other external
+  reference, even when another crate in the build turns on
+  `jsonschema`'s resolvers.
+- No environment variable reads at run time. The build script reads
+  `RUSTC` and `NOYALIB_COVERAGE` at build time only, and runs
+  `rustc --version` to detect a nightly toolchain.
 
 ### Parser Hardening
 
@@ -54,12 +66,12 @@ mitigations:
 | `noyalib::recovery::parse_lenient` | `---`-marker count cap (defeats marker-spam OOM) | `ParserConfig::max_documents` |
 | `noyalib::recovery::parse_lenient` | Cumulative byte budget across line-truncation retries (defeats O(n²) re-parse on 10k-line malformed input) | `LenientConfig::truncation_event_budget` (default 1 MiB) |
 | `noyalib::tokio_async::from_async_reader` | Bounded `AsyncReadExt::take(max_document_length)` drain (defeats slow-drip OOM) | `ParserConfig::max_document_length` |
-| `noyalib::tokio_async::YamlDecoder` | Optional inter-frame buffer cap (defeats codec buffer pinning by adversarial producer) | `YamlDecoder::max_frame_size(usize)` |
+| `noyalib::tokio_async::YamlDecoder` | Inter-frame buffer cap (defeats codec buffer pinning by adversarial producer) | `YamlDecoder::max_frame_size(usize)`, never above `ParserConfig::max_document_length` |
 
-Untrusted-input deployments driving `YamlDecoder` over a network
-stream **should** call `max_frame_size(_)` to a sane upper bound;
-the default `None` matches the trust contract of a process-local
-in-memory consumer.
+`YamlDecoder` caps every frame at `max_document_length` (64 MiB by
+default) whatever `max_frame_size` says. Untrusted-input deployments
+driving it over a network stream should lower `max_document_length`,
+or call `max_frame_size(_)`, to the largest document they expect.
 
 #### `max_depth` guard correctness (issue #46)
 
@@ -86,24 +98,36 @@ Every tagged release goes through three layers of supply-chain integrity:
 1. **SLSA Level 3 build provenance.** The `release.yml` workflow uses
    `actions/attest-build-provenance` to record the source commit, the
    builder identity, and the workflow invocation into the public Rekor
-   transparency log. Verifiable from any clone of the repo:
+   transparency log. Pin the workflow that produced the attestation
+   and the tag it ran on, not only the owner (any workflow in any
+   repository the owner controls can attest a file):
 
    ```sh
-   gh attestation verify --owner sebastienrousseau noyalib-0.0.1.crate
+   gh attestation verify noyalib-X.Y.Z.crate \
+     --repo sebastienrousseau/noyalib \
+     --signer-workflow sebastienrousseau/noyalib/.github/workflows/release.yml \
+     --source-ref refs/tags/vX.Y.Z \
+     --deny-self-hosted-runners
    ```
 
 2. **Keyless sigstore signing.** The same workflow uses `cosign`
    keyless signing (Fulcio + Rekor) to produce a `.bundle` alongside
-   every artefact. The certificate identity is bound to this repo and
-   this workflow; verifiers should pin both:
+   every artefact. The certificate identity is bound to this repo,
+   this workflow and the ref it ran on; verifiers should pin all three,
+   so only `release.yml` running on a release tag is accepted:
 
    ```sh
    cosign verify-blob \
-     --certificate-identity-regexp '^https://github\.com/sebastienrousseau/noyalib/' \
+     --certificate-identity-regexp '^https://github\.com/sebastienrousseau/noyalib/\.github/workflows/release\.yml@refs/tags/v[0-9]+\.[0-9]+\.[0-9]+$' \
      --certificate-oidc-issuer https://token.actions.githubusercontent.com \
-     --bundle noyalib-0.0.23.crate.bundle \
-     noyalib-0.0.23.crate
+     --bundle noyalib-X.Y.Z.crate.bundle \
+     noyalib-X.Y.Z.crate
    ```
+
+   > Until v0.0.55 this section pinned only the repository prefix
+   > (`^https://github\.com/sebastienrousseau/noyalib/`), which a
+   > signature from any workflow in this repository, on any branch,
+   > also satisfies.
 
    > Releases up to and including v0.0.23 shipped a `.bundle` rather
    > than the separate `.sig` / `.pem` this section used to describe.

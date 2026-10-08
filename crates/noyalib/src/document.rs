@@ -152,6 +152,9 @@ pub fn load_all_with_config(input: &str, config: &ParserConfig) -> Result<Docume
     #[cfg(feature = "std")]
     {
         let pairs = parser::parse(input, &parse_config)?;
+        for (doc, _) in &pairs {
+            crate::policy::check_document(&config.policies, doc)?;
+        }
         let (docs, span_trees): (Vec<_>, Vec<_>) = pairs.into_iter().unzip();
         let total = docs.len();
         Ok(DocumentIterator {
@@ -164,6 +167,9 @@ pub fn load_all_with_config(input: &str, config: &ParserConfig) -> Result<Docume
     #[cfg(not(feature = "std"))]
     {
         let docs = parser::parse_all_values(input, &parse_config)?;
+        for doc in &docs {
+            crate::policy::check_document(&config.policies, doc)?;
+        }
         let total = docs.len();
         Ok(DocumentIterator {
             docs: docs.into_iter(),
@@ -231,20 +237,49 @@ pub fn load_all_as<T>(input: &str) -> Result<Vec<T>>
 where
     T: for<'de> serde_core::Deserialize<'de> + 'static,
 {
-    let parse_config = parser::ParseConfig::from(&ParserConfig::default());
+    load_all_as_with_config(input, &ParserConfig::default())
+}
+
+/// [`load_all_as`] with a custom [`ParserConfig`]: its limits, its
+/// scalar-resolution and merge settings, and its policies.
+///
+/// # Errors
+///
+/// Returns an error if the stream exceeds a configured limit, a policy
+/// refuses a document, parsing fails, or a document cannot be
+/// deserialized into `T`.
+///
+/// # Examples
+///
+/// ```
+/// use noyalib::{load_all_as_with_config, ParserConfig};
+/// let cfg = ParserConfig::strict();
+/// let docs: Vec<i32> = load_all_as_with_config("1\n---\n2\n", &cfg).unwrap();
+/// assert_eq!(docs, vec![1, 2]);
+/// ```
+pub fn load_all_as_with_config<T>(input: &str, config: &ParserConfig) -> Result<Vec<T>>
+where
+    T: for<'de> serde_core::Deserialize<'de> + 'static,
+{
+    if input.len() > config.max_document_length {
+        return Err(Error::Parse(format!(
+            "document exceeds maximum length of {} bytes",
+            config.max_document_length
+        )));
+    }
+    let parse_config = parser::ParseConfig::from(config);
 
     #[cfg(feature = "std")]
     {
         let pairs = parser::parse(input, &parse_config)?;
         let mut results = Vec::with_capacity(pairs.len());
         let source: Arc<str> = input.into();
+        let lines = span_context::SharedLineIndex::default();
 
         for (value, span_tree) in &pairs {
+            crate::policy::check_document(&config.policies, value)?;
             let spans = span_context::build_span_map(value, span_tree);
-            let ctx = span_context::SpanContext {
-                spans,
-                source: source.clone(),
-            };
+            let ctx = span_context::SpanContext::with_lines(spans, source.clone(), lines.clone());
             let _guard = span_context::set_span_context(ctx);
             let typed: T = crate::from_value(value)?;
             results.push(typed);
@@ -258,6 +293,7 @@ where
         let docs = parser::parse_all_values(input, &parse_config)?;
         let mut results = Vec::with_capacity(docs.len());
         for value in &docs {
+            crate::policy::check_document(&config.policies, value)?;
             let typed: T = crate::from_value(value)?;
             results.push(typed);
         }
@@ -414,21 +450,51 @@ where
     R: std::io::Read,
     T: for<'de> serde_core::Deserialize<'de> + 'static,
 {
-    let mut buf = String::new();
+    use std::io::Read as _;
+
+    // Cap on the *aggregated* multi-document buffer: `max_stream_bytes`,
+    // or 64 times `max_document_length` when that is smaller. Reading
+    // stops one byte past it, so an unbounded reader is refused
+    // without being buffered first.
+    let doc_cap = config.max_document_length.saturating_mul(64);
+    let cap = config.max_stream_bytes.min(doc_cap);
+    let limit = u64::try_from(cap).unwrap_or(u64::MAX).saturating_add(1);
+    let mut bytes = Vec::new();
     let _read_bytes = reader
-        .read_to_string(&mut buf)
+        .by_ref()
+        .take(limit)
+        .read_to_end(&mut bytes)
         .map_err(|e| Error::Parse(format!("reader I/O failed: {e}")))?;
-    if buf.len() > config.max_document_length.saturating_mul(64) {
-        // Soft cap on the *aggregated* multi-document buffer to
-        // bound memory regardless of per-document caps.
-        return Err(Error::Parse(format!(
-            "reader payload exceeds 64× max_document_length ({} bytes)",
-            config.max_document_length
-        )));
+    if bytes.len() > cap {
+        return Err(Error::Parse(if cap < doc_cap {
+            format!("reader payload exceeds max_stream_bytes ({cap} bytes)")
+        } else {
+            format!(
+                "reader payload exceeds 64× max_document_length ({} bytes)",
+                config.max_document_length
+            )
+        }));
+    }
+    let buf = String::from_utf8(bytes).map_err(|_| {
+        Error::Parse("reader I/O failed: stream did not contain valid UTF-8".into())
+    })?;
+    // The stream may hold up to 64 documents' worth of bytes, but each
+    // document is still held to `max_document_length`, as every other
+    // entry point holds it.
+    for doc in crate::doc_boundary::split_documents_checked(&buf, config.max_documents)? {
+        if doc.len() > config.max_document_length {
+            return Err(Error::Parse(format!(
+                "document exceeds maximum length of {} bytes",
+                config.max_document_length
+            )));
+        }
     }
     let parse_config = parser::ParseConfig::from(config);
     let pairs = parser::parse(&buf, &parse_config)?;
     let docs: Vec<Value> = pairs.into_iter().map(|(value, _)| value).collect();
+    for doc in &docs {
+        crate::policy::check_document(&config.policies, doc)?;
+    }
     Ok(DocumentReadIterator {
         docs: docs.into_iter(),
         _phantom: PhantomData,

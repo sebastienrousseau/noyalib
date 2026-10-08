@@ -69,16 +69,11 @@ pub fn coerce_to_schema(doc: &mut Document, schema: &Value) -> Result<usize> {
     use jsonschema::JsonType;
     use jsonschema::error::{TypeKind, ValidationErrorKind};
 
-    // Compile the schema once. Re-uses the same JSON-bridge helper
-    // path as `crate::coerce_to_schema` so the two functions share
-    // their schema-acceptance contract.
-    let schema_json = crate::schema_validate::value_to_json(schema)
-        .map_err(|e| Error::Custom(format!("cst::coerce_to_schema: schema -> JSON: {e}")))?;
-    let validator = jsonschema::validator_for(&schema_json).map_err(|e| {
-        Error::Custom(format!(
-            "cst::coerce_to_schema: schema is not a valid JSON Schema: {e}"
-        ))
-    })?;
+    // Compile the schema once, through the same helper as
+    // `crate::coerce_to_schema`, so the two functions share their
+    // schema-acceptance contract: external `$ref` refused, linear-time
+    // patterns, bounded schema size.
+    let validator = crate::schema_validate::compile_for_coercion(schema, "cst::coerce_to_schema")?;
 
     let mut applied: usize = 0;
     let max_iterations = 1024;
