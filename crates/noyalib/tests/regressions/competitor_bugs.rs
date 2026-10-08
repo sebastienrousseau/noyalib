@@ -441,3 +441,14 @@ fn clipped_block_scalar_key_keeps_its_final_break() {
     let v: Value = from_str("? >\r\n  *z").unwrap();
     assert!(v.get("*z\n").is_some(), "{v:?}");
 }
+
+#[test]
+fn overflowing_float_literal_is_infinity() {
+    // Found by fuzz_diff: a core-schema float literal past f64's range
+    // resolves to infinity (the serde_yaml compat profile keeps it as a
+    // string instead); serde_yaml_ng keeps the text.
+    let v: Value = from_str("3e999").unwrap();
+    assert_eq!(v.as_f64(), Some(f64::INFINITY));
+    let v: Value = from_str("-3e999").unwrap();
+    assert_eq!(v.as_f64(), Some(f64::NEG_INFINITY));
+}

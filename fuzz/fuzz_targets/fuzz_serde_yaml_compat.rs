@@ -34,7 +34,7 @@ fuzz_target!(|data: &[u8]| {
 
     match (shim, upstream) {
         (Ok(a), Ok(b)) => {
-            if !equivalent(&a, &b) {
+            if !equivalent(&a, &b) && !anchor_name_outside_libyaml(s) {
                 panic!(
                     "shim != serde_yaml on accepted input (len {}):\n  shim     : {}\n  upstream : {}",
                     s.len(),
@@ -64,6 +64,19 @@ fuzz_target!(|data: &[u8]| {
         }
     }
 });
+
+/// libyaml allows only `[A-Za-z0-9_-]` in an anchor name and ends the
+/// name at anything else, where YAML 1.2.2 §6.9.2 allows any ns-char
+/// but the flow indicators: `&f::!+` anchors an empty node named
+/// `f::!+` (noyalib) or the scalar "::!+" under the name `f`
+/// (libyaml). Such documents differ in value, not only in acceptance.
+fn anchor_name_outside_libyaml(s: &str) -> bool {
+    s.split('&').skip(1).any(|rest| {
+        rest.chars()
+            .take_while(|c| !c.is_whitespace() && !",[]{}".contains(*c))
+            .any(|c| !(c.is_ascii_alphanumeric() || c == '_' || c == '-'))
+    })
+}
 
 /// Value equivalence with numeric tolerance: `1` and `1.0` disagree
 /// on integer-ness across resolvers without disagreeing on the data.

@@ -116,6 +116,14 @@ fn numeric_equal(a: &serde_json::Value, b: &serde_json::Value) -> bool {
             // resolved (f64 parsing accepts the leading zeros).
             s.parse::<f64>().ok() == n.as_f64()
         }
+        // Known divergence: a core-schema float literal that overflows
+        // f64 (`3e999`) is infinity in noyalib, which JSON can only hold
+        // as null; serde_yaml_ng keeps the text as a string.
+        (V::Null, V::String(s)) | (V::String(s), V::Null)
+            if s.parse::<f64>().is_ok_and(f64::is_infinite) =>
+        {
+            true
+        }
         // Known resolver-scheme divergence: integer spellings only the
         // 1.1-flavoured resolver reads as numbers; see `is_yaml_11_int`.
         (V::Number(_), V::String(s)) | (V::String(s), V::Number(_)) if is_yaml_11_int(s) => true,
