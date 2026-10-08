@@ -9,6 +9,12 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Fixed
 
+- The `compat::serde_yaml` shim refuses a repeated struct field with
+  serde_yaml 0.9's wording (``duplicate field `role` ``), as upstream
+  does. It used to keep the last entry for struct targets, so the same
+  document configured one thing under serde_yaml and another under the
+  shim. Map targets still keep the last entry and `Value` targets still
+  refuse with `duplicate entry with key "k"`, both as upstream.
 - `max_events` now refuses a long flow-mapping key before it is
   buffered. An implicit key inside a flow mapping has no length limit
   (YAML 1.2.2 §7.4), so the scanner held back every token of

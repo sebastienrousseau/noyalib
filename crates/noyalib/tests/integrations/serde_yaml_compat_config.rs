@@ -378,8 +378,31 @@ fn from_str_multi_applies_the_repetition_budget() {
 // ── duplicate keys ─────────────────────────────────────────────────
 //
 // serde_yaml 0.9.34 refuses a duplicate key when the target is its
-// `Value` (`duplicate entry with key "role"`) and lets a map target
-// keep the last entry; the 18-case contract pins the second.
+// `Value` (`duplicate entry with key "role"`) or a struct
+// (``duplicate field `role` ``), and lets a map target keep the last
+// entry; the 18-case contract pins the last.
+
+#[test]
+fn a_struct_target_refuses_a_repeated_field_like_serde_yaml() {
+    use noyalib::compat::serde_yaml as syml;
+    #[derive(Debug, serde::Deserialize)]
+    struct Cfg {
+        #[allow(dead_code)]
+        role: String,
+    }
+    #[derive(Debug, serde::Deserialize)]
+    struct Outer {
+        #[allow(dead_code)]
+        inner: Cfg,
+    }
+    let err = syml::from_str::<Cfg>("role: user\nrole: admin\n").unwrap_err();
+    assert!(err.to_string().contains("duplicate field `role`"), "{err}");
+    let err = syml::from_str::<Outer>("inner:\n  role: a\n  role: b\n").unwrap_err();
+    assert!(err.to_string().contains("duplicate field `role`"), "{err}");
+    // noyalib's own entry point keeps its documented default.
+    let ok: Result<Cfg, _> = noyalib::from_str("role: user\nrole: admin\n");
+    assert!(ok.is_ok());
+}
 
 #[test]
 fn a_value_target_refuses_duplicate_keys_like_serde_yaml() {

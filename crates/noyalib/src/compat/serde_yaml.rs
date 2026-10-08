@@ -549,8 +549,9 @@ pub mod with {
 /// transitive alias expansion is budgeted exactly as upstream
 /// ("repetition limit exceeded"), and a duplicate mapping key is
 /// refused when the target is [`Value`] (`duplicate entry with key
-/// "k"`), as upstream refuses it for its own `Value`; a map target keeps
-/// the last entry, as upstream does. Callers who want noyalib's own
+/// "k"`), as upstream refuses it for its own `Value`; a struct target
+/// refuses a repeated field (``duplicate field `k` ``) and a map target
+/// keeps the last entry, as upstream does. Callers who want noyalib's own
 /// (spec-strict) defaults should use [`crate::from_str`] directly.
 ///
 /// # Examples
@@ -564,15 +565,44 @@ pub fn from_str<T>(s: &str) -> Result<T>
 where
     T: serde_core::de::DeserializeOwned + 'static,
 {
-    crate::from_str_with_config(s, &compat_config::<T>())
-        .map_err(|e| Error::from_noyalib_with_input(e, s))
+    let config = compat_config::<T>();
+    let value: T = crate::from_str_with_config(s, &config)
+        .map_err(|e| Error::from_noyalib_with_input(e, s))?;
+    if let Some(e) = repeated_struct_field::<T>(s, &config) {
+        return Err(Error::from_noyalib_with_input(e, s));
+    }
+    Ok(value)
+}
+
+/// serde_yaml's refusal of a repeated struct field (``duplicate field
+/// `k` ``), which the shim's own parse cannot see: its loader keeps the
+/// last entry of a repeated key, as upstream does for map targets, and
+/// only serde's struct visitor knows the target is a struct. The
+/// streaming walker hands serde every entry, so its `duplicate field`
+/// error is the answer; any other outcome of that walk is ignored, since
+/// the shim's parse above already decided everything else. Skipped for
+/// [`Value`] targets, which refuse every duplicate key on their own.
+fn repeated_struct_field<T>(s: &str, config: &crate::ParserConfig) -> Option<crate::Error>
+where
+    T: serde_core::de::DeserializeOwned + 'static,
+{
+    if core::any::TypeId::of::<T>() == core::any::TypeId::of::<Value>() {
+        return None;
+    }
+    let mut walk = config.clone();
+    walk.merge_key_policy = crate::MergeKeyPolicy::Auto;
+    match crate::streaming::from_str_streaming::<T>(s, &walk) {
+        Some(Err(e)) if e.to_string().contains("duplicate field `") => Some(e),
+        _ => None,
+    }
 }
 
 /// The configuration the shim parses under for target `T`:
 /// [`crate::ParserConfig::serde_yaml_compat`], plus serde_yaml's refusal
 /// of a duplicate mapping key when the target is a [`Value`]
 /// (`duplicate entry with key "k"`). Map targets keep the last entry,
-/// as upstream does.
+/// as upstream does; a repeated struct field is caught separately by
+/// [`repeated_struct_field`].
 fn compat_config<T: 'static>() -> crate::ParserConfig {
     let mut config = crate::ParserConfig::serde_yaml_compat();
     if core::any::TypeId::of::<T>() == core::any::TypeId::of::<Value>() {
