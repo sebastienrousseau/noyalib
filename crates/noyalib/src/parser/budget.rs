@@ -20,7 +20,33 @@
 /// document, regardless of the configured document length.
 pub(crate) const MAX_ALIAS_BYTES: usize = 1024 * 1024 * 32; // 32 MB
 
-/// `true` once `depth` has exceeded `max_depth`.
+/// The deepest nesting any loader, the serializer or a `Value`
+/// deserialized from another format accepts, whatever `max_depth` says.
+///
+/// Serializing, deserializing, dropping, cloning, comparing or printing
+/// a [`crate::Value`] recurses once per level. Measured on a 1 MiB
+/// thread in a debug build, the serializer is the first to overflow
+/// (it completes 256 levels, not 384); deserializing from another
+/// format completes 512, clone and compare 768, drop several thousand,
+/// and a release build passes 1,024 everywhere. 256 is twice the
+/// default `max_depth` and keeps every one of those operations inside a
+/// 1 MiB stack, so no value noyalib builds can abort the process.
+pub(crate) const MAX_DEPTH_CEILING: usize = 256;
+
+/// The `max_depth` a parse actually enforces: the configured one, never
+/// above [`MAX_DEPTH_CEILING`].
+#[inline]
+#[must_use]
+pub(crate) const fn effective_max_depth(max_depth: usize) -> usize {
+    if max_depth < MAX_DEPTH_CEILING {
+        max_depth
+    } else {
+        MAX_DEPTH_CEILING
+    }
+}
+
+/// `true` once `depth` has exceeded `max_depth` (capped at
+/// [`MAX_DEPTH_CEILING`]).
 ///
 /// Called after the depth counter is incremented for a collection start,
 /// so a document nested exactly `max_depth` deep is accepted and one
@@ -28,7 +54,7 @@ pub(crate) const MAX_ALIAS_BYTES: usize = 1024 * 1024 * 32; // 32 MB
 #[inline]
 #[must_use]
 pub(crate) const fn depth_exceeded(depth: usize, max_depth: usize) -> bool {
-    depth > max_depth
+    depth > effective_max_depth(max_depth)
 }
 
 /// `true` once `alias_count` has exceeded `max_alias_expansions`.
@@ -161,7 +187,10 @@ mod proofs {
     fn depth_exact_and_monotone() {
         let depth: usize = kani::any();
         let max: usize = kani::any();
-        assert_eq!(depth_exceeded(depth, max), depth > max);
+        assert_eq!(
+            depth_exceeded(depth, max),
+            depth > max || depth > MAX_DEPTH_CEILING
+        );
         if depth_exceeded(depth, max) && depth < usize::MAX {
             assert!(depth_exceeded(depth + 1, max));
         }

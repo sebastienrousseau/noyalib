@@ -600,13 +600,13 @@ pub fn from_str_borrowed_with_config<'a>(
         )));
     }
 
-    let mut parser = Parser::new(input);
+    let mut parser = Parser::with_max_events(input, config.max_events);
     let mut builder = BorrowedBuilder::new(&config);
 
     loop {
         let event = parser
             .next_event()
-            .map_err(|e| Error::parse_at(&*e.message, input, e.index))?;
+            .map_err(|e| e.into_error(input, config.max_events))?;
         if matches!(event, Event::StreamEnd) {
             break;
         }

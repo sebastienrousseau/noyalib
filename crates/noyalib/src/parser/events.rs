@@ -116,6 +116,14 @@ impl<'a> Parser<'a> {
         }
     }
 
+    /// A parser whose scanner holds back no more tokens than a document
+    /// within `max_events` could need (see [`Scanner::set_max_events`]).
+    pub(crate) fn with_max_events(input: &'a str, max_events: usize) -> Self {
+        let mut parser = Self::new(input);
+        parser.scanner.set_max_events(max_events);
+        parser
+    }
+
     /// Enable comment capture without the CST recorder's token and
     /// trivia overhead.
     pub(crate) fn enable_comment_capture(&mut self) {

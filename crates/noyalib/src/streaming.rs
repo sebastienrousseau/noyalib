@@ -234,7 +234,7 @@ impl<'a> StreamingDeserializer<'a> {
         let config: ParseConfig = config.into();
         let meter = Meter::new(&config);
         StreamingDeserializer {
-            parser: Parser::new(input),
+            parser: Parser::with_max_events(input, config.max_events),
             input,
             config,
             tag_registry: None,
@@ -332,7 +332,7 @@ impl<'a> StreamingDeserializer<'a> {
         let ev = self
             .parser
             .next_event()
-            .map_err(|e| Error::parse_at(&*e.message, self.input, e.index))?;
+            .map_err(|e| e.into_error(self.input, self.config.max_events))?;
         self.charge_event(&ev)?;
         Ok(ev)
     }
@@ -906,7 +906,7 @@ impl<'de> serde_core::Deserializer<'de> for &mut StreamingDeserializer<'de> {
             },
             Event::SequenceStart { .. } => {
                 self.depth += 1;
-                if self.depth > self.config.max_depth {
+                if budget::depth_exceeded(self.depth, self.config.max_depth) {
                     return Err(Error::RecursionLimitExceeded { depth: self.depth });
                 }
                 let res = visitor.visit_seq(StreamingSeqAccess {
@@ -921,7 +921,7 @@ impl<'de> serde_core::Deserializer<'de> for &mut StreamingDeserializer<'de> {
             }
             Event::MappingStart { .. } => {
                 self.depth += 1;
-                if self.depth > self.config.max_depth {
+                if budget::depth_exceeded(self.depth, self.config.max_depth) {
                     return Err(Error::RecursionLimitExceeded { depth: self.depth });
                 }
                 let res = visitor.visit_map(StreamingMapAccess {
@@ -1212,7 +1212,7 @@ impl<'de> serde_core::Deserializer<'de> for &mut StreamingDeserializer<'de> {
         }
         if let Event::SequenceStart { .. } = self.next_event()? {
             self.depth += 1;
-            if self.depth > self.config.max_depth {
+            if budget::depth_exceeded(self.depth, self.config.max_depth) {
                 return Err(Error::RecursionLimitExceeded { depth: self.depth });
             }
             let res = visitor.visit_seq(StreamingSeqAccess {
@@ -1259,7 +1259,7 @@ impl<'de> serde_core::Deserializer<'de> for &mut StreamingDeserializer<'de> {
         match self.next_event()? {
             Event::MappingStart { .. } => {
                 self.depth += 1;
-                if self.depth > self.config.max_depth {
+                if budget::depth_exceeded(self.depth, self.config.max_depth) {
                     return Err(Error::RecursionLimitExceeded { depth: self.depth });
                 }
                 let res = visitor.visit_map(StreamingMapAccess {

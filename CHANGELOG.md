@@ -5,7 +5,44 @@ All notable changes to this project are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [v0.0.55] - Unreleased
+## [v0.0.56] - Unreleased
+
+### Fixed
+
+- `load_comments` applies the default `max_document_length` and the
+  event-backlog limit a value parse would. It read input of any length,
+  and a long flow-mapping key held every later token back, so a hostile
+  document cost memory well past its size.
+- The `compat::serde_yaml` shim refuses a repeated struct field with
+  serde_yaml 0.9's wording (``duplicate field `role` ``), as upstream
+  does. It used to keep the last entry for struct targets, so the same
+  document configured one thing under serde_yaml and another under the
+  shim. Map targets still keep the last entry and `Value` targets still
+  refuse with `duplicate entry with key "k"`, both as upstream.
+- `max_events` now refuses a long flow-mapping key before it is
+  buffered. An implicit key inside a flow mapping has no length limit
+  (YAML 1.2.2 §7.4), so the scanner held back every token of
+  `{[a, a, ...]: v}` until the `:`, and a budget of ten events was only
+  checked once the whole collection had been tokenised. The scanner now
+  gives up once it holds more than eight tokens per allowed event (plus
+  1,024), which already proves the document is over budget. Documents
+  within their budgets parse as before.
+
+### Changed
+
+- **Breaking (parse behaviour):** nesting is capped at 256 levels on
+  every path, whatever `max_depth` says. Serializing, deserializing,
+  cloning, comparing, printing and dropping a `Value` recurse once per
+  level; with `max_depth` raised, or a `Value` read from another serde
+  format (which no `max_depth` applied to), a deep enough value
+  overflowed the stack and aborted the process. Measured on a 1 MiB
+  thread in a debug build, the serializer is the first to overflow and
+  completes 256 levels, so every operation now stays inside that stack.
+  `Value`'s `Deserialize` impl counts depth too, so `serde_json` and
+  other formats stop at the same ceiling. The default `max_depth` (128)
+  is unchanged.
+
+## [v0.0.55] - 2026-10-08
 
 ### Fixed
 

@@ -701,7 +701,7 @@ mod table {
         ("from_reader_strict", "from_str_strict on a bounded read"),
         (
             "load_comments",
-            "collects comments from the scanner; builds no value",
+            "takes no ParserConfig; applies the default length and event-backlog limits",
         ),
     ];
 

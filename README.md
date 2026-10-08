@@ -59,14 +59,14 @@
 
 ```toml
 [dependencies]
-noyalib = "0.0.55"
+noyalib = "0.0.56"
 ```
 
 Disable the default `std` feature for `core` + `alloc` environments:
 
 ```toml
 [dependencies]
-noyalib = { version = "0.0.55", default-features = false }
+noyalib = { version = "0.0.56", default-features = false }
 ```
 
 Build the library and its test surface from source:
