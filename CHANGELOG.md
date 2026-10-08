@@ -5,7 +5,27 @@ All notable changes to this project are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [v0.0.56] - Unreleased
+## [v0.0.57] - Unreleased
+
+### Fixed
+
+- With `DuplicateKeyPolicy::Error` or `First`, a typed parse
+  (`from_str::<BTreeMap<..>>`, structs, `serde_json::Value`) treats keys
+  that resolve to the same value as one key, as the `Value` path
+  already did: `~` and `null`, `0x1F` and `31`, `True` and `true`. It
+  compared the text as written, so `~: 1\nnull: 2` was refused as a
+  `Value` and accepted as a map.
+
+### Changed
+
+- **Breaking (parse behaviour):** a plain hex or octal integer resolves
+  only in the YAML 1.2 core schema spelling, `0x[0-9a-fA-F]+` or
+  `0o[0-7]+`. An uppercase prefix (`0X1F`, `0O17`) or a sign after the
+  prefix (`0x-1`, `0o+7`) used to resolve to an integer and is now a
+  string, as in serde_yaml_ng and libyaml. Found by the `fuzz_diff`
+  target. An explicit `!!int` tag still accepts the uppercase prefix.
+
+## [v0.0.56] - 2026-10-08
 
 ### Fixed
 
