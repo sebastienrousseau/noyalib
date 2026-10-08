@@ -44,7 +44,7 @@ use crate::value::Value;
 /// Parse a YAML string into a list of `(Value, SpanTree)` documents.
 #[cfg(feature = "std")]
 pub(crate) fn parse(input: &str, config: &ParseConfig) -> Result<Vec<(Value, SpanTree)>> {
-    let mut parser = Parser::new(input);
+    let mut parser = Parser::with_max_events(input, config.max_events);
     loader::load(&mut parser, config, input)
 }
 
@@ -53,7 +53,7 @@ pub(crate) fn parse(input: &str, config: &ParseConfig) -> Result<Vec<(Value, Spa
 /// entry points (see #351).
 #[cfg(feature = "std")]
 pub(crate) fn parse_exactly_one(input: &str, config: &ParseConfig) -> Result<(Value, SpanTree)> {
-    let mut parser = Parser::new(input);
+    let mut parser = Parser::with_max_events(input, config.max_events);
     loader::load_exactly_one(&mut parser, config, input)
 }
 

@@ -197,7 +197,7 @@ pub(crate) fn load(
                 break;
             }
             Ok(event) => loader.process_event(event, input)?,
-            Err(e) => return Err(Error::parse_at(&*e.message, input, e.index)),
+            Err(e) => return Err(e.into_error(input, config.max_events)),
         }
     }
     Ok(loader.into_docs())
@@ -977,7 +977,7 @@ pub(crate) fn load_exactly_one_no_spans(input: &str, config: &ParseConfig) -> Re
 /// Skip-span loader entry point: parse all documents into
 /// `Value`s without building `SpanTree`s. See [`load_one_no_spans`].
 pub(crate) fn load_all_no_spans(input: &str, config: &ParseConfig) -> Result<Vec<Value>> {
-    let mut parser = crate::parser::events::Parser::new(input);
+    let mut parser = crate::parser::events::Parser::with_max_events(input, config.max_events);
     let mut loader = NoSpanLoader::new(config);
     loop {
         match parser.next_event() {
@@ -986,7 +986,7 @@ pub(crate) fn load_all_no_spans(input: &str, config: &ParseConfig) -> Result<Vec
                 break;
             }
             Ok(event) => loader.process_event(event, input)?,
-            Err(e) => return Err(Error::parse_at(&*e.message, input, e.index)),
+            Err(e) => return Err(e.into_error(input, config.max_events)),
         }
     }
     Ok(loader.docs)

@@ -7,6 +7,17 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [v0.0.56] - Unreleased
 
+### Fixed
+
+- `max_events` now refuses a long flow-mapping key before it is
+  buffered. An implicit key inside a flow mapping has no length limit
+  (YAML 1.2.2 §7.4), so the scanner held back every token of
+  `{[a, a, ...]: v}` until the `:`, and a budget of ten events was only
+  checked once the whole collection had been tokenised. The scanner now
+  gives up once it holds more than eight tokens per allowed event (plus
+  1,024), which already proves the document is over budget. Documents
+  within their budgets parse as before.
+
 ### Changed
 
 - **Breaking (parse behaviour):** nesting is capped at 256 levels on

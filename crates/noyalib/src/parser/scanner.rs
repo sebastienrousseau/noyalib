@@ -77,6 +77,27 @@ impl fmt::Display for ScanError {
 
 type ScanResult<T> = Result<T, ScanError>;
 
+/// The message of the error [`Scanner::next_token`] returns once a
+/// pending key holds back more tokens than `max_events` allows. The
+/// loaders turn it into [`crate::BudgetBreach::MaxEvents`], the error the
+/// event meter gives for the same document.
+pub(crate) const EVENT_BACKLOG: &str = "a pending key holds more tokens than max_events allows";
+
+impl ScanError {
+    /// This error as the crate's [`Error`](crate::Error): a
+    /// [`MaxEvents`](crate::BudgetBreach::MaxEvents) budget breach for
+    /// the backlog cut-off, a located parse error otherwise.
+    pub(crate) fn into_error(self, input: &str, max_events: usize) -> crate::Error {
+        if self.message == EVENT_BACKLOG {
+            return crate::Error::Budget(crate::BudgetBreach::MaxEvents {
+                limit: max_events,
+                observed: max_events.saturating_add(1),
+            });
+        }
+        crate::Error::parse_at(&*self.message, input, self.index)
+    }
+}
+
 /// Tracks potential simple keys.
 #[derive(Debug, Clone)]
 struct SimpleKey {
@@ -147,6 +168,9 @@ pub(crate) struct Scanner<'a> {
     col: usize,
     /// Output token buffer (contiguous for cache locality).
     tokens: Vec<Token<'a>>,
+    /// The parse's `max_events`, from which the most tokens the queue
+    /// may hold back is derived (see [`Self::set_max_events`]).
+    max_events: usize,
     /// Index of the next token to consume from `tokens`.
     tokens_consumed: usize,
     /// Total tokens produced (including consumed ones).
@@ -429,6 +453,7 @@ impl<'a> Scanner<'a> {
             mark: 0,
             col: 0,
             tokens: Vec::with_capacity(estimated_tokens),
+            max_events: usize::MAX,
             tokens_consumed: 0,
             tokens_produced: 0,
             indent: -1,
@@ -495,11 +520,37 @@ impl<'a> Scanner<'a> {
         core::mem::take(&mut self.comments)
     }
 
+    /// Hold back no more tokens than a document within `max_events`
+    /// could need.
+    ///
+    /// A pending implicit key holds every later token until its `:`
+    /// arrives. A flow-mapping key has no length limit (YAML 1.2.2
+    /// §7.4), so `{[a, b, ... ]: v}` queued the whole collection before
+    /// any event, and so before `max_events` could refuse it. Every
+    /// event comes from at most a handful of tokens (an entry with an
+    /// anchor, a tag, a key, a value and a separator is nine tokens for
+    /// two events), so a queue past eight tokens per allowed event plus
+    /// a margin already proves the document is over its event budget.
+    pub(crate) fn set_max_events(&mut self, max_events: usize) {
+        self.max_events = max_events;
+    }
+
+    fn queue_over_budget(&self) -> bool {
+        let held = self.tokens.len() - self.tokens_consumed;
+        held > self.max_events.saturating_mul(8).saturating_add(1024)
+    }
+
     /// Fetch the next token from the scanner.
     pub(crate) fn next_token(&mut self) -> ScanResult<Token<'a>> {
         // Ensure we have at least one token buffered.
         while self.needs_more_tokens() {
             self.fetch_next_token()?;
+            if self.queue_over_budget() {
+                return Err(ScanError {
+                    message: Cow::Borrowed(EVENT_BACKLOG),
+                    index: self.pos,
+                });
+            }
         }
         if self.tokens_consumed < self.tokens.len() {
             // Move the token out instead of cloning — avoids heap-allocating
@@ -2626,6 +2677,30 @@ mod tests {
                 assert_eq!(scanner.plain_line_end(), fresh, "{input:?} at {pos}");
             }
         }
+    }
+
+    /// A flow-mapping key may be any length, so the scanner holds its
+    /// tokens back until the `:`; with `max_events` set it must give up
+    /// once the backlog proves the document is over budget, not buffer
+    /// the whole collection first.
+    #[test]
+    fn a_long_flow_mapping_key_is_cut_off_at_the_event_budget() {
+        let input = format!("{{[{}a]: v}}\n", "a,".repeat(200_000));
+        let mut scanner = Scanner::new(&input);
+        scanner.set_max_events(10);
+        let mut err = None;
+        for _ in 0..10 {
+            match scanner.next_token() {
+                Ok(_) => {}
+                Err(e) => {
+                    err = Some(e);
+                    break;
+                }
+            }
+        }
+        let err = err.expect("the backlog must be refused");
+        assert_eq!(err.message, EVENT_BACKLOG);
+        assert!(scanner.pos < 4096, "scanned {} bytes first", scanner.pos);
     }
 
     /// Handing out tokens from a long backlog must not shift the backlog

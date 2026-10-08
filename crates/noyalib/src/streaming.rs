@@ -234,7 +234,7 @@ impl<'a> StreamingDeserializer<'a> {
         let config: ParseConfig = config.into();
         let meter = Meter::new(&config);
         StreamingDeserializer {
-            parser: Parser::new(input),
+            parser: Parser::with_max_events(input, config.max_events),
             input,
             config,
             tag_registry: None,
@@ -332,7 +332,7 @@ impl<'a> StreamingDeserializer<'a> {
         let ev = self
             .parser
             .next_event()
-            .map_err(|e| Error::parse_at(&*e.message, self.input, e.index))?;
+            .map_err(|e| e.into_error(self.input, self.config.max_events))?;
         self.charge_event(&ev)?;
         Ok(ev)
     }
