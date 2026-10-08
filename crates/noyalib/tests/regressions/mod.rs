@@ -28,6 +28,7 @@ mod phase2;
 mod phase3;
 mod phase4;
 mod phase5;
+mod plain_trailing_blank_continuation;
 mod radix_int_spelling;
 mod read_iterator;
 mod recovery;

@@ -9,6 +9,12 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Fixed
 
+- A plain scalar whose line ends with spaces or tabs continues on the
+  next line. The trailing white space was read as the end of the
+  scalar, so `m \nx` failed with "stray content after document" and
+  `a: m \n\n  x` with "inconsistent indentation"; both now parse, to
+  `"m x"` and `{a: "m\nx"}`. Found by the `fuzz_serde_yaml_compat`
+  target.
 - With `DuplicateKeyPolicy::Error` or `First`, a typed parse
   (`from_str::<BTreeMap<..>>`, structs, `serde_json::Value`) treats keys
   that resolve to the same value as one key, as the `Value` path
