@@ -355,6 +355,10 @@ fn comment_shaped_line_is_block_scalar_content() {
     // The first `\r` ends the header; one empty line precedes `#`.
     let v: Value = from_str("|+\r\r#\r\r").unwrap();
     assert_eq!(v.as_str(), Some("\n#\n\n"));
+    // With clip chomping ng is left with only breaks, so it returns ""
+    // (artifact `|\r\r#|z`); the `#|z` line is content.
+    let v: Value = from_str("|\r\r#|z").unwrap();
+    assert_eq!(v.as_str(), Some("\n#|z\n"));
 }
 
 #[test]

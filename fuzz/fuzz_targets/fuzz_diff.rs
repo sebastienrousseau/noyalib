@@ -205,12 +205,18 @@ fn is_yaml_11_int(s: &str) -> bool {
         || unsigned.unwrap_or(s).starts_with("0b")
 }
 
-/// `cut` is `full` up to the start of a line that begins with `#`:
-/// the shape serde_yaml_ng leaves when it reads that line of a block
-/// scalar as a comment and drops it with everything after it.
+/// `cut` is `full` up to the start of a line that begins with `#`,
+/// less any line breaks just before that line: the shape serde_yaml_ng
+/// leaves when it reads that line of a block scalar as a comment and
+/// drops it with everything after it (its chomping then trims the
+/// breaks of a scalar left with no text).
 fn cut_at_comment_line(full: &str, cut: &str) -> bool {
-    full.strip_prefix(cut).is_some_and(|rest| rest.starts_with('#'))
-        && (cut.is_empty() || cut.ends_with('\n'))
+    full.match_indices('#').any(|(p, _)| {
+        (p == 0 || full.as_bytes()[p - 1] == b'\n')
+            && full[..p]
+                .strip_prefix(cut)
+                .is_some_and(|gap| gap.bytes().all(|b| b == b'\n'))
+    })
 }
 
 /// `[-+]?0[0-9]+` — a decimal integer spelling with a leading zero.
