@@ -2406,6 +2406,7 @@ impl<'a> Scanner<'a> {
     }
 }
 
+mod block_scalars;
 mod scalars;
 
 /// Snap `index` to the nearest code-point boundary at or below it.

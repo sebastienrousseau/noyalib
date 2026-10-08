@@ -13,6 +13,7 @@ mod competitor_bugs;
 mod duplicate_key_identity;
 mod feature_matrix;
 mod fmt;
+mod folded_spaced_lines;
 #[cfg(feature = "strict-deserialise")]
 mod issue_239;
 mod issue_46;

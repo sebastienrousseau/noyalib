@@ -31,6 +31,12 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   prefix (`0x-1`, `0o+7`) used to resolve to an integer and is now a
   string, as in serde_yaml_ng and libyaml. Found by the `fuzz_diff`
   target. An explicit `!!int` tag still accepts the uppercase prefix.
+- **Breaking (parse behaviour):** a folded block scalar keeps a
+  whitespace-only line that is indented past its content, as a literal
+  one already did (yaml-test-suite DWX9). Such a line is a spaced line
+  (YAML 1.2.2 §8.1.3): its extra spaces are content and the breaks
+  around it are not folded, so `>\n  a\n    \n  b\n` is `"a\n  \nb\n"`.
+  It used to be dropped (`"a\nb\n"`). Found by the `fuzz_diff` target.
 
 ## [v0.0.56] - 2026-10-08
 
