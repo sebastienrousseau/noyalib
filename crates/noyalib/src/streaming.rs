@@ -2111,11 +2111,10 @@ fn looks_like_integer_literal(s: &str, legacy_octal: bool) -> bool {
     if b.is_empty() {
         return false;
     }
-    if b.len() > 2 && b[0] == b'0' && (bytes_to_char(b[1]) == 'x' || bytes_to_char(b[1]) == 'X') {
-        return b[2..].iter().all(|c| c.is_ascii_hexdigit());
-    }
-    if b.len() > 2 && b[0] == b'0' && (bytes_to_char(b[1]) == 'o' || bytes_to_char(b[1]) == 'O') {
-        return b[2..].iter().all(|c| (b'0'..=b'7').contains(c));
+    for (prefix, radix) in [("0x", 16), ("0o", 8)] {
+        if let Some(digits) = s.strip_prefix(prefix) {
+            return radix_digits(digits, radix);
+        }
     }
     if legacy_octal && b.len() >= 2 && b[0] == b'0' {
         return b[1..].iter().all(|c| (b'0'..=b'7').contains(c));
@@ -2207,11 +2206,14 @@ fn parse_integer(s: &str, legacy_octal: bool, lossless_u64: bool) -> Option<Pars
     if b.is_empty() {
         return None;
     }
-    if b.len() > 2 && b[0] == b'0' && (bytes_to_char(b[1]) == 'x' || bytes_to_char(b[1]) == 'X') {
-        return parse_radix_integer(&s[2..], 16, lossless_u64);
-    }
-    if b.len() > 2 && b[0] == b'0' && (bytes_to_char(b[1]) == 'o' || bytes_to_char(b[1]) == 'O') {
-        return parse_radix_integer(&s[2..], 8, lossless_u64);
+    // Core schema spellings only: `0x[0-9a-fA-F]+` and `0o[0-7]+`.
+    // An uppercase prefix or a sign after it stays a string.
+    for (prefix, radix) in [("0x", 16), ("0o", 8)] {
+        if let Some(digits) = s.strip_prefix(prefix) {
+            return radix_digits(digits, radix)
+                .then(|| parse_radix_integer(digits, radix, lossless_u64))
+                .flatten();
+        }
     }
     // YAML 1.1-style bare `0`-prefix octal — only when explicitly
     // opted in. The leading `0` must be followed by an octal digit
@@ -2247,6 +2249,12 @@ fn parse_integer(s: &str, legacy_octal: bool, lossless_u64: bool) -> Option<Pars
     }
 }
 
+/// Non-empty and every character a digit in `radix`: no sign, no
+/// separator. `from_str_radix` alone would accept a leading `+`/`-`.
+fn radix_digits(s: &str, radix: u32) -> bool {
+    !s.is_empty() && s.chars().all(|c| c.is_digit(radix))
+}
+
 fn parse_radix_integer(s: &str, radix: u32, lossless_u64: bool) -> Option<ParsedInteger> {
     #[cfg(not(feature = "lossless-u64"))]
     let _ = lossless_u64;
@@ -2261,10 +2269,6 @@ fn parse_radix_integer(s: &str, radix: u32, lossless_u64: bool) -> Option<Parsed
     }
     #[allow(unreachable_code)]
     None
-}
-
-fn bytes_to_char(b: u8) -> char {
-    b as char
 }
 
 fn extract_mapping_body(buf: &[BufferedEvent]) -> Option<&[BufferedEvent]> {

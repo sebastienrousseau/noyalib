@@ -642,16 +642,14 @@ fn r3_sexagesimal_float_with_positive_sign() {
 
 #[test]
 fn r3_parse_integer_uppercase_hex() {
-    // Uppercase X prefix — `0X` arm.
-    let n: i64 = from_str("0X10\n").unwrap();
-    assert_eq!(n, 16);
+    // Uppercase X prefix is not a core schema spelling: a string.
+    assert!(from_str::<i64>("0X10\n").is_err());
 }
 
 #[test]
 fn r3_parse_integer_uppercase_octal() {
-    // Uppercase O prefix — `0O` arm.
-    let n: i64 = from_str("0O17\n").unwrap();
-    assert_eq!(n, 15);
+    // Uppercase O prefix is not a core schema spelling: a string.
+    assert!(from_str::<i64>("0O17\n").is_err());
 }
 
 #[test]

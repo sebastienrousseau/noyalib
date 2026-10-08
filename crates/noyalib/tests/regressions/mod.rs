@@ -22,6 +22,7 @@ mod phase2;
 mod phase3;
 mod phase4;
 mod phase5;
+mod radix_int_spelling;
 mod read_iterator;
 mod recovery;
 mod reference_docs_are_complete;
