@@ -2549,6 +2549,10 @@ mod tests {
     /// is limited to one line and 1024 characters, so a 10 MB collection
     /// must not be tokenised whole before the first token is handed out.
     #[test]
+    #[cfg_attr(
+        miri,
+        ignore = "scans 10 MB inputs; a performance bound, far too slow under Miri"
+    )]
     fn ten_megabyte_flow_collection_streams_from_document_start() {
         let one_line = format!("[{}a]\n", "a,".repeat(5 * 1024 * 1024));
         let many_lines = format!("[{}a]\n", "a,\n".repeat(3_500_000));
@@ -2571,6 +2575,10 @@ mod tests {
     /// Linear work grows about eight times between the two depths,
     /// quadratic work about sixty-four times.
     #[test]
+    #[cfg_attr(
+        miri,
+        ignore = "a wall-clock scaling check; Miri's timing means nothing and took 38 minutes"
+    )]
     fn deep_flow_nesting_scans_in_linear_time() {
         fn drain(depth: usize) -> core::time::Duration {
             let input = format!("{}{}", "[".repeat(depth), "]".repeat(depth));
@@ -2624,6 +2632,10 @@ mod tests {
     /// again every 256 tokens. A flow-mapping key has no length limit, so a
     /// long flow sequence used as one is held whole until its `:`.
     #[test]
+    #[cfg_attr(
+        miri,
+        ignore = "drains 200,000 tokens; a performance bound, too slow under Miri"
+    )]
     fn queue_compaction_waits_for_half_the_queue() {
         let input = format!("{{[{}a]: v}}\n", "a,".repeat(100_000));
         let mut scanner = Scanner::new(&input);
