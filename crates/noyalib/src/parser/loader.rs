@@ -10,6 +10,8 @@ use crate::error::{Error, Result};
 use crate::parser::budget;
 use crate::parser::events::Event;
 use crate::parser::meter::{AliasCost, Meter};
+#[cfg(feature = "std")]
+use crate::parser::scanner::Span;
 use crate::prelude::IndexMap;
 use crate::prelude::*;
 #[cfg(feature = "std")]
@@ -412,35 +414,44 @@ impl<'a> Loader<'a> {
         key_collision_at(key, self.parent_path(), key_start, input)
     }
 
-    /// Charge and expand `*anchor`, met at `alias_start`.
+    /// Charge and expand `*anchor`, the token at `span`.
     ///
     /// Every budget is charged from the anchor's stored cost before the
     /// anchored tree is cloned, so a refused expansion allocates nothing.
+    ///
+    /// The cloned tree comes back wrapped in a [`SpanTree::Alias`] node
+    /// that records the token's own span, so span resolution can tell
+    /// it reached this value *through* an alias: a read resolves through
+    /// (issue #149), while a write may touch the token itself and
+    /// nothing of the anchor's bytes, which belong to a different key.
     fn resolve_alias(
         &mut self,
         anchor: &str,
-        alias_start: usize,
+        span: Span,
         input: &str,
     ) -> Result<(Value, SpanTree)> {
         if !self.in_document {
-            return Err(Error::parse_at(
-                "alias outside document",
-                input,
-                alias_start,
-            ));
+            return Err(Error::parse_at("alias outside document", input, span.start));
         }
         self.meter.charge_alias(self.config)?;
         let Some((value, span_tree, cost)) = self.anchor_map.get(anchor) else {
             return Err(missing_anchor(
                 anchor,
-                alias_start,
+                span.start,
                 input,
                 &self.anchor_def_spans,
                 &self.earlier_anchor_defs,
             ));
         };
         self.meter.charge_expansion(cost, self.depth, self.config)?;
-        Ok((value.clone(), span_tree.clone()))
+        let target = Box::new(span_tree.clone());
+        Ok((
+            value.clone(),
+            SpanTree::Alias {
+                at: (span.start, span.end),
+                target,
+            },
+        ))
     }
 
     fn new(config: &'a ParseConfig) -> Self {
@@ -481,24 +492,14 @@ impl<'a> Loader<'a> {
                 self.in_document = false;
             }
             Event::Alias { anchor, span } => {
-                let (value, span_tree) = self.resolve_alias(&anchor, span.start, input)?;
-                // Wrap the anchor's cloned tree so span resolution can tell it
-                // reached this value *through* an alias — a read resolves
-                // through (issue #149), a write must refuse (would splice the
-                // anchor's bytes, a different key).
-                // An alias is never a merge key either. The merge tag is
-                // resolved from a plain `<<` *scalar*; `<<: *x` where `*x`
-                // happens to resolve to the string `\"<<\"` is an ordinary
-                // key whose value is that string.
-                self.push_node(
-                    value,
-                    SpanTree::Alias {
-                        at: (span.start, span.end),
-                        target: Box::new(span_tree),
-                    },
-                    input,
-                    false,
-                )?;
+                // The tree is the anchor's, wrapped by `resolve_alias` so
+                // span resolution can tell it reached this value *through*
+                // an alias. An alias is never a merge key either. The merge
+                // tag is resolved from a plain `<<` *scalar*; `<<: *x` where
+                // `*x` happens to resolve to the string `\"<<\"` is an
+                // ordinary key whose value is that string.
+                let (value, span_tree) = self.resolve_alias(&anchor, span, input)?;
+                self.push_node(value, span_tree, input, false)?;
             }
             Event::Scalar {
                 value,

@@ -832,13 +832,7 @@ impl Document {
         // token is one leaf, and a collection grown in its place is not
         // an in-place edit.
         if matches!(value, Value::Sequence(_) | Value::Mapping(_)) {
-            if alias_target {
-                return Err(Error::Parse(format!(
-                    "set_value: the value of `{path}` is an alias reference, and a \
-                     collection cannot replace the `*name` token in place; edit the \
-                     anchor definition, or `remove` the entry and insert the collection"
-                )));
-            }
+            refuse_collection_over_alias_token(path, alias_target)?;
             return self.replace_collection_value(path, value, s, e);
         }
         // One policy for anchored nodes (#338): a write into a value
@@ -909,12 +903,11 @@ impl Document {
         } else {
             entry_indent_column(&self.source, s)
         };
-        let in_flow = in_flow_collection(&self.green, s);
         let ctx = SiteContext {
             kind,
             neighbour,
             entry_col,
-            in_flow,
+            in_flow: in_flow_collection(&self.green, s),
         };
         let fragment = format_value_for_site(value, &ctx)?;
         // A block literal owns every byte through the end of its last
@@ -3748,6 +3741,22 @@ enum AliasHit {
     /// The path resolved *through* an alias to bytes inside the anchor's
     /// value, which belong to a different key; writes refuse.
     Through,
+}
+
+/// Refuse a collection written over an alias token (`alias_target`).
+///
+/// The `*name` token is one leaf, so a scalar can replace it in place;
+/// a collection grown there is not an in-place edit of the addressed
+/// entry.
+fn refuse_collection_over_alias_token(path: &str, alias_target: bool) -> Result<()> {
+    if !alias_target {
+        return Ok(());
+    }
+    Err(Error::Parse(format!(
+        "set_value: the value of `{path}` is an alias reference, and a \
+         collection cannot replace the `*name` token in place; edit the \
+         anchor definition, or `remove` the entry and insert the collection"
+    )))
 }
 
 fn resolve_span(
