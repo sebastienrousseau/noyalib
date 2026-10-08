@@ -61,6 +61,12 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   feed (YAML 1.2.2 §7.3.1). They were folded as after an unescaped
   break, so `"a\` + empty line + `b"` read `"a b"` where libyaml and
   the spec read `"a\nb"`. Found by the `fuzz_diff` target.
+- **Breaking (parse behaviour):** an anchor or tag on an empty sequence
+  item no longer swallows the next item. `- &a\n- x` is
+  `[null, "x"]`; it was read as `[["x"]]`, a nested sequence. A
+  sequence nested under an item must be indented past the item's `-`;
+  only a mapping value may start its sequence at the key's column
+  (YAML 1.2.2 §8.2.1). Found by the `fuzz_diff` target.
 
 ## [v0.0.56] - 2026-10-08
 

@@ -339,59 +339,7 @@ impl<'a> Parser<'a> {
         // when the token is actually consumed — avoids cloning Strings.
         let _ = self.peek()?;
         let span = self.current_span;
-
-        let mut anchor: Option<String> = None;
-        let mut tag: Option<(String, String)> = None;
-
-        // Parse optional anchor — take() to move the Cow out; convert to owned
-        // for the Event boundary.
-        if self.peek_is(|k| matches!(k, TokenKind::Anchor(_)))? {
-            if let (TokenKind::Anchor(name), _) = self.take()? {
-                let owned = name.into_owned();
-                let _ = self.marks.insert(owned.clone(), self.next_anchor_id);
-                self.next_anchor_id += 1;
-                anchor = Some(owned);
-            }
-            // Check for tag after anchor.
-            if self.peek_is(|k| matches!(k, TokenKind::Tag(_, _)))? {
-                if let (TokenKind::Tag(h, s), _) = self.take()? {
-                    tag = Some((h.into_owned(), s.into_owned()));
-                }
-            }
-        } else if self.peek_is(|k| matches!(k, TokenKind::Tag(_, _)))? {
-            if let (TokenKind::Tag(h, s), _) = self.take()? {
-                tag = Some((h.into_owned(), s.into_owned()));
-            }
-            // Check for anchor after tag.
-            if self.peek_is(|k| matches!(k, TokenKind::Anchor(_)))? {
-                if let (TokenKind::Anchor(name), _) = self.take()? {
-                    let owned = name.into_owned();
-                    let _ = self.marks.insert(owned.clone(), self.next_anchor_id);
-                    self.next_anchor_id += 1;
-                    anchor = Some(owned);
-                }
-            }
-        }
-
-        // A node's span includes its properties: `span` above is the
-        // first token of the node, which is the anchor/tag token when
-        // properties are present — so widening the emitted span back
-        // to `span.start` anchors Spanned<T> and error locations at
-        // the `!tag`/`&anchor`, matching serde_yaml/libyaml marks
-        // (the serde_yaml contract's custom-explicit-tag case pins
-        // this at 1:8:7).
-        let props_start = if anchor.is_some() || tag.is_some() {
-            Some(span.start)
-        } else {
-            None
-        };
-        let widen = |s: Span| match props_start {
-            Some(p) if p < s.start => Span {
-                start: p,
-                end: s.end,
-            },
-            _ => s,
-        };
+        let props = self.parse_node_properties(span)?;
 
         // Alias — take() moves the Cow; convert to owned for the Event.
         if self.peek_is(|k| matches!(k, TokenKind::Alias(_)))? {
@@ -414,91 +362,146 @@ impl<'a> Parser<'a> {
             .expect("internal: peek() above guarantees current_kind");
 
         match kind_ref {
-            TokenKind::Scalar(_, _) => {
-                let (kind, scalar_span) = self.take()?;
-                if let TokenKind::Scalar(style, value) = kind {
-                    self.state = self.pop_state();
-                    Ok(Event::Scalar {
-                        value,
-                        style,
-                        anchor,
-                        tag,
-                        span: widen(scalar_span),
-                    })
-                } else {
-                    crate::error::invariant_violated(
-                        "outer match guarded TokenKind::Scalar; take() must return the same",
-                    )
-                }
-            }
+            TokenKind::Scalar(_, _) => self.parse_scalar_node(props),
             TokenKind::FlowSequenceStart => {
-                self.skip()?;
-                self.state = State::FlowSequenceFirstEntry;
-                Ok(Event::SequenceStart {
-                    anchor,
-                    tag,
-                    span: widen(tok_span),
-                })
+                self.open_node(State::FlowSequenceFirstEntry, true, true, props, tok_span)
             }
             TokenKind::FlowMappingStart => {
-                self.skip()?;
-                self.state = State::FlowMappingFirstKey;
-                Ok(Event::MappingStart {
-                    anchor,
-                    tag,
-                    span: widen(tok_span),
-                })
+                self.open_node(State::FlowMappingFirstKey, false, true, props, tok_span)
             }
             TokenKind::BlockSequenceStart if block => {
-                self.skip()?;
-                self.state = State::BlockSequenceFirstEntry;
-                Ok(Event::SequenceStart {
-                    anchor,
-                    tag,
-                    span: widen(tok_span),
-                })
+                self.open_node(State::BlockSequenceFirstEntry, true, true, props, tok_span)
             }
             TokenKind::BlockMappingStart if block => {
-                self.skip()?;
-                self.state = State::BlockMappingFirstKey;
-                Ok(Event::MappingStart {
-                    anchor,
-                    tag,
-                    span: widen(tok_span),
-                })
+                self.open_node(State::BlockMappingFirstKey, false, true, props, tok_span)
             }
             // Indentless block sequence: `BlockEntry` without a preceding
             // `BlockSequenceStart` — the `-` is at the same indent as the
-            // containing mapping key.
-            TokenKind::BlockEntry if indentless || (anchor.is_some() || tag.is_some()) => {
-                self.state = State::IndentlessSequenceEntry;
-                Ok(Event::SequenceStart {
-                    anchor,
-                    tag,
-                    span: widen(tok_span),
-                })
+            // containing mapping key. Only a mapping value may do that
+            // (§8.2.1, seq-spaces); a `-` at the column of a sequence
+            // item's own `-` is that sequence's next item, whatever
+            // anchor or tag the empty item carries.
+            TokenKind::BlockEntry if indentless => {
+                self.open_node(State::IndentlessSequenceEntry, true, false, props, tok_span)
             }
-            _ => {
-                if anchor.is_some() || tag.is_some() {
-                    self.state = self.pop_state();
-                    Ok(Event::Scalar {
-                        value: Cow::Borrowed(""),
-                        style: ScalarStyle::Plain,
-                        anchor,
-                        tag,
-                        span,
-                    })
-                } else if indentless {
-                    self.state = self.pop_state();
-                    Ok(self.empty_scalar(span))
-                } else {
-                    let kind = self.peek_kind()?;
-                    Err(ScanError {
-                        message: Cow::Owned(format!("expected a node but found {kind:?}")),
-                        index: span.start,
-                    })
-                }
-            }
+            _ => self.parse_empty_node(props, indentless, span),
+        }
+    }
+
+    /// Parse optional anchor and tag, in either order — take() to move
+    /// the Cow out; convert to owned for the Event boundary.
+    fn parse_node_properties(&mut self, span: Span) -> Result<NodeProps, ScanError> {
+        let mut anchor = self.take_anchor()?;
+        let tag = self.take_tag()?;
+        if anchor.is_none() {
+            // Check for anchor after tag.
+            anchor = self.take_anchor()?;
+        }
+        // A node's span includes its properties: `span` above is the
+        // first token of the node, which is the anchor/tag token when
+        // properties are present — so widening the emitted span back
+        // to `span.start` anchors Spanned<T> and error locations at
+        // the `!tag`/`&anchor`, matching serde_yaml/libyaml marks
+        // (the serde_yaml contract's custom-explicit-tag case pins
+        // this at 1:8:7).
+        let start = (anchor.is_some() || tag.is_some()).then_some(span.start);
+        Ok(NodeProps { anchor, tag, start })
+    }
+
+    /// Take an anchor token at the cursor, registering its name.
+    fn take_anchor(&mut self) -> Result<Option<String>, ScanError> {
+        if !self.peek_is(|k| matches!(k, TokenKind::Anchor(_)))? {
+            return Ok(None);
+        }
+        let (TokenKind::Anchor(name), _) = self.take()? else {
+            return Ok(None);
+        };
+        let owned = name.into_owned();
+        let _ = self.marks.insert(owned.clone(), self.next_anchor_id);
+        self.next_anchor_id += 1;
+        Ok(Some(owned))
+    }
+
+    /// Take a tag token at the cursor.
+    fn take_tag(&mut self) -> Result<Option<(String, String)>, ScanError> {
+        if !self.peek_is(|k| matches!(k, TokenKind::Tag(_, _)))? {
+            return Ok(None);
+        }
+        let (TokenKind::Tag(h, s), _) = self.take()? else {
+            return Ok(None);
+        };
+        Ok(Some((h.into_owned(), s.into_owned())))
+    }
+
+    /// The scalar token at the cursor, with its properties.
+    fn parse_scalar_node(&mut self, props: NodeProps) -> Result<Event<'a>, ScanError> {
+        let (kind, scalar_span) = self.take()?;
+        if let TokenKind::Scalar(style, value) = kind {
+            self.state = self.pop_state();
+            Ok(Event::Scalar {
+                value,
+                style,
+                span: props.widen(scalar_span),
+                anchor: props.anchor,
+                tag: props.tag,
+            })
+        } else {
+            crate::error::invariant_violated(
+                "outer match guarded TokenKind::Scalar; take() must return the same",
+            )
+        }
+    }
+
+    /// Open a collection node: consume its start token (`skip`; an
+    /// indentless sequence has none), enter `state`, and emit the start
+    /// event with the node's properties.
+    fn open_node(
+        &mut self,
+        state: State,
+        sequence: bool,
+        skip: bool,
+        props: NodeProps,
+        tok_span: Span,
+    ) -> Result<Event<'a>, ScanError> {
+        if skip {
+            self.skip()?;
+        }
+        self.state = state;
+        let span = props.widen(tok_span);
+        let (anchor, tag) = (props.anchor, props.tag);
+        Ok(if sequence {
+            Event::SequenceStart { anchor, tag, span }
+        } else {
+            Event::MappingStart { anchor, tag, span }
+        })
+    }
+
+    /// A node with no content: an empty scalar when it has properties or
+    /// sits where an indentless entry may be empty, an error otherwise.
+    fn parse_empty_node(
+        &mut self,
+        props: NodeProps,
+        indentless: bool,
+        span: Span,
+    ) -> Result<Event<'a>, ScanError> {
+        if props.start.is_some() {
+            self.state = self.pop_state();
+            Ok(Event::Scalar {
+                value: Cow::Borrowed(""),
+                style: ScalarStyle::Plain,
+                anchor: props.anchor,
+                tag: props.tag,
+                span,
+            })
+        } else if indentless {
+            self.state = self.pop_state();
+            Ok(self.empty_scalar(span))
+        } else {
+            let kind = self.peek_kind()?;
+            Err(ScanError {
+                message: Cow::Owned(format!("expected a node but found {kind:?}")),
+                index: span.start,
+            })
         }
     }
 
@@ -793,5 +796,25 @@ impl<'a> Parser<'a> {
 
         self.state = State::FlowMappingKey;
         Ok(self.empty_scalar(span))
+    }
+}
+
+/// A node's anchor and tag, and where they start when present.
+struct NodeProps {
+    anchor: Option<String>,
+    tag: Option<(String, String)>,
+    start: Option<usize>,
+}
+
+impl NodeProps {
+    /// Widen `s` back to the properties, so the node's span covers them.
+    fn widen(&self, s: Span) -> Span {
+        match self.start {
+            Some(p) if p < s.start => Span {
+                start: p,
+                end: s.end,
+            },
+            _ => s,
+        }
     }
 }

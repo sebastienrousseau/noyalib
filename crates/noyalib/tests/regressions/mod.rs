@@ -7,6 +7,7 @@
 
 #![allow(missing_docs)]
 
+mod anchored_empty_sequence_item;
 mod comment_printable;
 mod competitive_features;
 mod competitive_features_full;
