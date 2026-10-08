@@ -52,7 +52,7 @@ fuzz_target!(|data: &[u8]| {
         return;
     };
 
-    if !numeric_equal(&noya, &syml) {
+    if !numeric_equal(&noya, &syml) && !anchor_name_outside_libyaml(s) {
         // serde_yaml_ng vs noyalib divergence — abort so libfuzzer
         // saves the input as a unique crash artefact.
         let n = serde_json::to_string(&noya).unwrap_or_default();
@@ -82,22 +82,7 @@ fn numeric_equal(a: &serde_json::Value, b: &serde_json::Value) -> bool {
             av.len() == bv.len()
                 && av.iter().zip(bv.iter()).all(|(x, y)| numeric_equal(x, y))
         }
-        (V::Object(am), V::Object(bm)) => {
-            // Known policy divergence: `<<` merge keys. noyalib
-            // resolves the merge (configurably; extensively covered
-            // by its own merge_key test suites); serde_yaml_ng keeps
-            // the literal entry. Any mapping where either side still
-            // carries a `<<` key is in that divergent territory, so
-            // it is excluded from the diff rather than half-modelled
-            // here.
-            if am.contains_key("<<") || bm.contains_key("<<") {
-                return true;
-            }
-            am.len() == bm.len()
-                && am
-                    .iter()
-                    .all(|(k, v)| bm.get(k).is_some_and(|w| numeric_equal(v, w)))
-        }
+        (V::Object(am), V::Object(bm)) => object_equal(am, bm),
         // Known serde_yaml_ng quirk: a comment-shaped line inside a
         // block scalar's content is stripped as if it were a comment,
         // where the spec reads it as content (`>\n#` is the folded
@@ -144,6 +129,57 @@ fn numeric_equal(a: &serde_json::Value, b: &serde_json::Value) -> bool {
         }
         _ => a == b,
     }
+}
+
+/// Mapping equality under `numeric_equal`.
+fn object_equal(
+    am: &serde_json::Map<String, serde_json::Value>,
+    bm: &serde_json::Map<String, serde_json::Value>,
+) -> bool {
+    // Known policy divergence: `<<` merge keys. noyalib
+    // resolves the merge (configurably; extensively covered
+    // by its own merge_key test suites); serde_yaml_ng keeps
+    // the literal entry. Any mapping where either side still
+    // carries a `<<` key is in that divergent territory, so
+    // it is excluded from the diff rather than half-modelled
+    // here.
+    if am.contains_key("<<") || bm.contains_key("<<") {
+        return true;
+    }
+    am.len() == bm.len()
+        && am
+            .iter()
+            .all(|(k, v)| lookup_key(bm, k).is_some_and(|w| numeric_equal(v, w)))
+}
+
+/// Look `k` up in `m`, tolerating one known serde_yaml_ng quirk: it
+/// reads `?foo` as an explicit-key indicator and drops the `?`, where
+/// YAML 1.2 (ns-plain-first; yaml-test-suite 652Z) reads the plain
+/// key "?foo". noyalib's reading is pinned in
+/// tests/regressions/competitor_bugs.rs.
+fn lookup_key<'m>(
+    m: &'m serde_json::Map<String, serde_json::Value>,
+    k: &str,
+) -> Option<&'m serde_json::Value> {
+    m.get(k)
+        .or_else(|| k.strip_prefix('?').and_then(|s| m.get(s)))
+        .or_else(|| m.get(&format!("?{k}")))
+}
+
+/// Known serde_yaml_ng quirk: like libyaml, it allows only
+/// `[A-Za-z0-9_-]` in an anchor name and ends the name at anything
+/// else, so `&a:` becomes a mapping with an empty key and `&r??` the
+/// string "??". YAML 1.2 §6.9.2 allows any ns-char except the flow
+/// indicators, so noyalib anchors an empty node named `a:` or `r??`.
+/// The divergence is structural, so such inputs are dropped rather
+/// than modelled. noyalib's reading is pinned in
+/// tests/regressions/competitor_bugs.rs.
+fn anchor_name_outside_libyaml(s: &str) -> bool {
+    s.split('&').skip(1).any(|rest| {
+        rest.chars()
+            .take_while(|c| !c.is_whitespace() && !",[]{}".contains(*c))
+            .any(|c| !(c.is_ascii_alphanumeric() || c == '_' || c == '-'))
+    })
 }
 
 /// Every non-empty line starts with `#` — the shape serde_yaml_ng

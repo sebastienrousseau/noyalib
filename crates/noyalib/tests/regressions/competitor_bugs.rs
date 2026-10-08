@@ -365,6 +365,10 @@ fn anchor_name_may_contain_colon() {
     // The anchored node can still be a scalar that follows.
     let v: Value = from_str("&a: 1").unwrap();
     assert_eq!(v.as_i64(), Some(1));
+    // Same for `?` (artifact `&r??`): ng ends the name at `r` and
+    // reads the string "??"; the spec reads an anchor named `r??`.
+    let v: Value = from_str("&r??\n").unwrap();
+    assert!(v.is_null());
 }
 
 #[test]
@@ -378,4 +382,17 @@ fn signed_binary_literal_is_a_string_in_yaml_12() {
     assert_eq!(v.as_str(), Some("-0b0"));
     let v: Value = from_str("0b11").unwrap();
     assert_eq!(v.as_str(), Some("0b11"));
+}
+
+#[test]
+fn question_mark_may_start_a_flow_key() {
+    // Found by fuzz_diff; the input is yaml-test-suite 652Z verbatim.
+    // serde_yaml_ng reads `?foo` as the explicit-key indicator and
+    // yields the key "foo". Per YAML 1.2 §7.3.3 (ns-plain-first), a
+    // `?` followed by a safe non-space character starts a plain
+    // scalar, so the key is "?foo".
+    let v: Value = from_str("{ ?foo: bar,\nbar: 42\n}\n").unwrap();
+    assert_eq!(v["?foo"].as_str(), Some("bar"));
+    assert_eq!(v["bar"].as_i64(), Some(42));
+    assert!(v.get("foo").is_none());
 }
