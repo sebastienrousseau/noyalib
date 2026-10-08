@@ -88,11 +88,9 @@ fn numeric_equal(a: &serde_json::Value, b: &serde_json::Value) -> bool {
         // block scalar's content is stripped as if it were a comment,
         // where the spec reads it as content (`>\n#` is the folded
         // scalar "#\n"; auto-detected indent 0 is valid content for a
-        // root node). noyalib's reading is pinned in
-        // tests/competitor_bugs.rs.
-        (V::String(a), V::String(b))
-            if (a.is_empty() && comment_shaped(b)) || (b.is_empty() && comment_shaped(a)) =>
-        {
+        // root node), and ng ends the scalar there. noyalib's reading
+        // is pinned in tests/competitor_bugs.rs.
+        (V::String(a), V::String(b)) if cut_at_comment_line(a, b) || cut_at_comment_line(b, a) => {
             true
         }
         // Known serde_yaml_ng quirk: block-scalar chomping — the
@@ -207,10 +205,12 @@ fn is_yaml_11_int(s: &str) -> bool {
         || unsigned.unwrap_or(s).starts_with("0b")
 }
 
-/// Every non-empty line starts with `#` — the shape serde_yaml_ng
-/// strips out of block-scalar content as if it were comments.
-fn comment_shaped(s: &str) -> bool {
-    !s.is_empty() && s.lines().all(|l| l.is_empty() || l.starts_with('#'))
+/// `cut` is `full` up to the start of a line that begins with `#`:
+/// the shape serde_yaml_ng leaves when it reads that line of a block
+/// scalar as a comment and drops it with everything after it.
+fn cut_at_comment_line(full: &str, cut: &str) -> bool {
+    full.strip_prefix(cut).is_some_and(|rest| rest.starts_with('#'))
+        && (cut.is_empty() || cut.ends_with('\n'))
 }
 
 /// `[-+]?0[0-9]+` — a decimal integer spelling with a leading zero.

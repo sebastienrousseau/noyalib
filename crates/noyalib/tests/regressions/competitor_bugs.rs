@@ -350,6 +350,11 @@ fn comment_shaped_line_is_block_scalar_content() {
     assert_eq!(v.as_str(), Some("#\n"));
     let v: Value = from_str("|\n#x\n#y\n").unwrap();
     assert_eq!(v.as_str(), Some("#x\n#y\n"));
+    // After leading breaks too (artifact `|+` with CR breaks): ng
+    // ends the scalar at the `#` line; it is content.
+    // The first `\r` ends the header; one empty line precedes `#`.
+    let v: Value = from_str("|+\r\r#\r\r").unwrap();
+    assert_eq!(v.as_str(), Some("\n#\n\n"));
 }
 
 #[test]
