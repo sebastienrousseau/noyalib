@@ -53,7 +53,7 @@ fuzz_target!(|data: &[u8]| {
     };
 
     if !numeric_equal(&noya, &syml) && !anchor_name_outside_libyaml(s)
-        && !flow_entry_starts_with_question(s) {
+        && !flow_entry_starts_with_indicator(s) {
         // serde_yaml_ng vs noyalib divergence — abort so libfuzzer
         // saves the input as a unique crash artefact.
         let n = serde_json::to_string(&noya).unwrap_or_default();
@@ -186,17 +186,19 @@ fn anchor_name_outside_libyaml(s: &str) -> bool {
     })
 }
 
-/// Known serde_yaml_ng quirk: at the start of a flow entry it reads a
-/// `?` followed by a non-space as the explicit-key indicator, so
-/// `[?x]` becomes `[{"x": null}]`. YAML 1.2 (ns-plain-first;
-/// yaml-test-suite 652Z) reads the plain scalar "?x". A flow mapping
-/// key is tolerated by `lookup_key`; any other flow entry changes the
-/// shape, so such inputs are dropped.
-fn flow_entry_starts_with_question(s: &str) -> bool {
+/// Known serde_yaml_ng quirks at the start of a flow entry: it reads
+/// a `?` followed by a non-space as the explicit-key indicator, so
+/// `[?x]` becomes `[{"x": null}]` where YAML 1.2 (ns-plain-first;
+/// yaml-test-suite 652Z) reads the plain scalar "?x"; and it cannot
+/// read an entry whose key is empty (`[: x]`, `[?, :]`), which the
+/// spec allows (yaml-test-suite CFD4). A flow mapping key with a `?`
+/// is tolerated by `lookup_key`; any other such entry changes the
+/// shape, so those inputs are dropped.
+fn flow_entry_starts_with_indicator(s: &str) -> bool {
     let b = s.as_bytes();
     b.iter().enumerate().any(|(i, &c)| {
-        c == b'?'
-            && b.get(i + 1).is_some_and(|n| !n.is_ascii_whitespace())
+        let question = c == b'?' && b.get(i + 1).is_some_and(|n| !n.is_ascii_whitespace());
+        (question || c == b':')
             && b[..i]
                 .iter()
                 .rev()

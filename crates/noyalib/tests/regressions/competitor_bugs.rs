@@ -452,3 +452,22 @@ fn overflowing_float_literal_is_infinity() {
     let v: Value = from_str("-3e999").unwrap();
     assert_eq!(v.as_f64(), Some(f64::NEG_INFINITY));
 }
+
+#[test]
+fn empty_key_entries_in_flow_sequences() {
+    // Found by fuzz_diff (input `[?\n\r,\r\r:]`): libyaml cannot read
+    // an empty-key entry in a flow sequence and serde_yaml_ng drops one.
+    // The spec allows it (yaml-test-suite CFD4).
+    let v: Value = from_str("[?, :]").unwrap();
+    assert_eq!(v.as_sequence().map(Vec::len), Some(2), "{v:?}");
+    // A `Value` spells the empty (null) key canonically.
+    let v: Value = from_str("[a, : x]").unwrap();
+    assert_eq!(v[1]["null"].as_str(), Some("x"), "{v:?}");
+}
+
+#[test]
+fn tab_before_a_root_scalar_is_separation() {
+    // Found by fuzz_serde_yaml_compat (input `\t$0`).
+    let v: Value = from_str("\t$0").unwrap();
+    assert_eq!(v.as_str(), Some("$0"));
+}

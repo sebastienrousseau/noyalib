@@ -121,16 +121,14 @@ fn known_reject_divergence(s: &str) -> bool {
     if s.lines().any(|l| l.trim_start().starts_with(':')) {
         return true;
     }
-    // A line holding only white space (tabs included) or a comment is
-    // an l-comment line (§6.6): `\t` alone is a valid empty stream, and
-    // `k: 1\n\t# note` a valid mapping. libyaml rejects a tab that
-    // starts such a line ("cannot start any token"); the spec, and
-    // noyalib, accept it.
-    if s.lines().any(|l| {
-        let t = l.trim_start_matches(' ');
-        let rest = t.trim_start_matches([' ', '\t']);
-        t.starts_with('\t') && (rest.is_empty() || rest.starts_with('#'))
-    }) {
+    // libyaml rejects a tab that starts a line ("cannot start any
+    // token"). The spec reads it as separation white space wherever it
+    // is not indentation: a line of only white space or a comment is an
+    // l-comment line (§6.6), so `\t` alone is a valid empty stream, and
+    // a tab before a node is s-separate-in-line, so `\t$0` is the
+    // scalar "$0" (yaml-test-suite 6CA3 indents a flow node so).
+    // noyalib follows the spec and rejects tab indentation itself.
+    if s.lines().any(|l| l.trim_start_matches(' ').starts_with('\t')) {
         return true;
     }
     // A root-level block scalar may hold content at column 0: its
