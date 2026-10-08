@@ -395,4 +395,8 @@ fn question_mark_may_start_a_flow_key() {
     assert_eq!(v["?foo"].as_str(), Some("bar"));
     assert_eq!(v["bar"].as_i64(), Some(42));
     assert!(v.get("foo").is_none());
+    // The same rule in a flow sequence (artifact `[?=?)\r@]`): ng
+    // builds a single-pair mapping, the spec reads one plain scalar.
+    let v: Value = from_str("[?=?)\r@]").unwrap();
+    assert_eq!(v[0].as_str(), Some("?=?) @"));
 }

@@ -52,7 +52,8 @@ fuzz_target!(|data: &[u8]| {
         return;
     };
 
-    if !numeric_equal(&noya, &syml) && !anchor_name_outside_libyaml(s) {
+    if !numeric_equal(&noya, &syml) && !anchor_name_outside_libyaml(s)
+        && !flow_entry_starts_with_question(s) {
         // serde_yaml_ng vs noyalib divergence — abort so libfuzzer
         // saves the input as a unique crash artefact.
         let n = serde_json::to_string(&noya).unwrap_or_default();
@@ -117,16 +118,9 @@ fn numeric_equal(a: &serde_json::Value, b: &serde_json::Value) -> bool {
             // resolved (f64 parsing accepts the leading zeros).
             s.parse::<f64>().ok() == n.as_f64()
         }
-        // Known resolver-scheme divergence: a *signed* radix integer
-        // (`+0x1F`, `-0o17`). YAML 1.2's core schema has no sign in
-        // its hex/octal patterns, so noyalib reads a string; the
-        // 1.1-flavoured resolver accepts the sign and reads a number.
-        (V::Number(_), V::String(s)) | (V::String(s), V::Number(_))
-            if s.strip_prefix(['-', '+'])
-                .is_some_and(|r| r.starts_with("0x") || r.starts_with("0o")) =>
-        {
-            true
-        }
+        // Known resolver-scheme divergence: integer spellings only the
+        // 1.1-flavoured resolver reads as numbers; see `is_yaml_11_int`.
+        (V::Number(_), V::String(s)) | (V::String(s), V::Number(_)) if is_yaml_11_int(s) => true,
         _ => a == b,
     }
 }
@@ -180,6 +174,37 @@ fn anchor_name_outside_libyaml(s: &str) -> bool {
             .take_while(|c| !c.is_whitespace() && !",[]{}".contains(*c))
             .any(|c| !(c.is_ascii_alphanumeric() || c == '_' || c == '-'))
     })
+}
+
+/// Known serde_yaml_ng quirk: at the start of a flow entry it reads a
+/// `?` followed by a non-space as the explicit-key indicator, so
+/// `[?x]` becomes `[{"x": null}]`. YAML 1.2 (ns-plain-first;
+/// yaml-test-suite 652Z) reads the plain scalar "?x". A flow mapping
+/// key is tolerated by `lookup_key`; any other flow entry changes the
+/// shape, so such inputs are dropped.
+fn flow_entry_starts_with_question(s: &str) -> bool {
+    let b = s.as_bytes();
+    b.iter().enumerate().any(|(i, &c)| {
+        c == b'?'
+            && b.get(i + 1).is_some_and(|n| !n.is_ascii_whitespace())
+            && b[..i]
+                .iter()
+                .rev()
+                .find(|p| !p.is_ascii_whitespace())
+                .is_some_and(|p| matches!(p, b'[' | b'{' | b','))
+    })
+}
+
+/// An integer spelling YAML 1.2's core schema leaves a string and
+/// serde_yaml_ng's 1.1-flavoured resolver reads as a number: a signed
+/// radix integer (`+0x1F`, `-0o17`; the core hex and octal patterns
+/// carry no sign) or any binary literal (`0b11`, `-0b0`; the core
+/// schema has no binary form). noyalib's reading of the binary form is
+/// pinned in tests/regressions/competitor_bugs.rs.
+fn is_yaml_11_int(s: &str) -> bool {
+    let unsigned = s.strip_prefix(['-', '+']);
+    unsigned.is_some_and(|r| r.starts_with("0x") || r.starts_with("0o"))
+        || unsigned.unwrap_or(s).starts_with("0b")
 }
 
 /// Every non-empty line starts with `#` — the shape serde_yaml_ng
