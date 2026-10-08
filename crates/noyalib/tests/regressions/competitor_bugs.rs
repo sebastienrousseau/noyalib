@@ -471,3 +471,13 @@ fn tab_before_a_root_scalar_is_separation() {
     let v: Value = from_str("\t$0").unwrap();
     assert_eq!(v.as_str(), Some("$0"));
 }
+
+#[test]
+fn comment_touching_a_block_header_is_an_error() {
+    // Found by fuzz_serde_yaml_compat (input `|#`): libyaml takes the
+    // `#` as a comment. It needs white space before it (YAML 1.2.2
+    // §6.6; yaml-test-suite X4QW is the error case).
+    assert!(from_str::<Value>("|#").is_err());
+    assert!(from_str::<Value>("a: >-# c\n  x\n").is_err());
+    assert!(from_str::<Value>("a: > # c\n  x\n").is_ok());
+}

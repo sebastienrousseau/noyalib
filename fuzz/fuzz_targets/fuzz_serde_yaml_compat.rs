@@ -131,11 +131,26 @@ fn known_reject_divergence(s: &str) -> bool {
     if s.lines().any(|l| l.trim_start_matches(' ').starts_with('\t')) {
         return true;
     }
+    // A `#` straight after a block scalar header (`|#`, `>-#`) is not a
+    // comment: §6.6 wants white space before it, and yaml-test-suite
+    // X4QW is the error case. libyaml reads it as one.
+    if block_header_touches_comment(s) {
+        return true;
+    }
     // A root-level block scalar may hold content at column 0: its
     // parent indentation is -1 (yaml-test-suite FP8R, "Zero indented
     // block scalar"). libyaml ends the scalar at the first column-0
     // line and reads what follows as more of the stream.
     root_block_scalar_with_column_0_content(s)
+}
+
+/// A `|` or `>` with only indicators (`+`, `-`, digits) before a `#`.
+fn block_header_touches_comment(s: &str) -> bool {
+    s.match_indices(['|', '>']).any(|(i, _)| {
+        s[i + 1..]
+            .trim_start_matches(|c: char| c == '+' || c == '-' || c.is_ascii_digit())
+            .starts_with('#')
+    })
 }
 
 /// The document is a root block scalar (`|` or `>`, after an optional

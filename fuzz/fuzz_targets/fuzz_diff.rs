@@ -195,7 +195,9 @@ fn anchor_name_outside_libyaml(s: &str) -> bool {
 /// is tolerated by `lookup_key`; any other such entry changes the
 /// shape, so those inputs are dropped.
 fn flow_entry_starts_with_indicator(s: &str) -> bool {
-    let b = s.as_bytes();
+    // Look back past comments as well as white space.
+    let stripped = without_comments(s);
+    let b = stripped.as_bytes();
     b.iter().enumerate().any(|(i, &c)| {
         let question = c == b'?' && b.get(i + 1).is_some_and(|n| !n.is_ascii_whitespace());
         (question || c == b':')
@@ -217,6 +219,24 @@ fn is_yaml_11_int(s: &str) -> bool {
     let unsigned = s.strip_prefix(['-', '+']);
     unsigned.is_some_and(|r| r.starts_with("0x") || r.starts_with("0o"))
         || unsigned.unwrap_or(s).starts_with("0b")
+}
+
+/// `s` with every comment (`#` at a line start or after white space,
+/// to the end of the line) blanked to spaces, offsets unchanged.
+fn without_comments(s: &str) -> String {
+    let mut out = String::with_capacity(s.len());
+    let mut in_comment = false;
+    let mut prev_blank = true;
+    for c in s.chars() {
+        if c == '\n' || c == '\r' {
+            in_comment = false;
+        } else if c == '#' && prev_blank {
+            in_comment = true;
+        }
+        prev_blank = c.is_whitespace();
+        out.push(if in_comment { ' ' } else { c });
+    }
+    out
 }
 
 /// `cut` is `full` up to the start of a line that begins with `#`,
