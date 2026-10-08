@@ -1551,6 +1551,97 @@ struct StreamingMapAccess<'a, 'de> {
     seen_typed: FxHashMap<String, Value>,
 }
 
+impl StreamingMapAccess<'_, '_> {
+    /// Expand a plain `<<` key: its value (an alias or a sequence of
+    /// aliases) is spliced into this mapping through the replay stack.
+    fn expand_merge_key(&mut self) -> Result<()> {
+        self.de.skip_event()?;
+        // The value event is raw-read from the parser so an
+        // `Event::Alias` is visible without auto-resolution.
+        match self.de.peek_parser_event()? {
+            Event::Alias { anchor, span } => {
+                let name = anchor.clone();
+                let start = span.start;
+                self.de.current = None;
+                self.de
+                    .inject_multi_merge_mapping_contents(&[(name, start)])?;
+            }
+            Event::SequenceStart { .. } => {
+                self.de.skip_event()?;
+                let mut sources = Vec::new();
+                loop {
+                    match self.de.peek_parser_event()? {
+                        Event::SequenceEnd { .. } => {
+                            self.de.skip_event()?;
+                            break;
+                        }
+                        Event::Alias { anchor, span } => {
+                            sources.push((anchor.clone(), span.start));
+                            self.de.skip_event()?;
+                        }
+                        _ => return Err(self.de.fallback()),
+                    }
+                }
+                self.de.inject_multi_merge_mapping_contents(&sources)?;
+            }
+            _ => return Err(self.de.fallback()),
+        }
+        Ok(())
+    }
+
+    /// Apply the key-collision guard and `DuplicateKeyPolicy` to the
+    /// next key. Returns `false` when the policy skipped the entry.
+    fn admit_key(&mut self, key_info: Option<(String, ScalarStyle, bool)>) -> Result<bool> {
+        let Some((raw, style, untagged)) = key_info else {
+            return Ok(true);
+        };
+        // Distinct-typed key-collision guard (parity with the AST loader):
+        // two keys whose canonical map-key string matches but whose typed
+        // Value differs (`1` vs `"1"`, `~` vs `"null"`, `true` vs `"true"`)
+        // are a `KeyCollision`, independent of `DuplicateKeyPolicy`. This is
+        // the guard the streaming path lacked, so `from_str::<map/struct>`
+        // and `from_str_borrowing::<Value>` silently collapsed such keys.
+        // Untagged scalar keys only; tagged keys keep their prior behaviour.
+        // Duplicates are judged on the same canonical form, so `~` and
+        // `null` are one key, as the AST loader judges them; the key
+        // string the visitor receives is still the text as written.
+        let mut identity = None;
+        if untagged {
+            let typed = scalar_to_value(self.de.resolve_scalar(&raw, style));
+            if let Some(canon) = crate::parser::value_to_key_string(typed.clone()) {
+                match self.seen_typed.get(&canon) {
+                    Some(prev) if *prev != typed => {
+                        return Err(Error::KeyCollision(canon));
+                    }
+                    Some(_) => {}
+                    None => {
+                        let _ = self.seen_typed.insert(canon.clone(), typed);
+                    }
+                }
+                identity = Some(canon);
+            }
+        }
+        let policy = self.de.config.duplicate_key_policy;
+        if policy == crate::parser::InternalDuplicateKeyPolicy::Last {
+            return Ok(true);
+        }
+        let identity = identity.unwrap_or_else(|| raw.clone());
+        if self.seen_keys.insert(identity) {
+            return Ok(true);
+        }
+        match policy {
+            crate::parser::InternalDuplicateKeyPolicy::Error => Err(Error::DuplicateKey(raw)),
+            crate::parser::InternalDuplicateKeyPolicy::First => {
+                // Skip duplicate key + value.
+                self.de.skip_value()?;
+                self.de.skip_value()?;
+                Ok(false)
+            }
+            _ => Ok(true),
+        }
+    }
+}
+
 impl<'de> serde_core::de::MapAccess<'de> for StreamingMapAccess<'_, 'de> {
     type Error = Error;
     fn next_key_seed<K>(&mut self, seed: K) -> Result<Option<K::Value>>
@@ -1579,49 +1670,13 @@ impl<'de> serde_core::de::MapAccess<'de> for StreamingMapAccess<'_, 'de> {
                 self.finished = true;
                 return Ok(None);
             }
-            if let Event::Scalar {
-                value,
-                style: ScalarStyle::Plain,
-                ..
-            } = ev
+            if matches!(ev, Event::Scalar { value, style: ScalarStyle::Plain, .. } if value == "<<")
             {
-                if value == "<<" {
-                    if self.has_emitted_key {
-                        return Err(self.de.fallback());
-                    }
-                    self.de.skip_event()?;
-                    // The value event is raw-read from the parser so an
-                    // `Event::Alias` is visible without auto-resolution.
-                    match self.de.peek_parser_event()? {
-                        Event::Alias { anchor, span } => {
-                            let name = anchor.clone();
-                            let start = span.start;
-                            self.de.current = None;
-                            self.de
-                                .inject_multi_merge_mapping_contents(&[(name, start)])?;
-                        }
-                        Event::SequenceStart { .. } => {
-                            self.de.skip_event()?;
-                            let mut sources = Vec::new();
-                            loop {
-                                match self.de.peek_parser_event()? {
-                                    Event::SequenceEnd { .. } => {
-                                        self.de.skip_event()?;
-                                        break;
-                                    }
-                                    Event::Alias { anchor, span } => {
-                                        sources.push((anchor.clone(), span.start));
-                                        self.de.skip_event()?;
-                                    }
-                                    _ => return Err(self.de.fallback()),
-                                }
-                            }
-                            self.de.inject_multi_merge_mapping_contents(&sources)?;
-                        }
-                        _ => return Err(self.de.fallback()),
-                    }
-                    continue;
+                if self.has_emitted_key {
+                    return Err(self.de.fallback());
                 }
+                self.expand_merge_key()?;
+                continue;
             }
             // Enforce duplicate-key policy when not `Last` (the serde
             // default). The key is peeked as a raw scalar string so policy
@@ -1639,48 +1694,8 @@ impl<'de> serde_core::de::MapAccess<'de> for StreamingMapAccess<'_, 'de> {
             } else {
                 None
             };
-            // Distinct-typed key-collision guard (parity with the AST loader):
-            // two keys whose canonical map-key string matches but whose typed
-            // Value differs (`1` vs `"1"`, `~` vs `"null"`, `true` vs `"true"`)
-            // are a `KeyCollision`, independent of `DuplicateKeyPolicy`. This is
-            // the guard the streaming path lacked, so `from_str::<map/struct>`
-            // and `from_str_borrowing::<Value>` silently collapsed such keys.
-            // Untagged scalar keys only; tagged keys keep their prior behaviour.
-            if let Some((ref raw, style, true)) = key_info {
-                let typed = scalar_to_value(self.de.resolve_scalar(raw, style));
-                if let Some(canon) = crate::parser::value_to_key_string(typed.clone()) {
-                    match self.seen_typed.get(&canon) {
-                        Some(prev) if *prev != typed => {
-                            return Err(Error::KeyCollision(canon));
-                        }
-                        Some(_) => {}
-                        None => {
-                            let _ = self.seen_typed.insert(canon, typed);
-                        }
-                    }
-                }
-            }
-            let key_str_opt = key_info.map(|(s, _, _)| s);
-            let policy = self.de.config.duplicate_key_policy;
-            if let Some(key_str) = key_str_opt {
-                if policy != crate::parser::InternalDuplicateKeyPolicy::Last {
-                    if self.seen_keys.contains(&key_str) {
-                        match policy {
-                            crate::parser::InternalDuplicateKeyPolicy::Error => {
-                                return Err(Error::DuplicateKey(key_str));
-                            }
-                            crate::parser::InternalDuplicateKeyPolicy::First => {
-                                // Skip duplicate key + value.
-                                self.de.skip_value()?;
-                                self.de.skip_value()?;
-                                continue;
-                            }
-                            _ => {}
-                        }
-                    } else {
-                        let _ = self.seen_keys.insert(key_str);
-                    }
-                }
+            if !self.admit_key(key_info)? {
+                continue;
             }
             self.key_count += 1;
             if self.key_count > self.de.config.max_mapping_keys {

@@ -10,6 +10,7 @@
 mod competitive_features;
 mod competitive_features_full;
 mod competitor_bugs;
+mod duplicate_key_identity;
 mod feature_matrix;
 mod fmt;
 #[cfg(feature = "strict-deserialise")]
@@ -17,6 +18,7 @@ mod issue_239;
 mod issue_46;
 mod key_collision_streaming;
 mod leading_comment_repro;
+
 mod phase1_features;
 mod phase2;
 mod phase3;
