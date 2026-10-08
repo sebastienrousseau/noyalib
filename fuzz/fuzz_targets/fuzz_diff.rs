@@ -144,10 +144,11 @@ fn object_equal(
             .all(|(k, v)| lookup_key(bm, k).is_some_and(|w| numeric_equal(v, w)))
 }
 
-/// Look `k` up in `m`, tolerating one known serde_yaml_ng quirk: it
-/// reads `?foo` as an explicit-key indicator and drops the `?`, where
-/// YAML 1.2 (ns-plain-first; yaml-test-suite 652Z) reads the plain
-/// key "?foo". noyalib's reading is pinned in
+/// Look `k` up in `m`, tolerating two known serde_yaml_ng quirks on
+/// keys: it reads `?foo` as an explicit-key indicator and drops the
+/// `?`, where YAML 1.2 (ns-plain-first; yaml-test-suite 652Z) reads
+/// the plain key "?foo"; and a block-scalar key ending the input loses
+/// its clipped final line break. noyalib's readings are pinned in
 /// tests/regressions/competitor_bugs.rs.
 fn lookup_key<'m>(
     m: &'m serde_json::Map<String, serde_json::Value>,
@@ -156,6 +157,9 @@ fn lookup_key<'m>(
     m.get(k)
         .or_else(|| k.strip_prefix('?').and_then(|s| m.get(s)))
         .or_else(|| m.get(&format!("?{k}")))
+        // The block-scalar clip quirk (see `numeric_equal`) on a key.
+        .or_else(|| k.strip_suffix('\n').and_then(|s| m.get(s)))
+        .or_else(|| m.get(&format!("{k}\n")))
 }
 
 /// Known serde_yaml_ng quirk: like libyaml, it allows only

@@ -113,9 +113,28 @@ fn known_reject_divergence(s: &str) -> bool {
     // `k: 1\n\t# note` a valid mapping. libyaml rejects a tab that
     // starts such a line ("cannot start any token"); the spec, and
     // noyalib, accept it.
-    s.lines().any(|l| {
+    if s.lines().any(|l| {
         let t = l.trim_start_matches(' ');
         let rest = t.trim_start_matches([' ', '\t']);
         t.starts_with('\t') && (rest.is_empty() || rest.starts_with('#'))
-    })
+    }) {
+        return true;
+    }
+    // A root-level block scalar may hold content at column 0: its
+    // parent indentation is -1 (yaml-test-suite FP8R, "Zero indented
+    // block scalar"). libyaml ends the scalar at the first column-0
+    // line and reads what follows as more of the stream.
+    root_block_scalar_with_column_0_content(s)
+}
+
+/// The document is a root block scalar (`|` or `>`, after an optional
+/// `---`) with a non-blank line at column 0 below its header.
+fn root_block_scalar_with_column_0_content(s: &str) -> bool {
+    let mut lines = s.lines().skip_while(|l| l.trim().is_empty());
+    let Some(header) = lines.next() else {
+        return false;
+    };
+    let header = header.strip_prefix("---").unwrap_or(header).trim_start();
+    header.starts_with(['|', '>'])
+        && lines.any(|l| l.starts_with(|c: char| !c.is_whitespace()))
 }

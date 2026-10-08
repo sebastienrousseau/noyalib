@@ -421,3 +421,23 @@ fn tab_only_line_is_white_space() {
     let v: Value = from_str("k: 1\n\t\n\t# note\n").unwrap();
     assert_eq!(v["k"].as_i64(), Some(1));
 }
+
+#[test]
+fn root_block_scalar_content_may_start_at_column_0() {
+    // Found by fuzz_serde_yaml_compat (input `>-\n[`): libyaml ends a
+    // root block scalar at a column-0 line. A root node's parent
+    // indentation is -1, so column 0 is content (yaml-test-suite FP8R).
+    let v: Value = from_str(">-\n[").unwrap();
+    assert_eq!(v.as_str(), Some("["));
+}
+
+#[test]
+fn clipped_block_scalar_key_keeps_its_final_break() {
+    // Found by fuzz_diff: a folded key that ends the input keeps its
+    // clipped line break (as a value does, yaml-test-suite L24T); ng
+    // drops it.
+    let v: Value = from_str("? >\n  k\n").unwrap();
+    assert!(v.get("k\n").is_some(), "{v:?}");
+    let v: Value = from_str("? >\r\n  *z").unwrap();
+    assert!(v.get("*z\n").is_some(), "{v:?}");
+}
