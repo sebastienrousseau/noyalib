@@ -23,11 +23,20 @@
 # threshold (patch / minor bumps only — major version bumps
 # still require human review). The maintainer still hits the
 # merge button; this just satisfies the approval requirement.
+#
+# Trigger and author check, since v0.0.55: `pull_request`, not
+# `pull_request_target`, and the PR author, not `github.actor`. A
+# Dependabot-triggered `pull_request` run may be granted write scopes
+# through `permissions:` below, so the privileged trigger (which runs
+# in the base repository's context for any PR, forks included) is not
+# needed. `github.actor` is whoever caused the event, which is not
+# always the PR author (a maintainer re-running the job, for one);
+# the PR's user login is.
 
 name: Auto-approve Dependabot
 
 on:
-  pull_request_target:
+  pull_request:
     types: [opened, reopened, synchronize]
 
 permissions:
@@ -37,7 +46,7 @@ jobs:
   auto-approve:
     name: Auto-approve patch + minor Dependabot bumps
     runs-on: ubuntu-latest
-    if: github.actor == 'dependabot[bot]'
+    if: github.event.pull_request.user.login == 'dependabot[bot]'
     permissions:
       pull-requests: write
       contents: read
@@ -52,7 +61,8 @@ jobs:
       # Major bumps require explicit human review and are skipped.
       - name: Approve (patch / minor only)
         if: steps.meta.outputs.update-type == 'version-update:semver-patch' || steps.meta.outputs.update-type == 'version-update:semver-minor'
-        run: gh pr review --approve "$PR_URL" -b "Auto-approved by Dependabot policy — ${{ steps.meta.outputs.update-type }}. Major-version bumps require human review."
+        run: gh pr review --approve "$PR_URL" -b "Auto-approved by Dependabot policy (${UPDATE_TYPE}). Major-version bumps require human review."
         env:
           PR_URL: ${{ github.event.pull_request.html_url }}
+          UPDATE_TYPE: ${{ steps.meta.outputs.update-type }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -54,10 +54,12 @@ jobs:
       CARGO_TARGET_DIR: ${{ github.workspace }}/target-readme-examples
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: dtolnay/rust-toolchain@7e38f4b43b4db5c8dd498af069a4f6196df1d067 # master
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@7e38f4b43b4db5c8dd498af069a4f6196df1d067
         with:
           toolchain: stable
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
         with:
           workspaces: ". -> target-readme-examples"
           key: readme-examples
@@ -65,6 +67,8 @@ jobs:
         # One scratch build per file. A file with no rust blocks is
         # reported as such rather than skipped silently, so a doc that
         # stops being checked because its blocks were renamed shows up.
+        env:
+          FILES: ${{ inputs.files }}
         run: |
           set -euo pipefail
           failed=0
@@ -72,5 +76,5 @@ jobs:
             [ -n "${f}" ] || continue
             echo "── ${f} ──"
             README="${f}" bash scripts/check-readme-examples.sh || failed=1
-          done <<< "${{ inputs.files }}"
+          done <<< "${FILES}"
           exit "${failed}"

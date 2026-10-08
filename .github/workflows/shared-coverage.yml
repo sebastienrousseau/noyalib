@@ -65,11 +65,13 @@ jobs:
       CARGO_TARGET_DIR: ${{ github.workspace }}/target-coverage
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: dtolnay/rust-toolchain@7e38f4b43b4db5c8dd498af069a4f6196df1d067 # master
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@7e38f4b43b4db5c8dd498af069a4f6196df1d067
         with:
           toolchain: nightly
           components: llvm-tools-preview
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
         with:
           workspaces: ". -> target-coverage"
           key: coverage-nightly
@@ -80,6 +82,10 @@ jobs:
       - name: "Coverage report"
         env:
           NOYALIB_COVERAGE: '1'
+          IGNORE_REGEX: ${{ inputs.ignore-filename-regex }}
+          FAIL_UNDER_FUNCTIONS: ${{ inputs.fail-under-functions }}
+          FAIL_UNDER_LINES: ${{ inputs.fail-under-lines }}
+          FAIL_UNDER_REGIONS: ${{ inputs.fail-under-regions }}
         # `cargo +nightly` is required because `rust-toolchain.toml`
         # pins stable; without `+nightly` the project default wins
         # and `feature(coverage_attribute)` (activated when
@@ -92,11 +98,11 @@ jobs:
           # repo (like this one post-workspace-split) may legitimately
           # have nothing to exclude.
           IGNORE_ARGS=()
-          if [ -n "${{ inputs.ignore-filename-regex }}" ]; then
-            IGNORE_ARGS+=(--ignore-filename-regex "${{ inputs.ignore-filename-regex }}")
+          if [ -n "$IGNORE_REGEX" ]; then
+            IGNORE_ARGS+=(--ignore-filename-regex "$IGNORE_REGEX")
           fi
           cargo +nightly llvm-cov --workspace --all-features --no-fail-fast \
             "${IGNORE_ARGS[@]}" \
-            --fail-under-functions ${{ inputs.fail-under-functions }} \
-            --fail-under-lines ${{ inputs.fail-under-lines }} \
-            --fail-under-regions ${{ inputs.fail-under-regions }}
+            --fail-under-functions "$FAIL_UNDER_FUNCTIONS" \
+            --fail-under-lines "$FAIL_UNDER_LINES" \
+            --fail-under-regions "$FAIL_UNDER_REGIONS"

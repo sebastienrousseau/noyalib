@@ -98,24 +98,36 @@ Every tagged release goes through three layers of supply-chain integrity:
 1. **SLSA Level 3 build provenance.** The `release.yml` workflow uses
    `actions/attest-build-provenance` to record the source commit, the
    builder identity, and the workflow invocation into the public Rekor
-   transparency log. Verifiable from any clone of the repo:
+   transparency log. Pin the workflow that produced the attestation
+   and the tag it ran on, not only the owner (any workflow in any
+   repository the owner controls can attest a file):
 
    ```sh
-   gh attestation verify --owner sebastienrousseau noyalib-0.0.1.crate
+   gh attestation verify noyalib-X.Y.Z.crate \
+     --repo sebastienrousseau/noyalib \
+     --signer-workflow sebastienrousseau/noyalib/.github/workflows/release.yml \
+     --source-ref refs/tags/vX.Y.Z \
+     --deny-self-hosted-runners
    ```
 
 2. **Keyless sigstore signing.** The same workflow uses `cosign`
    keyless signing (Fulcio + Rekor) to produce a `.bundle` alongside
-   every artefact. The certificate identity is bound to this repo and
-   this workflow; verifiers should pin both:
+   every artefact. The certificate identity is bound to this repo,
+   this workflow and the ref it ran on; verifiers should pin all three,
+   so only `release.yml` running on a release tag is accepted:
 
    ```sh
    cosign verify-blob \
-     --certificate-identity-regexp '^https://github\.com/sebastienrousseau/noyalib/' \
+     --certificate-identity-regexp '^https://github\.com/sebastienrousseau/noyalib/\.github/workflows/release\.yml@refs/tags/v[0-9]+\.[0-9]+\.[0-9]+$' \
      --certificate-oidc-issuer https://token.actions.githubusercontent.com \
-     --bundle noyalib-0.0.23.crate.bundle \
-     noyalib-0.0.23.crate
+     --bundle noyalib-X.Y.Z.crate.bundle \
+     noyalib-X.Y.Z.crate
    ```
+
+   > Until v0.0.55 this section pinned only the repository prefix
+   > (`^https://github\.com/sebastienrousseau/noyalib/`), which a
+   > signature from any workflow in this repository, on any branch,
+   > also satisfies.
 
    > Releases up to and including v0.0.23 shipped a `.bundle` rather
    > than the separate `.sig` / `.pem` this section used to describe.

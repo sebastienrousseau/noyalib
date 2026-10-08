@@ -1,0 +1,126 @@
+# SPDX-FileCopyrightText: 2026 Noyalib
+# SPDX-License-Identifier: MIT OR Apache-2.0
+
+name: shared / Verify release tag signature
+
+# Reusable release gate. On a `v*` tag it asserts four things before
+# anything is built from that tag:
+#
+#   1. the tag is annotated (a lightweight tag carries no signature);
+#   2. GitHub reports the tag signature as verified;
+#   3. the tagger is the expected release identity and the tag points
+#      at the commit this run is building;
+#   4. the signature verifies locally against a pinned allowed-signers
+#      list, so the signer is a known release key and not merely "some
+#      key registered to some account with that email".
+#
+# Checks 1 and 2 were the core's inline step up to v0.0.54. The
+# satellites had neither, and "verified" alone never said who signed.
+#
+# On any other ref (a workflow_dispatch dry run) the job succeeds
+# without checking, so callers can `needs:` it unconditionally.
+#
+# Rotating the release key: add the new key to `allowed-signers`
+# below, bump every caller's pin, then remove the old key.
+#
+# Consumers pin by SHA:
+#
+#   jobs:
+#     tag-signature:
+#       uses: sebastienrousseau/noyalib/.github/workflows/shared-tag-signature.yml@<sha>
+
+on:
+  workflow_call:
+    inputs:
+      tagger-email:
+        description: Email the annotated tag's tagger line must carry.
+        required: false
+        type: string
+        default: sebastienrousseau@users.noreply.github.com
+      allowed-signers:
+        description: >-
+          OpenSSH allowed_signers lines. The tag signature must verify
+          against one of these keys for `tagger-email`. Default: the
+          release-signing key that signed every core tag from v0.0.30
+          to v0.0.54 and every satellite's v0.0.54
+          (SHA256:f6FG+guRNtT3R36oQFS4oWCx1d10nm+BoaIL3Tkh1r4).
+        required: false
+        type: string
+        default: >-
+          sebastienrousseau@users.noreply.github.com namespaces="git"
+          ssh-ed25519
+          AAAAC3NzaC1lZDI1NTE5AAAAIDjGRQyeM79nAb4GHcpGzXMKq7HE3xyEOev4gVsnBN1e
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Verify tag signature and signer
+    runs-on: ubuntu-latest
+    steps:
+      - name: Not a release tag
+        if: ${{ !startsWith(github.ref, 'refs/tags/v') }}
+        run: echo "${GITHUB_REF} is not a v* tag; nothing to verify."
+
+      - name: Annotated, verified, expected tagger, expected commit
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAGGER_EMAIL: ${{ inputs.tagger-email }}
+        run: |
+          set -euo pipefail
+          REF_API="repos/${GITHUB_REPOSITORY}/git/ref/tags/${GITHUB_REF_NAME}"
+          OBJECT_TYPE=$(gh api "$REF_API" --jq '.object.type')
+          if [ "$OBJECT_TYPE" != "tag" ]; then
+            echo "::error::${GITHUB_REF_NAME} is not an annotated tag"
+            exit 1
+          fi
+          TAG_OBJECT=$(gh api "$REF_API" --jq '.object.sha')
+          TAG_JSON=$(gh api "repos/${GITHUB_REPOSITORY}/git/tags/${TAG_OBJECT}")
+          VERIFIED=$(jq -r '.verification.verified' <<<"$TAG_JSON")
+          if [ "$VERIFIED" != "true" ]; then
+            echo "::error::Tag signature is not verified: $(jq -r '.verification.reason' <<<"$TAG_JSON")"
+            exit 1
+          fi
+          TAGGER=$(jq -r '.tagger.email' <<<"$TAG_JSON")
+          if [ "$TAGGER" != "$TAGGER_EMAIL" ]; then
+            echo "::error::Tagger ${TAGGER} is not the release identity ${TAGGER_EMAIL}"
+            exit 1
+          fi
+          TARGET=$(jq -r '.object.sha' <<<"$TAG_JSON")
+          if [ "$TARGET" != "$GITHUB_SHA" ]; then
+            echo "::error::${GITHUB_REF_NAME} points at ${TARGET}, but this run builds ${GITHUB_SHA}"
+            exit 1
+          fi
+          echo "GitHub verified ${GITHUB_REF_NAME}, tagged by ${TAGGER}, at ${TARGET}"
+
+      - name: Signature verifies against the pinned release key
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          ALLOWED_SIGNERS: ${{ inputs.allowed-signers }}
+          TAGGER_EMAIL: ${{ inputs.tagger-email }}
+        run: |
+          set -euo pipefail
+          WORK="${RUNNER_TEMP}/tag-signature"
+          git init --quiet "$WORK"
+          cd "$WORK"
+          printf '%s\n' "$ALLOWED_SIGNERS" > allowed_signers
+          # Only the tag object is needed; no checkout, no credentials.
+          git fetch --quiet --no-tags --depth=1 \
+            "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}.git" \
+            "+refs/tags/${GITHUB_REF_NAME}:refs/tags/${GITHUB_REF_NAME}"
+          if ! OUT=$(git -c gpg.format=ssh \
+                         -c gpg.ssh.allowedSignersFile="${WORK}/allowed_signers" \
+                         verify-tag "${GITHUB_REF_NAME}" 2>&1); then
+            printf '%s\n' "$OUT"
+            echo "::error::${GITHUB_REF_NAME} is not signed by a pinned release key"
+            exit 1
+          fi
+          printf '%s\n' "$OUT"
+          # verify-tag succeeds for a known key even when the principal
+          # differs; require the expected principal by name.
+          if ! grep -qF "Good \"git\" signature for ${TAGGER_EMAIL} " <<<"$OUT"; then
+            echo "::error::${GITHUB_REF_NAME} is not signed as ${TAGGER_EMAIL}"
+            exit 1
+          fi

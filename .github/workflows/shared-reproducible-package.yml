@@ -1,0 +1,104 @@
+# SPDX-FileCopyrightText: 2026 Noyalib
+# SPDX-License-Identifier: MIT OR Apache-2.0
+
+name: shared / Reproduce source package
+
+# Reusable release gate: rebuild every `.crate` from a fresh checkout
+# in a separate job and require it to be byte-identical to the one the
+# caller's `artifacts` job built, signed and will publish. A difference
+# means the published package does not come from the tagged source
+# alone (a dirty tree, an injected file, a non-deterministic build).
+#
+# Moved here from the core's release.yml so every crate in the family
+# runs the same check; until v0.0.55 only the core did.
+#
+# The caller must have uploaded its packages in an artifact laid out as
+# `target/package/*.crate` (the shape every release.yml in the family
+# uses) and must call this workflow from the same run.
+#
+# Consumers pin by SHA:
+#
+#   jobs:
+#     reproducible:
+#       needs: artifacts
+#       uses: sebastienrousseau/noyalib/.github/workflows/shared-reproducible-package.yml@<sha>
+#       with:
+#         package-args: --all-features --allow-dirty
+
+on:
+  workflow_call:
+    inputs:
+      artifact-name:
+        description: Name of the caller's artifact holding target/package/*.crate.
+        required: false
+        type: string
+        default: release-artifacts
+      package-args:
+        description: >-
+          Arguments the caller's artifacts job passed to `cargo package`
+          (`--no-verify` is added here). They must match, or the rebuild
+          is not the same build.
+        required: false
+        type: string
+        default: --all-features
+
+permissions:
+  contents: read
+
+jobs:
+  rebuild:
+    name: Reproduce source package
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@7e38f4b43b4db5c8dd498af069a4f6196df1d067
+        with:
+          toolchain: stable
+
+      - name: Download release package
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: ${{ inputs.artifact-name }}
+          path: ${{ runner.temp }}/original
+
+      - name: Rebuild and compare package bytes
+        env:
+          PACKAGE_ARGS: ${{ inputs.package-args }}
+          ARTIFACT_NAME: ${{ inputs.artifact-name }}
+        run: |
+          set -euo pipefail
+          read -r -a ARGS <<< "$PACKAGE_ARGS"
+          REBUILT_TARGET="${RUNNER_TEMP}/rebuilt"
+          CARGO_TARGET_DIR="$REBUILT_TARGET" \
+            cargo package "${ARGS[@]}" --no-verify
+          ORIGINAL_DIR="${RUNNER_TEMP}/original/target/package"
+          REBUILT_DIR="${REBUILT_TARGET}/package"
+
+          shopt -s nullglob
+          ORIGINAL_FILES=("$ORIGINAL_DIR"/*.crate)
+          REBUILT_FILES=("$REBUILT_DIR"/*.crate)
+          if [ "${#ORIGINAL_FILES[@]}" -eq 0 ]; then
+            echo "::error::No .crate in the ${ARTIFACT_NAME} artifact"
+            exit 1
+          fi
+          if [ "${#ORIGINAL_FILES[@]}" -ne "${#REBUILT_FILES[@]}" ]; then
+            echo "::error::Rebuild produced a different crate count"
+            exit 1
+          fi
+
+          for ORIGINAL in "${ORIGINAL_FILES[@]}"; do
+            NAME=$(basename "$ORIGINAL")
+            REBUILT="${REBUILT_DIR}/${NAME}"
+            if [ ! -f "$REBUILT" ]; then
+              echo "::error::Rebuild did not produce ${NAME}"
+              exit 1
+            fi
+            if ! cmp --silent "$ORIGINAL" "$REBUILT"; then
+              echo "::error::Rebuilt ${NAME} is not byte-identical"
+              sha256sum "$ORIGINAL" "$REBUILT"
+              exit 1
+            fi
+            echo "Reproducible package: ${NAME}"
+          done

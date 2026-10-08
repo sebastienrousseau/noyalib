@@ -1,0 +1,60 @@
+# SPDX-FileCopyrightText: 2026 Noyalib
+# SPDX-License-Identifier: MIT OR Apache-2.0
+
+name: shared / Single publisher gate
+
+# Reusable gate: only `.github/workflows/release.yml` may publish.
+# Fails if any other workflow runs `cargo publish`, `npm publish`,
+# `vsce publish`, `mcp-publisher` or `docker/build-push-action`.
+#
+# Why: until v0.0.55 noyalib-mcp had a second workflow,
+# publish-mcp.yml, that pushed unsigned GHCR images and registered the
+# MCP server on every tag, racing the signed release.yml and always
+# winning the registry entry. Every control release.yml carries
+# (validation, signing, attestation, environments) is worth nothing
+# while another file can publish around it.
+#
+# Comment lines are skipped, so a workflow may still explain why it
+# does not publish. The patterns below are written so this file does
+# not match itself.
+#
+# Consumers pin by SHA:
+#
+#   jobs:
+#     single-publisher:
+#       uses: sebastienrousseau/noyalib/.github/workflows/shared-single-publisher.yml@<sha>
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: single publisher (release.yml only)
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: No publish step outside release.yml
+        run: |
+          set -euo pipefail
+          PATTERN='cargo[[:space:]]+publish|npm[[:space:]]+publish|vsce[[:space:]]+publish|mcp[-]publisher|docker/build[-]push[-]action'
+          HITS=$(grep -rnE --include='*.yml' --include='*.yaml' "$PATTERN" .github/workflows \
+            | grep -vE '^[^:]+:[0-9]+:[[:space:]]*#' \
+            | grep -v '^\.github/workflows/release\.yml:' || true)
+          if [ -n "$HITS" ]; then
+            while IFS= read -r hit; do
+              file=${hit%%:*}
+              rest=${hit#*:}
+              line=${rest%%:*}
+              echo "::error file=${file},line=${line}::only release.yml may publish"
+            done <<< "$HITS"
+            printf '%s\n' "$HITS"
+            exit 1
+          fi
+          echo "Only release.yml publishes."

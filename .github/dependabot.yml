@@ -72,6 +72,8 @@ updates:
     ignore:
       - dependency-name: "noyalib*"
       - dependency-name: "noya-cli"
+    cooldown:
+      default-days: 7
 
   # ── GitHub Actions ──────────────────────────────────────────────
   - package-ecosystem: github-actions
@@ -100,3 +102,5 @@ updates:
           - "dtolnay/*"
           - "Swatinem/*"
           - "taiki-e/*"
+    cooldown:
+      default-days: 7
