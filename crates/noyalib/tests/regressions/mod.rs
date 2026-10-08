@@ -33,4 +33,5 @@ mod review_fixes;
 mod set_fragment_containment;
 mod shaped_document_paths;
 mod type_mismatch_and_config_surface;
+mod typed_key_text;
 mod verbatim_tags;

@@ -15,6 +15,13 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   already did: `~` and `null`, `0x1F` and `31`, `True` and `true`. It
   compared the text as written, so `~: 1\nnull: 2` was refused as a
   `Value` and accepted as a map.
+- A typed parse reads a mapping key as it was written on every path.
+  A tag anywhere in the document moves a typed parse off the streaming
+  path, and the fallback spelled a non-string key in canonical form:
+  `0x1F` became "31", `~` became "null", and in YAML 1.1 mode `on`
+  became "true", so a struct field named `on` went missing. The key
+  text now comes from the source, as on the streaming path. A `Value`
+  still holds the canonical spelling (`0x1F` is "31"), unchanged.
 
 ### Changed
 
