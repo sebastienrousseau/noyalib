@@ -376,7 +376,9 @@ fn min_or_max(opt: Option<usize>) -> usize {
 /// one. The document frame and the outermost collection add a small
 /// constant.
 fn frame_limit(max_depth: usize) -> usize {
-    max_depth.saturating_mul(2).saturating_add(4)
+    crate::parser::budget::effective_max_depth(max_depth)
+        .saturating_mul(2)
+        .saturating_add(4)
 }
 
 struct Frame {

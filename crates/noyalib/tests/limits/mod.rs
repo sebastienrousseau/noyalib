@@ -10,6 +10,7 @@
 mod alias_depth;
 mod alias_expansion;
 mod budget_breach;
+mod depth_ceiling;
 mod dos_hardening;
 mod max_nodes_budget;
 mod multi_document_rejection;

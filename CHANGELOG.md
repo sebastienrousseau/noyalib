@@ -7,6 +7,20 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [v0.0.56] - Unreleased
 
+### Changed
+
+- **Breaking (parse behaviour):** nesting is capped at 256 levels on
+  every path, whatever `max_depth` says. Serializing, deserializing,
+  cloning, comparing, printing and dropping a `Value` recurse once per
+  level; with `max_depth` raised, or a `Value` read from another serde
+  format (which no `max_depth` applied to), a deep enough value
+  overflowed the stack and aborted the process. Measured on a 1 MiB
+  thread in a debug build, the serializer is the first to overflow and
+  completes 256 levels, so every operation now stays inside that stack.
+  `Value`'s `Deserialize` impl counts depth too, so `serde_json` and
+  other formats stop at the same ceiling. The default `max_depth` (128)
+  is unchanged.
+
 ## [v0.0.55] - 2026-10-08
 
 ### Fixed

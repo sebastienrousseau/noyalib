@@ -12,113 +12,148 @@ impl<'de> serde_core::Deserialize<'de> for Value {
     where
         D: serde_core::Deserializer<'de>,
     {
-        struct ValueVisitor;
+        serde_core::de::DeserializeSeed::deserialize(ValueSeed { depth: 0 }, deserializer)
+    }
+}
 
-        impl<'de> serde_core::de::Visitor<'de> for ValueVisitor {
-            type Value = Value;
+/// Deserializes one [`Value`] nested `depth` collections deep.
+///
+/// Every nested element goes through a seed one level deeper, so a
+/// `Value` read from any serde format, not only YAML, stops at
+/// [`MAX_DEPTH_CEILING`](crate::parser::budget::MAX_DEPTH_CEILING)
+/// instead of building a value too deep to drop on a small stack.
+#[derive(Clone, Copy)]
+struct ValueSeed {
+    depth: usize,
+}
 
-            fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-                formatter.write_str("any valid YAML value")
-            }
+impl<'de> serde_core::de::DeserializeSeed<'de> for ValueSeed {
+    type Value = Value;
 
-            fn visit_bool<E>(self, v: bool) -> Result<Value, E> {
-                Ok(Value::Bool(v))
-            }
+    fn deserialize<D>(self, deserializer: D) -> Result<Value, D::Error>
+    where
+        D: serde_core::Deserializer<'de>,
+    {
+        deserializer.deserialize_any(ValueVisitor { depth: self.depth })
+    }
+}
 
-            fn visit_i64<E>(self, v: i64) -> Result<Value, E> {
-                Ok(Value::Number(Number::Integer(v)))
-            }
+struct ValueVisitor {
+    depth: usize,
+}
 
-            fn visit_u64<E>(self, v: u64) -> Result<Value, E> {
-                Ok(Value::Number(Number::from(v)))
-            }
-
-            fn visit_f64<E>(self, v: f64) -> Result<Value, E> {
-                Ok(Value::Number(Number::Float(v)))
-            }
-
-            fn visit_str<E>(self, v: &str) -> Result<Value, E> {
-                Ok(Value::String(v.to_owned()))
-            }
-
-            fn visit_string<E>(self, v: String) -> Result<Value, E> {
-                Ok(Value::String(v))
-            }
-
-            fn visit_none<E>(self) -> Result<Value, E> {
-                Ok(Value::Null)
-            }
-
-            fn visit_unit<E>(self) -> Result<Value, E> {
-                Ok(Value::Null)
-            }
-
-            fn visit_enum<A>(self, data: A) -> Result<Value, A::Error>
-            where
-                A: serde_core::de::EnumAccess<'de>,
-            {
-                // The AST `Deserializer`'s `deserialize_any` routes a
-                // tagged node here (variant name = the YAML tag, payload
-                // = the untagged inner value) instead of transparently
-                // descending into it, so a `Value` reached through serde
-                // — nested inside a `Mapping`, a `Sequence`/`Vec<Value>`,
-                // or a struct field of type `Value` — keeps its tag the
-                // same way the top-level `Value` target already does.
-                // See #350.
-                use serde_core::de::VariantAccess as _;
-                let (tag, variant): (String, A::Variant) = data.variant()?;
-                let value: Value = variant.newtype_variant()?;
-                Ok(Value::Tagged(Box::new(TaggedValue::new(
-                    Tag::new(tag),
-                    value,
-                ))))
-            }
-
-            fn visit_seq<A>(self, mut seq: A) -> Result<Value, A::Error>
-            where
-                A: serde_core::de::SeqAccess<'de>,
-            {
-                // Pre-size from the SeqAccess size_hint when
-                // available — saves up to ~11 reallocations on a
-                // 2 000-element sequence (Vec doubles on each
-                // grow). Falls back to the default growth strategy
-                // when the hint isn't reliable.
-                let mut vec = match seq.size_hint() {
-                    Some(n) if n > 0 && n < 1 << 20 => Vec::with_capacity(n),
-                    _ => Vec::new(),
-                };
-                while let Some(elem) = seq.next_element()? {
-                    vec.push(elem);
-                }
-                Ok(Value::Sequence(vec))
-            }
-
-            fn visit_map<A>(self, mut map: A) -> Result<Value, A::Error>
-            where
-                A: serde_core::de::MapAccess<'de>,
-            {
-                let first_key: Option<String> = map.next_key()?;
-                // Regular mapping path — collect every (k, v) pair
-                // including the (k, v) we already consumed.
-                // Pre-size when the MapAccess provides a usable
-                // hint; saves ~10 IndexMap rehashes on large
-                // mappings (capacity grows by ~doubling).
-                let mut mapping = match map.size_hint() {
-                    Some(n) if n > 0 && n < 1 << 20 => Mapping::with_capacity(n),
-                    _ => Mapping::new(),
-                };
-                if let Some(k) = first_key {
-                    let v: Value = map.next_value()?;
-                    let _ = mapping.insert(k, v);
-                }
-                while let Some((key, value)) = map.next_entry::<String, Value>()? {
-                    let _ = mapping.insert(key, value);
-                }
-                Ok(Value::Mapping(mapping))
-            }
+impl ValueVisitor {
+    /// The seed for a child of the collection being visited, or the
+    /// error once that child would pass the ceiling.
+    fn child<E: serde_core::de::Error>(&self) -> Result<ValueSeed, E> {
+        let depth = self.depth + 1;
+        if crate::parser::budget::depth_exceeded(depth, usize::MAX) {
+            return Err(E::custom(format_args!(
+                "recursion depth limit exceeded: {depth}"
+            )));
         }
+        Ok(ValueSeed { depth })
+    }
+}
 
-        deserializer.deserialize_any(ValueVisitor)
+impl<'de> serde_core::de::Visitor<'de> for ValueVisitor {
+    type Value = Value;
+
+    fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter.write_str("any valid YAML value")
+    }
+
+    fn visit_bool<E>(self, v: bool) -> Result<Value, E> {
+        Ok(Value::Bool(v))
+    }
+
+    fn visit_i64<E>(self, v: i64) -> Result<Value, E> {
+        Ok(Value::Number(Number::Integer(v)))
+    }
+
+    fn visit_u64<E>(self, v: u64) -> Result<Value, E> {
+        Ok(Value::Number(Number::from(v)))
+    }
+
+    fn visit_f64<E>(self, v: f64) -> Result<Value, E> {
+        Ok(Value::Number(Number::Float(v)))
+    }
+
+    fn visit_str<E>(self, v: &str) -> Result<Value, E> {
+        Ok(Value::String(v.to_owned()))
+    }
+
+    fn visit_string<E>(self, v: String) -> Result<Value, E> {
+        Ok(Value::String(v))
+    }
+
+    fn visit_none<E>(self) -> Result<Value, E> {
+        Ok(Value::Null)
+    }
+
+    fn visit_unit<E>(self) -> Result<Value, E> {
+        Ok(Value::Null)
+    }
+
+    fn visit_enum<A>(self, data: A) -> Result<Value, A::Error>
+    where
+        A: serde_core::de::EnumAccess<'de>,
+    {
+        // The AST `Deserializer`'s `deserialize_any` routes a
+        // tagged node here (variant name = the YAML tag, payload
+        // = the untagged inner value) instead of transparently
+        // descending into it, so a `Value` reached through serde
+        // — nested inside a `Mapping`, a `Sequence`/`Vec<Value>`,
+        // or a struct field of type `Value` — keeps its tag the
+        // same way the top-level `Value` target already does.
+        // See #350.
+        use serde_core::de::VariantAccess as _;
+        let seed = self.child()?;
+        let (tag, variant): (String, A::Variant) = data.variant()?;
+        let value: Value = variant.newtype_variant_seed(seed)?;
+        Ok(Value::Tagged(Box::new(TaggedValue::new(
+            Tag::new(tag),
+            value,
+        ))))
+    }
+
+    fn visit_seq<A>(self, mut seq: A) -> Result<Value, A::Error>
+    where
+        A: serde_core::de::SeqAccess<'de>,
+    {
+        let seed = self.child()?;
+        // Pre-size from the SeqAccess size_hint when
+        // available — saves up to ~11 reallocations on a
+        // 2 000-element sequence (Vec doubles on each
+        // grow). Falls back to the default growth strategy
+        // when the hint isn't reliable.
+        let mut vec = match seq.size_hint() {
+            Some(n) if n > 0 && n < 1 << 20 => Vec::with_capacity(n),
+            _ => Vec::new(),
+        };
+        while let Some(elem) = seq.next_element_seed(seed)? {
+            vec.push(elem);
+        }
+        Ok(Value::Sequence(vec))
+    }
+
+    fn visit_map<A>(self, mut map: A) -> Result<Value, A::Error>
+    where
+        A: serde_core::de::MapAccess<'de>,
+    {
+        let seed = self.child()?;
+        // Pre-size when the MapAccess provides a usable
+        // hint; saves ~10 IndexMap rehashes on large
+        // mappings (capacity grows by ~doubling).
+        let mut mapping = match map.size_hint() {
+            Some(n) if n > 0 && n < 1 << 20 => Mapping::with_capacity(n),
+            _ => Mapping::new(),
+        };
+        while let Some(key) = map.next_key::<String>()? {
+            let value = map.next_value_seed(seed)?;
+            let _ = mapping.insert(key, value);
+        }
+        Ok(Value::Mapping(mapping))
     }
 }
 

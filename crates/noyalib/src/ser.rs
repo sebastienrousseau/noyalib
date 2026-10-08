@@ -734,7 +734,7 @@ fn write_value(
     config: &Cx<'_>,
     depth: usize,
 ) -> Result<()> {
-    if depth > config.max_depth {
+    if crate::parser::budget::depth_exceeded(depth, config.max_depth) {
         return Err(Error::RecursionLimitExceeded { depth });
     }
     match value {
