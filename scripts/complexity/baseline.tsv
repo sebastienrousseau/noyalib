@@ -6,7 +6,7 @@
 # an improvement. The script refuses to record a regression.
 # ceilings: too_many_lines 60, cognitive_complexity 15 (scripts/complexity/clippy.toml)
 # measured with: clippy 0.1.98 (48a229ceae 2026-09-01)
-# entries: 92
+# entries: 90
 lint	file	function	value
 cognitive_complexity	crates/noyalib/examples/cst_surgical_edit.rs	main	24
 cognitive_complexity	crates/noyalib/src/parser/events.rs	parse_node	18
@@ -75,9 +75,7 @@ too_many_lines	crates/noyalib/src/cst/builder.rs	document_boundaries	61
 too_many_lines	crates/noyalib/src/cst/document.rs	entry_key_site	76
 too_many_lines	crates/noyalib/src/cst/document.rs	entry_line_span	173
 too_many_lines	crates/noyalib/src/cst/document.rs	guarded_insert	77
-too_many_lines	crates/noyalib/src/cst/document.rs	insert_entry_value	146
 too_many_lines	crates/noyalib/src/cst/document.rs	is_plain_safe	91
-too_many_lines	crates/noyalib/src/cst/document.rs	remove	69
 too_many_lines	crates/noyalib/src/cst/document.rs	rename_key	115
 too_many_lines	crates/noyalib/src/cst/document.rs	replace_collection_value	65
 too_many_lines	crates/noyalib/src/cst/document.rs	set_value	62

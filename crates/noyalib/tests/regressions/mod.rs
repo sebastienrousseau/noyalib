@@ -11,6 +11,7 @@ mod comment_printable;
 mod competitive_features;
 mod competitive_features_full;
 mod competitor_bugs;
+mod cst_unicode_space;
 mod duplicate_key_identity;
 mod feature_matrix;
 mod fmt;

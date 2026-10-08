@@ -22,6 +22,13 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   became "true", so a struct field named `on` went missing. The key
   text now comes from the source, as on the streaming path. A `Value`
   still holds the canonical spelling (`0x1F` is "31"), unchanged.
+- `cst::format` and the CST editors treat only space, tab and the line
+  breaks as white space. Rust's `trim` also strips NEL (U+0085), NBSP
+  and U+3000, which YAML reads as content, so formatting the document
+  `"\u{85}"` returned an empty document, a trailing NBSP in a comment
+  was dropped, and a scalar starting or ending with such a character
+  could not be formatted at all. Found by the
+  `fuzz_cst_format_roundtrip` target.
 
 ### Changed
 

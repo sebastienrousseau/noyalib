@@ -11,6 +11,7 @@
 //! clones.
 
 use crate::cst::green::{GreenChild, GreenNode};
+use crate::cst::is_yaml_blank;
 use crate::cst::syntax::SyntaxKind;
 use crate::error::{Error, Result};
 #[cfg(feature = "std")]
@@ -144,7 +145,7 @@ fn parse_block_entry(
     expected: SyntaxKind,
     max_depth: usize,
 ) -> Result<GreenNode> {
-    if fragment.trim().is_empty() {
+    if is_yaml_blank(fragment) {
         return Err(Error::Parse(
             "parse_subtree: empty fragment cannot stand as a block entry".into(),
         ));

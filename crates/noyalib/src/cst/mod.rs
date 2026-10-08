@@ -130,3 +130,14 @@ pub use entry::Entry;
 pub use format::{FormatConfig, format, format_with_config, format_with_parser_config};
 pub use green::{GreenChild, GreenNode};
 pub use syntax::SyntaxKind;
+
+/// YAML's white space and line breaks (YAML 1.2.2 §5.4, §5.5). Rust's
+/// `str::trim` and `char::is_whitespace` also match Unicode spaces such
+/// as NEL (U+0085), NBSP and U+3000, which YAML reads as content, so
+/// CST code trims and tests source text with this set instead.
+pub(crate) const YAML_BLANK: [char; 4] = [' ', '\t', '\n', '\r'];
+
+/// `s` holds nothing but [`YAML_BLANK`] characters.
+pub(crate) fn is_yaml_blank(s: &str) -> bool {
+    s.trim_matches(YAML_BLANK).is_empty()
+}
