@@ -133,6 +133,18 @@ fn local_defs_refs_still_work() {
         .expect_err("local $ref must still enforce its type");
 }
 
+/// A `file:` URL for `path`, written with `/` so it is valid in JSON and
+/// in a double-quoted YAML string on Windows too (`C:\Users` would read
+/// as a `\U` escape there).
+fn file_url(path: &std::path::Path) -> String {
+    let p = path.display().to_string().replace('\\', "/");
+    if p.starts_with('/') {
+        format!("file://{p}")
+    } else {
+        format!("file:///{p}")
+    }
+}
+
 #[test]
 fn file_ref_is_refused_and_contents_never_leak() {
     // The dev-dependency on `jsonschema` with `resolve-file` mirrors a
@@ -143,7 +155,7 @@ fn file_ref_is_refused_and_contents_never_leak() {
     std::fs::create_dir_all(&dir).unwrap();
     let target = dir.join("leak.json");
     std::fs::write(&target, r#"{"const":"TOPSECRET-4242"}"#).unwrap();
-    let schema = format!("{{\"$ref\": \"file://{}\"}}", target.display());
+    let schema = format!("{{\"$ref\": \"{}\"}}", file_url(&target));
     let result = validate_against_schema_str("a: 1", &schema);
     let _ = std::fs::remove_dir_all(&dir);
     let msg = result
@@ -164,10 +176,7 @@ fn file_ref_via_id_base_is_refused() {
     let dir = std::env::temp_dir().join(format!("noyalib-schema-id-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     std::fs::write(dir.join("t.json"), r#"{"const":"TOPSECRET-77"}"#).unwrap();
-    let schema = format!(
-        "{{\"$id\": \"file://{}/\", \"$ref\": \"t.json\"}}",
-        dir.display()
-    );
+    let schema = format!("{{\"$id\": \"{}/\", \"$ref\": \"t.json\"}}", file_url(&dir));
     let result = validate_against_schema_str("a: 1", &schema);
     let _ = std::fs::remove_dir_all(&dir);
     let msg = result
@@ -187,7 +196,7 @@ fn coerce_to_schema_refuses_file_refs_too() {
     )
     .unwrap();
     let schema: noyalib::Value =
-        noyalib::from_str(&format!("$ref: \"file://{}\"\n", target.display())).unwrap();
+        noyalib::from_str(&format!("$ref: \"{}\"\n", file_url(&target))).unwrap();
     let mut data: noyalib::Value = noyalib::from_str("p: \"1\"\n").unwrap();
     let result = noyalib::coerce_to_schema(&mut data, &schema);
     let _ = std::fs::remove_dir_all(&dir);
@@ -330,7 +339,7 @@ fn cst_coerce_to_schema_refuses_file_refs_too() {
     )
     .unwrap();
     let schema: noyalib::Value =
-        noyalib::from_str(&format!("$ref: \"file://{}\"\n", target.display())).unwrap();
+        noyalib::from_str(&format!("$ref: \"{}\"\n", file_url(&target))).unwrap();
     let mut doc = noyalib::cst::parse_document("p: \"1\"\n").unwrap();
     let result = noyalib::cst::coerce_to_schema(&mut doc, &schema);
     let _ = std::fs::remove_dir_all(&dir);
