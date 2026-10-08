@@ -490,7 +490,15 @@ impl<'a> Loader<'a> {
                 // resolved from a plain `<<` *scalar*; `<<: *x` where `*x`
                 // happens to resolve to the string `\"<<\"` is an ordinary
                 // key whose value is that string.
-                self.push_node(value, SpanTree::Alias(Box::new(span_tree)), input, false)?;
+                self.push_node(
+                    value,
+                    SpanTree::Alias {
+                        at: (span.start, span.end),
+                        target: Box::new(span_tree),
+                    },
+                    input,
+                    false,
+                )?;
             }
             Event::Scalar {
                 value,
@@ -1513,7 +1521,7 @@ fn span_tree_start(span: &SpanTree) -> usize {
         SpanTree::Leaf(s, _)
         | SpanTree::Sequence { start: s, .. }
         | SpanTree::Mapping { start: s, .. } => *s,
-        SpanTree::Alias(inner) => span_tree_start(inner),
+        SpanTree::Alias { target, .. } => span_tree_start(target),
     }
 }
 
@@ -1554,7 +1562,7 @@ fn span_tree_end(span: &SpanTree) -> usize {
         SpanTree::Leaf(_, e)
         | SpanTree::Sequence { end: e, .. }
         | SpanTree::Mapping { end: e, .. } => *e,
-        SpanTree::Alias(inner) => span_tree_end(inner),
+        SpanTree::Alias { target, .. } => span_tree_end(target),
     }
 }
 

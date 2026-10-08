@@ -42,10 +42,18 @@ pub(crate) enum SpanTree {
     },
     /// An alias reference (`*name`) resolved *through* to its anchor's
     /// definition tree (issue #149): the wrapped tree is the anchor's, so a
-    /// read here yields the anchor's value span. The wrapper records that the
-    /// resolution passed through an alias — a *write* would splice the
-    /// anchor's bytes (a different key), which `Document::set` must refuse.
-    Alias(Box<Self>),
+    /// read here yields the anchor's value span. `at` is the `*name`
+    /// token's own span, the one site a write may touch: replacing the
+    /// reference edits only the addressed entry, while splicing the
+    /// resolved span would rewrite the anchor's bytes (a different key),
+    /// which the write paths refuse for every segment that resolves
+    /// *through* the alias.
+    Alias {
+        /// The `*name` token's own byte span.
+        at: (usize, usize),
+        /// The anchor's tree, substituted at this site.
+        target: Box<Self>,
+    },
 }
 
 /// Holds the span map and source string for the current deserialization.
@@ -288,7 +296,7 @@ fn walk(value: &Value, tree: &SpanTree, map: &mut FxHashMap<usize, (usize, usize
             }
         }
         // An alias site maps to the anchor's spans; walk through it.
-        SpanTree::Alias(inner) => walk(value, inner, map),
+        SpanTree::Alias { target, .. } => walk(value, target, map),
     }
 }
 

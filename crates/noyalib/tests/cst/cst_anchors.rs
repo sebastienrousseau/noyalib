@@ -459,31 +459,23 @@ other: 1
 // ── Regression: set/set_value must not write through an alias ────────
 
 #[test]
-fn set_through_alias_is_refused_not_written_to_the_anchor() {
-    // v0.0.14 review regression. `span_at` resolves an alias reference
-    // *through* to its anchor's value span (issue #149) — the correct
-    // target for a read. `set` / `set_value` reused that span for writes,
-    // so `set("ref", …)` spliced over the ANCHOR's value (`foo` on the
-    // `base:` line), silently corrupting a *different* key and leaving the
-    // alias untouched. They must refuse the edit instead.
+fn set_at_an_alias_entry_replaces_the_reference_not_the_anchor() {
+    // v0.0.14 review regression, revisited. `span_at` resolves an alias
+    // reference *through* to its anchor's value span (issue #149), and
+    // reusing that span for a write spliced over the ANCHOR's value,
+    // corrupting a different key. The write paths now target the entry's
+    // own `*a` token instead, so the edit lands on the addressed entry
+    // and the anchor keeps its bytes; a path that resolves *through* the
+    // alias still refuses (see set_nested_through_alias_is_refused).
     let mut doc = parse_document("base: &a foo\nref: *a\n").unwrap();
-    let before = doc.to_string();
+    doc.set("ref", "bar").unwrap();
+    assert_eq!(doc.to_string(), "base: &a foo\nref: bar\n");
 
-    let err = doc.set("ref", "bar");
-    assert!(
-        err.is_err(),
-        "set through an alias must be refused, not silently mis-applied to the anchor"
-    );
-    assert_eq!(
-        doc.to_string(),
-        before,
-        "a refused set must leave the document byte-for-byte unchanged (no anchor corruption)"
-    );
-
-    // set_value shares the hazard and the guard.
-    let err = doc.set_value("ref", &noyalib::Value::String("bar".into()));
-    assert!(err.is_err());
-    assert_eq!(doc.to_string(), before);
+    // set_value shares the site and the rule.
+    let mut doc = parse_document("base: &a foo\nref: *a\n").unwrap();
+    doc.set_value("ref", &noyalib::Value::String("bar".into()))
+        .unwrap();
+    assert_eq!(doc.to_string(), "base: &a foo\nref: bar\n");
 
     // A plain (non-aliased) sibling value is still writable — the guard is
     // scoped to alias targets, it does not block ordinary edits.
@@ -504,24 +496,15 @@ fn set_through_aliased_sequence_item_is_refused() {
 // ── Regression: alias-write guard must cover undecodable (quoted) keys ──
 
 #[test]
-fn set_through_double_quoted_alias_key_is_refused() {
-    // ultrareview BUG003. The alias-write guard matched keys via
-    // `entry_key_text`, which can't decode double-quoted keys, so
-    // `set("target_key", …)` on a double-quoted alias entry slipped past
-    // the guard and spliced the ANCHOR's value — silent corruption of a
-    // different key. Must be refused.
+fn set_at_a_double_quoted_alias_key_replaces_the_reference() {
+    // ultrareview BUG003, revisited. The hazard was the guard missing a
+    // double-quoted alias entry and splicing the ANCHOR's value. The
+    // write now lands on the entry's own `*a` token whatever the key's
+    // spelling, and the anchor keeps its bytes.
     let src = "anchor_key: &a foo\n\"target_key\": *a\n";
     let mut doc = parse_document(src).unwrap();
-    let before = doc.to_string();
-    assert!(
-        doc.set("target_key", "bar").is_err(),
-        "set through a double-quoted alias key must be refused"
-    );
-    assert_eq!(
-        doc.to_string(),
-        before,
-        "document must be unchanged (no anchor corruption)"
-    );
+    doc.set("target_key", "bar").unwrap();
+    assert_eq!(doc.to_string(), "anchor_key: &a foo\n\"target_key\": bar\n");
 }
 
 #[test]
@@ -545,13 +528,13 @@ fn set_double_quoted_key_with_plain_value_still_works() {
 // false-positive refusal.
 
 #[test]
-fn set_through_alias_in_flow_sequence_is_refused() {
-    // HOLE1: flow collections keep flat tokens (no SequenceItem nodes), so
-    // the old green-walk missed them and set spliced the anchor.
+fn set_at_an_alias_flow_member_replaces_the_reference() {
+    // HOLE1, revisited: flow collections keep flat tokens, so the old
+    // green-walk missed the alias and spliced the anchor. The write now
+    // lands on the member's own `*x` token; the anchor keeps its bytes.
     let mut doc = parse_document("a: &x foo\nb: [*x, 2]\n").unwrap();
-    let before = doc.to_string();
-    assert!(doc.set("b[0]", "bar").is_err());
-    assert_eq!(doc.to_string(), before, "anchor must be untouched");
+    doc.set("b[0]", "bar").unwrap();
+    assert_eq!(doc.to_string(), "a: &x foo\nb: [bar, 2]\n");
 }
 
 #[test]
@@ -568,14 +551,17 @@ fn set_nested_through_alias_is_refused() {
 }
 
 #[test]
-fn set_duplicate_key_last_is_alias_is_refused() {
-    // HOLE3: `key: value1` then `"key": *a` — DuplicateKeyPolicy::Last makes
-    // the resolved value the alias entry, even though a decodable plain entry
-    // also matched the key.
+fn set_duplicate_key_last_is_alias_replaces_the_reference() {
+    // HOLE3, revisited: `key: value1` then `"key": *a`.
+    // DuplicateKeyPolicy::Last selects the alias entry, so the write
+    // replaces that entry's `*a` token; the first occurrence and the
+    // anchor keep their bytes.
     let mut doc = parse_document("anchor_key: &a foo\nkey: value1\n\"key\": *a\n").unwrap();
-    let before = doc.to_string();
-    assert!(doc.set("key", "bar").is_err());
-    assert_eq!(doc.to_string(), before, "anchor must be untouched");
+    doc.set("key", "bar").unwrap();
+    assert_eq!(
+        doc.to_string(),
+        "anchor_key: &a foo\nkey: value1\n\"key\": bar\n"
+    );
 }
 
 #[test]

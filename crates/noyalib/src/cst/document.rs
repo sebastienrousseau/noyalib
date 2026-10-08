@@ -638,27 +638,44 @@ impl Document {
     /// fallback can; `resolve_span`'s `through_alias` flag is the single source
     /// of truth for that, so the two paths cannot disagree.
     fn write_span(&self, path: &str) -> Result<(usize, usize)> {
+        self.write_span_resolved(path).map(|(span, _)| span)
+    }
+
+    /// [`write_span`](Self::write_span), also saying whether the span is
+    /// the `*name` token of an alias-valued entry. Replacing that token
+    /// is the one alias write that touches only the addressed entry; a
+    /// path that resolves *through* an alias is still refused here.
+    fn write_span_resolved(&self, path: &str) -> Result<((usize, usize), bool)> {
         let segments = parse_query_path(path);
         if let Some((s, e)) = resolve_path_in_green(&self.green, &segments, &self.source) {
-            return Ok(trim_value_span(&self.source, s, e));
+            return Ok((trim_value_span(&self.source, s, e), false));
         }
         self.ensure_cache();
         let cache = self.cache.borrow();
         let (value, span_tree) = cache.as_ref().expect("ensure_cache populated");
-        let ((s, e), through_alias) = resolve_span(value, span_tree, &segments)
+        let ((s, e), hit) = resolve_span(value, span_tree, &segments)
             .ok_or_else(|| Error::Parse(format!("path not found: {path}")))?;
-        let s = content_start(&self.source, s, e);
-        if through_alias {
-            return Err(Error::Parse(format!(
-                "cannot set `{path}`: its value is (or resolves through) an alias \
-                 reference; edit the anchor definition or replace the alias explicitly"
-            )));
+        match hit {
+            // The entry's own value byte in the source is the reference
+            // token; replacing it is what "replace the alias explicitly"
+            // means, and it edits nothing the path does not name.
+            AliasHit::Target { at } => return Ok((at, true)),
+            AliasHit::Through => {
+                return Err(Error::Parse(format!(
+                    "cannot set `{path}`: its value resolves through an alias \
+                     reference to the anchor's bytes, which belong to a different \
+                     key; edit the anchor definition instead"
+                )));
+            }
+            AliasHit::No => {}
         }
+        let s = content_start(&self.source, s, e);
         if s == e {
             return implicit_null_insertion_point(&self.source, s)
+                .map(|span| (span, false))
                 .ok_or_else(|| Error::Parse(format!("path not found: {path}")));
         }
-        Ok(trim_value_span(&self.source, s, e))
+        Ok((trim_value_span(&self.source, s, e), false))
     }
 
     /// Replace the value at `path` with a typed [`Value`], formatting
@@ -789,7 +806,7 @@ impl Document {
     /// assert_eq!(doc.to_string(), "ratio: 1.10\n");
     /// ```
     pub fn set_value(&mut self, path: &str, value: &Value) -> Result<()> {
-        let (s, e) = self.write_span(path)?;
+        let ((s, e), alias_target) = self.write_span_resolved(path)?;
         // A value equal to the one already there is a no-op, and a no-op
         // must leave the bytes alone: re-rendering an equal value through
         // the formatter rewrites spellings the author chose (`1.10` to
@@ -811,7 +828,17 @@ impl Document {
         // A collection value replaces a collection node in the node's
         // own style — flow stays flow, block stays block (#328). The
         // scalar formatter below cannot spell one, so branch off here.
+        // An alias-valued entry takes a scalar replacement only: the
+        // token is one leaf, and a collection grown in its place is not
+        // an in-place edit.
         if matches!(value, Value::Sequence(_) | Value::Mapping(_)) {
+            if alias_target {
+                return Err(Error::Parse(format!(
+                    "set_value: the value of `{path}` is an alias reference, and a \
+                     collection cannot replace the `*name` token in place; edit the \
+                     anchor definition, or `remove` the entry and insert the collection"
+                )));
+            }
             return self.replace_collection_value(path, value, s, e);
         }
         // One policy for anchored nodes (#338): a write into a value
@@ -849,14 +876,16 @@ impl Document {
         // indicator. Everything else about the site — the neighbours, the
         // column — is read the same way.
         let filling_in = s == e;
-        let kind = if filling_in || own_line {
+        let kind = if filling_in || own_line || alias_target {
             // No existing bytes means no quoting *intent* to preserve, which
             // is exactly the state `PlainScalar` denotes to the neighbour rule
             // below. A span widened to a line start has none either: the leaf
             // there is the indentation, which `is_block_site` rejects and the
             // formatter reports as "target site is not a scalar leaf" — which
             // is why a *string* over a block collection errored while a number
-            // corrupted, the arm disagreeing with itself.
+            // corrupted, the arm disagreeing with itself. An alias token being
+            // replaced carries no quoting intent for the incoming scalar
+            // either.
             SyntaxKind::PlainScalar
         } else {
             leaf_kind_at(&self.green, s).ok_or_else(|| {
@@ -3627,7 +3656,7 @@ fn span_tree_bounds(t: &SpanTree) -> (usize, usize) {
         SpanTree::Sequence { start, end, .. } | SpanTree::Mapping { start, end, .. } => {
             (*start, *end)
         }
-        SpanTree::Alias(inner) => span_tree_bounds(inner),
+        SpanTree::Alias { target, .. } => span_tree_bounds(target),
     }
 }
 
@@ -3642,8 +3671,8 @@ fn resolve_tree<'a>(
     span_tree: &'a SpanTree,
     segments: &[QuerySegment],
 ) -> Option<(&'a Value, &'a SpanTree)> {
-    if let SpanTree::Alias(inner) = span_tree {
-        return resolve_tree(value, inner, segments);
+    if let SpanTree::Alias { target, .. } = span_tree {
+        return resolve_tree(value, target, segments);
     }
     let Some((head, tail)) = segments.split_first() else {
         return Some((value, span_tree));
@@ -3705,16 +3734,40 @@ fn content_start(source: &str, start: usize, end: usize) -> usize {
     start
 }
 
+/// How a span resolution met an alias, if it met one.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum AliasHit {
+    /// No alias on the path.
+    No,
+    /// The addressed node itself is the alias reference; `at` is the
+    /// `*name` token's own span, the one site a write may touch.
+    Target {
+        /// The token's byte span.
+        at: (usize, usize),
+    },
+    /// The path resolved *through* an alias to bytes inside the anchor's
+    /// value, which belong to a different key; writes refuse.
+    Through,
+}
+
 fn resolve_span(
     value: &Value,
     span_tree: &SpanTree,
     segments: &[QuerySegment],
-) -> Option<((usize, usize), bool)> {
-    // An alias site substitutes the anchor's (value, tree). Resolve against the
-    // anchor but flag that the path went through an alias — at any depth, so
-    // `ref` and `ref.nested` and `[*a]` are all caught.
-    if let SpanTree::Alias(inner) = span_tree {
-        return resolve_span(value, inner, segments).map(|(span, _)| (span, true));
+) -> Option<((usize, usize), AliasHit)> {
+    // An alias site substitutes the anchor's (value, tree). Resolve against
+    // the anchor, but say how the alias was met. The addressed node itself
+    // being the alias is a different case from the path passing *through*
+    // one: the former has a token of its own a write may replace, the
+    // latter resolves to bytes inside the anchor's value, which belong to
+    // a different key at every depth, so `ref.nested` and `[*a][0]` stay
+    // refused by the write paths.
+    if let SpanTree::Alias { at, target } = span_tree {
+        if segments.is_empty() {
+            return resolve_span(value, target, segments)
+                .map(|(span, _)| (span, AliasHit::Target { at: *at }));
+        }
+        return resolve_span(value, target, segments).map(|(span, _)| (span, AliasHit::Through));
     }
     if segments.is_empty() {
         return match span_tree {
@@ -3725,11 +3778,11 @@ fn resolve_span(
             // so the resolver reports it and each caller decides. `span_at`
             // discards it (#165: an implicit null has no span to read);
             // `write_span` turns it into an insertion point.
-            SpanTree::Leaf(s, e) => Some(((*s, *e), false)),
+            SpanTree::Leaf(s, e) => Some(((*s, *e), AliasHit::No)),
             SpanTree::Sequence { start, end, .. } | SpanTree::Mapping { start, end, .. } => {
-                Some(((*start, *end), false))
+                Some(((*start, *end), AliasHit::No))
             }
-            SpanTree::Alias(_) => None, // unwrapped above
+            SpanTree::Alias { .. } => None, // unwrapped above
         };
     }
     let (head, tail) = segments.split_first()?;
@@ -4137,25 +4190,20 @@ fn entry_line_span(
                     indent,
                 });
             }
-            // An alias value resolves *through* to its anchor, so the span
-            // here belongs to the anchor's bytes on some other line — not
-            // to this entry. Splicing it would edit a different key, which
-            // is why `SpanTree::Alias`'s own doc says a write must refuse.
-            //
-            // Left unchecked the arithmetic silently degenerated instead:
-            // for `a: &x 1` / `b: *x`, the value span (6,7) sits *before*
-            // the key at 8, `owned_entry_range` produced an empty range,
-            // and the splice removed nothing while returning `Ok`. Found
-            // by the `fuzz_editors` shrink invariant.
-            if matches!(child_tree, SpanTree::Alias(_)) {
-                return Err(Error::Parse(format!(
-                    "remove: the value of `{k}` is an alias (`*name`); its source bytes \
-                     belong to the anchor, not to this entry, so removing it here would \
-                     edit a different key — remove the anchor's entry, or use \
-                     `replace_span` deliberately"
-                )));
-            }
-            let (value_start, raw_value_end) = span_tree_bounds(child_tree);
+            // An alias value resolves *through* to its anchor, so the
+            // resolved span belongs to the anchor's bytes on some other
+            // line. The entry's own value byte is the `*name` token, whose
+            // span the alias node records; removing the entry through it
+            // deletes the reference and nothing of the anchor's. (Before
+            // the token span was recorded, the arithmetic here silently
+            // degenerated: for `a: &x 1` / `b: *x` the resolved span (6,7)
+            // sat *before* the key at 8, `owned_entry_range` produced an
+            // empty range, and the splice removed nothing while returning
+            // `Ok`. Found by the `fuzz_editors` shrink invariant.)
+            let (value_start, raw_value_end) = match child_tree {
+                SpanTree::Alias { at, .. } => *at,
+                _ => span_tree_bounds(child_tree),
+            };
             if is_flow_collection(source, *coll_start) {
                 let member_end = owned_value_end(source, value_start, raw_value_end);
                 let (s, e) = flow_member_range(source, *key_start, member_end);
@@ -4210,14 +4258,13 @@ fn entry_line_span(
             let item_tree = items
                 .get(*i)
                 .ok_or_else(|| Error::Parse(format!("path not found: index {i} out of bounds")))?;
-            if matches!(item_tree, SpanTree::Alias(_)) {
-                return Err(Error::Parse(format!(
-                    "remove: item {i} is an alias (`*name`); its source bytes belong to the \
-                     anchor, not to this item, so removing it here would edit different \
-                     content"
-                )));
-            }
-            let (value_start, raw_value_end) = span_tree_bounds(item_tree);
+            // As for a mapping entry above: the item's own value byte is
+            // the `*name` token, and removing the item through it deletes
+            // the reference, never the anchor's bytes.
+            let (value_start, raw_value_end) = match item_tree {
+                SpanTree::Alias { at, .. } => *at,
+                _ => span_tree_bounds(item_tree),
+            };
             if is_flow_collection(source, *coll_start) {
                 // No `-` indicator in flow style; the item's own span is
                 // the member.
@@ -4565,7 +4612,7 @@ fn entry_key_site(
     // would splice the anchor's bytes, which belong to a different
     // entry, so refuse with that diagnosis rather than letting the
     // wrapper fall through to the catch-all "path not found".
-    if matches!(span_tree, SpanTree::Alias(_)) {
+    if matches!(span_tree, SpanTree::Alias { .. }) {
         return Err(Error::Parse(
             "rename_key: the path addresses alias-expanded content — an `*name` site reflects \
              the anchor's entries and owns no key bytes of its own; rename the corresponding \
