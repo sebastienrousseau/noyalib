@@ -149,10 +149,17 @@ pub struct Comment {
 /// positions stay consistent with the spans on [`Spanned<T>`](crate::Spanned).
 /// Comments are returned in source order.
 ///
+/// The input is held to the default [`ParserConfig`](crate::ParserConfig)
+/// limits a value parse would apply: at most `max_document_length`
+/// bytes, and a pending key may hold back no more tokens than
+/// `max_events` allows.
+///
 /// # Errors
 ///
-/// Returns an error if the input is not a lexically valid YAML
-/// document — e.g. an unclosed flow collection. Comments inside an
+/// Returns an error if the input is longer than the default
+/// `max_document_length`, if a pending key holds back more tokens than
+/// the default `max_events` allows, or if the input is not a lexically
+/// valid YAML document — e.g. an unclosed flow collection. Comments inside an
 /// otherwise-well-formed document are captured even if deeper parse
 /// stages (e.g. merge resolution) would later fail.
 ///
@@ -167,7 +174,14 @@ pub struct Comment {
 /// assert_eq!(comments[1].kind, CommentKind::Line);
 /// ```
 pub fn load_comments(input: &str) -> Result<Vec<Comment>> {
-    let mut parser = Parser::new(input);
+    let limits = crate::ParserConfig::default();
+    if input.len() > limits.max_document_length {
+        return Err(Error::Parse(format!(
+            "document exceeds maximum length of {} bytes",
+            limits.max_document_length
+        )));
+    }
+    let mut parser = Parser::with_max_events(input, limits.max_events);
     parser.enable_comment_capture();
     // Drain events — we don't care about the tree, just need the
     // scanner to walk the whole document so every comment gets
@@ -179,9 +193,7 @@ pub fn load_comments(input: &str) -> Result<Vec<Comment>> {
                     break;
                 }
             }
-            Err(e) => {
-                return Err(Error::parse_at(&*e.message, input, e.index));
-            }
+            Err(e) => return Err(e.into_error(input, limits.max_events)),
         }
     }
     Ok(parser.take_comments())
@@ -190,6 +202,14 @@ pub fn load_comments(input: &str) -> Result<Vec<Comment>> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn an_oversized_input_is_refused_like_a_value_parse() {
+        let limit = crate::ParserConfig::default().max_document_length;
+        let input = format!("# c\n{}", "a".repeat(limit));
+        let err = load_comments(&input).unwrap_err().to_string();
+        assert!(err.contains("maximum length"), "{err}");
+    }
 
     #[test]
     fn empty_document_has_no_comments() {

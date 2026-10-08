@@ -9,6 +9,10 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Fixed
 
+- `load_comments` applies the default `max_document_length` and the
+  event-backlog limit a value parse would. It read input of any length,
+  and a long flow-mapping key held every later token back, so a hostile
+  document cost memory well past its size.
 - The `compat::serde_yaml` shim refuses a repeated struct field with
   serde_yaml 0.9's wording (``duplicate field `role` ``), as upstream
   does. It used to keep the last entry for struct targets, so the same
