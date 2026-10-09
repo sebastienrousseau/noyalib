@@ -112,9 +112,16 @@ fn a_different_number_writes_and_the_equal_second_set_is_a_no_op() {
 }
 
 #[test]
-fn alias_refusals_and_path_errors_are_unchanged() {
+fn an_equal_write_at_an_alias_entry_keeps_the_reference() {
+    // The alias resolves to 1, so writing 1 is a no-op and must keep
+    // the `*a` spelling. A different value replaces the reference:
+    // the token is the entry's own byte in the source. Path errors
+    // are unchanged.
     let mut d = parse_document("x: &a 1\ny: *a\n").unwrap();
-    assert!(d.set_value("y", &Value::from(1_i64)).is_err());
+    d.set_value("y", &Value::from(1_i64)).unwrap();
+    assert_eq!(d.source(), "x: &a 1\ny: *a\n");
+    d.set_value("y", &Value::from(2_i64)).unwrap();
+    assert_eq!(d.source(), "x: &a 1\ny: 2\n");
     let mut d = doc();
     assert!(d.set_value("missing", &Value::Null).is_err());
 }

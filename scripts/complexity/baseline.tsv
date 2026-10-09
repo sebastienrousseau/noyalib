@@ -70,7 +70,7 @@ too_many_lines	crates/noyalib/examples/types.rs	main	71
 too_many_lines	crates/noyalib/examples/untagged.rs	main	100
 too_many_lines	crates/noyalib/src/cst/builder.rs	document_boundaries	61
 too_many_lines	crates/noyalib/src/cst/document.rs	entry_key_site	76
-too_many_lines	crates/noyalib/src/cst/document.rs	entry_line_span	173
+too_many_lines	crates/noyalib/src/cst/document.rs	entry_line_span	164
 too_many_lines	crates/noyalib/src/cst/document.rs	guarded_insert	77
 too_many_lines	crates/noyalib/src/cst/document.rs	is_plain_safe	91
 too_many_lines	crates/noyalib/src/cst/document.rs	rename_key	115

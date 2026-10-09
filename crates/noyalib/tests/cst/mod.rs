@@ -8,6 +8,7 @@
 
 #![allow(missing_docs)]
 
+mod cst_alias_valued_entry;
 mod cst_anchored_value_recursion;
 mod cst_anchors;
 mod cst_block_growth;
