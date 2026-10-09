@@ -956,135 +956,156 @@ impl<'a> Scanner<'a> {
             // Skip comment — bulk-scan to next line break, capturing
             // the span and text for callers that want to read it back.
             if self.peek() == b'#' {
-                // Per YAML 1.2.2 §6.6: a `#` starts a comment only when
-                // preceded by whitespace, a line break, or the start of
-                // the input. Look at the byte immediately before the `#`
-                // — if it's any non-whitespace content character, this
-                // is an inline `#` adjacent to prior content (e.g.
-                // `"value"# bad`) and is not a valid comment indicator.
-                if self.pos > 0 {
-                    let prev = self.input[self.pos - 1];
-                    // A leading BOM is a zero-width stream prefix, so a `#`
-                    // immediately after it is at the start of the input (a valid
-                    // comment start), not an inline `#` adjacent to content.
-                    let after_leading_bom =
-                        self.pos == 3 && self.input.starts_with(&[0xEF, 0xBB, 0xBF]);
-                    if !after_leading_bom && !Self::is_blank_or_break(prev) {
-                        return Err(self.error(
-                            "comment indicator '#' must be preceded by a space, tab, or line break",
-                        ));
-                    }
-                }
-                let comment_start = self.pos;
-                let remaining = &self.input[self.pos..];
-                // SIMD: comment text runs to the next line break.
-                // memchr2 dispatches to SSE2 / NEON for the bulk-scan
-                // and is materially faster than a byte-by-byte
-                // `iter().position` on long comments.
-                let end = memchr::memchr2(b'\n', b'\r', remaining).unwrap_or(remaining.len());
-                let comment_end = comment_start + end;
-                if self.capture_comments {
-                    // `#` itself is at `comment_start`; the text starts
-                    // one byte later. Skip the `#` but keep any following
-                    // space so reconstruction preserves formatting.
-                    let text_start = comment_start + 1;
-                    let text = self.input_str[text_start..comment_end].to_owned();
-                    self.comments.push(ScannedComment {
-                        start: comment_start,
-                        end: comment_end,
-                        text,
-                        inline,
-                    });
-                }
-                self.col += end;
-                self.pos += end;
+                self.skip_comment(inline)?;
             }
 
             // Skip line break.
             if Self::is_break(self.peek()) {
-                let break_start = self.pos;
-                self.skip_line();
-                if self.recording {
-                    self.trivia.push(Trivia {
-                        start: break_start,
-                        end: self.pos,
-                        kind: TriviaKind::Newline,
-                    });
-                }
-                // The `---` line is over — block content may now
-                // appear on subsequent lines under normal indent rules.
-                self.doc_start_inline = false;
-                // Anchors / tags only decorate a node on the *same*
-                // line; once a line break is crossed, the node they
-                // decorate is whatever appears after, which may be a
-                // collection that *contains* an alias key. Clearing
-                // `Anchor` / `Tag` here makes the alias-decoration
-                // guard fire only on direct adjacency (SR86: `&b *a`)
-                // and not on legitimate line-broken structures
-                // (26DV: `&node3\n  *alias1: scalar3`).
-                if matches!(
-                    self.last_emitted_kind,
-                    LastEmitted::Anchor | LastEmitted::Tag
-                ) {
-                    self.last_emitted_kind = LastEmitted::Other;
-                }
-                // Per YAML 1.2.2 §7.4 (Flow Collections): flow content
-                // continuation across a line break must be indented
-                // strictly more than the surrounding block — otherwise
-                // it would be ambiguous with sibling block content
-                // (9C9N). Skip when the new line is empty (only
-                // blanks before the next break); compare against the
-                // content column (after leading blanks), not the
-                // line-start column.
-                if self.flow_level > 0 && self.indent >= 0 {
-                    // Count *spaces* first, then any blanks (tab or
-                    // space). Per YAML 1.2.2 §6.1 only spaces count
-                    // toward indentation; tabs that appear AFTER the
-                    // space-prefix are valid inline separation
-                    // (6HB6 line 16: `  <tab>Still by two`). Tabs
-                    // BEFORE any space (i.e. at column 0 of a flow
-                    // continuation line) ARE invalid indentation
-                    // (Y79Y sub-case 4).
-                    let mut look = self.pos;
-                    while look < self.input.len() && self.input[look] == b' ' {
-                        look += 1;
-                    }
-                    let space_indent_col = (look - self.pos) as i32;
-                    while look < self.input.len() && Self::is_blank(self.input[look]) {
-                        look += 1;
-                    }
-                    let line_has_content =
-                        look < self.input.len() && !Self::is_break(self.input[look]);
-                    // A line that opens with the flow collection's own
-                    // closing indicator is exempt. The rule above exists
-                    // because under-indented *content* is ambiguous with
-                    // sibling block content (9C9N, VJP3) — and a `]` or
-                    // `}` can never begin block content, so there is
-                    // nothing for it to be ambiguous with. The wrapped
-                    // list is ordinary hand-written YAML:
-                    //
-                    //     ports: [
-                    //       80,
-                    //       443,
-                    //     ]
-                    //
-                    // and every other implementation reads it. Content on
-                    // such a line is still checked: `c]` (9C9N's third
-                    // line) opens with content, not with the indicator.
-                    let closes_flow = line_has_content && matches!(self.input[look], b']' | b'}');
-                    if line_has_content && !closes_flow && space_indent_col <= self.indent {
-                        return Err(self.error(
-                            "flow content must be indented more than the surrounding block",
-                        ));
-                    }
-                }
-                // In block context, allow simple key at line start.
-                if self.flow_level == 0 {
-                    self.simple_key_allowed = true;
-                }
+                self.cross_line_break()?;
             } else {
                 break;
             }
+        }
+        Ok(())
+    }
+
+    /// Skip a comment at the cursor (`#` to the end of the line),
+    /// recording it for callers that capture comments.
+    fn skip_comment(&mut self, inline: bool) -> ScanResult<()> {
+        // Per YAML 1.2.2 §6.6: a `#` starts a comment only when
+        // preceded by whitespace, a line break, or the start of
+        // the input. Look at the byte immediately before the `#`
+        // — if it's any non-whitespace content character, this
+        // is an inline `#` adjacent to prior content (e.g.
+        // `"value"# bad`) and is not a valid comment indicator.
+        if self.pos > 0 {
+            let prev = self.input[self.pos - 1];
+            // A leading BOM is a zero-width stream prefix, so a `#`
+            // immediately after it is at the start of the input (a valid
+            // comment start), not an inline `#` adjacent to content.
+            let after_leading_bom = self.pos == 3 && self.input.starts_with(&[0xEF, 0xBB, 0xBF]);
+            if !after_leading_bom && !Self::is_blank_or_break(prev) {
+                return Err(self.error(
+                    "comment indicator '#' must be preceded by a space, tab, or line break",
+                ));
+            }
+        }
+        let comment_start = self.pos;
+        let remaining = &self.input[self.pos..];
+        // SIMD: comment text runs to the next line break.
+        // memchr2 dispatches to SSE2 / NEON for the bulk-scan
+        // and is materially faster than a byte-by-byte
+        // `iter().position` on long comments.
+        let end = memchr::memchr2(b'\n', b'\r', remaining).unwrap_or(remaining.len());
+        let comment_end = comment_start + end;
+        // §5.1 c-printable holds for comment text as for scalar content:
+        // a raw control character is an error wherever it appears (found
+        // by the serde_yaml compat fuzzer on `#]\0`).
+        if remaining[..end].iter().any(|&b| Self::is_raw_control(b)) {
+            return Err(self.error(
+                "comment contains a raw control character — YAML content is limited to \
+                 printable characters",
+            ));
+        }
+        if self.capture_comments {
+            // `#` itself is at `comment_start`; the text starts
+            // one byte later. Skip the `#` but keep any following
+            // space so reconstruction preserves formatting.
+            let text_start = comment_start + 1;
+            let text = self.input_str[text_start..comment_end].to_owned();
+            self.comments.push(ScannedComment {
+                start: comment_start,
+                end: comment_end,
+                text,
+                inline,
+            });
+        }
+        self.col += end;
+        self.pos += end;
+        Ok(())
+    }
+
+    /// Cross the line break at the cursor and apply the rules that hold
+    /// at the start of the next line.
+    fn cross_line_break(&mut self) -> ScanResult<()> {
+        let break_start = self.pos;
+        self.skip_line();
+        if self.recording {
+            self.trivia.push(Trivia {
+                start: break_start,
+                end: self.pos,
+                kind: TriviaKind::Newline,
+            });
+        }
+        // The `---` line is over — block content may now
+        // appear on subsequent lines under normal indent rules.
+        self.doc_start_inline = false;
+        // Anchors / tags only decorate a node on the *same*
+        // line; once a line break is crossed, the node they
+        // decorate is whatever appears after, which may be a
+        // collection that *contains* an alias key. Clearing
+        // `Anchor` / `Tag` here makes the alias-decoration
+        // guard fire only on direct adjacency (SR86: `&b *a`)
+        // and not on legitimate line-broken structures
+        // (26DV: `&node3\n  *alias1: scalar3`).
+        if matches!(
+            self.last_emitted_kind,
+            LastEmitted::Anchor | LastEmitted::Tag
+        ) {
+            self.last_emitted_kind = LastEmitted::Other;
+        }
+        // Per YAML 1.2.2 §7.4 (Flow Collections): flow content
+        // continuation across a line break must be indented
+        // strictly more than the surrounding block — otherwise
+        // it would be ambiguous with sibling block content
+        // (9C9N). Skip when the new line is empty (only
+        // blanks before the next break); compare against the
+        // content column (after leading blanks), not the
+        // line-start column.
+        if self.flow_level > 0 && self.indent >= 0 {
+            // Count *spaces* first, then any blanks (tab or
+            // space). Per YAML 1.2.2 §6.1 only spaces count
+            // toward indentation; tabs that appear AFTER the
+            // space-prefix are valid inline separation
+            // (6HB6 line 16: `  <tab>Still by two`). Tabs
+            // BEFORE any space (i.e. at column 0 of a flow
+            // continuation line) ARE invalid indentation
+            // (Y79Y sub-case 4).
+            let mut look = self.pos;
+            while look < self.input.len() && self.input[look] == b' ' {
+                look += 1;
+            }
+            let space_indent_col = (look - self.pos) as i32;
+            while look < self.input.len() && Self::is_blank(self.input[look]) {
+                look += 1;
+            }
+            let line_has_content = look < self.input.len() && !Self::is_break(self.input[look]);
+            // A line that opens with the flow collection's own
+            // closing indicator is exempt. The rule above exists
+            // because under-indented *content* is ambiguous with
+            // sibling block content (9C9N, VJP3) — and a `]` or
+            // `}` can never begin block content, so there is
+            // nothing for it to be ambiguous with. The wrapped
+            // list is ordinary hand-written YAML:
+            //
+            //     ports: [
+            //       80,
+            //       443,
+            //     ]
+            //
+            // and every other implementation reads it. Content on
+            // such a line is still checked: `c]` (9C9N's third
+            // line) opens with content, not with the indicator.
+            let closes_flow = line_has_content && matches!(self.input[look], b']' | b'}');
+            if line_has_content && !closes_flow && space_indent_col <= self.indent {
+                return Err(
+                    self.error("flow content must be indented more than the surrounding block")
+                );
+            }
+        }
+        // In block context, allow simple key at line start.
+        if self.flow_level == 0 {
+            self.simple_key_allowed = true;
         }
         Ok(())
     }
@@ -1561,10 +1582,21 @@ impl<'a> Scanner<'a> {
             ));
         }
 
-        // Skip to end of line — directive contents past validation are
-        // not interpreted further (consumers don't need the version).
-        if let Some(pos) = memchr::memchr2(b'\n', b'\r', &self.input[self.pos..]) {
-            self.advance_by(pos);
+        self.finish_directive_line(directive_start)
+    }
+
+    /// Skip to end of line — directive contents past validation are
+    /// not interpreted further (consumers don't need the version) — and
+    /// record the directive's trivia. The skipped text, a trailing
+    /// comment included, is held to §5.1 c-printable like any other.
+    fn finish_directive_line(&mut self, directive_start: usize) -> ScanResult<()> {
+        let rest = &self.input[self.pos..];
+        let len = memchr::memchr2(b'\n', b'\r', rest).unwrap_or(rest.len());
+        if rest[..len].iter().any(|&b| Self::is_raw_control(b)) {
+            return Err(self.error("directive line contains a raw control character"));
+        }
+        if len < rest.len() {
+            self.advance_by(len);
         } else {
             self.pos = self.input.len();
         }
@@ -2406,6 +2438,7 @@ impl<'a> Scanner<'a> {
     }
 }
 
+mod block_scalars;
 mod scalars;
 
 /// Snap `index` to the nearest code-point boundary at or below it.

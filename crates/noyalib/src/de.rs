@@ -238,19 +238,7 @@ where
     for p in &config.policies {
         p.check_value(&value)?;
     }
-    let spans = span_context::build_span_map(&value, &span_tree);
-    let ctx = span_context::SpanContext::new(spans, s.into());
-    let _guard = span_context::set_span_context(ctx);
-    let de = Deserializer::with_options(
-        &value,
-        Some(_guard.as_ref()),
-        config.ignore_binary_tag_for_string,
-        config.plain_scalar_strings,
-    );
-    attach_field_path(
-        locate_streaming_error(T::deserialize(de), streaming_err),
-        &value,
-    )
+    deserialize_spanned(s, &value, &span_tree, config, streaming_err)
 }
 
 /// Strict deserialise: like [`from_str`] but errors if `s`
@@ -548,19 +536,7 @@ where
         apply_includes(&mut value, config)?;
         apply_properties(&mut value, config)?;
         crate::policy::check_document(&config.policies, &value)?;
-        let spans = span_context::build_span_map(&value, &span_tree);
-        let ctx = span_context::SpanContext::new(spans, s.into());
-        let _guard = span_context::set_span_context(ctx);
-        let de = Deserializer::with_options(
-            &value,
-            Some(_guard.as_ref()),
-            config.ignore_binary_tag_for_string,
-            config.plain_scalar_strings,
-        );
-        attach_field_path(
-            locate_streaming_error(T::deserialize(de), streaming_err),
-            &value,
-        )
+        deserialize_spanned(s, &value, &span_tree, config, streaming_err)
     }
 
     #[cfg(not(feature = "std"))]
@@ -575,6 +551,36 @@ where
         );
         locate_streaming_error(T::deserialize(de), streaming_err)
     }
+}
+
+/// Deserialize `T` from a loaded `value` with the span context for
+/// `s` installed: errors carry locations and field paths, and keys the
+/// loader canonicalised read as written. `streaming_err` is the
+/// streaming path's unlocated error, joined to the result.
+#[cfg(feature = "std")]
+fn deserialize_spanned<T>(
+    s: &str,
+    value: &Value,
+    span_tree: &span_context::SpanTree,
+    config: &ParserConfig,
+    streaming_err: Option<Error>,
+) -> Result<T>
+where
+    T: for<'de> serde_core::Deserialize<'de>,
+{
+    let spans = span_context::build_span_map(value, span_tree);
+    let ctx = span_context::SpanContext::new(spans, s.into()).with_key_texts(value, span_tree);
+    let _guard = span_context::set_span_context(ctx);
+    let de = Deserializer::with_options(
+        value,
+        Some(_guard.as_ref()),
+        config.ignore_binary_tag_for_string,
+        config.plain_scalar_strings,
+    );
+    attach_field_path(
+        locate_streaming_error(T::deserialize(de), streaming_err),
+        value,
+    )
 }
 
 /// Resolves a typed parse whose streaming attempt failed without a

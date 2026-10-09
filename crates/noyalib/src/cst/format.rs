@@ -6,6 +6,7 @@
 use crate::cst::document::{Document, parse_stream_inner};
 use crate::cst::green::{GreenChild, GreenNode};
 use crate::cst::syntax::SyntaxKind;
+use crate::cst::{YAML_BLANK, is_yaml_blank};
 use crate::de::ParserConfig;
 use crate::error::{Error, Result};
 use crate::parser::ParseConfig;
@@ -85,7 +86,7 @@ pub fn format_with_parser_config(
     config: &FormatConfig,
     parser: &ParserConfig,
 ) -> Result<String> {
-    if input.trim().is_empty() {
+    if is_yaml_blank(input) {
         return Ok(String::new());
     }
     let parse_config = ParseConfig::from(parser);
@@ -275,7 +276,7 @@ impl<'a> Formatter<'a> {
         match kind {
             SyntaxKind::Comment => {
                 self.ensure_space();
-                self.write_raw(text.trim_end());
+                self.write_raw(text.trim_end_matches(YAML_BLANK));
                 self.newline();
             }
             SyntaxKind::Newline => {
@@ -309,7 +310,7 @@ impl<'a> Formatter<'a> {
             }
             _ if kind.is_token() => {
                 let trimmed = if matches!(kind, SyntaxKind::PlainScalar) {
-                    text.trim()
+                    text.trim_matches(YAML_BLANK)
                 } else {
                     text
                 };

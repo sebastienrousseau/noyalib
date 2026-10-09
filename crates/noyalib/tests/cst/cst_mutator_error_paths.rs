@@ -184,12 +184,20 @@ fn the_reorderers_work_on_a_flow_sequence() {
 // ── remove ──────────────────────────────────────────────────────
 
 #[test]
-fn remove_refuses_an_alias_because_its_bytes_belong_to_the_anchor() {
-    refuses(
-        "alias value",
-        |d| d.remove("ali"),
-        &["alias", "anchor", "remove the anchor's entry"],
+fn remove_deletes_an_alias_valued_entry_through_its_token() {
+    // Flipped by the alias-token write support: the entry's own value
+    // byte in the source is the `*A` token, which the alias span node
+    // now records, so removing the entry needs nothing of the anchor's.
+    // The refusals that remain are the paths resolving *through* an
+    // alias; cst_alias_valued_entry covers both sides.
+    let mut doc = parse_document(DOC).expect("fixture parses");
+    doc.remove("ali").unwrap();
+    assert!(
+        !doc.source().contains("ali"),
+        "entry gone: {}",
+        doc.source()
     );
+    assert!(doc.source().contains("anc: &A 1"), "anchor untouched");
 }
 
 #[test]
@@ -299,12 +307,13 @@ fn insert_after_refuses_a_path_that_does_not_end_in_an_index() {
 // ── set_value ───────────────────────────────────────────────────
 
 #[test]
-fn set_value_refuses_an_alias_and_unresolvable_paths() {
-    refuses(
-        "alias target",
-        |d| d.set_value("ali", &Value::from(1_i64)),
-        &["alias", "edit the anchor definition"],
-    );
+fn set_value_replaces_an_alias_reference_and_refuses_unresolvable_paths() {
+    // The alias-target arm flipped with the token-span support: the
+    // write replaces the `*A` reference and leaves the anchor alone.
+    let mut doc = parse_document(DOC).expect("fixture parses");
+    doc.set_value("ali", &Value::from(2_i64)).unwrap();
+    assert!(doc.source().contains("ali: 2"), "{}", doc.source());
+    assert!(doc.source().contains("anc: &A 1"), "anchor untouched");
     refuses(
         "unknown key",
         |d| d.set_value("nope", &Value::from(1_i64)),

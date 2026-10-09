@@ -34,7 +34,7 @@ fuzz_target!(|data: &[u8]| {
 
     match (shim, upstream) {
         (Ok(a), Ok(b)) => {
-            if !equivalent(&a, &b) {
+            if !equivalent(&a, &b) && !anchor_name_outside_libyaml(s) {
                 panic!(
                     "shim != serde_yaml on accepted input (len {}):\n  shim     : {}\n  upstream : {}",
                     s.len(),
@@ -64,6 +64,19 @@ fuzz_target!(|data: &[u8]| {
         }
     }
 });
+
+/// libyaml allows only `[A-Za-z0-9_-]` in an anchor name and ends the
+/// name at anything else, where YAML 1.2.2 §6.9.2 allows any ns-char
+/// but the flow indicators: `&f::!+` anchors an empty node named
+/// `f::!+` (noyalib) or the scalar "::!+" under the name `f`
+/// (libyaml). Such documents differ in value, not only in acceptance.
+fn anchor_name_outside_libyaml(s: &str) -> bool {
+    s.split('&').skip(1).any(|rest| {
+        rest.chars()
+            .take_while(|c| !c.is_whitespace() && !",[]{}".contains(*c))
+            .any(|c| !(c.is_ascii_alphanumeric() || c == '_' || c == '-'))
+    })
+}
 
 /// Value equivalence with numeric tolerance: `1` and `1.0` disagree
 /// on integer-ness across resolvers without disagreeing on the data.
@@ -105,5 +118,49 @@ fn known_reject_divergence(s: &str) -> bool {
     // yaml-test-suite blesses them and noyalib passes it 406/406 —
     // but libyaml wants a key before the `:` in block context
     // ("did not find expected key").
-    s.lines().any(|l| l.trim_start().starts_with(':'))
+    if s.lines().any(|l| l.trim_start().starts_with(':')) {
+        return true;
+    }
+    // libyaml rejects a tab that starts a line ("cannot start any
+    // token"). The spec reads it as separation white space wherever it
+    // is not indentation: a line of only white space or a comment is an
+    // l-comment line (§6.6), so `\t` alone is a valid empty stream, and
+    // a tab before a node is s-separate-in-line, so `\t$0` is the
+    // scalar "$0" (yaml-test-suite 6CA3 indents a flow node so).
+    // noyalib follows the spec and rejects tab indentation itself.
+    if s.lines().any(|l| l.trim_start_matches(' ').starts_with('\t')) {
+        return true;
+    }
+    // A `#` straight after a block scalar header (`|#`, `>-#`) is not a
+    // comment: §6.6 wants white space before it, and yaml-test-suite
+    // X4QW is the error case. libyaml reads it as one.
+    if block_header_touches_comment(s) {
+        return true;
+    }
+    // A root-level block scalar may hold content at column 0: its
+    // parent indentation is -1 (yaml-test-suite FP8R, "Zero indented
+    // block scalar"). libyaml ends the scalar at the first column-0
+    // line and reads what follows as more of the stream.
+    root_block_scalar_with_column_0_content(s)
+}
+
+/// A `|` or `>` with only indicators (`+`, `-`, digits) before a `#`.
+fn block_header_touches_comment(s: &str) -> bool {
+    s.match_indices(['|', '>']).any(|(i, _)| {
+        s[i + 1..]
+            .trim_start_matches(|c: char| c == '+' || c == '-' || c.is_ascii_digit())
+            .starts_with('#')
+    })
+}
+
+/// The document is a root block scalar (`|` or `>`, after an optional
+/// `---`) with a non-blank line at column 0 below its header.
+fn root_block_scalar_with_column_0_content(s: &str) -> bool {
+    let mut lines = s.lines().skip_while(|l| l.trim().is_empty());
+    let Some(header) = lines.next() else {
+        return false;
+    };
+    let header = header.strip_prefix("---").unwrap_or(header).trim_start();
+    header.starts_with(['|', '>'])
+        && lines.any(|l| l.starts_with(|c: char| !c.is_whitespace()))
 }

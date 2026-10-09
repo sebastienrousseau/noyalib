@@ -724,8 +724,13 @@ impl<'de> serde_core::de::MapAccess<'de> for ValueMapAccess<'de> {
             Some((key, value)) => {
                 self.value = Some(value);
                 let de = self.child_de(value);
-                let key_de =
-                    serde_core::de::value::StrDeserializer::<'de, Error>::new(key.as_str());
+                // A key the loader canonicalised reads as written, as on
+                // the streaming path; a `Value` keeps the canonical form.
+                let text = self
+                    .span_ctx
+                    .and_then(|ctx| ctx.key_text(key))
+                    .unwrap_or(key.as_str());
+                let key_de = serde_core::de::value::StrDeserializer::<'de, Error>::new(text);
                 de.wrap_err(seed.deserialize(key_de).map(Some))
             }
             None => Ok(None),

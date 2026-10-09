@@ -5,7 +5,70 @@ All notable changes to this project are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [v0.0.56] - Unreleased
+## [v0.0.57] - 2026-10-09
+
+### Fixed
+
+- A plain scalar whose line ends with spaces or tabs continues on the
+  next line. The trailing white space was read as the end of the
+  scalar, so `m \nx` failed with "stray content after document" and
+  `a: m \n\n  x` with "inconsistent indentation"; both now parse, to
+  `"m x"` and `{a: "m\nx"}`. Found by the `fuzz_serde_yaml_compat`
+  target.
+- With `DuplicateKeyPolicy::Error` or `First`, a typed parse
+  (`from_str::<BTreeMap<..>>`, structs, `serde_json::Value`) treats keys
+  that resolve to the same value as one key, as the `Value` path
+  already did: `~` and `null`, `0x1F` and `31`, `True` and `true`. It
+  compared the text as written, so `~: 1\nnull: 2` was refused as a
+  `Value` and accepted as a map.
+- A typed parse reads a mapping key as it was written on every path.
+  A tag anywhere in the document moves a typed parse off the streaming
+  path, and the fallback spelled a non-string key in canonical form:
+  `0x1F` became "31", `~` became "null", and in YAML 1.1 mode `on`
+  became "true", so a struct field named `on` went missing. The key
+  text now comes from the source, as on the streaming path. A `Value`
+  still holds the canonical spelling (`0x1F` is "31"), unchanged.
+- `cst::format` and the CST editors treat only space, tab and the line
+  breaks as white space. Rust's `trim` also strips NEL (U+0085), NBSP
+  and U+3000, which YAML reads as content, so formatting the document
+  `"\u{85}"` returned an empty document, a trailing NBSP in a comment
+  was dropped, and a scalar starting or ending with such a character
+  could not be formatted at all. Found by the
+  `fuzz_cst_format_roundtrip` target.
+
+### Changed
+
+- **Breaking (parse behaviour):** a plain hex or octal integer resolves
+  only in the YAML 1.2 core schema spelling, `0x[0-9a-fA-F]+` or
+  `0o[0-7]+`. An uppercase prefix (`0X1F`, `0O17`) or a sign after the
+  prefix (`0x-1`, `0o+7`) used to resolve to an integer and is now a
+  string, as in serde_yaml_ng and libyaml. Found by the `fuzz_diff`
+  target. An explicit `!!int` tag still accepts the uppercase prefix.
+- **Breaking (parse behaviour):** a folded block scalar keeps a
+  whitespace-only line that is indented past its content, as a literal
+  one already did (yaml-test-suite DWX9). Such a line is a spaced line
+  (YAML 1.2.2 §8.1.3): its extra spaces are content and the breaks
+  around it are not folded, so `>\n  a\n    \n  b\n` is `"a\n  \nb\n"`.
+  It used to be dropped (`"a\nb\n"`). Found by the `fuzz_diff` target.
+- **Breaking (parse behaviour):** a raw control character (C0 other
+  than tab, or DEL) in a comment is an error, as it already was in
+  scalar content. YAML 1.2.2 limits the whole stream to printable
+  characters (§5.1), comments and directive lines included; `#]\0`
+  and `a: 1 # x\x01` used to parse. serde_yaml refuses them too. Found
+  by the `fuzz_serde_yaml_compat` target.
+- **Breaking (parse behaviour):** in a double-quoted scalar, each empty
+  line after an escaped line break (`\` at the end of a line) is a line
+  feed (YAML 1.2.2 §7.3.1). They were folded as after an unescaped
+  break, so `"a\` + empty line + `b"` read `"a b"` where libyaml and
+  the spec read `"a\nb"`. Found by the `fuzz_diff` target.
+- **Breaking (parse behaviour):** an anchor or tag on an empty sequence
+  item no longer swallows the next item. `- &a\n- x` is
+  `[null, "x"]`; it was read as `[["x"]]`, a nested sequence. A
+  sequence nested under an item must be indented past the item's `-`;
+  only a mapping value may start its sequence at the key's column
+  (YAML 1.2.2 §8.2.1). Found by the `fuzz_diff` target.
+
+## [v0.0.56] - 2026-10-08
 
 ### Fixed
 

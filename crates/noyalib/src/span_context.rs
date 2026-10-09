@@ -42,10 +42,18 @@ pub(crate) enum SpanTree {
     },
     /// An alias reference (`*name`) resolved *through* to its anchor's
     /// definition tree (issue #149): the wrapped tree is the anchor's, so a
-    /// read here yields the anchor's value span. The wrapper records that the
-    /// resolution passed through an alias — a *write* would splice the
-    /// anchor's bytes (a different key), which `Document::set` must refuse.
-    Alias(Box<Self>),
+    /// read here yields the anchor's value span. `at` is the `*name`
+    /// token's own span, the one site a write may touch: replacing the
+    /// reference edits only the addressed entry, while splicing the
+    /// resolved span would rewrite the anchor's bytes (a different key),
+    /// which the write paths refuse for every segment that resolves
+    /// *through* the alias.
+    Alias {
+        /// The `*name` token's own byte span.
+        at: (usize, usize),
+        /// The anchor's tree, substituted at this site.
+        target: Box<Self>,
+    },
 }
 
 /// Holds the span map and source string for the current deserialization.
@@ -58,6 +66,11 @@ pub struct SpanContext {
     /// Line and character index over `source`, built on first use and
     /// shared by every context over the same source.
     lines: SharedLineIndex,
+    /// Mapping keys the loader stored in canonical form (`0x1F` as
+    /// "31", `~` as "null"), by the key's address in the value tree, to
+    /// the source range of the key as written. A typed target reads the
+    /// written text, as it does on the streaming path.
+    key_texts: FxHashMap<usize, (usize, usize)>,
 }
 
 /// A lazily built [`LineIndex`], shareable between the span contexts of
@@ -84,7 +97,24 @@ impl SpanContext {
             spans,
             source,
             lines,
+            key_texts: FxHashMap::default(),
         }
+    }
+
+    /// Record, for every mapping in `value`, the written text of each
+    /// key the loader canonicalised; see [`Self::key_text`].
+    #[cfg(feature = "std")]
+    pub(crate) fn with_key_texts(mut self, value: &Value, tree: &SpanTree) -> Self {
+        walk_keys(value, tree, &self.source, &mut self.key_texts);
+        self
+    }
+
+    /// The source text of `key` when the loader stored it in canonical
+    /// form, borrowed from the context's source.
+    pub(crate) fn key_text(&self, key: &String) -> Option<&str> {
+        let addr = core::ptr::from_ref(key) as usize;
+        let &(start, end) = self.key_texts.get(&addr)?;
+        self.source.get(start..end)
     }
 
     /// The [`Location`] of byte `index` in the source; equal to
@@ -288,8 +318,55 @@ fn walk(value: &Value, tree: &SpanTree, map: &mut FxHashMap<usize, (usize, usize
             }
         }
         // An alias site maps to the anchor's spans; walk through it.
-        SpanTree::Alias(inner) => walk(value, inner, map),
+        SpanTree::Alias { target, .. } => walk(value, target, map),
     }
+}
+
+/// Walk `value` and `tree` together, recording each mapping key whose
+/// written text differs from the stored key only by canonicalisation.
+#[cfg(feature = "std")]
+fn walk_keys(
+    value: &Value,
+    tree: &SpanTree,
+    source: &str,
+    out: &mut FxHashMap<usize, (usize, usize)>,
+) {
+    match (value, tree) {
+        (Value::Sequence(seq), SpanTree::Sequence { items, .. }) => {
+            for (v, t) in seq.iter().zip(items) {
+                walk_keys(v, t, source, out);
+            }
+        }
+        (Value::Mapping(mapping), SpanTree::Mapping { entries, .. }) => {
+            for ((k, v), &((start, end), ref vt)) in mapping.iter().zip(entries) {
+                let written = source.get(start..end);
+                if written.is_some_and(|w| is_canonicalised_plain_key(k, w)) {
+                    let _ = out.insert(core::ptr::from_ref(k) as usize, (start, end));
+                }
+                walk_keys(v, vt, source, out);
+            }
+        }
+        (Value::Tagged(t), _) => walk_keys(t.value(), tree, source, out),
+        (_, SpanTree::Alias { target, .. }) => walk_keys(value, target, source, out),
+        _ => {}
+    }
+}
+
+/// True when `written` is a bare plain scalar the loader stored as the
+/// canonical spelling `key` of a null, bool or number. Quoted, tagged,
+/// anchored, aliased and multi-line keys never qualify, and a key whose
+/// text was kept as written has nothing to restore.
+#[cfg(feature = "std")]
+fn is_canonicalised_plain_key(key: &str, written: &str) -> bool {
+    let canonical_scalar = matches!(key, "null" | "true" | "false" | "nan" | "inf" | "-inf")
+        || key.parse::<i64>().is_ok()
+        || key.parse::<u64>().is_ok()
+        || key.parse::<f64>().is_ok();
+    let bare = written.is_empty()
+        || (written.trim() == written
+            && !written.contains(['\n', '\r', '#'])
+            && !written.starts_with(['\'', '"', '!', '&', '*', '|', '>', '%', '@', '`', '[', '{']));
+    canonical_scalar && bare && written != key && (!written.is_empty() || key == "null")
 }
 
 #[cfg(all(test, feature = "std"))]

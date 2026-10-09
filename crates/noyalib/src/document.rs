@@ -279,7 +279,8 @@ where
         for (value, span_tree) in &pairs {
             crate::policy::check_document(&config.policies, value)?;
             let spans = span_context::build_span_map(value, span_tree);
-            let ctx = span_context::SpanContext::with_lines(spans, source.clone(), lines.clone());
+            let ctx = span_context::SpanContext::with_lines(spans, source.clone(), lines.clone())
+                .with_key_texts(value, span_tree);
             let _guard = span_context::set_span_context(ctx);
             let typed: T = crate::from_value(value)?;
             results.push(typed);

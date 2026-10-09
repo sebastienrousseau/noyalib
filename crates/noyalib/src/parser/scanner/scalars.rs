@@ -1,5 +1,6 @@
 //! Scalar scanning for the YAML scanner: plain, single/double-quoted
-//! (with escape decoding), and literal/folded block scalars.
+//! (with escape decoding). Literal and folded block scalars live in
+//! `block_scalars.rs`.
 //!
 //! These are methods of [`super::Scanner`], split into their own file
 //! as a second `impl` block to keep scanner.rs navigable. A child
@@ -60,288 +61,185 @@ impl Scanner<'_> {
         self.simple_key_allowed = false;
         self.mark = self.pos;
 
-        // ── Fast path: single-line plain scalar (no line folding) ────
-        // Most scalars in real YAML are single-line values like `key: value`.
-        // Detect this case and emit directly from the input slice without
-        // allocating `whitespace` or entering the multiline folding loop.
-        {
-            // Find first line break or comment. A `#` is only a comment
-            // when preceded by whitespace (YAML 1.2 rule).
-            let (search_end, ends_on_break) = self.plain_line_end();
-            let is_single_line = !ends_on_break;
-            let remaining = &self.input[self.pos..];
-            let in_flow = self.flow_level > 0;
-            let mut len = 0;
-
-            // Hot-path SIMD: every byte that isn't in the boundary
-            // candidate set just increments `len` after the existing
-            // checks — those bytes are pure scalar interior. Skip
-            // straight to the next candidate byte via the SIMD-routed
-            // `clean_prefix_len` (memchr arity 1/2/3, SWAR for 4+);
-            // the per-candidate state-dependent rules below stay
-            // unchanged. Pure additive optimisation — semantics are
-            // bit-exact with the byte-by-byte loop.
-            let candidate_set: &[u8] = if in_flow { b": \t,[]{}" } else { b": \t" };
-            while len < search_end {
-                let skip =
-                    crate::simd::clean_prefix_len(&remaining[len..search_end], candidate_set);
-                len += skip;
-                if len >= search_end {
-                    break;
-                }
-                let c = remaining[len];
-                if c == b':' {
-                    // End of input terminates a plain scalar exactly as a
-                    // space or a line break does, so `a:` is the mapping
-                    // `{a: null}` and not the scalar `"a:"`. Substituting a
-                    // NUL for the absent byte did not do that: NUL is not in
-                    // IS_BLANK_OR_BREAK, so the scalar swallowed the colon.
-                    // The predicate twelve lines below already had this
-                    // right.
-                    if len + 1 >= remaining.len() {
-                        break;
-                    }
-                    let next = remaining[len + 1];
-                    if Self::is_blank_or_break(next)
-                        || (in_flow && (next == b',' || next == b']' || next == b'}'))
-                    {
-                        break;
-                    }
-                }
-                if in_flow && (c == b',' || c == b'[' || c == b']' || c == b'{' || c == b'}') {
-                    break;
-                }
-                if c == b' ' || c == b'\t' {
-                    // Check if this is trailing whitespace before a break or terminator.
-                    let mut j = len + 1;
-                    while j < remaining.len() && (remaining[j] == b' ' || remaining[j] == b'\t') {
-                        j += 1;
-                    }
-                    if j >= remaining.len() || Self::is_break(remaining[j]) || remaining[j] == b'#'
-                    {
-                        // Trailing whitespace — trim and break
-                        break;
-                    }
-                    if remaining[j] == b':'
-                        && (j + 1 >= remaining.len()
-                            || Self::is_blank_or_break(remaining[j + 1])
-                            || (in_flow
-                                && (remaining[j + 1] == b','
-                                    || remaining[j + 1] == b']'
-                                    || remaining[j + 1] == b'}')))
-                    {
-                        break;
-                    }
-                    len = j;
-                    continue;
-                }
-                len += 1;
-            }
-
-            // The fast path can also fire when the scalar terminates
-            // before the next newline (e.g. on a `:`, trailing
-            // whitespace, or comment), even though `is_single_line`
-            // was flipped to `false` because *some* newline exists
-            // farther down the input. The line-folding slow path is
-            // only required when the scalar runs right up to the
-            // newline and might continue on the next line — i.e.
-            // `len == search_end` *and* `search_end` landed on a
-            // line break. Whenever `len < search_end` we know the
-            // scalar is fully bounded on the current line, so the
-            // input slice can be emitted directly as
-            // `Cow::Borrowed`. This unblocks zero-copy
-            // `Deserialize<'de> for &'de str` for the typical
-            // `key: value\n` shape.
-            let scalar_terminates_on_line = len < search_end;
-            if (is_single_line || scalar_terminates_on_line) && len > 0 {
-                // Strip trailing inline whitespace before a flow
-                // indicator (`}`, `]`, `,`). The inner-scan loop
-                // folds those blanks into `len` (line ~2134 above)
-                // because they may precede more content on the
-                // current line. When they do not, the slow path
-                // would emit just the content; mirror that here so
-                // the borrowed slice matches the owned-buffer
-                // result byte-for-byte. The scanner position still
-                // advances past the whitespace so downstream tokens
-                // line up.
-                let mut content_len = len;
-                while content_len > 0 && matches!(remaining[content_len - 1], b' ' | b'\t') {
-                    content_len -= 1;
-                }
-                if content_len > 0 {
-                    let s = Cow::Borrowed(self.slice_str(self.pos, self.pos + content_len));
-                    self.check_scalar_printable(&s)?;
-                    self.advance_by(len);
-                    self.emit(TokenKind::Scalar(ScalarStyle::Plain, s));
-                    self.last_token_opens_block = false;
-                    return Ok(());
-                }
-            }
+        if self.try_plain_single_line()? {
+            return Ok(());
         }
+        self.scan_plain_multiline()
+    }
 
-        // ── Slow path: multiline plain scalar with line folding ──────
+    /// ── Fast path: single-line plain scalar (no line folding) ────
+    /// Most scalars in real YAML are single-line values like `key: value`.
+    /// Detect this case and emit directly from the input slice without
+    /// allocating `whitespace` or entering the multiline folding loop.
+    /// Returns `false`, having consumed nothing, when the scalar may
+    /// continue on the next line.
+    fn try_plain_single_line(&mut self) -> ScanResult<bool> {
+        // Find first line break or comment. A `#` is only a comment
+        // when preceded by whitespace (YAML 1.2 rule).
+        let (search_end, ends_on_break) = self.plain_line_end();
+        let is_single_line = !ends_on_break;
+        let remaining = &self.input[self.pos..];
+        let len = Self::plain_line_len(remaining, search_end, self.flow_level > 0);
+
+        // The fast path can also fire when the scalar terminates
+        // before the next newline (e.g. on a `:`, trailing
+        // whitespace, or comment), even though `is_single_line`
+        // was flipped to `false` because *some* newline exists
+        // farther down the input. The line-folding slow path is
+        // only required when the scalar runs right up to the
+        // newline and might continue on the next line — i.e.
+        // `len == search_end` *and* `search_end` landed on a
+        // line break. Whenever `len < search_end` we know the
+        // scalar is fully bounded on the current line, so the
+        // input slice can be emitted directly as
+        // `Cow::Borrowed`. This unblocks zero-copy
+        // `Deserialize<'de> for &'de str` for the typical
+        // `key: value\n` shape.
+        let scalar_terminates_on_line = len < search_end;
+        if !(is_single_line || scalar_terminates_on_line) || len == 0 {
+            return Ok(false);
+        }
+        // Strip trailing inline whitespace before a flow
+        // indicator (`}`, `]`, `,`). The inner-scan loop
+        // folds those blanks into `len` (line ~2134 above)
+        // because they may precede more content on the
+        // current line. When they do not, the slow path
+        // would emit just the content; mirror that here so
+        // the borrowed slice matches the owned-buffer
+        // result byte-for-byte. The scanner position still
+        // advances past the whitespace so downstream tokens
+        // line up.
+        let mut content_len = len;
+        while content_len > 0 && matches!(remaining[content_len - 1], b' ' | b'\t') {
+            content_len -= 1;
+        }
+        if content_len == 0 {
+            return Ok(false);
+        }
+        let s = Cow::Borrowed(self.slice_str(self.pos, self.pos + content_len));
+        self.check_scalar_printable(&s)?;
+        self.advance_by(len);
+        self.emit(TokenKind::Scalar(ScalarStyle::Plain, s));
+        self.last_token_opens_block = false;
+        Ok(true)
+    }
+
+    /// How far the plain scalar at the start of `remaining` runs on its
+    /// line, `search_end` being the first line break or comment.
+    ///
+    /// Hot-path SIMD: every byte that isn't in the boundary
+    /// candidate set just increments `len` after the existing
+    /// checks — those bytes are pure scalar interior. Skip
+    /// straight to the next candidate byte via the SIMD-routed
+    /// `clean_prefix_len` (memchr arity 1/2/3, SWAR for 4+);
+    /// the per-candidate state-dependent rules below stay
+    /// unchanged. Pure additive optimisation — semantics are
+    /// bit-exact with the byte-by-byte loop.
+    fn plain_line_len(remaining: &[u8], search_end: usize, in_flow: bool) -> usize {
+        let candidate_set: &[u8] = if in_flow { b": \t,[]{}" } else { b": \t" };
+        let mut len = 0;
+        while len < search_end {
+            let skip = crate::simd::clean_prefix_len(&remaining[len..search_end], candidate_set);
+            len += skip;
+            if len >= search_end {
+                break;
+            }
+            let c = remaining[len];
+            if c == b':' && Self::colon_ends_plain(remaining, len, in_flow) {
+                break;
+            }
+            if in_flow && matches!(c, b',' | b'[' | b']' | b'{' | b'}') {
+                break;
+            }
+            if c == b' ' || c == b'\t' {
+                match Self::classify_blank_run(remaining, len, in_flow) {
+                    BlankRun::End => break,
+                    BlankRun::ToBreak(j) => {
+                        len = j;
+                        break;
+                    }
+                    BlankRun::Inner(j) => {
+                        len = j;
+                        continue;
+                    }
+                }
+            }
+            len += 1;
+        }
+        len
+    }
+
+    /// A `:` at `at` ends a plain scalar when a blank, a break, the end
+    /// of input or (in flow) a flow indicator follows it.
+    ///
+    /// End of input terminates a plain scalar exactly as a space or a
+    /// line break does, so `a:` is the mapping `{a: null}` and not the
+    /// scalar `"a:"`. Substituting a NUL for the absent byte did not do
+    /// that: NUL is not in IS_BLANK_OR_BREAK, so the scalar swallowed
+    /// the colon.
+    fn colon_ends_plain(remaining: &[u8], at: usize, in_flow: bool) -> bool {
+        let Some(&next) = remaining.get(at + 1) else {
+            return true;
+        };
+        Self::is_blank_or_break(next) || (in_flow && matches!(next, b',' | b']' | b'}'))
+    }
+
+    /// Classify the run of blanks starting at `start` on a plain
+    /// scalar's line by what follows it.
+    fn classify_blank_run(remaining: &[u8], start: usize, in_flow: bool) -> BlankRun {
+        let mut j = start + 1;
+        while j < remaining.len() && (remaining[j] == b' ' || remaining[j] == b'\t') {
+            j += 1;
+        }
+        if j >= remaining.len() || remaining[j] == b'#' {
+            // Trailing whitespace — trim and break
+            return BlankRun::End;
+        }
+        if Self::is_break(remaining[j]) {
+            // Blanks before a break do not end the scalar: the next line
+            // may continue it. Run to the break and let the folding path
+            // decide and trim.
+            return BlankRun::ToBreak(j);
+        }
+        if remaining[j] == b':' && Self::colon_ends_plain(remaining, j, in_flow) {
+            return BlankRun::End;
+        }
+        BlankRun::Inner(j)
+    }
+
+    /// ── Slow path: multiline plain scalar with line folding ──────
+    fn scan_plain_multiline(&mut self) -> ScanResult<()> {
         let scalar_start = self.pos;
         let mut content_end = self.pos;
-        // Track whether the scalar is built from a single contiguous
-        // run of input bytes (no folded line breaks). If so we can
-        // emit `Cow::Borrowed(slice)` instead of allocating an owned
-        // `String`. Flipped to `false` the first time the
-        // line-folding branch synthesises a space / newline that
-        // does not exist verbatim in the input.
-        let mut single_chunk = true;
-        let mut string = String::new();
-        let mut leading_blanks = false;
-        let mut whitespace = String::new();
+        let mut fold = PlainFold::new();
         let indent = self.indent + 1;
         let in_flow = self.flow_level > 0;
 
         loop {
             // Skip to the end of the current run — scan directly from the
             // byte slice for cache-line-friendly sequential access.
-            let mut length = 0;
-            let remaining = &self.input[self.pos..];
+            let length = self.plain_run_len(in_flow);
 
-            loop {
-                if length >= remaining.len() {
-                    break;
-                }
-                let c = remaining[length];
-
-                // Check for ':' followed by blank/flow-indicator.
-                if c == b':' {
-                    // See the fast path above: end of input terminates the
-                    // scalar and leaves the colon to be scanned as a value
-                    // indicator.
-                    if length + 1 >= remaining.len() {
-                        break;
-                    }
-                    let next = remaining[length + 1];
-                    if Self::is_blank_or_break(next)
-                        || (in_flow && (next == b',' || next == b']' || next == b'}'))
-                    {
-                        break;
-                    }
-                }
-
-                if in_flow && (c == b',' || c == b'[' || c == b']' || c == b'{' || c == b'}') {
-                    break;
-                }
-
-                if Self::is_blank_or_break(c) {
-                    break;
-                }
-                // `#` is a comment indicator when preceded by whitespace, or
-                // at the start of a content segment (where prior whitespace
-                // was already consumed by the outer loop).
-                if c == b'#' && (length == 0 || Self::is_blank(remaining[length - 1])) {
-                    break;
-                }
-
-                // Check for document indicators at start of line.
-                if length == 0 && self.column() == 0 {
-                    if c == b'-'
-                        && self.peek_at(1) == b'-'
-                        && self.peek_at(2) == b'-'
-                        && (self.pos + 3 >= self.input.len()
-                            || Self::is_blank_or_break(self.peek_at(3)))
-                    {
-                        break;
-                    }
-                    if c == b'.'
-                        && self.peek_at(1) == b'.'
-                        && self.peek_at(2) == b'.'
-                        && (self.pos + 3 >= self.input.len()
-                            || Self::is_blank_or_break(self.peek_at(3)))
-                    {
-                        break;
-                    }
-                }
-
-                length += 1;
-            }
-
-            if length == 0 && !leading_blanks {
+            if length == 0 && !fold.leading_blanks {
                 break;
             }
 
             // Append characters.
             if length > 0 {
-                if leading_blanks {
-                    // Crossing a line break and synthesising folded
-                    // whitespace means the emitted string no longer
-                    // matches the input slice byte-for-byte. Switch
-                    // to the owned-buffer path.
-                    single_chunk = false;
-                    // Handle line joins.
-                    if let Some(stripped) = whitespace.strip_prefix('\n') {
-                        if stripped.is_empty() {
-                            string.push(' ');
-                        } else {
-                            // Multiple line breaks.
-                            string.push_str(stripped);
-                        }
-                    } else {
-                        string.push_str(&whitespace);
-                    }
-                    whitespace.clear();
-                } else if !whitespace.is_empty() {
-                    // Inline whitespace — already part of the input
-                    // slice between the previous content_end and
-                    // self.pos, so `single_chunk` stays true.
-                    string.push_str(&whitespace);
-                    whitespace.clear();
-                }
-
-                string.push_str(self.slice_str(self.pos, self.pos + length));
+                fold.join(self.slice_str(self.pos, self.pos + length));
                 self.advance_by(length);
                 content_end = self.pos;
             }
 
             // Skip whitespace/newlines between plain scalar content.
-            if !Self::is_blank_or_break(self.peek()) {
+            if !Self::is_blank_or_break(self.peek())
+                || self.skip_plain_separation(&mut fold, indent)
+            {
                 break;
             }
-
-            whitespace.clear();
-
-            // Consume blanks and breaks.
-            while Self::is_blank(self.peek()) {
-                whitespace.push(self.peek() as char);
-                self.advance();
-            }
-
-            if Self::is_break(self.peek()) {
-                leading_blanks = true;
-                whitespace.clear();
-                // Consume runs of `break (blanks? break)*` so a line that
-                // is only whitespace between two breaks is recorded as an
-                // empty line (one extra `\n` in `whitespace`) rather than
-                // collapsed silently. Mirrors quoted-scalar handling.
-                loop {
-                    let c = self.peek();
-                    if c == b'\r' && self.peek_at(1) == b'\n' {
-                        whitespace.push('\n');
-                        self.advance_by(2);
-                    } else {
-                        whitespace.push('\n');
-                        self.advance();
-                    }
-                    while Self::is_blank(self.peek()) {
-                        self.advance();
-                    }
-                    if !Self::is_break(self.peek()) {
-                        break;
-                    }
-                }
-
-                if self.flow_level == 0 && (self.column() as i32) < indent {
-                    break;
-                }
-            }
-            // else: inline blanks between words — continue scanning.
         }
 
-        if string.is_empty() {
+        if fold.string.is_empty() {
             return Err(self.error("unexpected character in YAML stream"));
         }
 
@@ -349,22 +247,112 @@ impl Scanner<'_> {
         // context (e.g. the value was followed by a newline that was consumed
         // during line folding), simple keys must be allowed again so that a
         // following key at the same indent level can be recognised.
-        if self.flow_level == 0 && leading_blanks {
+        if self.flow_level == 0 && fold.leading_blanks {
             self.simple_key_allowed = true;
         }
 
         // Borrow when the entire scalar is a single contiguous run of
         // input bytes (no line-folding synthesis). Else fall back to
         // the owned buffer that was accumulated above.
-        let value = if single_chunk {
+        let value = if fold.single_chunk {
             Cow::Borrowed(self.slice_str(scalar_start, content_end))
         } else {
-            Cow::Owned(string)
+            Cow::Owned(fold.string)
         };
         self.check_scalar_printable(&value)?;
         self.emit(TokenKind::Scalar(ScalarStyle::Plain, value));
         self.last_token_opens_block = false;
         Ok(())
+    }
+
+    /// Length of the run of plain scalar content at the cursor, up to a
+    /// blank, a break, a value indicator, a comment or a document marker.
+    fn plain_run_len(&self, in_flow: bool) -> usize {
+        let remaining = &self.input[self.pos..];
+        let mut length = 0;
+        while length < remaining.len() {
+            let c = remaining[length];
+
+            // Check for ':' followed by blank/flow-indicator.
+            // See the fast path above: end of input terminates the
+            // scalar and leaves the colon to be scanned as a value
+            // indicator.
+            if c == b':' && Self::colon_ends_plain(remaining, length, in_flow) {
+                break;
+            }
+
+            if in_flow && matches!(c, b',' | b'[' | b']' | b'{' | b'}') {
+                break;
+            }
+
+            if Self::is_blank_or_break(c) {
+                break;
+            }
+            // `#` is a comment indicator when preceded by whitespace, or
+            // at the start of a content segment (where prior whitespace
+            // was already consumed by the outer loop).
+            if c == b'#' && (length == 0 || Self::is_blank(remaining[length - 1])) {
+                break;
+            }
+
+            // Check for document indicators at start of line.
+            if length == 0 && self.column() == 0 && self.at_plain_document_marker(c) {
+                break;
+            }
+
+            length += 1;
+        }
+        length
+    }
+
+    /// Whether `c` at the cursor starts a `---` or `...` document marker.
+    fn at_plain_document_marker(&self, c: u8) -> bool {
+        (c == b'-' || c == b'.')
+            && self.peek_at(1) == c
+            && self.peek_at(2) == c
+            && (self.pos + 3 >= self.input.len() || Self::is_blank_or_break(self.peek_at(3)))
+    }
+
+    /// Consume the blanks and breaks after a run of plain content into
+    /// `fold`. Returns `true` when a break leaves the next line below the
+    /// scalar's indentation, which ends it.
+    fn skip_plain_separation(&mut self, fold: &mut PlainFold, indent: i32) -> bool {
+        fold.whitespace.clear();
+
+        // Consume blanks and breaks.
+        while Self::is_blank(self.peek()) {
+            fold.whitespace.push(self.peek() as char);
+            self.advance();
+        }
+
+        if !Self::is_break(self.peek()) {
+            // else: inline blanks between words — continue scanning.
+            return false;
+        }
+        fold.leading_blanks = true;
+        fold.whitespace.clear();
+        // Consume runs of `break (blanks? break)*` so a line that
+        // is only whitespace between two breaks is recorded as an
+        // empty line (one extra `\n` in `whitespace`) rather than
+        // collapsed silently. Mirrors quoted-scalar handling.
+        loop {
+            let c = self.peek();
+            if c == b'\r' && self.peek_at(1) == b'\n' {
+                fold.whitespace.push('\n');
+                self.advance_by(2);
+            } else {
+                fold.whitespace.push('\n');
+                self.advance();
+            }
+            while Self::is_blank(self.peek()) {
+                self.advance();
+            }
+            if !Self::is_break(self.peek()) {
+                break;
+            }
+        }
+
+        self.flow_level == 0 && (self.column() as i32) < indent
     }
 
     /// Reject raw control characters in captured scalar content
@@ -381,16 +369,20 @@ impl Scanner<'_> {
     /// One pass over the finished text with a byte-level predicate —
     /// branch-free enough for LLVM to vectorise, and outside the
     /// scanner's per-byte hot loops.
-    fn check_scalar_printable(&self, s: &str) -> ScanResult<()> {
-        if s.bytes()
-            .any(|b| (b < 0x20 && b != b'\t' && b != b'\n') || b == 0x7f)
-        {
+    pub(super) fn check_scalar_printable(&self, s: &str) -> ScanResult<()> {
+        if s.bytes().any(Self::is_raw_control) {
             return Err(self.error(
                 "scalar contains a raw control character — YAML content is limited to \
                  printable characters (use an escape in a double-quoted scalar)",
             ));
         }
         Ok(())
+    }
+
+    /// A C0 control character other than tab and line feed, or DEL:
+    /// outside c-printable (YAML 1.2.2 §5.1) and never valid raw.
+    pub(super) fn is_raw_control(b: u8) -> bool {
+        (b < 0x20 && b != b'\t' && b != b'\n') || b == 0x7f
     }
 
     pub(super) fn fetch_quoted_scalar(&mut self, double: bool) -> ScanResult<()> {
@@ -548,8 +540,7 @@ impl Scanner<'_> {
         self.advance(); // skip opening "
 
         let mut string = String::new();
-        let mut whitespace = String::new();
-        let mut leading_break = false;
+        let mut fold = QuotedFold::default();
 
         loop {
             if self.is_eof() {
@@ -559,206 +550,196 @@ impl Scanner<'_> {
             match self.peek() {
                 b'"' => {
                     // Flush any pending whitespace before closing.
-                    if leading_break {
-                        if whitespace.is_empty() {
-                            string.push(' ');
-                        } else {
-                            string.push_str(&whitespace);
-                        }
-                    } else if !whitespace.is_empty() {
-                        string.push_str(&whitespace);
-                    }
+                    fold.flush(&mut string);
                     self.advance();
                     return Ok(string);
                 }
                 b'\\' => {
                     // Flush pending whitespace.
-                    if leading_break {
-                        if whitespace.is_empty() {
-                            string.push(' ');
-                        } else {
-                            string.push_str(&whitespace);
-                        }
-                        whitespace.clear();
-                        leading_break = false;
-                    } else if !whitespace.is_empty() {
-                        string.push_str(&whitespace);
-                        whitespace.clear();
-                    }
-
-                    self.advance(); // skip '\'
-                    if self.is_eof() {
-                        return Err(self.error("unexpected end of input in escape sequence"));
-                    }
-                    let escaped = self.peek();
-                    self.advance();
-                    match escaped {
-                        b'0' => string.push('\0'),
-                        b'a' => string.push('\x07'),
-                        b'b' => string.push('\x08'),
-                        b't' | b'\t' => string.push('\t'),
-                        b'n' => string.push('\n'),
-                        b'v' => string.push('\x0B'),
-                        b'f' => string.push('\x0C'),
-                        b'r' => string.push('\r'),
-                        b'e' => string.push('\x1B'),
-                        b' ' => string.push(' '),
-                        b'"' => string.push('"'),
-                        b'/' => string.push('/'),
-                        b'\\' => string.push('\\'),
-                        b'N' => string.push('\u{0085}'), // NEL
-                        b'_' => string.push('\u{00A0}'), // NBSP
-                        b'L' => string.push('\u{2028}'), // LS
-                        b'P' => string.push('\u{2029}'), // PS
-                        b'x' => {
-                            let ch = self.scan_hex_escape(2)?;
-                            string.push(ch);
-                        }
-                        b'u' => {
-                            // JSON-style UTF-16 surrogate pair escape:
-                            // `𝄞` encodes U+1D11E (𝄞). When
-                            // we see a high surrogate, peek for a
-                            // following `\uXXXX` low surrogate and pair
-                            // them. Lone or reversed surrogates fall
-                            // through to `scan_hex_escape_pair`'s
-                            // existing rejection path.
-                            let ch = self.scan_unicode_4()?;
-                            string.push(ch);
-                        }
-                        b'U' => {
-                            let ch = self.scan_hex_escape(8)?;
-                            string.push(ch);
-                        }
-                        b'\r' | b'\n' => {
-                            // Line break escape — fold.
-                            if escaped == b'\r' && self.peek() == b'\n' {
-                                self.advance();
-                            }
-                            // Skip leading whitespace on next line.
-                            while Self::is_blank(self.peek()) {
-                                self.advance();
-                            }
-                        }
-                        _ => {
-                            return Err(ScanError {
-                                message: Cow::Owned(format!(
-                                    "unknown escape character '\\{}'",
-                                    escaped as char
-                                )),
-                                index: self.pos - 1,
-                            });
-                        }
-                    }
+                    fold.flush(&mut string);
+                    self.scan_double_escape(&mut string, &mut fold)?;
                 }
-                c if Self::is_break(c) => {
-                    // Line folding in double-quoted scalars per YAML 1.2.2
-                    // §7.3.2 / §6.5: trailing whitespace before a break is
-                    // stripped; an "empty line" (a line containing only
-                    // whitespace, *or* nothing) between content lines
-                    // contributes a preserved `\n`. Each break is handled
-                    // in its own loop iteration so blanks-between-breaks
-                    // are recognised as empty lines.
-                    if leading_break {
-                        // We're already in a break sequence — the previous
-                        // iteration ended on a break and its trailing
-                        // blanks have been consumed below. Reaching another
-                        // break means the line in between was empty.
-                        whitespace.push('\n');
-                    } else {
-                        // First break of a sequence — discard any buffered
-                        // trailing whitespace before this break.
-                        whitespace.clear();
-                        leading_break = true;
-                    }
-
-                    if self.peek() == b'\r' && self.peek_at(1) == b'\n' {
-                        self.advance_by(2);
-                    } else {
-                        self.advance();
-                    }
-
-                    self.reject_doc_marker_in_quoted("double-quoted")?;
-
-                    // YAML 1.2.2 §6.1: only spaces count as
-                    // indentation. Count leading *spaces* before any
-                    // tab so the continuation-indent check uses the
-                    // space-only column, not `self.col` (which counts
-                    // tabs as columns and would mask a tab-as-indent
-                    // bug in DK95 sub-case 2).
-                    let space_indent = {
-                        let mut n = 0;
-                        while self.input.get(self.pos + n).copied() == Some(b' ') {
-                            n += 1;
-                        }
-                        n as i32
-                    };
-
-                    // Skip leading blanks on the new line.
-                    while Self::is_blank(self.peek()) {
-                        self.advance();
-                    }
-
-                    self.require_quoted_continuation_indent_spaces("double-quoted", space_indent)?;
-                }
+                c if Self::is_break(c) => self.scan_double_break(&mut fold)?,
                 _ => {
-                    if leading_break {
-                        if whitespace.is_empty() {
-                            string.push(' ');
-                        } else {
-                            string.push_str(&whitespace);
-                        }
-                        whitespace.clear();
-                        leading_break = false;
-                    } else if !whitespace.is_empty() {
-                        string.push_str(&whitespace);
-                        whitespace.clear();
-                    }
-
-                    // Handle whitespace chars specially for folding.
-                    if Self::is_blank(self.peek()) {
-                        let start = self.pos;
-                        while Self::is_blank(self.peek()) {
-                            self.advance();
-                        }
-                        if Self::is_break(self.peek())
-                            || self.peek() == b'"'
-                            || self.peek() == b'\\'
-                        {
-                            whitespace.push_str(self.slice_str(start, self.pos));
-                            continue;
-                        }
-                        string.push_str(self.slice_str(start, self.pos));
-                    } else {
-                        // Bulk-copy a content run up to the next interesting
-                        // byte. All needles are ASCII (<0x80) so they never
-                        // appear as UTF-8 continuation bytes — slicing on
-                        // a needle hit is always char-boundary safe.
-                        let start = self.pos;
-                        let len =
-                            crate::simd::clean_prefix_len(&self.input[self.pos..], b"\"\\\n\r \t");
-                        let len = if len == 0 { 1 } else { len };
-                        self.advance_by(len);
-                        let run = self.slice_str(start, self.pos);
-                        // §5.1 c-printable governs the raw stream:
-                        // controls reach a double-quoted scalar via
-                        // escapes, never as raw bytes (matches the
-                        // plain/single-quoted/block enforcement; found
-                        // by the serde_yaml parity fuzzer — libyaml
-                        // rejects them everywhere).
-                        if run.bytes().any(|b| b < 0x20 || b == 0x7f) {
-                            return Err(ScanError {
-                                message: Cow::Borrowed(
-                                    "double-quoted scalar contains a raw control character — \
-                                     use an escape (\\x.., \\u....) instead",
-                                ),
-                                index: start,
-                            });
-                        }
-                        string.push_str(run);
-                    }
+                    fold.flush(&mut string);
+                    self.scan_double_content(&mut string, &mut fold)?;
                 }
             }
         }
+    }
+
+    /// Read an escape sequence after its `\`, appending its character to
+    /// `string`, or recording an escaped line break in `fold`.
+    fn scan_double_escape(&mut self, string: &mut String, fold: &mut QuotedFold) -> ScanResult<()> {
+        self.advance(); // skip '\'
+        if self.is_eof() {
+            return Err(self.error("unexpected end of input in escape sequence"));
+        }
+        let escaped = self.peek();
+        self.advance();
+        match escaped {
+            b'0' => string.push('\0'),
+            b'a' => string.push('\x07'),
+            b'b' => string.push('\x08'),
+            b't' | b'\t' => string.push('\t'),
+            b'n' => string.push('\n'),
+            b'v' => string.push('\x0B'),
+            b'f' => string.push('\x0C'),
+            b'r' => string.push('\r'),
+            b'e' => string.push('\x1B'),
+            b' ' => string.push(' '),
+            b'"' => string.push('"'),
+            b'/' => string.push('/'),
+            b'\\' => string.push('\\'),
+            b'N' => string.push('\u{0085}'), // NEL
+            b'_' => string.push('\u{00A0}'), // NBSP
+            b'L' => string.push('\u{2028}'), // LS
+            b'P' => string.push('\u{2029}'), // PS
+            b'x' => {
+                let ch = self.scan_hex_escape(2)?;
+                string.push(ch);
+            }
+            b'u' => {
+                // JSON-style UTF-16 surrogate pair escape:
+                // `𝄞` encodes U+1D11E (𝄞). When
+                // we see a high surrogate, peek for a
+                // following `\uXXXX` low surrogate and pair
+                // them. Lone or reversed surrogates fall
+                // through to `scan_hex_escape_pair`'s
+                // existing rejection path.
+                let ch = self.scan_unicode_4()?;
+                string.push(ch);
+            }
+            b'U' => {
+                let ch = self.scan_hex_escape(8)?;
+                string.push(ch);
+            }
+            b'\r' | b'\n' => {
+                // Line break escape (s-double-escaped, YAML 1.2.2
+                // §7.3.1): the break itself is excluded content, and
+                // each empty line after it is a line feed, not a fold.
+                if escaped == b'\r' && self.peek() == b'\n' {
+                    self.advance();
+                }
+                // Skip leading whitespace on next line.
+                while Self::is_blank(self.peek()) {
+                    self.advance();
+                }
+                fold.leading_break = true;
+                fold.escaped_break = true;
+            }
+            _ => {
+                return Err(ScanError {
+                    message: Cow::Owned(format!(
+                        "unknown escape character '\\{}'",
+                        escaped as char
+                    )),
+                    index: self.pos - 1,
+                });
+            }
+        }
+        Ok(())
+    }
+
+    /// Consume a line break inside a double-quoted scalar and the next
+    /// line's leading blanks, recording the break in `fold`.
+    fn scan_double_break(&mut self, fold: &mut QuotedFold) -> ScanResult<()> {
+        // Line folding in double-quoted scalars per YAML 1.2.2
+        // §7.3.2 / §6.5: trailing whitespace before a break is
+        // stripped; an "empty line" (a line containing only
+        // whitespace, *or* nothing) between content lines
+        // contributes a preserved `\n`. Each break is handled
+        // in its own loop iteration so blanks-between-breaks
+        // are recognised as empty lines.
+        if fold.leading_break {
+            // We're already in a break sequence — the previous
+            // iteration ended on a break and its trailing
+            // blanks have been consumed below. Reaching another
+            // break means the line in between was empty.
+            fold.whitespace.push('\n');
+        } else {
+            // First break of a sequence — discard any buffered
+            // trailing whitespace before this break.
+            fold.whitespace.clear();
+            fold.leading_break = true;
+        }
+
+        if self.peek() == b'\r' && self.peek_at(1) == b'\n' {
+            self.advance_by(2);
+        } else {
+            self.advance();
+        }
+
+        self.reject_doc_marker_in_quoted("double-quoted")?;
+
+        // YAML 1.2.2 §6.1: only spaces count as
+        // indentation. Count leading *spaces* before any
+        // tab so the continuation-indent check uses the
+        // space-only column, not `self.col` (which counts
+        // tabs as columns and would mask a tab-as-indent
+        // bug in DK95 sub-case 2).
+        let space_indent = {
+            let mut n = 0;
+            while self.input.get(self.pos + n).copied() == Some(b' ') {
+                n += 1;
+            }
+            n as i32
+        };
+
+        // Skip leading blanks on the new line.
+        while Self::is_blank(self.peek()) {
+            self.advance();
+        }
+
+        self.require_quoted_continuation_indent_spaces("double-quoted", space_indent)
+    }
+
+    /// Read a run of content (or of blanks) inside a double-quoted
+    /// scalar into `string`; blanks that end the line wait in `fold`.
+    fn scan_double_content(
+        &mut self,
+        string: &mut String,
+        fold: &mut QuotedFold,
+    ) -> ScanResult<()> {
+        // Handle whitespace chars specially for folding.
+        if Self::is_blank(self.peek()) {
+            let start = self.pos;
+            while Self::is_blank(self.peek()) {
+                self.advance();
+            }
+            if Self::is_break(self.peek()) || self.peek() == b'"' || self.peek() == b'\\' {
+                fold.whitespace.push_str(self.slice_str(start, self.pos));
+                return Ok(());
+            }
+            string.push_str(self.slice_str(start, self.pos));
+            return Ok(());
+        }
+        // Bulk-copy a content run up to the next interesting
+        // byte. All needles are ASCII (<0x80) so they never
+        // appear as UTF-8 continuation bytes — slicing on
+        // a needle hit is always char-boundary safe.
+        let start = self.pos;
+        let len = crate::simd::clean_prefix_len(&self.input[self.pos..], b"\"\\\n\r \t");
+        let len = if len == 0 { 1 } else { len };
+        self.advance_by(len);
+        let run = self.slice_str(start, self.pos);
+        // §5.1 c-printable governs the raw stream:
+        // controls reach a double-quoted scalar via
+        // escapes, never as raw bytes (matches the
+        // plain/single-quoted/block enforcement; found
+        // by the serde_yaml parity fuzzer — libyaml
+        // rejects them everywhere).
+        if run.bytes().any(|b| b < 0x20 || b == 0x7f) {
+            return Err(ScanError {
+                message: Cow::Borrowed(
+                    "double-quoted scalar contains a raw control character — \
+                     use an escape (\\x.., \\u....) instead",
+                ),
+                index: start,
+            });
+        }
+        string.push_str(run);
+        Ok(())
     }
 
     fn scan_hex_escape(&mut self, digits: usize) -> ScanResult<char> {
@@ -863,333 +844,105 @@ impl Scanner<'_> {
             index: start,
         })
     }
+}
 
-    pub(super) fn fetch_block_scalar(&mut self, literal: bool) -> ScanResult<()> {
-        self.remove_simple_key()?;
-        self.simple_key_allowed = true;
-        self.mark = self.pos;
+/// Whitespace a double-quoted scalar holds back until the next content
+/// shows whether it folds.
+#[derive(Default)]
+struct QuotedFold {
+    /// Trailing blanks of the current line, or the `\n` of each empty
+    /// line in a break sequence.
+    whitespace: String,
+    /// A line break was crossed since the last content.
+    leading_break: bool,
+    /// That break was escaped (`\` at the end of the line): it adds
+    /// nothing itself, so no folding space either.
+    escaped_break: bool,
+}
 
-        let string = self.scan_block_scalar(literal)?;
-        // §5.1 c-printable applies to block scalar content too — the
-        // breaks are already folded to `\n` and tab is legal, so the
-        // shared printable check fits exactly (found by the
-        // serde_yaml parity fuzzer on `>-\x07`).
-        self.check_scalar_printable(&string)?;
-        let style = if literal {
-            ScalarStyle::Literal
-        } else {
-            ScalarStyle::Folded
-        };
-        self.emit(TokenKind::Scalar(style, Cow::Owned(string)));
-        self.last_token_opens_block = false;
-        Ok(())
-    }
-    /// Whether the bytes at the cursor are a document marker (`---` or
-    /// `...`) followed by a blank, a break, or the end of input.
-    fn at_document_marker(&self) -> bool {
-        let p0 = self.peek();
-        (p0 == b'-' || p0 == b'.')
-            && self.peek_at(1) == p0
-            && self.peek_at(2) == p0
-            && (self.pos + 3 >= self.input.len() || Self::is_blank_or_break(self.peek_at(3)))
-    }
-
-    fn scan_block_scalar(&mut self, literal: bool) -> ScanResult<String> {
-        self.advance(); // skip '|' or '>'
-
-        // Parse optional chomping indicator and indentation indicator.
-        let mut chomping: i8 = 0; // 0 = clip, 1 = keep, -1 = strip
-        let mut increment: usize = 0;
-
-        // Check for chomping/indent indicators in either order.
-        for _ in 0..2 {
-            if !self.is_eof() {
-                match self.peek() {
-                    b'+' => {
-                        chomping = 1;
-                        self.advance();
-                    }
-                    b'-' => {
-                        chomping = -1;
-                        self.advance();
-                    }
-                    c if c.is_ascii_digit() && c != b'0' => {
-                        increment = (c - b'0') as usize;
-                        self.advance();
-                    }
-                    _ => break,
-                }
-            }
-        }
-
-        // Per YAML 1.2.2 §8.1.1.1, the explicit indentation indicator
-        // is a single digit 1..9. `0` is invalid (zero indent), and a
-        // second digit (e.g. `|10`) is also invalid (the indicator is
-        // a single digit). Anything still hanging on the header that
-        // isn't blank/break/comment is malformed.
-        let next = self.peek();
-        if next.is_ascii_digit() {
-            return Err(self.error(
-                "invalid block scalar indentation indicator (must be a single digit 1..9)",
-            ));
-        }
-
-        // Skip to end of line (including optional comment). Per
-        // YAML 1.2.2 §6.6, an inline `#` must be preceded by a space or
-        // tab — `>#` or `|2#` is invalid because the comment indicator
-        // is adjacent to the header content.
-        let pos_before_blank = self.pos;
-        while Self::is_blank(self.peek()) {
-            self.advance();
-        }
-        if self.peek() == b'#' {
-            if self.pos == pos_before_blank {
-                return Err(self.error("comment indicator '#' must be preceded by a space or tab"));
-            }
-            while !self.is_eof() && !Self::is_break(self.peek()) {
-                self.advance();
-            }
-        }
-
-        // Per §8.1.1 the header line ends here: anything left that is
-        // not a break (or end of input) is malformed — content starts
-        // on the NEXT line, never on the header's (found by the
-        // serde_yaml parity fuzzer on `>-\n`, where a literal `\n`
-        // after the header was silently read as content).
-        if !self.is_eof() && !Self::is_break(self.peek()) {
-            return Err(
-                self.error("block scalar header must be followed by a comment or a line break")
-            );
-        }
-
-        // Consume the line break.
-        if Self::is_break(self.peek()) {
-            self.skip_line();
-        }
-
-        // Determine the indentation level and validate leading empty lines.
-        //
-        // The first non-empty line counts as the scalar's first content
-        // line only when it is part of the scalar: more indented than
-        // the parent node, and not a document marker at column 0. A
-        // scalar whose lines are all blank (`- |+` followed by a line
-        // of spaces, then `---`) has no content line at all, and its
-        // blank lines are trailing breaks, not a leading-line
-        // indentation error (found by the suite-stream permutations).
-        let mut max_leading_empty_spaces = 0;
-        let mut detected = 0;
-        let mut has_content = false;
-        let save_pos = self.pos;
-        let save_col = self.col;
-        let parent_indent = self.indent;
-        loop {
-            let mut spaces = 0;
-            while self.peek() == b' ' {
-                spaces += 1;
-                self.advance();
-            }
-            if Self::is_break(self.peek()) {
-                max_leading_empty_spaces = max_leading_empty_spaces.max(spaces);
-                self.skip_line();
-                continue;
-            }
-            if self.is_eof() {
-                break;
-            }
-            let belongs_to_scalar =
-                spaces as i32 > parent_indent && !(spaces == 0 && self.at_document_marker());
-            if belongs_to_scalar {
-                detected = spaces;
-                has_content = true;
-            }
-            break;
-        }
-        self.pos = save_pos;
-        self.col = save_col;
-
-        let block_indent = if increment > 0 {
-            if self.indent >= 0 {
-                self.indent as usize + increment
-            } else {
-                increment
+impl QuotedFold {
+    /// Write the pending whitespace to `out` before more content: a
+    /// lone unescaped break folds to a space, while the `\n` of empty
+    /// lines and a line's blanks are kept as they are.
+    fn flush(&mut self, out: &mut String) {
+        if self.leading_break && self.whitespace.is_empty() {
+            if !self.escaped_break {
+                out.push(' ');
             }
         } else {
-            let min_indent = if self.indent >= 0 {
-                self.indent as usize + 1
-            } else {
-                // Root-level block scalar: content can start at column 0
-                // (parent indent is -1, so any column ≥ 0 is more indented).
-                0
-            };
-            let actual_detected = if has_content {
-                detected
-            } else {
-                max_leading_empty_spaces
-            };
-            actual_detected.max(min_indent)
-        };
-
-        // YAML 1.2.2 §8.1.1.1: with auto-detected indentation it is an
-        // error for a leading empty line to hold more spaces than the
-        // first non-empty line. With an explicit indentation indicator
-        // the level is given, so such a line is not empty: its spaces
-        // past the indentation are content, read below (#384).
-        if increment == 0 && max_leading_empty_spaces > block_indent {
-            return Err(self.error("a leading all-space line must not have too many spaces"));
+            out.push_str(&self.whitespace);
         }
+        self.whitespace.clear();
+        self.leading_break = false;
+        self.escaped_break = false;
+    }
+}
 
-        // Read the block scalar content.
-        let mut string = String::new();
-        let mut trailing_breaks = String::new();
-        let mut leading_blank = false;
+/// What a run of blanks on a plain scalar's line leads to.
+enum BlankRun {
+    /// The end of input, a comment or a value indicator: the scalar
+    /// ends before the blanks.
+    End,
+    /// A line break at this offset: the scalar may continue on the next
+    /// line.
+    ToBreak(usize),
+    /// More content at this offset, so the blanks are part of the
+    /// scalar.
+    Inner(usize),
+}
 
-        while !self.is_eof() {
-            // Document boundary terminates the block scalar (matters when
-            // `block_indent == 0`; otherwise the indent check below handles it).
-            if self.col == 0 && self.at_document_marker() {
-                break;
-            }
+/// The text of a multi-line plain scalar and the whitespace held back
+/// until the next run shows how it folds.
+struct PlainFold {
+    string: String,
+    whitespace: String,
+    leading_blanks: bool,
+    /// Track whether the scalar is built from a single contiguous
+    /// run of input bytes (no folded line breaks). If so we can
+    /// emit `Cow::Borrowed(slice)` instead of allocating an owned
+    /// `String`. Flipped to `false` the first time the
+    /// line-folding branch synthesises a space / newline that
+    /// does not exist verbatim in the input.
+    single_chunk: bool,
+}
 
-            // Count leading spaces.
-            let mut spaces = 0;
-            while self.peek() == b' ' {
-                spaces += 1;
-                self.advance();
-            }
+impl PlainFold {
+    fn new() -> Self {
+        Self {
+            string: String::new(),
+            whitespace: String::new(),
+            leading_blanks: false,
+            single_chunk: true,
+        }
+    }
 
-            // YAML 1.2.2 §6.1: tabs MUST NOT serve as indentation. If
-            // we're below the established block indent and the next
-            // byte is a tab (not a line break / EOF), the user is
-            // attempting to use the tab as further indentation —
-            // reject (Y79Y sub-case 1).
-            if spaces < block_indent && self.peek() == b'\t' {
-                return Err(
-                    self.error("tab characters are not allowed as block-scalar indentation")
-                );
-            }
-
-            if spaces < block_indent && !Self::is_break(self.peek()) && !self.is_eof() {
-                // End of block scalar.
-                break;
-            }
-
-            // Empty line (blank-only or break-only) — record and continue
-            // before any fold decision so empty lines accumulate as `\n`s
-            // in `trailing_breaks` rather than being treated as content.
-            //
-            // For *literal* style, a whitespace-only line whose leading
-            // spaces exceed `block_indent` carries content: per YAML
-            // 1.2.2 §8.1.1.4, every character at or beyond the content
-            // indentation is preserved literally. The exception is
-            // *leading* whitespace-only lines (before any real content
-            // has been emitted) under auto-detected indentation — those
-            // are part of the leading empty-line region and contribute
-            // only their `\n`, not their indent characters. With an
-            // explicit indentation indicator the level is known before
-            // any content, so a leading line's surplus spaces are
-            // content too (#384).
-            let leading_spaces_are_content = increment > 0 || !string.is_empty();
-            if Self::is_break(self.peek()) || self.is_eof() {
-                let extra = spaces.saturating_sub(block_indent);
-                if !Self::is_break(self.peek()) {
-                    // EOF reached after counting `spaces` blanks. Treat
-                    // a whitespace-only trailing line as if it had a
-                    // synthetic line break so the chomping pass below
-                    // sees the same shape it would for the
-                    // newline-terminated case (L24T spec test).
-                    if literal && extra > 0 && leading_spaces_are_content {
-                        if !trailing_breaks.is_empty() {
-                            string.push_str(&trailing_breaks);
-                            trailing_breaks.clear();
-                        }
-                        for _ in 0..extra {
-                            string.push(' ');
-                        }
-                        trailing_breaks.push('\n');
-                    }
-                    break;
-                }
-                if literal && extra > 0 && leading_spaces_are_content {
-                    if !trailing_breaks.is_empty() {
-                        string.push_str(&trailing_breaks);
-                        trailing_breaks.clear();
-                    }
-                    for _ in 0..extra {
-                        string.push(' ');
-                    }
-                }
-                trailing_breaks.push('\n');
-                self.skip_line();
-                continue;
-            }
-
-            // Determine more-indented status of the current content line.
-            // YAML 1.2.2 §8.1.1.5: a line is "more-indented" if it has
-            // extra leading spaces beyond `block_indent`, or if its first
-            // non-leading-space character is a tab. The break(s) into and
-            // out of a more-indented line are preserved (not folded).
-            let extra = spaces.saturating_sub(block_indent);
-            let starts_with_tab = self.peek() == b'\t';
-            let is_more_indented = extra > 0 || starts_with_tab;
-
-            // Apply fold logic. Order of cases:
-            //   * literal style: every break preserved as-is.
-            //   * before any content has been emitted: leading empty
-            //     lines preserved (`b-l-folded` does not fold a leading
-            //     break against the implicit header break).
-            //   * either side is more-indented: every break preserved.
-            //   * single break between regular content lines: fold to ' '.
-            //   * multiple breaks between regular content: drop the
-            //     leading break (the fold-into-empty-line) and keep the
-            //     rest as `\n`s.
-            if !trailing_breaks.is_empty() {
-                let preserve_all =
-                    literal || string.is_empty() || is_more_indented || leading_blank;
-                if preserve_all {
-                    string.push_str(&trailing_breaks);
-                } else if trailing_breaks.len() == 1 {
-                    string.push(' ');
+    /// Append the next run of content, after the whitespace held back.
+    fn join(&mut self, run: &str) {
+        if self.leading_blanks {
+            // Crossing a line break and synthesising folded
+            // whitespace means the emitted string no longer
+            // matches the input slice byte-for-byte. Switch
+            // to the owned-buffer path.
+            self.single_chunk = false;
+            // Handle line joins.
+            if let Some(stripped) = self.whitespace.strip_prefix('\n') {
+                if stripped.is_empty() {
+                    self.string.push(' ');
                 } else {
-                    string.push_str(&trailing_breaks[1..]);
+                    // Multiple line breaks.
+                    self.string.push_str(stripped);
                 }
-                trailing_breaks.clear();
+            } else {
+                self.string.push_str(&self.whitespace);
             }
-
-            for _ in 0..extra {
-                string.push(' ');
-            }
-
-            leading_blank = is_more_indented;
-
-            // Read content of the line.
-            while !self.is_eof() && !Self::is_break(self.peek()) {
-                let start = self.pos;
-                self.advance();
-                while self.pos < self.input.len() && (self.input[self.pos] & 0xC0) == 0x80 {
-                    self.advance();
-                }
-                string.push_str(self.slice_str(start, self.pos));
-            }
-
-            // Consume the line break.
-            if Self::is_break(self.peek()) {
-                trailing_breaks.push('\n');
-                self.skip_line();
-            }
+            self.whitespace.clear();
+        } else if !self.whitespace.is_empty() {
+            // Inline whitespace — already part of the input
+            // slice between the previous content_end and
+            // self.pos, so `single_chunk` stays true.
+            self.string.push_str(&self.whitespace);
+            self.whitespace.clear();
         }
-
-        // Apply chomping. YAML 1.2.2 §8.1.1.2:
-        //   `+` (keep): preserve every trailing line break.
-        //   default (clip): a single trailing `\n` if and only if the
-        //     scalar has any content. An empty scalar with `>`/`|` and
-        //     trailing blank lines stays empty.
-        //   `-` (strip): no trailing line break.
-        match chomping {
-            1 => string.push_str(&trailing_breaks),
-            0 if !string.is_empty() => string.push('\n'),
-            _ => {}
-        }
-
-        Ok(string)
+        self.string.push_str(run);
     }
 }

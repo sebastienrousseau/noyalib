@@ -241,9 +241,12 @@ fn resolve_value_in_entry(
         };
         return Some((start, value_range.1));
     }
-    // Recursing further requires the value to be a composite.
-    let node = value_node?;
-    walk_path(node, tail, value_range.0, source)
+    // Recursing further requires the value to be a composite. The walk
+    // starts at the node's own offset: `value_range.0` may sit earlier,
+    // at an `&anchor` / `!tag` property prefix, and a walk based there
+    // reports every child span shifted by the prefix's width.
+    let (node, node_base) = value_node?;
+    walk_path(node, tail, node_base, source)
 }
 
 fn resolve_value_in_item(
@@ -261,18 +264,23 @@ fn resolve_value_in_item(
         };
         return Some((start, value_range.1));
     }
-    let node = value_node?;
-    walk_path(node, tail, value_range.0, source)
+    // See `resolve_value_in_entry`: recurse from the node's own offset,
+    // not from a property prefix.
+    let (node, node_base) = value_node?;
+    walk_path(node, tail, node_base, source)
 }
+
+/// A value resolved inside an entry or item: its kind, its span with
+/// any `&anchor` / `!tag` property prefix included, and, when it is a
+/// composite, the node together with its own start offset, which is
+/// where a recursive walk must begin.
+type ResolvedValue<'a> = (SyntaxKind, (usize, usize), Option<(&'a GreenNode, usize)>);
 
 /// Inside a `MappingEntry`, walk past the key + ColonIndicator and
 /// return the first non-trivia "value" child. `value_node` is
 /// `Some` if the value is a composite (a nested collection), `None`
 /// if it is a leaf scalar.
-fn entry_value(
-    entry: &GreenNode,
-    base: usize,
-) -> Option<(SyntaxKind, (usize, usize), Option<&GreenNode>)> {
+fn entry_value(entry: &GreenNode, base: usize) -> Option<ResolvedValue<'_>> {
     let mut pos = base;
     let mut after_colon = false;
     // First-property-token start: when a value is preceded by an
@@ -321,7 +329,7 @@ fn entry_value(
             GreenChild::Node(inner) => {
                 if after_colon {
                     let start = prefix_start.unwrap_or(child_start);
-                    return Some((inner.kind(), (start, child_end), Some(inner)));
+                    return Some((inner.kind(), (start, child_end), Some((inner, child_start))));
                 }
             }
         }
@@ -338,10 +346,7 @@ fn entry_value(
 /// tag/anchor-prefix handling: the returned span covers any
 /// `!Tag` / `&anchor` / `*alias` property tokens **plus** the
 /// scalar / node that follows.
-fn item_value(
-    item: &GreenNode,
-    base: usize,
-) -> Option<(SyntaxKind, (usize, usize), Option<&GreenNode>)> {
+fn item_value(item: &GreenNode, base: usize) -> Option<ResolvedValue<'_>> {
     let mut pos = base;
     let mut after_dash = false;
     let mut prefix_start: Option<usize> = None;
@@ -369,7 +374,7 @@ fn item_value(
             GreenChild::Node(inner) => {
                 if after_dash {
                     let start = prefix_start.unwrap_or(child_start);
-                    return Some((inner.kind(), (start, child_end), Some(inner)));
+                    return Some((inner.kind(), (start, child_end), Some((inner, child_start))));
                 }
             }
         }

@@ -350,6 +350,15 @@ fn comment_shaped_line_is_block_scalar_content() {
     assert_eq!(v.as_str(), Some("#\n"));
     let v: Value = from_str("|\n#x\n#y\n").unwrap();
     assert_eq!(v.as_str(), Some("#x\n#y\n"));
+    // After leading breaks too (artifact `|+` with CR breaks): ng
+    // ends the scalar at the `#` line; it is content.
+    // The first `\r` ends the header; one empty line precedes `#`.
+    let v: Value = from_str("|+\r\r#\r\r").unwrap();
+    assert_eq!(v.as_str(), Some("\n#\n\n"));
+    // With clip chomping ng is left with only breaks, so it returns ""
+    // (artifact `|\r\r#|z`); the `#|z` line is content.
+    let v: Value = from_str("|\r\r#|z").unwrap();
+    assert_eq!(v.as_str(), Some("\n#|z\n"));
 }
 
 #[test]
@@ -365,6 +374,10 @@ fn anchor_name_may_contain_colon() {
     // The anchored node can still be a scalar that follows.
     let v: Value = from_str("&a: 1").unwrap();
     assert_eq!(v.as_i64(), Some(1));
+    // Same for `?` (artifact `&r??`): ng ends the name at `r` and
+    // reads the string "??"; the spec reads an anchor named `r??`.
+    let v: Value = from_str("&r??\n").unwrap();
+    assert!(v.is_null());
 }
 
 #[test]
@@ -378,4 +391,93 @@ fn signed_binary_literal_is_a_string_in_yaml_12() {
     assert_eq!(v.as_str(), Some("-0b0"));
     let v: Value = from_str("0b11").unwrap();
     assert_eq!(v.as_str(), Some("0b11"));
+}
+
+#[test]
+fn question_mark_may_start_a_flow_key() {
+    // Found by fuzz_diff; the input is yaml-test-suite 652Z verbatim.
+    // serde_yaml_ng reads `?foo` as the explicit-key indicator and
+    // yields the key "foo". Per YAML 1.2 §7.3.3 (ns-plain-first), a
+    // `?` followed by a safe non-space character starts a plain
+    // scalar, so the key is "?foo".
+    let v: Value = from_str("{ ?foo: bar,\nbar: 42\n}\n").unwrap();
+    assert_eq!(v["?foo"].as_str(), Some("bar"));
+    assert_eq!(v["bar"].as_i64(), Some(42));
+    assert!(v.get("foo").is_none());
+    // The same rule in a flow sequence (artifact `[?=?)\r@]`): ng
+    // builds a single-pair mapping, the spec reads one plain scalar.
+    let v: Value = from_str("[?=?)\r@]").unwrap();
+    assert_eq!(v[0].as_str(), Some("?=?) @"));
+}
+
+#[test]
+fn tab_only_line_is_white_space() {
+    // Found by fuzz_serde_yaml_compat (input `\t`): libyaml rejects a
+    // tab that starts a line ("cannot start any token"). A line of only
+    // white space, or white space and a comment, is an l-comment line
+    // (YAML 1.2.2 §6.6), so `\t` alone is an empty stream.
+    let v: Value = from_str("\t").unwrap();
+    assert!(v.is_null());
+    let v: Value = from_str("k: 1\n\t\n\t# note\n").unwrap();
+    assert_eq!(v["k"].as_i64(), Some(1));
+}
+
+#[test]
+fn root_block_scalar_content_may_start_at_column_0() {
+    // Found by fuzz_serde_yaml_compat (input `>-\n[`): libyaml ends a
+    // root block scalar at a column-0 line. A root node's parent
+    // indentation is -1, so column 0 is content (yaml-test-suite FP8R).
+    let v: Value = from_str(">-\n[").unwrap();
+    assert_eq!(v.as_str(), Some("["));
+}
+
+#[test]
+fn clipped_block_scalar_key_keeps_its_final_break() {
+    // Found by fuzz_diff: a folded key that ends the input keeps its
+    // clipped line break (as a value does, yaml-test-suite L24T); ng
+    // drops it.
+    let v: Value = from_str("? >\n  k\n").unwrap();
+    assert!(v.get("k\n").is_some(), "{v:?}");
+    let v: Value = from_str("? >\r\n  *z").unwrap();
+    assert!(v.get("*z\n").is_some(), "{v:?}");
+}
+
+#[test]
+fn overflowing_float_literal_is_infinity() {
+    // Found by fuzz_diff: a core-schema float literal past f64's range
+    // resolves to infinity (the serde_yaml compat profile keeps it as a
+    // string instead); serde_yaml_ng keeps the text.
+    let v: Value = from_str("3e999").unwrap();
+    assert_eq!(v.as_f64(), Some(f64::INFINITY));
+    let v: Value = from_str("-3e999").unwrap();
+    assert_eq!(v.as_f64(), Some(f64::NEG_INFINITY));
+}
+
+#[test]
+fn empty_key_entries_in_flow_sequences() {
+    // Found by fuzz_diff (input `[?\n\r,\r\r:]`): libyaml cannot read
+    // an empty-key entry in a flow sequence and serde_yaml_ng drops one.
+    // The spec allows it (yaml-test-suite CFD4).
+    let v: Value = from_str("[?, :]").unwrap();
+    assert_eq!(v.as_sequence().map(Vec::len), Some(2), "{v:?}");
+    // A `Value` spells the empty (null) key canonically.
+    let v: Value = from_str("[a, : x]").unwrap();
+    assert_eq!(v[1]["null"].as_str(), Some("x"), "{v:?}");
+}
+
+#[test]
+fn tab_before_a_root_scalar_is_separation() {
+    // Found by fuzz_serde_yaml_compat (input `\t$0`).
+    let v: Value = from_str("\t$0").unwrap();
+    assert_eq!(v.as_str(), Some("$0"));
+}
+
+#[test]
+fn comment_touching_a_block_header_is_an_error() {
+    // Found by fuzz_serde_yaml_compat (input `|#`): libyaml takes the
+    // `#` as a comment. It needs white space before it (YAML 1.2.2
+    // §6.6; yaml-test-suite X4QW is the error case).
+    assert!(from_str::<Value>("|#").is_err());
+    assert!(from_str::<Value>("a: >-# c\n  x\n").is_err());
+    assert!(from_str::<Value>("a: > # c\n  x\n").is_ok());
 }

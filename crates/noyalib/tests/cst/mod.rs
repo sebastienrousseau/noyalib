@@ -3,11 +3,13 @@
 
 //! The concrete-syntax-tree suites: parsing, editing, styling and round-tripping.
 //!
-//! 56 files, compiled into one test binary instead of
-//! 56 executables.
+//! 57 files, compiled into one test binary instead of
+//! 57 executables.
 
 #![allow(missing_docs)]
 
+mod cst_alias_valued_entry;
+mod cst_anchored_value_recursion;
 mod cst_anchors;
 mod cst_block_growth;
 mod cst_block_literal_trailing_comment;

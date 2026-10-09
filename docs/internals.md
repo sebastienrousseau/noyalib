@@ -22,91 +22,92 @@ likely to cost something. The `benches/` directory measures them.
 | --- | --- | --- |
 | 603 | `src/cst/document.rs` | `insert_entry_value` |
 | 510 | `src/cst/document.rs` | `is_flow_collection` |
-| 372 | `src/parser/loader.rs` | `process_event` |
-| 302 | `src/parser/loader.rs` | `process_event` |
-| 298 | `src/parser/scanner/scalars.rs` | `scan_block_scalar` |
 | 234 | `src/cst/document.rs` | `entry_line_span` |
-| 230 | `src/parser/loader.rs` | `push_node` |
+| 224 | `src/parser/loader.rs` | `push_node` |
 | 214 | `src/parser/scanner/scalars.rs` | `scan_double_quoted_scalar` |
-| 200 | `src/parser/scanner.rs` | `fetch_tag` |
-| 198 | `src/parser/scanner.rs` | `fetch_value` |
-| 177 | `src/parser/loader.rs` | `push_value` |
+| 214 | `src/parser/loader.rs` | `process_event` |
+| 199 | `src/parser/scanner.rs` | `fetch_tag` |
+| 171 | `src/parser/loader.rs` | `push_value` |
 | 167 | `src/parser/events.rs` | `parse_node` |
+| 153 | `src/parser/scanner.rs` | `skip_to_next_token` |
+| 148 | `src/parser/loader.rs` | `process_event` |
+| 127 | `src/cst/document.rs` | `set_value` |
 
 ## Module map
 
-74 modules.
+75 modules.
 
 | Module | Lines | Purpose |
 | --- | --- | --- |
 | `anchors.rs` | 1151 | Smart pointer anchor types for shared/DAG structures. |
-| `ariadne_adapter.rs` | 99 | [`ariadne`] adapter for [`crate::Error`]. |
-| `base64.rs` | 262 | Internal base64 codec for `!!binary` scalars (YAML 1.2.2 §10.4). |
-| `borrowed.rs` | 905 | Zero-copy YAML values that borrow strings from the input. |
-| `comments.rs` | 245 | Comment capture on the parse path. |
+| `ariadne_adapter.rs` | 115 | [`ariadne`] adapter for [`crate::Error`]. |
+| `base64.rs` | 283 | Internal base64 codec for `!!binary` scalars (YAML 1.2.2 §10.4). |
+| `borrowed.rs` | 954 | Zero-copy YAML values that borrow strings from the input. |
+| `comments.rs` | 265 | Comment capture on the parse path. |
 | `compat/mod.rs` | 19 | Compatibility shims for downstream crates migrating to `noyalib`. |
-| `compat/serde_yaml.rs` | 920 | Drop-in API surface compatible with `serde_yaml` 0.9. |
-| `cst/anchor.rs` | 709 | Anchor and alias management. |
-| `cst/annotated.rs` | 905 | Comment-aware read view over a [`crate::cst::Document`]. |
-| `cst/builder.rs` | 597 | Build the parts of a [`crate::cst::Document`] from input bytes. |
-| `cst/coerce.rs` | 232 | Lossless schema-driven type coercion on the CST path. |
-| `cst/document/edit.rs` | 258 | Atomic source splicing and local green-tree repair. |
+| `compat/serde_yaml.rs` | 968 | Drop-in API surface compatible with `serde_yaml` 0.9. |
+| `cst/anchor.rs` | 721 | Anchor and alias management. |
+| `cst/annotated.rs` | 909 | Comment-aware read view over a [`crate::cst::Document`]. |
+| `cst/builder.rs` | 684 | Build the parts of a [`crate::cst::Document`] from input bytes. |
+| `cst/coerce.rs` | 227 | Lossless schema-driven type coercion on the CST path. |
+| `cst/document/edit.rs` | 261 | Atomic source splicing and local green-tree repair. |
 | `cst/document/path.rs` | 406 | Green-tree path resolution without typed-cache materialization. |
 | `cst/document/transaction.rs` | 152 | Atomic batches of byte-range CST edits. |
 | `cst/document/validation.rs` | 86 | Typed-cache validation and atomic document-state replacement. |
-| `cst/document.rs` | 6952 | Public `Document` handle and parse / mutation entry points. |
+| `cst/document.rs` | 6982 | Public `Document` handle and parse / mutation entry points. |
 | `cst/emit.rs` | 463 | Auto-formatting for values spliced by the CST insertion mutators. |
 | `cst/entry.rs` | 671 | Path-shaped mutable handle to a CST node — the `Entry` "pro" |
-| `cst/format.rs` | 459 | Formatter for YAML CST. |
-| `cst/green.rs` | 231 | Immutable green-node primitive with relative-length leaves. |
-| `cst/mod.rs` | 129 | Side-table CST (concrete syntax tree) for lossless round-tripping. |
+| `cst/format.rs` | 609 | Formatter for YAML CST. |
+| `cst/green.rs` | 283 | Immutable green-node primitive with relative-length leaves. |
+| `cst/mod.rs` | 132 | Side-table CST (concrete syntax tree) for lossless round-tripping. |
 | `cst/syntax.rs` | 135 | Syntax-kind tags for green-tree nodes and tokens. |
-| `de/config.rs` | 1236 | Parser configuration types. |
-| `de/deserializer.rs` | 1041 | The serde `Deserializer` over a `&Value` and its access types. |
-| `de.rs` | 1227 | YAML Deserialization. |
-| `diagnostic.rs` | 188 | Spanned value to `miette::Report` bridge. |
+| `de/config.rs` | 1452 | Parser configuration types. |
+| `de/deserializer.rs` | 1057 | The serde `Deserializer` over a `&Value` and its access types. |
+| `de.rs` | 1251 | YAML Deserialization. |
+| `diagnostic.rs` | 447 | Framework-neutral structured diagnostics and optional `miette` bridges. |
 | `doc_boundary.rs` | 329 | Workspace-private `---` document-boundary scanner. |
-| `document.rs` | 436 | Multi-document YAML loading. |
-| `error.rs` | 2159 | Error handling types. |
-| `figment.rs` | 81 | [`figment`] provider for noyalib YAML. |
+| `document.rs` | 503 | Multi-document YAML loading. |
+| `error.rs` | 2278 | Error handling types. |
+| `figment.rs` | 219 | [`figment`] provider for noyalib YAML. |
 | `flattened.rs` | 165 | `Flattened<T>` — capture the underlying [`Value`] alongside the |
-| `fmt.rs` | 635 | Formatting wrappers for fine-grained control over YAML output style. |
+| `fmt.rs` | 648 | Formatting wrappers for fine-grained control over YAML output style. |
 | `i18n.rs` | 172 | Pluggable error-message formatters for user-facing rendering. |
-| `include/fs.rs` | 363 | Capability-rooted filesystem support for `!include`. |
-| `include.rs` | 167 | `!include` directive support — compose YAML documents from |
+| `include/fs.rs` | 429 | Capability-rooted filesystem support for `!include`. |
+| `include.rs` | 174 | `!include` directive support — compose YAML documents from |
 | `interner.rs` | 318 | Key interning for memory-efficient repeated-key workloads. |
 | `lossless_float.rs` | 180 | A float that refuses to silently lose information. |
 | `macros.rs` | 99 | Declarative builders for the public config types. |
-| `parallel.rs` | 516 | Parallel multi-document YAML parsing — the "MapReduce" path. |
-| `parser/budget.rs` | 253 | The resource budgets the loaders enforce, as pure predicates. |
-| `parser/events.rs` | 789 | YAML 1.2 event-based parser. |
-| `parser/loader.rs` | 2515 | Event-to-Value tree builder with security limits. |
-| `parser/meter.rs` | 328 | The stateful half of the budgets: one meter every loader charges. |
-| `parser/mod.rs` | 92 | Native YAML 1.2 parser. |
-| `parser/scanner/scalars.rs` | 1191 | Scalar scanning for the YAML scanner: plain, single/double-quoted |
-| `parser/scanner.rs` | 2351 | YAML 1.2 lexical scanner. |
+| `parallel.rs` | 526 | Parallel multi-document YAML parsing — the "MapReduce" path. |
+| `parser/budget.rs` | 282 | The resource budgets the loaders enforce, as pure predicates. |
+| `parser/events.rs` | 797 | YAML 1.2 event-based parser. |
+| `parser/loader.rs` | 2156 | Event-to-Value tree builder with security limits. |
+| `parser/meter.rs` | 422 | The stateful half of the budgets: one meter every loader charges. |
+| `parser/mod.rs` | 94 | Native YAML 1.2 parser. |
+| `parser/scanner/block_scalars.rs` | 398 | Literal and folded block scalar scanning for the YAML scanner, as a |
+| `parser/scanner/scalars.rs` | 867 | Scalar scanning for the YAML scanner: plain, single/double-quoted |
+| `parser/scanner.rs` | 2731 | YAML 1.2 lexical scanner. |
 | `path.rs` | 1101 | Path tracking for YAML structure locations. |
-| `policy.rs` | 271 | Pluggable parser policies for "Safe YAML" enforcement. |
-| `recovery.rs` | 621 | Error-recovering YAML parser for LSP / IDE partial parsing. |
+| `policy.rs` | 285 | Pluggable parser policies for "Safe YAML" enforcement. |
+| `recovery.rs` | 645 | Error-recovering YAML parser for LSP / IDE partial parsing. |
 | `schema.rs` | 334 | YAML 1.2 schema validation helpers. |
 | `schema_codegen.rs` | 322 | JSON Schema codegen for Rust types. |
-| `schema_validate.rs` | 704 | JSON Schema 2020-12 validation against a parsed [`crate::Value`]. |
-| `ser.rs` | 2390 | YAML serialization. |
+| `schema_validate.rs` | 1010 | JSON Schema 2020-12 validation against a parsed [`crate::Value`]. |
+| `ser.rs` | 2516 | YAML serialization. |
 | `simd.rs` | 1531 | SIMD-friendly structural-scanning primitives. |
-| `span_context.rs` | 176 | Thread-local span context for wiring source locations into `Spanned<T>`. |
+| `span_context.rs` | 401 | Thread-local span context for wiring source locations into `Spanned<T>`. |
 | `spanned.rs` | 291 | Source location tracking for deserialized values. |
-| `streaming.rs` | 2358 | Streaming YAML deserializer that operates directly on parser events. |
+| `streaming.rs` | 2539 | Streaming YAML deserializer that operates directly on parser events. |
 | `sval_adapter.rs` | 442 | `sval` adapter — stream noyalib values through any |
-| `tag_registry.rs` | 211 | Streaming-path registry for custom YAML tag pass-through. |
-| `tokio_async.rs` | 707 | Native async YAML parsing for [`tokio`](https://tokio.rs) |
+| `tag_registry.rs` | 215 | Streaming-path registry for custom YAML tag pass-through. |
+| `tokio_async.rs` | 818 | Native async YAML parsing for [`tokio`](https://tokio.rs) |
 | `validated.rs` | 262 | Declarative validation via [`garde`] or [`validator`]. |
 | `validated_miette.rs` | 265 | [`Spanned<T>`] + `garde` / `validator` → `miette::Report` |
 | `value/arbitrary_impls.rs` | 150 | [`arbitrary::Arbitrary`] for the public value types, behind the |
 | `value/convert.rs` | 237 | `From<T> for Value` conversions and `Index`/`IndexMut`. |
 | `value/mapping.rs` | 1378 | YAML mapping types (`Mapping`, `MappingAny`). |
 | `value/number.rs` | 631 | YAML number type (`Number`). |
-| `value/serde_impl.rs` | 335 | serde `Serialize`/`Deserialize` for `Value`. |
-| `value/tag.rs` | 505 | YAML tag types (`Tag`, `TaggedValue`) and tag utilities. |
+| `value/serde_impl.rs` | 370 | serde `Serialize`/`Deserialize` for `Value`. |
+| `value/tag.rs` | 554 | YAML tag types (`Tag`, `TaggedValue`) and tag utilities. |
 | `value.rs` | 1772 | YAML value types. |
 | `with/mod.rs` | 54 | Helper modules for customizing serialization and deserialization. |
 | `with/singleton_map.rs` | 212 | Serialize enums as single-entry maps. |

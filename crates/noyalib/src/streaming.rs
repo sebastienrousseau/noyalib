@@ -1551,6 +1551,97 @@ struct StreamingMapAccess<'a, 'de> {
     seen_typed: FxHashMap<String, Value>,
 }
 
+impl StreamingMapAccess<'_, '_> {
+    /// Expand a plain `<<` key: its value (an alias or a sequence of
+    /// aliases) is spliced into this mapping through the replay stack.
+    fn expand_merge_key(&mut self) -> Result<()> {
+        self.de.skip_event()?;
+        // The value event is raw-read from the parser so an
+        // `Event::Alias` is visible without auto-resolution.
+        match self.de.peek_parser_event()? {
+            Event::Alias { anchor, span } => {
+                let name = anchor.clone();
+                let start = span.start;
+                self.de.current = None;
+                self.de
+                    .inject_multi_merge_mapping_contents(&[(name, start)])?;
+            }
+            Event::SequenceStart { .. } => {
+                self.de.skip_event()?;
+                let mut sources = Vec::new();
+                loop {
+                    match self.de.peek_parser_event()? {
+                        Event::SequenceEnd { .. } => {
+                            self.de.skip_event()?;
+                            break;
+                        }
+                        Event::Alias { anchor, span } => {
+                            sources.push((anchor.clone(), span.start));
+                            self.de.skip_event()?;
+                        }
+                        _ => return Err(self.de.fallback()),
+                    }
+                }
+                self.de.inject_multi_merge_mapping_contents(&sources)?;
+            }
+            _ => return Err(self.de.fallback()),
+        }
+        Ok(())
+    }
+
+    /// Apply the key-collision guard and `DuplicateKeyPolicy` to the
+    /// next key. Returns `false` when the policy skipped the entry.
+    fn admit_key(&mut self, key_info: Option<(String, ScalarStyle, bool)>) -> Result<bool> {
+        let Some((raw, style, untagged)) = key_info else {
+            return Ok(true);
+        };
+        // Distinct-typed key-collision guard (parity with the AST loader):
+        // two keys whose canonical map-key string matches but whose typed
+        // Value differs (`1` vs `"1"`, `~` vs `"null"`, `true` vs `"true"`)
+        // are a `KeyCollision`, independent of `DuplicateKeyPolicy`. This is
+        // the guard the streaming path lacked, so `from_str::<map/struct>`
+        // and `from_str_borrowing::<Value>` silently collapsed such keys.
+        // Untagged scalar keys only; tagged keys keep their prior behaviour.
+        // Duplicates are judged on the same canonical form, so `~` and
+        // `null` are one key, as the AST loader judges them; the key
+        // string the visitor receives is still the text as written.
+        let mut identity = None;
+        if untagged {
+            let typed = scalar_to_value(self.de.resolve_scalar(&raw, style));
+            if let Some(canon) = crate::parser::value_to_key_string(typed.clone()) {
+                match self.seen_typed.get(&canon) {
+                    Some(prev) if *prev != typed => {
+                        return Err(Error::KeyCollision(canon));
+                    }
+                    Some(_) => {}
+                    None => {
+                        let _ = self.seen_typed.insert(canon.clone(), typed);
+                    }
+                }
+                identity = Some(canon);
+            }
+        }
+        let policy = self.de.config.duplicate_key_policy;
+        if policy == crate::parser::InternalDuplicateKeyPolicy::Last {
+            return Ok(true);
+        }
+        let identity = identity.unwrap_or_else(|| raw.clone());
+        if self.seen_keys.insert(identity) {
+            return Ok(true);
+        }
+        match policy {
+            crate::parser::InternalDuplicateKeyPolicy::Error => Err(Error::DuplicateKey(raw)),
+            crate::parser::InternalDuplicateKeyPolicy::First => {
+                // Skip duplicate key + value.
+                self.de.skip_value()?;
+                self.de.skip_value()?;
+                Ok(false)
+            }
+            _ => Ok(true),
+        }
+    }
+}
+
 impl<'de> serde_core::de::MapAccess<'de> for StreamingMapAccess<'_, 'de> {
     type Error = Error;
     fn next_key_seed<K>(&mut self, seed: K) -> Result<Option<K::Value>>
@@ -1579,49 +1670,13 @@ impl<'de> serde_core::de::MapAccess<'de> for StreamingMapAccess<'_, 'de> {
                 self.finished = true;
                 return Ok(None);
             }
-            if let Event::Scalar {
-                value,
-                style: ScalarStyle::Plain,
-                ..
-            } = ev
+            if matches!(ev, Event::Scalar { value, style: ScalarStyle::Plain, .. } if value == "<<")
             {
-                if value == "<<" {
-                    if self.has_emitted_key {
-                        return Err(self.de.fallback());
-                    }
-                    self.de.skip_event()?;
-                    // The value event is raw-read from the parser so an
-                    // `Event::Alias` is visible without auto-resolution.
-                    match self.de.peek_parser_event()? {
-                        Event::Alias { anchor, span } => {
-                            let name = anchor.clone();
-                            let start = span.start;
-                            self.de.current = None;
-                            self.de
-                                .inject_multi_merge_mapping_contents(&[(name, start)])?;
-                        }
-                        Event::SequenceStart { .. } => {
-                            self.de.skip_event()?;
-                            let mut sources = Vec::new();
-                            loop {
-                                match self.de.peek_parser_event()? {
-                                    Event::SequenceEnd { .. } => {
-                                        self.de.skip_event()?;
-                                        break;
-                                    }
-                                    Event::Alias { anchor, span } => {
-                                        sources.push((anchor.clone(), span.start));
-                                        self.de.skip_event()?;
-                                    }
-                                    _ => return Err(self.de.fallback()),
-                                }
-                            }
-                            self.de.inject_multi_merge_mapping_contents(&sources)?;
-                        }
-                        _ => return Err(self.de.fallback()),
-                    }
-                    continue;
+                if self.has_emitted_key {
+                    return Err(self.de.fallback());
                 }
+                self.expand_merge_key()?;
+                continue;
             }
             // Enforce duplicate-key policy when not `Last` (the serde
             // default). The key is peeked as a raw scalar string so policy
@@ -1639,48 +1694,8 @@ impl<'de> serde_core::de::MapAccess<'de> for StreamingMapAccess<'_, 'de> {
             } else {
                 None
             };
-            // Distinct-typed key-collision guard (parity with the AST loader):
-            // two keys whose canonical map-key string matches but whose typed
-            // Value differs (`1` vs `"1"`, `~` vs `"null"`, `true` vs `"true"`)
-            // are a `KeyCollision`, independent of `DuplicateKeyPolicy`. This is
-            // the guard the streaming path lacked, so `from_str::<map/struct>`
-            // and `from_str_borrowing::<Value>` silently collapsed such keys.
-            // Untagged scalar keys only; tagged keys keep their prior behaviour.
-            if let Some((ref raw, style, true)) = key_info {
-                let typed = scalar_to_value(self.de.resolve_scalar(raw, style));
-                if let Some(canon) = crate::parser::value_to_key_string(typed.clone()) {
-                    match self.seen_typed.get(&canon) {
-                        Some(prev) if *prev != typed => {
-                            return Err(Error::KeyCollision(canon));
-                        }
-                        Some(_) => {}
-                        None => {
-                            let _ = self.seen_typed.insert(canon, typed);
-                        }
-                    }
-                }
-            }
-            let key_str_opt = key_info.map(|(s, _, _)| s);
-            let policy = self.de.config.duplicate_key_policy;
-            if let Some(key_str) = key_str_opt {
-                if policy != crate::parser::InternalDuplicateKeyPolicy::Last {
-                    if self.seen_keys.contains(&key_str) {
-                        match policy {
-                            crate::parser::InternalDuplicateKeyPolicy::Error => {
-                                return Err(Error::DuplicateKey(key_str));
-                            }
-                            crate::parser::InternalDuplicateKeyPolicy::First => {
-                                // Skip duplicate key + value.
-                                self.de.skip_value()?;
-                                self.de.skip_value()?;
-                                continue;
-                            }
-                            _ => {}
-                        }
-                    } else {
-                        let _ = self.seen_keys.insert(key_str);
-                    }
-                }
+            if !self.admit_key(key_info)? {
+                continue;
             }
             self.key_count += 1;
             if self.key_count > self.de.config.max_mapping_keys {
@@ -2111,11 +2126,10 @@ fn looks_like_integer_literal(s: &str, legacy_octal: bool) -> bool {
     if b.is_empty() {
         return false;
     }
-    if b.len() > 2 && b[0] == b'0' && (bytes_to_char(b[1]) == 'x' || bytes_to_char(b[1]) == 'X') {
-        return b[2..].iter().all(|c| c.is_ascii_hexdigit());
-    }
-    if b.len() > 2 && b[0] == b'0' && (bytes_to_char(b[1]) == 'o' || bytes_to_char(b[1]) == 'O') {
-        return b[2..].iter().all(|c| (b'0'..=b'7').contains(c));
+    for (prefix, radix) in [("0x", 16), ("0o", 8)] {
+        if let Some(digits) = s.strip_prefix(prefix) {
+            return radix_digits(digits, radix);
+        }
     }
     if legacy_octal && b.len() >= 2 && b[0] == b'0' {
         return b[1..].iter().all(|c| (b'0'..=b'7').contains(c));
@@ -2207,11 +2221,14 @@ fn parse_integer(s: &str, legacy_octal: bool, lossless_u64: bool) -> Option<Pars
     if b.is_empty() {
         return None;
     }
-    if b.len() > 2 && b[0] == b'0' && (bytes_to_char(b[1]) == 'x' || bytes_to_char(b[1]) == 'X') {
-        return parse_radix_integer(&s[2..], 16, lossless_u64);
-    }
-    if b.len() > 2 && b[0] == b'0' && (bytes_to_char(b[1]) == 'o' || bytes_to_char(b[1]) == 'O') {
-        return parse_radix_integer(&s[2..], 8, lossless_u64);
+    // Core schema spellings only: `0x[0-9a-fA-F]+` and `0o[0-7]+`.
+    // An uppercase prefix or a sign after it stays a string.
+    for (prefix, radix) in [("0x", 16), ("0o", 8)] {
+        if let Some(digits) = s.strip_prefix(prefix) {
+            return radix_digits(digits, radix)
+                .then(|| parse_radix_integer(digits, radix, lossless_u64))
+                .flatten();
+        }
     }
     // YAML 1.1-style bare `0`-prefix octal — only when explicitly
     // opted in. The leading `0` must be followed by an octal digit
@@ -2247,6 +2264,12 @@ fn parse_integer(s: &str, legacy_octal: bool, lossless_u64: bool) -> Option<Pars
     }
 }
 
+/// Non-empty and every character a digit in `radix`: no sign, no
+/// separator. `from_str_radix` alone would accept a leading `+`/`-`.
+fn radix_digits(s: &str, radix: u32) -> bool {
+    !s.is_empty() && s.chars().all(|c| c.is_digit(radix))
+}
+
 fn parse_radix_integer(s: &str, radix: u32, lossless_u64: bool) -> Option<ParsedInteger> {
     #[cfg(not(feature = "lossless-u64"))]
     let _ = lossless_u64;
@@ -2261,10 +2284,6 @@ fn parse_radix_integer(s: &str, radix: u32, lossless_u64: bool) -> Option<Parsed
     }
     #[allow(unreachable_code)]
     None
-}
-
-fn bytes_to_char(b: u8) -> char {
-    b as char
 }
 
 fn extract_mapping_body(buf: &[BufferedEvent]) -> Option<&[BufferedEvent]> {

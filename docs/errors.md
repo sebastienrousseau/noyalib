@@ -40,37 +40,37 @@ changes only in a breaking release.
 | Variant | `code()` | Raised when |
 | --- | --- | --- |
 | `Error::Parse` | `noyalib::parse` | Error during YAML parsing. |
-| `Error::ParseWithLocation` | ``noyalib::error`` | Error during YAML parsing with location information. |
+| `Error::ParseWithLocation` | `noyalib::parse` | Error during YAML parsing with location information. |
 | `Error::Serialize` | `noyalib::serialize` | Error during serialization. |
 | `Error::Deserialize` | `noyalib::deserialize` | Error during deserialization. |
-| `Error::DeserializeWithLocation` | ``noyalib::error`` | Error during deserialization with location information. |
+| `Error::DeserializeWithLocation` | `noyalib::deserialize` | Error during deserialization with location information. |
 | `Error::Io` | `noyalib::io` | — |
-| `Error::Custom` | ``noyalib::error`` | Custom error message. |
+| `Error::Custom` | `noyalib::error` | Custom error message. |
 | `Error::RecursionLimitExceeded` | `noyalib::recursion_limit` | Error when recursion depth limit is exceeded. |
 | `Error::DuplicateKey` | `noyalib::duplicate_key` | Error when a duplicate key is encountered. |
-| `Error::DuplicateKeyAt` | ``noyalib::error`` | A duplicate mapping key, with where it is. The located form of [`Self::DuplicateKey`], raised under [`crate::DuplicateKeyPolicy::Error`] by the parsers that know the key's position -- every `from_str` entry point and the CST parser. `path` is the dotted path of the entry (`site.name`; a sequence index counts as a segment, `items.0.name`), `location` where the second occurrence begins. [`Self::kind`] reports [`ErrorKind::DuplicateKey`] for both forms and [`Self::location`] returns the position. |
+| `Error::DuplicateKeyAt` | `noyalib::duplicate_key` | A duplicate mapping key, with where it is. The located form of [`Self::DuplicateKey`], raised under [`crate::DuplicateKeyPolicy::Error`] by the parsers that know the key's position -- every `from_str` entry point and the CST parser. `path` is the dotted path of the entry (`site.name`; a sequence index counts as a segment, `items.0.name`), `location` where the second occurrence begins. [`Self::kind`] reports [`ErrorKind::DuplicateKey`] for both forms and [`Self::location`] returns the position. |
 | `Error::KeyCollision` | `noyalib::key_collision` | Two distinct-typed keys collapsed to the same string key. The mapping key model is `Mapping<String, Value>`, so keys are stringified. Distinct YAML keys that share a spelling — e.g. the integer `1` and the string `"1"`, or `true` and `"true"` — would silently overwrite each other, losing an entry. This is raised instead, carrying the collapsed string key. Unlike [`Self::DuplicateKey`], it fires regardless of `DuplicateKeyPolicy` because it is data loss, not an authored duplicate. |
-| `Error::KeyCollisionAt` | ``noyalib::error`` | Two distinct-typed keys collapsed to the same string key, with where the second one is. The located form of [`Self::KeyCollision`], raised by the parsers that know the key's position. `path` is the dotted path of the entry, `location` where the colliding key begins. [`Self::kind`] reports [`ErrorKind::KeyCollision`] for both forms. |
+| `Error::KeyCollisionAt` | `noyalib::key_collision` | Two distinct-typed keys collapsed to the same string key, with where the second one is. The located form of [`Self::KeyCollision`], raised by the parsers that know the key's position. `path` is the dotted path of the entry, `location` where the colliding key begins. [`Self::kind`] reports [`ErrorKind::KeyCollision`] for both forms. |
 | `Error::RepetitionLimitExceeded` | `noyalib::repetition_limit` | Repetition limit exceeded (security limit against billion-laughs). |
 | `Error::IntegerOverflow` | `noyalib::integer_overflow` | A plain decimal integer beyond `u64::MAX` was refused under [`crate::ParserConfig::integer_overflow_errors`]. |
 | `Error::NonScalarKey` | `noyalib::non_scalar_key` | A non-scalar mapping key was refused under [`crate::NonScalarKeyPolicy::Error`]. |
 | `Error::Budget` | `noyalib::budget` | A configurable parser budget was exceeded. Carries a [`BudgetBreach`] identifying which limit fired, the configured cap, and (where meaningful) the observed value at the moment the cap tripped. Distinct from the older [`Error::RecursionLimitExceeded`] / [`Error::RepetitionLimitExceeded`] variants — those stay for backwards compatibility on the depth / alias-expansion limits; new budgets in the v0.0.2 expansion (`max_events`, `max_nodes`, `max_total_scalar_bytes`, `max_documents`, `max_merge_keys`, `alias_anchor_ratio`) all flow through `Error::Budget`. |
 | `Error::UnknownAnchor` | `noyalib::unknown_anchor` | Unknown anchor encountered. |
-| `Error::UnknownAnchorAt` | ``noyalib::error`` | Unknown anchor encountered at a specific location. |
+| `Error::UnknownAnchorAt` | `noyalib::unknown_anchor` | Unknown anchor encountered at a specific location. |
 | `Error::MissingField` | `noyalib::missing_field` | Missing field in a mapping. |
 | `Error::UnknownField` | `noyalib::unknown_field` | Unknown field in a mapping (with `deny_unknown_fields`). |
-| `Error::ScalarInMergeElement` | ``noyalib::error`` | Scalar encountered where a mapping was expected during merge. |
-| `Error::SequenceInMergeElement` | ``noyalib::error`` | Sequence encountered where a mapping was expected during merge. |
-| `Error::TaggedInMerge` | ``noyalib::error`` | Tagged value encountered during merge. |
-| `Error::Invalid` | ``noyalib::error`` | Generic invalid construct error. |
+| `Error::ScalarInMergeElement` | `noyalib::error` | Scalar encountered where a mapping was expected during merge. |
+| `Error::SequenceInMergeElement` | `noyalib::error` | Sequence encountered where a mapping was expected during merge. |
+| `Error::TaggedInMerge` | `noyalib::error` | Tagged value encountered during merge. |
+| `Error::Invalid` | `noyalib::error` | Generic invalid construct error. |
 | `Error::TypeMismatch` | `noyalib::type_mismatch` | A type mismatch error. |
-| `Error::Shared` | ``noyalib::error`` | Shared error instance (Arc-wrapped for cloning). |
+| `Error::Shared` | `noyalib::error` | Shared error instance (Arc-wrapped for cloning). |
 | `Error::EndOfStream` | `noyalib::eof` | End of stream reached unexpectedly. |
 | `Error::MoreThanOneDocument` | `noyalib::multi_document` | More than one document found where one was expected. |
-| `Error::ScalarInMerge` | ``noyalib::error`` | Scalar in merge (legacy variant). |
-| `Error::EmptyTag` | ``noyalib::error`` | Empty tag encountered. |
-| `Error::FailedToParseNumber` | ``noyalib::error`` | Failed to parse a number. |
-| `Error::Message` | ``noyalib::error`` | A message error from Serde (compat variant). |
+| `Error::ScalarInMerge` | `noyalib::error` | Scalar in merge (legacy variant). |
+| `Error::EmptyTag` | `noyalib::error` | Empty tag encountered. |
+| `Error::FailedToParseNumber` | `noyalib::error` | Failed to parse a number. |
+| `Error::Message` | `noyalib::error` | A message error from Serde (compat variant). |
 
 ## Reading an error against its source
 
