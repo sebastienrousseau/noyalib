@@ -7,6 +7,47 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [v0.0.58] - Unreleased
 
+### Security
+
+- **`cst::Document` mutators now re-parse under the document's own
+  configuration.** `Document::set`, `replace_collection_value`,
+  `append_first_entry`, `guarded_insert`, and `duplicate_keys_present`
+  previously re-parsed the edited buffer with default YAML 1.2 settings
+  instead of `self.config`, allowing YAML 1.1 scalar aliases (such as
+  `yes` colliding with `true`) to bypass duplicate-key detection or
+  trigger false-positive shape rollbacks.
+- **`cst::coerce_to_schema` now quotes JSON Pointer segments with
+  `path::push_key`, requires a string leaf, and skips no-op edits.**
+  Keys containing `.` or `[` are bracket-quoted instead of concatenated
+  raw into the CST path, non-string targets are skipped, and values
+  whose coerced form equals the current source text no longer repeat up
+  to the 1,024-iteration cap.
+- **`!include` resolution and `${...}` property interpolation now
+  enforce `max_total_scalar_bytes`.** `IncludeWalk` charges scalar bytes
+  across every resolved source (before `#fragment` narrowing discards
+  sibling entries) and re-checks the combined document tree after
+  substitution; `apply_properties` bounds expanded scalar text against
+  `config.max_total_scalar_bytes`.
+- **`tokio_async::YamlDecoder` now waits for one lookahead byte past a
+  chunk-ending `---` before splitting.** A `---` at the end of a non-EOF
+  read buffer could be the prefix of a plain scalar or mapping key such
+  as `---: value`; `next_marker_after_streaming` defers the boundary
+  decision until the fourth byte or EOF arrives and rewinds the scan
+  cursor by three bytes.
+- **Cross-entry-point policy, post-processing, and deserializer option
+  parity.** `cst::parse_document_with_config`, `Document::replace_span`,
+  and `Document::validate` now run `Policy::check_value`;
+  `load_all_with_config`, `load_all_as_with_config`, `read_with_config`,
+  `from_str_typed_no_tag_preserve`, and the `no_std` branch of
+  `from_str_with_config` all run the shared `post_process_document`
+  pipeline (`!include`, `${...}`, and `Policy::check_value`) and honour
+  `ignore_binary_tag_for_string`, `plain_scalar_strings`, and
+  `SpanContext`.
+- **`figment::Yaml::file` and `file_with_config` now verify regular-file
+  and length metadata before reading.** Non-regular files (directories,
+  FIFOs, device nodes) and regular files larger than
+  `max_document_length` are rejected via `metadata()` before reading.
+
 ### Fixed
 
 - **An unknown or missing field rejected by `from_str` now carries a

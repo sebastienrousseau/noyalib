@@ -42,6 +42,7 @@ pub(crate) struct ParsedDocument {
 pub(crate) fn parse_full(input: &str, cfg: &ParseConfig) -> Result<ParsedDocument> {
     check_document_length(input, cfg)?;
     let (value, span_tree) = crate::parser::parse_exactly_one(input, cfg)?;
+    crate::policy::check_document(&cfg.policies, &value)?;
     let source: Arc<str> = Arc::from(input);
     let green = build_green_tree(&source, cfg.max_depth)?;
     Ok(ParsedDocument {

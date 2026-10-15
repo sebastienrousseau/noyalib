@@ -215,7 +215,9 @@ where
     }
     let stream_eligible = config.merge_key_policy == MergeKeyPolicy::Auto
         && !config.ignore_binary_tag_for_string
-        && config.policies.is_empty();
+        && config.policies.is_empty()
+        && properties_inactive(config)
+        && includes_inactive(config);
     let mut streaming_err = None;
     if stream_eligible && let Some(res) = crate::streaming::from_str_streaming(s, config) {
         match res {
@@ -232,10 +234,8 @@ where
         }
     }
     let parse_config = parser::ParseConfig::from(config);
-    let (value, span_tree) = parser::parse_exactly_one(s, &parse_config)?;
-    for p in &config.policies {
-        p.check_value(&value)?;
-    }
+    let (mut value, span_tree) = parser::parse_exactly_one(s, &parse_config)?;
+    post_process_document(&mut value, config)?;
     deserialize_spanned(s, &value, &span_tree, config, streaming_err)
 }
 
@@ -512,9 +512,7 @@ where
     // verified `TypeId::of::<T>() == TypeId::of::<Value>()`.
     if is_value_target::<T>() {
         let mut value = parser::parse_exactly_one_value(s, &parse_config)?;
-        apply_includes(&mut value, config)?;
-        apply_properties(&mut value, config)?;
-        crate::policy::check_document(&config.policies, &value)?;
+        post_process_document(&mut value, config)?;
         let boxed: Box<dyn core::any::Any> = Box::new(value);
         // SAFETY-by-construction: `is_value_target::<T>()` already
         // verified `TypeId::of::<T>() == TypeId::of::<Value>()`, so
@@ -529,16 +527,14 @@ where
     #[cfg(feature = "std")]
     {
         let (mut value, span_tree) = parser::parse_exactly_one(s, &parse_config)?;
-        apply_includes(&mut value, config)?;
-        apply_properties(&mut value, config)?;
-        crate::policy::check_document(&config.policies, &value)?;
+        post_process_document(&mut value, config)?;
         deserialize_spanned(s, &value, &span_tree, config, streaming_err)
     }
 
     #[cfg(not(feature = "std"))]
     {
-        let value = parser::parse_exactly_one_value(s, &parse_config)?;
-        crate::policy::check_document(&config.policies, &value)?;
+        let mut value = parser::parse_exactly_one_value(s, &parse_config)?;
+        post_process_document(&mut value, config)?;
         let de = Deserializer::with_options(
             &value,
             None,
@@ -744,6 +740,15 @@ fn properties_inactive(_config: &ParserConfig) -> bool {
 /// behaviour, but always propagates *syntax* errors from the
 /// substitution walk (invalid characters, unterminated `${...}`,
 /// malformed `:-default`) regardless of mode.
+/// Run the post-parse document pipeline (`!include` substitution, `${...}`
+/// property interpolation, and AST [`Policy::check_value`] hooks) in one
+/// canonical order across all loader entry points.
+pub(crate) fn post_process_document(value: &mut Value, config: &ParserConfig) -> Result<()> {
+    apply_includes(value, config)?;
+    apply_properties(value, config)?;
+    crate::policy::check_document(&config.policies, value)
+}
+
 #[cfg(feature = "std")]
 fn apply_properties(value: &mut Value, config: &ParserConfig) -> Result<()> {
     if let Some(props) = config.properties.as_ref() {
@@ -752,12 +757,13 @@ fn apply_properties(value: &mut Value, config: &ParserConfig) -> Result<()> {
         } else {
             crate::value::MissingAction::Empty
         };
-        value.interpolate_inner(
+        value.interpolate_inner_bounded(
             &|name| match props.get(name) {
                 Some(v) => crate::value::ResolveOutcome::Found(v.clone()),
                 None => crate::value::ResolveOutcome::Missing,
             },
             action,
+            Some(config.max_total_scalar_bytes),
         )?;
     }
     Ok(())
@@ -809,14 +815,15 @@ fn apply_includes(value: &mut Value, config: &ParserConfig) -> Result<()> {
             next_id: 1,
             sources: 0,
             bytes: 0,
+            scalar_bytes: parser::meter::AliasCost::of_value(value).text,
         };
         walk.walk(value, IncludeAt::default())?;
-        enforce_expanded_node_budget(value, config.max_nodes)?;
+        enforce_expanded_node_budget(value, config.max_nodes, config.max_total_scalar_bytes)?;
     }
     Ok(())
 }
 
-/// Re-apply the parser's node budget after include substitution.
+/// Re-apply the parser's node and total scalar byte budgets after include substitution.
 ///
 /// Every source is bounded independently while it is parsed, but replacing
 /// several `!include` scalars can make the combined tree exceed the caller's
@@ -824,27 +831,37 @@ fn apply_includes(value: &mut Value, config: &ParserConfig) -> Result<()> {
 /// nodes and mapping-key scalar events are charged, while a tag decorates its
 /// underlying YAML node rather than adding another node.
 #[cfg(feature = "include")]
-fn enforce_expanded_node_budget(value: &Value, max_nodes: usize) -> Result<()> {
+fn enforce_expanded_node_budget(
+    value: &Value,
+    max_nodes: usize,
+    max_total_scalar_bytes: usize,
+) -> Result<()> {
     let mut pending = vec![value];
     let mut observed = 0usize;
+    let mut scalar_bytes = 0usize;
 
     while let Some(value) = pending.pop() {
-        let charge = match value {
+        let (charge, bytes) = match value {
             Value::Tagged(tagged) => {
                 pending.push(tagged.value());
                 continue;
             }
             Value::Sequence(sequence) => {
                 pending.extend(sequence);
-                1
+                (1, 0)
             }
             Value::Mapping(mapping) => {
-                pending.extend(mapping.values());
+                let mut key_bytes = 0usize;
+                for (key, item) in mapping {
+                    key_bytes = key_bytes.saturating_add(key.len());
+                    pending.push(item);
+                }
                 // The mapping itself and each authored scalar key are
                 // distinct parser events and therefore distinct nodes.
-                1usize.saturating_add(mapping.len())
+                (1usize.saturating_add(mapping.len()), key_bytes)
             }
-            Value::Null | Value::Bool(_) | Value::Number(_) | Value::String(_) => 1,
+            Value::String(s) => (1, s.len()),
+            Value::Null | Value::Bool(_) | Value::Number(_) => (1, 0),
         };
 
         observed = observed.saturating_add(charge);
@@ -852,6 +869,13 @@ fn enforce_expanded_node_budget(value: &Value, max_nodes: usize) -> Result<()> {
             return Err(Error::Budget(crate::BudgetBreach::MaxNodes {
                 limit: max_nodes,
                 observed,
+            }));
+        }
+        scalar_bytes = scalar_bytes.saturating_add(bytes);
+        if scalar_bytes > max_total_scalar_bytes {
+            return Err(Error::Budget(crate::BudgetBreach::MaxTotalScalarBytes {
+                limit: max_total_scalar_bytes,
+                observed: scalar_bytes,
             }));
         }
     }
@@ -889,6 +913,7 @@ struct IncludeWalk<'a> {
     next_id: usize,
     sources: usize,
     bytes: usize,
+    scalar_bytes: usize,
 }
 
 #[cfg(feature = "include")]
@@ -903,6 +928,7 @@ impl IncludeWalk<'_> {
             let spec = tagged.value().as_str().map(str::to_owned).ok_or_else(|| {
                 Error::Custom("!include directive expects a scalar string spec".into())
             })?;
+            self.scalar_bytes = self.scalar_bytes.saturating_sub(spec.len());
             *value = self.load(&spec, at)?;
             return Ok(());
         }
@@ -951,6 +977,15 @@ impl IncludeWalk<'_> {
         let mut source_config = self.parse_config.clone();
         source_config.max_depth = source_config.max_depth.saturating_sub(at.tree_depth);
         let mut included = parser::parse_exactly_one_value(&source.bytes, &source_config)?;
+        self.scalar_bytes = self
+            .scalar_bytes
+            .saturating_add(parser::meter::AliasCost::of_value(&included).text);
+        if self.scalar_bytes > self.parse_config.max_total_scalar_bytes {
+            return Err(Error::Budget(crate::BudgetBreach::MaxTotalScalarBytes {
+                limit: self.parse_config.max_total_scalar_bytes,
+                observed: self.scalar_bytes,
+            }));
+        }
         let nested = IncludeAt {
             include_depth,
             from_id: id,
@@ -1146,6 +1181,20 @@ pub fn from_value<T>(value: &Value) -> Result<T>
 where
     T: for<'de> serde_core::Deserialize<'de> + 'static,
 {
+    from_value_with_options(value, false, false)
+}
+
+/// Deserialize `T` from a [`Value`] while honouring [`ParserConfig`]
+/// deserialiser toggles (`ignore_binary_tag_for_string` and
+/// `plain_scalar_strings`).
+pub(crate) fn from_value_with_options<T>(
+    value: &Value,
+    ignore_binary_tag_for_string: bool,
+    plain_scalar_strings: bool,
+) -> Result<T>
+where
+    T: for<'de> serde_core::Deserialize<'de> + 'static,
+{
     // Zero-rewalk fast path: when T == Value, the answer is just
     // `value.clone()`. The default `T::deserialize(de)` route
     // walks `value` and reconstructs an identical Value via
@@ -1158,7 +1207,43 @@ where
             .expect("is_value_target proved T == Value");
         return Ok(*downcast);
     }
-    T::deserialize(Deserializer::new(value))
+    let de = Deserializer::with_options(
+        value,
+        None,
+        ignore_binary_tag_for_string,
+        plain_scalar_strings,
+    );
+    T::deserialize(de)
+}
+
+/// Deserialize `T` from a [`Value`] with an active [`span_context::SpanContext`]
+/// and [`ParserConfig`] deserialiser toggles installed.
+#[cfg(feature = "std")]
+pub(crate) fn from_value_spanned_with_options<T>(
+    value: &Value,
+    ctx: span_context::SpanContext,
+    ignore_binary_tag_for_string: bool,
+    plain_scalar_strings: bool,
+) -> Result<T>
+where
+    T: for<'de> serde_core::Deserialize<'de> + 'static,
+{
+    if is_value_target::<T>() {
+        let cloned = value.clone();
+        let boxed: Box<dyn core::any::Any> = Box::new(cloned);
+        let downcast: Box<T> = boxed
+            .downcast::<T>()
+            .expect("is_value_target proved T == Value");
+        return Ok(*downcast);
+    }
+    let _guard = span_context::set_span_context(ctx);
+    let de = Deserializer::with_options(
+        value,
+        Some(_guard.as_ref()),
+        ignore_binary_tag_for_string,
+        plain_scalar_strings,
+    );
+    attach_field_path(T::deserialize(de), value)
 }
 
 // The figment integration entry `from_str_typed_no_tag_preserve` is

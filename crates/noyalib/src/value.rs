@@ -1058,26 +1058,59 @@ impl Value {
         resolve: &dyn Fn(&str) -> ResolveOutcome,
         missing_action: MissingAction,
     ) -> crate::Result<()> {
+        self.interpolate_inner_bounded(resolve, missing_action, None)
+    }
+
+    /// Bounded counterpart to [`Self::interpolate_inner`] that charges
+    /// post-expansion scalar and key byte lengths against `max_scalar_bytes`.
+    #[cfg(feature = "std")]
+    pub(crate) fn interpolate_inner_bounded(
+        &mut self,
+        resolve: &dyn Fn(&str) -> ResolveOutcome,
+        missing_action: MissingAction,
+        max_scalar_bytes: Option<usize>,
+    ) -> crate::Result<()> {
+        let mut observed = 0usize;
+        self.interpolate_walk(resolve, missing_action, max_scalar_bytes, &mut observed)
+    }
+
+    #[cfg(feature = "std")]
+    fn interpolate_walk(
+        &mut self,
+        resolve: &dyn Fn(&str) -> ResolveOutcome,
+        missing_action: MissingAction,
+        max_scalar_bytes: Option<usize>,
+        observed: &mut usize,
+    ) -> crate::Result<()> {
         match self {
             Self::String(s) => {
-                if let Some(updated) = expand_placeholders(s, resolve, missing_action)? {
+                if let Some(updated) =
+                    expand_placeholders(s, resolve, missing_action, max_scalar_bytes, *observed)?
+                {
                     *s = updated;
                 }
+                *observed = observed.saturating_add(s.len());
+                check_interpolated_scalar_budget(*observed, max_scalar_bytes)?;
             }
             Self::Sequence(seq) => {
                 for v in seq {
-                    v.interpolate_inner(resolve, missing_action)?;
+                    v.interpolate_walk(resolve, missing_action, max_scalar_bytes, observed)?;
                 }
             }
             Self::Mapping(map) => {
-                for v in map.values_mut() {
-                    v.interpolate_inner(resolve, missing_action)?;
+                for (k, v) in map.iter_mut() {
+                    *observed = observed.saturating_add(k.len());
+                    check_interpolated_scalar_budget(*observed, max_scalar_bytes)?;
+                    v.interpolate_walk(resolve, missing_action, max_scalar_bytes, observed)?;
                 }
             }
             Self::Tagged(tagged) => {
-                tagged
-                    .value_mut()
-                    .interpolate_inner(resolve, missing_action)?;
+                tagged.value_mut().interpolate_walk(
+                    resolve,
+                    missing_action,
+                    max_scalar_bytes,
+                    observed,
+                )?;
             }
             // Null / Bool / Number have no string content; nothing to do.
             Self::Null | Self::Bool(_) | Self::Number(_) => {}
@@ -1639,10 +1672,28 @@ pub(crate) enum MissingAction {
 }
 
 #[cfg(feature = "std")]
+#[inline]
+fn check_interpolated_scalar_budget(
+    observed: usize,
+    max_scalar_bytes: Option<usize>,
+) -> crate::Result<()> {
+    if let Some(limit) = max_scalar_bytes
+        && observed > limit
+    {
+        return Err(crate::Error::Budget(
+            crate::BudgetBreach::MaxTotalScalarBytes { limit, observed },
+        ));
+    }
+    Ok(())
+}
+
+#[cfg(feature = "std")]
 fn expand_placeholders(
     s: &str,
     resolve: &dyn Fn(&str) -> ResolveOutcome,
     missing_action: MissingAction,
+    max_scalar_bytes: Option<usize>,
+    observed_base: usize,
 ) -> crate::Result<Option<String>> {
     let bytes = s.as_bytes();
     // Fast path: no `$` and no `}` → no allocation, no walk.
@@ -1734,6 +1785,10 @@ fn expand_placeholders(
                 },
                 ResolveOutcome::Error(e) => return Err(e),
             };
+            let next_len = observed_base
+                .saturating_add(out.len())
+                .saturating_add(value.len());
+            check_interpolated_scalar_budget(next_len, max_scalar_bytes)?;
             out.push_str(&value);
             i = close + 1;
             touched = true;

@@ -207,9 +207,31 @@ fn parse<T: serde_core::de::DeserializeOwned>(s: &str, config: &ParserConfig) ->
     crate::de::from_str_typed_no_tag_preserve::<T>(s, config)
 }
 
-/// Read `path`, stopping one byte past `config.max_document_length`.
+/// Read `path` if it is a regular file, rejecting non-regular files and
+/// oversized files via metadata before reading, and stopping one byte
+/// past `config.max_document_length`.
 fn read_bounded(path: &Path, config: &ParserConfig) -> crate::Result<String> {
+    let pre_meta = std::fs::metadata(path).map_err(crate::Error::Io)?;
+    if !pre_meta.is_file() {
+        return Err(crate::Error::Io(std::io::Error::new(
+            std::io::ErrorKind::InvalidInput,
+            "not a regular file",
+        )));
+    }
     let file = std::fs::File::open(path).map_err(crate::Error::Io)?;
+    let meta = file.metadata().map_err(crate::Error::Io)?;
+    if !meta.is_file() {
+        return Err(crate::Error::Io(std::io::Error::new(
+            std::io::ErrorKind::InvalidInput,
+            "not a regular file",
+        )));
+    }
+    let max_len = config.max_document_length;
+    if meta.len() > u64::try_from(max_len).unwrap_or(u64::MAX) {
+        return Err(crate::Error::Parse(format!(
+            "document exceeds maximum length of {max_len} bytes"
+        )));
+    }
     crate::de::read_to_string_bounded(file, config)
 }
 

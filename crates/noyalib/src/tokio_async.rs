@@ -346,42 +346,39 @@ impl<T> YamlDecoder<T> {
     }
 
     /// The next document boundary in `bytes`, resuming the scan where
-    /// the previous call on the same frame stopped. A marker needs
-    /// three bytes and the byte before it, so every position before
-    /// `len - 2` has had its final answer once scanned.
+    /// the previous call on the same frame stopped. A marker before EOF
+    /// needs three `---` bytes, the byte before it, and one lookahead
+    /// byte after it, so every position before `len - 3` has had its
+    /// final answer once scanned.
     ///
     /// This relies on `decode` seeing one growing buffer, as
     /// `FramedRead` guarantees; a buffer shorter than the scanned
     /// offset is treated as a new frame.
-    fn next_boundary(&mut self, bytes: &[u8]) -> Option<usize> {
+    fn next_boundary(&mut self, bytes: &[u8], at_eof: bool) -> Option<usize> {
         if self.scanned > bytes.len() {
             self.scanned = 0;
         }
-        let found = crate::doc_boundary::next_marker_after(bytes, self.scanned);
+        let found = crate::doc_boundary::next_marker_after_streaming(bytes, self.scanned, at_eof);
         if found.is_none() {
-            self.scanned = self.scanned.max(bytes.len().saturating_sub(2));
+            let tail = if at_eof { 2 } else { 3 };
+            self.scanned = self.scanned.max(bytes.len().saturating_sub(tail));
         }
         found
     }
-}
 
-impl<T> Decoder for YamlDecoder<T>
-where
-    // `'static` is inherited from `from_slice_with_config` and
-    // `from_str_with_config` — async I/O cannot generally hand
-    // out a borrowed `&[u8]` that outlives the await point, so
-    // dropping the bound here would only paper over the issue.
-    T: serde_core::de::DeserializeOwned + 'static,
-{
-    type Item = T;
-    type Error = Error;
-
-    fn decode(&mut self, src: &mut BytesMut) -> core::result::Result<Option<T>, Error> {
+    fn decode_step(
+        &mut self,
+        src: &mut BytesMut,
+        at_eof: bool,
+    ) -> core::result::Result<Option<T>, Error>
+    where
+        T: serde_core::de::DeserializeOwned + 'static,
+    {
         // C6 — iterate rather than recurse so an all-whitespace
         //      preamble (or repeated `---` markers preceding the
         //      first real document) cannot blow the stack.
         loop {
-            let boundary = self.next_boundary(src.as_ref());
+            let boundary = self.next_boundary(src.as_ref(), at_eof);
 
             // Apply the cap to the next logical document, not the entire
             // read buffer. A single AsyncRead poll may legally return several
@@ -408,15 +405,31 @@ where
             return Ok(Some(parsed));
         }
     }
+}
+
+impl<T> Decoder for YamlDecoder<T>
+where
+    // `'static` is inherited from `from_slice_with_config` and
+    // `from_str_with_config` — async I/O cannot generally hand
+    // out a borrowed `&[u8]` that outlives the await point, so
+    // dropping the bound here would only paper over the issue.
+    T: serde_core::de::DeserializeOwned + 'static,
+{
+    type Item = T;
+    type Error = Error;
+
+    fn decode(&mut self, src: &mut BytesMut) -> core::result::Result<Option<T>, Error> {
+        self.decode_step(src, false)
+    }
 
     fn decode_eof(&mut self, src: &mut BytesMut) -> core::result::Result<Option<T>, Error> {
         if src.is_empty() {
             return Ok(None);
         }
-        // Last document — try a normal decode first (it may have
-        // a trailing `---` from a previous frame), otherwise parse
-        // the remainder.
-        if let Some(v) = self.decode(src)? {
+        // Last document — try a normal decode with `at_eof = true` first
+        // (it may have a trailing `---` from a previous frame), otherwise
+        // parse the remainder.
+        if let Some(v) = self.decode_step(src, true)? {
             return Ok(Some(v));
         }
         if src.iter().all(u8::is_ascii_whitespace) {

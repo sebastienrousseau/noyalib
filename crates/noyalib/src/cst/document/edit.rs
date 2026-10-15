@@ -67,6 +67,7 @@ impl Document {
             self.try_local_repair_green(start, end, replacement, &new_source)
         {
             let parsed = crate::parser::parse_exactly_one(&new_source, &self.config)?;
+            crate::policy::check_document(&self.config.policies, &parsed.0)?;
             self.last_repair_scope.set(Some(scope));
             self.source = new_arc;
             self.green = new_green;
