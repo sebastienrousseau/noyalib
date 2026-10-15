@@ -25,7 +25,7 @@ the workspace root, and nothing else needs to be known about it.
 
 | What | Version | Why |
 | :--- | :--- | :--- |
-| Rust stable | 1.86.0 or later | MSRV, CI-enforced (`msrv-core`) |
+| Rust stable | 1.89.0 or later | MSRV, CI-enforced (`msrv-core`) |
 | Rust nightly | any recent | Miri, cargo-fuzz, coverage (`llvm-cov` with `coverage_attribute`) |
 | cargo-deny, cargo-vet | latest | supply-chain gates |
 | cargo-hack | latest | per-feature and powerset builds |
@@ -69,7 +69,7 @@ equivalent. The ones that catch people out:
 | `fuzz-regression` | `cd fuzz && cargo +nightly fuzz build`, then replay `corpus/seed` + `regressions/<target>` per target with `-- -runs=0` | needs nightly + source-installed cargo-fuzz |
 | `cargo-vet` | `cargo vet` (after a dep change: `cargo vet regenerate exemptions`) | exemptions must move with every dependency bump |
 | `no-std` legs | `cargo check --no-default-features` (+ feature combos from `shared-no-std.yml`) | `std`-only items need `#[cfg(feature = "std")]` |
-| `msrv-core` | `cargo +1.86.0 check` / clippy on the default and no-default sets | dev-deps (criterion 0.8) need 1.86+, so `--all-targets` on older toolchains fails by design |
+| `msrv-core` | `cargo +1.89.0 check` / clippy on the default and no-default sets | CI sets `RUSTUP_TOOLCHAIN`, because `rust-toolchain.toml` (stable) otherwise wins over the installed MSRV toolchain |
 
 ## Test layout
 

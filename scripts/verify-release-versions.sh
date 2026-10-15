@@ -233,6 +233,73 @@ if eco.is_file():
     else:
         ok("docs/ECOSYSTEM.md", f"rating table measured at {version}")
 
+# The MSRV. `rust-version` in Cargo.toml is the floor Cargo enforces;
+# every other place that states it (CI, make targets, README, policy
+# docs) must name the same floor, or a raise leaves a stale promise
+# behind. 1.89 and 1.89.0 state the same floor. Each site must still
+# match its pattern, so a reworded statement fails here instead of
+# silently dropping out of the check.
+def same_floor(stated, floor):
+    def norm(v):
+        return v + ".0" if v.count(".") == 1 else v
+    return norm(stated) == norm(floor)
+
+
+MSRV_SITES = [
+    (".github/workflows/ci.yml", r'^\s+toolchain: "([0-9.]+)"'),
+    (".github/workflows/shared-msrv-core.yml", r'^\s+default: "([0-9.]+)"'),
+    (".github/PULL_REQUEST_TEMPLATE.md", r"Considered MSRV \(([0-9.]+)\)"),
+    ("CONTRIBUTING.md", r"\*\*Rust ([0-9.]+)\+\*\* for the core"),
+    ("CONTRIBUTING.md", r"Same \*\*([0-9.]+)\*\* floor"),
+    ("DEVELOPMENT.md", r"\| Rust stable \| ([0-9.]+) or later"),
+    ("DEVELOPMENT.md", r"\| `msrv-core` \| `cargo \+([0-9.]+) check`"),
+    ("GOVERNANCE.md", r"\(MSRV\) is \*\*([0-9.]+)\*\*"),
+    ("SUPPORT.md", r"\(MSRV\): \*\*([0-9.]+)\*\*"),
+    ("README.md", r"badge/MSRV-([0-9.]+)-"),
+    ("README.md", r'alt="MSRV ([0-9.]+)"'),
+    ("README.md", r"Rust \*\*([0-9.]+) or newer\*\*"),
+    ("README.md", r"^\| (?:`noyalib`|Satellite crates) \| Rust ([0-9.]+) \|"),
+    ("crates/noyalib/README.md", r"\*\*MSRV: Rust ([0-9.]+)\*\*"),
+    ("crates/noyalib/src/lib.rs", r"Rust \*\*([0-9.]+)\*\* stable"),
+    ("crates/noyalib/src/lib.rs", r"on `rustc ([0-9.]+)` for every PR"),
+    ("crates/noyalib/src/lib.rs", r"the same `([0-9.]+)` floor"),
+    ("docs/POLICIES.md", r"^\| `noya[a-z-]*`(?: \([a-z ]+\))? \| \*{0,2}([0-9.]+)\*{0,2} \|"),
+    ("docs/README-REFERENCE.md", r"badge/MSRV-([0-9.]+)-"),
+    ("docs/README-REFERENCE.md", r'alt="MSRV ([0-9.]+)"'),
+    ("docs/README-REFERENCE.md", r"\*\*Rust ([0-9.]+) or newer\.\*\*"),
+    ("docs/README-REFERENCE.md", r"^\| `noya[a-z-]*`(?: \([a-z ]+\))? \| \*{0,2}([0-9.]+)\*{0,2} \|"),
+    ("docs/diagrams/dependency-graph.md", r'MSRV ([0-9.]+)"\]'),
+    ("docs/diagrams/dependency-graph.md", r"^\| `noya[a-z-]*` \| \*{0,2}([0-9.]+)\*{0,2} \|"),
+    ("docs/MSRV-AND-DEPRECATION.md", r"\*\*Current MSRV: ([0-9.]+)\*\*"),
+    ("docs/GLOSSARY.md", r"floor of \*\*([0-9.]+)\*\*"),
+    ("docs/GETTING_STARTED.md", r"\*\*Rust ([0-9.]+)\+\*\*"),
+    ("docs/PGO.md", r"\*\*rustc ([0-9.]+)\+\*\*"),
+    ("docs/PGO.md", r"noyalib's MSRV \(([0-9.]+)\)"),
+    ("docs/packaging.md", r"currently \*\*([0-9.]+)\*\*"),
+    ("docs/BENCHMARKS.md", r"\| \*\*MSRV\*\* \| Rust ([0-9.]+)"),
+    ("docs/PLAN.md", r'live values are edition 2024, `rust-version = "([0-9.]+)"`'),
+]
+
+msrv = package_field("rust-version")
+if not msrv:
+    skip("MSRV", "no rust-version in Cargo.toml")
+else:
+    for rel, pattern in MSRV_SITES:
+        f = root / rel
+        label = f"MSRV {rel}"
+        if not f.is_file():
+            bad(label, "file is missing")
+            continue
+        found = [v.rstrip(".") for v in re.findall(pattern, f.read_text(encoding="utf-8"), re.M)]
+        if not found:
+            bad(label, f"no statement matches {pattern!r}")
+            continue
+        stale = sorted({v for v in found if not same_floor(v, msrv)})
+        if stale:
+            bad(label, f"says {', '.join(stale)}, Cargo.toml says {msrv}")
+        else:
+            ok(label, f"{msrv} ({len(found)} statement{'s' if len(found) > 1 else ''})")
+
 print()
 if failed:
     print("Version mismatch. Fix these before tagging — a tag that fails the")

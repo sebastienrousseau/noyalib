@@ -66,6 +66,7 @@ impl Document {
             return Ok(());
         }
         let parsed = crate::parser::parse_exactly_one(&self.source, &self.config)?;
+        crate::policy::check_document(&self.config.policies, &parsed.0)?;
         *self.cache.borrow_mut() = Some(parsed);
         Ok(())
     }

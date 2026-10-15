@@ -147,12 +147,12 @@ fn validate_json_recursive(value: &Value, path: &mut String) -> Result<()> {
         Value::Null | Value::Bool(_) | Value::String(_) => Ok(()),
         Value::Number(n) => {
             // JSON doesn't support NaN or Infinity
-            if let Number::Float(f) = n {
-                if f.is_nan() || f.is_infinite() {
-                    return Err(Error::Invalid(format!(
-                        "JSON schema: NaN/Infinity not allowed at {path}"
-                    )));
-                }
+            if let Number::Float(f) = n
+                && (f.is_nan() || f.is_infinite())
+            {
+                return Err(Error::Invalid(format!(
+                    "JSON schema: NaN/Infinity not allowed at {path}"
+                )));
             }
             Ok(())
         }

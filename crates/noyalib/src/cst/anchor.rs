@@ -503,14 +503,14 @@ fn walk_anchor_value_spans_inner(
 
     for (i, child) in children.iter().enumerate() {
         let child_start = child_starts[i];
-        if let GreenChild::Token { kind, len } = child {
-            if *kind == SyntaxKind::AnchorMark {
-                let len_u = *len as usize;
-                let mark_span = (child_start, child_start + len_u);
-                let name = &source[child_start + 1..child_start + len_u];
-                let value_span = decorated_value_span(&children, &child_starts, i);
-                visit(name, mark_span, value_span);
-            }
+        if let GreenChild::Token { kind, len } = child
+            && *kind == SyntaxKind::AnchorMark
+        {
+            let len_u = *len as usize;
+            let mark_span = (child_start, child_start + len_u);
+            let name = &source[child_start + 1..child_start + len_u];
+            let value_span = decorated_value_span(&children, &child_starts, i);
+            visit(name, mark_span, value_span);
         }
         if let GreenChild::Node(inner) = child {
             walk_anchor_value_spans_inner(inner, source, child_start, visit);

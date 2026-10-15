@@ -36,6 +36,7 @@ reference back. Nothing is silently rewritten.
 | [0011](./0011-flow-inserts-and-anchor-policy.md) | Flow-collection inserts, flow renames, and one anchored-node policy | accepted |
 | [0012](./0012-quoted-path-segments.md) | Bracket-quoted key segments in the query-path grammar | accepted |
 | [0013](./0013-located-duplicate-key-errors.md) | Located duplicate-key and key-collision errors as sibling variants | accepted |
+| [0014](./0014-shared-msrv-floor.md) | Share one MSRV floor, 1.89.0, with the maintainer's other crates | proposed |
 
 ## When to add an ADR
 

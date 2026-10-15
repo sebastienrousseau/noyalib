@@ -857,13 +857,11 @@ impl<'a> Loader<'a> {
                     // would silently drop an entry, so refuse regardless of
                     // DuplicateKeyPolicy. A genuine duplicate (same typed key)
                     // falls through to the policy below.
-                    if let Some(idx) = map.get_index_of(&key) {
-                        // Nested (not a `let`-chain) to keep the crate's
-                        // 1.86 MSRV: `let`-chains stabilized in 1.88.
-                        if *KeyShape::at(typed_keys, idx) != key_value {
-                            let key_start = key_span.0;
-                            return Err(self.key_collision_at(key, key_start, input));
-                        }
+                    if let Some(idx) = map.get_index_of(&key)
+                        && *KeyShape::at(typed_keys, idx) != key_value
+                    {
+                        let key_start = key_span.0;
+                        return Err(self.key_collision_at(key, key_start, input));
                     }
                     match self.config.duplicate_key_policy {
                         DuplicateKeyPolicy::First => {
@@ -1765,10 +1763,10 @@ fn resolve_untagged_scalar(
     if config.leading_zero_integer_strings && is_leading_zero_decimal(&value) {
         return Value::String(value.into_owned());
     }
-    if config.legacy_binary_numbers {
-        if let Some(n) = parse_legacy_binary(&value) {
-            return Value::Number(Number::Integer(n));
-        }
+    if config.legacy_binary_numbers
+        && let Some(n) = parse_legacy_binary(&value)
+    {
+        return Value::Number(Number::Integer(n));
     }
     match crate::streaming::resolve_plain_ext(
         &value,
@@ -2144,13 +2142,14 @@ fn int_hint(value: &str) -> String {
     let unsigned = trimmed.strip_prefix(['-', '+']).unwrap_or(trimmed);
     if unsigned.starts_with("0b") || unsigned.starts_with("0B") {
         let digits = &unsigned[2..];
-        if !digits.is_empty() && digits.bytes().all(|b| matches!(b, b'0' | b'1')) {
-            if let Ok(n) = i64::from_str_radix(digits, 2) {
-                let n = if negative { -n } else { n };
-                return format!(
-                    "!!int {trimmed}: YAML 1.2 has no binary literal, `0b` was YAML 1.1; write {n}"
-                );
-            }
+        if !digits.is_empty()
+            && digits.bytes().all(|b| matches!(b, b'0' | b'1'))
+            && let Ok(n) = i64::from_str_radix(digits, 2)
+        {
+            let n = if negative { -n } else { n };
+            return format!(
+                "!!int {trimmed}: YAML 1.2 has no binary literal, `0b` was YAML 1.1; write {n}"
+            );
         }
     }
     if unsigned.contains('_') {

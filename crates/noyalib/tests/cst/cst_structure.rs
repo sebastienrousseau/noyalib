@@ -22,10 +22,10 @@ fn kinds(node: &GreenNode) -> Vec<SyntaxKind> {
 
 fn first_node_of(node: &GreenNode, kind: SyntaxKind) -> Option<&GreenNode> {
     for c in node.children() {
-        if let GreenChild::Node(n) = c {
-            if n.kind() == kind {
-                return Some(n);
-            }
+        if let GreenChild::Node(n) = c
+            && n.kind() == kind
+        {
+            return Some(n);
         }
     }
     None

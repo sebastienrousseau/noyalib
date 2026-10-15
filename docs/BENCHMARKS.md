@@ -27,6 +27,13 @@ non-serde parser), `serde_yml` (the maintainer's prior crate),
 `yaml-spanned` (the closest other span-tracking parser), and
 `serde-saphyr` (a high-performance newcomer).
 
+The `serde_yml` and `serde_yaml_ng` figures below are recorded
+measurements, not rerunnable today: both crates were retired from
+`benches/comparison.rs`, `serde_yml` in v0.0.6 (RUSTSEC-2025-0068)
+and `serde_yaml_ng` in v0.0.58 (its `unsafe-libyaml` dependency is
+unmaintained, RUSTSEC-2024-0449), so that `cargo deny` and
+`cargo audit` stay clean without exemptions.
+
 ### Deserialize (parse a YAML document into a `Value` AST)
 
 | Fixture | noyalib | vs `serde_yaml_ng` | vs `yaml-rust2` | vs `serde_yml` | vs `yaml-spanned` | vs `serde-saphyr` |
@@ -274,4 +281,4 @@ cargo bench --bench v006_features --features recovery,sval,tokio
 | **Coverage** | 96%+ function coverage / 94%+ line coverage / 93%+ region coverage (CI-gated) |
 | **Dependencies** | 5 unconditional + 3 default-on optional (`itoa`, `ryu`, `serde_ignored`) + 12 opt-in optional (`miette`, `garde`, `validator`, `schemars`, `serde_json`, `jsonschema`, `figment`, `rayon`, `serde-saphyr`, plus the three default-on opt-outs) |
 | **WASM binary** | 338 KB (release, LTO) |
-| **MSRV** | Rust 1.86.0 (whole lockstep set, since v0.0.16); the opt-in `compare-saphyr` bench feature needs 1.88+ (see [POLICIES.md](POLICIES.md#1-msrv-minimum-supported-rust-version)) |
+| **MSRV** | Rust 1.89.0 (whole lockstep set, since v0.0.58); the opt-in `compare-saphyr` bench feature needs 1.88+, inside that floor (see [POLICIES.md](POLICIES.md#1-msrv-minimum-supported-rust-version)) |

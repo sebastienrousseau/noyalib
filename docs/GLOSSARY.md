@@ -130,7 +130,7 @@ through the AST fallback.
 
 **MSRV.** Minimum Supported Rust Version. The whole lockstep set —
 the noyalib core library and every satellite crate — shares a single
-floor of **1.86.0** as of v0.0.16.
+floor of **1.89.0** as of v0.0.58.
 
 **`#![forbid(unsafe_code)]`.** A crate-root attribute that makes
 any `unsafe` block a compile error. Applied to every crate in the

@@ -264,10 +264,10 @@ impl Drop for GreenNode {
                 continue;
             };
             for child in children.iter_mut() {
-                if let GreenChild::Node(node) = child {
-                    if has_node_child(&node.children) {
-                        pending.push(core::mem::replace(&mut node.children, empty_children()));
-                    }
+                if let GreenChild::Node(node) = child
+                    && has_node_child(&node.children)
+                {
+                    pending.push(core::mem::replace(&mut node.children, empty_children()));
                 }
             }
         }

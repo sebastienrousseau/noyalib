@@ -275,14 +275,14 @@ impl Meter {
         if budget::alias_count_exceeded(self.aliases, config.max_alias_expansions) {
             return Err(Error::RepetitionLimitExceeded);
         }
-        if let Some(ratio) = config.alias_anchor_ratio {
-            if budget::alias_ratio_exceeded(self.aliases, self.anchors, Some(ratio)) {
-                return Err(Error::Budget(BudgetBreach::AliasAnchorRatio {
-                    ratio,
-                    anchors: self.anchors,
-                    aliases: self.aliases,
-                }));
-            }
+        if let Some(ratio) = config.alias_anchor_ratio
+            && budget::alias_ratio_exceeded(self.aliases, self.anchors, Some(ratio))
+        {
+            return Err(Error::Budget(BudgetBreach::AliasAnchorRatio {
+                ratio,
+                anchors: self.anchors,
+                aliases: self.aliases,
+            }));
         }
         Ok(())
     }

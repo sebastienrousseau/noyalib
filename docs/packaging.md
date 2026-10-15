@@ -25,7 +25,7 @@ copyright yaml-test-suite contributors.
 ## Toolchain floor
 
 MSRV is declared as `rust-version` in each crate's `Cargo.toml` and
-CI-enforced (currently **1.86.0**, identical across the family).
+CI-enforced (currently **1.89.0**, identical across the family).
 Raises happen only on the breaking-change axis with the reason
 recorded in the CHANGELOG — policy and history in
 [`MSRV-AND-DEPRECATION.md`](MSRV-AND-DEPRECATION.md). Dev-dependencies

@@ -16,7 +16,7 @@
   <a href="https://docs.rs/noyalib"><img src="https://img.shields.io/badge/docs.rs-noyalib-66c2a5?style=for-the-badge&labelColor=555555&logo=docs.rs" alt="Docs" /></a>
   <a href="https://scorecard.dev/viewer/?uri=github.com/sebastienrousseau/noyalib"><img src="https://img.shields.io/ossf-scorecard/github.com/sebastienrousseau/noyalib?style=for-the-badge&label=OpenSSF%20Scorecard&logo=openssf" alt="OpenSSF Scorecard" /></a>
   <a href="LICENSE-APACHE"><img src="https://img.shields.io/badge/license-Apache--2.0%20OR%20MIT-blue.svg?style=for-the-badge" alt="License: Apache-2.0 OR MIT" /></a>
-  <a href="https://github.com/sebastienrousseau/noyalib/blob/main/docs/POLICIES.md"><img src="https://img.shields.io/badge/MSRV-1.86.0-93450a.svg?style=for-the-badge&logo=rust" alt="MSRV 1.86.0" /></a>
+  <a href="https://github.com/sebastienrousseau/noyalib/blob/main/docs/POLICIES.md"><img src="https://img.shields.io/badge/MSRV-1.89.0-93450a.svg?style=for-the-badge&logo=rust" alt="MSRV 1.89.0" /></a>
 </p>
 
 ---
@@ -59,14 +59,14 @@
 
 ```toml
 [dependencies]
-noyalib = "0.0.57"
+noyalib = "0.0.58"
 ```
 
 Disable the default `std` feature for `core` + `alloc` environments:
 
 ```toml
 [dependencies]
-noyalib = { version = "0.0.57", default-features = false }
+noyalib = { version = "0.0.58", default-features = false }
 ```
 
 Build the library and its test surface from source:
@@ -90,7 +90,7 @@ Command-line and integration surfaces ship as companion projects:
 
 ## Requirements
 
-- Rust **1.86.0 or newer** for the complete build and test surface.
+- Rust **1.89.0 or newer** for the complete build and test surface.
 - Linux, macOS, and Windows are tested in CI on stable, beta, and nightly.
 - `default-features = false` supports `wasm32-unknown-unknown`,
   `thumbv7em-none-eabihf`, `riscv32imac-unknown-none-elf`, and
@@ -98,9 +98,9 @@ Command-line and integration surfaces ship as companion projects:
 
 | Component | Minimum toolchain | Enforcement |
 | :--- | :---: | :--- |
-| `noyalib` | Rust 1.86.0 | `msrv-core` and per-crate CI jobs |
-| Satellite crates | Rust 1.86.0 | lockstep per-crate MSRV jobs |
-| Optional `compare-saphyr` benchmark | Rust 1.88.0 | excluded from the MSRV gate |
+| `noyalib` | Rust 1.89.0 | `msrv-core` and per-crate CI jobs |
+| Satellite crates | Rust 1.89.0 | lockstep per-crate MSRV jobs |
+| Optional `compare-saphyr` benchmark | Rust 1.88.0 | within the floor; not built by the MSRV gate |
 
 The floor may rise only on the breaking version axis, with the reason recorded
 in the changelog. See [`docs/MSRV-AND-DEPRECATION.md`](docs/MSRV-AND-DEPRECATION.md).

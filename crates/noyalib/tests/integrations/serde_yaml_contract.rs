@@ -365,8 +365,8 @@ impl Sha256Lite {
 
     fn compress(&mut self, block: &[u8; 64]) {
         let mut w = [0u32; 64];
-        for (slot, c) in w.iter_mut().zip(block.chunks_exact(4)) {
-            *slot = u32::from_be_bytes(c.try_into().unwrap());
+        for (slot, c) in w.iter_mut().zip(block.as_chunks::<4>().0) {
+            *slot = u32::from_be_bytes(*c);
         }
         // Index-based on purpose: the SHA-256 message schedule reads
         // relative offsets (i-2, i-7, i-15, i-16), which iterator
@@ -413,11 +413,7 @@ impl Sha256Lite {
             self.buf.push(0);
         }
         self.buf.extend_from_slice(&bit_len.to_be_bytes());
-        let blocks: Vec<[u8; 64]> = self
-            .buf
-            .chunks_exact(64)
-            .map(|c| c.try_into().unwrap())
-            .collect();
+        let blocks: Vec<[u8; 64]> = self.buf.as_chunks::<64>().0.to_vec();
         for b in &blocks {
             self.compress(b);
         }

@@ -911,6 +911,12 @@ user-id = 3618 # David Tolnay (dtolnay)
 start = "2019-10-09"
 end = "2027-05-09"
 
+[[trusted.tokio]]
+criteria = "safe-to-deploy"
+user-id = 6741 # Alice Ryhl (Darksonn)
+start = "2020-12-25"
+end = "2027-10-14"
+
 [[trusted.uncased]]
 criteria = "safe-to-deploy"
 user-id = 3864 # Sergio Benitez (SergioBenitez)

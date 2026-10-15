@@ -31,7 +31,7 @@ fn err(src: &str) -> String {
 
 /// A flow-sequence key of exactly `chars` characters: `[a, a, …, a]`.
 fn seq_key(chars: usize) -> String {
-    assert!(chars >= 3 && chars % 3 == 0);
+    assert!(chars >= 3 && chars.is_multiple_of(3));
     format!("[{}a]", "a, ".repeat(chars / 3 - 1))
 }
 

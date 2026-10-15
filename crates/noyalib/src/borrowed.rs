@@ -492,17 +492,17 @@ fn borrowed_query_recursive<'a, 'b>(
     }
     match &segments[depth] {
         QuerySegment::Key(key) => {
-            if let BorrowedValue::Mapping(m) = value {
-                if let Some(child) = m.get(key.as_str()) {
-                    borrowed_query_recursive(child, segments, depth + 1, results);
-                }
+            if let BorrowedValue::Mapping(m) = value
+                && let Some(child) = m.get(key.as_str())
+            {
+                borrowed_query_recursive(child, segments, depth + 1, results);
             }
         }
         QuerySegment::Index(idx) => {
-            if let BorrowedValue::Sequence(s) = value {
-                if let Some(child) = s.get(*idx) {
-                    borrowed_query_recursive(child, segments, depth + 1, results);
-                }
+            if let BorrowedValue::Sequence(s) = value
+                && let Some(child) = s.get(*idx)
+            {
+                borrowed_query_recursive(child, segments, depth + 1, results);
             }
         }
         QuerySegment::Wildcard => match value {

@@ -133,7 +133,7 @@ are bugs the same way wrong output is. Per-crate harnesses:
 
 | Crate | Harnesses | What they cover |
 |---|---|---|
-| `noyalib` | 16 | core parser, comparison vs serde_yaml_ng / yaml-rust2 / saphyr, SIMD, incremental repair, validation overhead, large-doc soak, structural bitmask, numeric parse |
+| `noyalib` | 16 | core parser, comparison vs yaml-rust2 / yaml-spanned / saphyr, SIMD, incremental repair, validation overhead, large-doc soak, structural bitmask, numeric parse |
 | `noya-cli` (split repo) | 1 | clap argv parse + command-tree construction |
 | `noyalib-lsp` (split repo) | 1 | `textDocument/formatting` + parse-for-diagnostics |
 | `noyalib-mcp` (split repo) | 1 | the four `tools/call` operations |

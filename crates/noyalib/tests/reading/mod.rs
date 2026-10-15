@@ -3,14 +3,15 @@
 
 //! The deserialiser, parser, loader and scanner suites.
 //!
-//! 12 files, compiled into one test binary instead of
-//! 12 executables. The files themselves are unchanged.
+//! 13 files, compiled into one test binary instead of
+//! 13 executables. The files themselves are unchanged.
 
 #![allow(missing_docs)]
 
 mod de;
 mod de_branch_coverage;
 mod de_coverage_extra;
+mod de_error_field_location;
 mod de_error_field_path;
 mod de_streaming_branch_extra;
 mod loader_paths;

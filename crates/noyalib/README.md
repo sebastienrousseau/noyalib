@@ -44,14 +44,14 @@
 
 ```toml
 [dependencies]
-noyalib = "0.0.57"
+noyalib = "0.0.58"
 ```
 
 `no_std` (alloc-only) builds:
 
 ```toml
 [dependencies]
-noyalib = { version = "0.0.57", default-features = false }
+noyalib = { version = "0.0.58", default-features = false }
 ```
 
 Core data binding (`from_str`, `to_string`, `Value`, schemas) and
@@ -69,7 +69,7 @@ to `core::fmt` (slower, output remains valid YAML); the
 typo-detection helpers are absent. Re-enable individually with
 `features = ["fast-int", "fast-float", "strict-deserialise"]`.
 
-**MSRV: Rust 1.86.0** (edition 2024), enforced by the `msrv-core` CI job.
+**MSRV: Rust 1.89.0** (edition 2024), enforced by the `msrv-core` CI job.
 
 ---
 
@@ -328,7 +328,7 @@ Rust (`untagged`, `borrow`, `transcode`, `comments`); Platform
 
 ```bash
 cargo bench --bench benchmarks            # core throughput
-cargo bench --bench comparison            # vs serde_yaml_ng, yaml-rust2, saphyr
+cargo bench --bench comparison            # vs yaml-rust2, yaml-spanned, saphyr
 cargo bench --bench architecture          # streaming vs AST, zero-copy, span-free
 cargo bench --bench simd            --features simd
 cargo bench --bench numeric_parse         # SWAR decimal pipeline

@@ -14,8 +14,11 @@ name: shared / MSRV core build
 #   3. `cargo clippy --lib --locked -- -D warnings`
 #      — clippy on the core lib.
 #
-# The MSRV toolchain is passed as an input (default 1.86.0) so
-# each satellite can declare its own floor.
+# The MSRV toolchain is passed as an input (default 1.89.0) so
+# each satellite can declare its own floor. Every step runs under
+# RUSTUP_TOOLCHAIN: a caller's rust-toolchain.toml would otherwise
+# win over the toolchain installed here (noyalib's pins `stable`,
+# so this job built on stable), and the first step asserts it.
 #
 # Consumers pin by SHA:
 #
@@ -23,18 +26,18 @@ name: shared / MSRV core build
 #     msrv-core:
 #       uses: sebastienrousseau/noyalib/.github/workflows/shared-msrv-core.yml@<sha>
 #       with:
-#         toolchain: "1.86.0"
+#         toolchain: "1.89.0"
 
 on:
   workflow_call:
     inputs:
       toolchain:
         description: >-
-          MSRV toolchain to check against (e.g. "1.86.0"). Should
+          MSRV toolchain to check against (e.g. "1.89.0"). Should
           match the caller's `rust-version` in Cargo.toml.
         required: false
         type: string
-        default: "1.86.0"
+        default: "1.89.0"
 
 permissions:
   contents: read
@@ -43,14 +46,22 @@ jobs:
   check:
     name: MSRV (${{ inputs.toolchain }}) core build
     runs-on: ubuntu-latest
+    env:
+      RUSTUP_TOOLCHAIN: ${{ inputs.toolchain }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: dtolnay/rust-toolchain@7e38f4b43b4db5c8dd498af069a4f6196df1d067
+      - uses: dtolnay/rust-toolchain@e2a55d2ffb04f378e9626c28d38b36d230d1e12f
         with:
           toolchain: ${{ inputs.toolchain }}
           components: clippy
+      - name: The MSRV toolchain is the one in use
+        env:
+          WANT: ${{ inputs.toolchain }}
+        run: |
+          rustc --version
+          rustc --version | grep -F "rustc ${WANT} "
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
         with:
           workspaces: |

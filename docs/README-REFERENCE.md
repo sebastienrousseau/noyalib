@@ -29,7 +29,7 @@ the template migration does not discard documentation.
   <a href="https://scorecard.dev/viewer/?uri=github.com/sebastienrousseau/noyalib"><img src="https://img.shields.io/ossf-scorecard/github.com/sebastienrousseau/noyalib?style=for-the-badge&label=OpenSSF%20Scorecard&logo=openssf" alt="OpenSSF Scorecard" /></a>
   <a href="https://www.bestpractices.dev/projects/13057"><img src="https://img.shields.io/cii/level/13057?style=for-the-badge&label=OpenSSF%20Best%20Practices&logo=openssf" alt="OpenSSF Best Practices" /></a>
   <a href="../LICENSE-APACHE"><img src="https://img.shields.io/badge/license-Apache--2.0%20OR%20MIT-blue.svg?style=for-the-badge" alt="License: Apache-2.0 OR MIT" /></a>
-  <a href="https://github.com/sebastienrousseau/noyalib/blob/main/docs/MSRV-AND-DEPRECATION.md"><img src="https://img.shields.io/badge/MSRV-1.86.0-93450a.svg?style=for-the-badge&logo=rust" alt="MSRV 1.86.0" /></a>
+  <a href="https://github.com/sebastienrousseau/noyalib/blob/main/docs/MSRV-AND-DEPRECATION.md"><img src="https://img.shields.io/badge/MSRV-1.89.0-93450a.svg?style=for-the-badge&logo=rust" alt="MSRV 1.89.0" /></a>
 </p>
 
 ---
@@ -77,7 +77,7 @@ the template migration does not discard documentation.
 
 ```toml
 [dependencies]
-noyalib = "0.0.57"
+noyalib = "0.0.58"
 ```
 
 ### As a CLI tool
@@ -115,7 +115,7 @@ maintainer runbook.
 
 ```toml
 [dependencies]
-noyalib = { version = "0.0.57", default-features = false }
+noyalib = { version = "0.0.58", default-features = false }
 ```
 
 Requires `alloc`. Core data binding (`from_str`, `to_string`, `Value`,
@@ -166,7 +166,7 @@ the application needs.
 ```toml
 # Example: rich diagnostics + schema validation
 [dependencies]
-noyalib = { version = "0.0.57", features = ["miette", "validate-schema"] }
+noyalib = { version = "0.0.58", features = ["miette", "validate-schema"] }
 ```
 
 **Optional features:** `lossless-u64` preserves YAML integer scalars above
@@ -182,9 +182,9 @@ for rationale and migration notes.
 
 ## Requirements
 
-- **Rust 1.86.0 or newer.** Every crate manifest carries `rust-version`,
+- **Rust 1.89.0 or newer.** Every crate manifest carries `rust-version`,
   and CI enforces the floor on every push: `msrv-core` builds the core
-  surface on 1.86.0, and `msrv-per-crate` checks each satellite
+  surface on 1.89.0, and `msrv-per-crate` checks each satellite
   against its own declared floor.
 - **Any tier-1 platform.** The test matrix runs on Linux, macOS, and
   Windows with the stable, beta, and nightly toolchains; stable is the
@@ -201,19 +201,20 @@ downstream users pinned to the core's floor.
 
 | Crate | MSRV | Why |
 |---|---|---|
-| `noyalib` (core lib) | **1.86.0** | The lowest toolchain the project builds *and tests* on — `criterion 0.8` (dev-dependency) requires 1.86, so tests, benches and coverage cannot run below it. Enforced by the dedicated MSRV CI job. |
-| `noyalib-mcp` | 1.86.0 | Lockstep with the core floor; small dep tree, no transitives requiring more. |
-| `noya-cli` (binaries) | 1.86.0 | Lockstep with the core floor; `clap_builder 4.6` (a transitive of `clap = "4.5"`) ships in edition 2024. |
-| `noyalib-lsp` | 1.86.0 | Lockstep with the core floor; LSP transport-stack transitives (`litemap`, `uuid`) require recent stables. |
-| `noyalib-wasm` | 1.86.0 | Lockstep with the core floor; the `wasm-bindgen` 0.2 ecosystem floors at 1.86. |
-| `noyalib-serde-yaml` | 1.86.0 | Lockstep with the core floor; a pure re-export crate with no extra dependencies. |
+| `noyalib` (core lib) | **1.89.0** | One floor shared with the maintainer's other Rust crates since v0.0.58 ([ADR-0014](adr/0014-shared-msrv-floor.md)); the toolchain-driven floor is 1.86 (`criterion 0.8`, a dev-dependency). Enforced by the dedicated MSRV CI job. |
+| `noyalib-mcp` | 1.89.0 | Lockstep with the core floor; the MCP SDK alone needs 1.88. |
+| `noya-cli` (binaries) | 1.89.0 | Lockstep with the core floor; `clap_builder 4.6` (a transitive of `clap = "4.5"`) ships in edition 2024. |
+| `noyalib-lsp` | 1.89.0 | Lockstep with the core floor; LSP transport-stack transitives (`litemap`, `uuid`) require recent stables. |
+| `noyalib-wasm` | 1.89.0 | Lockstep with the core floor; the `wasm-bindgen` 0.2 ecosystem floors at 1.86. |
+| `noyalib-serde-yaml` | 1.89.0 | Lockstep with the core floor; a pure re-export crate with no extra dependencies. |
 
-As of v0.0.16 the whole lockstep set shares one floor, 1.86.0 —
-the historical split (core at a lower floor than the satellites)
-is gone.
+As of v0.0.58 the whole lockstep set shares one floor, 1.89.0,
+the same floor as the maintainer's other Rust crates. The
+historical split (core at a lower floor than the satellites) has
+been gone since v0.0.16.
 
 The number is the floor we **verify**, not the floor the library
-happens to reach: `cargo +1.85.0 check --lib` still succeeds, but
+happens to reach. At the old 1.86.0 floor, `cargo +1.85.0 check --lib` succeeded, but
 `cargo +1.85.0 check --all-targets` fails because `criterion 0.8`
 requires 1.86, so no test, bench or coverage run can execute
 there. We do not advertise an MSRV that CI cannot exercise. We
@@ -221,13 +222,13 @@ also guarantee never to require a rustc newer than 12 months old
 at release time — see
 [`docs/POLICIES.md` §1](POLICIES.md#1-msrv-minimum-supported-rust-version).
 
-The one surface still above the floor is the opt-in, bench-only
-`compare-saphyr` feature: `serde-saphyr` uses let-chains and needs
-rustc 1.88+, so `--all-features` requires a newer toolchain than
-the MSRV and is excluded from the MSRV gate.
+The opt-in, bench-only `compare-saphyr` feature needs rustc 1.88+
+(`serde-saphyr` uses let-chains), which the 1.89.0 floor covers. It
+is still not built by the MSRV gate, which checks the core feature
+sets.
 
 `rust-toolchain.toml` itself selects `stable` for local
-development; the 1.86.0 floor on the core surface is enforced
+development; the 1.89.0 floor on the core surface is enforced
 by the dedicated `msrv-core` CI job (Ubuntu,
 no-default-features + default-features build paths).
 
@@ -300,7 +301,7 @@ npm install @sebastienrousseau/noyalib-wasm
 
 ```toml
 # serde_yaml drop-in — the whole migration is this one line:
-serde_yaml = { package = "noyalib-serde-yaml", version = "=0.0.57" }
+serde_yaml = { package = "noyalib-serde-yaml", version = "=0.0.58" }
 ```
 
 Per-crate READMEs cover the surface specific to each artifact:
@@ -365,7 +366,7 @@ lines**:
 
 ```toml
 [dependencies]
-serde_yaml = { package = "noyalib-serde-yaml", version = "=0.0.57" }
+serde_yaml = { package = "noyalib-serde-yaml", version = "=0.0.58" }
 ```
 
 [`noyalib-serde-yaml`](https://github.com/sebastienrousseau/noyalib-serde-yaml)
@@ -398,7 +399,7 @@ and `yaml-spanned` with verified function tables for each.
 -[dependencies]
 -serde_yaml = "0.9"
 +[dependencies]
-+noyalib = "0.0.57"
++noyalib = "0.0.58"
 ```
 
 ```diff
@@ -1409,7 +1410,7 @@ disagreement on priorities.
 - **You have a hard dependency budget that cannot tolerate a
   Grisu / Ryu float formatter and a hash-randomised lookup
   table.** Default profile carries 8 runtime deps. `noyalib =
-  { version = "0.0.57", default-features = false, features =
+  { version = "0.0.58", default-features = false, features =
   ["std"] }` (or the equivalent `features = ["minimal"]`) drops
   to 5 — `itoa`, `ryu`, and `serde_ignored` become opt-in via
   the `fast-int` / `fast-float` / `strict-deserialise` features.

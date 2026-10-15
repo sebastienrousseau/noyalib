@@ -697,10 +697,10 @@ fn value_index_mut_usize_on_tagged() {
     )));
     v[0] = Value::from(99);
     // Verify through tagged wrapper
-    if let Value::Tagged(t) = &v {
-        if let Value::Sequence(s) = t.value() {
-            assert_eq!(s[0], Value::from(99));
-        }
+    if let Value::Tagged(t) = &v
+        && let Value::Sequence(s) = t.value()
+    {
+        assert_eq!(s[0], Value::from(99));
     }
 }
 

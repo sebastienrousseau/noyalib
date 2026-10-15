@@ -158,22 +158,23 @@
 //!
 //! ## MSRV policy
 //!
-//! - **Core library (`noyalib`)** — Rust **1.86.0** stable
-//!   (edition 2024; raised from 1.85.0 in v0.0.16). CI's
+//! - **Core library (`noyalib`)**: Rust **1.89.0** stable
+//!   (edition 2024; raised from 1.86.0 in v0.0.58). CI's
 //!   `msrv-core` gate builds the `default-features = false` and
 //!   the standard `default` set, and runs clippy on the core
-//!   lib, on `rustc 1.86.0` for every PR. The MSRV is treated as
+//!   lib, on `rustc 1.89.0` for every PR. The MSRV is treated as
 //!   part of the public contract and is always called out in
 //!   the CHANGELOG under a `### Changed — MSRV` heading.
 //! - **The number is the floor we verify, not the floor the
-//!   library happens to reach.** `cargo +1.85.0 check --lib`
-//!   still succeeds, but `cargo +1.85.0 check --all-targets`
-//!   fails — `criterion 0.8` (dev-dependency) requires 1.86, so
-//!   no test, bench or coverage run can execute there. An
-//!   unverifiable MSRV is not a contract, so we do not publish
-//!   one. The MSRV moves only when the toolchain we build and
-//!   test at moves — never speculatively — and will never
-//!   require a rustc newer than 12 months old at release time.
+//!   library happens to reach.** `criterion 0.8` (dev-dependency)
+//!   requires 1.86, so no test, bench or coverage run can
+//!   execute below that. An unverifiable MSRV is not a
+//!   contract, so we do not publish one. The MSRV moves when
+//!   the toolchain we build and test at moves, never
+//!   speculatively; the one exception is the v0.0.58 raise to
+//!   1.89.0, which shares one floor with the maintainer's other
+//!   Rust crates (ADR-0014). It will never require a rustc newer
+//!   than 12 months old at release time.
 //! - **Bumping the MSRV is a patch release while the crate is on
 //!   `0.0.x`.** Cargo treats every `0.0.x` as its own
 //!   incompatible version, so the patch position is the only one
@@ -182,13 +183,12 @@
 //!   [`docs/POLICIES.md`](https://github.com/sebastienrousseau/noyalib/blob/main/docs/POLICIES.md)
 //!   §1, which is the single source of truth for the floor.
 //! - **Companion crates** ([`noya-cli`], [`noyalib-lsp`]) share
-//!   the same `1.86.0` floor — as of v0.0.16 the whole lockstep
+//!   the same `1.89.0` floor; as of v0.0.58 the whole lockstep
 //!   set declares one number.
-//! - **`compare-saphyr`** is the one surface above the floor:
-//!   it is an opt-in, bench-only feature whose `serde-saphyr`
-//!   dependency uses let-chains and needs rustc 1.88+. It is
-//!   therefore excluded from the MSRV gate, as is
-//!   `--all-features`.
+//! - **`compare-saphyr`** is an opt-in, bench-only feature
+//!   whose `serde-saphyr` dependency uses let-chains and needs
+//!   rustc 1.88+, inside the 1.89.0 floor. The MSRV gate does
+//!   not build it, and does not build `--all-features`.
 //! - **`nightly-simd`** is the only feature that requires nightly
 //!   rustc (`#![feature(portable_simd)]`); a `build.rs` cfg-detect
 //!   probe means stable builds with `--all-features` still

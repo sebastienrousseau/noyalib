@@ -63,6 +63,7 @@
   - [0011 — Flow inserts and anchor policy](adr/0011-flow-inserts-and-anchor-policy.md)
   - [0012 — Quoted path segments](adr/0012-quoted-path-segments.md)
   - [0013 — Located duplicate-key errors](adr/0013-located-duplicate-key-errors.md)
+  - [0014: Shared MSRV floor](adr/0014-shared-msrv-floor.md)
 
 # Releases
 

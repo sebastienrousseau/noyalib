@@ -6,13 +6,13 @@ its own repository; the core workspace contains only `noyalib`.
 
 ```mermaid
 graph TD
-    noyalib["noyalib<br/>core library<br/>MSRV 1.86"]
+    noyalib["noyalib<br/>core library<br/>MSRV 1.89"]
 
-    noya_cli["noya-cli<br/>noyafmt + noyavalidate<br/>MSRV 1.86"]
-    noyalib_lsp["noyalib-lsp<br/>LSP server<br/>MSRV 1.86"]
-    noyalib_mcp["noyalib-mcp<br/>MCP server<br/>MSRV 1.86"]
-    noyalib_wasm["noyalib-wasm<br/>WASM bindings<br/>MSRV 1.86"]
-    noyalib_serde_yaml["noyalib-serde-yaml<br/>compatibility package<br/>MSRV 1.86"]
+    noya_cli["noya-cli<br/>noyafmt + noyavalidate<br/>MSRV 1.89"]
+    noyalib_lsp["noyalib-lsp<br/>LSP server<br/>MSRV 1.89"]
+    noyalib_mcp["noyalib-mcp<br/>MCP server<br/>MSRV 1.89"]
+    noyalib_wasm["noyalib-wasm<br/>WASM bindings<br/>MSRV 1.89"]
+    noyalib_serde_yaml["noyalib-serde-yaml<br/>compatibility package<br/>MSRV 1.89"]
 
     noya_cli --> noyalib
     noyalib_lsp --> noyalib
@@ -52,12 +52,12 @@ repository. What remains here runs from `Makefile` targets
 
 | Crate | MSRV | Reason |
 |---|---|---|
-| `noyalib` | **1.86.0** | Single lockstep floor since v0.0.16; the lowest toolchain the project builds *and tests* on (`criterion 0.8` dev-dep requires 1.86) |
-| `noyalib-mcp` | 1.86.0 | Lockstep with the core floor |
-| `noyalib-wasm` | 1.86.0 | Lockstep with the core floor; wasm-bindgen 0.2 floors at 1.86 |
-| `noya-cli` | 1.86.0 | Lockstep with the core floor; `clap_builder 4.6` is edition-2024 |
-| `noyalib-lsp` | 1.86.0 | Lockstep with the core floor; LSP transport stack (`litemap`, `uuid`) is edition-2024 |
-| `noyalib-serde-yaml` | 1.86.0 | Lockstep compatibility surface for `serde_yaml` consumers |
+| `noyalib` | **1.89.0** | Single lockstep floor, shared with the maintainer's other Rust crates since v0.0.58 (ADR-0014); the toolchain-driven floor is 1.86 (`criterion 0.8` dev-dep) |
+| `noyalib-mcp` | 1.89.0 | Lockstep with the core floor |
+| `noyalib-wasm` | 1.89.0 | Lockstep with the core floor; wasm-bindgen 0.2 floors at 1.86 |
+| `noya-cli` | 1.89.0 | Lockstep with the core floor; `clap_builder 4.6` is edition-2024 |
+| `noyalib-lsp` | 1.89.0 | Lockstep with the core floor; LSP transport stack (`litemap`, `uuid`) is edition-2024 |
+| `noyalib-serde-yaml` | 1.89.0 | Lockstep compatibility surface for `serde_yaml` consumers |
 
 CI's `Per-crate MSRV` job still enforces the floor per crate — it reads
 each `crates/*/Cargo.toml`'s `rust-version` and compiles against exactly
@@ -65,8 +65,9 @@ that — so a satellite adopting a higher floor cannot silently drag the
 core up with it. The mechanism that kept the floors independent is
 intact; what changed in v0.0.16 is only the numbers it reads.
 
-As of v0.0.16 every crate declares 1.86.0. The binding constraint is
-`criterion 0.8`, a **dev-dependency**: with `rust-version` temporarily
+As of v0.0.58 every crate declares 1.89.0, by decision (ADR-0014)
+rather than by toolchain need. The toolchain-driven floor is 1.86, set
+by `criterion 0.8`, a **dev-dependency**: with `rust-version` temporarily
 set to 1.85, `cargo +1.85.0 check --lib` compiles cleanly but
 `cargo +1.85.0 check --all-targets` fails with
 `criterion@0.8.2 requires rustc 1.86`. So no test, bench or coverage run

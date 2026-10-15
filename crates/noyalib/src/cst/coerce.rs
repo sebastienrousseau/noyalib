@@ -124,6 +124,9 @@ pub fn coerce_to_schema(doc: &mut Document, schema: &Value) -> Result<usize> {
                 Some(v) => v,
                 None => continue,
             };
+            if coerced == current {
+                continue;
+            }
 
             doc.entry(&cst_path).set(&coerced)?;
             applied += 1;
@@ -141,7 +144,7 @@ pub fn coerce_to_schema(doc: &mut Document, schema: &Value) -> Result<usize> {
 /// Resolve an RFC 6901 JSON pointer (e.g. `"/server/port"`) into
 /// the dot/bracket path syntax `Document::entry` expects (e.g.
 /// `"server.port"`). Returns `None` if any segment is unreachable
-/// or if the addressed location is not a scalar.
+/// or if the addressed location is not a string scalar.
 fn value_path_from_pointer(root: &Value, pointer: &str) -> Option<String> {
     let segments = parse_json_pointer(pointer);
     if segments.is_empty() {
@@ -149,13 +152,10 @@ fn value_path_from_pointer(root: &Value, pointer: &str) -> Option<String> {
     }
     let mut cursor = root;
     let mut out = String::new();
-    for (i, seg) in segments.iter().enumerate() {
+    for seg in &segments {
         match cursor {
             Value::Mapping(m) => {
-                if i > 0 {
-                    out.push('.');
-                }
-                out.push_str(seg);
+                crate::path::push_key(&mut out, seg);
                 cursor = m.get(seg.as_str())?;
             }
             Value::Sequence(s) => {
@@ -166,6 +166,9 @@ fn value_path_from_pointer(root: &Value, pointer: &str) -> Option<String> {
             }
             _ => return None,
         }
+    }
+    if !matches!(cursor, Value::String(_)) {
+        return None;
     }
     Some(out)
 }

@@ -6,7 +6,6 @@
 //! Validates noyalib against the official YAML test suite.
 
 use noyalib::Value;
-use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -188,30 +187,28 @@ fn load_test_suite(dir: &Path) -> Vec<TestCase> {
         }
 
         let content = fs::read_to_string(&path).expect("read test case");
-        let docs: Vec<HashMap<String, serde_yaml_ng::Value>> =
-            serde_yaml_ng::from_str(&content).expect("parse test case wrapper");
+        // The wrapper is parsed by an independent parser, so a noyalib
+        // bug cannot hide inside its own conformance harness.
+        // (serde_yaml_ng did this until v0.0.58; yaml-rust2 yields the
+        // same name, yaml, fail, json and tags for every suite file.)
+        let wrapper =
+            yaml_rust2::YamlLoader::load_from_str(&content).expect("parse test case wrapper");
+        let docs = wrapper
+            .into_iter()
+            .next()
+            .and_then(yaml_rust2::Yaml::into_vec)
+            .unwrap_or_default();
 
         for doc in docs {
             let id = path.file_stem().unwrap().to_str().unwrap().to_string();
-            let name = doc
-                .get("name")
-                .and_then(|v| v.as_str())
-                .unwrap_or("unnamed")
-                .to_string();
-            let yaml = match doc.get("yaml").and_then(|v| v.as_str()) {
+            let name = doc["name"].as_str().unwrap_or("unnamed").to_string();
+            let yaml = match doc["yaml"].as_str() {
                 Some(s) => s.to_string(),
                 None => continue, // Skip cases without YAML
             };
-            let fail = doc.get("fail").and_then(|v| v.as_bool()).unwrap_or(false);
-            let json = doc
-                .get("json")
-                .and_then(|v| v.as_str())
-                .map(|s| s.to_string());
-            let tags = doc
-                .get("tags")
-                .and_then(|v| v.as_str())
-                .unwrap_or_default()
-                .to_string();
+            let fail = doc["fail"].as_bool().unwrap_or(false);
+            let json = doc["json"].as_str().map(|s| s.to_string());
+            let tags = doc["tags"].as_str().unwrap_or_default().to_string();
 
             cases.push(TestCase {
                 id,

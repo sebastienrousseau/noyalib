@@ -947,10 +947,10 @@ impl<'de> serde_core::Deserializer<'de> for &mut StreamingDeserializer<'de> {
         V: serde_core::de::Visitor<'de>,
     {
         self.skip_to_content()?;
-        if let Event::Scalar { value, style, .. } = self.next_event()? {
-            if let Scalar::Bool(b) = self.resolve_scalar(&value, style) {
-                return visitor.visit_bool(b);
-            }
+        if let Event::Scalar { value, style, .. } = self.next_event()?
+            && let Scalar::Bool(b) = self.resolve_scalar(&value, style)
+        {
+            return visitor.visit_bool(b);
         }
         Err(Error::TypeMismatch {
             expected: "bool",
@@ -1036,11 +1036,11 @@ impl<'de> serde_core::Deserializer<'de> for &mut StreamingDeserializer<'de> {
         self.skip_to_content()?;
         // A tag (`!!str`, `!custom`, …) routes through the AST so the
         // tagged string is resolved correctly.
-        if let Some(t) = self.take_tag_from_current() {
-            if !self.tag_in_registry(&t) {
-                self.restore_tag_to_current(t);
-                return Err(self.fallback());
-            }
+        if let Some(t) = self.take_tag_from_current()
+            && !self.tag_in_registry(&t)
+        {
+            self.restore_tag_to_current(t);
+            return Err(self.fallback());
         }
         match self.peek_event()? {
             Event::Scalar { .. } => {
@@ -1137,15 +1137,15 @@ impl<'de> serde_core::Deserializer<'de> for &mut StreamingDeserializer<'de> {
         V: serde_core::de::Visitor<'de>,
     {
         self.skip_to_content()?;
-        if let Event::Scalar { value, style, .. } = self.peek_event()? {
-            if *style == ScalarStyle::Plain {
-                match &**value {
-                    "" | "~" | "null" | "Null" | "NULL" => {
-                        self.skip_event()?;
-                        return visitor.visit_none();
-                    }
-                    _ => {}
+        if let Event::Scalar { value, style, .. } = self.peek_event()?
+            && *style == ScalarStyle::Plain
+        {
+            match &**value {
+                "" | "~" | "null" | "Null" | "NULL" => {
+                    self.skip_event()?;
+                    return visitor.visit_none();
                 }
+                _ => {}
             }
         }
         visitor.visit_some(self)
@@ -1156,10 +1156,10 @@ impl<'de> serde_core::Deserializer<'de> for &mut StreamingDeserializer<'de> {
         V: serde_core::de::Visitor<'de>,
     {
         self.skip_to_content()?;
-        if let Event::Scalar { value, style, .. } = self.next_event()? {
-            if matches!(self.resolve_scalar(&value, style), Scalar::Null) {
-                return visitor.visit_unit();
-            }
+        if let Event::Scalar { value, style, .. } = self.next_event()?
+            && matches!(self.resolve_scalar(&value, style), Scalar::Null)
+        {
+            return visitor.visit_unit();
         }
         Err(Error::TypeMismatch {
             expected: "null",
@@ -1204,11 +1204,11 @@ impl<'de> serde_core::Deserializer<'de> for &mut StreamingDeserializer<'de> {
         // Tagged sequences route through the AST fallback so the tag is
         // preserved on the resulting `Value::Tagged(...)`. The registry
         // opts a specific tag out of that behaviour.
-        if let Some(t) = self.take_tag_from_current() {
-            if !self.tag_in_registry(&t) {
-                self.restore_tag_to_current(t);
-                return Err(self.fallback());
-            }
+        if let Some(t) = self.take_tag_from_current()
+            && !self.tag_in_registry(&t)
+        {
+            self.restore_tag_to_current(t);
+            return Err(self.fallback());
         }
         if let Event::SequenceStart { .. } = self.next_event()? {
             self.depth += 1;
@@ -1250,11 +1250,11 @@ impl<'de> serde_core::Deserializer<'de> for &mut StreamingDeserializer<'de> {
         // Tagged mappings route through the AST fallback so the tag is
         // preserved on the resulting `Value::Tagged(...)`. The registry
         // opts a specific tag out of that behaviour.
-        if let Some(t) = self.take_tag_from_current() {
-            if !self.tag_in_registry(&t) {
-                self.restore_tag_to_current(t);
-                return Err(self.fallback());
-            }
+        if let Some(t) = self.take_tag_from_current()
+            && !self.tag_in_registry(&t)
+        {
+            self.restore_tag_to_current(t);
+            return Err(self.fallback());
         }
         match self.next_event()? {
             Event::MappingStart { .. } => {

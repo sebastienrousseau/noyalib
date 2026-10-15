@@ -12,7 +12,7 @@ twice in a single release cycle — see [Why this exists](#why-this-exists).
 
 ## Minimum Supported Rust Version
 
-**Current MSRV: 1.86.0**, declared as `rust-version` in
+**Current MSRV: 1.89.0**, declared as `rust-version` in
 `crates/noyalib/Cargo.toml` and enforced by the `msrv-core` and
 `msrv-per-crate` CI jobs.
 
@@ -40,6 +40,10 @@ not cover:
 - A raise needs a reason recorded in the changelog entry: which API, and
   why the alternative was rejected. "It was more convenient" is not a
   reason; "the alternative allocates on a hot path" is.
+- The one raise made without a toolchain reason is the v0.0.58 move
+  to 1.89.0, which puts the family on one floor with the maintainer's
+  other Rust crates. It is recorded as a decision in
+  [ADR-0014](adr/0014-shared-msrv-floor.md), not as a precedent.
 - Prefer writing the older form. `Option::map_or` over `Option::is_none_or`
   costs nothing and keeps the floor where it is.
 
@@ -83,7 +87,7 @@ Both of these were hit inside one release cycle, which is what turned an
 implicit convention into a written one:
 
 - **`Option::is_none_or`** was used in the v0.0.21 no_std work. It is
-  stable from 1.82; the MSRV is 1.86 — so this one was fine — but the
+  stable from 1.82; the MSRV was 1.86, so this one was fine, but the
   same pattern in a sibling crate with a 1.80 floor was caught only by
   clippy's `incompatible_msrv`. The lint is the backstop; writing the
   older form is the habit.

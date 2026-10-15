@@ -26,10 +26,10 @@ fn patch_at(value: &mut Value, path: &str, new_value: Value) -> bool {
             }
             return false;
         }
-        if current.get(seg).is_none() {
-            if let Some(map) = current.as_mapping_mut() {
-                let _ = map.insert(seg.to_string(), Value::Mapping(Mapping::new()));
-            }
+        if current.get(seg).is_none()
+            && let Some(map) = current.as_mapping_mut()
+        {
+            let _ = map.insert(seg.to_string(), Value::Mapping(Mapping::new()));
         }
         match current.get_mut(seg) {
             Some(next) => current = next,

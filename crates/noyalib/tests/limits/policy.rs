@@ -86,15 +86,14 @@ struct DenyKeyContains(&'static str);
 
 impl Policy for DenyKeyContains {
     fn check_event(&self, event: PolicyEvent<'_>) -> noyalib::Result<()> {
-        if event.kind == PolicyEventKind::Scalar {
-            if let Some(s) = event.scalar {
-                if s.contains(self.0) {
-                    return Err(noyalib::Error::Deserialize(format!(
-                        "policy DenyKeyContains: scalar contains forbidden substring `{}`",
-                        self.0
-                    )));
-                }
-            }
+        if event.kind == PolicyEventKind::Scalar
+            && let Some(s) = event.scalar
+            && s.contains(self.0)
+        {
+            return Err(noyalib::Error::Deserialize(format!(
+                "policy DenyKeyContains: scalar contains forbidden substring `{}`",
+                self.0
+            )));
         }
         Ok(())
     }

@@ -785,11 +785,11 @@ pub fn coerce_to_schema(value: &mut Value, schema: &Value) -> Result<usize> {
 
         for (path, target) in targets {
             let segments = parse_json_pointer(&path);
-            if let Some(node) = navigate_mut(value, &segments) {
-                if try_coerce(node, target) {
-                    applied += 1;
-                    applied_this_pass = true;
-                }
+            if let Some(node) = navigate_mut(value, &segments)
+                && try_coerce(node, target)
+            {
+                applied += 1;
+                applied_this_pass = true;
             }
         }
 

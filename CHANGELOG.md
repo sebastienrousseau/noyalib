@@ -5,6 +5,100 @@ All notable changes to this project are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.0.58] - 2026-10-15
+
+### Security
+
+- **`cst::Document` mutators now re-parse under the document's own
+  configuration.** `Document::set`, `replace_collection_value`,
+  `append_first_entry`, `guarded_insert`, and `duplicate_keys_present`
+  previously re-parsed the edited buffer with default YAML 1.2 settings
+  instead of `self.config`, allowing YAML 1.1 scalar aliases (such as
+  `yes` colliding with `true`) to bypass duplicate-key detection or
+  trigger false-positive shape rollbacks.
+- **`cst::coerce_to_schema` now quotes JSON Pointer segments with
+  `path::push_key`, requires a string leaf, and skips no-op edits.**
+  Keys containing `.` or `[` are bracket-quoted instead of concatenated
+  raw into the CST path, non-string targets are skipped, and values
+  whose coerced form equals the current source text no longer repeat up
+  to the 1,024-iteration cap.
+- **`!include` resolution and `${...}` property interpolation now
+  enforce `max_total_scalar_bytes`.** `IncludeWalk` charges scalar bytes
+  across every resolved source (before `#fragment` narrowing discards
+  sibling entries) and re-checks the combined document tree after
+  substitution; `apply_properties` bounds expanded scalar text against
+  `config.max_total_scalar_bytes`.
+- **`tokio_async::YamlDecoder` now waits for one lookahead byte past a
+  chunk-ending `---` before splitting.** A `---` at the end of a non-EOF
+  read buffer could be the prefix of a plain scalar or mapping key such
+  as `---: value`; `next_marker_after_streaming` defers the boundary
+  decision until the fourth byte or EOF arrives and rewinds the scan
+  cursor by three bytes.
+- **Cross-entry-point policy, post-processing, and deserializer option
+  parity.** `cst::parse_document_with_config`, `Document::replace_span`,
+  and `Document::validate` now run `Policy::check_value`;
+  `load_all_with_config`, `load_all_as_with_config`, `read_with_config`,
+  `from_str_typed_no_tag_preserve`, and the `no_std` branch of
+  `from_str_with_config` all run the shared `post_process_document`
+  pipeline (`!include`, `${...}`, and `Policy::check_value`) and honour
+  `ignore_binary_tag_for_string`, `plain_scalar_strings`, and
+  `SpanContext`.
+- **`figment::Yaml::file` and `file_with_config` now verify regular-file
+  and length metadata before reading.** Non-regular files (directories,
+  FIFOs, device nodes) and regular files larger than
+  `max_document_length` are rejected via `metadata()` before reading.
+
+### Fixed
+
+- **An unknown or missing field rejected by `from_str` now carries a
+  location and a field path**, as a type mismatch or a visitor's own
+  error already did: `deserialization error at line 3, column 10:
+  server.porrt: unknown field: porrt`. A `deny_unknown_fields` derive
+  rejects the field while reading its key, so that error is located at
+  the entry and pathed to the field; a hand-written `visit_map`'s
+  `unknown_field`, and every `missing_field`, is located at the mapping
+  it is about. The wording is unchanged. `from_value` has no source to
+  locate against and still returns the bare `Error::UnknownField` /
+  `Error::MissingField`.
+
+### Changed: MSRV 1.86 to 1.89
+
+- **The minimum supported Rust version is now 1.89.0, for the core
+  library and every satellite.** This raise has no toolchain reason:
+  the toolchain-driven floor is still 1.86 (`criterion 0.8`, a
+  dev-dependency). It is a maintainer decision to share one floor with
+  his other Rust crates, recorded as
+  [ADR-0014](docs/adr/0014-shared-msrv-floor.md); `docs/POLICIES.md` §1
+  still governs every later raise. If you are pinned below 1.89, stay
+  on v0.0.57.
+- **The `msrv-core` job now builds on the MSRV.** `rust-toolchain.toml`
+  pins `stable`, and rustup prefers that file over the toolchain the
+  job installs, so `shared-msrv-core.yml` had been checking on stable.
+  It now sets `RUSTUP_TOOLCHAIN` from its `toolchain` input and asserts
+  `rustc --version` before building.
+- **`scripts/verify-release-versions.sh` checks the MSRV.** Every MSRV
+  statement in the README, policies, rustdoc and CI (32 checks) must
+  match `rust-version`; all 32 failed against the old statements. The
+  check found the README badges still saying 1.86.0 in their alt text.
+
+### Dependencies
+
+- tokio 1.53.2, from Dependabot #479, vetted by trusting its
+  publisher, Alice Ryhl (Darksonn), for `safe-to-deploy`.
+
+### Removed
+
+- **`serde_yaml_ng` is no longer a dev-dependency.** It depends on
+  `unsafe-libyaml`, which RUSTSEC-2024-0449 marks unmaintained, so
+  `cargo deny` failed. Following the policy in `deny.toml` (retire
+  such contenders, as `serde_yml` was in v0.0.6, rather than exempt
+  them), its rows leave `benches/comparison.rs` and
+  `benches/architecture.rs`; the typed, serialize and roundtrip groups
+  now measure noyalib alone, and the recorded figures in
+  `docs/BENCHMARKS.md` are marked as such. The conformance harness
+  parses the yaml-test-suite wrappers with `yaml-rust2` instead, which
+  yields the same 406 cases from all 351 files.
+
 ## [v0.0.57] - 2026-10-09
 
 ### Fixed

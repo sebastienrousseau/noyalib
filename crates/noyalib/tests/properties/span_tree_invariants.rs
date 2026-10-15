@@ -75,13 +75,13 @@ fn check(src: &str) {
         // span at their last item, so nothing escapes any more.
         if let Some(dot) = path.rfind(['.', '[']) {
             let parent = &path[..dot];
-            if !parent.is_empty() {
-                if let Some((ps, pe)) = doc.span_at(parent) {
-                    assert!(
-                        s >= ps && e <= pe,
-                        "{path} span {s}..{e} escapes parent {parent} span {ps}..{pe}"
-                    );
-                }
+            if !parent.is_empty()
+                && let Some((ps, pe)) = doc.span_at(parent)
+            {
+                assert!(
+                    s >= ps && e <= pe,
+                    "{path} span {s}..{e} escapes parent {parent} span {ps}..{pe}"
+                );
             }
         }
     }

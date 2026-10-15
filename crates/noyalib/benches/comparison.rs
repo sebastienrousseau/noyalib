@@ -1,5 +1,12 @@
-//! Head-to-head benchmarks: noyalib vs serde_yaml_ng, yaml-rust2, and
-//! yaml-spanned (plus serde-saphyr under `--features compare-saphyr`).
+//! Head-to-head benchmarks: noyalib vs yaml-rust2 and yaml-spanned
+//! (plus serde-saphyr under `--features compare-saphyr`).
+//!
+//! `serde_yaml_ng` was retired from this harness in v0.0.58: it
+//! depends on `unsafe-libyaml`, which RUSTSEC-2024-0449 marks
+//! unmaintained, and the policy in `deny.toml` is to retire such
+//! contenders rather than exempt them (as `serde_yml` was in v0.0.6).
+//! The typed, serialize and roundtrip groups now measure noyalib on
+//! its own.
 //!
 //! Run: `cargo bench --bench comparison`
 
@@ -99,12 +106,6 @@ fn bench_deserialize(c: &mut Criterion) {
             });
         });
 
-        group.bench_with_input(BenchmarkId::new("serde_yaml_ng", name), yaml, |b, input| {
-            b.iter(|| {
-                let _: serde_yaml_ng::Value = serde_yaml_ng::from_str(black_box(input)).unwrap();
-            });
-        });
-
         group.bench_with_input(BenchmarkId::new("yaml-rust2", name), yaml, |b, input| {
             b.iter(|| {
                 let _ = yaml_rust2::YamlLoader::load_from_str(black_box(input)).unwrap();
@@ -115,8 +116,8 @@ fn bench_deserialize(c: &mut Criterion) {
         // prior crate. RUSTSEC-2025-0068 marked it unsound +
         // unmaintained; the comparison row was retired so it no
         // longer appears in `Cargo.lock` and the OpenSSF Scorecard
-        // Vulnerabilities check is clean. `serde_yaml_ng` above
-        // covers the equivalent comparison axis.)
+        // Vulnerabilities check is clean. `serde_yaml_ng` followed
+        // in v0.0.58 for the same reason: RUSTSEC-2024-0449.)
 
         // `yaml-spanned` — the closest other span-tracking parser in
         // the ecosystem. Returns a sequence of spanned values.
@@ -136,28 +137,13 @@ fn bench_deserialize(c: &mut Criterion) {
 
     // Multi-document load — represents real-world Kubernetes /
     // Helm / Compose workflows where one file holds 3-30 manifests.
-    // serde_yaml_ng exposes this via `Deserializer::from_str` +
-    // `serde_core::Deserialize::deserialize` per document; yaml-rust2
-    // returns `Vec<Yaml>` from one call.
+    // yaml-rust2 returns `Vec<Yaml>` from one call.
     group.bench_with_input(
         BenchmarkId::new("noyalib", "k8s_multidoc"),
         K8S_DEPLOYMENT,
         |b, input| {
             b.iter(|| {
                 let _ = noyalib::load_all_as::<noyalib::Value>(black_box(input)).unwrap();
-            });
-        },
-    );
-    group.bench_with_input(
-        BenchmarkId::new("serde_yaml_ng", "k8s_multidoc"),
-        K8S_DEPLOYMENT,
-        |b, input| {
-            b.iter(|| {
-                let docs: Vec<serde_yaml_ng::Value> =
-                    serde_yaml_ng::Deserializer::from_str(black_box(input))
-                        .map(|de| serde_core::Deserialize::deserialize(de).unwrap())
-                        .collect();
-                let _ = docs;
             });
         },
     );
@@ -185,21 +171,9 @@ fn bench_typed_deserialize(c: &mut Criterion) {
         });
     });
 
-    group.bench_function("serde_yaml_ng/simple", |b| {
-        b.iter(|| {
-            let _: Simple = serde_yaml_ng::from_str(black_box(SIMPLE)).unwrap();
-        });
-    });
-
     group.bench_function("noyalib/nested", |b| {
         b.iter(|| {
             let _: Nested = noyalib::from_str(black_box(NESTED)).unwrap();
-        });
-    });
-
-    group.bench_function("serde_yaml_ng/nested", |b| {
-        b.iter(|| {
-            let _: Nested = serde_yaml_ng::from_str(black_box(NESTED)).unwrap();
         });
     });
 
@@ -211,8 +185,6 @@ fn bench_typed_deserialize(c: &mut Criterion) {
 fn bench_serialize(c: &mut Criterion) {
     let noya_simple: noyalib::Value = noyalib::from_str(SIMPLE).unwrap();
     let noya_nested: noyalib::Value = noyalib::from_str(NESTED).unwrap();
-    let serde_simple: serde_yaml_ng::Value = serde_yaml_ng::from_str(SIMPLE).unwrap();
-    let serde_nested: serde_yaml_ng::Value = serde_yaml_ng::from_str(NESTED).unwrap();
 
     let mut group = c.benchmark_group("serialize");
 
@@ -222,21 +194,9 @@ fn bench_serialize(c: &mut Criterion) {
         });
     });
 
-    group.bench_function("serde_yaml_ng/simple", |b| {
-        b.iter(|| {
-            let _ = serde_yaml_ng::to_string(black_box(&serde_simple)).unwrap();
-        });
-    });
-
     group.bench_function("noyalib/nested", |b| {
         b.iter(|| {
             let _ = noyalib::to_string(black_box(&noya_nested)).unwrap();
-        });
-    });
-
-    group.bench_function("serde_yaml_ng/nested", |b| {
-        b.iter(|| {
-            let _ = serde_yaml_ng::to_string(black_box(&serde_nested)).unwrap();
         });
     });
 
@@ -252,13 +212,6 @@ fn bench_roundtrip(c: &mut Criterion) {
         b.iter(|| {
             let v: noyalib::Value = noyalib::from_str(black_box(NESTED)).unwrap();
             let _ = noyalib::to_string(&v).unwrap();
-        });
-    });
-
-    group.bench_function("serde_yaml_ng/nested", |b| {
-        b.iter(|| {
-            let v: serde_yaml_ng::Value = serde_yaml_ng::from_str(black_box(NESTED)).unwrap();
-            let _ = serde_yaml_ng::to_string(&v).unwrap();
         });
     });
 

@@ -191,7 +191,7 @@ cargo deny check
 > into their own repositories (`noyalib-wasm` v0.0.12; `noyalib-mcp`,
 > `noyalib-lsp`, `noya-cli` v0.0.13), leaving a single-member
 > workspace. The edition, floor and member list below are the v0.0.1-era
-> values — the live values are edition 2024, `rust-version = "1.86.0"`,
+> values; the live values are edition 2024, `rust-version = "1.89.0"`,
 > `members = ["crates/noyalib"]`. See the root `Cargo.toml` and
 > [`docs/POLICIES.md`](POLICIES.md) §1, which is the source of truth
 > for the MSRV.
@@ -211,7 +211,7 @@ exclude = ["fuzz", "examples/wasm"]
 
 [workspace.package]
 edition      = "2021"   # historical — now 2024
-rust-version = "1.75.0" # historical — now 1.86.0
+rust-version = "1.75.0" # historical, now 1.89.0
 authors      = ["Sebastien Rousseau <sebastian.rousseau@gmail.com>"]
 license      = "MIT OR Apache-2.0"
 repository   = "https://github.com/sebastienrousseau/noyalib"

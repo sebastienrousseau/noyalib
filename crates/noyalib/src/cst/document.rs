@@ -217,10 +217,10 @@ pub(crate) mod fault {
 /// Loading a document with duplicate keys succeeds and collapses them,
 /// so a value-level comparison cannot tell that one was introduced.
 /// Re-reading under a policy that refuses duplicates can.
-fn duplicate_keys_present(source: &str) -> bool {
-    let mut config = ParserConfig::new();
-    config.duplicate_key_policy = crate::DuplicateKeyPolicy::Error;
-    crate::from_str_with_config::<Value>(source, &config).is_err_and(|error| {
+fn duplicate_keys_present(source: &str, base: &ParseConfig) -> bool {
+    let mut config = base.clone();
+    config.duplicate_key_policy = crate::parser::InternalDuplicateKeyPolicy::Error;
+    crate::parser::parse_exactly_one_value(source, &config).is_err_and(|error| {
         matches!(
             error.kind(),
             crate::ErrorKind::DuplicateKey | crate::ErrorKind::KeyCollision
@@ -585,17 +585,7 @@ impl Document {
         };
         self.replace_span(s, e, fragment)?;
 
-        // Parse fallibly rather than through `as_value`. A splice that
-        // is structurally invalid — `set("name", "[")` — commits
-        // optimistically by design and only surfaces via `validate`;
-        // forcing a parse here would panic on it and change that
-        // documented behaviour. An unparseable result cannot be
-        // smuggling extra entries anyway, so there is nothing for this
-        // oracle to check.
-        let Ok(after_value) = crate::from_str::<Value>(&self.source) else {
-            return Ok(());
-        };
-        let after_shape = shape_excluding(&after_value, &segments);
+        let after_shape = shape_excluding(&self.as_value(), &segments);
         if after_shape != before_shape {
             *self = snapshot;
             return Err(Error::Parse(format!(
@@ -617,7 +607,9 @@ impl Document {
         // Duplicate keys are legal here and some documents carry them on
         // purpose, so the test is not "are there duplicates" but "did
         // this edit introduce one": clean before and dirty after.
-        if !duplicate_keys_present(&snapshot.source) && duplicate_keys_present(&self.source) {
+        if !duplicate_keys_present(&snapshot.source, &self.config)
+            && duplicate_keys_present(&self.source, &self.config)
+        {
             *self = snapshot;
             return Err(Error::Parse(format!(
                 "set: the fragment for `{path}` introduced a duplicate key, \
@@ -1029,7 +1021,7 @@ impl Document {
         candidate.push_str(&self.source[..s]);
         candidate.push_str(&fragment);
         candidate.push_str(&self.source[e..]);
-        let reparsed = parse_document(&candidate).map_err(|err| {
+        let reparsed = parse_document_inner(&candidate, self.config.clone()).map_err(|err| {
             Error::Parse(format!(
                 "set_value: replacing `{path}` with the rendered collection would not \
                  re-parse ({err}); the document was left unchanged"
@@ -1208,12 +1200,13 @@ impl Document {
         let mut candidate = String::with_capacity(self.source.len() + fragment.len());
         candidate.push_str(&self.source);
         candidate.push_str(&fragment);
-        let candidate_value: Value = crate::from_str(&candidate).map_err(|e| {
-            Error::Parse(format!(
-                "set_path: `{path}` cannot be created here — the document's root is not a \
-                 mapping and not empty ({e}); the document was left unchanged"
-            ))
-        })?;
+        let candidate_value: Value =
+            crate::parser::parse_exactly_one_value(&candidate, &self.config).map_err(|e| {
+                Error::Parse(format!(
+                    "set_path: `{path}` cannot be created here — the document's root is not a \
+                     mapping and not empty ({e}); the document was left unchanged"
+                ))
+            })?;
         if oracle_rejects(&candidate_value, &expected) {
             return Err(Error::Parse(format!(
                 "set_path: `{path}` cannot be created here — the document's root already \
@@ -1587,10 +1580,10 @@ impl Document {
         // remaining refusals so a same-name rename is `Ok(())`
         // wherever the entry resolves at all — including inside a
         // flow mapping, whose renames are otherwise a follow-up.
-        if let Some(current) = decode_key_token(&self.source[tok_start..tok_end], token_kind) {
-            if current == new_key {
-                return Ok(());
-            }
+        if let Some(current) = decode_key_token(&self.source[tok_start..tok_end], token_kind)
+            && current == new_key
+        {
+            return Ok(());
         }
 
         // Both block-mapping entries and flow-mapping entries are
@@ -2580,10 +2573,10 @@ impl Document {
         // closing brace instead of appending a line (#338). Upserts of
         // an existing key fall through: `set` already writes into flow
         // sites.
-        if existing.is_none() {
-            if let Some(span) = self.flow_collection_span(mapping_path, b'{') {
-                return self.insert_flow_entry(mapping_path, key, &expected_child, &expected, span);
-            }
+        if existing.is_none()
+            && let Some(span) = self.flow_collection_span(mapping_path, b'{')
+        {
+            return self.insert_flow_entry(mapping_path, key, &expected_child, &expected, span);
         }
         let (column, anchor_pos, probe) = self.entry_insert_anchor(existing, mapping_path, key)?;
         self.refuse_inside_aliased_anchor("insert_entry_value", mapping_path, probe)?;
@@ -4270,19 +4263,19 @@ fn entry_line_span(
             // are exactly the entry's own, and the item must stay, so
             // the entry is replaced with `{}` in place instead of
             // splicing whole lines (#336).
-            if m.len() <= 1 && !is_flow_collection(source, *coll_start) {
-                if let Some(((key_start, _), entry_tree)) = entries.first() {
-                    if locate_preceding_dash(source, *key_start).is_some() {
-                        let (vs, rve) = span_tree_bounds(entry_tree);
-                        let end = owned_value_end(source, vs, rve);
-                        return Ok(Removal::SoleEntry {
-                            start: *key_start,
-                            end,
-                            empty: "{}",
-                            indent: 0,
-                        });
-                    }
-                }
+            if m.len() <= 1
+                && !is_flow_collection(source, *coll_start)
+                && let Some(((key_start, _), entry_tree)) = entries.first()
+                && locate_preceding_dash(source, *key_start).is_some()
+            {
+                let (vs, rve) = span_tree_bounds(entry_tree);
+                let end = owned_value_end(source, vs, rve);
+                return Ok(Removal::SoleEntry {
+                    start: *key_start,
+                    end,
+                    empty: "{}",
+                    indent: 0,
+                });
             }
             // Last entry: the collection itself becomes `{}`. Deleting the
             // bytes would leave a dangling `a:` that re-parses as null.
@@ -4693,10 +4686,11 @@ fn anchored_content_span(
     let mut pos = base;
     for child in node.children() {
         let len = child.text_len();
-        if let GreenChild::Node(inner) = child {
-            if pos <= mark_start && mark_start < pos + len {
-                return anchored_content_span(inner, pos, mark_start);
-            }
+        if let GreenChild::Node(inner) = child
+            && pos <= mark_start
+            && mark_start < pos + len
+        {
+            return anchored_content_span(inner, pos, mark_start);
         }
         pos += len;
     }
@@ -5167,9 +5161,9 @@ impl Document {
             return Err(error);
         }
 
-        // The splice is document-valid by contract. Parse through the
-        // public entry point for the independent shape oracle.
-        let after_value = match crate::from_str::<Value>(&self.source) {
+        // The splice is document-valid by contract. Parse under the
+        // document's configuration for the independent shape oracle.
+        let after_value = match crate::parser::parse_exactly_one_value(&self.source, &self.config) {
             Ok(value) => value,
             Err(error) => {
                 *self = snapshot;
@@ -5554,11 +5548,11 @@ fn detect_indent_unit(source: &str) -> usize {
         if trimmed.is_empty() || trimmed.starts_with('#') {
             continue;
         }
-        if let Some(prev) = prev_indent {
-            if spaces > prev {
-                let step = spaces - prev;
-                min_step = Some(min_step.map_or(step, |m| m.min(step)));
-            }
+        if let Some(prev) = prev_indent
+            && spaces > prev
+        {
+            let step = spaces - prev;
+            min_step = Some(min_step.map_or(step, |m| m.min(step)));
         }
         prev_indent = Some(spaces);
     }

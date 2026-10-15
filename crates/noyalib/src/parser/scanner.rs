@@ -1183,13 +1183,14 @@ impl<'a> Scanner<'a> {
 
     #[inline]
     fn remove_simple_key(&mut self) -> ScanResult<()> {
-        if let Some(sk) = self.simple_keys.last() {
-            if sk.possible && sk.required {
-                return Err(ScanError {
-                    message: Cow::Borrowed("simple key was required but not found"),
-                    index: sk.index,
-                });
-            }
+        if let Some(sk) = self.simple_keys.last()
+            && sk.possible
+            && sk.required
+        {
+            return Err(ScanError {
+                message: Cow::Borrowed("simple key was required but not found"),
+                index: sk.index,
+            });
         }
         if let Some(sk) = self.simple_keys.last_mut() {
             sk.possible = false;

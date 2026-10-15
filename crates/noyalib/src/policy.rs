@@ -199,12 +199,12 @@ pub struct DenyTags;
 
 impl Policy for DenyTags {
     fn check_event(&self, event: PolicyEvent<'_>) -> Result<()> {
-        if let Some(tag) = event.tag {
-            if !is_core_tag(tag) {
-                return Err(Error::Deserialize(format!(
-                    "policy DenyTags: tag `{tag}` is not allowed"
-                )));
-            }
+        if let Some(tag) = event.tag
+            && !is_core_tag(tag)
+        {
+            return Err(Error::Deserialize(format!(
+                "policy DenyTags: tag `{tag}` is not allowed"
+            )));
         }
         Ok(())
     }
@@ -235,14 +235,14 @@ pub struct MaxScalarLength(pub usize);
 
 impl Policy for MaxScalarLength {
     fn check_event(&self, event: PolicyEvent<'_>) -> Result<()> {
-        if let Some(s) = event.scalar {
-            if s.len() > self.0 {
-                return Err(Error::Deserialize(format!(
-                    "policy MaxScalarLength: scalar of {} bytes exceeds limit of {}",
-                    s.len(),
-                    self.0
-                )));
-            }
+        if let Some(s) = event.scalar
+            && s.len() > self.0
+        {
+            return Err(Error::Deserialize(format!(
+                "policy MaxScalarLength: scalar of {} bytes exceeds limit of {}",
+                s.len(),
+                self.0
+            )));
         }
         Ok(())
     }

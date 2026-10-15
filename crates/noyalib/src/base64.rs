@@ -46,7 +46,7 @@ pub(crate) fn decode(input: &str) -> Result<Vec<u8>, &'static str> {
         buf.push(b);
     }
 
-    if buf.len() % 4 != 0 {
+    if !buf.len().is_multiple_of(4) {
         return Err("base64 length not a multiple of 4 (after stripping whitespace)");
     }
     if buf.is_empty() {
@@ -113,8 +113,7 @@ pub(crate) fn encode(input: &[u8]) -> String {
     const ALPHABET: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
     let mut out = String::with_capacity(input.len().div_ceil(3) * 4);
-    let chunks = input.chunks_exact(3);
-    let remainder = chunks.remainder();
+    let (chunks, remainder) = input.as_chunks::<3>();
 
     for chunk in chunks {
         let n = (u32::from(chunk[0]) << 16) | (u32::from(chunk[1]) << 8) | u32::from(chunk[2]);

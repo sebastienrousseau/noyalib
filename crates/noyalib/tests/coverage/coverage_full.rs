@@ -938,10 +938,10 @@ fn value_index_into_mut_tagged_sequence() {
     let item = &mut v[0];
     *item = Value::from(99);
     // Verify mutation went through
-    if let Value::Tagged(t) = &v {
-        if let Value::Sequence(s) = t.value() {
-            assert_eq!(s[0].as_i64().unwrap(), 99);
-        }
+    if let Value::Tagged(t) = &v
+        && let Value::Sequence(s) = t.value()
+    {
+        assert_eq!(s[0].as_i64().unwrap(), 99);
     }
 }
 

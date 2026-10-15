@@ -157,11 +157,11 @@ logging:
     support::task_with_output("Programmatic value modification", || {
         let mut config: Value = from_str("settings:\n  timeout: 30\n").unwrap();
 
-        if let Some(settings) = config.get_mut("settings") {
-            if let Some(map) = settings.as_mapping_mut() {
-                let _ = map.insert("retries".to_string(), Value::from(3));
-                let _ = map.insert("debug".to_string(), Value::from(false));
-            }
+        if let Some(settings) = config.get_mut("settings")
+            && let Some(map) = settings.as_mapping_mut()
+        {
+            let _ = map.insert("retries".to_string(), Value::from(3));
+            let _ = map.insert("debug".to_string(), Value::from(false));
         }
 
         let _ = config.insert("version", Value::from("1.0.0"));

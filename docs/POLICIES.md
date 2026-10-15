@@ -35,16 +35,16 @@ file wins.
 
 | Crate | MSRV | Rationale |
 |---|---|---|
-| `noyalib` (library core) | **1.86.0** | The lowest toolchain the project can be built *and tested* on: `criterion 0.8` (dev-dependency) declares `rust-version = 1.86`, so `cargo check --all-targets`, the bench suite, and the coverage gate all fail on 1.85. Enforced by the dedicated `msrv-core` CI job. |
-| `noyalib-mcp` | 1.86.0 | Lockstep with the core floor; the MCP wire surface is text-only JSON-RPC and pulls no nightly-only deps. |
-| `noya-cli` (binaries) | 1.86.0 | Lockstep with the core floor; `clap_builder` 4.6 is edition-2024 and requires 1.86+. |
-| `noyalib-lsp` | 1.86.0 | Lockstep with the core floor. |
-| `noyalib-wasm` | 1.86.0 | Lockstep with the core floor; the `wasm-bindgen` 0.2 ecosystem floors at 1.86. |
+| `noyalib` (library core) | **1.89.0** | One floor shared with the maintainer's other Rust crates, raised from 1.86.0 in v0.0.58 ([ADR-0014](adr/0014-shared-msrv-floor.md)). The toolchain-driven floor is lower: `criterion 0.8` (dev-dependency) declares `rust-version = 1.86`, so `cargo check --all-targets`, the bench suite, and the coverage gate all fail on 1.85. Enforced by the dedicated `msrv-core` CI job. |
+| `noyalib-mcp` | 1.89.0 | Lockstep with the core floor; the MCP SDK alone needs 1.88. The MCP wire surface is text-only JSON-RPC and pulls no nightly-only deps. |
+| `noya-cli` (binaries) | 1.89.0 | Lockstep with the core floor; `clap_builder` 4.6 is edition-2024 and requires 1.86+. |
+| `noyalib-lsp` | 1.89.0 | Lockstep with the core floor. |
+| `noyalib-wasm` | 1.89.0 | Lockstep with the core floor; the `wasm-bindgen` 0.2 ecosystem floors at 1.86. |
 
 **What the MSRV number means here.** It is the lowest toolchain
 on which the project can be **built and tested**, not the lowest
-on which the library alone happens to compile. Those differ
-today: `cargo +1.85.0 check --lib` succeeds, but
+on which the library alone happens to compile. Those differed
+at the 1.86.0 floor: `cargo +1.85.0 check --lib` succeeds, but
 `cargo +1.85.0 check --all-targets` fails with
 `criterion@0.8.2 requires rustc 1.86`. We publish the number we
 verify. Advertising 1.85 would be an untested promise — no CI
@@ -55,9 +55,12 @@ at actually moves — a dependency (runtime *or* dev) raising its
 floor, or a language feature we choose to adopt. **Never
 speculatively, and never for tidiness.** "Headroom" is not a
 reason: an MSRV can be raised the day it is needed, and raising
-it early only costs downstream users. As a standing guarantee,
+it early only costs downstream users. The one exception is the
+v0.0.58 raise to 1.89.0, a maintainer decision to share one floor
+with his other Rust crates, recorded in
+[ADR-0014](adr/0014-shared-msrv-floor.md). As a standing guarantee,
 noyalib will not require a rustc newer than **12 months old** at
-the time of release (1.86.0 shipped 2025-04-03, so the current
+the time of release (1.89.0 shipped 2025-08-07, so the current
 floor is comfortably inside that).
 
 **How it ships** *(revised 2026-07-22, effective v0.0.16)*:

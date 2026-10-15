@@ -326,13 +326,6 @@ fn bench_competitors(c: &mut Criterion) {
         });
     });
 
-    group.bench_function("serde_yaml_ng/k8s", |b| {
-        b.iter(|| {
-            let _: serde_yaml_ng::Value =
-                serde_yaml_ng::from_str(black_box(K8S_DEPLOYMENT)).unwrap();
-        });
-    });
-
     #[cfg(feature = "compare-saphyr")]
     group.bench_function("serde_saphyr/k8s", |b| {
         b.iter(|| {
@@ -350,12 +343,6 @@ fn bench_competitors(c: &mut Criterion) {
     group.bench_function("noyalib/zero_copy", |b| {
         b.iter(|| {
             let _: noyalib::Value = noyalib::from_str(black_box(ZERO_COPY)).unwrap();
-        });
-    });
-
-    group.bench_function("serde_yaml_ng/zero_copy", |b| {
-        b.iter(|| {
-            let _: serde_yaml_ng::Value = serde_yaml_ng::from_str(black_box(ZERO_COPY)).unwrap();
         });
     });
 

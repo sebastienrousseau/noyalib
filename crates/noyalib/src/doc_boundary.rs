@@ -80,6 +80,31 @@ pub(crate) fn next_marker_after(bytes: &[u8], start: usize) -> Option<usize> {
     marker_at_or_after(bytes, start.max(1))
 }
 
+/// Like [`next_marker_after`], but when `at_eof` is `false`, a trailing
+/// `---` at the end of `bytes` (`i + 3 == bytes.len()`) is deferred
+/// until the following lookahead byte arrives so chunk-split inputs
+/// such as `---: value` or `---foo` are not misclassified as document
+/// boundaries.
+#[cfg(feature = "tokio")]
+#[must_use]
+pub(crate) fn next_marker_after_streaming(
+    bytes: &[u8],
+    start: usize,
+    at_eof: bool,
+) -> Option<usize> {
+    let mut i = start.max(1);
+    while i + 3 <= bytes.len() {
+        if !at_eof && i + 3 == bytes.len() {
+            break;
+        }
+        if is_doc_marker_at(bytes, i) {
+            return Some(i);
+        }
+        i += 1;
+    }
+    None
+}
+
 /// Search for a document marker at or after `start`.
 fn marker_at_or_after(bytes: &[u8], start: usize) -> Option<usize> {
     let mut i = start;

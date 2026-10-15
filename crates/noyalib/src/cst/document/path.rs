@@ -37,16 +37,16 @@ fn first_collection_child(node: &GreenNode, base: usize) -> Option<(&GreenNode, 
     let mut pos = base;
     for child in node.children() {
         let len = child.text_len();
-        if let GreenChild::Node(inner) = child {
-            if matches!(
+        if let GreenChild::Node(inner) = child
+            && matches!(
                 inner.kind(),
                 SyntaxKind::BlockMapping
                     | SyntaxKind::BlockSequence
                     | SyntaxKind::FlowMapping
                     | SyntaxKind::FlowSequence
-            ) {
-                return Some((inner, pos));
-            }
+            )
+        {
+            return Some((inner, pos));
         }
         pos += len;
     }
@@ -100,16 +100,16 @@ fn walk_mapping(
     let mut pos = base;
     for child in node.children() {
         let len = child.text_len();
-        if let GreenChild::Node(entry) = child {
-            if entry.kind() == SyntaxKind::MappingEntry {
-                match entry_key_text(entry, source, pos) {
-                    Some(entry_key) => {
-                        if entry_key == key {
-                            found = Some((entry, pos));
-                        }
+        if let GreenChild::Node(entry) = child
+            && entry.kind() == SyntaxKind::MappingEntry
+        {
+            match entry_key_text(entry, source, pos) {
+                Some(entry_key) => {
+                    if entry_key == key {
+                        found = Some((entry, pos));
                     }
-                    None => undecodable_key = true,
                 }
+                None => undecodable_key = true,
             }
         }
         pos += len;
@@ -132,13 +132,13 @@ fn walk_sequence(
     let mut idx = 0usize;
     for child in node.children() {
         let len = child.text_len();
-        if let GreenChild::Node(item) = child {
-            if item.kind() == SyntaxKind::SequenceItem {
-                if idx == target_index {
-                    return resolve_value_in_item(item, pos, tail, source);
-                }
-                idx += 1;
+        if let GreenChild::Node(item) = child
+            && item.kind() == SyntaxKind::SequenceItem
+        {
+            if idx == target_index {
+                return resolve_value_in_item(item, pos, tail, source);
             }
+            idx += 1;
         }
         pos += len;
     }

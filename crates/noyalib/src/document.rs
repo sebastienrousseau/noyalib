@@ -151,9 +151,9 @@ pub fn load_all_with_config(input: &str, config: &ParserConfig) -> Result<Docume
 
     #[cfg(feature = "std")]
     {
-        let pairs = parser::parse(input, &parse_config)?;
-        for (doc, _) in &pairs {
-            crate::policy::check_document(&config.policies, doc)?;
+        let mut pairs = parser::parse(input, &parse_config)?;
+        for (doc, _) in &mut pairs {
+            crate::de::post_process_document(doc, config)?;
         }
         let (docs, span_trees): (Vec<_>, Vec<_>) = pairs.into_iter().unzip();
         let total = docs.len();
@@ -166,9 +166,9 @@ pub fn load_all_with_config(input: &str, config: &ParserConfig) -> Result<Docume
 
     #[cfg(not(feature = "std"))]
     {
-        let docs = parser::parse_all_values(input, &parse_config)?;
-        for doc in &docs {
-            crate::policy::check_document(&config.policies, doc)?;
+        let mut docs = parser::parse_all_values(input, &parse_config)?;
+        for doc in &mut docs {
+            crate::de::post_process_document(doc, config)?;
         }
         let total = docs.len();
         Ok(DocumentIterator {
@@ -271,18 +271,22 @@ where
 
     #[cfg(feature = "std")]
     {
-        let pairs = parser::parse(input, &parse_config)?;
+        let mut pairs = parser::parse(input, &parse_config)?;
         let mut results = Vec::with_capacity(pairs.len());
         let source: Arc<str> = input.into();
         let lines = span_context::SharedLineIndex::default();
 
-        for (value, span_tree) in &pairs {
-            crate::policy::check_document(&config.policies, value)?;
+        for (value, span_tree) in &mut pairs {
+            crate::de::post_process_document(value, config)?;
             let spans = span_context::build_span_map(value, span_tree);
             let ctx = span_context::SpanContext::with_lines(spans, source.clone(), lines.clone())
                 .with_key_texts(value, span_tree);
-            let _guard = span_context::set_span_context(ctx);
-            let typed: T = crate::from_value(value)?;
+            let typed: T = crate::de::from_value_spanned_with_options(
+                value,
+                ctx,
+                config.ignore_binary_tag_for_string,
+                config.plain_scalar_strings,
+            )?;
             results.push(typed);
         }
 
@@ -291,11 +295,15 @@ where
 
     #[cfg(not(feature = "std"))]
     {
-        let docs = parser::parse_all_values(input, &parse_config)?;
+        let mut docs = parser::parse_all_values(input, &parse_config)?;
         let mut results = Vec::with_capacity(docs.len());
-        for value in &docs {
-            crate::policy::check_document(&config.policies, value)?;
-            let typed: T = crate::from_value(value)?;
+        for value in &mut docs {
+            crate::de::post_process_document(value, config)?;
+            let typed: T = crate::de::from_value_with_options(
+                value,
+                config.ignore_binary_tag_for_string,
+                config.plain_scalar_strings,
+            )?;
             results.push(typed);
         }
         Ok(results)
@@ -321,7 +329,10 @@ where
 #[cfg(feature = "std")]
 #[derive(Debug)]
 pub struct DocumentReadIterator<T> {
-    docs: IntoIter<Value>,
+    docs: IntoIter<(Value, SpanTree)>,
+    source: Arc<str>,
+    ignore_binary_tag_for_string: bool,
+    plain_scalar_strings: bool,
     _phantom: PhantomData<fn() -> T>,
 }
 
@@ -366,8 +377,16 @@ where
 {
     type Item = Result<T>;
     fn next(&mut self) -> Option<Self::Item> {
-        let value = self.docs.next()?;
-        Some(crate::from_value(&value))
+        let (value, span_tree) = self.docs.next()?;
+        let spans = span_context::build_span_map(&value, &span_tree);
+        let ctx = span_context::SpanContext::new(spans, self.source.clone())
+            .with_key_texts(&value, &span_tree);
+        Some(crate::de::from_value_spanned_with_options(
+            &value,
+            ctx,
+            self.ignore_binary_tag_for_string,
+            self.plain_scalar_strings,
+        ))
     }
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.docs.size_hint()
@@ -491,13 +510,15 @@ where
         }
     }
     let parse_config = parser::ParseConfig::from(config);
-    let pairs = parser::parse(&buf, &parse_config)?;
-    let docs: Vec<Value> = pairs.into_iter().map(|(value, _)| value).collect();
-    for doc in &docs {
-        crate::policy::check_document(&config.policies, doc)?;
+    let mut pairs = parser::parse(&buf, &parse_config)?;
+    for (doc, _) in &mut pairs {
+        crate::de::post_process_document(doc, config)?;
     }
     Ok(DocumentReadIterator {
-        docs: docs.into_iter(),
+        docs: pairs.into_iter(),
+        source: buf.into(),
+        ignore_binary_tag_for_string: config.ignore_binary_tag_for_string,
+        plain_scalar_strings: config.plain_scalar_strings,
         _phantom: PhantomData,
     })
 }
