@@ -120,13 +120,18 @@ impl<'de> Deserializer<'de> {
     /// Attach the source location of the value being deserialized to an
     /// error that does not carry one yet.
     ///
-    /// Three error shapes reach this point without a location when a typed
+    /// Five error shapes reach this point without a location when a typed
     /// target rejects a value: [`Error::Deserialize`] (noyalib's own
     /// deserialization failures), [`Error::TypeMismatch`] (the catch-all
-    /// arms of the typed `deserialize_*` methods), and [`Error::Custom`]
+    /// arms of the typed `deserialize_*` methods), [`Error::Custom`]
     /// (serde's `invalid_type` / `invalid_value` / `custom`, raised by the
     /// caller's visitor -- the path a `#[serde(flatten)]` field or any
-    /// `deserialize_any` descent takes). All three are re-wrapped as
+    /// `deserialize_any` descent takes), and [`Error::UnknownField`] /
+    /// [`Error::MissingField`] (serde's `unknown_field` / `missing_field`
+    /// -- a `deny_unknown_fields` derive raises the first while reading
+    /// the key, so it is located at that entry; a hand-written `visit_map`
+    /// raises either against the mapping, so it is located there). All
+    /// five are re-wrapped as
     /// [`Error::DeserializeWithLocation`] when the deserializer was built
     /// from text (`from_str`, which records a span per value); the message
     /// is the original error's text. Deserializers built without a span
@@ -148,7 +153,9 @@ impl<'de> Deserializer<'de> {
         };
         let message = match err {
             Error::Deserialize(msg) | Error::Custom(msg) => msg,
-            mismatch @ Error::TypeMismatch { .. } => mismatch.to_string(),
+            worded @ (Error::TypeMismatch { .. }
+            | Error::UnknownField(_)
+            | Error::MissingField(_)) => worded.to_string(),
             other => return Err(other),
         };
         // Only the innermost wrap reaches this line (an already-wrapped

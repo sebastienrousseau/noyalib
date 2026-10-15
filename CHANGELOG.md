@@ -7,6 +7,19 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [v0.0.58] - Unreleased
 
+### Fixed
+
+- **An unknown or missing field rejected by `from_str` now carries a
+  location and a field path**, as a type mismatch or a visitor's own
+  error already did: `deserialization error at line 3, column 10:
+  server.porrt: unknown field: porrt`. A `deny_unknown_fields` derive
+  rejects the field while reading its key, so that error is located at
+  the entry and pathed to the field; a hand-written `visit_map`'s
+  `unknown_field`, and every `missing_field`, is located at the mapping
+  it is about. The wording is unchanged. `from_value` has no source to
+  locate against and still returns the bare `Error::UnknownField` /
+  `Error::MissingField`.
+
 ### Changed: MSRV 1.86 to 1.89
 
 - **The minimum supported Rust version is now 1.89.0, for the core
