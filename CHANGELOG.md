@@ -5,7 +5,7 @@ All notable changes to this project are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [v0.0.58] - Unreleased
+## [v0.0.58] - 2026-10-15
 
 ### Security
 
@@ -83,8 +83,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Dependencies
 
-- tokio 1.53.2, from Dependabot #479. `cargo vet` needs the
-  maintainer's decision for it: `.git/vet-v0.0.58.sh` asks.
+- tokio 1.53.2, from Dependabot #479, vetted by trusting its
+  publisher, Alice Ryhl (Darksonn), for `safe-to-deploy`.
 
 ### Removed
 
