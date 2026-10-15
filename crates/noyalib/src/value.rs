@@ -1688,6 +1688,82 @@ fn check_interpolated_scalar_budget(
 }
 
 #[cfg(feature = "std")]
+fn parse_placeholder_token(
+    s: &str,
+    name_start: usize,
+) -> crate::Result<(&str, Option<&str>, usize)> {
+    let bytes = s.as_bytes();
+    let mut j = name_start;
+    while j < bytes.len() && bytes[j] != b'}' && bytes[j] != b':' {
+        let c = bytes[j];
+        let ok = c.is_ascii_alphanumeric() || c == b'_' || c == b'.';
+        if !ok {
+            return Err(crate::Error::Custom(format!(
+                "interpolate_properties: invalid character {:?} in placeholder",
+                c as char
+            )));
+        }
+        j += 1;
+    }
+    if j >= bytes.len() {
+        return Err(crate::Error::Custom(
+            "interpolate_properties: unterminated `${...}` placeholder".into(),
+        ));
+    }
+    if name_start == j {
+        return Err(crate::Error::Custom(
+            "interpolate_properties: empty placeholder `${}`".into(),
+        ));
+    }
+    let name = &s[name_start..j];
+    let mut default: Option<&str> = None;
+    let mut close = j;
+    if bytes[j] == b':' {
+        if j + 1 >= bytes.len() || bytes[j + 1] != b'-' {
+            return Err(crate::Error::Custom(
+                "interpolate_properties: expected `:-default` after `${name:`".into(),
+            ));
+        }
+        let default_start = j + 2;
+        let close_offset = bytes[default_start..]
+            .iter()
+            .position(|&b| b == b'}')
+            .ok_or_else(|| {
+                crate::Error::Custom(
+                    "interpolate_properties: unterminated `${name:-default}`".into(),
+                )
+            })?;
+        close = default_start + close_offset;
+        default = Some(&s[default_start..close]);
+    }
+    Ok((name, default, close))
+}
+
+#[cfg(feature = "std")]
+fn resolve_placeholder_value(
+    name: &str,
+    default: Option<&str>,
+    resolve: &dyn Fn(&str) -> ResolveOutcome,
+    missing_action: MissingAction,
+) -> crate::Result<String> {
+    match resolve(name) {
+        ResolveOutcome::Found(v) => Ok(v),
+        ResolveOutcome::Missing => match default {
+            Some(d) => Ok(d.to_owned()),
+            None => match missing_action {
+                MissingAction::Empty => Ok(String::new()),
+                MissingAction::Error(redact) => Err(crate::Error::Custom(if redact {
+                    "interpolate_properties: unknown placeholder `${<redacted>}`".into()
+                } else {
+                    format!("interpolate_properties: unknown placeholder `${{{name}}}`")
+                })),
+            },
+        },
+        ResolveOutcome::Error(e) => Err(e),
+    }
+}
+
+#[cfg(feature = "std")]
 fn expand_placeholders(
     s: &str,
     resolve: &dyn Fn(&str) -> ResolveOutcome,
@@ -1720,71 +1796,8 @@ fn expand_placeholders(
                 touched = true;
                 continue;
             }
-            // Scan the placeholder name. Stop at the first `}` (close)
-            // or `:` (default-value sentinel for `${name:-default}`).
-            let name_start = i + 2;
-            let mut j = name_start;
-            while j < bytes.len() && bytes[j] != b'}' && bytes[j] != b':' {
-                let c = bytes[j];
-                let ok = c.is_ascii_alphanumeric() || c == b'_' || c == b'.';
-                if !ok {
-                    return Err(crate::Error::Custom(format!(
-                        "interpolate_properties: invalid character {:?} in placeholder",
-                        c as char
-                    )));
-                }
-                j += 1;
-            }
-            if j >= bytes.len() {
-                return Err(crate::Error::Custom(
-                    "interpolate_properties: unterminated `${...}` placeholder".into(),
-                ));
-            }
-            if name_start == j {
-                return Err(crate::Error::Custom(
-                    "interpolate_properties: empty placeholder `${}`".into(),
-                ));
-            }
-            let name = &s[name_start..j];
-            // Optional `:-default` fallback: `${name:-default}`.
-            let mut default: Option<&str> = None;
-            let mut close = j;
-            if bytes[j] == b':' {
-                if j + 1 >= bytes.len() || bytes[j + 1] != b'-' {
-                    return Err(crate::Error::Custom(
-                        "interpolate_properties: expected `:-default` after `${name:`".into(),
-                    ));
-                }
-                let default_start = j + 2;
-                let mut k = default_start;
-                while k < bytes.len() && bytes[k] != b'}' {
-                    k += 1;
-                }
-                if k >= bytes.len() {
-                    return Err(crate::Error::Custom(
-                        "interpolate_properties: unterminated `${name:-default}`".into(),
-                    ));
-                }
-                default = Some(&s[default_start..k]);
-                close = k;
-            }
-            let value = match resolve(name) {
-                ResolveOutcome::Found(v) => v,
-                ResolveOutcome::Missing => match default {
-                    Some(d) => d.to_owned(),
-                    None => match missing_action {
-                        MissingAction::Empty => String::new(),
-                        MissingAction::Error(redact) => {
-                            return Err(crate::Error::Custom(if redact {
-                                "interpolate_properties: unknown placeholder `${<redacted>}`".into()
-                            } else {
-                                format!("interpolate_properties: unknown placeholder `${{{name}}}`")
-                            }));
-                        }
-                    },
-                },
-                ResolveOutcome::Error(e) => return Err(e),
-            };
+            let (name, default, close) = parse_placeholder_token(s, i + 2)?;
+            let value = resolve_placeholder_value(name, default, resolve, missing_action)?;
             let next_len = observed_base
                 .saturating_add(out.len())
                 .saturating_add(value.len());
@@ -1802,10 +1815,6 @@ fn expand_placeholders(
             continue;
         }
         // Multi-byte UTF-8 — push the leading byte's char in one go.
-        // SAFETY-equivalent: `s` is a valid &str so byte boundaries
-        // align with char boundaries; we walk byte-by-byte but only
-        // act on ASCII bytes that we know cannot be inside a
-        // multi-byte sequence.
         let c = s[i..].chars().next().expect("char at boundary");
         out.push(c);
         i += c.len_utf8();

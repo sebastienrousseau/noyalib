@@ -28,19 +28,21 @@ restore() { for f in "$@"; do cp "$SNAP/$f" "$f"; done; }
 CUR="v$(grep -m1 '^version = ' crates/noyalib/Cargo.toml | cut -d'"' -f2)"
 save CHANGELOG.md CITATION.cff docs/ECOSYSTEM.md
 # A branch carries its version from creation; the dated CHANGELOG
-# heading is the one release-time step. So mid-cycle the gate may
-# fail ONLY on the missing heading — verify the positive path by
-# inserting a temporary heading, then restoring.
+# heading and the cross-repo ECOSYSTEM.md rating table are the two
+# release-time steps. Mid-cycle the gate may fail only on those two,
+# so verify the positive path by stubbing both and restoring.
 perl -0pi -e "s/^## \[Unreleased\]\n/## [Unreleased]\n\n## [$CUR] - 2099-01-01\n/m" CHANGELOG.md
+perl -pi -e "s/tree \d+\.\d+\.\d+/tree ${CUR#v}/" docs/ECOSYSTEM.md
 if ./scripts/verify-release-versions.sh "$CUR" >/dev/null 2>&1; then ok; else bad "gate rejects the tree's own version ($CUR) even with a heading"; fi
-restore CHANGELOG.md
+restore CHANGELOG.md docs/ECOSYSTEM.md
 # A version nothing agrees on: must fail.
 if ./scripts/verify-release-versions.sh v9.9.9 >/dev/null 2>&1; then bad "gate accepted v9.9.9"; else ok; fi
-# Stale CITATION.cff must fail (restored via git checkout).
+# Stale CITATION.cff must fail.
 perl -0pi -e "s/^## \[Unreleased\]\n/## [Unreleased]\n\n## [$CUR] - 2099-01-01\n/m" CHANGELOG.md
+perl -pi -e "s/tree \d+\.\d+\.\d+/tree ${CUR#v}/" docs/ECOSYSTEM.md
 perl -pi -e 's/^version: .*/version: 0.0.1/' CITATION.cff
 if ./scripts/verify-release-versions.sh "$CUR" >/dev/null 2>&1; then bad "gate missed a stale CITATION.cff"; else ok; fi
-restore CITATION.cff CHANGELOG.md
+restore CITATION.cff CHANGELOG.md docs/ECOSYSTEM.md
 
 # ── ECOSYSTEM.md rating-table freshness ────────────────────────────
 # The weekly scorecard workflow gates the *live* score against a floor
