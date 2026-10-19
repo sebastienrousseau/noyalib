@@ -64,7 +64,7 @@ jobs:
           done
 
       - name: Install Rust
-        uses: dtolnay/rust-toolchain@e2a55d2ffb04f378e9626c28d38b36d230d1e12f
+        uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8
         with:
           toolchain: stable
           components: clippy
@@ -82,7 +82,7 @@ jobs:
 
       # The supply-chain probes score N/A without these; installing them
       # keeps the measured fraction of the rubric honest.
-      - uses: taiki-e/install-action@183e4297cca2404691e9380e1307288dced5c82a # v2.87.25
+      - uses: taiki-e/install-action@1168f6810a3cb30a3514bf5756a3b7f0422c6df8 # v2.87.28
         with:
           tool: cargo-deny,cargo-audit
       # Same install as shared-cargo-vet.yml: the prebuilt cargo-vet is
