@@ -847,7 +847,7 @@ end = "2027-05-09"
 
 [[trusted.serde_yaml_ng]]
 criteria = "safe-to-run"
-user-id = 141900 # Antoine Catton (acatton)
+user-id = 141900
 start = "2024-05-03"
 end = "2027-05-09"
 

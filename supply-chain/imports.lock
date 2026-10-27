@@ -751,13 +751,6 @@ user-id = 3618
 user-login = "dtolnay"
 user-name = "David Tolnay"
 
-[[publisher.serde_yaml_ng]]
-version = "0.10.0"
-when = "2024-05-26"
-user-id = 141900
-user-login = "acatton"
-user-name = "Antoine Catton"
-
 [[publisher.slab]]
 version = "0.4.12"
 when = "2026-01-31"
@@ -829,8 +822,8 @@ user-login = "dtolnay"
 user-name = "David Tolnay"
 
 [[publisher.tokio]]
-version = "1.53.2"
-when = "2026-10-03"
+version = "1.53.3"
+when = "2026-10-13"
 user-id = 6741
 user-login = "Darksonn"
 user-name = "Alice Ryhl"
@@ -869,13 +862,6 @@ when = "2024-09-19"
 user-id = 1139
 user-login = "Manishearth"
 user-name = "Manish Goregaokar"
-
-[[publisher.unsafe-libyaml]]
-version = "0.2.11"
-when = "2024-03-17"
-user-id = 3618
-user-login = "dtolnay"
-user-name = "David Tolnay"
 
 [[publisher.url]]
 version = "2.5.8"
