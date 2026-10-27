@@ -38,8 +38,8 @@ jobs:
         run: |
           set -euo pipefail
           cargo new probe-shim && cd probe-shim
-          cargo add serde_yaml --rename serde_yaml --package noyalib-serde-yaml 2>/dev/null || \
-            printf '\n[dependencies]\nserde_yaml = { package = "noyalib-serde-yaml", version = "*" }\n' >> Cargo.toml
+          # `--rename` keeps the `serde_yaml` name the shim is a drop-in for.
+          cargo add noyalib-serde-yaml --rename serde_yaml
           printf 'fn main() { let v: serde_yaml::Value = serde_yaml::from_str("a: 1").unwrap(); println!("{v:?}"); }\n' > src/main.rs
           cargo run --release
       - name: CLI installs from the registry
@@ -54,6 +54,13 @@ jobs:
     name: clean-room installs (npm)
     runs-on: ubuntu-latest
     steps:
+      # Only the version this checkout declares is read from the repository;
+      # the packages themselves come from the npm registry.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: crates/noyalib/Cargo.toml
+          sparse-checkout-cone-mode: false
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: '22'
