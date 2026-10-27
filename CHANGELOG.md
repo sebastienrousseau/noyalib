@@ -5,6 +5,42 @@ All notable changes to this project are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.0.59] - Unreleased
+
+### Security
+
+- **`tokio` 1.53.3 for RUSTSEC-2026-0386.** `AsyncFd`'s safe
+  constructors violated I/O safety in 1.53.2; `cargo audit` and
+  `cargo deny` failed every build with the `tokio` feature. 1.53.3 is
+  the oldest fixed release on the 1.53 line; `cargo vet` records its
+  trusted publisher.
+
+### Changed
+
+- `serde-saphyr` 2.0.0 for the `compare-saphyr` benchmarks (bench-only,
+  never in the runtime crate), `schemars` 1.2.3, `smallvec` 1.16.3,
+  `arbitrary` 1.5.0, `tokio-util` 0.7.20 and `serde_json` 1.0.154, with
+  `proptest` 1.12.0 in the dev-dependencies, each recorded in
+  `supply-chain/`.
+- **`jsonschema` stays at 0.58.5.** 0.59.0 re-runs validation under
+  every outcome of a regex match it cannot finish (up to 64 runs). With
+  `backtracking_patterns(10_000)`, 200 distinct items that each reach
+  the step limit took 129 s to reject on 0.59.0 against 1.9 s on 0.58.5,
+  which defeats the bound the opt-in documents.
+- CI: the GitHub Actions, CodeQL, Scorecard and Rust toolchain pins move
+  to their current releases.
+
+### Fixed
+
+- The libyaml differential fuzz targets drop inputs containing NEL
+  (U+0085), LS (U+2028) or PS (U+2029): YAML 1.1, which
+  `serde_yaml_ng` follows, treats them as line breaks, and YAML 1.2,
+  which noyalib follows, does not. A regression test pins noyalib's
+  reading.
+- The registry drift net's shim probe no longer misuses
+  `cargo add --package`, and its npm job checks out the version it
+  probes.
+
 ## [v0.0.58] - 2026-10-15
 
 ### Security
