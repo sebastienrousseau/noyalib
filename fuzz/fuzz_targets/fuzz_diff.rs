@@ -53,7 +53,7 @@ fuzz_target!(|data: &[u8]| {
     };
 
     if !numeric_equal(&noya, &syml) && !anchor_name_outside_libyaml(s)
-        && !flow_entry_starts_with_indicator(s) {
+        && !flow_entry_starts_with_indicator(s) && !yaml_1_1_line_break(s) {
         // serde_yaml_ng vs noyalib divergence — abort so libfuzzer
         // saves the input as a unique crash artefact.
         let n = serde_json::to_string(&noya).unwrap_or_default();
@@ -168,6 +168,17 @@ fn lookup_key<'m>(
         // The block-scalar clip quirk (see `numeric_equal`) on a key.
         .or_else(|| k.strip_suffix('\n').and_then(|s| m.get(s)))
         .or_else(|| m.get(&format!("{k}\n")))
+}
+
+/// Known libyaml quirk (serde_yaml_ng and serde_yaml): it keeps the
+/// YAML 1.1 line breaks, so NEL (U+0085), LS (U+2028) and PS (U+2029)
+/// end a line, and `\u{85}` reads as null and `a\u{85}` as "a". YAML 1.2
+/// §5.4 makes only LF and CR line breaks; those three are ordinary
+/// printable characters, so noyalib keeps them in the scalar. Such
+/// inputs are dropped rather than modelled. noyalib's reading is pinned
+/// in tests/regressions/competitor_bugs.rs.
+fn yaml_1_1_line_break(s: &str) -> bool {
+    s.contains(['\u{85}', '\u{2028}', '\u{2029}'])
 }
 
 /// Known serde_yaml_ng quirk: like libyaml, it allows only
