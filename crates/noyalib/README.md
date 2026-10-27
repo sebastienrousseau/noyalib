@@ -44,14 +44,14 @@
 
 ```toml
 [dependencies]
-noyalib = "0.0.58"
+noyalib = "0.0.59"
 ```
 
 `no_std` (alloc-only) builds:
 
 ```toml
 [dependencies]
-noyalib = { version = "0.0.58", default-features = false }
+noyalib = { version = "0.0.59", default-features = false }
 ```
 
 Core data binding (`from_str`, `to_string`, `Value`, schemas) and
