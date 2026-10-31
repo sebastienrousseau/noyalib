@@ -1684,7 +1684,7 @@ value.interpolate_properties_lossy(&map);
 
 The four entry points, identical across every repo in the family:
 
-- **[User Manual](https://sebastienrousseau.github.io/noyalib/manual/)** — the rendered book: user guide, migrations, architecture, policies, ADRs
+- **[User Manual](https://doc.noyalib.com/manual/)** - the rendered book: user guide, migrations, architecture, policies, ADRs
 - **[API reference](https://docs.rs/noyalib)** — rustdoc on docs.rs
 - **[Developer docs](../DEVELOPMENT.md)** — toolchain, task map, reproducing every CI gate locally
 - **[Ecosystem map](ECOSYSTEM.md)** — the six crates, the lockstep model, the scorecard

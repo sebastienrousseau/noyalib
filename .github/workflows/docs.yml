@@ -67,22 +67,29 @@ jobs:
           scripts/check-docs-links.sh
 
       - name: Assemble the Pages site
-        # Site layout: /          — landing page linking both halves
-        #              /noyalib/  — rustdoc (path unchanged from the
-        #                           rustdoc-only era, so old links hold)
-        #              /manual/   — the mdBook User Manual
+        # Site layout: /          - redirects to /noyalib/index.html
+        #              /noyalib/  - rustdoc API reference
+        #              /manual/   - the mdBook User Manual
         run: |
           set -euo pipefail
           mkdir -p site
           cp -R target-docs-pages/doc/. site/
           cp -R target-book site/manual
+          printf 'doc.noyalib.com\n' > site/CNAME
+          touch site/.nojekyll
           cat > site/index.html <<'HTML'
-          <!doctype html><meta charset="utf-8">
-          <title>noyalib documentation</title>
-          <style>body{font-family:system-ui;max-width:38rem;margin:4rem auto;line-height:1.6;padding:0 1rem}</style>
-          <h1>noyalib documentation</h1>
-          <p><a href="manual/">The noyalib Manual</a> — user guide, migrations, architecture, policies, ADRs.</p>
-          <p><a href="noyalib/">API reference</a> — rustdoc for the current main branch (releases: <a href="https://docs.rs/noyalib">docs.rs/noyalib</a>).</p>
+          <!DOCTYPE html>
+          <html lang="en">
+          <head>
+            <meta charset="utf-8">
+            <title>noyalib documentation</title>
+            <meta http-equiv="refresh" content="0; url=noyalib/index.html">
+            <link rel="canonical" href="noyalib/index.html">
+          </head>
+          <body>
+            <p>Redirecting to <a href="noyalib/index.html">the noyalib API reference</a> (<a href="manual/">User Manual</a>).</p>
+          </body>
+          </html>
           HTML
 
       - name: Setup Pages

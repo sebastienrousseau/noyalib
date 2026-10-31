@@ -303,7 +303,7 @@ SLSA provenance.
 
 ## Documentation
 
-- [User Manual](https://sebastienrousseau.github.io/noyalib/manual/)
+- [User Manual](https://doc.noyalib.com/manual/)
 - [API reference](https://docs.rs/noyalib)
 - [Developer documentation](DEVELOPMENT.md)
 - [Ecosystem map](docs/ECOSYSTEM.md)

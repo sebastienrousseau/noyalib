@@ -20,5 +20,5 @@ create-missing = false
 [output.html]
 git-repository-url = "https://github.com/sebastienrousseau/noyalib"
 edit-url-template = "https://github.com/sebastienrousseau/noyalib/edit/main/docs/{path}"
-site-url = "/noyalib/manual/"
+site-url = "/manual/"
 
