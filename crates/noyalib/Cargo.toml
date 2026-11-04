@@ -159,7 +159,7 @@ figment = { version = "0.10", optional = true, features = ["env"] }
 # so an `--all-features` build doesn't pull in the saphyr crate
 # (which builds on the 1.89 MSRV but is still extra deps the rest of
 # the workspace doesn't need).
-serde-saphyr = { version = "1.1", optional = true }
+serde-saphyr = { version = "2.0", optional = true }
 # Parallel multi-document parsing — pulled in only when the
 # `parallel` feature is on. Rayon is the de-facto safe data-parallel
 # Rust crate and itself uses well-vetted unsafe internally; the
