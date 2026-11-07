@@ -5,6 +5,26 @@ All notable changes to this project are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.0.59] - Unreleased
+
+### Added
+
+- **`cst::Document::grow_value`: the scalar-to-collection re-shape as
+  its own opt-in route.** `set_value`'s collection arm (#328) replaces
+  a collection in the node's own style but refuses the crossing from a
+  scalar, naming the unguarded fragment API as the remedy. `grow_value`
+  provides the crossing typed and verified: the collection is rendered
+  block at the document's `indent_unit` (flow inside flow collections),
+  placed on its own lines one indent step past the key when the scalar
+  sits on the key's line — a trailing comment stays on the key's line,
+  the #333 move in the same direction — or in place at the scalar's own
+  column on own-line and sequence-item sites. The candidate must load
+  back as the document with exactly the one path replaced before a byte
+  changes, the same oracle the collection arm runs. Alias tokens,
+  property-led scalars, shared anchors (#338), and unsupported layouts
+  are refused with the source left byte-identical, and `set_value`'s
+  refusal now names `grow_value` as the remedy.
+
 ## [v0.0.58] - 2026-10-15
 
 ### Security
