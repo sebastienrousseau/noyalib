@@ -960,8 +960,8 @@ impl Document {
                 Some(Value::Sequence(_) | Value::Mapping(_))
             ) {
                 return Err(Error::Parse(
-                    "set_value cannot replace a scalar with a collection (use `set` with a \
-                     fragment)"
+                    "set_value cannot replace a scalar with a collection (use `grow_value` \
+                     to re-shape the entry, or `set` with a fragment)"
                         .into(),
                 ));
             }
@@ -1063,6 +1063,137 @@ impl Document {
             )));
         }
         self.replace_span(s, e, &fragment)
+    }
+
+    /// Grow the scalar at `path` into a collection — the one shape
+    /// [`set_value`](Self::set_value) refuses, provided as its own
+    /// opt-in route (#328's follow-up). The collection is rendered
+    /// block at the document's [`indent_unit`](Self::indent_unit), or
+    /// flow when the site sits inside a flow collection, and the
+    /// candidate is verified to load back as the document with exactly
+    /// this path replaced before a byte changes.
+    ///
+    /// Placement follows where the scalar sits:
+    ///
+    /// - **On its mapping key's line** (`tags: solo`) — a block
+    ///   collection cannot start there, so it moves onto its own
+    ///   lines, one indent step past the key; a comment trailing the
+    ///   scalar stays on the key's line. An implicit null (`tags:`)
+    ///   takes the same placement.
+    /// - **On its own line, or a sequence item's** (`k:` / `  solo`,
+    ///   `- solo`) — the collection takes the scalar's place at the
+    ///   scalar's own column; a block collection may begin on a `- `
+    ///   line.
+    /// - **Inside a flow collection** — rendered flow, in place.
+    ///
+    /// A collection already at `path` is #328's own case and is
+    /// delegated to it, so a caller writing collections can use this
+    /// method alone; a value **equal** to the current one is a no-op
+    /// that leaves the bytes untouched.
+    ///
+    /// ```
+    /// use noyalib::cst::parse_document;
+    /// use noyalib::{Value, from_str};
+    ///
+    /// let mut doc = parse_document("tags: solo\nname: x\n").unwrap();
+    /// let tags: Value = from_str("[a, b]").unwrap();
+    /// doc.grow_value("tags", &tags).unwrap();
+    /// assert_eq!(doc.to_string(), "tags:\n  - a\n  - b\nname: x\n");
+    /// ```
+    ///
+    /// # Errors
+    ///
+    /// - The value is a scalar — writing one is
+    ///   [`set_value`](Self::set_value)'s job.
+    /// - Path not found.
+    /// - The entry's value is a `*name` alias token: a collection
+    ///   grown in a reference's place is not an in-place edit.
+    /// - The target sits inside an anchored value with live alias
+    ///   references (#338).
+    /// - The scalar carries a `&anchor` / `!tag` property, which the
+    ///   collection would drop.
+    /// - The scalar's source layout is not one of the shapes above.
+    /// - The spliced candidate does not re-parse, or does not load
+    ///   back as the value given; the source is left byte-identical.
+    pub fn grow_value(&mut self, path: &str, value: &Value) -> Result<()> {
+        if !matches!(value, Value::Sequence(_) | Value::Mapping(_)) {
+            return Err(Error::Parse(
+                "grow_value writes a collection; use `set_value` for a scalar value".into(),
+            ));
+        }
+        let ((s, e), alias_target) = self.write_span_resolved(path)?;
+        refuse_collection_over_alias_token(path, alias_target)?;
+        let segments = parse_query_path(path);
+        let (expected, current_is_collection) = {
+            self.ensure_cache();
+            let cache = self.cache.borrow();
+            let (root, _) = cache.as_ref().expect("ensure_cache populated");
+            let current = typed_value_at(root, &segments);
+            if current == Some(value) {
+                return Ok(());
+            }
+            let is_collection = matches!(current, Some(Value::Sequence(_) | Value::Mapping(_)));
+            let mut expected = root.clone();
+            match path_value_mut(&mut expected, &segments) {
+                Some(slot) => *slot = value.clone(),
+                None => return Err(Error::Parse(format!("path not found: {path}"))),
+            }
+            (expected, is_collection)
+        };
+        if current_is_collection {
+            return self.replace_collection_value(path, value, s, e);
+        }
+        self.refuse_inside_aliased_anchor("grow_value", path, s)?;
+        // The write span starts at a leading `&anchor` / `!tag`
+        // property when the scalar carries one; a collection written
+        // in its place would drop it, and an anchor may be what other
+        // entries refer to.
+        if matches!(self.source.as_bytes().get(s), Some(b'&' | b'!')) {
+            return Err(Error::Parse(format!(
+                "grow_value cannot replace the scalar at `{path}`: it carries an anchor \
+                 or tag property, which the collection written in its place would drop"
+            )));
+        }
+        if in_flow_collection(&self.green, s) {
+            let fragment = self.render_flow_collection(value)?;
+            return self.collection_oracle_splice("grow_value", path, &expected, s, e, &fragment);
+        }
+        let line_start = start_of_line(&self.source, s);
+        let lead = self.source[line_start..s].trim_end_matches([' ', '\t']);
+        if lead.is_empty() || (lead.ends_with('-') && s != e) {
+            // The scalar sits on its own line, or on a `- ` item line:
+            // a block collection may begin at either, so it takes the
+            // scalar's place at the scalar's own column. (An *implicit*
+            // item — a bare `-` — has no byte for the collection to
+            // start on; it falls through to the layout refusal.)
+            let fragment = self.render_block_collection(value, s - line_start)?;
+            return self.collection_oracle_splice("grow_value", path, &expected, s, e, &fragment);
+        }
+        if !lead.ends_with(':') {
+            return Err(Error::Parse(format!(
+                "grow_value cannot replace the scalar at `{path}`: its source layout \
+                 is not supported"
+            )));
+        }
+        // The scalar sits on its mapping key's line, where a block
+        // collection cannot start: it moves onto its own lines, one
+        // indent step past the key. The splice starts right after the
+        // `:`, consuming the separator space; a comment trailing the
+        // scalar is kept on the key's line, where YAML permits one
+        // (the #333 move, in the same direction).
+        let sep_start = line_start + lead.len();
+        let column = key_column(&self.source, line_start) + self.indent_unit();
+        let rendered = self.render_block_collection(value, column)?;
+        let (kept_comment, e) = match trailing_comment_span(&self.source, e) {
+            Some((comment_start, line_end)) => (
+                format!(" {}", &self.source[comment_start..line_end]),
+                line_end,
+            ),
+            None => (String::new(), e),
+        };
+        let pad = " ".repeat(column);
+        let fragment = format!("{kept_comment}\n{pad}{rendered}");
+        self.collection_oracle_splice("grow_value", path, &expected, sep_start, e, &fragment)
     }
 
     /// Set or create the entry addressed by a prevalidated [`QueryPath`].
@@ -6483,6 +6614,25 @@ pub(super) fn format_block_literal(s: &str, entry_col: usize) -> String {
 /// on the line that contains `pos` in `source`. For
 /// `  version: 0.0.1\n` with `pos` at the value scalar's start,
 /// returns 2.
+/// The column of the mapping key on the line starting at `line_start`:
+/// past the indentation and past any `- ` sequence indicators, which
+/// own the columns before a key on a `- key: value` line.
+fn key_column(source: &str, line_start: usize) -> usize {
+    let bytes = source.as_bytes();
+    let mut i = line_start;
+    loop {
+        while i < bytes.len() && bytes[i] == b' ' {
+            i += 1;
+        }
+        if i < bytes.len() && bytes[i] == b'-' && matches!(bytes.get(i + 1), Some(b' ' | b'\t')) {
+            i += 1;
+            continue;
+        }
+        break;
+    }
+    i - line_start
+}
+
 fn entry_indent_column(source: &str, pos: usize) -> usize {
     let bytes = source.as_bytes();
     let mut line_start = pos.min(bytes.len());

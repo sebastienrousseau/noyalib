@@ -30,6 +30,7 @@ mod cst_flow_inserts;
 mod cst_format;
 mod cst_format_suite;
 mod cst_fragment_rollback;
+mod cst_grow_value;
 mod cst_incremental;
 mod cst_indent_detection;
 mod cst_inline_comment;
