@@ -5,6 +5,23 @@ All notable changes to this project are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.0.59] - Unreleased
+
+### Fixed
+
+- **`cst::Document::insert_entry` / `insert_entry_value` now work on a
+  sequence-item mapping whose only key sits on the `- ` line** (#499).
+  The anchor column was taken from the line's leading spaces, which on
+  `  - name: web` is the dash's column rather than the key's, so the
+  new entry was spliced where the parser expects another `- ` item
+  (or, in the indentless form, at the parent mapping's level, caught by
+  the integrity oracle). `column_of_key_at` now counts past `- `
+  sequence indicators — nested `- - ` included — in both its inline and
+  nested-block arms, so a sibling entry lands under the key:
+  `servers:\n  - name: web` takes `port: 80` at column 4. The same
+  correction reaches the existing-key rewrite and the own-line
+  replacement column, which anchored on the dash the same way.
+
 ## [v0.0.58] - 2026-10-15
 
 ### Security

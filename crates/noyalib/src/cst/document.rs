@@ -5564,16 +5564,21 @@ fn detect_indent_unit(source: &str) -> usize {
 /// Two layouts to handle:
 ///
 /// - **Inline:** `key: value` — key and value share a line. The key's
-///   column is the leading-space count on that line.
+///   column is where the key token starts on that line: past the
+///   leading spaces **and past any `- ` sequence indicators**, which
+///   own the columns before a key on a `- key: value` item line (#499).
+///   On `  - name: web` the key's column is 4, not the dash's 2 — a
+///   sibling entry spliced at 2 lands where the parser expects another
+///   `- ` item.
 /// - **Nested block:** `key:\n  child: …` — the value's first byte
 ///   sits on a child line, indented past the key. The key's column is
-///   the leading-space count of an *earlier* non-blank/non-comment
-///   line whose indent is *smaller* than the value-line's indent.
+///   found on an *earlier* non-blank/non-comment line whose indent is
+///   *smaller* than the value-line's indent, counting `- ` indicators
+///   on that line the same way.
 ///
 /// Walks backwards from `value_start`, skipping blank and comment
-/// lines, and returns the first content line's column that is shallower
-/// than the value line's column. Falls back to the value line's own
-/// column for the inline case.
+/// lines. Falls back to the value line's own column for the inline
+/// case.
 ///
 /// Returns `None` if `value_start` is out of range.
 fn column_of_key_at(source: &str, value_start: usize) -> Option<usize> {
@@ -5601,6 +5606,22 @@ fn column_of_key_at(source: &str, value_start: usize) -> Option<usize> {
     let value_line_start = line_start(value_start);
     let value_col = leading_spaces(value_line_start);
 
+    // Where a key token can start on the line beginning at `start` with
+    // `col` leading spaces: past any `- ` sequence indicators (nested
+    // `- - ` included). Each indicator owns its column — an entry
+    // spliced there reads as another sequence item, not as the key's
+    // sibling (#499).
+    let past_dash_indicators = |start: usize, col: usize| -> usize {
+        let mut i = start + col;
+        while i + 1 < bytes.len() && bytes[i] == b'-' && matches!(bytes[i + 1], b' ' | b'\t') {
+            i += 1;
+            while i < bytes.len() && matches!(bytes[i], b' ' | b'\t') {
+                i += 1;
+            }
+        }
+        i - start
+    };
+
     // If there is real content (not just whitespace) on the value line
     // at or before `value_start`, the key is inline on this same line.
     let mut probe = value_line_start + value_col;
@@ -5614,7 +5635,7 @@ fn column_of_key_at(source: &str, value_start: usize) -> Option<usize> {
         probe += 1;
     }
     if inline_content {
-        return Some(value_col);
+        return Some(past_dash_indicators(value_line_start, value_col));
     }
 
     // Nested case: walk backward by line, skipping blanks and
@@ -5635,7 +5656,7 @@ fn column_of_key_at(source: &str, value_start: usize) -> Option<usize> {
         let is_blank = first_content >= after_content;
         let is_comment = !is_blank && bytes[first_content] == b'#';
         if !is_blank && !is_comment && prev_col < value_col {
-            return Some(prev_col);
+            return Some(past_dash_indicators(prev_start, prev_col));
         }
         if prev_start == 0 {
             return Some(value_col);
