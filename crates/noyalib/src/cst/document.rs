@@ -5582,14 +5582,6 @@ fn column_of_key_at(source: &str, value_start: usize) -> Option<usize> {
         return None;
     }
 
-    // Locate the line that contains value_start.
-    let line_start = |pos: usize| -> usize {
-        let mut s = pos;
-        while s > 0 && bytes[s - 1] != b'\n' {
-            s -= 1;
-        }
-        s
-    };
     let leading_spaces = |start: usize| -> usize {
         let mut c = 0;
         while start + c < bytes.len() && bytes[start + c] == b' ' {
@@ -5598,7 +5590,7 @@ fn column_of_key_at(source: &str, value_start: usize) -> Option<usize> {
         c
     };
 
-    let value_line_start = line_start(value_start);
+    let value_line_start = start_of_line(source, value_start);
     let value_col = leading_spaces(value_line_start);
 
     // If there is real content (not just whitespace) on the value line
