@@ -46,6 +46,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Fixed
 
+- The release version audit checks the core's measured scorecard row and
+  rejects a missing core measurement. Older published satellite versions
+  no longer invalidate a fresh core table during release preparation.
 - **`plain_scalar_strings` preserves plain scalar spelling on AST
   fallback** (#494, reported by @or1can). Typed strings and characters
   read `3.10`, `0x1F`, `007`, and written null or boolean spellings from

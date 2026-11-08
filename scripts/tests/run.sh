@@ -7,7 +7,7 @@
 # known-good and known-bad fixtures. Adapted from the pattern in
 # Takazudo/zudo-front-builder's scripts/__tests__.
 set -uo pipefail
-cd "$(git rev-parse --show-toplevel)"
+cd "$(git rev-parse --show-toplevel)" || exit
 pass=0; fail=0
 ok()  { pass=$((pass+1)); }
 bad() { fail=$((fail+1)); echo "  [FAIL] $1" >&2; }
@@ -54,6 +54,31 @@ perl -pi -e 's/tree \d+\.\d+\.\d+/tree 0.0.1/' docs/ECOSYSTEM.md
 if ./scripts/verify-release-versions.sh "$CUR" >/dev/null 2>&1; then bad "gate missed a stale ECOSYSTEM.md rating table"; else ok; fi
 restore docs/ECOSYSTEM.md CHANGELOG.md
 
+# A core release is prepared before the satellites can pin its unpublished
+# version. Their main-branch measurements must not make a fresh core row stale.
+save CHANGELOG.md docs/ECOSYSTEM.md
+perl -0pi -e "s/^## \\[Unreleased\\]\\n/## [Unreleased]\\n\\n## [$CUR] - 2099-01-01\\n/m" CHANGELOG.md
+python3 - "${CUR#v}" <<'PY'
+import pathlib, re, sys
+p = pathlib.Path('docs/ECOSYSTEM.md')
+s = p.read_text()
+s = re.sub(r'tree \d+\.\d+\.\d+', 'tree 0.0.1', s)
+s = re.sub(r'(\| `noyalib` \| crates_io_current \| tree )\d+\.\d+\.\d+',
+           lambda m: m[1] + sys.argv[1], s)
+p.write_text(s)
+PY
+if ./scripts/verify-release-versions.sh "$CUR" >/dev/null 2>&1; then ok; else bad "fresh core scorecard row rejected because satellites are older"; fi
+# Removing the core row cannot turn a stale table into a passing audit.
+python3 - "${CUR#v}" <<'PY'
+import pathlib, re, sys
+p = pathlib.Path('docs/ECOSYSTEM.md')
+s = re.sub(r'tree \d+\.\d+\.\d+', 'tree ' + sys.argv[1], p.read_text())
+p.write_text(''.join(line for line in s.splitlines(keepends=True)
+                     if not line.startswith('| `noyalib` | crates_io_current |')))
+PY
+if ./scripts/verify-release-versions.sh "$CUR" >/dev/null 2>&1; then bad "gate accepted a scorecard missing the core row"; else ok; fi
+restore docs/ECOSYSTEM.md CHANGELOG.md
+
 # ── check-docs-links ───────────────────────────────────────────────
 if ./scripts/check-docs-links.sh >/dev/null 2>&1; then ok; else bad "link gate rejects the clean tree"; fi
 echo '[broken](does-not-exist.md)' > docs/__selftest_broken.md
@@ -76,19 +101,24 @@ cmdfix() { printf '%b' "$1" > docs/__selftest_cmd.md; git add -N docs/__selftest
 cmdclean() { git reset -q -- docs/__selftest_cmd.md 2>/dev/null; command rm -f docs/__selftest_cmd.md; }
 if ./scripts/check-documented-commands.sh >/dev/null 2>&1; then ok; else bad "command gate rejects the clean tree"; fi
 # A retired cargo subcommand in a fenced block.
+# shellcheck disable=SC2016 # Backticks are literal Markdown fixture text.
 cmdfix '# t\n\n```sh\ncargo notarealsubcommand --flag\n```\n'
 if ./scripts/check-documented-commands.sh >/dev/null 2>&1; then bad "command gate missed an unknown cargo subcommand"; else ok; fi
 # ...and in an inline code span, which is where the real defect lived:
 # `cargo xtask pgo-build` sat in a README *paragraph*, so a gate that
 # reads only fenced blocks passes while the command cannot run.
+# shellcheck disable=SC2016 # Backticks are literal Markdown fixture text.
 cmdfix '# t\n\nRun `cargo notarealsubcommand build` to do the thing.\n'
 if ./scripts/check-documented-commands.sh >/dev/null 2>&1; then bad "command gate missed an inline-span command"; else ok; fi
 # A missing make target and a missing script.
+# shellcheck disable=SC2016 # Backticks are literal Markdown fixture text.
 cmdfix '# t\n\n```sh\nmake __no_such_target__\n```\n'
 if ./scripts/check-documented-commands.sh >/dev/null 2>&1; then bad "command gate missed a missing make target"; else ok; fi
+# shellcheck disable=SC2016 # Backticks are literal Markdown fixture text.
 cmdfix '# t\n\n```sh\n./scripts/__no_such_script__.sh\n```\n'
 if ./scripts/check-documented-commands.sh >/dev/null 2>&1; then bad "command gate missed a missing script"; else ok; fi
 # Prose in a comment must NOT be read as a command.
+# shellcheck disable=SC2016 # Backticks are literal Markdown fixture text.
 cmdfix '# t\n\n```sh\n# cargo will fetch the index first\ncargo build\n```\n'
 if ./scripts/check-documented-commands.sh >/dev/null 2>&1; then ok; else bad "command gate read a shell comment as an instruction"; fi
 cmdclean
