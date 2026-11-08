@@ -8,6 +8,11 @@ use std::hash::{Hash, Hasher as _};
 
 use noyalib::{Mapping, MappingAny, Value, from_str, to_string};
 
+#[cfg(feature = "std")]
+use indexmap::IndexMap;
+#[cfg(not(feature = "std"))]
+type IndexMap<K, V> = indexmap::IndexMap<K, V, rustc_hash::FxBuildHasher>;
+
 // ============================================================================
 // Basic Operations
 // ============================================================================
@@ -366,9 +371,7 @@ fn test_mapping_any_from_mapping() {
 
 #[test]
 fn test_mapping_any_from_index_map() {
-    use indexmap::IndexMap;
-
-    let mut inner = IndexMap::new();
+    let mut inner = IndexMap::<Value, Value>::default();
     let _ = inner.insert(Value::from("key"), Value::from("value"));
 
     let map = MappingAny::from(inner);
@@ -377,8 +380,6 @@ fn test_mapping_any_from_index_map() {
 
 #[test]
 fn test_mapping_any_into_index_map() {
-    use indexmap::IndexMap;
-
     let mut map = MappingAny::new();
     let _ = map.insert(Value::from("key"), Value::from("value"));
 
@@ -627,9 +628,7 @@ fn test_mapping_any_into_inner() {
 
 #[test]
 fn test_mapping_any_from_inner() {
-    use indexmap::IndexMap;
-
-    let mut inner = IndexMap::new();
+    let mut inner = IndexMap::<Value, Value>::default();
     let _ = inner.insert(Value::from("key"), Value::from("value"));
 
     let map = MappingAny::from_inner(inner);

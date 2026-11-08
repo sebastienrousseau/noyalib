@@ -1,4 +1,4 @@
-//! Thread-local span context for wiring source locations into `Spanned<T>`.
+//! Source context for typed deserialization and `Spanned<T>` locations.
 
 // SPDX-License-Identifier: MIT OR Apache-2.0
 // Copyright (c) 2026 Noyalib. All rights reserved.
@@ -7,6 +7,8 @@ use crate::error::Location;
 use crate::prelude::*;
 #[cfg(not(feature = "std"))]
 use alloc::rc::Rc;
+#[cfg(not(feature = "std"))]
+use core::cell::Cell;
 use core::cell::OnceCell;
 #[cfg(feature = "std")]
 use core::cell::RefCell;
@@ -19,8 +21,8 @@ use crate::value::Value;
 
 /// Parallel tree of source spans, built alongside `Value` during loading.
 ///
-/// Built on the `std` path and for opt-in source-aware typed fallback
-/// on `no_std`. Ordinary `no_std` and `Value` loads remain span-free.
+/// Built for typed AST fallback and typed document streams on every target.
+/// Untyped `no_std` document loads and the `Value` fast path remain span-free.
 #[derive(Debug, Clone)]
 pub(crate) enum SpanTree {
     /// A leaf node (scalar, alias, null).
@@ -69,6 +71,9 @@ pub struct SpanContext {
     /// the source range of the key as written. A typed target reads the
     /// written text, as it does on the streaming path.
     key_texts: FxHashMap<usize, (usize, usize)>,
+    /// A failed node belongs to this deserialization on alloc-only targets.
+    #[cfg(not(feature = "std"))]
+    error_node: Cell<Option<usize>>,
 }
 
 /// A lazily built [`LineIndex`], shareable between the span contexts of
@@ -94,6 +99,28 @@ impl SpanContext {
             source,
             lines,
             key_texts: FxHashMap::default(),
+            #[cfg(not(feature = "std"))]
+            error_node: Cell::new(None),
+        }
+    }
+
+    /// Record the node whose typed error just acquired a source location.
+    pub(crate) fn record_error_node(&self, addr: usize) {
+        #[cfg(feature = "std")]
+        tls::ERROR_NODE.with(|cell| cell.set(Some(addr)));
+        #[cfg(not(feature = "std"))]
+        self.error_node.set(Some(addr));
+    }
+
+    /// Consume the failed node, including when an untagged probe succeeded.
+    pub(crate) fn take_error_node(&self) -> Option<usize> {
+        #[cfg(feature = "std")]
+        {
+            tls::ERROR_NODE.with(core::cell::Cell::take)
+        }
+        #[cfg(not(feature = "std"))]
+        {
+            self.error_node.take()
         }
     }
 
@@ -214,18 +241,6 @@ mod tls {
         /// document's error.
         pub(super) static ERROR_NODE: Cell<Option<usize>> = const { Cell::new(None) };
     }
-}
-
-/// Record the address of the node whose error `wrap_err` just wrapped.
-#[cfg(feature = "std")]
-pub(crate) fn record_error_node(addr: usize) {
-    tls::ERROR_NODE.with(|cell| cell.set(Some(addr)));
-}
-
-/// Take (and clear) the most recently recorded failing-node address.
-#[cfg(feature = "std")]
-pub(crate) fn take_error_node() -> Option<usize> {
-    tls::ERROR_NODE.with(core::cell::Cell::take)
 }
 
 /// RAII guard that owns the span context and clears the thread-local on

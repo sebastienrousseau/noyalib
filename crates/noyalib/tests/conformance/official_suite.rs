@@ -363,8 +363,11 @@ fn close_after(probe: &str) -> &'static str {
 /// Check one stream: the CST entry points and the typed loaders must
 /// all reject it at byte `expected` of the stream.
 fn check_stream(label: &str, stream: &str, expected: usize, failures: &mut Vec<String>) {
+    use noyalib::Location;
+    #[cfg(feature = "std")]
+    use noyalib::ParserConfig;
+    #[cfg(feature = "std")]
     use noyalib::cst::{parse_stream, parse_stream_with_config};
-    use noyalib::{Location, ParserConfig};
 
     let want = Location::from_index(stream, expected);
     let mut located = |name: &str, res: Result<(), noyalib::Error>| -> Option<Location> {
@@ -383,7 +386,9 @@ fn check_stream(label: &str, stream: &str, expected: usize, failures: &mut Vec<S
         }
     };
 
+    #[cfg(feature = "std")]
     let cst = located("cst::parse_stream", parse_stream(stream).map(drop));
+    #[cfg(feature = "std")]
     let cst_cfg = located(
         "cst::parse_stream_with_config",
         parse_stream_with_config(stream, &ParserConfig::new()).map(drop),
@@ -395,7 +400,9 @@ fn check_stream(label: &str, stream: &str, expected: usize, failures: &mut Vec<S
     let untyped = located("load_all", noyalib::load_all(stream).map(drop));
 
     for (name, loc) in [
+        #[cfg(feature = "std")]
         ("cst::parse_stream", cst),
+        #[cfg(feature = "std")]
         ("cst::parse_stream_with_config", cst_cfg),
         ("load_all_as::<Value>", typed),
         ("load_all", untyped),
@@ -414,15 +421,19 @@ fn check_stream(label: &str, stream: &str, expected: usize, failures: &mut Vec<S
         }
     }
 
-    // The rendered error points at the stream line, not the document
-    // line.
-    if let Err(err) = parse_stream(stream) {
+    #[cfg(feature = "std")]
+    check_rendered_stream_error(label, stream, want.line(), failures);
+}
+
+/// The rendered error points at the stream line, not the document line.
+#[cfg(feature = "std")]
+fn check_rendered_stream_error(label: &str, stream: &str, line: usize, failures: &mut Vec<String>) {
+    if let Err(err) = noyalib::cst::parse_stream(stream) {
         let rendered = err.render(stream);
-        let line_no = format!("{} |", want.line());
+        let line_no = format!("{line} |");
         if !rendered.contains(&line_no) {
             failures.push(format!(
-                "{label}: rendered error does not show stream line {}:\n{rendered}",
-                want.line()
+                "{label}: rendered error does not show stream line {line}:\n{rendered}"
             ));
         }
     }

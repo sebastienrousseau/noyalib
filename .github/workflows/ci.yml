@@ -177,10 +177,20 @@ jobs:
     uses: ./.github/workflows/shared-docs-lint.yml
 
   alloc-scalar-source:
-    name: Typed scalar source text (alloc-only)
+    name: Portable YAML behavior (alloc-only, ${{ matrix.profile }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - profile: core
+            features: ""
+          - profile: accelerated
+            features: fast-int,fast-float
+          - profile: portable
+            features: fast-int,fast-float,strict-deserialise,lossless-float,lossless-u64,include,compat-serde-yaml,sval,simd,wasm-opt,nightly-simd
     env:
-      CARGO_TARGET_DIR: ${{ github.workspace }}/target-alloc-scalar-source
+      CARGO_TARGET_DIR: ${{ github.workspace }}/target-alloc-${{ matrix.profile }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -190,9 +200,12 @@ jobs:
           toolchain: stable
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
         with:
-          workspaces: ". -> target-alloc-scalar-source"
-          key: alloc-scalar-source
-      - run: cargo test --locked --no-default-features --test issue_494
+          workspaces: ". -> target-alloc-${{ matrix.profile }}"
+          key: alloc-${{ matrix.profile }}
+      - run: >-
+          cargo test --locked --no-default-features
+          --features "${{ matrix.features }}"
+          --test no_std --test issue_494
 
   fuzz-diff:
     # Dogfooded from shared-fuzz-diff.yml. Runs the caller's

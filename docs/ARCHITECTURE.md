@@ -270,12 +270,13 @@ pub struct Spanned<T> {
 `Location` carries `(line, column, byte_offset)` — 1-indexed
 lines and columns, 0-indexed bytes (matching rustc's idioms).
 
-Span tracking is thread-local; the AST loader fills a span map
-during parsing, then `Spanned<T>` deserialise reads from it
-during the typed-deserialise pass. Cleared between calls.
-
-The thread-local is the reason `Spanned<T>` requires the `std`
-feature — `no_std` builds use the regular `T` directly.
+The AST loader fills a span map during parsing. Typed deserialization
+receives that context explicitly, so `Spanned<T>` retains real locations
+in both `std` and `no_std` builds. Hosted builds also install a scoped
+thread-local context. Alloc-only builds track failing nodes in the local
+context so field-path diagnostics need no thread-local storage. The direct
+`Value` fast path uses the span-free loader. See [no_std support](NO_STD.md)
+for portable features and target requirements.
 
 ## Serialiser
 

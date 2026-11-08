@@ -177,8 +177,7 @@ impl<'de> Deserializer<'de> {
         // error returns through the `other` arm above), so the recorded
         // node is the one the failure is about. `from_str` walks the
         // root value to turn it into a field path (#353).
-        #[cfg(feature = "std")]
-        span_context::record_error_node(addr);
+        ctx.record_error_node(addr);
         Err(Error::deserialize_at(message, &ctx.source, span.0))
     }
 }

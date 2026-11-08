@@ -47,12 +47,18 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   the scanner instead of formatting resolved values. The fix covers
   spanned targets, aliases, tagged and merged fields, typed streams,
   and readers.
-  Alloc-only typed fallback retains source spans when this option is on;
-  ordinary alloc-only loads and the direct `Value` fast path stay span-free.
+  Alloc-only typed fallback retains source spans; untyped document loads
+  and the direct `Value` fast path stay span-free.
   This changes parse behavior for the enabled option, including rejecting
   `007` as a `char` rather than silently returning `'7'`.
   Alias expansion charges the source bytes that coercion can restore,
   including inside anchored collections.
+- **Alloc-only typed loads now retain source locations and error field
+  paths**, including `Spanned<T>` and typed multi-document loads with default
+  scalar settings. Shared portable tests run with core, accelerated, and
+  combined features; bare-metal gates also check the combined portable set.
+  `libm` remains mandatory to preserve `--no-default-features` compatibility
+  without introducing a required math feature (#500).
 - **CST entry insertion beneath a sequence-item key now uses the key's
   column** (#499, #506, contributed by @zoosky). `insert_entry` and
   `insert_entry_value` place new fields beneath `name` in `- name: web`,

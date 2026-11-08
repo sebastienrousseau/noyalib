@@ -160,7 +160,7 @@ delivery surface while the core library remains dependency-focused.
 | Schemas | JSON Schema generation, validation, and coercion | Feature-gated |
 | Diagnostics | Structured codes, source spans, `miette`, and `ariadne` | Core stable; renderers feature-gated |
 | Async and parallel | Tokio readers and Rayon multi-document parsing | Feature-gated |
-| Embedded targets | `no_std` with `alloc` | CI-gated |
+| Embedded targets | [`no_std` with `alloc`](docs/NO_STD.md) | CI-gated |
 
 ---
 

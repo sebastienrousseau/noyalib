@@ -523,30 +523,9 @@ where
         return Ok(*downcast);
     }
 
-    #[cfg(feature = "std")]
-    {
-        let (mut value, span_tree) = parser::parse_exactly_one(s, &parse_config)?;
-        post_process_document(&mut value, config)?;
-        deserialize_spanned(s, &value, &span_tree, config, streaming_err)
-    }
-
-    #[cfg(not(feature = "std"))]
-    {
-        if config.plain_scalar_strings {
-            let (mut value, tree) = parser::parse_exactly_one(s, &parse_config)?;
-            post_process_document(&mut value, config)?;
-            return deserialize_spanned(s, &value, &tree, config, streaming_err);
-        }
-        let mut value = parser::parse_exactly_one_value(s, &parse_config)?;
-        post_process_document(&mut value, config)?;
-        let de = Deserializer::with_options(
-            &value,
-            None,
-            config.ignore_binary_tag_for_string,
-            config.plain_scalar_strings,
-        );
-        locate_streaming_error(T::deserialize(de), streaming_err)
-    }
+    let (mut value, span_tree) = parser::parse_exactly_one(s, &parse_config)?;
+    post_process_document(&mut value, config)?;
+    deserialize_spanned(s, &value, &span_tree, config, streaming_err)
 }
 
 /// Deserialize `T` from a loaded `value` with the span context for
@@ -578,14 +557,7 @@ where
         config.plain_scalar_strings,
     );
     let result = locate_streaming_error(T::deserialize(de), streaming_err);
-    #[cfg(feature = "std")]
-    {
-        attach_field_path(result, value)
-    }
-    #[cfg(not(feature = "std"))]
-    {
-        result
-    }
+    attach_field_path(result, value, context)
 }
 
 /// Resolves a typed parse whose streaming attempt failed without a
@@ -637,12 +609,15 @@ fn locate_streaming_error<T>(ast_result: Result<T>, streaming_err: Option<Error>
 /// walks nothing. A failure at the document root keeps its message
 /// unprefixed (there is no path to name), as does any error shape that
 /// never went through `wrap_err`. `location()` is unaffected.
-#[cfg(feature = "std")]
-fn attach_field_path<T>(result: Result<T>, root: &Value) -> Result<T> {
+fn attach_field_path<T>(
+    result: Result<T>,
+    root: &Value,
+    context: &span_context::SpanContext,
+) -> Result<T> {
     // Always consume the slot: a rejection created and then swallowed
     // (untagged-enum probing that ultimately succeeded) must not leak
     // into a later error.
-    let recorded = span_context::take_error_node();
+    let recorded = context.take_error_node();
     let err = match result {
         Ok(v) => return Ok(v),
         Err(err) => err,
@@ -667,7 +642,6 @@ fn attach_field_path<T>(result: Result<T>, root: &Value) -> Result<T> {
 }
 
 /// One step of a field path: a mapping key or a sequence index.
-#[cfg(feature = "std")]
 enum PathSegment<'a> {
     Key(&'a str),
     Index(usize),
@@ -678,7 +652,6 @@ enum PathSegment<'a> {
 /// when found, with `segments` holding the full path; on `false` the
 /// vector is back to its starting state. Tags are transparent — the
 /// path names the field, not the tag.
-#[cfg(feature = "std")]
 fn find_value_path<'a>(value: &'a Value, addr: usize, segments: &mut Vec<PathSegment<'a>>) -> bool {
     if core::ptr::from_ref(value) as usize == addr {
         return true;
@@ -711,7 +684,6 @@ fn find_value_path<'a>(value: &'a Value, addr: usize, segments: &mut Vec<PathSeg
 /// Render segments as `a.b[2].c`: keys joined with `.`, indices in
 /// brackets attached to the preceding segment (or leading, for a root
 /// sequence: `[2].name`).
-#[cfg(feature = "std")]
 fn format_value_path(segments: &[PathSegment<'_>]) -> String {
     use core::fmt::Write as _;
     let mut out = String::new();
@@ -1261,14 +1233,7 @@ where
         plain_scalar_strings,
     );
     let result = T::deserialize(de);
-    #[cfg(feature = "std")]
-    {
-        attach_field_path(result, value)
-    }
-    #[cfg(not(feature = "std"))]
-    {
-        result
-    }
+    attach_field_path(result, value, context)
 }
 
 // The figment integration entry `from_str_typed_no_tag_preserve` is

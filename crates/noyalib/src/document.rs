@@ -270,29 +270,7 @@ where
     }
     let parse_config = parser::ParseConfig::from(config);
 
-    #[cfg(feature = "std")]
-    {
-        load_all_as_spanned(input, config, &parse_config)
-    }
-
-    #[cfg(not(feature = "std"))]
-    {
-        if config.plain_scalar_strings {
-            return load_all_as_spanned(input, config, &parse_config);
-        }
-        let mut docs = parser::parse_all_values(input, &parse_config)?;
-        let mut results = Vec::with_capacity(docs.len());
-        for value in &mut docs {
-            crate::de::post_process_document(value, config)?;
-            let typed: T = crate::de::from_value_with_options(
-                value,
-                config.ignore_binary_tag_for_string,
-                config.plain_scalar_strings,
-            )?;
-            results.push(typed);
-        }
-        Ok(results)
-    }
+    load_all_as_spanned(input, config, &parse_config)
 }
 
 /// Retain source context for typed document loads, including alloc-only ones.

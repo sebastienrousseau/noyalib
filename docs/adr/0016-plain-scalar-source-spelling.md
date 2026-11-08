@@ -36,10 +36,12 @@ precedence and explicit-override rules as the resolved mapping. CST
 parsing keeps only owned source entries, so this read metadata cannot
 make inherited fields writable.
 
-Use the existing span loader for alloc-only typed AST fallback when
-`plain_scalar_strings` is enabled. It uses allocation without thread-local
-storage. Ordinary alloc-only loads and the `Value` fast path continue
-to use the span-free loader.
+Use the existing span loader for alloc-only typed AST fallback. It uses
+allocation without thread-local storage. Retain this context even when
+`plain_scalar_strings` is disabled so `Spanned<T>` keeps real locations,
+including typed document streams. Record failed nodes in the local
+context for field-path diagnostics. Untyped alloc-only document loads and
+the direct `Value` fast path continue to use the span-free loader.
 
 Source-free values retain canonical formatting. A substituted include
 value cannot use the include filename as scalar text. Existing policies,
@@ -58,9 +60,10 @@ budget sees only the small resolved number.
 - `char` checks the source text's length rather than the formatted value.
 - The enabled option changes parse behavior and requires a breaking fix
   classification under the repository's stability policy.
-- Alloc-only targets compile the span loader. Typed fallback retains
-  spans when this option needs them; ordinary alloc-only and direct
-  `Value` loading keep their span-free route.
+- Alloc-only targets compile the span loader. Typed fallback and typed
+  document streams retain spans for source-aware targets and diagnostics;
+  untyped alloc-only document loads and the direct `Value` fast path keep
+  their span-free route.
 - A source-aware coercion scans its scalar fragment to recover its text;
   the default configuration does not perform this extra work.
 - Shared regression cases run with and without the `std` feature in CI.

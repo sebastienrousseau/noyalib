@@ -7,6 +7,9 @@ A long-form companion to the README. The README is the elevator
 pitch and reference; this guide walks through every public-facing
 surface in the order you typically encounter it.
 
+For embedded builds, see [no_std support](NO_STD.md) for portable APIs,
+feature combinations, allocator requirements, and target limits.
+
 If you've used `serde_yaml` 0.9 before, also see
 [`MIGRATION-FROM-SERDE-YAML.md`](MIGRATION-FROM-SERDE-YAML.md) —
 most call sites are mechanical to update.
