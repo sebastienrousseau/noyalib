@@ -176,6 +176,24 @@ jobs:
     # the Phase-1 layout normalization (docs/ECOSYSTEM.md).
     uses: ./.github/workflows/shared-docs-lint.yml
 
+  alloc-scalar-source:
+    name: Typed scalar source text (alloc-only)
+    runs-on: ubuntu-latest
+    env:
+      CARGO_TARGET_DIR: ${{ github.workspace }}/target-alloc-scalar-source
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8
+        with:
+          toolchain: stable
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          workspaces: ". -> target-alloc-scalar-source"
+          key: alloc-scalar-source
+      - run: cargo test --locked --no-default-features --test issue_494
+
   fuzz-diff:
     # Dogfooded from shared-fuzz-diff.yml. Runs the caller's
     # `fuzz_diff` fuzz target for 10 seconds per push.

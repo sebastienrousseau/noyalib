@@ -10,11 +10,9 @@ use crate::error::{Error, Result};
 use crate::parser::budget;
 use crate::parser::events::Event;
 use crate::parser::meter::{AliasCost, Meter};
-#[cfg(feature = "std")]
 use crate::parser::scanner::Span;
 use crate::prelude::IndexMap;
 use crate::prelude::*;
-#[cfg(feature = "std")]
 use crate::span_context::SpanTree;
 use crate::value::{Mapping, Number, Tag, TaggedValue, Value};
 
@@ -185,7 +183,6 @@ pub enum DuplicateKeyPolicy {
 }
 
 /// Walk a stream of events and return a list of YAML documents.
-#[cfg(feature = "std")]
 pub(crate) fn load(
     parser: &mut crate::parser::events::Parser<'_>,
     config: &ParseConfig,
@@ -213,7 +210,6 @@ pub(crate) fn load(
 /// `document::load_all`, or `cst::parse_stream` instead. See #351. A
 /// single document with a leading `---` or trailing `...` marker is
 /// unaffected: it still produces exactly one entry in `docs`.
-#[cfg(feature = "std")]
 pub(crate) fn load_exactly_one(
     parser: &mut crate::parser::events::Parser<'_>,
     config: &ParseConfig,
@@ -302,7 +298,6 @@ impl KeyShape {
 }
 
 /// Stack frame for the tree builder.
-#[cfg(feature = "std")]
 #[derive(Debug)]
 enum Frame {
     Sequence {
@@ -334,7 +329,7 @@ enum Frame {
         typed_keys: Vec<KeyShape>,
         start: usize,
         anchor: Option<String>,
-        merge_values: Vec<Value>,
+        merge_values: Vec<PendingMerge>,
         /// Tag carried by the originating `MappingStart` event,
         /// if any. Wrapped onto the produced [`Value::Mapping`]
         /// at `MappingEnd` time.
@@ -359,13 +354,12 @@ enum Frame {
         key_span: (usize, usize),
         start: usize,
         anchor: Option<String>,
-        merge_values: Vec<Value>,
+        merge_values: Vec<PendingMerge>,
         tag: Option<(String, String)>,
     },
 }
 
 /// YAML tree builder with security limits and span tracking.
-#[cfg(feature = "std")]
 struct Loader<'a> {
     docs: Vec<(Value, SpanTree)>,
     stack: Vec<Frame>,
@@ -388,8 +382,18 @@ struct Loader<'a> {
     in_document: bool,
 }
 
-#[cfg(feature = "std")]
 impl<'a> Loader<'a> {
+    /// Include spelling restored by typed string coercion in alias costs.
+    fn alias_cost(&self, value: &Value, tree: &SpanTree) -> AliasCost {
+        let mut cost = AliasCost::of_value(value);
+        if self.config.plain_scalar_strings {
+            cost.text = cost
+                .text
+                .saturating_add(crate::span_context::scalar_source_bytes(value, tree));
+        }
+        cost
+    }
+
     /// The dotted path of the mapping being filled, from the frames that
     /// enclose it: the key of each open mapping and the index of each
     /// open sequence. The innermost frame is the one being filled; its
@@ -448,6 +452,7 @@ impl<'a> Loader<'a> {
         Ok((
             value.clone(),
             SpanTree::Alias {
+                #[cfg(feature = "std")]
                 at: (span.start, span.end),
                 target,
             },
@@ -464,9 +469,9 @@ impl<'a> Loader<'a> {
         Loader {
             docs: Vec::with_capacity(1),
             stack: Vec::with_capacity(16),
-            anchor_map: IndexMap::with_capacity(4),
-            anchor_def_spans: IndexMap::with_capacity(4),
-            earlier_anchor_defs: IndexMap::new(),
+            anchor_map: IndexMap::with_capacity_and_hasher(4, Default::default()),
+            anchor_def_spans: IndexMap::with_capacity_and_hasher(4, Default::default()),
+            earlier_anchor_defs: IndexMap::default(),
             meter: Meter::new(config),
             config,
             depth: 0,
@@ -568,7 +573,7 @@ impl<'a> Loader<'a> {
                 };
                 if let Some(name) = anchor {
                     let _ = self.anchor_def_spans.insert(name.clone(), span.start);
-                    let cost = AliasCost::of_value(&v);
+                    let cost = self.alias_cost(&v, &st);
                     let _ = self.anchor_map.insert(name, (v.clone(), st.clone(), cost));
                 }
                 self.push_node(v, st, input, is_plain_merge_candidate)?;
@@ -621,7 +626,7 @@ impl<'a> Loader<'a> {
                         items: span_items,
                     };
                     if let Some(name) = anchor {
-                        let cost = AliasCost::of_value(&v);
+                        let cost = self.alias_cost(&v, &st);
                         let _ = self.anchor_map.insert(name, (v.clone(), st.clone(), cost));
                     }
                     // A sequence or mapping is never the string `<<`.
@@ -658,7 +663,7 @@ impl<'a> Loader<'a> {
                 self.depth = self.depth.saturating_sub(1);
                 if let Some(Frame::MappingKey {
                     mut map,
-                    span_entries,
+                    mut span_entries,
                     typed_keys: _,
                     start,
                     anchor,
@@ -666,9 +671,7 @@ impl<'a> Loader<'a> {
                     tag,
                 }) = self.stack.pop()
                 {
-                    for mv in merge_values {
-                        apply_merge(&mut map, mv)?;
-                    }
+                    apply_pending_merges(&mut map, &mut span_entries, merge_values)?;
 
                     let inner = Value::Mapping(map);
                     let v = wrap_with_tag(inner, tag.as_ref(), self.config.tag_registry.as_deref());
@@ -678,7 +681,7 @@ impl<'a> Loader<'a> {
                         entries: span_entries,
                     };
                     if let Some(name) = anchor {
-                        let cost = AliasCost::of_value(&v);
+                        let cost = self.alias_cost(&v, &st);
                         let _ = self.anchor_map.insert(name, (v.clone(), st.clone(), cost));
                     }
                     // A sequence or mapping is never the string `<<`.
@@ -836,7 +839,7 @@ impl<'a> Loader<'a> {
                 }
                 if is_merge && !merge_treat_as_ordinary {
                     self.meter.charge_merge_key(self.config)?;
-                    merge_values.push(value);
+                    defer_merge(merge_values, value, span, self.config);
                 } else {
                     if map.len() >= self.config.max_mapping_keys {
                         return Err(Error::Budget(crate::BudgetBreach::MaxMappingKeys {
@@ -923,6 +926,78 @@ impl<'a> Loader<'a> {
         }
         Ok(())
     }
+}
+
+/// A buffered merge retains origins only for typed source-text reads.
+type PendingMerge = (Value, Option<Box<SpanTree>>);
+
+fn defer_merge(merges: &mut Vec<PendingMerge>, value: Value, tree: SpanTree, config: &ParseConfig) {
+    let source = config.plain_scalar_strings.then(|| Box::new(tree));
+    merges.push((value, source));
+}
+
+fn apply_pending_merges(
+    map: &mut Mapping,
+    entries: &mut Vec<((usize, usize), SpanTree)>,
+    merges: Vec<PendingMerge>,
+) -> Result<()> {
+    for (value, tree) in merges {
+        match tree {
+            Some(tree) => apply_merge_with_spans(map, entries, value, *tree)?,
+            None => apply_merge(map, value)?,
+        }
+    }
+    Ok(())
+}
+
+/// Keep inherited entries in the same order as their resolved values.
+/// Explicit entries and the first mapping in a merge sequence win.
+fn apply_merge_with_spans(
+    map: &mut Mapping,
+    entries: &mut Vec<((usize, usize), SpanTree)>,
+    value: Value,
+    mut tree: SpanTree,
+) -> Result<()> {
+    while let SpanTree::Alias { target, .. } = tree {
+        tree = *target;
+    }
+    match (value, tree) {
+        (
+            Value::Mapping(source),
+            SpanTree::Mapping {
+                entries: origins, ..
+            },
+        ) => {
+            if source.len() != origins.len() {
+                return Err(Error::Parse(
+                    "merged mapping source entries are out of sync".into(),
+                ));
+            }
+            for ((key, value), origin) in source.into_iter().zip(origins) {
+                if !map.contains_key(&key) {
+                    let _ = map.insert(key, value);
+                    entries.push(origin);
+                }
+            }
+        }
+        (Value::Sequence(values), SpanTree::Sequence { items, .. }) => {
+            if values.len() != items.len() {
+                return Err(Error::Parse(
+                    "merged sequence source entries are out of sync".into(),
+                ));
+            }
+            for (value, tree) in values.into_iter().zip(items) {
+                apply_merge_with_spans(map, entries, value, tree)?;
+            }
+        }
+        (Value::Mapping(_) | Value::Sequence(_), _) => {
+            return Err(Error::Parse(
+                "merge source does not match the collection".into(),
+            ));
+        }
+        (value, _) => apply_merge(map, value)?,
+    }
+    Ok(())
 }
 
 fn apply_merge(map: &mut Mapping, merge_value: Value) -> Result<()> {
@@ -1514,7 +1589,6 @@ fn overflows_u64_decimal(s: &str) -> bool {
 }
 
 /// Byte offset where a span tree's node begins.
-#[cfg(feature = "std")]
 fn span_tree_start(span: &SpanTree) -> usize {
     match span {
         SpanTree::Leaf(s, _)
@@ -1530,7 +1604,6 @@ fn span_tree_start(span: &SpanTree) -> usize {
 /// to scan past them: property tokens run to whitespace (verbatim
 /// tags to `>`), and a plain scalar can never begin with `&` or
 /// `!`, so the scan is unambiguous.
-#[cfg(feature = "std")]
 fn starts_with_flow_bracket(input: &str, start: usize) -> bool {
     let bytes = input.as_bytes();
     let mut i = start;
@@ -1555,7 +1628,6 @@ fn starts_with_flow_bracket(input: &str, start: usize) -> bool {
 }
 
 /// Byte offset where a span tree's node ends.
-#[cfg(feature = "std")]
 fn span_tree_end(span: &SpanTree) -> usize {
     match span {
         SpanTree::Leaf(_, e)

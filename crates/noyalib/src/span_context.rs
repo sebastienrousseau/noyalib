@@ -15,15 +15,12 @@ use std::rc::Rc;
 
 use crate::prelude::FxHashMap;
 
-#[cfg(feature = "std")]
 use crate::value::Value;
 
 /// Parallel tree of source spans, built alongside `Value` during loading.
 ///
-/// Only built on the `std` path; `no_std` builds use the span-free
-/// loader (`load_one_no_spans` / `load_all_no_spans`) and so never
-/// instantiate this enum.
-#[cfg(feature = "std")]
+/// Built on the `std` path and for opt-in source-aware typed fallback
+/// on `no_std`. Ordinary `no_std` and `Value` loads remain span-free.
 #[derive(Debug, Clone)]
 pub(crate) enum SpanTree {
     /// A leaf node (scalar, alias, null).
@@ -50,6 +47,7 @@ pub(crate) enum SpanTree {
     /// *through* the alias.
     Alias {
         /// The `*name` token's own byte span.
+        #[cfg(feature = "std")]
         at: (usize, usize),
         /// The anchor's tree, substituted at this site.
         target: Box<Self>,
@@ -79,15 +77,13 @@ pub(crate) type SharedLineIndex = Rc<OnceCell<LineIndex>>;
 
 impl SpanContext {
     /// A context over `source` with its own line index. Contexts are
-    /// only built by the span-tracking `std` loaders.
-    #[cfg(feature = "std")]
+    /// built by the span-tracking loaders.
     pub(crate) fn new(spans: FxHashMap<usize, (usize, usize)>, source: Arc<str>) -> Self {
         Self::with_lines(spans, source, SharedLineIndex::default())
     }
 
     /// A context whose line index is shared with other contexts over
     /// the same `source`.
-    #[cfg(feature = "std")]
     pub(crate) fn with_lines(
         spans: FxHashMap<usize, (usize, usize)>,
         source: Arc<str>,
@@ -103,7 +99,6 @@ impl SpanContext {
 
     /// Record, for every mapping in `value`, the written text of each
     /// key the loader canonicalised; see [`Self::key_text`].
-    #[cfg(feature = "std")]
     pub(crate) fn with_key_texts(mut self, value: &Value, tree: &SpanTree) -> Self {
         walk_keys(value, tree, &self.source, &mut self.key_texts);
         self
@@ -280,15 +275,40 @@ pub(crate) fn set_span_context(ctx: SpanContext) -> SpanContextGuard {
 
 /// Walk a `Value` tree and a `SpanTree` in lockstep, collecting pointer → span
 /// mappings.
-#[cfg(feature = "std")]
 pub(crate) fn build_span_map(value: &Value, tree: &SpanTree) -> FxHashMap<usize, (usize, usize)> {
     let mut map = FxHashMap::default();
     walk(value, tree, &mut map);
     map
 }
 
-#[cfg(feature = "std")]
+/// Source bytes that scalar string coercion can restore beyond the
+/// resolved value's allocation. Charge them before expanding aliases.
+pub(crate) fn scalar_source_bytes(value: &Value, tree: &SpanTree) -> usize {
+    let mut bytes = 0usize;
+    let mut pending = vec![(value, tree)];
+    while let Some((value, tree)) = pending.pop() {
+        match (value, tree) {
+            (Value::Tagged(tagged), _) => pending.push((tagged.value(), tree)),
+            (_, SpanTree::Alias { target, .. }) => pending.push((value, target)),
+            (Value::Bool(_) | Value::Null | Value::Number(_), SpanTree::Leaf(start, end)) => {
+                bytes = bytes.saturating_add(end.saturating_sub(*start));
+            }
+            (Value::Sequence(values), SpanTree::Sequence { items, .. }) => {
+                pending.extend(values.iter().zip(items));
+            }
+            (Value::Mapping(mapping), SpanTree::Mapping { entries, .. }) => {
+                pending.extend(mapping.values().zip(entries.iter().map(|(_, tree)| tree)));
+            }
+            _ => {}
+        }
+    }
+    bytes
+}
+
 fn walk(value: &Value, tree: &SpanTree, map: &mut FxHashMap<usize, (usize, usize)>) {
+    if let Value::Tagged(tagged) = value {
+        walk(tagged.value(), tree, map);
+    }
     // Walk the tree in DFS order to build the pointer → span map.
     let p: *const Value = value;
     let ptr = p as usize;
@@ -324,7 +344,6 @@ fn walk(value: &Value, tree: &SpanTree, map: &mut FxHashMap<usize, (usize, usize
 
 /// Walk `value` and `tree` together, recording each mapping key whose
 /// written text differs from the stored key only by canonicalisation.
-#[cfg(feature = "std")]
 fn walk_keys(
     value: &Value,
     tree: &SpanTree,
@@ -356,7 +375,6 @@ fn walk_keys(
 /// canonical spelling `key` of a null, bool or number. Quoted, tagged,
 /// anchored, aliased and multi-line keys never qualify, and a key whose
 /// text was kept as written has nothing to restore.
-#[cfg(feature = "std")]
 fn is_canonicalised_plain_key(key: &str, written: &str) -> bool {
     let canonical_scalar = matches!(key, "null" | "true" | "false" | "nan" | "inf" | "-inf")
         || key.parse::<i64>().is_ok()

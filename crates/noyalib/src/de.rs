@@ -15,7 +15,6 @@
 use crate::error::{Error, Result};
 use crate::parser::{self};
 use crate::prelude::*;
-#[cfg(feature = "std")]
 use crate::span_context;
 use crate::value::Value;
 #[cfg(feature = "std")]
@@ -533,6 +532,11 @@ where
 
     #[cfg(not(feature = "std"))]
     {
+        if config.plain_scalar_strings {
+            let (mut value, tree) = parser::parse_exactly_one(s, &parse_config)?;
+            post_process_document(&mut value, config)?;
+            return deserialize_spanned(s, &value, &tree, config, streaming_err);
+        }
         let mut value = parser::parse_exactly_one_value(s, &parse_config)?;
         post_process_document(&mut value, config)?;
         let de = Deserializer::with_options(
@@ -549,7 +553,6 @@ where
 /// `s` installed: errors carry locations and field paths, and keys the
 /// loader canonicalised read as written. `streaming_err` is the
 /// streaming path's unlocated error, joined to the result.
-#[cfg(feature = "std")]
 fn deserialize_spanned<T>(
     s: &str,
     value: &Value,
@@ -562,17 +565,27 @@ where
 {
     let spans = span_context::build_span_map(value, span_tree);
     let ctx = span_context::SpanContext::new(spans, s.into()).with_key_texts(value, span_tree);
+    #[cfg(feature = "std")]
     let _guard = span_context::set_span_context(ctx);
+    #[cfg(feature = "std")]
+    let context = _guard.as_ref();
+    #[cfg(not(feature = "std"))]
+    let context = &ctx;
     let de = Deserializer::with_options(
         value,
-        Some(_guard.as_ref()),
+        Some(context),
         config.ignore_binary_tag_for_string,
         config.plain_scalar_strings,
     );
-    attach_field_path(
-        locate_streaming_error(T::deserialize(de), streaming_err),
-        value,
-    )
+    let result = locate_streaming_error(T::deserialize(de), streaming_err);
+    #[cfg(feature = "std")]
+    {
+        attach_field_path(result, value)
+    }
+    #[cfg(not(feature = "std"))]
+    {
+        result
+    }
 }
 
 /// Resolves a typed parse whose streaming attempt failed without a
@@ -1218,7 +1231,6 @@ where
 
 /// Deserialize `T` from a [`Value`] with an active [`span_context::SpanContext`]
 /// and [`ParserConfig`] deserialiser toggles installed.
-#[cfg(feature = "std")]
 pub(crate) fn from_value_spanned_with_options<T>(
     value: &Value,
     ctx: span_context::SpanContext,
@@ -1236,14 +1248,27 @@ where
             .expect("is_value_target proved T == Value");
         return Ok(*downcast);
     }
+    #[cfg(feature = "std")]
     let _guard = span_context::set_span_context(ctx);
+    #[cfg(feature = "std")]
+    let context = _guard.as_ref();
+    #[cfg(not(feature = "std"))]
+    let context = &ctx;
     let de = Deserializer::with_options(
         value,
-        Some(_guard.as_ref()),
+        Some(context),
         ignore_binary_tag_for_string,
         plain_scalar_strings,
     );
-    attach_field_path(T::deserialize(de), value)
+    let result = T::deserialize(de);
+    #[cfg(feature = "std")]
+    {
+        attach_field_path(result, value)
+    }
+    #[cfg(not(feature = "std"))]
+    {
+        result
+    }
 }
 
 // The figment integration entry `from_str_typed_no_tag_preserve` is

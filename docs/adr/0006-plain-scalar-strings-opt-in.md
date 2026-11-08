@@ -1,6 +1,6 @@
 # 0006. Opt in to literal text for a `String`/`char` target reading a plain scalar
 
-- **Status:** proposed
+- **Status:** superseded by [0016](./0016-plain-scalar-source-spelling.md)
 - **Date:** 2026-08-30
 - **Authors:** Noyalib contributors
 

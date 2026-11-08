@@ -21,6 +21,7 @@ mod folded_spaced_lines;
 #[cfg(feature = "strict-deserialise")]
 mod issue_239;
 mod issue_46;
+mod issue_494;
 mod key_collision_streaming;
 mod leading_comment_repro;
 

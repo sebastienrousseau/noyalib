@@ -41,7 +41,15 @@ pub(crate) struct ParsedDocument {
 #[cfg(feature = "std")]
 pub(crate) fn parse_full(input: &str, cfg: &ParseConfig) -> Result<ParsedDocument> {
     check_document_length(input, cfg)?;
-    let (value, span_tree) = crate::parser::parse_exactly_one(input, cfg)?;
+    // String coercion needs inherited origins; CST edits need only entries
+    // with owned source bytes. The option does not affect the Value data.
+    let (value, span_tree) = if cfg.plain_scalar_strings {
+        let mut source_config = cfg.clone();
+        source_config.plain_scalar_strings = false;
+        crate::parser::parse_exactly_one(input, &source_config)?
+    } else {
+        crate::parser::parse_exactly_one(input, cfg)?
+    };
     crate::policy::check_document(&cfg.policies, &value)?;
     let source: Arc<str> = Arc::from(input);
     let green = build_green_tree(&source, cfg.max_depth)?;

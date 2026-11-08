@@ -78,7 +78,7 @@ too_many_lines	crates/noyalib/src/cst/document.rs	shape_excluding	63
 too_many_lines	crates/noyalib/src/cst/document.rs	swap_items	77
 too_many_lines	crates/noyalib/src/error.rs	diagnostic	64
 too_many_lines	crates/noyalib/src/error.rs	fmt	80
-too_many_lines	crates/noyalib/src/parser/loader.rs	process_event	179
+too_many_lines	crates/noyalib/src/parser/loader.rs	process_event	177
 too_many_lines	crates/noyalib/src/parser/loader.rs	push_node	176
 too_many_lines	crates/noyalib/src/parser/loader.rs	push_value	139
 too_many_lines	crates/noyalib/src/parser/loader.rs	value_to_key_string	72

@@ -41,6 +41,18 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Fixed
 
+- **`plain_scalar_strings` preserves plain scalar spelling on AST
+  fallback** (#494, reported by @or1can). Typed strings and characters
+  read `3.10`, `0x1F`, `007`, and written null or boolean spellings from
+  the scanner instead of formatting resolved values. The fix covers
+  spanned targets, aliases, tagged and merged fields, typed streams,
+  and readers.
+  Alloc-only typed fallback retains source spans when this option is on;
+  ordinary alloc-only loads and the direct `Value` fast path stay span-free.
+  This changes parse behavior for the enabled option, including rejecting
+  `007` as a `char` rather than silently returning `'7'`.
+  Alias expansion charges the source bytes that coercion can restore,
+  including inside anchored collections.
 - **CST entry insertion beneath a sequence-item key now uses the key's
   column** (#499, #506, contributed by @zoosky). `insert_entry` and
   `insert_entry_value` place new fields beneath `name` in `- name: web`,
