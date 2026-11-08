@@ -991,30 +991,58 @@ impl Document {
         let flow_site = matches!(self.source.as_bytes().get(s), Some(b'[' | b'{'))
             || in_flow_collection(&self.green, s);
         let fragment = if flow_site {
-            let cfg = crate::SerializerConfig::new().flow_style(crate::FlowStyle::Flow);
-            crate::to_string_value_with_config(value, &cfg)?
-                .trim_end_matches('\n')
-                .to_owned()
+            self.render_flow_collection(value)?
         } else {
             // Block rendering starts at column 0; shift every
             // continuation line to the old value's own column so the
             // fragment sits where the node it replaces sat.
             let line_start = self.source[..s].rfind('\n').map_or(0, |i| i + 1);
-            let column = s - line_start;
-            let cfg = crate::SerializerConfig::new()
-                .indent(self.indent_unit())
-                .flow_style(crate::FlowStyle::Block);
-            let rendered = crate::to_string_value_with_config(value, &cfg)?;
-            let pad = " ".repeat(column);
-            rendered
-                .trim_end_matches('\n')
-                .replace('\n', &format!("\n{pad}"))
+            self.render_block_collection(value, s - line_start)?
         };
-        // The scalar arm's rule, on the arm that renders through the
+        self.collection_oracle_splice("set_value", path, &expected, s, e, &fragment)
+    }
+
+    /// A collection rendered flow, on one line, for a flow site.
+    fn render_flow_collection(&self, value: &Value) -> Result<String> {
+        let cfg = crate::SerializerConfig::new().flow_style(crate::FlowStyle::Flow);
+        Ok(crate::to_string_value_with_config(value, &cfg)?
+            .trim_end_matches('\n')
+            .to_owned())
+    }
+
+    /// A collection rendered block at the document's
+    /// [`indent_unit`](Self::indent_unit), with every continuation line
+    /// shifted to `column` so the fragment sits where its site sits.
+    fn render_block_collection(&self, value: &Value, column: usize) -> Result<String> {
+        let cfg = crate::SerializerConfig::new()
+            .indent(self.indent_unit())
+            .flow_style(crate::FlowStyle::Block);
+        let rendered = crate::to_string_value_with_config(value, &cfg)?;
+        let pad = " ".repeat(column);
+        Ok(rendered
+            .trim_end_matches('\n')
+            .replace('\n', &format!("\n{pad}")))
+    }
+
+    /// Verify, then splice, a rendered collection `fragment` over
+    /// `s..e`: the candidate must re-parse and load back as `expected`
+    /// — the document with exactly the one path replaced — or the
+    /// source is left byte-identical. `what` names the calling mutator
+    /// in the refusals.
+    fn collection_oracle_splice(
+        &mut self,
+        what: &str,
+        path: &str,
+        expected: &Value,
+        s: usize,
+        e: usize,
+        fragment: &str,
+    ) -> Result<()> {
+        // The scalar arm's rule, on the arms that render through the
         // serializer. It must land *here*, above the candidate: the
         // oracle proves something only if the bytes it parses are the
         // bytes that get spliced.
-        let fragment = respell_breaks(&fragment, document_break(&self.source));
+        let fragment = respell_breaks(fragment, document_break(&self.source));
         // Oracle before the splice: the candidate must load back as
         // the document with exactly this one path replaced.
         let mut candidate = String::with_capacity(self.source.len() + fragment.len());
@@ -1023,13 +1051,13 @@ impl Document {
         candidate.push_str(&self.source[e..]);
         let reparsed = parse_document_inner(&candidate, self.config.clone()).map_err(|err| {
             Error::Parse(format!(
-                "set_value: replacing `{path}` with the rendered collection would not \
+                "{what}: replacing `{path}` with the rendered collection would not \
                  re-parse ({err}); the document was left unchanged"
             ))
         })?;
-        if oracle_rejects(&reparsed.as_value(), &expected) {
+        if oracle_rejects(&reparsed.as_value(), expected) {
             return Err(Error::Parse(format!(
-                "set_value: replacing `{path}` failed the integrity check — the rendered \
+                "{what}: replacing `{path}` failed the integrity check — the rendered \
                  collection did not load back as the value given; the document was left \
                  unchanged"
             )));
