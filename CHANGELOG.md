@@ -32,6 +32,10 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Fixed
 
+- **CST entry insertion beneath a sequence-item key now uses the key's
+  column** (#499, #506, contributed by @zoosky). `insert_entry` and
+  `insert_entry_value` place new fields beneath `name` in `- name: web`,
+  including nested sequence indicators and indentless sequences.
 - The libyaml differential fuzz targets drop inputs containing NEL
   (U+0085), LS (U+2028) or PS (U+2029): YAML 1.1, which
   `serde_yaml_ng` follows, treats them as line breaks, and YAML 1.2,
