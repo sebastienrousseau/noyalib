@@ -214,6 +214,24 @@ jobs:
           cargo doc --locked --no-default-features --no-deps
           --features "${{ matrix.features }}"
 
+  alloc-schema:
+    name: Schema/CST composition (core std disabled)
+    runs-on: ubuntu-latest
+    env:
+      CARGO_TARGET_DIR: ${{ github.workspace }}/target-alloc-schema
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8
+        with:
+          toolchain: stable
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          workspaces: ". -> target-alloc-schema"
+          key: alloc-schema
+      - run: cargo test --locked --no-default-features --features validate-schema --test alloc_schema
+
   fuzz-diff:
     # Dogfooded from shared-fuzz-diff.yml. Runs the caller's
     # `fuzz_diff` fuzz target for 10 seconds per push.

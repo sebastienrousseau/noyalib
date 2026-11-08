@@ -48,6 +48,7 @@
 
 use crate::cst::document::Document;
 use crate::error::{Error, Result};
+use crate::prelude::*;
 use crate::value::{Number, Value};
 
 /// Apply schema-driven type coercions to `doc` **lossless**ly:
