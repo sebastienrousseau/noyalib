@@ -11,10 +11,10 @@ on:
     # advisory, a toolchain bump) surfaces within a day.
     - cron: '0 4 * * *'
     # Mondays at 05:00 UTC — the full Miri sweep only (see `miri-full`
-    # below). Split out of the nightly because that job alone costs
-    # ~113 min: ~58 min native + ~56 min Miri-interpreted big-endian
-    # mips64. Nightly was never a deliberate cadence for it — the job
-    # had been failing in seconds since at least 2026-08-05, so the real
+    # below). Its native, Tree Borrows, alignment and big-endian
+    # profiles run independently. Nightly was never a deliberate cadence
+    # for the full sweep; it had failed in seconds since at least
+    # 2026-08-05, so the real
     # cost only appeared once it was fixed.
     #
     # An hour off the nightly on purpose. `concurrency` below is keyed
@@ -76,8 +76,8 @@ jobs:
     # Dogfooded from shared-miri-full.yml. Full sweep + big-endian
     # mips64 target.
     #
-    # Restricted to the WEEKLY cron so the nightly run does not pay its
-    # ~113 min. The shared workflow's own guard only distinguishes
+    # Restricted to the weekly cron to keep these slow interpreter
+    # profiles out of the nightly. The shared workflow only distinguishes
     # schedule from push, which cannot tell the two crons apart — that
     # has to happen here, at the call site, because the shared file is
     # consumed by the satellites too and must not hardcode this repo's

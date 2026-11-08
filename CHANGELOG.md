@@ -46,6 +46,10 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Fixed
 
+- The Miri equivalence fixture uses aligned backing storage so memchr's
+  manual SSE2 pointer alignment can pass symbolic checks. All 16 subslice
+  offsets have regression coverage. Native, Tree Borrows, alignment and
+  big-endian checks run independently with separate build directories.
 - The release version audit checks the core's measured scorecard row and
   rejects a missing core measurement. Older published satellite versions
   no longer invalidate a fresh core table during release preparation.
