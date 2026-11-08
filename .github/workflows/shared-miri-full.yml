@@ -47,7 +47,10 @@ jobs:
   check:
     name: Miri (full + big-endian, scheduled)
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-latest
+    # The MIPS64 cross packages below are available on 24.04. The
+    # 26.04 ubuntu-latest runner could not install either package.
+    # https://packages.ubuntu.com/noble/gcc-mips64-linux-gnuabi64
+    runs-on: ubuntu-24.04
     # The native full sweep alone measures ~58 min. Until the toolchain
     # fix below, the big-endian pass died within seconds of starting, so
     # the old 90 min budget was never actually tested against a run that
