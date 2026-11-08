@@ -27,11 +27,11 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ### Changed
 
 - `serde-saphyr` 2.0.0 for the `compare-saphyr` benchmarks (bench-only,
-  never in the runtime crate), `schemars` 1.2.3, `smallvec` 1.16.3,
+  never in the runtime crate), `schemars` 1.2.3, `smallvec` 1.16.4,
   `arbitrary` 1.5.0, `tokio-util` 0.7.20 and `serde_json` 1.0.154, with
   `proptest` 1.12.0 in the dev-dependencies, each recorded in
   `supply-chain/`.
-- **`jsonschema` stays at 0.58.5.** 0.59.0 re-runs validation under
+- **`jsonschema` stays on 0.58 (currently 0.58.6).** 0.59.0 re-runs validation under
   every outcome of a regex match it cannot finish (up to 64 runs). With
   `backtracking_patterns(10_000)`, 200 distinct items that each reach
   the step limit took 129 s to reject on 0.59.0 against 1.9 s on 0.58.5,
