@@ -114,3 +114,8 @@ mod verbatim_tag_unclosed;
 mod yaml_version;
 #[path = "values/zero_copy_str_deser.rs"]
 mod zero_copy_str_deser;
+
+#[path = "coverage/coverage_recovery.rs"]
+mod coverage_recovery;
+#[path = "regressions/recovery.rs"]
+mod recovery;

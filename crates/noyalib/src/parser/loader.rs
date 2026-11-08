@@ -452,7 +452,6 @@ impl<'a> Loader<'a> {
         Ok((
             value.clone(),
             SpanTree::Alias {
-                #[cfg(feature = "std")]
                 at: (span.start, span.end),
                 target,
             },
@@ -1032,9 +1031,7 @@ fn apply_merge(map: &mut Mapping, merge_value: Value) -> Result<()> {
 ///
 /// The deserialise entry points use the checked
 /// [`load_exactly_one_no_spans`] instead; this unchecked form's sole
-/// remaining caller is `cst::document::decode_key_token`, `std`-only
-/// like the rest of the `cst` module.
-#[cfg(feature = "std")]
+/// remaining caller is `cst::document::decode_key_token`.
 pub(crate) fn load_one_no_spans(input: &str, config: &ParseConfig) -> Result<Value> {
     Ok(load_all_no_spans(input, config)?
         .into_iter()

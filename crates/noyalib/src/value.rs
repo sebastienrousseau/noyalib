@@ -924,7 +924,10 @@ impl Value {
     ///
     /// ```
     /// use noyalib::{from_str, Value};
+    /// # #[cfg(feature = "std")]
     /// use std::collections::HashMap;
+    /// # #[cfg(not(feature = "std"))]
+    /// # type HashMap<K, V> = hashbrown::HashMap<K, V, rustc_hash::FxBuildHasher>;
     ///
     /// let mut value: Value = from_str("\
     /// service:
@@ -932,7 +935,7 @@ impl Value {
     ///   port: ${BIND_PORT}
     /// ").unwrap();
     ///
-    /// let mut props = HashMap::new();
+    /// let mut props = HashMap::default();
     /// props.insert("APP_NAME".to_string(), "noyalib".to_string());
     /// props.insert("BIND_PORT".to_string(), "8080".to_string());
     ///
@@ -942,12 +945,7 @@ impl Value {
     /// // tree if you need typed coercion.
     /// assert_eq!(value["service"]["port"].as_str(), Some("8080"));
     /// ```
-    #[cfg(feature = "std")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
-    pub fn interpolate_properties<S>(
-        &mut self,
-        properties: &std::collections::HashMap<String, S>,
-    ) -> crate::Result<()>
+    pub fn interpolate_properties<S>(&mut self, properties: &PropertyMap<S>) -> crate::Result<()>
     where
         S: AsRef<str>,
     {
@@ -979,22 +977,23 @@ impl Value {
     ///
     /// ```
     /// use noyalib::{from_str, Value};
+    /// # #[cfg(feature = "std")]
     /// use std::collections::HashMap;
+    /// # #[cfg(not(feature = "std"))]
+    /// # type HashMap<K, V> = hashbrown::HashMap<K, V, rustc_hash::FxBuildHasher>;
     ///
     /// let mut value: Value = from_str("token: ${SECRET_TOKEN_NAME}").unwrap();
     /// // Empty property map — substitution fails. With the
     /// // redacting variant the placeholder name does not leak.
-    /// let props: HashMap<String, String> = HashMap::new();
+    /// let props: HashMap<String, String> = HashMap::default();
     /// let err = value.interpolate_properties_redacted(&props).unwrap_err();
     /// let msg = err.to_string();
     /// assert!(msg.contains("<redacted>"));
     /// assert!(!msg.contains("SECRET_TOKEN_NAME"));
     /// ```
-    #[cfg(feature = "std")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
     pub fn interpolate_properties_redacted<S>(
         &mut self,
-        properties: &std::collections::HashMap<String, S>,
+        properties: &PropertyMap<S>,
     ) -> crate::Result<()>
     where
         S: AsRef<str>,
@@ -1018,21 +1017,20 @@ impl Value {
     ///
     /// ```
     /// use noyalib::{from_str, Value};
+    /// # #[cfg(feature = "std")]
     /// use std::collections::HashMap;
+    /// # #[cfg(not(feature = "std"))]
+    /// # type HashMap<K, V> = hashbrown::HashMap<K, V, rustc_hash::FxBuildHasher>;
     ///
     /// let mut value: Value = from_str("greeting: hello ${WHO}, hello ${MISSING}").unwrap();
-    /// let mut props: HashMap<String, String> = HashMap::new();
+    /// let mut props: HashMap<String, String> = HashMap::default();
     /// props.insert("WHO".into(), "world".into());
     ///
     /// value.interpolate_properties_lossy(&props);
     /// assert_eq!(value["greeting"].as_str(), Some("hello world, hello "));
     /// ```
-    #[cfg(feature = "std")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
-    pub fn interpolate_properties_lossy<S>(
-        &mut self,
-        properties: &std::collections::HashMap<String, S>,
-    ) where
+    pub fn interpolate_properties_lossy<S>(&mut self, properties: &PropertyMap<S>)
+    where
         S: AsRef<str>,
     {
         // Missing entries fall back to the empty string (and
@@ -1052,7 +1050,6 @@ impl Value {
     /// found / missing / errored. `missing_action` decides what
     /// happens when a placeholder is missing *and* has no
     /// `:-default` fallback.
-    #[cfg(feature = "std")]
     pub(crate) fn interpolate_inner(
         &mut self,
         resolve: &dyn Fn(&str) -> ResolveOutcome,
@@ -1063,7 +1060,6 @@ impl Value {
 
     /// Bounded counterpart to [`Self::interpolate_inner`] that charges
     /// post-expansion scalar and key byte lengths against `max_scalar_bytes`.
-    #[cfg(feature = "std")]
     pub(crate) fn interpolate_inner_bounded(
         &mut self,
         resolve: &dyn Fn(&str) -> ResolveOutcome,
@@ -1074,7 +1070,6 @@ impl Value {
         self.interpolate_walk(resolve, missing_action, max_scalar_bytes, &mut observed)
     }
 
-    #[cfg(feature = "std")]
     fn interpolate_walk(
         &mut self,
         resolve: &dyn Fn(&str) -> ResolveOutcome,
@@ -1645,7 +1640,6 @@ impl ValueIndex for &Value {
 /// Three-way return so [`expand_placeholders`] can distinguish a
 /// genuinely missing key (which may then defer to a `:-default`
 /// fallback) from a key whose own resolution errored.
-#[cfg(feature = "std")]
 pub(crate) enum ResolveOutcome {
     /// Name resolved cleanly.
     Found(String),
@@ -1661,7 +1655,6 @@ pub(crate) enum ResolveOutcome {
 
 /// What to do when a placeholder has no map entry and no
 /// `:-default` fallback.
-#[cfg(feature = "std")]
 #[derive(Debug, Clone, Copy)]
 pub(crate) enum MissingAction {
     /// Substitute the empty string. Lossy/non-strict mode.
@@ -1671,7 +1664,6 @@ pub(crate) enum MissingAction {
     Error(bool),
 }
 
-#[cfg(feature = "std")]
 #[inline]
 fn check_interpolated_scalar_budget(
     observed: usize,
@@ -1687,7 +1679,6 @@ fn check_interpolated_scalar_budget(
     Ok(())
 }
 
-#[cfg(feature = "std")]
 fn parse_placeholder_token(
     s: &str,
     name_start: usize,
@@ -1739,7 +1730,6 @@ fn parse_placeholder_token(
     Ok((name, default, close))
 }
 
-#[cfg(feature = "std")]
 fn resolve_placeholder_value(
     name: &str,
     default: Option<&str>,
@@ -1763,7 +1753,6 @@ fn resolve_placeholder_value(
     }
 }
 
-#[cfg(feature = "std")]
 fn expand_placeholders(
     s: &str,
     resolve: &dyn Fn(&str) -> ResolveOutcome,

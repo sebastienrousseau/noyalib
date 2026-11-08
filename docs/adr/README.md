@@ -39,6 +39,7 @@ reference back. Nothing is silently rewritten.
 | [0014](./0014-shared-msrv-floor.md) | Share one MSRV floor, 1.89.0, with the maintainer's other crates | proposed |
 | [0015](./0015-typed-scalar-growth.md) | Grow a scalar into a typed collection through an explicit CST operation | accepted |
 | [0016](./0016-plain-scalar-source-spelling.md) | Preserve plain scalar spelling on typed AST fallback | accepted |
+| [0017](./0017-alloc-capable-tooling.md) | Make allocation-based tooling available without std | accepted |
 
 ## When to add an ADR
 

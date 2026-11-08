@@ -10,8 +10,8 @@
 //! `parse_document(s).unwrap().to_string()` is byte-identical to `s`
 //! for any input the parser accepts.
 //!
-//! The `Document` API depends on the parser's `SpanTree`, which lives
-//! under the `std` feature.
+//! The `Document` API uses the alloc-capable parser span tree and an
+//! explicit source context; it is available without `std`.
 //!
 //! The `Value` API (`from_str`, `to_string`, `StreamingDeserializer`)
 //! is unchanged. Trivia capture is enabled only on this path; the

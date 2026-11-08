@@ -1,6 +1,7 @@
 # 0001. CST shape: parallel green tree, not unified AST
 
 - **Status:** accepted
+- **Portability:** amended by [0017](0017-alloc-capable-tooling.md)
 - **Date:** 2026-04-30
 - **Authors:** Sebastien Rousseau
 

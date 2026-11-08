@@ -86,7 +86,7 @@ jobs:
       - name: All portable features on wasm32 (no_std)
         run: >-
           cargo check --no-default-features --lib --locked
-          --features fast-int,fast-float,strict-deserialise,lossless-float,lossless-u64,include,compat-serde-yaml,sval,simd,wasm-opt,nightly-simd
+          --features fast-int,fast-float,strict-deserialise,lossless-float,lossless-u64,include,compat-serde-yaml,sval,simd,wasm-opt,nightly-simd,recovery
           --target wasm32-unknown-unknown
 
   # Bare-metal `*-none` targets — the ones #210 was about. They have no
@@ -126,5 +126,5 @@ jobs:
       - name: All portable features on ${{ matrix.target }} (no_std)
         run: >-
           cargo check --no-default-features --lib --locked
-          --features fast-int,fast-float,strict-deserialise,lossless-float,lossless-u64,include,compat-serde-yaml,sval,simd,wasm-opt,nightly-simd
+          --features fast-int,fast-float,strict-deserialise,lossless-float,lossless-u64,include,compat-serde-yaml,sval,simd,wasm-opt,nightly-simd,recovery
           --target ${{ matrix.target }}

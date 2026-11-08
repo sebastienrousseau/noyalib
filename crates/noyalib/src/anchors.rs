@@ -801,8 +801,7 @@ impl<T> ArcAnchorRegistry<T> {
 // Issue #5 — recursive anchor types for cyclic YAML graphs.
 // ════════════════════════════════════════════════════════════════
 
-#[cfg(feature = "std")]
-use std::cell::RefCell;
+use core::cell::RefCell;
 #[cfg(feature = "std")]
 use std::sync::{Arc, Mutex};
 
@@ -819,7 +818,7 @@ use std::sync::{Arc, Mutex};
 /// the call site — borrow-checker complaints surface in the YAML
 /// code, not in the surrounding logic.
 ///
-/// For thread-safe variants see [`ArcRecursive`].
+/// For thread-safe variants with `std`, see `ArcRecursive`.
 ///
 /// # Examples
 ///
@@ -830,31 +829,26 @@ use std::sync::{Arc, Mutex};
 /// r.set("hello".to_string());
 /// assert_eq!(r.borrow().as_deref(), Some("hello"));
 /// ```
-#[cfg(feature = "std")]
 pub struct RcRecursive<T>(pub Rc<RefCell<Option<T>>>);
 
-#[cfg(feature = "std")]
 impl<T> Clone for RcRecursive<T> {
     fn clone(&self) -> Self {
         Self(self.0.clone())
     }
 }
 
-#[cfg(feature = "std")]
 impl<T: fmt::Debug> fmt::Debug for RcRecursive<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("RcRecursive").field(&self.0).finish()
     }
 }
 
-#[cfg(feature = "std")]
 impl<T> Default for RcRecursive<T> {
     fn default() -> Self {
         Self::empty()
     }
 }
 
-#[cfg(feature = "std")]
 impl<T> RcRecursive<T> {
     /// Construct an empty (uninitialised) recursive anchor.
     ///
@@ -933,7 +927,6 @@ impl<T> RcRecursive<T> {
     }
 }
 
-#[cfg(feature = "std")]
 impl<T: serde_core::Serialize> serde_core::Serialize for RcRecursive<T> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -946,7 +939,6 @@ impl<T: serde_core::Serialize> serde_core::Serialize for RcRecursive<T> {
     }
 }
 
-#[cfg(feature = "std")]
 impl<'de, T: serde_core::Deserialize<'de>> serde_core::Deserialize<'de> for RcRecursive<T> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
@@ -961,31 +953,26 @@ impl<'de, T: serde_core::Deserialize<'de>> serde_core::Deserialize<'de> for RcRe
 ///
 /// Use to encode alias-only edges in a cyclic graph that should
 /// not keep the anchored value alive on its own.
-#[cfg(feature = "std")]
 pub struct RcRecursion<T>(pub RcWeak<RefCell<Option<T>>>);
 
-#[cfg(feature = "std")]
 impl<T> Clone for RcRecursion<T> {
     fn clone(&self) -> Self {
         Self(self.0.clone())
     }
 }
 
-#[cfg(feature = "std")]
 impl<T: fmt::Debug> fmt::Debug for RcRecursion<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("RcRecursion").finish()
     }
 }
 
-#[cfg(feature = "std")]
 impl<T> Default for RcRecursion<T> {
     fn default() -> Self {
         Self(RcWeak::new())
     }
 }
 
-#[cfg(feature = "std")]
 impl<T> RcRecursion<T> {
     /// Attempt to upgrade to a strong [`RcRecursive`]. Returns
     /// `None` if every strong reference has been dropped.

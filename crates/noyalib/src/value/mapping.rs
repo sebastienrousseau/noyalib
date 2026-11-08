@@ -675,7 +675,7 @@ impl Mapping {
     /// ```
     /// use indexmap::IndexMap;
     /// use noyalib::{Mapping, Value};
-    /// let mut src = IndexMap::new();
+    /// let mut src = IndexMap::with_hasher(Default::default());
     /// src.insert("a".to_owned(), Value::from(1_i64));
     /// let m = Mapping::from_inner(src);
     /// assert_eq!(m.get("a").and_then(Value::as_i64), Some(1));

@@ -15,8 +15,6 @@
 //! content sat, one indent step past the key when the collection sat at
 //! the key's own column.
 
-#![cfg(feature = "std")]
-
 use noyalib::cst::parse_document;
 use noyalib::{Value, from_str};
 

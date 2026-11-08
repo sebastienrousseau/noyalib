@@ -268,22 +268,16 @@ where
 /// assert!(noyalib::from_str::<Config>(yaml).is_ok());
 /// assert!(noyalib::from_str_strict::<Config>(yaml).is_err());
 /// ```
-#[cfg(all(feature = "std", feature = "strict-deserialise"))]
+#[cfg(feature = "strict-deserialise")]
 pub fn from_str_strict<T>(s: &str) -> Result<T>
 where
     T: for<'de> serde_core::Deserialize<'de> + 'static,
 {
-    let unknown = std::sync::Mutex::new(Vec::<String>::new());
+    let mut extras = Vec::<String>::new();
     let value: Value = from_str_with_config(s, &ParserConfig::default())?;
     let result: Result<T> = serde_ignored::deserialize(&value, |path| {
-        unknown
-            .lock()
-            .expect("from_str_strict: ignored-paths lock poisoned")
-            .push(path.to_string());
+        extras.push(path.to_string());
     });
-    let extras = unknown
-        .into_inner()
-        .expect("from_str_strict: ignored-paths lock poisoned");
     let typed = result?;
     if !extras.is_empty() {
         let msg = if extras.len() == 1 {
@@ -328,7 +322,7 @@ where
 /// assert!(noyalib::from_slice::<Config>(yaml).is_ok());
 /// assert!(noyalib::from_slice_strict::<Config>(yaml).is_err());
 /// ```
-#[cfg(all(feature = "std", feature = "strict-deserialise"))]
+#[cfg(feature = "strict-deserialise")]
 pub fn from_slice_strict<T>(b: &[u8]) -> Result<T>
 where
     T: for<'de> serde_core::Deserialize<'de> + 'static,
@@ -704,24 +698,15 @@ fn format_value_path(segments: &[PathSegment<'_>]) -> String {
 }
 
 /// Returns `true` when no `${KEY}` substitution table is active —
-/// keeps the streaming fast-path eligible. Always `true` under
-/// `no_std` (the field doesn't exist).
-#[cfg(feature = "std")]
+/// keeps the streaming fast-path eligible.
 #[inline]
 fn properties_inactive(config: &ParserConfig) -> bool {
     config.properties.is_none()
 }
 
-#[cfg(not(feature = "std"))]
-#[inline]
-fn properties_inactive(_config: &ParserConfig) -> bool {
-    true
-}
-
 /// Walk the `Value` tree and substitute every `${name}` placeholder
-/// against `config.properties`. No-op when no map is installed; in
-/// `no_std` builds the function is also a no-op (the field doesn't
-/// exist). Honours `strict_properties` for the missing-key
+/// against `config.properties`. No-op when no map is installed.
+/// Honours `strict_properties` for the missing-key
 /// behaviour, but always propagates *syntax* errors from the
 /// substitution walk (invalid characters, unterminated `${...}`,
 /// malformed `:-default`) regardless of mode.
@@ -734,7 +719,6 @@ pub(crate) fn post_process_document(value: &mut Value, config: &ParserConfig) ->
     crate::policy::check_document(&config.policies, value)
 }
 
-#[cfg(feature = "std")]
 fn apply_properties(value: &mut Value, config: &ParserConfig) -> Result<()> {
     if let Some(props) = config.properties.as_ref() {
         let action = if config.strict_properties {
@@ -751,12 +735,6 @@ fn apply_properties(value: &mut Value, config: &ParserConfig) -> Result<()> {
             Some(config.max_total_scalar_bytes),
         )?;
     }
-    Ok(())
-}
-
-#[cfg(not(feature = "std"))]
-#[inline]
-fn apply_properties(_value: &mut Value, _config: &ParserConfig) -> Result<()> {
     Ok(())
 }
 

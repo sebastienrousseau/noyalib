@@ -10,8 +10,6 @@
 //! the source byte-identical — when an existing segment resolves to
 //! something it cannot descend through.
 
-#![cfg(feature = "std")]
-
 use noyalib::Value;
 use noyalib::cst::parse_document;
 

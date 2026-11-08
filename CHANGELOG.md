@@ -17,6 +17,11 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Added
 
+- **Allocation-based tooling is available without `std`.** CST parsing,
+  formatting and editing, property interpolation, recursive `Rc` anchors,
+  and strict string/slice helpers work with `alloc`. The `recovery` feature
+  no longer enables std implicitly; callers that need hosted APIs must also
+  enable std. Hosted signatures and default features stay compatible.
 - **`cst::Document::grow_value` grows a scalar into a typed collection**
   (#505, contributed by @zoosky). It renders block or flow style for the
   insertion site and verifies the complete candidate before changing the

@@ -14,18 +14,15 @@ use crate::cst::green::{GreenChild, GreenNode};
 use crate::cst::is_yaml_blank;
 use crate::cst::syntax::SyntaxKind;
 use crate::error::{Error, Result};
-#[cfg(feature = "std")]
 use crate::parser::ParseConfig;
 use crate::parser::{
     RecordedToken, RecordedTokenKind, ScannedComment, Scanner, TokenKind, Trivia, TriviaKind,
 };
 use crate::prelude::*;
-#[cfg(feature = "std")]
 use crate::span_context::SpanTree;
 use crate::value::Value;
 
 /// Outcome of a green-tree-aware parse.
-#[cfg(feature = "std")]
 pub(crate) struct ParsedDocument {
     pub(crate) green: GreenNode,
     pub(crate) value: Value,
@@ -38,7 +35,6 @@ pub(crate) struct ParsedDocument {
 /// `Document`, which keeps `cfg` so every later re-parse of the same
 /// source (typed-cache refresh, `validate`, the edit safety net) runs
 /// under the limits the document was opened with.
-#[cfg(feature = "std")]
 pub(crate) fn parse_full(input: &str, cfg: &ParseConfig) -> Result<ParsedDocument> {
     check_document_length(input, cfg)?;
     // String coercion needs inherited origins; CST edits need only entries
@@ -67,7 +63,6 @@ pub(crate) fn parse_full(input: &str, cfg: &ParseConfig) -> Result<ParsedDocumen
 /// Every CST parse of a whole document (the initial parse, each
 /// document of a stream, and the source an edit would commit) runs
 /// this first.
-#[cfg(feature = "std")]
 pub(crate) fn check_document_length(input: &str, cfg: &ParseConfig) -> Result<()> {
     if input.len() > cfg.max_document_length {
         return Err(Error::Parse(format!(
@@ -111,7 +106,6 @@ impl SubtreeContext {
 /// scanner sees a complete collection. The returned green
 /// sub-tree's `text_len` matches `fragment.len()` exactly — that's
 /// the contract `try_local_repair_green` checks before splicing.
-#[cfg(feature = "std")]
 pub(crate) fn parse_subtree(
     fragment: &str,
     ctx: SubtreeContext,
@@ -131,7 +125,6 @@ pub(crate) fn parse_subtree(
     }
 }
 
-#[cfg(feature = "std")]
 fn parse_block_collection(
     fragment: &str,
     ctx: SubtreeContext,
@@ -147,7 +140,6 @@ fn parse_block_collection(
     })
 }
 
-#[cfg(feature = "std")]
 fn parse_block_entry(
     fragment: &str,
     ctx: SubtreeContext,
@@ -220,7 +212,6 @@ fn first_node_of_kind(node: &GreenNode, kind: SyntaxKind) -> Option<GreenNode> {
 
 /// Walk the token stream once and report `(start, end)` byte ranges
 /// for each logical YAML document in `input`.
-#[cfg(feature = "std")]
 pub(crate) fn document_boundaries(input: &str) -> Result<Vec<(usize, usize)>> {
     let mut scanner = Scanner::new(input);
     scanner.enable_recording();
@@ -603,7 +594,6 @@ fn child_from_trivia(t: &Trivia) -> Result<GreenChild> {
 /// Returns the new root, or `None` when the result would exceed the
 /// green tree's 4 GiB length limit. Time is `O(depth × siblings_per_level)` —
 /// independent of the total tree size.
-#[cfg(feature = "std")]
 pub(crate) fn rebuild_with_splice(
     old_root: &GreenNode,
     splice_old_start: usize,
@@ -613,7 +603,6 @@ pub(crate) fn rebuild_with_splice(
     splice_recursive(old_root, splice_old_start, splice_old_end, spliced, 0)
 }
 
-#[cfg(feature = "std")]
 fn splice_recursive(
     node: &GreenNode,
     splice_old_start: usize,

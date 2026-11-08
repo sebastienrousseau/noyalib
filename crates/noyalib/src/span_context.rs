@@ -49,7 +49,6 @@ pub(crate) enum SpanTree {
     /// *through* the alias.
     Alias {
         /// The `*name` token's own byte span.
-        #[cfg(feature = "std")]
         at: (usize, usize),
         /// The anchor's tree, substituted at this site.
         target: Box<Self>,

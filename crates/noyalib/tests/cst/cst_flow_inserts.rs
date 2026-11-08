@@ -10,8 +10,6 @@
 //! every refusal that remains (multi-line flow, anchored values)
 //! leaves the source byte-identical.
 
-#![cfg(feature = "std")]
-
 use noyalib::Value;
 use noyalib::cst::{Document, parse_document};
 

@@ -43,7 +43,7 @@ pub use fs::{SafeFileResolver, SymlinkPolicy};
 /// typically a file path, possibly with a `#anchor` fragment.
 /// Resolvers are free to interpret the spec however they like
 /// (file path, URL, key in a virtual filesystem); the
-/// [`SafeFileResolver`] interprets it as a filesystem path.
+/// `SafeFileResolver` interprets it as a filesystem path.
 #[derive(Debug, Clone)]
 #[non_exhaustive]
 pub struct IncludeRequest<'a> {
@@ -63,7 +63,7 @@ pub struct IncludeRequest<'a> {
     /// of [`crate::ParserConfig::max_total_include_bytes`]. The loader
     /// refuses a longer source after the resolver returns, so a
     /// resolver should stop reading one byte past this limit (as
-    /// [`SafeFileResolver`] does) rather than buffer the whole input.
+    /// `SafeFileResolver` does) rather than buffer the whole input.
     pub max_bytes: usize,
 }
 

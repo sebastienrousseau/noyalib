@@ -312,7 +312,8 @@ fast-int = ["dep:itoa"]
 # expanded decimal form for very large magnitudes (`{:?}` does not
 # auto-switch to scientific notation the way ryu does).
 fast-float = ["dep:ryu"]
-# `from_str_strict` / `from_slice_strict` / `from_reader_strict`
+# Alloc-capable `from_str_strict` / `from_slice_strict`;
+# `from_reader_strict` additionally requires std. These helpers
 # — surface YAML keys that the target struct does not declare as
 # typed `Error::UnknownField`. Backed by `serde_ignored`. Off in
 # the `minimal` profile for FIPS / embedded users with strict
@@ -428,10 +429,10 @@ arbitrary = ["dep:arbitrary", "std"]
 # the `noyalib::recovery` module with `parse_lenient` /
 # `parse_lenient_with` entry points returning a `ParseResult`
 # carrying the best-effort tree plus the collected error list.
-# Pure Rust, no extra deps — turns existing strict-parse retries
+# Pure Rust with alloc, no std requirement or extra deps — turns strict-parse retries
 # into a recovery pipeline. Off by default because the strict
 # path is what most callers want.
-recovery = ["std"]
+recovery = []
 # Parallel multi-document deserialisation via Rayon. Adds the
 # `noyalib::parallel` module:
 #   - `parallel::parse<T>(&str) -> Result<Vec<T>>` — typed deserialise.

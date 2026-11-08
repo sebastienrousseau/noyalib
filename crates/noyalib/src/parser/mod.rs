@@ -20,7 +20,6 @@ pub(crate) use loader::{
 };
 pub(crate) use scanner::{ScalarStyle, Scanner, TokenKind};
 // CST builder is the only consumer; gate the re-exports to match.
-#[cfg(feature = "std")]
 pub(crate) use scanner::{RecordedToken, RecordedTokenKind, ScannedComment, Trivia, TriviaKind};
 
 /// Returns a default (zero) `Span` for use in synthesized events.
@@ -81,7 +80,6 @@ pub(crate) fn parse_exactly_one(input: &str, config: &ParseConfig) -> Result<(Va
 /// `cst::document::decode_key_token`, which only ever feeds it a
 /// single scalar token — `std`-only, like the rest of the `cst`
 /// module. See [`loader::load_one_no_spans`].
-#[cfg(feature = "std")]
 pub(crate) fn parse_one_value(input: &str, config: &ParseConfig) -> Result<Value> {
     loader::load_one_no_spans(input, config)
 }

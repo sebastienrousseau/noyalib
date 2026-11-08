@@ -188,7 +188,7 @@ jobs:
           - profile: accelerated
             features: fast-int,fast-float
           - profile: portable
-            features: fast-int,fast-float,strict-deserialise,lossless-float,lossless-u64,include,compat-serde-yaml,sval,simd,wasm-opt,nightly-simd
+            features: fast-int,fast-float,strict-deserialise,lossless-float,lossless-u64,include,compat-serde-yaml,sval,simd,wasm-opt,nightly-simd,recovery
     env:
       CARGO_TARGET_DIR: ${{ github.workspace }}/target-alloc-${{ matrix.profile }}
     steps:
@@ -205,7 +205,14 @@ jobs:
       - run: >-
           cargo test --locked --no-default-features
           --features "${{ matrix.features }}"
-          --test no_std --test issue_494
+          --test no_std --test issue_494 --test alloc_apis --test cst
+      - name: Document the alloc-only API
+        env:
+          CARGO_TARGET_DIR: ${{ github.workspace }}/target-alloc-docs-${{ matrix.profile }}
+          RUSTDOCFLAGS: -D warnings
+        run: >-
+          cargo doc --locked --no-default-features --no-deps
+          --features "${{ matrix.features }}"
 
   fuzz-diff:
     # Dogfooded from shared-fuzz-diff.yml. Runs the caller's
