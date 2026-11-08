@@ -34,6 +34,8 @@
 //!   [`Document::edit`] creates an
 //!   [`EditSession`] that batches independent
 //!   byte-range replacements and validates the assembled result once.
+//!   [`Document::grow_value`] grows a scalar into a typed collection,
+//!   preserving its comment and verifying the candidate's loaded value.
 //!
 //! - **Comments.** [`Document::comments_at`]
 //!   classifies the comments decorating a node into a

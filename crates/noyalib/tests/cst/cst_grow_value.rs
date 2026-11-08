@@ -207,3 +207,57 @@ fn an_implicit_sequence_item_is_refused_as_unsupported_layout() {
     assert!(err.to_string().contains("layout"), "{err}");
     assert_eq!(doc.to_string(), src);
 }
+
+#[test]
+fn block_scalar_header_comments_stay_on_the_key_line() {
+    for indicator in ["|-", ">-", "|", ">", "|+", ">+"] {
+        let src = format!("k: {indicator} # keep\n  old\nx: 1\n");
+        let mut doc = parse_document(&src).unwrap();
+        doc.grow_value("k", &seq(&["a", "b"])).unwrap();
+        assert_eq!(
+            doc.source(),
+            "k: # keep\n  - a\n  - b\nx: 1\n",
+            "{indicator}"
+        );
+    }
+}
+
+#[test]
+fn keep_chomped_blanks_do_not_join_the_following_key() {
+    let mut doc = parse_document("k: |+ # keep\n  old\n\nx: 1\n").unwrap();
+    doc.grow_value("k", &seq(&["a", "b"])).unwrap();
+    assert_eq!(doc.source(), "k: # keep\n  - a\n  - b\n\nx: 1\n");
+}
+
+#[test]
+fn a_nested_growth_preserves_each_line_ending() {
+    for nl in ["\n", "\r\n", "\r"] {
+        let src = format!("top:{nl}  k: solo{nl}  z: 2{nl}");
+        let mut doc = parse_document(&src).unwrap();
+        doc.grow_value("top.k", &seq(&["a", "b"])).unwrap();
+        let expected = format!("top:{nl}  k:{nl}    - a{nl}    - b{nl}  z: 2{nl}");
+        assert_eq!(doc.source(), expected, "{nl:?}");
+    }
+}
+
+#[test]
+fn an_own_line_comment_stays_above_the_grown_collection() {
+    let mut doc = parse_document("k:\n  solo # keep\nx: 1\n").unwrap();
+    doc.grow_value("k", &seq(&["a", "b"])).unwrap();
+    assert_eq!(doc.source(), "k:\n  # keep\n  - a\n  - b\nx: 1\n");
+}
+
+#[test]
+fn a_sequence_item_comment_stays_on_the_dash_line() {
+    let mut doc = parse_document("xs:\n  - solo # keep\n  - 2\n").unwrap();
+    doc.grow_value("xs[0]", &map(&[("a", 1), ("b", 2)]))
+        .unwrap();
+    assert_eq!(doc.source(), "xs:\n  - # keep\n    a: 1\n    b: 2\n  - 2\n");
+}
+
+#[test]
+fn scalar_set_preserves_cr_only_spelling() {
+    let mut doc = parse_document("k: old\rafter: 1\r").unwrap();
+    doc.set_value("k", &Value::from("a\nb")).unwrap();
+    assert_eq!(doc.source(), "k: |-\r  a\r  b\rafter: 1\r");
+}

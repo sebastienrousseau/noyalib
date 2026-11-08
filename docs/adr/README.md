@@ -37,6 +37,7 @@ reference back. Nothing is silently rewritten.
 | [0012](./0012-quoted-path-segments.md) | Bracket-quoted key segments in the query-path grammar | accepted |
 | [0013](./0013-located-duplicate-key-errors.md) | Located duplicate-key and key-collision errors as sibling variants | accepted |
 | [0014](./0014-shared-msrv-floor.md) | Share one MSRV floor, 1.89.0, with the maintainer's other crates | proposed |
+| [0015](./0015-typed-scalar-growth.md) | Grow a scalar into a typed collection through an explicit CST operation | accepted |
 
 ## When to add an ADR
 

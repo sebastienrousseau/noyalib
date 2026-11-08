@@ -15,6 +15,15 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   the oldest fixed release on the 1.53 line; `cargo vet` records its
   trusted publisher.
 
+### Added
+
+- **`cst::Document::grow_value` grows a scalar into a typed collection**
+  (#505, contributed by @zoosky). It renders block or flow style for the
+  insertion site and verifies the complete candidate before changing the
+  source. Scalar comments and LF, CRLF, or CR line endings are preserved;
+  alias references and shared anchors are refused. Existing collections
+  use the same replacement rules as `set_value`.
+
 ### Changed
 
 - `serde-saphyr` 2.0.0 for the `compare-saphyr` benchmarks (bench-only,

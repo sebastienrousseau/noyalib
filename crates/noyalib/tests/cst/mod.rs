@@ -3,8 +3,7 @@
 
 //! The concrete-syntax-tree suites: parsing, editing, styling and round-tripping.
 //!
-//! 58 files, compiled into one test binary instead of
-//! 58 executables.
+//! The suites compile together into one integration test binary.
 
 #![allow(missing_docs)]
 
