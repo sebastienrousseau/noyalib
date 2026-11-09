@@ -5,6 +5,104 @@ All notable changes to this project are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.0.59] - Unreleased
+
+### Security
+
+- **`jsonschema` 0.60.2 rejects unfinished backtracking matches under
+  `not` and `patternProperties`** (#514). Previously, reaching the regex
+  step limit could bypass those constraints. Regression tests cover both
+  validation entry points. The engine caches unfinished matches across
+  retries, resolving the repeated-work regression that blocked 0.59.
+- **`tokio` 1.54.1 retains the RUSTSEC-2026-0386 fix.** `AsyncFd`'s safe
+  constructors violated I/O safety in 1.53.2; `cargo audit` and
+  `cargo deny` failed every build with the `tokio` feature. 1.53.3 is
+  the oldest fixed release on the 1.53 line; `cargo vet` records its
+  trusted publisher.
+
+### Added
+
+- **Allocation-based tooling is available without `std`.** CST parsing,
+  formatting and editing, property interpolation, recursive `Rc` anchors,
+  and strict string/slice helpers work with `alloc`. The `recovery` feature
+  no longer enables std implicitly; callers that need hosted APIs must also
+  enable std. Hosted signatures and default features stay compatible.
+- **`cst::Document::grow_value` grows a scalar into a typed collection**
+  (#505, contributed by @zoosky). It renders block or flow style for the
+  insertion site and verifies the complete candidate before changing the
+  source. Scalar comments and LF, CRLF, or CR line endings are preserved;
+  alias references and shared anchors are refused. Existing collections
+  use the same replacement rules as `set_value`.
+
+### Changed
+
+- `tokio` 1.54.1 and `rustix` 1.1.6, with refreshed publisher evidence for
+  the existing trusted authors (#513, #515).
+- `serde-saphyr` 2.0.0 for the `compare-saphyr` benchmarks (bench-only,
+  never in the runtime crate), `schemars` 1.2.3, `smallvec` 1.16.4,
+  `arbitrary` 1.5.0, `tokio-util` 0.7.20 and `serde_json` 1.0.154, with
+  `proptest` 1.12.0 in the dev-dependencies, each recorded in
+  `supply-chain/`.
+- Exhausted backtracking matches report one shared engine failure instead
+  of a definite violation for every repeated item. `backtracking_patterns`
+  retains its per-match step limit; tests cover 200 repeated and distinct
+  over-limit subjects.
+- CI: the GitHub Actions, CodeQL, Scorecard and Rust toolchain pins move
+  to their current releases.
+- CodeQL init, analysis and SARIF upload move together to 4.39.1;
+  Dependabot groups their future updates. The installer moves to 2.89.1
+  and crates.io authentication to 1.0.6 (#508-#512).
+
+### Fixed
+
+- Library unit tests now run with the std feature disabled. The host test
+  harness imports std explicitly for test helpers and uses the alloc prelude
+  where needed. A separate CI job checks this configuration without enabling
+  std in the library or its downstream builds.
+- **Hosted consumers no longer pull in `libm` through noyalib** (#500).
+  The alloc-only prelude uses private `core` helpers for fractional parts
+  and fused multiply-add, preserving existing float results and the unchanged
+  `--no-default-features` command. `libm` remains only as a development oracle.
+  Isolated consumers check default, minimal std, and alloc-only graphs and
+  float behavior; no feature, API, or MSRV change is needed.
+- The Miri equivalence fixture uses aligned backing storage so memchr's
+  manual SSE2 pointer alignment can pass symbolic checks. All 16 subslice
+  offsets have regression coverage. Native, Tree Borrows, alignment and
+  big-endian checks run independently with separate build directories.
+- The release version audit checks the core's measured scorecard row and
+  rejects a missing core measurement. Older published satellite versions
+  no longer invalidate a fresh core table during release preparation.
+- **`plain_scalar_strings` preserves plain scalar spelling on AST
+  fallback** (#494, reported by @or1can). Typed strings and characters
+  read `3.10`, `0x1F`, `007`, and written null or boolean spellings from
+  the scanner instead of formatting resolved values. The fix covers
+  spanned targets, aliases, tagged and merged fields, typed streams,
+  and readers.
+  Alloc-only typed fallback retains source spans; untyped document loads
+  and the direct `Value` fast path stay span-free.
+  This changes parse behavior for the enabled option, including rejecting
+  `007` as a `char` rather than silently returning `'7'`.
+  Alias expansion charges the source bytes that coercion can restore,
+  including inside anchored collections.
+- **Alloc-only typed loads now retain source locations and error field
+  paths**, including `Spanned<T>` and typed multi-document loads with default
+  scalar settings. Shared portable tests run with core, accelerated, and
+  combined features; bare-metal gates also check the combined portable set.
+  Floating-point operations preserve `--no-default-features` compatibility
+  without introducing a required math feature (#500).
+- **CST entry insertion beneath a sequence-item key now uses the key's
+  column** (#499, #506, contributed by @zoosky). `insert_entry` and
+  `insert_entry_value` place new fields beneath `name` in `- name: web`,
+  including nested sequence indicators and indentless sequences.
+- The libyaml differential fuzz targets drop inputs containing NEL
+  (U+0085), LS (U+2028) or PS (U+2029): YAML 1.1, which
+  `serde_yaml_ng` follows, treats them as line breaks, and YAML 1.2,
+  which noyalib follows, does not. A regression test pins noyalib's
+  reading.
+- The registry drift net's shim probe no longer misuses
+  `cargo add --package`, and its npm job checks out the version it
+  probes.
+
 ## [v0.0.58] - 2026-10-15
 
 ### Security

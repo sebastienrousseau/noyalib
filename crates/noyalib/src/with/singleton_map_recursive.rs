@@ -129,7 +129,7 @@ where
 
 #[cfg(test)]
 mod tests {
-
+    use crate::prelude::{String, ToString as _, Vec, vec};
     #[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
     enum Inner {
         A,

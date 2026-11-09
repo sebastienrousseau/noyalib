@@ -1,6 +1,6 @@
 [package]
 name = "noyalib"
-version = "0.0.58"
+version = "0.0.59"
 edition = "2024"
 rust-version = "1.89.0"
 license = "MIT OR Apache-2.0"
@@ -114,11 +114,6 @@ rustc-hash = { version = ">=2, <3", default-features = false }
 # bare-metal targets the maps come from hashbrown instead, keyed by
 # the same FxBuildHasher, so hashing behaviour is identical. See #210.
 hashbrown = { version = "0.17", default-features = false }
-# `core` has no float math: `f64::fract` and `f64::mul_add` are std
-# inherent methods. libm supplies them for bare-metal targets;
-# hosted builds use the inherent ones and never call into it.
-# See #210.
-libm = { version = "0.2", default-features = false }
 itoa = { version = "1", optional = true }
 ryu = { version = "1", optional = true }
 memchr = { version = "2.7", default-features = false }
@@ -146,7 +141,7 @@ serde_json = { version = "1.0", optional = true }
 # `validate-schema` feature is on. Default features are disabled so
 # we don't drag in `reqwest` for HTTP `$ref` resolution; users who
 # need that can re-enable it via their own dep.
-jsonschema = { version = "0.58", optional = true, default-features = false }
+jsonschema = { version = "0.60", optional = true, default-features = false }
 # `figment` integration — drop-in `Provider` for the popular
 # layered-configuration crate. Pulled in only when the `figment`
 # feature is on so non-figment users don't pay for it.
@@ -191,6 +186,9 @@ bytes = { version = "1", optional = true, default-features = false }
 rustix = { version = "1.1.4", optional = true, features = ["fs"] }
 
 [dev-dependencies]
+# Independent oracle for the private portable float helpers (#500).
+# Downstream std and no_std builds do not depend on this crate.
+libm = { version = "0.2", default-features = false }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 serde_bytes = "0.11"
@@ -229,7 +227,7 @@ tokio = { version = "1", features = ["macros", "rt", "io-util"] }
 # resolver in, so `tests/schema/schema_hardening.rs` proves external
 # `$ref` stays refused regardless of the features another crate
 # enables. Adds no crates: `resolve-file` has no dependencies.
-jsonschema = { version = "0.58", default-features = false, features = ["resolve-file"] }
+jsonschema = { version = "0.60", default-features = false, features = ["resolve-file"] }
 
 [[bench]]
 name = "benchmarks"
@@ -312,7 +310,8 @@ fast-int = ["dep:itoa"]
 # expanded decimal form for very large magnitudes (`{:?}` does not
 # auto-switch to scientific notation the way ryu does).
 fast-float = ["dep:ryu"]
-# `from_str_strict` / `from_slice_strict` / `from_reader_strict`
+# Alloc-capable `from_str_strict` / `from_slice_strict`;
+# `from_reader_strict` additionally requires std. These helpers
 # — surface YAML keys that the target struct does not declare as
 # typed `Error::UnknownField`. Backed by `serde_ignored`. Off in
 # the `minimal` profile for FIPS / embedded users with strict
@@ -428,10 +427,10 @@ arbitrary = ["dep:arbitrary", "std"]
 # the `noyalib::recovery` module with `parse_lenient` /
 # `parse_lenient_with` entry points returning a `ParseResult`
 # carrying the best-effort tree plus the collected error list.
-# Pure Rust, no extra deps — turns existing strict-parse retries
+# Pure Rust with alloc, no std requirement or extra deps — turns strict-parse retries
 # into a recovery pipeline. Off by default because the strict
 # path is what most callers want.
-recovery = ["std"]
+recovery = []
 # Parallel multi-document deserialisation via Rayon. Adds the
 # `noyalib::parallel` module:
 #   - `parallel::parse<T>(&str) -> Result<Vec<T>>` — typed deserialise.

@@ -1,4 +1,4 @@
-//! Thread-local span context for wiring source locations into `Spanned<T>`.
+//! Source context for typed deserialization and `Spanned<T>` locations.
 
 // SPDX-License-Identifier: MIT OR Apache-2.0
 // Copyright (c) 2026 Noyalib. All rights reserved.
@@ -7,6 +7,8 @@ use crate::error::Location;
 use crate::prelude::*;
 #[cfg(not(feature = "std"))]
 use alloc::rc::Rc;
+#[cfg(not(feature = "std"))]
+use core::cell::Cell;
 use core::cell::OnceCell;
 #[cfg(feature = "std")]
 use core::cell::RefCell;
@@ -15,15 +17,12 @@ use std::rc::Rc;
 
 use crate::prelude::FxHashMap;
 
-#[cfg(feature = "std")]
 use crate::value::Value;
 
 /// Parallel tree of source spans, built alongside `Value` during loading.
 ///
-/// Only built on the `std` path; `no_std` builds use the span-free
-/// loader (`load_one_no_spans` / `load_all_no_spans`) and so never
-/// instantiate this enum.
-#[cfg(feature = "std")]
+/// Built for typed AST fallback and typed document streams on every target.
+/// Untyped `no_std` document loads and the `Value` fast path remain span-free.
 #[derive(Debug, Clone)]
 pub(crate) enum SpanTree {
     /// A leaf node (scalar, alias, null).
@@ -71,6 +70,9 @@ pub struct SpanContext {
     /// the source range of the key as written. A typed target reads the
     /// written text, as it does on the streaming path.
     key_texts: FxHashMap<usize, (usize, usize)>,
+    /// A failed node belongs to this deserialization on alloc-only targets.
+    #[cfg(not(feature = "std"))]
+    error_node: Cell<Option<usize>>,
 }
 
 /// A lazily built [`LineIndex`], shareable between the span contexts of
@@ -79,15 +81,13 @@ pub(crate) type SharedLineIndex = Rc<OnceCell<LineIndex>>;
 
 impl SpanContext {
     /// A context over `source` with its own line index. Contexts are
-    /// only built by the span-tracking `std` loaders.
-    #[cfg(feature = "std")]
+    /// built by the span-tracking loaders.
     pub(crate) fn new(spans: FxHashMap<usize, (usize, usize)>, source: Arc<str>) -> Self {
         Self::with_lines(spans, source, SharedLineIndex::default())
     }
 
     /// A context whose line index is shared with other contexts over
     /// the same `source`.
-    #[cfg(feature = "std")]
     pub(crate) fn with_lines(
         spans: FxHashMap<usize, (usize, usize)>,
         source: Arc<str>,
@@ -98,12 +98,33 @@ impl SpanContext {
             source,
             lines,
             key_texts: FxHashMap::default(),
+            #[cfg(not(feature = "std"))]
+            error_node: Cell::new(None),
+        }
+    }
+
+    /// Record the node whose typed error just acquired a source location.
+    pub(crate) fn record_error_node(&self, addr: usize) {
+        #[cfg(feature = "std")]
+        tls::ERROR_NODE.with(|cell| cell.set(Some(addr)));
+        #[cfg(not(feature = "std"))]
+        self.error_node.set(Some(addr));
+    }
+
+    /// Consume the failed node, including when an untagged probe succeeded.
+    pub(crate) fn take_error_node(&self) -> Option<usize> {
+        #[cfg(feature = "std")]
+        {
+            tls::ERROR_NODE.with(core::cell::Cell::take)
+        }
+        #[cfg(not(feature = "std"))]
+        {
+            self.error_node.take()
         }
     }
 
     /// Record, for every mapping in `value`, the written text of each
     /// key the loader canonicalised; see [`Self::key_text`].
-    #[cfg(feature = "std")]
     pub(crate) fn with_key_texts(mut self, value: &Value, tree: &SpanTree) -> Self {
         walk_keys(value, tree, &self.source, &mut self.key_texts);
         self
@@ -221,18 +242,6 @@ mod tls {
     }
 }
 
-/// Record the address of the node whose error `wrap_err` just wrapped.
-#[cfg(feature = "std")]
-pub(crate) fn record_error_node(addr: usize) {
-    tls::ERROR_NODE.with(|cell| cell.set(Some(addr)));
-}
-
-/// Take (and clear) the most recently recorded failing-node address.
-#[cfg(feature = "std")]
-pub(crate) fn take_error_node() -> Option<usize> {
-    tls::ERROR_NODE.with(core::cell::Cell::take)
-}
-
 /// RAII guard that owns the span context and clears the thread-local on
 /// drop. Holding the guard keeps the context alive so callers can borrow
 /// it via [`SpanContextGuard::as_ref`] without cloning the span map.
@@ -280,15 +289,40 @@ pub(crate) fn set_span_context(ctx: SpanContext) -> SpanContextGuard {
 
 /// Walk a `Value` tree and a `SpanTree` in lockstep, collecting pointer → span
 /// mappings.
-#[cfg(feature = "std")]
 pub(crate) fn build_span_map(value: &Value, tree: &SpanTree) -> FxHashMap<usize, (usize, usize)> {
     let mut map = FxHashMap::default();
     walk(value, tree, &mut map);
     map
 }
 
-#[cfg(feature = "std")]
+/// Source bytes that scalar string coercion can restore beyond the
+/// resolved value's allocation. Charge them before expanding aliases.
+pub(crate) fn scalar_source_bytes(value: &Value, tree: &SpanTree) -> usize {
+    let mut bytes = 0usize;
+    let mut pending = vec![(value, tree)];
+    while let Some((value, tree)) = pending.pop() {
+        match (value, tree) {
+            (Value::Tagged(tagged), _) => pending.push((tagged.value(), tree)),
+            (_, SpanTree::Alias { target, .. }) => pending.push((value, target)),
+            (Value::Bool(_) | Value::Null | Value::Number(_), SpanTree::Leaf(start, end)) => {
+                bytes = bytes.saturating_add(end.saturating_sub(*start));
+            }
+            (Value::Sequence(values), SpanTree::Sequence { items, .. }) => {
+                pending.extend(values.iter().zip(items));
+            }
+            (Value::Mapping(mapping), SpanTree::Mapping { entries, .. }) => {
+                pending.extend(mapping.values().zip(entries.iter().map(|(_, tree)| tree)));
+            }
+            _ => {}
+        }
+    }
+    bytes
+}
+
 fn walk(value: &Value, tree: &SpanTree, map: &mut FxHashMap<usize, (usize, usize)>) {
+    if let Value::Tagged(tagged) = value {
+        walk(tagged.value(), tree, map);
+    }
     // Walk the tree in DFS order to build the pointer → span map.
     let p: *const Value = value;
     let ptr = p as usize;
@@ -324,7 +358,6 @@ fn walk(value: &Value, tree: &SpanTree, map: &mut FxHashMap<usize, (usize, usize
 
 /// Walk `value` and `tree` together, recording each mapping key whose
 /// written text differs from the stored key only by canonicalisation.
-#[cfg(feature = "std")]
 fn walk_keys(
     value: &Value,
     tree: &SpanTree,
@@ -356,7 +389,6 @@ fn walk_keys(
 /// canonical spelling `key` of a null, bool or number. Quoted, tagged,
 /// anchored, aliased and multi-line keys never qualify, and a key whose
 /// text was kept as written has nothing to restore.
-#[cfg(feature = "std")]
 fn is_canonicalised_plain_key(key: &str, written: &str) -> bool {
     let canonical_scalar = matches!(key, "null" | "true" | "false" | "nan" | "inf" | "-inf")
         || key.parse::<i64>().is_ok()

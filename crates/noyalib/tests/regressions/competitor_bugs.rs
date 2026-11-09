@@ -362,6 +362,23 @@ fn comment_shaped_line_is_block_scalar_content() {
 }
 
 #[test]
+fn yaml_1_1_line_breaks_are_content() {
+    // Found by fuzz_diff (artifact `\xc2\x85`): serde_yaml_ng, like
+    // libyaml, keeps YAML 1.1's extra line breaks and reads NEL alone
+    // as null and `a<NEL>` as "a". YAML 1.2 §5.4 makes only LF and CR
+    // line breaks, so NEL, LS and PS are printable content of the
+    // plain scalar.
+    let v: Value = from_str("\u{85}").unwrap();
+    assert_eq!(v.as_str(), Some("\u{85}"));
+    let v: Value = from_str("a\u{85}").unwrap();
+    assert_eq!(v.as_str(), Some("a\u{85}"));
+    let v: Value = from_str("a: b\u{2028}c").unwrap();
+    assert_eq!(v["a"].as_str(), Some("b\u{2028}c"));
+    let v: Value = from_str("\u{2029}").unwrap();
+    assert_eq!(v.as_str(), Some("\u{2029}"));
+}
+
+#[test]
 fn anchor_name_may_contain_colon() {
     // Found by fuzz_diff (artifact `&a:`): serde_yaml_ng ends the
     // anchor at the colon and reads a block mapping with an empty

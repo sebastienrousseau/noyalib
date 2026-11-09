@@ -1087,9 +1087,7 @@ impl Error {
     /// identity. Variants without a location, and a shared error, are
     /// returned unchanged.
     ///
-    /// Gated like its only caller, the `cst` module: without `std` it
-    /// would be dead code, which the crate denies.
-    #[cfg(feature = "std")]
+    /// Used by the alloc-capable CST stream parser.
     pub(crate) fn relocate(self, source: &str, base: usize) -> Self {
         if base == 0 {
             return self;
@@ -2088,6 +2086,7 @@ pub(crate) fn invariant_violated(msg: &'static str) -> ! {
 #[cfg(test)]
 mod truncate_tests {
     use super::truncate_with_ellipsis;
+    use crate::prelude::ToString as _;
 
     #[test]
     fn under_budget_passthrough() {

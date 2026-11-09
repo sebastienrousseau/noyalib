@@ -6,7 +6,7 @@
 # an improvement. The script refuses to record a regression.
 # ceilings: too_many_lines 60, cognitive_complexity 15 (scripts/complexity/clippy.toml)
 # measured with: clippy 0.1.99 (b940084d7e 2026-09-28)
-# entries: 82
+# entries: 81
 lint	file	function	value
 cognitive_complexity	crates/noyalib/examples/cst_surgical_edit.rs	main	24
 cognitive_complexity	crates/noyalib/src/parser/loader.rs	push_node	17
@@ -73,13 +73,12 @@ too_many_lines	crates/noyalib/src/cst/document.rs	entry_line_span	164
 too_many_lines	crates/noyalib/src/cst/document.rs	guarded_insert	77
 too_many_lines	crates/noyalib/src/cst/document.rs	is_plain_safe	91
 too_many_lines	crates/noyalib/src/cst/document.rs	rename_key	115
-too_many_lines	crates/noyalib/src/cst/document.rs	replace_collection_value	65
 too_many_lines	crates/noyalib/src/cst/document.rs	set_value	62
 too_many_lines	crates/noyalib/src/cst/document.rs	shape_excluding	63
 too_many_lines	crates/noyalib/src/cst/document.rs	swap_items	77
 too_many_lines	crates/noyalib/src/error.rs	diagnostic	64
 too_many_lines	crates/noyalib/src/error.rs	fmt	80
-too_many_lines	crates/noyalib/src/parser/loader.rs	process_event	179
+too_many_lines	crates/noyalib/src/parser/loader.rs	process_event	177
 too_many_lines	crates/noyalib/src/parser/loader.rs	push_node	176
 too_many_lines	crates/noyalib/src/parser/loader.rs	push_value	139
 too_many_lines	crates/noyalib/src/parser/loader.rs	value_to_key_string	72

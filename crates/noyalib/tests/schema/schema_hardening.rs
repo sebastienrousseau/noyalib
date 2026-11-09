@@ -310,6 +310,49 @@ fn lookaround_patterns_need_an_explicit_opt_in() {
 }
 
 #[test]
+fn backtracking_limit_fails_closed_under_negation() {
+    use noyalib::{CompiledSchema, Value};
+    let schema: Value = noyalib::from_str("not: {pattern: '(?<=ab)c'}\n").unwrap();
+    let compiled = CompiledSchema::builder(&schema)
+        .backtracking_patterns(1)
+        .build()
+        .unwrap();
+    let instance = Value::from("abc");
+    assert!(
+        compiled.validate(&instance).is_err(),
+        "an unfinished regex must not make a negated schema accept the instance"
+    );
+    let violations = compiled.iter_errors(&instance).unwrap();
+    assert!(
+        violations
+            .iter()
+            .any(|v| v.message.contains("backtracking"))
+    );
+}
+
+#[test]
+fn backtracking_limit_fails_closed_in_pattern_properties() {
+    use noyalib::{CompiledSchema, Value};
+    let schema: Value =
+        noyalib::from_str("type: object\npatternProperties: {'(?<=ab)c': false}\n").unwrap();
+    let compiled = CompiledSchema::builder(&schema)
+        .backtracking_patterns(1)
+        .build()
+        .unwrap();
+    let instance: Value = noyalib::from_str("abc: 1\n").unwrap();
+    assert!(
+        compiled.validate(&instance).is_err(),
+        "an unfinished regex must not bypass a matching property constraint"
+    );
+    let violations = compiled.iter_errors(&instance).unwrap();
+    assert!(
+        violations
+            .iter()
+            .any(|v| v.message.contains("backtracking"))
+    );
+}
+
+#[test]
 fn backtracking_opt_in_is_bounded_by_its_limit() {
     // With the opt-in, the step limit is what bounds the work: each
     // item stops after at most 10,000 steps.
@@ -322,10 +365,27 @@ fn backtracking_opt_in_is_bounded_by_its_limit() {
         .backtracking_patterns(10_000)
         .build()
         .unwrap();
-    let item = Value::from(format!("{}!", "a".repeat(40)));
-    let instance = Value::Sequence((0..200).map(|_| item.clone()).collect());
-    let msg = compiled.validate(&instance).unwrap_err().to_string();
-    assert!(msg.contains("200 total"), "{msg}");
+    for distinct in [false, true] {
+        let instance = Value::Sequence(
+            (0..200)
+                .map(|i| {
+                    Value::from(format!(
+                        "{}!{}",
+                        "a".repeat(40),
+                        if distinct { i } else { 0 }
+                    ))
+                })
+                .collect(),
+        );
+        let msg = compiled.validate(&instance).unwrap_err().to_string();
+        assert!(msg.contains("backtracking"), "{msg}");
+        // Unfinished matches are indeterminate, so the validator reports
+        // the shared engine failure rather than 200 definite mismatches.
+        let violations = compiled.iter_errors(&instance).unwrap();
+        assert_eq!(violations.len(), 1);
+        assert_eq!(violations[0].instance_path, "/0");
+        assert!(violations[0].message.contains("backtracking"));
+    }
 }
 
 #[test]

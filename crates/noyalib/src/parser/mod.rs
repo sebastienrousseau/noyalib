@@ -18,16 +18,33 @@ pub(crate) use loader::{
     DuplicateKeyPolicy as InternalDuplicateKeyPolicy, MergeKeyPolicy as InternalMergeKeyPolicy,
     ParseConfig, value_to_key_string,
 };
-pub(crate) use scanner::ScalarStyle;
+pub(crate) use scanner::{ScalarStyle, Scanner, TokenKind};
 // CST builder is the only consumer; gate the re-exports to match.
-#[cfg(feature = "std")]
-pub(crate) use scanner::{
-    RecordedToken, RecordedTokenKind, ScannedComment, Scanner, TokenKind, Trivia, TriviaKind,
-};
+pub(crate) use scanner::{RecordedToken, RecordedTokenKind, ScannedComment, Trivia, TriviaKind};
 
 /// Returns a default (zero) `Span` for use in synthesized events.
 pub(crate) fn scanner_span_default() -> scanner::Span {
     scanner::Span::default()
+}
+
+/// Decode a plain scalar's spelling without resolving its schema type.
+/// Properties can prefix a scalar's span; quoted and block scalars keep
+/// their existing decoded `Value::String` behavior in the deserializer.
+pub(crate) fn plain_scalar_text(input: &str) -> Option<Cow<'_, str>> {
+    let mut scanner = Scanner::new(input);
+    loop {
+        match scanner.next_token().ok()?.kind {
+            TokenKind::StreamStart | TokenKind::Anchor(_) => {}
+            TokenKind::Tag(handle, suffix)
+                if handle.as_ref() == "!" && suffix.as_ref() == "include" =>
+            {
+                return None;
+            }
+            TokenKind::Tag(_, _) => {}
+            TokenKind::Scalar(ScalarStyle::Plain, text) => return Some(text),
+            _ => return None,
+        }
+    }
 }
 
 use crate::error::Result;
@@ -37,12 +54,10 @@ use crate::error::Result;
 // `-D unused` workspace lint.
 #[allow(unused_imports)]
 use crate::prelude::*;
-#[cfg(feature = "std")]
 use crate::span_context::SpanTree;
 use crate::value::Value;
 
 /// Parse a YAML string into a list of `(Value, SpanTree)` documents.
-#[cfg(feature = "std")]
 pub(crate) fn parse(input: &str, config: &ParseConfig) -> Result<Vec<(Value, SpanTree)>> {
     let mut parser = Parser::with_max_events(input, config.max_events);
     loader::load(&mut parser, config, input)
@@ -51,7 +66,6 @@ pub(crate) fn parse(input: &str, config: &ParseConfig) -> Result<Vec<(Value, Spa
 /// Parse exactly one YAML document, erroring if the stream carries
 /// more than one. Used by single-document deserialisation and CST
 /// entry points (see #351).
-#[cfg(feature = "std")]
 pub(crate) fn parse_exactly_one(input: &str, config: &ParseConfig) -> Result<(Value, SpanTree)> {
     let mut parser = Parser::with_max_events(input, config.max_events);
     loader::load_exactly_one(&mut parser, config, input)
@@ -66,7 +80,6 @@ pub(crate) fn parse_exactly_one(input: &str, config: &ParseConfig) -> Result<(Va
 /// `cst::document::decode_key_token`, which only ever feeds it a
 /// single scalar token — `std`-only, like the rest of the `cst`
 /// module. See [`loader::load_one_no_spans`].
-#[cfg(feature = "std")]
 pub(crate) fn parse_one_value(input: &str, config: &ParseConfig) -> Result<Value> {
     loader::load_one_no_spans(input, config)
 }
@@ -77,15 +90,16 @@ pub(crate) fn parse_one_value(input: &str, config: &ParseConfig) -> Result<Value
 /// Available on every target — `std` builds use this from
 /// `from_str::<Value>`'s fast path (`Value` has no span field, so a
 /// `SpanTree` would be pure waste) and from the `no_std` AST path;
-/// `no_std` builds use it exclusively. See #351.
+/// `no_std` builds use it unless typed plain-scalar strings need their
+/// source spans. See #351 and #494.
 pub(crate) fn parse_exactly_one_value(input: &str, config: &ParseConfig) -> Result<Value> {
     loader::load_exactly_one_no_spans(input, config)
 }
 
 /// Parse all YAML documents into `Value`s without building `SpanTree`s.
 ///
-/// Used by `document::load_all_*` on the no_std target where
-/// `SpanTree` is unavailable. The std target uses the
+/// Used by the ordinary no_std document loaders. Typed plain-scalar
+/// strings can opt into the span-aware sibling to retain source text. The std target uses the
 /// span-aware sibling `parse(...)` and discards span data on
 /// the `Value`-target fast path via `load_one_no_spans` instead.
 #[cfg(not(feature = "std"))]

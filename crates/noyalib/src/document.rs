@@ -25,8 +25,9 @@ use crate::de::ParserConfig;
 use crate::error::{Error, Result};
 use crate::parser;
 use crate::prelude::*;
+use crate::span_context;
 #[cfg(feature = "std")]
-use crate::span_context::{self, SpanTree};
+use crate::span_context::SpanTree;
 use crate::value::Value;
 #[cfg(not(feature = "std"))]
 use alloc::vec::IntoIter;
@@ -269,45 +270,38 @@ where
     }
     let parse_config = parser::ParseConfig::from(config);
 
-    #[cfg(feature = "std")]
-    {
-        let mut pairs = parser::parse(input, &parse_config)?;
-        let mut results = Vec::with_capacity(pairs.len());
-        let source: Arc<str> = input.into();
-        let lines = span_context::SharedLineIndex::default();
+    load_all_as_spanned(input, config, &parse_config)
+}
 
-        for (value, span_tree) in &mut pairs {
-            crate::de::post_process_document(value, config)?;
-            let spans = span_context::build_span_map(value, span_tree);
-            let ctx = span_context::SpanContext::with_lines(spans, source.clone(), lines.clone())
-                .with_key_texts(value, span_tree);
-            let typed: T = crate::de::from_value_spanned_with_options(
-                value,
-                ctx,
-                config.ignore_binary_tag_for_string,
-                config.plain_scalar_strings,
-            )?;
-            results.push(typed);
-        }
+/// Retain source context for typed document loads, including alloc-only ones.
+fn load_all_as_spanned<T>(
+    input: &str,
+    config: &ParserConfig,
+    parse_config: &parser::ParseConfig,
+) -> Result<Vec<T>>
+where
+    T: for<'de> serde_core::Deserialize<'de> + 'static,
+{
+    let mut pairs = parser::parse(input, parse_config)?;
+    let mut results = Vec::with_capacity(pairs.len());
+    let source: Arc<str> = input.into();
+    let lines = span_context::SharedLineIndex::default();
 
-        Ok(results)
+    for (value, span_tree) in &mut pairs {
+        crate::de::post_process_document(value, config)?;
+        let spans = span_context::build_span_map(value, span_tree);
+        let ctx = span_context::SpanContext::with_lines(spans, source.clone(), lines.clone())
+            .with_key_texts(value, span_tree);
+        let typed: T = crate::de::from_value_spanned_with_options(
+            value,
+            ctx,
+            config.ignore_binary_tag_for_string,
+            config.plain_scalar_strings,
+        )?;
+        results.push(typed);
     }
 
-    #[cfg(not(feature = "std"))]
-    {
-        let mut docs = parser::parse_all_values(input, &parse_config)?;
-        let mut results = Vec::with_capacity(docs.len());
-        for value in &mut docs {
-            crate::de::post_process_document(value, config)?;
-            let typed: T = crate::de::from_value_with_options(
-                value,
-                config.ignore_binary_tag_for_string,
-                config.plain_scalar_strings,
-            )?;
-            results.push(typed);
-        }
-        Ok(results)
-    }
+    Ok(results)
 }
 
 /// Lazy iterator that yields `Result<T>` per YAML document parsed

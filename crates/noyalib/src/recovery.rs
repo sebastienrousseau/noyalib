@@ -57,6 +57,7 @@
 
 use crate::de::{DuplicateKeyPolicy, ParserConfig, from_str_with_config};
 use crate::error::Error;
+use crate::prelude::*;
 use crate::value::Value;
 
 /// Result of an error-recovering parse pass.

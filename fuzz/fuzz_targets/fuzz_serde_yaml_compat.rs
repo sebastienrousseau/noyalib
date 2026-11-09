@@ -34,7 +34,7 @@ fuzz_target!(|data: &[u8]| {
 
     match (shim, upstream) {
         (Ok(a), Ok(b)) => {
-            if !equivalent(&a, &b) && !anchor_name_outside_libyaml(s) {
+            if !equivalent(&a, &b) && !anchor_name_outside_libyaml(s) && !yaml_1_1_line_break(s) {
                 panic!(
                     "shim != serde_yaml on accepted input (len {}):\n  shim     : {}\n  upstream : {}",
                     s.len(),
@@ -64,6 +64,17 @@ fuzz_target!(|data: &[u8]| {
         }
     }
 });
+
+/// Known libyaml quirk (serde_yaml_ng and serde_yaml): it keeps the
+/// YAML 1.1 line breaks, so NEL (U+0085), LS (U+2028) and PS (U+2029)
+/// end a line, and `\u{85}` reads as null and `a\u{85}` as "a". YAML 1.2
+/// §5.4 makes only LF and CR line breaks; those three are ordinary
+/// printable characters, so noyalib keeps them in the scalar. Such
+/// inputs are dropped rather than modelled. noyalib's reading is pinned
+/// in tests/regressions/competitor_bugs.rs.
+fn yaml_1_1_line_break(s: &str) -> bool {
+    s.contains(['\u{85}', '\u{2028}', '\u{2029}'])
+}
 
 /// libyaml allows only `[A-Za-z0-9_-]` in an anchor name and ends the
 /// name at anything else, where YAML 1.2.2 §6.9.2 allows any ns-char

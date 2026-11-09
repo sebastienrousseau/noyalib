@@ -435,23 +435,19 @@ pub struct ParserConfig {
     /// the parser is unchanged. Setting a non-empty map forces the
     /// AST fallback so the post-parse walk runs uniformly across
     /// every typed target.
-    #[cfg(feature = "std")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
-    pub properties: Option<Arc<std::collections::HashMap<String, String>>>,
+    pub properties: Option<Arc<PropertyMap<String>>>,
     /// When `true`, an unknown `${name}` placeholder (no entry in
     /// [`Self::properties`] and no `:-default` fallback) aborts
     /// the parse with [`Error::Custom`](crate::Error::Custom).
     /// When `false` (default), unknown placeholders are replaced
     /// with the empty string — the lossy semantics matching
     /// [`Value::interpolate_properties_lossy`](crate::Value::interpolate_properties_lossy).
-    #[cfg(feature = "std")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
     pub strict_properties: bool,
     /// `!include` directive resolver. When set, the post-parse
     /// walk substitutes every `Value::Tagged(!include, spec)`
     /// node with the result of `resolver(IncludeRequest)`. See
     /// [`crate::include::IncludeResolver`] for the closure
-    /// signature and [`crate::include::SafeFileResolver`] for
+    /// signature and `crate::include::SafeFileResolver` for
     /// the bundled filesystem implementation.
     ///
     /// `None` (default) disables include expansion; tagged
@@ -520,9 +516,7 @@ impl Default for ParserConfig {
             alias_jump_event_factor: limits.alias_jump_event_factor,
             require_indent: RequireIndent::Unchecked,
             policies: Vec::new(),
-            #[cfg(feature = "std")]
             properties: None,
-            #[cfg(feature = "std")]
             strict_properties: false,
             #[cfg(feature = "include")]
             include_resolver: None,
@@ -592,7 +586,6 @@ impl ParserConfig {
             strict_booleans: true,
             duplicate_key_policy: DuplicateKeyPolicy::Error,
             require_indent: RequireIndent::Even,
-            #[cfg(feature = "std")]
             strict_properties: true,
             ..Self::default().with_limits(ParserLimits::profile(ParserProfile::Strict))
         }
@@ -727,22 +720,20 @@ impl ParserConfig {
     ///
     /// ```
     /// use noyalib::{from_str_with_config, ParserConfig, Value};
+    /// # #[cfg(feature = "std")]
     /// use std::collections::HashMap;
+    /// # #[cfg(not(feature = "std"))]
+    /// # type HashMap<K, V> = hashbrown::HashMap<K, V, rustc_hash::FxBuildHasher>;
     /// use std::sync::Arc;
     ///
-    /// let mut props = HashMap::new();
+    /// let mut props = HashMap::default();
     /// props.insert("HOST".to_string(), "localhost".to_string());
     /// let cfg = ParserConfig::new().properties(Arc::new(props));
     /// let v: Value = from_str_with_config("url: http://${HOST}/", &cfg).unwrap();
     /// assert_eq!(v["url"].as_str(), Some("http://localhost/"));
     /// ```
-    #[cfg(feature = "std")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
     #[must_use]
-    pub fn properties(
-        mut self,
-        properties: Arc<std::collections::HashMap<String, String>>,
-    ) -> Self {
+    pub fn properties(mut self, properties: Arc<PropertyMap<String>>) -> Self {
         self.properties = Some(properties);
         self
     }
@@ -759,17 +750,18 @@ impl ParserConfig {
     ///
     /// ```
     /// use noyalib::{from_str_with_config, ParserConfig, Value};
+    /// # #[cfg(feature = "std")]
     /// use std::collections::HashMap;
+    /// # #[cfg(not(feature = "std"))]
+    /// # type HashMap<K, V> = hashbrown::HashMap<K, V, rustc_hash::FxBuildHasher>;
     /// use std::sync::Arc;
     ///
     /// let cfg = ParserConfig::new()
-    ///     .properties(Arc::new(HashMap::new()))
+    ///     .properties(Arc::new(HashMap::default()))
     ///     .strict_properties(true);
     /// let res: Result<Value, _> = from_str_with_config("x: ${MISSING}", &cfg);
     /// assert!(res.is_err());
     /// ```
-    #[cfg(feature = "std")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
     #[must_use]
     pub fn strict_properties(mut self, strict: bool) -> Self {
         self.strict_properties = strict;

@@ -60,6 +60,7 @@
 //! // From string, byte slice, reader, or Value
 //! let v: Value = noyalib::from_str(yaml).unwrap();
 //! let v: Value = noyalib::from_slice(bytes).unwrap();
+//! # #[cfg(feature = "std")]
 //! let v: Value = noyalib::from_reader(file).unwrap();
 //! let v: Value = noyalib::from_value(&value).unwrap();
 //!
@@ -75,8 +76,11 @@
 //! # let value = Value::Null;
 //! // To string, writer, or fmt::Write
 //! let yaml: String = noyalib::to_string(&value).unwrap();
+//! # #[cfg(feature = "std")]
+//! # {
 //! let mut buf = Vec::new();
 //! noyalib::to_writer(&mut buf, &value).unwrap();
+//! # }
 //! let mut s = String::new();
 //! noyalib::to_fmt_writer(&mut s, &value).unwrap();
 //!
@@ -205,19 +209,19 @@
 //!
 //! | Feature | Default | Pulls in | Adds | Implies |
 //! | :--- | :---: | :--- | :--- | :--- |
-//! | `std` | ✅ | — | I/O, [`Spanned<T>`] deserialise, [`cst`] | — |
+//! | `std` | ✅ | — | I/O and hosted runtime integrations | — |
 //! | `fast-int` | ✅ | `itoa` | branchless integer formatting | `std` recommended |
 //! | `fast-float` | ✅ | `ryu` | branchless float formatting | `std` recommended |
-//! | `strict-deserialise` | ✅ | `serde_ignored` | `from_*_strict` family | `std` |
+//! | `strict-deserialise` | ✅ | `serde_ignored` | `from_*_strict` family | reader needs `std` |
 //! | `minimal` | ⛔ | — | meta-alias for `std` only (drops the three above) | `std` |
 //! | `miette` | ⛔ | `miette 7` | rich terminal diagnostics | — |
-//! | `schema` | ⛔ | `schemars`, `serde_json` | [`schema_for`] / [`schema_for_yaml`] **+** consumer must also depend on `schemars = "1.2"` to derive [`JsonSchema`] | — |
-//! | `validate-schema` | ⛔ | `schema` + `jsonschema` | [`validate_against_schema`], [`coerce_to_schema`], [`CompiledSchema`] | `schema` |
-//! | `figment` | ⛔ | `figment 0.10` | [`figment::Yaml`](crate::figment) Provider | `std` |
-//! | `garde` | ⛔ | `garde 0.23` | [`Validated<T>`] | — |
-//! | `validator` | ⛔ | `validator 0.21` | [`ValidatedValidator<T>`] | — |
-//! | `lossless-float` | ⛔ | — | [`lossless_float::LosslessFloat`] — refuse-to-lose-precision float, the floating-point sibling of `lossless-u64` | — |
-//! | `parallel` | ⛔ | `rayon 1.10` | [`parallel::parse`], [`parallel::values`] | `std` |
+//! | `schema` | ⛔ | `schemars`, `serde_json` | `schema_for` / `schema_for_yaml` **+** consumer must also depend on `schemars = "1.2"` to derive `JsonSchema` | — |
+//! | `validate-schema` | ⛔ | `schema` + `jsonschema` | `validate_against_schema`, `coerce_to_schema`, `CompiledSchema` | `schema` |
+//! | `figment` | ⛔ | `figment 0.10` | `figment::Yaml` Provider | `std` |
+//! | `garde` | ⛔ | `garde 0.23` | `Validated<T>` | — |
+//! | `validator` | ⛔ | `validator 0.21` | `ValidatedValidator<T>` | — |
+//! | `lossless-float` | ⛔ | — | `lossless_float::LosslessFloat` — refuse-to-lose-precision float, the floating-point sibling of `lossless-u64` | — |
+//! | `parallel` | ⛔ | `rayon 1.10` | `parallel::parse`, `parallel::values` | `std` |
 //! | `simd` | ⛔ | — | forward-compat no-op — `noyalib::simd::*` is always available; the hot path uses it unconditionally | — |
 //! | `nightly-simd` | ⛔ | nightly rustc | 32-byte `StructuralIter` | `simd` |
 //! | `compat-serde-yaml` | ⛔ | — | `noyalib::compat::serde_yaml` shim | — |
@@ -232,24 +236,23 @@
 //! ## Concurrency guarantees
 //!
 //! - All public top-level functions ([`from_str`], [`from_slice`],
-//!   [`from_reader`], [`to_string`], [`to_writer`], …) are pure
+//!   `from_reader`, [`to_string`], `to_writer`, …) are pure
 //!   over their inputs and may be called concurrently from any
 //!   number of threads.
 //! - [`Value`], [`Mapping`], [`Number`], [`Spanned<T>`],
 //!   [`Error`] are `Send + Sync`. Cloning a `Value` is `O(n)` in
 //!   the value graph; share ownership via
-//!   [`Arc`](std::sync::Arc)`<Value>` when that cost matters.
+//!   `Arc``<Value>` when that cost matters.
 //! - [`policy::Policy`] requires `Send + Sync` so policies can be
 //!   shared by reference across threads. Stateful policies should
 //!   hold their state behind interior mutability
-//!   ([`std::sync::Mutex`] or equivalent).
-//! - [`Spanned<T>`] deserialisation uses a thread-local span
-//!   context (`std` feature). The TLS guard installs on entry to
-//!   [`from_str_with_config`] and clears on return — no leakage
-//!   across calls or across threads.
+//!   (`std::sync::Mutex` or equivalent).
+//! - [`Spanned<T>`] receives its source context explicitly. Hosted
+//!   builds also install a scoped thread-local context for diagnostic
+//!   helpers; alloc-only builds keep the context local to each call.
 //! - Anchor and alias state lives in the parser stack frame (one
 //!   per call); concurrent calls share no mutable state.
-//! - The Rayon-backed [`parallel`] module validates document limits
+//! - The Rayon-backed `parallel` module validates document limits
 //!   before scheduling, then discovers boundaries on demand and
 //!   dispatches bounded work to the active Rayon pool. `T: Send` is
 //!   required.
@@ -313,7 +316,7 @@
 //! - **Serialiser** — branchless integer (`itoa`) and float
 //!   (`ryu`) formatting in the hot path; falls back to
 //!   `core::fmt` under `--no-default-features`.
-//! - **Parallel multi-document** — [`parallel::parse`] scales
+//! - **Parallel multi-document** — `parallel::parse` scales
 //!   near-linearly with cores on `---`-separated streams; the
 //!   pre-scan is `O(input.len())` on the calling thread.
 //! - **`Value::clone`** is `O(n)` over the value graph; share
@@ -348,9 +351,9 @@
 //!   `critical-section` implementation. If you need a CAS-free
 //!   target, please open an issue rather than assuming it works.
 //!
-//!   The `std`-only items ([`from_reader`], [`to_writer`],
-//!   [`Spanned<T>`] deserialisation via TLS, the [`cst`]
-//!   module) are gone; the rest of the surface compiles. CI
+//!   The `std`-only items (`from_reader`, `to_writer`,
+//!   filesystem helpers and thread-runtime integrations) are absent.
+//!   CST editing and `Spanned<T>` retain their alloc-only behavior. CI
 //!   enforces `cargo check --no-default-features` on every PR.
 //! - **WASM**: `wasm32-unknown-unknown` via the `noyalib-wasm`
 //!   companion crate. 338 KB release binary (LTO). Browser
@@ -425,6 +428,11 @@ mod readme_doctests {}
 #[cfg(not(feature = "std"))]
 extern crate alloc;
 
+// Unit tests run on a host even when the library's std feature is disabled.
+// Keep std available only to the test harness and its fault-injection helpers.
+#[cfg(all(test, not(feature = "std")))]
+extern crate std;
+
 /// Internal prelude for no_std compatibility.
 /// Provides String, Vec, Box, etc. from alloc when std is absent.
 #[cfg(not(feature = "std"))]
@@ -437,6 +445,7 @@ pub(crate) mod prelude {
     pub(crate) use alloc::vec;
     pub(crate) use alloc::vec::Vec;
     pub(crate) use core::fmt;
+    pub(crate) type PropertyMap<T> = FxHashMap<String, T>;
 
     // `rustc_hash::FxHashMap`/`FxHashSet` are aliases for the std
     // `HashMap`/`HashSet`, so they do not exist without std. hashbrown
@@ -455,18 +464,16 @@ pub(crate) mod prelude {
     // changes shape for hosted callers. See #210.
     pub(crate) type IndexMap<K, V, S = FxBuildHasher> = indexmap::IndexMap<K, V, S>;
 
-    // `f64::fract` and `f64::mul_add` are std inherent methods; `core`
-    // has neither. libm supplies the equivalents. `fract` is defined as
-    // `self - self.trunc()`, which is what libm::trunc gives exactly.
-    // See #210.
+    // Private core-only helpers preserve the hosted float behavior without
+    // adding a math dependency or requiring an extra no_std feature (#500).
     #[inline]
     pub(crate) fn f64_fract(x: f64) -> f64 {
-        x - libm::trunc(x)
+        crate::portable_float::fract(x)
     }
 
     #[inline]
     pub(crate) fn f64_mul_add(a: f64, b: f64, c: f64) -> f64 {
-        libm::fma(a, b, c)
+        crate::portable_float::mul_add(a, b, c)
     }
 }
 
@@ -481,6 +488,7 @@ pub(crate) mod prelude {
     pub(crate) use std::sync::Arc;
     pub(crate) use std::vec;
     pub(crate) use std::vec::Vec;
+    pub(crate) type PropertyMap<T> = std::collections::HashMap<String, T>;
 
     // Hosted builds keep the std-backed maps unchanged; the no_std
     // prelude substitutes hashbrown equivalents. See #210.
@@ -490,8 +498,8 @@ pub(crate) mod prelude {
     // prelude substitutes `FxBuildHasher`. See #210.
     pub(crate) use indexmap::IndexMap;
 
-    // Hosted builds use the inherent std methods; the no_std prelude
-    // routes these through libm. See #210.
+    // Hosted builds retain the inherent std methods; alloc-only builds
+    // use the bit-exact portable helpers. See #500 and ADR-0018.
     #[inline]
     pub(crate) fn f64_fract(x: f64) -> f64 {
         x.fract()
@@ -502,6 +510,9 @@ pub(crate) mod prelude {
         a.mul_add(b, c)
     }
 }
+
+#[cfg(any(not(feature = "std"), test))]
+mod portable_float;
 
 mod anchors;
 /// Zero-copy YAML values that borrow from the input.
@@ -546,10 +557,9 @@ pub mod borrowed;
 mod comments;
 /// Drop-in compatibility shims for upstream YAML crates. Each shim
 /// is gated behind its own feature flag so unused migration paths
-/// add zero compile cost. See [`compat::serde_yaml`] for the
+/// add zero compile cost. See `compat::serde_yaml` for the
 /// `serde_yaml` 0.9 surface.
 pub mod compat;
-#[cfg(feature = "std")]
 pub mod cst;
 mod de;
 /// Framework-neutral diagnostics and optional rendering bridges.
@@ -594,7 +604,7 @@ pub mod recovery;
 mod schema;
 /// JSON Schema codegen via [`schemars`] — derive
 /// [`schemars::JsonSchema`] for a Rust type and call
-/// [`schema_for`] / [`schema_for_yaml`] to obtain the schema as a
+/// `schema_for` / `schema_for_yaml` to obtain the schema as a
 /// [`crate::Value`] or as YAML text. Requires the `schema` feature.
 #[cfg(feature = "schema")]
 #[cfg_attr(docsrs, doc(cfg(feature = "schema")))]
@@ -642,13 +652,15 @@ pub mod with;
 pub use anchors::{
     AnchorRegistry, ArcAnchor, ArcAnchorRegistry, ArcWeakAnchor, RcAnchor, RcWeakAnchor,
 };
-// Recursive anchor wrappers depend on `Rc<RefCell<…>>` /
-// `Arc<Mutex<…>>` which require `std` (RefCell+Mutex live under
-// `core::cell` / `std::sync` — the latter only available with std).
+// Thread-safe recursive wrappers require std::sync::Mutex.
+// Rc recursion uses alloc::rc::Rc and core::cell::RefCell.
 #[cfg(feature = "std")]
-pub use anchors::{ArcRecursion, ArcRecursive, RcRecursion, RcRecursive};
+pub use anchors::{ArcRecursion, ArcRecursive};
+pub use anchors::{RcRecursion, RcRecursive};
 pub use comments::{Comment, CommentKind, load_comments};
 pub use de::RequireIndent;
+#[cfg(all(feature = "std", feature = "strict-deserialise"))]
+pub use de::from_reader_strict;
 pub use de::{
     Deserializer, DuplicateKeyPolicy, MergeKeyPolicy, NonScalarKeyPolicy, ParserConfig,
     ParserLimits, ParserProfile, YamlVersion, from_slice, from_slice_with_config, from_str,
@@ -656,8 +668,8 @@ pub use de::{
 };
 #[cfg(feature = "std")]
 pub use de::{from_reader, from_reader_with_config};
-#[cfg(all(feature = "std", feature = "strict-deserialise"))]
-pub use de::{from_reader_strict, from_slice_strict, from_str_strict};
+#[cfg(feature = "strict-deserialise")]
+pub use de::{from_slice_strict, from_str_strict};
 pub use diagnostic::{Diagnostic, DiagnosticCode, DiagnosticLabel, DiagnosticSeverity, SourceSpan};
 #[cfg(feature = "std")]
 pub use document::{DocumentReadIterator, read, read_with_config};

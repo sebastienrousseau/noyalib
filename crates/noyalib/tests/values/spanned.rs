@@ -6,6 +6,42 @@
 use noyalib::{Spanned, from_str, to_string};
 
 #[test]
+fn ast_fallback_retains_source_spans_without_scalar_coercion() {
+    #[derive(Debug, serde::Deserialize)]
+    struct Config {
+        port: Spanned<u16>,
+    }
+
+    let source = "# config\nport: 8080\n";
+    let config = noyalib::ParserConfig::new().merge_key_policy(noyalib::MergeKeyPolicy::AsOrdinary);
+    let parsed: Config = noyalib::from_str_with_config(source, &config).unwrap();
+    assert_eq!(parsed.port.value, 8080);
+    assert_eq!(parsed.port.start.line(), 2);
+    assert_eq!(parsed.port.start.column(), 7);
+    assert_eq!(
+        source[parsed.port.start.index()..parsed.port.end.index()].trim_end(),
+        "8080"
+    );
+}
+
+#[test]
+fn typed_document_stream_retains_source_spans() {
+    let source = "---\n42\n---\n99\n";
+    let docs: Vec<Spanned<u16>> = noyalib::load_all_as(source).unwrap();
+    assert_eq!(docs.len(), 2);
+    assert_eq!(docs[0].value, 42);
+    assert_eq!(docs[1].value, 99);
+    for (doc, line) in docs.iter().zip([2, 4]) {
+        assert_eq!(doc.start.line(), line);
+        assert_eq!(doc.start.column(), 1);
+        assert_eq!(
+            source[doc.start.index()..doc.end.index()].trim_end(),
+            doc.value.to_string()
+        );
+    }
+}
+
+#[test]
 fn test_spanned_basic() {
     #[derive(Debug, serde::Deserialize)]
     struct Config {

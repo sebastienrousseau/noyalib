@@ -36,8 +36,9 @@ reviewers what kind of change to expect before they open the diff:
 | `ci/` | CI / build / packaging changes | `ci/pin-toolchain-1.86` |
 | `chore/` | dependency bumps and similar housekeeping | `chore/bump-criterion-0.5` |
 
-The current release branch is `feat/v0.0.1`. Open PRs against that
-branch (or `main` once v0.0.1 ships).
+New work lands on the single future `feat/v0.0.X` branch. Check the
+open release PR for its current name; the release PR targets `main`.
+Keep at most two version branches, as specified in [AGENTS.md](AGENTS.md).
 
 ## Making changes
 
@@ -92,7 +93,8 @@ merged. Set up GPG or SSH signing per the
 
 ## Pull requests
 
-- Open against the current release branch (`feat/v0.0.1` for now).
+- Open against the current future version branch. The release PR
+  targets `main`.
 - Title follows the same Conventional Commits format as commits.
 - Body includes:
   - **What changed** in 1–3 bullets

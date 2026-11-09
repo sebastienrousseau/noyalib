@@ -34,8 +34,9 @@ pub struct Deserializer<'de> {
     /// [`ParserConfig::plain_scalar_strings`] (refs #344). When
     /// `true`, a `String`/`char` target accepts a non-string scalar
     /// (`Value::Bool`, `Value::Null`, `Value::Number`) and receives
-    /// its formatted text. Default `false` preserves the historical
-    /// refusal.
+    /// its source spelling when a source context is available, falling
+    /// back to formatted text for source-free values. Default `false`
+    /// preserves the historical refusal.
     pub(crate) plain_scalar_strings: bool,
 }
 
@@ -117,6 +118,20 @@ impl<'de> Deserializer<'de> {
         }
     }
 
+    /// Prefer the scanner's scalar spelling to the resolved number,
+    /// boolean, or null representation (#494).
+    fn scalar_text(&self) -> Option<Cow<'de, str>> {
+        if !matches!(self.value, Value::Bool(_) | Value::Null | Value::Number(_)) {
+            return None;
+        }
+        let source_text = self.span_ctx.and_then(|ctx| {
+            let addr = core::ptr::from_ref(self.value) as usize;
+            let &(start, end) = ctx.spans.get(&addr)?;
+            crate::parser::plain_scalar_text(ctx.source.get(start..end)?)
+        });
+        source_text.or_else(|| scalar_as_text(self.value))
+    }
+
     /// Attach the source location of the value being deserialized to an
     /// error that does not carry one yet.
     ///
@@ -162,8 +177,7 @@ impl<'de> Deserializer<'de> {
         // error returns through the `other` arm above), so the recorded
         // node is the one the failure is about. `from_str` walks the
         // root value to turn it into a field path (#353).
-        #[cfg(feature = "std")]
-        span_context::record_error_node(addr);
+        ctx.record_error_node(addr);
         Err(Error::deserialize_at(message, &ctx.source, span.0))
     }
 }
@@ -370,7 +384,7 @@ impl<'de> serde_core::Deserializer<'de> for Deserializer<'de> {
             // would for a number, bool, or null — see
             // `scalar_as_text` — further constrained to exactly one
             // character, same as the arm above. Off by default.
-            _ if self.plain_scalar_strings => match scalar_as_text(self.value) {
+            _ if self.plain_scalar_strings => match self.scalar_text() {
                 Some(text) if text.chars().count() == 1 => {
                     self.wrap_err(visitor.visit_char(text.chars().next().unwrap()))
                 }
@@ -417,7 +431,7 @@ impl<'de> serde_core::Deserializer<'de> for Deserializer<'de> {
             // constraint on an explicitly-typed `String` field. Off
             // by default — the catch-all below is the historical
             // refusal.
-            _ if self.plain_scalar_strings => match scalar_as_text(self.value) {
+            _ if self.plain_scalar_strings => match self.scalar_text() {
                 Some(text) => self.wrap_err(visitor.visit_str(&text)),
                 None => self.wrap_err(Err(Error::TypeMismatch {
                     expected: "string",
@@ -1002,28 +1016,11 @@ fn type_name(value: &Value) -> String {
     }
 }
 
-/// The literal text a scalar `Value` prints as, for the scalar kinds
-/// that are not already a `Value::String` — `bool`, `null`, and the
-/// `Number` variants. Returns `None` for `Value::String` (callers
-/// already hold the text directly), `Value::Sequence`,
-/// `Value::Mapping`, and `Value::Tagged` (handled at each call site).
+/// Canonical scalar text when no source spelling is available.
 ///
-/// Refs #344: a `String` (or one-character `char`) target receives a
-/// scalar's literal text even when it would otherwise resolve as a
-/// number, bool, or null for an untyped target — implicit typing is
-/// a fallback `deserialize_any` uses, not a constraint on an
-/// explicitly-typed field. Two caveats follow from `Value` no longer
-/// holding the original source text:
-///
-/// - `Value::Null` carries no text of its own, so this yields `""`.
-///   The *streaming* deserializer — which typed parses take by
-///   default — instead keeps a written `~`, `null`, or empty scalar
-///   verbatim; only a caller that forces the AST path (a non-default
-///   `ParserConfig`, or the `Value` target itself) sees `""` here.
-/// - An integer literal's original spelling is not preserved: `0x1F`
-///   parses to `Number::Integer(31)`, which formats back as `"31"`,
-///   not `"0x1F"`. The streaming path gives the byte-exact source
-///   text instead.
+/// Used for source-free values and substitutions whose input span does
+/// not describe the resulting scalar. Written null and numeric spelling
+/// are recovered by `Deserializer::scalar_text` when source is present.
 fn scalar_as_text(value: &Value) -> Option<Cow<'_, str>> {
     match value {
         Value::Bool(b) => Some(Cow::Borrowed(if *b { "true" } else { "false" })),

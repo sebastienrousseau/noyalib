@@ -144,7 +144,7 @@ pub enum RepairScope {
 pub(crate) mod fault {
     use core::cell::Cell;
 
-    thread_local! {
+    std::thread_local! {
         static FAIL_SPLICE: Cell<bool> = const { Cell::new(false) };
         static FAIL_VALIDATE: Cell<bool> = const { Cell::new(false) };
         static FAIL_ORACLE: Cell<bool> = const { Cell::new(false) };
@@ -942,7 +942,7 @@ impl Document {
     ///
     /// Replacing a **scalar** with a collection is still refused — a
     /// value that must move onto its own lines is a layout decision
-    /// `set` expresses with a fragment.
+    /// `grow_value` expresses that layout decision explicitly.
     fn replace_collection_value(
         &mut self,
         path: &str,
@@ -960,8 +960,8 @@ impl Document {
                 Some(Value::Sequence(_) | Value::Mapping(_))
             ) {
                 return Err(Error::Parse(
-                    "set_value cannot replace a scalar with a collection (use `set` with a \
-                     fragment)"
+                    "set_value cannot replace a scalar with a collection (use `grow_value` \
+                     to re-shape the entry, or `set` with a fragment)"
                         .into(),
                 ));
             }
@@ -991,30 +991,58 @@ impl Document {
         let flow_site = matches!(self.source.as_bytes().get(s), Some(b'[' | b'{'))
             || in_flow_collection(&self.green, s);
         let fragment = if flow_site {
-            let cfg = crate::SerializerConfig::new().flow_style(crate::FlowStyle::Flow);
-            crate::to_string_value_with_config(value, &cfg)?
-                .trim_end_matches('\n')
-                .to_owned()
+            self.render_flow_collection(value)?
         } else {
             // Block rendering starts at column 0; shift every
             // continuation line to the old value's own column so the
             // fragment sits where the node it replaces sat.
             let line_start = self.source[..s].rfind('\n').map_or(0, |i| i + 1);
-            let column = s - line_start;
-            let cfg = crate::SerializerConfig::new()
-                .indent(self.indent_unit())
-                .flow_style(crate::FlowStyle::Block);
-            let rendered = crate::to_string_value_with_config(value, &cfg)?;
-            let pad = " ".repeat(column);
-            rendered
-                .trim_end_matches('\n')
-                .replace('\n', &format!("\n{pad}"))
+            self.render_block_collection(value, s - line_start)?
         };
-        // The scalar arm's rule, on the arm that renders through the
+        self.collection_oracle_splice("set_value", path, &expected, s, e, &fragment)
+    }
+
+    /// A collection rendered flow, on one line, for a flow site.
+    fn render_flow_collection(&self, value: &Value) -> Result<String> {
+        let cfg = crate::SerializerConfig::new().flow_style(crate::FlowStyle::Flow);
+        Ok(crate::to_string_value_with_config(value, &cfg)?
+            .trim_end_matches('\n')
+            .to_owned())
+    }
+
+    /// A collection rendered block at the document's
+    /// [`indent_unit`](Self::indent_unit), with every continuation line
+    /// shifted to `column` so the fragment sits where its site sits.
+    fn render_block_collection(&self, value: &Value, column: usize) -> Result<String> {
+        let cfg = crate::SerializerConfig::new()
+            .indent(self.indent_unit())
+            .flow_style(crate::FlowStyle::Block);
+        let rendered = crate::to_string_value_with_config(value, &cfg)?;
+        let pad = " ".repeat(column);
+        Ok(rendered
+            .trim_end_matches('\n')
+            .replace('\n', &format!("\n{pad}")))
+    }
+
+    /// Verify, then splice, a rendered collection `fragment` over
+    /// `s..e`: the candidate must re-parse and load back as `expected`
+    /// — the document with exactly the one path replaced — or the
+    /// source is left byte-identical. `what` names the calling mutator
+    /// in the refusals.
+    fn collection_oracle_splice(
+        &mut self,
+        what: &str,
+        path: &str,
+        expected: &Value,
+        s: usize,
+        e: usize,
+        fragment: &str,
+    ) -> Result<()> {
+        // The scalar arm's rule, on the arms that render through the
         // serializer. It must land *here*, above the candidate: the
         // oracle proves something only if the bytes it parses are the
         // bytes that get spliced.
-        let fragment = respell_breaks(&fragment, document_break(&self.source));
+        let fragment = respell_breaks(fragment, document_break(&self.source));
         // Oracle before the splice: the candidate must load back as
         // the document with exactly this one path replaced.
         let mut candidate = String::with_capacity(self.source.len() + fragment.len());
@@ -1023,18 +1051,167 @@ impl Document {
         candidate.push_str(&self.source[e..]);
         let reparsed = parse_document_inner(&candidate, self.config.clone()).map_err(|err| {
             Error::Parse(format!(
-                "set_value: replacing `{path}` with the rendered collection would not \
+                "{what}: replacing `{path}` with the rendered collection would not \
                  re-parse ({err}); the document was left unchanged"
             ))
         })?;
-        if oracle_rejects(&reparsed.as_value(), &expected) {
+        if oracle_rejects(&reparsed.as_value(), expected) {
             return Err(Error::Parse(format!(
-                "set_value: replacing `{path}` failed the integrity check — the rendered \
+                "{what}: replacing `{path}` failed the integrity check — the rendered \
                  collection did not load back as the value given; the document was left \
                  unchanged"
             )));
         }
         self.replace_span(s, e, &fragment)
+    }
+
+    /// Grow the scalar at `path` into a collection: the one shape
+    /// [`set_value`](Self::set_value) refuses, provided as its own
+    /// opt-in route (#328's follow-up). The collection is rendered
+    /// block at the document's [`indent_unit`](Self::indent_unit), or
+    /// flow when the site sits inside a flow collection, and the
+    /// candidate is verified to load back as the document with exactly
+    /// this path replaced before a byte changes.
+    ///
+    /// Placement follows where the scalar sits:
+    ///
+    /// - **On its mapping key's line** (`tags: solo`): a block
+    ///   collection cannot start there, so it moves onto its own
+    ///   lines, one indent step past the key; a comment trailing the
+    ///   scalar stays on the key's line. An implicit null (`tags:`)
+    ///   takes the same placement.
+    /// - **On its own line, or a sequence item's** (`k:` / `  solo`,
+    ///   `- solo`): the collection takes the scalar's place at the
+    ///   scalar's own column; a block collection may begin on a `- `
+    ///   line. A trailing comment stays above the collection, or on
+    ///   the sequence indicator line.
+    /// - **Inside a flow collection**: rendered flow, in place.
+    ///
+    /// A collection already at `path` is #328's own case and is
+    /// delegated to it, so a caller writing collections can use this
+    /// method alone; a value **equal** to the current one is a no-op
+    /// that leaves the bytes untouched.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use noyalib::cst::parse_document;
+    /// use noyalib::{Value, from_str};
+    ///
+    /// let mut doc = parse_document("tags: solo\nname: x\n").unwrap();
+    /// let tags: Value = from_str("[a, b]").unwrap();
+    /// doc.grow_value("tags", &tags).unwrap();
+    /// assert_eq!(doc.to_string(), "tags:\n  - a\n  - b\nname: x\n");
+    /// ```
+    ///
+    /// # Errors
+    ///
+    /// - The value is a scalar: writing one is
+    ///   [`set_value`](Self::set_value)'s job.
+    /// - Path not found.
+    /// - The entry's value is a `*name` alias token: a collection
+    ///   grown in a reference's place is not an in-place edit.
+    /// - The target sits inside an anchored value with live alias
+    ///   references (#338).
+    /// - The scalar carries a `&anchor` / `!tag` property, which the
+    ///   collection would drop.
+    /// - The scalar's source layout is not one of the shapes above.
+    /// - The spliced candidate does not re-parse, or does not load
+    ///   back as the value given; the source is left byte-identical.
+    pub fn grow_value(&mut self, path: &str, value: &Value) -> Result<()> {
+        if !matches!(value, Value::Sequence(_) | Value::Mapping(_)) {
+            return Err(Error::Parse(
+                "grow_value writes a collection; use `set_value` for a scalar value".into(),
+            ));
+        }
+        let ((s, e), alias_target) = self.write_span_resolved(path)?;
+        refuse_collection_over_alias_token(path, alias_target)?;
+        let segments = parse_query_path(path);
+        let (expected, current_is_collection) = {
+            self.ensure_cache();
+            let cache = self.cache.borrow();
+            let (root, _) = cache.as_ref().expect("ensure_cache populated");
+            let current = typed_value_at(root, &segments);
+            if current == Some(value) {
+                return Ok(());
+            }
+            let is_collection = matches!(current, Some(Value::Sequence(_) | Value::Mapping(_)));
+            let mut expected = root.clone();
+            match path_value_mut(&mut expected, &segments) {
+                Some(slot) => *slot = value.clone(),
+                None => return Err(Error::Parse(format!("path not found: {path}"))),
+            }
+            (expected, is_collection)
+        };
+        if current_is_collection {
+            return self.replace_collection_value(path, value, s, e);
+        }
+        self.grow_scalar_value(path, value, &expected, s, e)
+    }
+
+    /// Render a scalar's replacement after checking its source ownership.
+    fn grow_scalar_value(
+        &mut self,
+        path: &str,
+        value: &Value,
+        expected: &Value,
+        s: usize,
+        e: usize,
+    ) -> Result<()> {
+        self.refuse_inside_aliased_anchor("grow_value", path, s)?;
+        if matches!(self.source.as_bytes().get(s), Some(b'&' | b'!')) {
+            return Err(Error::Parse(format!(
+                "grow_value cannot replace the scalar at `{path}`: it carries an anchor \
+                 or tag property, which the collection written in its place would drop"
+            )));
+        }
+        let (s, e, fragment) = if in_flow_collection(&self.green, s) {
+            (s, e, self.render_flow_collection(value)?)
+        } else {
+            self.growing_block_fragment(path, value, s, e)?
+        };
+        self.collection_oracle_splice("grow_value", path, expected, s, e, &fragment)
+    }
+
+    /// Place a growing block collection and retain the scalar's comment.
+    fn growing_block_fragment(
+        &self,
+        path: &str,
+        value: &Value,
+        s: usize,
+        e: usize,
+    ) -> Result<(usize, usize, String)> {
+        // A replaced scalar no longer owns its keep-chomped breaks. Leave
+        // them outside the splice so the next key remains on its own line.
+        let (_, e) = trim_trailing_blank(&self.source, s, e);
+        let line_start = self.source[..s].rfind(['\r', '\n']).map_or(0, |i| i + 1);
+        let lead = self.source[line_start..s].trim_end_matches([' ', '\t']);
+        let on_key_line = lead.ends_with(':');
+        let (start, column) = if on_key_line {
+            (
+                line_start + lead.len(),
+                key_column(&self.source, line_start) + self.indent_unit(),
+            )
+        } else if lead.is_empty() || (lead.ends_with('-') && s != e) {
+            (s, s - line_start)
+        } else {
+            return Err(Error::Parse(format!(
+                "grow_value cannot replace the scalar at `{path}`: its source layout \
+                 is not supported"
+            )));
+        };
+        let rendered = self.render_block_collection(value, column)?;
+        let comment_span = growth_comment_span(&self.source, s, e);
+        let end = comment_span.map_or(e, |(_, ce)| e.max(ce));
+        let comment = comment_span.map(|(cs, ce)| &self.source[cs..ce]);
+        let pad = " ".repeat(column);
+        let fragment = match (on_key_line, comment) {
+            (true, Some(comment)) => format!(" {comment}\n{pad}{rendered}"),
+            (true, None) => format!("\n{pad}{rendered}"),
+            (false, Some(comment)) => format!("{comment}\n{pad}{rendered}"),
+            (false, None) => rendered,
+        };
+        Ok((start, end, fragment))
     }
 
     /// Set or create the entry addressed by a prevalidated [`QueryPath`].
@@ -3635,6 +3812,19 @@ fn trailing_comment_span(source: &str, pos: usize) -> Option<(usize, usize)> {
     Some((i, line_end))
 }
 
+/// A scalar's comment, including one written inside a block header.
+fn growth_comment_span(source: &str, start: usize, end: usize) -> Option<(usize, usize)> {
+    if !matches!(source.as_bytes().get(start), Some(b'|' | b'>')) {
+        return trailing_comment_span(source, end);
+    }
+    let header_end = source[start..end]
+        .find(['\r', '\n'])
+        .map_or(end, |i| start + i);
+    source[start..header_end]
+        .find('#')
+        .map(|i| (start + i, header_end))
+}
+
 /// Put `comment` after the header of the block literal `fragment`:
 /// `|-\n  a` with `# c` becomes `|- # c\n  a`. A fragment without a
 /// line break is not a block literal and is returned unchanged.
@@ -5564,16 +5754,21 @@ fn detect_indent_unit(source: &str) -> usize {
 /// Two layouts to handle:
 ///
 /// - **Inline:** `key: value` — key and value share a line. The key's
-///   column is the leading-space count on that line.
+///   column is where the key token starts on that line: past the
+///   leading spaces **and past any `- ` sequence indicators**, which
+///   own the columns before a key on a `- key: value` item line (#499).
+///   On `  - name: web` the key's column is 4, not the dash's 2 — a
+///   sibling entry spliced at 2 lands where the parser expects another
+///   `- ` item.
 /// - **Nested block:** `key:\n  child: …` — the value's first byte
 ///   sits on a child line, indented past the key. The key's column is
-///   the leading-space count of an *earlier* non-blank/non-comment
-///   line whose indent is *smaller* than the value-line's indent.
+///   found on an *earlier* non-blank/non-comment line whose indent is
+///   *smaller* than the value-line's indent, counting `- ` indicators
+///   on that line the same way.
 ///
 /// Walks backwards from `value_start`, skipping blank and comment
-/// lines, and returns the first content line's column that is shallower
-/// than the value line's column. Falls back to the value line's own
-/// column for the inline case.
+/// lines. Falls back to the value line's own column for the inline
+/// case.
 ///
 /// Returns `None` if `value_start` is out of range.
 fn column_of_key_at(source: &str, value_start: usize) -> Option<usize> {
@@ -5582,14 +5777,6 @@ fn column_of_key_at(source: &str, value_start: usize) -> Option<usize> {
         return None;
     }
 
-    // Locate the line that contains value_start.
-    let line_start = |pos: usize| -> usize {
-        let mut s = pos;
-        while s > 0 && bytes[s - 1] != b'\n' {
-            s -= 1;
-        }
-        s
-    };
     let leading_spaces = |start: usize| -> usize {
         let mut c = 0;
         while start + c < bytes.len() && bytes[start + c] == b' ' {
@@ -5598,8 +5785,24 @@ fn column_of_key_at(source: &str, value_start: usize) -> Option<usize> {
         c
     };
 
-    let value_line_start = line_start(value_start);
+    let value_line_start = start_of_line(source, value_start);
     let value_col = leading_spaces(value_line_start);
+
+    // Where a key token can start on the line beginning at `start` with
+    // `col` leading spaces: past any `- ` sequence indicators (nested
+    // `- - ` included). Each indicator owns its column — an entry
+    // spliced there reads as another sequence item, not as the key's
+    // sibling (#499).
+    let past_dash_indicators = |start: usize, col: usize| -> usize {
+        let mut i = start + col;
+        while i + 1 < bytes.len() && bytes[i] == b'-' && matches!(bytes[i + 1], b' ' | b'\t') {
+            i += 1;
+            while i < bytes.len() && matches!(bytes[i], b' ' | b'\t') {
+                i += 1;
+            }
+        }
+        i - start
+    };
 
     // If there is real content (not just whitespace) on the value line
     // at or before `value_start`, the key is inline on this same line.
@@ -5614,7 +5817,7 @@ fn column_of_key_at(source: &str, value_start: usize) -> Option<usize> {
         probe += 1;
     }
     if inline_content {
-        return Some(value_col);
+        return Some(past_dash_indicators(value_line_start, value_col));
     }
 
     // Nested case: walk backward by line, skipping blanks and
@@ -5635,7 +5838,7 @@ fn column_of_key_at(source: &str, value_start: usize) -> Option<usize> {
         let is_blank = first_content >= after_content;
         let is_comment = !is_blank && bytes[first_content] == b'#';
         if !is_blank && !is_comment && prev_col < value_col {
-            return Some(prev_col);
+            return Some(past_dash_indicators(prev_start, prev_col));
         }
         if prev_start == 0 {
             return Some(value_col);
@@ -5841,24 +6044,35 @@ fn span_holds_keep_chomped_scalar(source: &str, start: usize, end: usize) -> boo
 ///
 /// A splice derives its indentation from the site rather than assuming
 /// two spaces; the terminator deserves the same treatment. Returns
-/// `"\r\n"` only when the document is *wholly* CRLF — at least one break,
-/// and every `\n` preceded by `\r` — so the answer is the document's
-/// convention rather than a guess. An LF document, a mixed one, and a
-/// single unterminated line all yield `"\n"`: mixed input has no
+/// `"\r\n"` for wholly CRLF source and `"\r"` for wholly CR source.
+/// An LF document, a mixed one, and a single unterminated line all yield
+/// `"\n"`: mixed input has no
 /// convention to honour, and picking one would rewrite bytes the caller
 /// did not ask about.
 fn document_break(source: &str) -> &'static str {
     let bytes = source.as_bytes();
-    let mut saw = false;
-    for (i, &b) in bytes.iter().enumerate() {
-        if b == b'\n' {
-            if i == 0 || bytes[i - 1] != b'\r' {
-                return "\n";
+    let mut convention = None;
+    let mut i = 0;
+    while i < bytes.len() {
+        let nl = match bytes[i] {
+            b'\r' if bytes.get(i + 1) == Some(&b'\n') => {
+                i += 1;
+                "\r\n"
             }
-            saw = true;
+            b'\r' => "\r",
+            b'\n' => "\n",
+            _ => {
+                i += 1;
+                continue;
+            }
+        };
+        if convention.is_some_and(|previous| previous != nl) {
+            return "\n";
         }
+        convention = Some(nl);
+        i += 1;
     }
-    if saw { "\r\n" } else { "\n" }
+    convention.unwrap_or("\n")
 }
 
 /// A finished fragment with its own line breaks re-spelled in the
@@ -6438,6 +6652,25 @@ pub(super) fn format_block_literal(s: &str, entry_col: usize) -> String {
     out
 }
 
+/// The column of the mapping key on the line starting at `line_start`:
+/// past the indentation and past any `- ` sequence indicators, which
+/// own the columns before a key on a `- key: value` line.
+fn key_column(source: &str, line_start: usize) -> usize {
+    let bytes = source.as_bytes();
+    let mut i = line_start;
+    loop {
+        while i < bytes.len() && bytes[i] == b' ' {
+            i += 1;
+        }
+        if i < bytes.len() && bytes[i] == b'-' && matches!(bytes.get(i + 1), Some(b' ' | b'\t')) {
+            i += 1;
+            continue;
+        }
+        break;
+    }
+    i - line_start
+}
+
 /// Compute the column (zero-based) of the first non-whitespace byte
 /// on the line that contains `pos` in `source`. For
 /// `  version: 0.0.1\n` with `pos` at the value scalar's start,
@@ -6843,6 +7076,7 @@ mod rollback_invariant_tests {
     use super::fault;
     use super::{Document, parse_document};
     use crate::Value;
+    use crate::prelude::{ToString as _, Vec, vec};
 
     /// Carries an inline comment so the comment mutators have
     /// something to edit; without one they are documented no-ops and

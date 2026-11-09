@@ -11,10 +11,10 @@ on:
     # advisory, a toolchain bump) surfaces within a day.
     - cron: '0 4 * * *'
     # Mondays at 05:00 UTC — the full Miri sweep only (see `miri-full`
-    # below). Split out of the nightly because that job alone costs
-    # ~113 min: ~58 min native + ~56 min Miri-interpreted big-endian
-    # mips64. Nightly was never a deliberate cadence for it — the job
-    # had been failing in seconds since at least 2026-08-05, so the real
+    # below). Its native, Tree Borrows, alignment and big-endian
+    # profiles run independently. Nightly was never a deliberate cadence
+    # for the full sweep; it had failed in seconds since at least
+    # 2026-08-05, so the real
     # cost only appeared once it was fixed.
     #
     # An hour off the nightly on purpose. `concurrency` below is keyed
@@ -76,8 +76,8 @@ jobs:
     # Dogfooded from shared-miri-full.yml. Full sweep + big-endian
     # mips64 target.
     #
-    # Restricted to the WEEKLY cron so the nightly run does not pay its
-    # ~113 min. The shared workflow's own guard only distinguishes
+    # Restricted to the weekly cron to keep these slow interpreter
+    # profiles out of the nightly. The shared workflow only distinguishes
     # schedule from push, which cannot tell the two crons apart — that
     # has to happen here, at the call site, because the shared file is
     # consumed by the satellites too and must not hardcode this repo's
@@ -176,6 +176,102 @@ jobs:
     # the Phase-1 layout normalization (docs/ECOSYSTEM.md).
     uses: ./.github/workflows/shared-docs-lint.yml
 
+  float-portability:
+    name: Isolated float consumer (${{ matrix.mode }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        mode: [default, std, alloc]
+    env:
+      CARGO_TARGET_DIR: ${{ github.workspace }}/target-float-consumer-${{ matrix.mode }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8
+        with:
+          toolchain: stable
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          workspaces: ". -> target-float-consumer-${{ matrix.mode }}"
+          key: float-consumer-${{ matrix.mode }}
+      - run: python3 scripts/check-float-portability.py --mode "${{ matrix.mode }}"
+
+  alloc-scalar-source:
+    name: Portable YAML behavior (alloc-only, ${{ matrix.profile }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - profile: core
+            features: ""
+          - profile: accelerated
+            features: fast-int,fast-float
+          - profile: portable
+            features: fast-int,fast-float,strict-deserialise,lossless-float,lossless-u64,include,compat-serde-yaml,sval,simd,wasm-opt,nightly-simd,recovery
+    env:
+      CARGO_TARGET_DIR: ${{ github.workspace }}/target-alloc-${{ matrix.profile }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8
+        with:
+          toolchain: stable
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          workspaces: ". -> target-alloc-${{ matrix.profile }}"
+          key: alloc-${{ matrix.profile }}
+      - run: >-
+          cargo test --locked --no-default-features
+          --features "${{ matrix.features }}"
+          --test no_std --test issue_494 --test alloc_apis --test cst
+      - name: Document the alloc-only API
+        env:
+          CARGO_TARGET_DIR: ${{ github.workspace }}/target-alloc-docs-${{ matrix.profile }}
+          RUSTDOCFLAGS: -D warnings
+        run: >-
+          cargo doc --locked --no-default-features --no-deps
+          --features "${{ matrix.features }}"
+
+  alloc-unit-tests:
+    name: Library unit tests (std disabled)
+    runs-on: ubuntu-latest
+    env:
+      CARGO_TARGET_DIR: ${{ github.workspace }}/target-alloc-unit
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8
+        with:
+          toolchain: stable
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          workspaces: ". -> target-alloc-unit"
+          key: alloc-unit
+      - run: cargo test --locked --no-default-features --lib
+
+  alloc-schema:
+    name: Schema/CST composition (core std disabled)
+    runs-on: ubuntu-latest
+    env:
+      CARGO_TARGET_DIR: ${{ github.workspace }}/target-alloc-schema
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8
+        with:
+          toolchain: stable
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          workspaces: ". -> target-alloc-schema"
+          key: alloc-schema
+      - run: cargo test --locked --no-default-features --features validate-schema --test alloc_schema
+
   fuzz-diff:
     # Dogfooded from shared-fuzz-diff.yml. Runs the caller's
     # `fuzz_diff` fuzz target for 10 seconds per push.
@@ -259,7 +355,7 @@ jobs:
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
           key: each-feature
-      - uses: taiki-e/install-action@5488ac5a951645ce95062214902ac4b6bc1a1037 # v2.87.32
+      - uses: taiki-e/install-action@682ce6c3c696a4cd5168a05f98e51aa02b877941 # v2.89.1
         with:
           tool: cargo-hack
       - name: cargo check each feature in isolation

@@ -39,6 +39,8 @@
 #                                   with rustc-hash.
 #   - `simd::`                    — SWAR / bitmask pipelines that
 #                                   exercise wrapping arithmetic.
+#   - `portable_float::`:           fused rounding, cancellation and
+#                                   binary64 boundary behavior.
 #
 # A scheduled job runs the *full* test suite under Miri weekly so
 # anything outside the targeted set is still covered eventually.
@@ -61,16 +63,11 @@ IFS=$'\n\t'
 #   clock / entropy — `rustc-hash`'s seed initialisation needs it,
 #   plus our `KeyInterner` tests use `process::id()`.
 #
-# `-Zmiri-symbolic-alignment-check` is intentionally NOT enabled
-# here. memchr 2.x's x86_64 SSE2 path (taken by `find_any_of` /
-# `memchr3` etc.) issues a `_mm_load_si128` instruction whose
-# pointer is dynamically known to be 16-byte-aligned at the call
-# site — but Miri's symbolic-alignment tracking can't see the
-# runtime guarantee and reports a false positive. memchr's own
-# CI runs Miri without this flag for the same reason. The
-# defaults (Stacked Borrows, strict provenance, leak detection)
-# still catch every category of UB we care about; only the
-# memchr-SSE2 false positive is sacrificed.
+# Symbolic alignment cannot infer memchr's manual SSE2 pointer alignment.
+# The mixed-arity equivalence fixture uses aligned backing storage, and
+# the offset test checks all 16 subslice offsets in that storage.
+# MIRI_ALIGN=1 retains the symbolic check without suppressing the SSE2 path.
+# https://github.com/rust-lang/miri#testing-for-alignment-issues
 # MIRI_MODEL selects the aliasing model: `stacked` (default) or `tree`.
 # Both must pass for a soundness claim; they reject different patterns.
 # MIRI_FEATURES passes cargo feature flags, e.g. `--no-default-features`
@@ -105,7 +102,7 @@ FILTER="${1:-}"
 if [[ -n "${FILTER}" ]]; then
     FILTERS=( "${FILTER}::" )
 else
-    FILTERS=( "parser::" "scanner::" "value::" "interner::" "simd::" )
+    FILTERS=( "parser::" "scanner::" "value::" "interner::" "simd::" "portable_float::" )
 fi
 
 echo "→ Setting up Miri (cached if previously run)"

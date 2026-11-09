@@ -8,7 +8,9 @@
 # contract as the CI duration monitor. Budgets are ceilings with
 # deliberate headroom, not targets.
 
-# The crates.io package. 1,056,772 bytes at v0.0.30 (the vendored
-# YAML test suite dominates); ceiling gives ~20% headroom.
+# The crates.io package. v0.0.59 measured 1,299,511 bytes before
+# grow_value; its typed CST growth implementation and regression tests
+# intentionally add source to the package. Allow 20,000 more bytes for
+# that contribution, retaining the vendored YAML suite and all tests.
 [crate-package]
-max_bytes = 1300000
+max_bytes = 1320000

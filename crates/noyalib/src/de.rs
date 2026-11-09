@@ -15,7 +15,6 @@
 use crate::error::{Error, Result};
 use crate::parser::{self};
 use crate::prelude::*;
-#[cfg(feature = "std")]
 use crate::span_context;
 use crate::value::Value;
 #[cfg(feature = "std")]
@@ -269,22 +268,16 @@ where
 /// assert!(noyalib::from_str::<Config>(yaml).is_ok());
 /// assert!(noyalib::from_str_strict::<Config>(yaml).is_err());
 /// ```
-#[cfg(all(feature = "std", feature = "strict-deserialise"))]
+#[cfg(feature = "strict-deserialise")]
 pub fn from_str_strict<T>(s: &str) -> Result<T>
 where
     T: for<'de> serde_core::Deserialize<'de> + 'static,
 {
-    let unknown = std::sync::Mutex::new(Vec::<String>::new());
+    let mut extras = Vec::<String>::new();
     let value: Value = from_str_with_config(s, &ParserConfig::default())?;
     let result: Result<T> = serde_ignored::deserialize(&value, |path| {
-        unknown
-            .lock()
-            .expect("from_str_strict: ignored-paths lock poisoned")
-            .push(path.to_string());
+        extras.push(path.to_string());
     });
-    let extras = unknown
-        .into_inner()
-        .expect("from_str_strict: ignored-paths lock poisoned");
     let typed = result?;
     if !extras.is_empty() {
         let msg = if extras.len() == 1 {
@@ -329,7 +322,7 @@ where
 /// assert!(noyalib::from_slice::<Config>(yaml).is_ok());
 /// assert!(noyalib::from_slice_strict::<Config>(yaml).is_err());
 /// ```
-#[cfg(all(feature = "std", feature = "strict-deserialise"))]
+#[cfg(feature = "strict-deserialise")]
 pub fn from_slice_strict<T>(b: &[u8]) -> Result<T>
 where
     T: for<'de> serde_core::Deserialize<'de> + 'static,
@@ -524,32 +517,15 @@ where
         return Ok(*downcast);
     }
 
-    #[cfg(feature = "std")]
-    {
-        let (mut value, span_tree) = parser::parse_exactly_one(s, &parse_config)?;
-        post_process_document(&mut value, config)?;
-        deserialize_spanned(s, &value, &span_tree, config, streaming_err)
-    }
-
-    #[cfg(not(feature = "std"))]
-    {
-        let mut value = parser::parse_exactly_one_value(s, &parse_config)?;
-        post_process_document(&mut value, config)?;
-        let de = Deserializer::with_options(
-            &value,
-            None,
-            config.ignore_binary_tag_for_string,
-            config.plain_scalar_strings,
-        );
-        locate_streaming_error(T::deserialize(de), streaming_err)
-    }
+    let (mut value, span_tree) = parser::parse_exactly_one(s, &parse_config)?;
+    post_process_document(&mut value, config)?;
+    deserialize_spanned(s, &value, &span_tree, config, streaming_err)
 }
 
 /// Deserialize `T` from a loaded `value` with the span context for
 /// `s` installed: errors carry locations and field paths, and keys the
 /// loader canonicalised read as written. `streaming_err` is the
 /// streaming path's unlocated error, joined to the result.
-#[cfg(feature = "std")]
 fn deserialize_spanned<T>(
     s: &str,
     value: &Value,
@@ -562,17 +538,20 @@ where
 {
     let spans = span_context::build_span_map(value, span_tree);
     let ctx = span_context::SpanContext::new(spans, s.into()).with_key_texts(value, span_tree);
+    #[cfg(feature = "std")]
     let _guard = span_context::set_span_context(ctx);
+    #[cfg(feature = "std")]
+    let context = _guard.as_ref();
+    #[cfg(not(feature = "std"))]
+    let context = &ctx;
     let de = Deserializer::with_options(
         value,
-        Some(_guard.as_ref()),
+        Some(context),
         config.ignore_binary_tag_for_string,
         config.plain_scalar_strings,
     );
-    attach_field_path(
-        locate_streaming_error(T::deserialize(de), streaming_err),
-        value,
-    )
+    let result = locate_streaming_error(T::deserialize(de), streaming_err);
+    attach_field_path(result, value, context)
 }
 
 /// Resolves a typed parse whose streaming attempt failed without a
@@ -624,12 +603,15 @@ fn locate_streaming_error<T>(ast_result: Result<T>, streaming_err: Option<Error>
 /// walks nothing. A failure at the document root keeps its message
 /// unprefixed (there is no path to name), as does any error shape that
 /// never went through `wrap_err`. `location()` is unaffected.
-#[cfg(feature = "std")]
-fn attach_field_path<T>(result: Result<T>, root: &Value) -> Result<T> {
+fn attach_field_path<T>(
+    result: Result<T>,
+    root: &Value,
+    context: &span_context::SpanContext,
+) -> Result<T> {
     // Always consume the slot: a rejection created and then swallowed
     // (untagged-enum probing that ultimately succeeded) must not leak
     // into a later error.
-    let recorded = span_context::take_error_node();
+    let recorded = context.take_error_node();
     let err = match result {
         Ok(v) => return Ok(v),
         Err(err) => err,
@@ -654,7 +636,6 @@ fn attach_field_path<T>(result: Result<T>, root: &Value) -> Result<T> {
 }
 
 /// One step of a field path: a mapping key or a sequence index.
-#[cfg(feature = "std")]
 enum PathSegment<'a> {
     Key(&'a str),
     Index(usize),
@@ -665,7 +646,6 @@ enum PathSegment<'a> {
 /// when found, with `segments` holding the full path; on `false` the
 /// vector is back to its starting state. Tags are transparent — the
 /// path names the field, not the tag.
-#[cfg(feature = "std")]
 fn find_value_path<'a>(value: &'a Value, addr: usize, segments: &mut Vec<PathSegment<'a>>) -> bool {
     if core::ptr::from_ref(value) as usize == addr {
         return true;
@@ -698,7 +678,6 @@ fn find_value_path<'a>(value: &'a Value, addr: usize, segments: &mut Vec<PathSeg
 /// Render segments as `a.b[2].c`: keys joined with `.`, indices in
 /// brackets attached to the preceding segment (or leading, for a root
 /// sequence: `[2].name`).
-#[cfg(feature = "std")]
 fn format_value_path(segments: &[PathSegment<'_>]) -> String {
     use core::fmt::Write as _;
     let mut out = String::new();
@@ -719,24 +698,15 @@ fn format_value_path(segments: &[PathSegment<'_>]) -> String {
 }
 
 /// Returns `true` when no `${KEY}` substitution table is active —
-/// keeps the streaming fast-path eligible. Always `true` under
-/// `no_std` (the field doesn't exist).
-#[cfg(feature = "std")]
+/// keeps the streaming fast-path eligible.
 #[inline]
 fn properties_inactive(config: &ParserConfig) -> bool {
     config.properties.is_none()
 }
 
-#[cfg(not(feature = "std"))]
-#[inline]
-fn properties_inactive(_config: &ParserConfig) -> bool {
-    true
-}
-
 /// Walk the `Value` tree and substitute every `${name}` placeholder
-/// against `config.properties`. No-op when no map is installed; in
-/// `no_std` builds the function is also a no-op (the field doesn't
-/// exist). Honours `strict_properties` for the missing-key
+/// against `config.properties`. No-op when no map is installed.
+/// Honours `strict_properties` for the missing-key
 /// behaviour, but always propagates *syntax* errors from the
 /// substitution walk (invalid characters, unterminated `${...}`,
 /// malformed `:-default`) regardless of mode.
@@ -749,7 +719,6 @@ pub(crate) fn post_process_document(value: &mut Value, config: &ParserConfig) ->
     crate::policy::check_document(&config.policies, value)
 }
 
-#[cfg(feature = "std")]
 fn apply_properties(value: &mut Value, config: &ParserConfig) -> Result<()> {
     if let Some(props) = config.properties.as_ref() {
         let action = if config.strict_properties {
@@ -766,12 +735,6 @@ fn apply_properties(value: &mut Value, config: &ParserConfig) -> Result<()> {
             Some(config.max_total_scalar_bytes),
         )?;
     }
-    Ok(())
-}
-
-#[cfg(not(feature = "std"))]
-#[inline]
-fn apply_properties(_value: &mut Value, _config: &ParserConfig) -> Result<()> {
     Ok(())
 }
 
@@ -1218,7 +1181,6 @@ where
 
 /// Deserialize `T` from a [`Value`] with an active [`span_context::SpanContext`]
 /// and [`ParserConfig`] deserialiser toggles installed.
-#[cfg(feature = "std")]
 pub(crate) fn from_value_spanned_with_options<T>(
     value: &Value,
     ctx: span_context::SpanContext,
@@ -1236,14 +1198,20 @@ where
             .expect("is_value_target proved T == Value");
         return Ok(*downcast);
     }
+    #[cfg(feature = "std")]
     let _guard = span_context::set_span_context(ctx);
+    #[cfg(feature = "std")]
+    let context = _guard.as_ref();
+    #[cfg(not(feature = "std"))]
+    let context = &ctx;
     let de = Deserializer::with_options(
         value,
-        Some(_guard.as_ref()),
+        Some(context),
         ignore_binary_tag_for_string,
         plain_scalar_strings,
     );
-    attach_field_path(T::deserialize(de), value)
+    let result = T::deserialize(de);
+    attach_field_path(result, value, context)
 }
 
 // The figment integration entry `from_str_typed_no_tag_preserve` is

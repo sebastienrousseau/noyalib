@@ -490,7 +490,6 @@ impl<'a> Scanner<'a> {
     /// Enable recording of inter-token trivia and source-bearing
     /// token spans for the green-tree builder. Must be called before
     /// any tokens are fetched.
-    #[cfg(feature = "std")]
     pub(crate) fn enable_recording(&mut self) {
         self.recording = true;
         self.capture_comments = true;
@@ -503,13 +502,11 @@ impl<'a> Scanner<'a> {
     }
 
     /// Drain the recorded inter-token trivia.
-    #[cfg(feature = "std")]
     pub(crate) fn take_trivia(&mut self) -> Vec<Trivia> {
         core::mem::take(&mut self.trivia)
     }
 
     /// Drain the recorded source-bearing tokens.
-    #[cfg(feature = "std")]
     pub(crate) fn take_recorded_tokens(&mut self) -> Vec<RecordedToken> {
         core::mem::take(&mut self.recorded_tokens)
     }

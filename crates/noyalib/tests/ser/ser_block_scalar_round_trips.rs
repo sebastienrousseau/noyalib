@@ -7,6 +7,7 @@
 
 #![allow(missing_docs)]
 
+#[cfg(feature = "std")]
 use noyalib::cst::parse_document;
 use noyalib::{Mapping, SerializerConfig, Value, from_str, to_string};
 
@@ -133,6 +134,7 @@ fn a_sequence_item_block_body_sits_one_indent_past_the_dash() {
 // ── #386: the CST insert of such items ─────────────────────────────
 
 #[test]
+#[cfg(feature = "std")]
 fn set_path_writes_a_sequence_item_that_needs_an_indicator_or_keep() {
     for (item, expected) in [
         ("\t\n", "title: T\nk:\n  - |2\n    \t\n"),

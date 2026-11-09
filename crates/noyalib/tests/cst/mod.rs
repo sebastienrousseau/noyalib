@@ -3,8 +3,7 @@
 
 //! The concrete-syntax-tree suites: parsing, editing, styling and round-tripping.
 //!
-//! 57 files, compiled into one test binary instead of
-//! 57 executables.
+//! The suites compile together into one integration test binary.
 
 #![allow(missing_docs)]
 
@@ -30,12 +29,14 @@ mod cst_flow_inserts;
 mod cst_format;
 mod cst_format_suite;
 mod cst_fragment_rollback;
+mod cst_grow_value;
 mod cst_incremental;
 mod cst_indent_detection;
 mod cst_inline_comment;
 mod cst_insert_anchor_trailing_comment;
 mod cst_insert_containment;
 mod cst_insert_keep_chomped_scalar;
+mod cst_insert_on_dash_line_item;
 mod cst_key_span;
 mod cst_leading_comment;
 mod cst_line_break_characters;

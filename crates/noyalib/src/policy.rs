@@ -22,7 +22,7 @@
 //!
 //! Custom policies implement the trait directly. Stateful policies
 //! that need to mutate during a parse should hold their state
-//! behind interior mutability ([`std::sync::Mutex`] or equivalent).
+//! behind interior mutability (`std::sync::Mutex` or equivalent).
 //!
 //! # Examples
 //!

@@ -59,14 +59,14 @@
 
 ```toml
 [dependencies]
-noyalib = "0.0.58"
+noyalib = "0.0.59"
 ```
 
 Disable the default `std` feature for `core` + `alloc` environments:
 
 ```toml
 [dependencies]
-noyalib = { version = "0.0.58", default-features = false }
+noyalib = { version = "0.0.59", default-features = false }
 ```
 
 Build the library and its test surface from source:
@@ -160,7 +160,7 @@ delivery surface while the core library remains dependency-focused.
 | Schemas | JSON Schema generation, validation, and coercion | Feature-gated |
 | Diagnostics | Structured codes, source spans, `miette`, and `ariadne` | Core stable; renderers feature-gated |
 | Async and parallel | Tokio readers and Rayon multi-document parsing | Feature-gated |
-| Embedded targets | `no_std` with `alloc` | CI-gated |
+| Embedded targets | [`no_std` with `alloc`](docs/NO_STD.md) | CI-gated |
 
 ---
 
@@ -303,7 +303,7 @@ SLSA provenance.
 
 ## Documentation
 
-- [User Manual](https://sebastienrousseau.github.io/noyalib/manual/)
+- [User Manual](https://doc.noyalib.com/manual/)
 - [API reference](https://docs.rs/noyalib)
 - [Developer documentation](DEVELOPMENT.md)
 - [Ecosystem map](docs/ECOSYSTEM.md)

@@ -95,8 +95,12 @@ fn tab_before_top_level_flow_node_in_every_document() {
     ] {
         let docs = load_all_as::<Value>(src).unwrap_or_else(|e| panic!("{src:?}: {e}"));
         assert!(!docs.is_empty(), "{src:?}");
-        let cst = noyalib::cst::parse_stream(src).unwrap_or_else(|e| panic!("cst {src:?}: {e}"));
-        assert_eq!(cst.iter().map(|d| d.source()).collect::<String>(), src);
+        #[cfg(feature = "std")]
+        {
+            let cst =
+                noyalib::cst::parse_stream(src).unwrap_or_else(|e| panic!("cst {src:?}: {e}"));
+            assert_eq!(cst.iter().map(|d| d.source()).collect::<String>(), src);
+        }
     }
 }
 
@@ -119,8 +123,11 @@ fn tab_indentation_is_rejected_everywhere() {
             err.to_string().contains("tab characters are not allowed"),
             "{src:?}: {err}"
         );
-        let cst = noyalib::cst::parse_stream(src).unwrap_err();
-        assert_eq!(cst.location(), err.location(), "{src:?}");
+        #[cfg(feature = "std")]
+        {
+            let cst = noyalib::cst::parse_stream(src).unwrap_err();
+            assert_eq!(cst.location(), err.location(), "{src:?}");
+        }
     }
     // A tab on an empty line, or after the indentation spaces, is fine.
     assert!(load_all_as::<Value>("a: 1\n\t\nb: 2\n").is_ok());

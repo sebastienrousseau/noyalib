@@ -60,11 +60,8 @@ jobs:
       - name: cargo check --no-default-features --features compat-serde-yaml
         run: cargo check --no-default-features --features compat-serde-yaml --lib --locked
 
-  # Bare-metal proof: `wasm32-unknown-unknown` has no `std`
-  # libraries available, so any leaked `std::` symbol fails to
-  # link. The native-target check above catches feature-flag
-  # drift; this one catches a transitive dep silently enabling
-  # `std` via feature unification.
+  # WebAssembly portability check. This target ships std, so it cannot
+  # prove the dependency graph is std-free. The *-none legs below do.
   wasm-bare:
     name: no_std (wasm32-unknown-unknown bare-metal)
     runs-on: ubuntu-latest
@@ -86,6 +83,11 @@ jobs:
         run: cargo check --no-default-features --lib --locked --target wasm32-unknown-unknown
       - name: shim on wasm32 (no_std)
         run: cargo check --no-default-features --features compat-serde-yaml --lib --locked --target wasm32-unknown-unknown
+      - name: All portable features on wasm32 (no_std)
+        run: >-
+          cargo check --no-default-features --lib --locked
+          --features fast-int,fast-float,strict-deserialise,lossless-float,lossless-u64,include,compat-serde-yaml,sval,simd,wasm-opt,nightly-simd,recovery
+          --target wasm32-unknown-unknown
 
   # Bare-metal `*-none` targets — the ones #210 was about. They have no
   # `std` at all, so a dependency pulling it in fails here instead of
@@ -121,3 +123,8 @@ jobs:
         run: cargo check --no-default-features --lib --locked --target ${{ matrix.target }}
       - name: shim on ${{ matrix.target }} (no_std)
         run: cargo check --no-default-features --features compat-serde-yaml --lib --locked --target ${{ matrix.target }}
+      - name: All portable features on ${{ matrix.target }} (no_std)
+        run: >-
+          cargo check --no-default-features --lib --locked
+          --features fast-int,fast-float,strict-deserialise,lossless-float,lossless-u64,include,compat-serde-yaml,sval,simd,wasm-opt,nightly-simd,recovery
+          --target ${{ matrix.target }}

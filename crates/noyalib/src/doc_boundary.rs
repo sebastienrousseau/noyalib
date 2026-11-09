@@ -254,6 +254,7 @@ fn prologue_has_content(pre: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::prelude::vec;
 
     #[test]
     fn bom_strip_round_trip() {

@@ -9,9 +9,9 @@ name: shared / Miri (full + big-endian, scheduled)
 # `scripts/miri.sh`. Catches endianness assumptions that would
 # slip past the focused per-PR job.
 #
-# Bandwidth-intensive so gated behind the `schedule` /
-# workflow_dispatch` event. Measured cost on noyalib is ~113 min:
-# ~58 min native + ~56 min for the Miri-interpreted big-endian pass.
+# Gated behind schedule / workflow_dispatch. Native, Tree Borrows,
+# symbolic alignment and big-endian checks run independently so one
+# failure does not prevent the other profiles from executing.
 #
 # CADENCE IS THE CALLER'S. This guard only distinguishes schedule from
 # push — it cannot tell one cron from another. A consumer that wants
@@ -29,7 +29,7 @@ name: shared / Miri (full + big-endian, scheduled)
 # workflow + ref means simultaneous crons cancel each other.
 #
 # CACHE-POISONING GUARD: same isolated CARGO_TARGET_DIR pattern
-# as the focused Miri job (target-miri-full for this one).
+# as the focused Miri job, with a separate target dir per profile.
 #
 # Consumers pin by SHA:
 #
@@ -45,18 +45,20 @@ permissions:
 
 jobs:
   check:
-    name: Miri (full + big-endian, scheduled)
+    name: Miri (${{ matrix.profile }}, scheduled)
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-latest
-    # The native full sweep alone measures ~58 min. Until the toolchain
-    # fix below, the big-endian pass died within seconds of starting, so
-    # the old 90 min budget was never actually tested against a run that
-    # got to do the cross work. Now that it does, 90 leaves ~30 min for a
-    # Miri-interpreted cross-target suite — too tight to rely on.
+    # The MIPS64 cross packages below are available on 24.04. The
+    # 26.04 ubuntu-latest runner could not install either package.
+    # https://packages.ubuntu.com/noble/gcc-mips64-linux-gnuabi64
+    runs-on: ubuntu-24.04
     timeout-minutes: 300
+    strategy:
+      fail-fast: false
+      matrix:
+        profile: [native, tree, alignment, big-endian]
     env:
       RUSTUP_TOOLCHAIN: nightly
-      CARGO_TARGET_DIR: ${{ github.workspace }}/target-miri-full
+      CARGO_TARGET_DIR: ${{ github.workspace }}/target-miri-full-${{ matrix.profile }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -69,8 +71,8 @@ jobs:
       - name: Cache cargo
         uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
-          workspaces: ". -> target-miri-full"
-          key: miri-full
+          workspaces: ". -> target-miri-full-${{ matrix.profile }}"
+          key: miri-full-${{ matrix.profile }}
           save-if: false
       - name: Setup Miri
         run: cargo +nightly miri setup
@@ -81,16 +83,13 @@ jobs:
       # `libc6-dev-mips64-cross` supplies the mips64 libc headers under
       # /usr/mips64-linux-gnuabi64/include. Both are required.
       - name: Install mips64 cross toolchain (for the big-endian pass)
+        if: matrix.profile == 'big-endian'
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
             gcc-mips64-linux-gnuabi64 \
             libc6-dev-mips64-cross
           mips64-linux-gnuabi64-gcc --version | head -1
-          # This step runs BEFORE the ~58-minute native sweep on purpose,
-          # so a toolchain or sysroot problem surfaces in seconds instead
-          # of an hour in. It costs nothing to front-load: apt is fast and
-          # the native pass does not depend on it.
           if [ -f /usr/mips64-linux-gnuabi64/include/bits/libc-header-start.h ]; then
             echo "mips64 sysroot headers present"
           else
@@ -98,6 +97,7 @@ jobs:
             exit 1
           fi
       - name: Run full Miri suite (native)
+        if: matrix.profile == 'native'
         run: cargo +nightly miri test --lib
         env:
           MIRIFLAGS: -Zmiri-disable-isolation
@@ -114,6 +114,7 @@ jobs:
       # versa; both must pass for a soundness claim. Too slow for the
       # per-PR job, so it runs here on the focused suite.
       - name: Run focused Miri suite (Tree Borrows)
+        if: matrix.profile == 'tree'
         env:
           MIRI_MODEL: tree
         run: ./scripts/miri.sh
@@ -123,10 +124,12 @@ jobs:
       # the simd module alone exceeded two hours, so it runs on its own,
       # under Stacked Borrows, on the module that does word-sized reads.
       - name: Run simd module under the symbolic alignment check
+        if: matrix.profile == 'alignment'
         env:
           MIRI_ALIGN: "1"
         run: ./scripts/miri.sh simd
       - name: Run focused Miri suite (big-endian mips64)
+        if: matrix.profile == 'big-endian'
         run: ./scripts/miri.sh
         env:
           MIRI_TARGET: mips64-unknown-linux-gnuabi64

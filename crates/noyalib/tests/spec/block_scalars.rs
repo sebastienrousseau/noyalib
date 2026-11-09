@@ -151,8 +151,12 @@ fn all_blank_keep_scalar_before_a_document_marker() {
             other => other.as_str().map(str::to_owned),
         };
         assert_eq!(text.as_deref(), Some(expected), "{src:?}");
-        let cst = noyalib::cst::parse_stream(src).unwrap_or_else(|e| panic!("cst {src:?}: {e}"));
-        assert_eq!(cst.iter().map(|d| d.source()).collect::<String>(), src);
+        #[cfg(feature = "std")]
+        {
+            let cst =
+                noyalib::cst::parse_stream(src).unwrap_or_else(|e| panic!("cst {src:?}: {e}"));
+            assert_eq!(cst.iter().map(|d| d.source()).collect::<String>(), src);
+        }
     }
     // The standalone form is unchanged.
     let v: Vec<String> = from_str("- |+\n   \n").unwrap();

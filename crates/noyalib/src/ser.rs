@@ -480,7 +480,7 @@ where
 }
 
 /// Serialize a Rust value to YAML and write into a [`core::fmt::Write`]
-/// sink — the no_std-friendly counterpart to [`to_writer`].
+/// sink — the no_std-friendly counterpart to `to_writer`.
 ///
 /// # Errors
 ///
@@ -539,7 +539,7 @@ where
 /// genuine one-entry mapping keyed by a `!`-string stays a mapping. Refs
 /// #350, #377. For direct emission of a `Value` you already hold, without going
 /// through the `Serialize` pipeline at all, see [`to_string_value`] /
-/// [`to_writer_value`].
+/// `to_writer_value`.
 ///
 /// # Errors
 ///
@@ -557,7 +557,7 @@ where
     // via `SerializeMap::end`'s single-entry-map reconstruction (see its
     // doc comment); users who already hold a `Value` and want to skip the
     // `Serialize` pipeline entirely can still call [`to_string_value`] /
-    // [`to_string_value_with_config`] / [`to_writer_value`].
+    // [`to_string_value_with_config`] / `to_writer_value`.
     value.serialize(Serializer)
 }
 

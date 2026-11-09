@@ -258,7 +258,7 @@ impl<'a> Entry<'a> {
     /// resolves, leave it untouched; if it does not, splice
     /// `default` as the new value.
     ///
-    /// Mirrors the [`std::collections::hash_map::Entry::or_insert`]
+    /// Mirrors the `std::collections::hash_map::Entry::or_insert`
     /// pattern adapted to the CST: the path is *resolved through the
     /// green tree first*, then the splice runs only on the vacant
     /// branch. The resolution is byte-faithful and skips the typed
@@ -385,7 +385,7 @@ impl<'a> Entry<'a> {
     ///
     /// Returns `self` for further chaining (typically with
     /// [`Self::or_insert`]) — mirrors
-    /// [`std::collections::hash_map::Entry::and_modify`].
+    /// `std::collections::hash_map::Entry::and_modify`.
     ///
     /// # Examples
     ///

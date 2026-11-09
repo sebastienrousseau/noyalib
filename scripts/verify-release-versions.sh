@@ -213,23 +213,24 @@ for f in snippet_files:
 # floor and never compares it to the *committed* table, so the table sat
 # at 0.0.33 for thirty-one releases while the gate stayed green.
 #
-# Only the `tree X.Y.Z` figures are checked. They are the family's own
-# versions, which move in lockstep, so a release that did not regenerate
-# the table shows up here immediately. The volatile figures — download
-# counts, OpenSSF scores, and the `crates.io X.Y.Z` column, which
-# legitimately lags the tree between the core publish and the satellite
-# publishes — are deliberately not gated: a check that fails on honest
-# drift gets switched off, and then nothing is checked at all.
+# Check this repository's measured tree. The scorecard measures satellite
+# main branches, which stay on published versions until the new core can
+# be pinned. Their independent measurements must not invalidate a fresh
+# core row. The scorecard's version_lockstep probe checks family alignment
+# once the core is tagged. Volatile registry versions and remote scores
+# are deliberately not compared with the local release version.
 eco = root / "docs" / "ECOSYSTEM.md"
 if eco.is_file():
-    trees = sorted(set(re.findall(r"tree (\d+\.\d+\.\d+)", eco.read_text(encoding="utf-8"))))
+    trees = sorted(set(re.findall(
+        r"^\|\s*`noyalib`\s*\|\s*crates_io_current\s*\|\s*tree (\d+\.\d+\.\d+)",
+        eco.read_text(encoding="utf-8"), re.MULTILINE)))
     stale = [t for t in trees if t != version]
     if not trees:
-        skip("docs/ECOSYSTEM.md", "no generated rating table")
+        bad("docs/ECOSYSTEM.md", "rating table missing the core measurement")
     elif stale:
         bad("docs/ECOSYSTEM.md", "rating table measured at "
             + ", ".join(stale)
-            + " — regenerate with scripts/ecosystem-scorecard.sh --network --inject docs/ECOSYSTEM.md")
+            + "; regenerate with scripts/ecosystem-scorecard.sh --network --inject docs/ECOSYSTEM.md")
     else:
         ok("docs/ECOSYSTEM.md", f"rating table measured at {version}")
 

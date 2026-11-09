@@ -10,8 +10,8 @@
 //! `parse_document(s).unwrap().to_string()` is byte-identical to `s`
 //! for any input the parser accepts.
 //!
-//! The `Document` API depends on the parser's `SpanTree`, which lives
-//! under the `std` feature.
+//! The `Document` API uses the alloc-capable parser span tree and an
+//! explicit source context; it is available without `std`.
 //!
 //! The `Value` API (`from_str`, `to_string`, `StreamingDeserializer`)
 //! is unchanged. Trivia capture is enabled only on this path; the
@@ -34,6 +34,8 @@
 //!   [`Document::edit`] creates an
 //!   [`EditSession`] that batches independent
 //!   byte-range replacements and validates the assembled result once.
+//!   [`Document::grow_value`] grows a scalar into a typed collection,
+//!   preserving its comment and verifying the candidate's loaded value.
 //!
 //! - **Comments.** [`Document::comments_at`]
 //!   classifies the comments decorating a node into a

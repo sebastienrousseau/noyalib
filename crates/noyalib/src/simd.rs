@@ -893,6 +893,12 @@ fn parse_8_digits(arr: [u8; 8]) -> Option<u64> {
 #[allow(clippy::byte_char_slices)]
 mod tests {
     use super::*;
+    use crate::prelude::{ToString as _, Vec, vec};
+
+    // memchr aligns SSE2 loads using pointer arithmetic. Give symbolic Miri
+    // a known allocation alignment; subslices below still cover every offset.
+    #[repr(align(16))]
+    struct SearchBuffer<const N: usize>([u8; N]);
 
     #[test]
     fn empty_haystack_returns_none() {
@@ -992,6 +998,22 @@ mod tests {
         }
     }
 
+    #[test]
+    fn search_dispatch_handles_every_alignment_offset() {
+        for needles in [b":".as_slice(), b":,", b":,#", b":,#="] {
+            for offset in 0..16 {
+                let mut storage = SearchBuffer([b'x'; 80]);
+                let buf = &mut storage.0[offset..offset + 64];
+                assert_eq!(find_any_of(buf, needles), None);
+                for pos in [0, 15, 16, 31, 32, 63] {
+                    buf[pos] = needles[pos % needles.len()];
+                    assert_eq!(find_any_of(buf, needles), Some(pos));
+                    buf[pos] = b'x';
+                }
+            }
+        }
+    }
+
     /// Equivalence: arity-4+ SWAR path matches the scalar baseline
     /// across many inputs. Both paths produce identical results
     /// for every position, every needle set, every byte value.
@@ -1016,7 +1038,8 @@ mod tests {
         ];
         for &needles in needle_sets {
             for length in [0usize, 1, 7, 8, 9, 16, 17, 63, 64, 65, 1023, 1024] {
-                let mut buf = vec![0u8; length];
+                let mut storage = SearchBuffer([0u8; 1024]);
+                let buf = &mut storage.0[..length];
                 // Fill with non-needle bytes.
                 for (i, slot) in buf.iter_mut().enumerate() {
                     *slot = (i as u8).wrapping_add(33); // start past control bytes
@@ -1025,15 +1048,15 @@ mod tests {
                     }
                 }
                 // No-needle case.
-                assert_eq!(find_any_of(&buf, needles), scalar(&buf, needles));
+                assert_eq!(find_any_of(buf, needles), scalar(buf, needles));
                 // Sprinkle a needle at every position; both paths
                 // must agree.
                 for pos in 0..length {
                     let saved = buf[pos];
                     buf[pos] = needles[pos % needles.len()];
                     assert_eq!(
-                        find_any_of(&buf, needles),
-                        scalar(&buf, needles),
+                        find_any_of(buf, needles),
+                        scalar(buf, needles),
                         "mismatch needles={needles:?} length={length} pos={pos}",
                     );
                     buf[pos] = saved;
