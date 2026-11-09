@@ -14,7 +14,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   step limit could bypass those constraints. Regression tests cover both
   validation entry points. The engine caches unfinished matches across
   retries, resolving the repeated-work regression that blocked 0.59.
-- **`tokio` 1.53.3 for RUSTSEC-2026-0386.** `AsyncFd`'s safe
+- **`tokio` 1.54.1 retains the RUSTSEC-2026-0386 fix.** `AsyncFd`'s safe
   constructors violated I/O safety in 1.53.2; `cargo audit` and
   `cargo deny` failed every build with the `tokio` feature. 1.53.3 is
   the oldest fixed release on the 1.53 line; `cargo vet` records its
@@ -36,6 +36,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Changed
 
+- `tokio` 1.54.1 and `rustix` 1.1.6, with refreshed publisher evidence for
+  the existing trusted authors (#513, #515).
 - `serde-saphyr` 2.0.0 for the `compare-saphyr` benchmarks (bench-only,
   never in the runtime crate), `schemars` 1.2.3, `smallvec` 1.16.4,
   `arbitrary` 1.5.0, `tokio-util` 0.7.20 and `serde_json` 1.0.154, with
@@ -47,6 +49,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   over-limit subjects.
 - CI: the GitHub Actions, CodeQL, Scorecard and Rust toolchain pins move
   to their current releases.
+- CodeQL init, analysis and SARIF upload move together to 4.39.1;
+  Dependabot groups their future updates. The installer moves to 2.89.1
+  and crates.io authentication to 1.0.6 (#508-#512).
 
 ### Fixed
 
