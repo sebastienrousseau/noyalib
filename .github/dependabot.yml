@@ -94,6 +94,9 @@ updates:
       actions:
         patterns:
           - "actions/*"
+      codeql:
+        patterns:
+          - "github/codeql-action/*"
       sigstore:
         patterns:
           - "sigstore/*"
