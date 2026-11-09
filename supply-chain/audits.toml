@@ -6,6 +6,18 @@ who = "Sebastien Rousseau <sebastian.rousseau@gmail.com>"
 criteria = "safe-to-deploy"
 delta = "0.48.5 -> 0.49.2"
 
+[[audits.jsonschema-regex]]
+who = "Sebastien Rousseau <sebastian.rousseau@gmail.com>"
+criteria = "safe-to-deploy"
+delta = "0.58.6 -> 0.60.2"
+notes = "Reviewed the packaged source delta: regex implementation and dependencies are unchanged; only package version metadata changes. Publisher remains Dmitry Dygalo (crates.io user 82692). Schema hardening regressions pass with jsonschema 0.60.2."
+
+[[audits.jsonschema-value]]
+who = "Sebastien Rousseau <sebastian.rousseau@gmail.com>"
+criteria = "safe-to-deploy"
+delta = "0.58.6 -> 0.60.2"
+notes = "Reviewed the four changed Rust files: numeric digit budgets and decimal fallbacks, removal of panics when serde_json features are unified, and order-independent object equality. No new unsafe code or IO in the delta. Optional Ruby/Python bindings are unchanged. The serde_json validation path passes schema hardening tests; publisher remains Dmitry Dygalo (crates.io user 82692)."
+
 [[audits.num-cmp]]
 who = "Sebastien Rousseau <sebastian.rousseau@gmail.com>"
 criteria = "safe-to-deploy"

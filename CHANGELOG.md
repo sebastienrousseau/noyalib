@@ -9,6 +9,11 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Security
 
+- **`jsonschema` 0.60.2 rejects unfinished backtracking matches under
+  `not` and `patternProperties`** (#514). Previously, reaching the regex
+  step limit could bypass those constraints. Regression tests cover both
+  validation entry points. The engine caches unfinished matches across
+  retries, resolving the repeated-work regression that blocked 0.59.
 - **`tokio` 1.53.3 for RUSTSEC-2026-0386.** `AsyncFd`'s safe
   constructors violated I/O safety in 1.53.2; `cargo audit` and
   `cargo deny` failed every build with the `tokio` feature. 1.53.3 is
@@ -36,11 +41,10 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   `arbitrary` 1.5.0, `tokio-util` 0.7.20 and `serde_json` 1.0.154, with
   `proptest` 1.12.0 in the dev-dependencies, each recorded in
   `supply-chain/`.
-- **`jsonschema` stays on 0.58 (currently 0.58.6).** 0.59.0 re-runs validation under
-  every outcome of a regex match it cannot finish (up to 64 runs). With
-  `backtracking_patterns(10_000)`, 200 distinct items that each reach
-  the step limit took 129 s to reject on 0.59.0 against 1.9 s on 0.58.5,
-  which defeats the bound the opt-in documents.
+- Exhausted backtracking matches report one shared engine failure instead
+  of a definite violation for every repeated item. `backtracking_patterns`
+  retains its per-match step limit; tests cover 200 repeated and distinct
+  over-limit subjects.
 - CI: the GitHub Actions, CodeQL, Scorecard and Rust toolchain pins move
   to their current releases.
 
