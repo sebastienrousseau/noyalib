@@ -208,5 +208,8 @@ for g in scripts/check-*.sh; do
     fi
 done
 
+# Historical evidence must describe real tests at the requested source SHA.
+if python3 scripts/tests/test_historical_test_status.py; then ok; else bad "historical test status publisher"; fi
+
 echo "gate self-tests: $pass passed, $fail failed"
 [ "$fail" = 0 ]

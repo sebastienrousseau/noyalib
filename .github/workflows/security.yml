@@ -27,6 +27,11 @@ on:
           Scorecard's SAST check reads for a merged commit.
         required: false
         type: string
+      run_tests:
+        description: 'Test the exact sha and record its real CI result (requires sha)'
+        required: false
+        type: boolean
+        default: false
   schedule:
     - cron: '0 6 * * 1'  # Weekly Monday 06:00 UTC
 
@@ -79,6 +84,102 @@ jobs:
           ref: ${{ inputs.ref || (inputs.sha && github.ref) || '' }}
           sha: ${{ inputs.sha || '' }}
 
+  # Recover evidence for a historical fork PR whose workflow approval expired.
+  # The tested source receives a read-only token. A separate job records the
+  # actual outcome against that source SHA, rather than the dispatch branch.
+  historical-tests:
+    name: Historical commit tests
+    if: github.event_name == 'workflow_dispatch' && inputs.run_tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    outputs:
+      sha: ${{ steps.revision.outputs.sha }}
+    env:
+      CARGO_TARGET_DIR: ${{ github.workspace }}/target-historical-tests
+    steps:
+      - name: Require a full commit SHA
+        env:
+          TARGET_SHA: ${{ inputs.sha }}
+        run: |
+          python3 - <<'PY'
+          import os, re
+          if not re.fullmatch(r"[0-9a-f]{40}", os.environ["TARGET_SHA"]):
+              raise SystemExit("Historical tests require a full commit SHA")
+          PY
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          ref: ${{ inputs.sha }}
+      - name: Confirm the tested revision
+        id: revision
+        env:
+          TARGET_SHA: ${{ inputs.sha }}
+        run: |
+          actual_sha=$(git rev-parse HEAD)
+          test "$actual_sha" = "$TARGET_SHA"
+          echo "sha=$actual_sha" >> "$GITHUB_OUTPUT"
+      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8
+        with:
+          toolchain: stable
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          workspaces: ". -> target-historical-tests"
+          key: historical-tests-${{ inputs.sha }}
+          save-if: false
+      - name: Run the historical revision's tests
+        run: cargo test --locked --all-features
+
+  historical-test-status:
+    name: Record historical test result
+    needs: historical-tests
+    if: always() && github.event_name == 'workflow_dispatch' && inputs.run_tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      statuses: write
+    # No checkout or source execution in the job holding the write token.
+    steps:
+      - name: Publish the actual test outcome
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT_NAME: ${{ github.event_name }}
+          RUN_TESTS: ${{ inputs.run_tests }}
+          TARGET_SHA: ${{ inputs.sha }}
+          TESTED_SHA: ${{ needs.historical-tests.outputs.sha }}
+          TEST_RESULT: ${{ needs.historical-tests.result }}
+        run: |
+          python3 - <<'PY'
+          # BEGIN HISTORICAL TEST STATUS
+          import json, os, re, subprocess
+
+          if os.environ["EVENT_NAME"] != "workflow_dispatch" or os.environ["RUN_TESTS"] != "true":
+              raise SystemExit("Only an explicit historical test dispatch can report results")
+          sha = os.environ["TARGET_SHA"]
+          if not re.fullmatch(r"[0-9a-f]{40}", sha):
+              raise SystemExit("A full tested commit SHA is required")
+          result = os.environ["TEST_RESULT"]
+          states = {"success": "success", "failure": "failure", "cancelled": "error", "skipped": "error"}
+          if result not in states:
+              raise SystemExit("Tests must have a terminal outcome before reporting")
+          if result == "success" and os.environ["TESTED_SHA"] != sha:
+              raise SystemExit("Successful tests must confirm the requested source SHA")
+          repo = os.environ["GITHUB_REPOSITORY"]
+          run_id = os.environ["GITHUB_RUN_ID"]
+          if not re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", repo) or not run_id.isdigit():
+              raise SystemExit("Invalid workflow run identity")
+          url = f"{os.environ['GITHUB_SERVER_URL']}/{repo}/actions/runs/{run_id}"
+          description = "All-feature tests passed at this commit" if result == "success" else "Historical tests did not pass"
+          payload = {"state": states[result], "context": "ci/historical-tests", "target_url": url, "description": description}
+          subprocess.run(
+              ["gh", "api", "--method", "POST", f"repos/{repo}/statuses/{sha}", "--input", "-"],
+              input=json.dumps(payload), text=True, check=True, stdout=subprocess.DEVNULL,
+          )
+          print(f"Recorded {states[result]} for the tested revision: {url}")
+          # END HISTORICAL TEST STATUS
+          PY
+
   # ── Soak fuzz (weekly) ─────────────────────────────────────────────
   # Long-running fuzz campaigns that don't fit the per-push budget.
   # Each target gets a multi-hour slot per week; crashes / corpus
@@ -92,7 +193,7 @@ jobs:
     # set. Sharing target/ across fuzz configurations is exactly
     # how a stale cache could hide a fuzz regression.
     # A dispatch that names a sha is a targeted CodeQL scan, not a soak.
-    if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && !inputs.sha)
+    if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && !inputs.sha && !inputs.run_tests)
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -140,7 +241,7 @@ jobs:
     # CACHE-POISONING GUARD: isolated CARGO_TARGET_DIR — Miri's
     # interpreter fingerprint is distinct from every other job.
     # A dispatch that names a sha is a targeted CodeQL scan, not a soak.
-    if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && !inputs.sha)
+    if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && !inputs.sha && !inputs.run_tests)
     runs-on: ubuntu-latest
     permissions:
       contents: read
