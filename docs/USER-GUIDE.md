@@ -586,7 +586,7 @@ diagnostics list and offer autocomplete on the recoverable
 subtrees.
 
 ```rust
-// Cargo.toml: noyalib = { version = "0.0.59", features = ["recovery"] }
+// Cargo.toml: noyalib = { version = "0.0.60", features = ["recovery"] }
 use noyalib::recovery::parse_lenient;
 
 let half_typed = "name: noyalib\nfeatures: [recovery, sval\n# ^ unclosed\n";
@@ -612,7 +612,7 @@ document stream:
 ```rust,ignore
 // Needs an async runtime and, for pattern 2, `tokio-util` in *your*
 // Cargo.toml, so this block is shown rather than compiled here.
-// Cargo.toml: noyalib = { version = "0.0.59", features = ["tokio"] }
+// Cargo.toml: noyalib = { version = "0.0.60", features = ["tokio"] }
 use noyalib::tokio_async::{async_yaml_stream, from_async_reader_multi};
 
 // Pattern 1: drain-and-parse
@@ -640,7 +640,7 @@ cost of serde monomorphisation. The adapter implements
 ```rust,ignore
 // `sval` and the `sval::Stream` you hand it are *your* dependencies,
 // so this block is shown rather than compiled here.
-// Cargo.toml: noyalib = { version = "0.0.59", features = ["sval"] }
+// Cargo.toml: noyalib = { version = "0.0.60", features = ["sval"] }
 let value: noyalib::Value = noyalib::from_str("name: noyalib")?;
 sval::Value::stream(&value, &mut my_stream)?;
 ```

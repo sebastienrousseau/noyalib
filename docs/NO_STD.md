@@ -7,7 +7,7 @@ Disable default features to use the core library with `core` and `alloc`:
 
 ```toml
 [dependencies]
-noyalib = { version = "0.0.59", default-features = false }
+noyalib = { version = "0.0.60", default-features = false }
 serde = { version = "1", default-features = false, features = ["alloc", "derive"] }
 ```
 
