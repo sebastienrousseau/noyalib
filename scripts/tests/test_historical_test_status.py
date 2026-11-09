@@ -122,5 +122,167 @@ class HistoricalTestStatus(unittest.TestCase):
         self.assertIsNone(request)
 
 
+class TrustedHistoricalTarget(unittest.TestCase):
+    def setUp(self):
+        match = re.search(
+            r"(?ms)^          # BEGIN HISTORICAL TARGET\n"
+            r"(.*?)^          # END HISTORICAL TARGET$",
+            WORKFLOW.read_text(),
+        )
+        self.assertIsNotNone(match, "historical checkout lacks a merged-history guard")
+        self.code = textwrap.dedent(match.group(1))
+        self.scratch = tempfile.TemporaryDirectory(prefix="noyalib-history-target-")
+        self.addCleanup(self.scratch.cleanup)
+        self.output = Path(self.scratch.name) / "output"
+        gh = Path(self.scratch.name) / "gh"
+        gh.write_text(
+            f"#!{sys.executable}\n"
+            "import json, os, sys\n"
+            "body = (json.loads(os.environ['COMPARISON']) if '/compare/' in sys.argv[-1]\n"
+            "        else {'default_branch': 'main'})\n"
+            "print(json.dumps(body))\n"
+        )
+        gh.chmod(0o700)
+
+    def resolve(self, status="ahead", merge_base=HISTORICAL_SHA, base=HISTORICAL_SHA,
+                requested=HISTORICAL_SHA):
+        env = {
+            "PATH": self.scratch.name + os.pathsep + os.defpath,
+            "GH_TOKEN": "test-token",
+            "GITHUB_REPOSITORY": "example/noyalib",
+            "GITHUB_OUTPUT": str(self.output),
+            "TARGET_SHA": requested,
+            "COMPARISON": json.dumps({
+                "status": status, "merge_base_commit": {"sha": merge_base},
+                "base_commit": {"sha": base},
+            }),
+        }
+        result = subprocess.run(
+            [sys.executable, "-c", self.code], env=env, capture_output=True, text=True
+        )
+        output = self.output.read_text() if self.output.exists() else ""
+        return result, output
+
+    def test_merged_ancestor_is_accepted(self):
+        result, output = self.resolve()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(output, f"sha={HISTORICAL_SHA}\ndefault_branch=main\n")
+
+    def test_default_branch_tip_is_accepted(self):
+        result, output = self.resolve(status="identical")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(output, f"sha={HISTORICAL_SHA}\ndefault_branch=main\n")
+
+    def test_unmerged_descendant_is_rejected(self):
+        result, output = self.resolve(status="behind")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(output, "")
+
+    def test_divergent_fork_is_rejected(self):
+        result, output = self.resolve(status="diverged")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(output, "")
+
+    def test_other_merge_base_is_rejected(self):
+        result, output = self.resolve(merge_base=DISPATCH_SHA)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(output, "")
+
+    def test_other_base_is_rejected(self):
+        result, output = self.resolve(base=DISPATCH_SHA)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(output, "")
+
+    def test_unpinned_target_is_rejected(self):
+        result, output = self.resolve(requested="main")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(output, "")
+
+
+class HistoricalCheckout(unittest.TestCase):
+    def setUp(self):
+        match = re.search(
+            r"(?ms)^          # BEGIN HISTORICAL CHECKOUT\n"
+            r"(.*?)^          # END HISTORICAL CHECKOUT$",
+            WORKFLOW.read_text(),
+        )
+        self.assertIsNotNone(match, "historical checkout lacks a local ancestry check")
+        self.code = textwrap.dedent(match.group(1))
+        self.scratch = tempfile.TemporaryDirectory(prefix="noyalib-history-checkout-")
+        self.addCleanup(self.scratch.cleanup)
+        self.output = Path(self.scratch.name) / "output"
+        self.calls = Path(self.scratch.name) / "calls"
+        git = Path(self.scratch.name) / "git"
+        git.write_text(
+            f"#!{sys.executable}\n"
+            "import json, os, pathlib, sys\n"
+            "with open(os.environ['CALLS'], 'a') as out:\n"
+            "    out.write(json.dumps(sys.argv[1:]) + '\\n')\n"
+            "if sys.argv[1] == 'merge-base':\n"
+            "    sys.exit(int(os.environ['ANCESTOR_EXIT']))\n"
+            "if sys.argv[1] == 'rev-parse':\n"
+            "    print(os.environ['ACTUAL_SHA'])\n"
+        )
+        git.chmod(0o700)
+
+    def checkout(self, **overrides):
+        env = {
+            "PATH": self.scratch.name + os.pathsep + os.defpath,
+            "CALLS": str(self.calls),
+            "GITHUB_OUTPUT": str(self.output),
+            "TARGET_SHA": HISTORICAL_SHA,
+            "DEFAULT_BRANCH": "main",
+            "ANCESTOR_EXIT": "0",
+            "ACTUAL_SHA": HISTORICAL_SHA,
+        }
+        env.update(overrides)
+        result = subprocess.run(
+            [sys.executable, "-c", self.code], env=env, capture_output=True, text=True
+        )
+        calls = [json.loads(s) for s in self.calls.read_text().splitlines()] if self.calls.exists() else []
+        output = self.output.read_text() if self.output.exists() else ""
+        return result, calls, output
+
+    def test_ancestry_is_checked_before_source_checkout(self):
+        result, calls, output = self.checkout()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(calls, [
+            ["merge-base", "--is-ancestor", HISTORICAL_SHA, "refs/remotes/origin/main"],
+            ["checkout", "--detach", HISTORICAL_SHA],
+            ["rev-parse", "HEAD"],
+        ])
+        self.assertEqual(output, f"sha={HISTORICAL_SHA}\n")
+
+    def test_unmerged_revision_is_not_checked_out(self):
+        result, calls, output = self.checkout(ANCESTOR_EXIT="1")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(calls[0][0], "merge-base")
+        self.assertEqual(output, "")
+
+    def test_unknown_revision_is_not_checked_out(self):
+        result, calls, output = self.checkout(ANCESTOR_EXIT="128")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(output, "")
+
+    def test_unpinned_revision_is_not_checked_out(self):
+        result, calls, output = self.checkout(TARGET_SHA="main")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(calls, [])
+        self.assertEqual(output, "")
+
+    def test_missing_default_branch_does_not_use_another_ref(self):
+        result, calls, output = self.checkout(DEFAULT_BRANCH="")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(calls, [])
+        self.assertEqual(output, "")
+
+    def test_other_checked_out_source_cannot_confirm_success(self):
+        result, _, output = self.checkout(ACTUAL_SHA=DISPATCH_SHA)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(output, "")
+
+
 if __name__ == "__main__":
     unittest.main()

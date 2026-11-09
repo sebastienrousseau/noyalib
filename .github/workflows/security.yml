@@ -28,7 +28,7 @@ on:
         required: false
         type: string
       run_tests:
-        description: 'Test the exact sha and record its real CI result (requires sha)'
+        description: 'Test a SHA already merged into the default branch and record its result'
         required: false
         type: boolean
         default: false
@@ -84,11 +84,57 @@ jobs:
           ref: ${{ inputs.ref || (inputs.sha && github.ref) || '' }}
           sha: ${{ inputs.sha || '' }}
 
+  # Dispatches can write caches in the default branch's scope even with a
+  # read-only repository token. Only execute revisions already in the default
+  # branch's trusted history; resolve the checkout from GitHub's ancestry data.
+  resolve-history:
+    name: Validate historical revision
+    if: github.event_name == 'workflow_dispatch' && inputs.run_tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      sha: ${{ steps.history.outputs.sha }}
+      default_branch: ${{ steps.history.outputs.default_branch }}
+    steps:
+      - name: Require a merged revision
+        id: history
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TARGET_SHA: ${{ inputs.sha }}
+        run: |
+          python3 - <<'PY'
+          # BEGIN HISTORICAL TARGET
+          import json, os, re, subprocess
+          from urllib.parse import quote
+
+          requested = os.environ["TARGET_SHA"]
+          if not re.fullmatch(r"[0-9a-f]{40}", requested):
+              raise SystemExit("Historical tests require a full commit SHA")
+          repo = os.environ["GITHUB_REPOSITORY"]
+          def api(path):
+              return json.loads(subprocess.check_output(["gh", "api", path], text=True))
+          branch = api(f"repos/{repo}")["default_branch"]
+          default_branch = quote(branch, safe="")
+          comparison = api(f"repos/{repo}/compare/{requested}...{default_branch}")
+          resolved = comparison["merge_base_commit"]["sha"]
+          if (comparison["status"] not in {"ahead", "identical"}
+                  or comparison["base_commit"]["sha"] != requested
+                  or resolved != requested):
+              raise SystemExit("Historical tests only accept commits already merged into the default branch")
+          with open(os.environ["GITHUB_OUTPUT"], "a") as output:
+              output.write(f"sha={resolved}\n")
+              output.write(f"default_branch={branch}\n")
+          # END HISTORICAL TARGET
+          PY
+
   # Recover evidence for a historical fork PR whose workflow approval expired.
-  # The tested source receives a read-only token. A separate job records the
-  # actual outcome against that source SHA, rather than the dispatch branch.
+  # The tested source receives a read-only token and no restored cache. A
+  # separate job records its actual test outcome against the confirmed SHA.
   historical-tests:
     name: Historical commit tests
+    needs: resolve-history
     if: github.event_name == 'workflow_dispatch' && inputs.run_tests
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -99,42 +145,52 @@ jobs:
     env:
       CARGO_TARGET_DIR: ${{ github.workspace }}/target-historical-tests
     steps:
-      - name: Require a full commit SHA
-        env:
-          TARGET_SHA: ${{ inputs.sha }}
-        run: |
-          python3 - <<'PY'
-          import os, re
-          if not re.fullmatch(r"[0-9a-f]{40}", os.environ["TARGET_SHA"]):
-              raise SystemExit("Historical tests require a full commit SHA")
-          PY
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-          ref: ${{ inputs.sha }}
-      - name: Confirm the tested revision
+          # Start from the trusted workflow revision and fetch its history.
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+      - name: Select only a merged revision
         id: revision
         env:
-          TARGET_SHA: ${{ inputs.sha }}
+          TARGET_SHA: ${{ needs.resolve-history.outputs.sha }}
+          DEFAULT_BRANCH: ${{ needs.resolve-history.outputs.default_branch }}
         run: |
-          actual_sha=$(git rev-parse HEAD)
-          test "$actual_sha" = "$TARGET_SHA"
-          echo "sha=$actual_sha" >> "$GITHUB_OUTPUT"
+          python3 - <<'PY'
+          # BEGIN HISTORICAL CHECKOUT
+          import os, re, subprocess
+
+          target = os.environ["TARGET_SHA"]
+          branch = os.environ["DEFAULT_BRANCH"]
+          if not re.fullmatch(r"[0-9a-f]{40}", target) or not branch:
+              raise SystemExit("A pinned revision and its default branch are required")
+          # Check ancestry locally as well, before switching to any old source.
+          ancestor = subprocess.run([
+              "git", "merge-base", "--is-ancestor", target, f"refs/remotes/origin/{branch}",
+          ])
+          if ancestor.returncode:
+              raise SystemExit("The revision is not in the fetched default-branch history")
+          subprocess.run(["git", "checkout", "--detach", target], check=True)
+          actual = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
+          if actual != target:
+              raise SystemExit("The checked-out source does not match the requested revision")
+          with open(os.environ["GITHUB_OUTPUT"], "a") as output:
+              output.write(f"sha={actual}\n")
+          # END HISTORICAL CHECKOUT
+          PY
       - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8
         with:
           toolchain: stable
-      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
-        with:
-          workspaces: ". -> target-historical-tests"
-          key: historical-tests-${{ inputs.sha }}
-          save-if: false
       - name: Run the historical revision's tests
         run: cargo test --locked --all-features
 
   historical-test-status:
     name: Record historical test result
-    needs: historical-tests
-    if: always() && github.event_name == 'workflow_dispatch' && inputs.run_tests
+    needs: [resolve-history, historical-tests]
+    if: >-
+      always() && github.event_name == 'workflow_dispatch' && inputs.run_tests
+      && needs.resolve-history.result == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
@@ -146,7 +202,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           EVENT_NAME: ${{ github.event_name }}
           RUN_TESTS: ${{ inputs.run_tests }}
-          TARGET_SHA: ${{ inputs.sha }}
+          TARGET_SHA: ${{ needs.resolve-history.outputs.sha }}
           TESTED_SHA: ${{ needs.historical-tests.outputs.sha }}
           TEST_RESULT: ${{ needs.historical-tests.result }}
         run: |
