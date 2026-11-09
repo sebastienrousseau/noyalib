@@ -114,11 +114,6 @@ rustc-hash = { version = ">=2, <3", default-features = false }
 # bare-metal targets the maps come from hashbrown instead, keyed by
 # the same FxBuildHasher, so hashing behaviour is identical. See #210.
 hashbrown = { version = "0.17", default-features = false }
-# `core` has no float math: `f64::fract` and `f64::mul_add` are std
-# inherent methods. libm supplies them for bare-metal targets;
-# hosted builds use the inherent ones and never call into it.
-# See #210.
-libm = { version = "0.2", default-features = false }
 itoa = { version = "1", optional = true }
 ryu = { version = "1", optional = true }
 memchr = { version = "2.7", default-features = false }
@@ -191,6 +186,9 @@ bytes = { version = "1", optional = true, default-features = false }
 rustix = { version = "1.1.4", optional = true, features = ["fs"] }
 
 [dev-dependencies]
+# Independent oracle for the private portable float helpers (#500).
+# Downstream std and no_std builds do not depend on this crate.
+libm = { version = "0.2", default-features = false }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 serde_bytes = "0.11"

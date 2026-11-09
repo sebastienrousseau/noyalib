@@ -27,9 +27,11 @@ Targets without those atomics, including `thumbv6m-none-eabi` and
 | Portable options | `fast-int`, `fast-float`, `strict-deserialise`, `recovery`, `lossless-float`, `lossless-u64`, `include`, `compat-serde-yaml`, `sval`, `simd`, `wasm-opt`, and stable fallback for `nightly-simd` |
 
 The `include` feature accepts caller-supplied resolvers; it does not require a
-filesystem. `libm` stays a mandatory dependency so floating-point fraction and
-fused multiply-add operations work without an additional math feature. Disabling
-formatting accelerators retains integer and float serialization.
+filesystem. Private `core` helpers supply floating-point fraction and fused
+multiply-add operations without a runtime math dependency or an additional feature.
+Hosted builds retain their inherent std methods. `libm` is a development-only
+reference for numerical tests. Disabling formatting accelerators retains integer
+and float serialization.
 
 The string and slice strict helpers work without std; the reader helper needs
 std. Enabling `recovery` no longer enables std implicitly. Hosted callers that
@@ -59,4 +61,11 @@ Run the baseline behavior checks locally:
 
 ```sh
 CARGO_TARGET_DIR=target-alloc-core cargo test --locked --no-default-features --test no_std --test issue_494
+```
+
+Check float behavior and the active dependency graph from isolated default,
+minimal std, and alloc-only consumers:
+
+```sh
+python3 scripts/check-float-portability.py
 ```

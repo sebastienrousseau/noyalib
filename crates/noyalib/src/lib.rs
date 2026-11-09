@@ -459,18 +459,16 @@ pub(crate) mod prelude {
     // changes shape for hosted callers. See #210.
     pub(crate) type IndexMap<K, V, S = FxBuildHasher> = indexmap::IndexMap<K, V, S>;
 
-    // `f64::fract` and `f64::mul_add` are std inherent methods; `core`
-    // has neither. libm supplies the equivalents. `fract` is defined as
-    // `self - self.trunc()`, which is what libm::trunc gives exactly.
-    // See #210.
+    // Private core-only helpers preserve the hosted float behavior without
+    // adding a math dependency or requiring an extra no_std feature (#500).
     #[inline]
     pub(crate) fn f64_fract(x: f64) -> f64 {
-        x - libm::trunc(x)
+        crate::portable_float::fract(x)
     }
 
     #[inline]
     pub(crate) fn f64_mul_add(a: f64, b: f64, c: f64) -> f64 {
-        libm::fma(a, b, c)
+        crate::portable_float::mul_add(a, b, c)
     }
 }
 
@@ -495,8 +493,8 @@ pub(crate) mod prelude {
     // prelude substitutes `FxBuildHasher`. See #210.
     pub(crate) use indexmap::IndexMap;
 
-    // Hosted builds use the inherent std methods; the no_std prelude
-    // routes these through libm. See #210.
+    // Hosted builds retain the inherent std methods; alloc-only builds
+    // use the bit-exact portable helpers. See #500 and ADR-0018.
     #[inline]
     pub(crate) fn f64_fract(x: f64) -> f64 {
         x.fract()
@@ -507,6 +505,9 @@ pub(crate) mod prelude {
         a.mul_add(b, c)
     }
 }
+
+#[cfg(any(not(feature = "std"), test))]
+mod portable_float;
 
 mod anchors;
 /// Zero-copy YAML values that borrow from the input.

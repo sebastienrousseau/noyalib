@@ -39,6 +39,8 @@
 #                                   with rustc-hash.
 #   - `simd::`                    — SWAR / bitmask pipelines that
 #                                   exercise wrapping arithmetic.
+#   - `portable_float::`:           fused rounding, cancellation and
+#                                   binary64 boundary behavior.
 #
 # A scheduled job runs the *full* test suite under Miri weekly so
 # anything outside the targeted set is still covered eventually.
@@ -100,7 +102,7 @@ FILTER="${1:-}"
 if [[ -n "${FILTER}" ]]; then
     FILTERS=( "${FILTER}::" )
 else
-    FILTERS=( "parser::" "scanner::" "value::" "interner::" "simd::" )
+    FILTERS=( "parser::" "scanner::" "value::" "interner::" "simd::" "portable_float::" )
 fi
 
 echo "→ Setting up Miri (cached if previously run)"

@@ -55,6 +55,12 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Fixed
 
+- **Hosted consumers no longer pull in `libm` through noyalib** (#500).
+  The alloc-only prelude uses private `core` helpers for fractional parts
+  and fused multiply-add, preserving existing float results and the unchanged
+  `--no-default-features` command. `libm` remains only as a development oracle.
+  Isolated consumers check default, minimal std, and alloc-only graphs and
+  float behavior; no feature, API, or MSRV change is needed.
 - The Miri equivalence fixture uses aligned backing storage so memchr's
   manual SSE2 pointer alignment can pass symbolic checks. All 16 subslice
   offsets have regression coverage. Native, Tree Borrows, alignment and
@@ -78,7 +84,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   paths**, including `Spanned<T>` and typed multi-document loads with default
   scalar settings. Shared portable tests run with core, accelerated, and
   combined features; bare-metal gates also check the combined portable set.
-  `libm` remains mandatory to preserve `--no-default-features` compatibility
+  Floating-point operations preserve `--no-default-features` compatibility
   without introducing a required math feature (#500).
 - **CST entry insertion beneath a sequence-item key now uses the key's
   column** (#499, #506, contributed by @zoosky). `insert_entry` and

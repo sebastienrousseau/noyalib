@@ -25,21 +25,21 @@ likely to cost something. The `benches/` directory measures them.
 | 309 | `src/parser/scanner/scalars.rs` | `scan_double_quoted_scalar` |
 | 228 | `src/cst/document.rs` | `entry_line_span` |
 | 222 | `src/parser/loader.rs` | `push_node` |
-| 212 | `src/parser/loader.rs` | `process_event` |
+| 210 | `src/parser/loader.rs` | `process_event` |
 | 199 | `src/parser/scanner.rs` | `fetch_tag` |
 | 171 | `src/parser/loader.rs` | `push_value` |
 | 148 | `src/parser/loader.rs` | `process_event` |
 | 132 | `src/cst/document.rs` | `set_value` |
 | 118 | `src/parser/scanner/scalars.rs` | `scan_single_quoted_scalar` |
-| 110 | `src/de.rs` | `from_str_with_config` |
+| 106 | `src/cst/document.rs` | `guarded_insert` |
 
 ## Module map
 
-75 modules.
+76 modules.
 
 | Module | Lines | Purpose |
 | --- | --- | --- |
-| `anchors.rs` | 1151 | Smart pointer anchor types for shared/DAG structures. |
+| `anchors.rs` | 1138 | Smart pointer anchor types for shared/DAG structures. |
 | `ariadne_adapter.rs` | 115 | [`ariadne`] adapter for [`crate::Error`]. |
 | `base64.rs` | 282 | Internal base64 codec for `!!binary` scalars (YAML 1.2.2 §10.4). |
 | `borrowed.rs` | 954 | Zero-copy YAML values that borrow strings from the input. |
@@ -48,27 +48,27 @@ likely to cost something. The `benches/` directory measures them.
 | `compat/serde_yaml.rs` | 968 | Drop-in API surface compatible with `serde_yaml` 0.9. |
 | `cst/anchor.rs` | 721 | Anchor and alias management. |
 | `cst/annotated.rs` | 909 | Comment-aware read view over a [`crate::cst::Document`]. |
-| `cst/builder.rs` | 685 | Build the parts of a [`crate::cst::Document`] from input bytes. |
-| `cst/coerce.rs` | 227 | Lossless schema-driven type coercion on the CST path. |
-| `cst/document/edit.rs` | 261 | Atomic source splicing and local green-tree repair. |
+| `cst/builder.rs` | 683 | Build the parts of a [`crate::cst::Document`] from input bytes. |
+| `cst/coerce.rs` | 231 | Lossless schema-driven type coercion on the CST path. |
+| `cst/document/edit.rs` | 262 | Atomic source splicing and local green-tree repair. |
 | `cst/document/path.rs` | 411 | Green-tree path resolution without typed-cache materialization. |
 | `cst/document/transaction.rs` | 152 | Atomic batches of byte-range CST edits. |
-| `cst/document/validation.rs` | 86 | Typed-cache validation and atomic document-state replacement. |
-| `cst/document.rs` | 7140 | Public `Document` handle and parse / mutation entry points. |
+| `cst/document/validation.rs` | 87 | Typed-cache validation and atomic document-state replacement. |
+| `cst/document.rs` | 7366 | Public `Document` handle and parse / mutation entry points. |
 | `cst/emit.rs` | 463 | Auto-formatting for values spliced by the CST insertion mutators. |
 | `cst/entry.rs` | 671 | Path-shaped mutable handle to a CST node — the `Entry` "pro" |
 | `cst/format.rs` | 610 | Formatter for YAML CST. |
 | `cst/green.rs` | 283 | Immutable green-node primitive with relative-length leaves. |
-| `cst/mod.rs` | 143 | Side-table CST (concrete syntax tree) for lossless round-tripping. |
+| `cst/mod.rs` | 145 | Side-table CST (concrete syntax tree) for lossless round-tripping. |
 | `cst/syntax.rs` | 135 | Syntax-kind tags for green-tree nodes and tokens. |
-| `de/config.rs` | 1452 | Parser configuration types. |
-| `de/deserializer.rs` | 1064 | The serde `Deserializer` over a `&Value` and its access types. |
-| `de.rs` | 1247 | YAML Deserialization. |
+| `de/config.rs` | 1444 | Parser configuration types. |
+| `de/deserializer.rs` | 1061 | The serde `Deserializer` over a `&Value` and its access types. |
+| `de.rs` | 1300 | YAML Deserialization. |
 | `diagnostic.rs` | 447 | Framework-neutral structured diagnostics and optional `miette` bridges. |
-| `doc_boundary.rs` | 329 | Workspace-private `---` document-boundary scanner. |
-| `document.rs` | 503 | Multi-document YAML loading. |
-| `error.rs` | 2278 | Error handling types. |
-| `figment.rs` | 219 | [`figment`] provider for noyalib YAML. |
+| `doc_boundary.rs` | 354 | Workspace-private `---` document-boundary scanner. |
+| `document.rs` | 518 | Multi-document YAML loading. |
+| `error.rs` | 2276 | Error handling types. |
+| `figment.rs` | 241 | [`figment`] provider for noyalib YAML. |
 | `flattened.rs` | 165 | `Flattened<T>` — capture the underlying [`Value`] alongside the |
 | `fmt.rs` | 648 | Formatting wrappers for fine-grained control over YAML output style. |
 | `i18n.rs` | 172 | Pluggable error-message formatters for user-facing rendering. |
@@ -80,26 +80,27 @@ likely to cost something. The `benches/` directory measures them.
 | `parallel.rs` | 526 | Parallel multi-document YAML parsing — the "MapReduce" path. |
 | `parser/budget.rs` | 282 | The resource budgets the loaders enforce, as pure predicates. |
 | `parser/events.rs` | 820 | YAML 1.2 event-based parser. |
-| `parser/loader.rs` | 2164 | Event-to-Value tree builder with security limits. |
+| `parser/loader.rs` | 2233 | Event-to-Value tree builder with security limits. |
 | `parser/meter.rs` | 422 | The stateful half of the budgets: one meter every loader charges. |
-| `parser/mod.rs` | 94 | Native YAML 1.2 parser. |
+| `parser/mod.rs` | 108 | Native YAML 1.2 parser. |
 | `parser/scanner/block_scalars.rs` | 401 | Literal and folded block scalar scanning for the YAML scanner, as a |
 | `parser/scanner/scalars.rs` | 948 | Scalar scanning for the YAML scanner: plain, single/double-quoted |
-| `parser/scanner.rs` | 2764 | YAML 1.2 lexical scanner. |
+| `parser/scanner.rs` | 2761 | YAML 1.2 lexical scanner. |
 | `path.rs` | 1101 | Path tracking for YAML structure locations. |
 | `policy.rs` | 285 | Pluggable parser policies for "Safe YAML" enforcement. |
-| `recovery.rs` | 645 | Error-recovering YAML parser for LSP / IDE partial parsing. |
+| `portable_float.rs` | 287 | Private binary64 operations for alloc-only builds. |
+| `recovery.rs` | 646 | Error-recovering YAML parser for LSP / IDE partial parsing. |
 | `schema.rs` | 334 | YAML 1.2 schema validation helpers. |
 | `schema_codegen.rs` | 322 | JSON Schema codegen for Rust types. |
 | `schema_validate.rs` | 1010 | JSON Schema 2020-12 validation against a parsed [`crate::Value`]. |
 | `ser.rs` | 2516 | YAML serialization. |
-| `simd.rs` | 1531 | SIMD-friendly structural-scanning primitives. |
-| `span_context.rs` | 409 | Thread-local span context for wiring source locations into `Spanned<T>`. |
+| `simd.rs` | 1553 | SIMD-friendly structural-scanning primitives. |
+| `span_context.rs` | 441 | Source context for typed deserialization and `Spanned<T>` locations. |
 | `spanned.rs` | 291 | Source location tracking for deserialized values. |
 | `streaming.rs` | 2539 | Streaming YAML deserializer that operates directly on parser events. |
 | `sval_adapter.rs` | 442 | `sval` adapter — stream noyalib values through any |
 | `tag_registry.rs` | 215 | Streaming-path registry for custom YAML tag pass-through. |
-| `tokio_async.rs` | 818 | Native async YAML parsing for [`tokio`](https://tokio.rs) |
+| `tokio_async.rs` | 831 | Native async YAML parsing for [`tokio`](https://tokio.rs) |
 | `validated.rs` | 262 | Declarative validation via [`garde`] or [`validator`]. |
 | `validated_miette.rs` | 265 | [`Spanned<T>`] + `garde` / `validator` → `miette::Report` |
 | `value/arbitrary_impls.rs` | 150 | [`arbitrary::Arbitrary`] for the public value types, behind the |
@@ -108,7 +109,7 @@ likely to cost something. The `benches/` directory measures them.
 | `value/number.rs` | 631 | YAML number type (`Number`). |
 | `value/serde_impl.rs` | 370 | serde `Serialize`/`Deserialize` for `Value`. |
 | `value/tag.rs` | 554 | YAML tag types (`Tag`, `TaggedValue`) and tag utilities. |
-| `value.rs` | 1772 | YAML value types. |
+| `value.rs` | 1825 | YAML value types. |
 | `with/mod.rs` | 54 | Helper modules for customizing serialization and deserialization. |
 | `with/singleton_map.rs` | 212 | Serialize enums as single-entry maps. |
 | `with/singleton_map_optional.rs` | 265 | Serialize optional enums as single-entry maps. |
@@ -124,7 +125,7 @@ likely to cost something. The `benches/` directory measures them.
 | `default` | `std`, `fast-int`, `fast-float`, `strict-deserialise` | — |
 | `fast-int` | `dep:itoa` | Branchless integer formatting via `itoa` (~10× faster than `Display::fmt` on integer scalars). Disabling drops the dep and falls back to `core::fmt`; output is identical, only the serializer hot path slows down. |
 | `fast-float` | `dep:ryu` | Branchless float formatting via `ryu` (Grisu-style algorithm). Disabling drops the dep and falls back to Rust's `{:?}` Debug format, which preserves float-ness (`1.0` stays `1.0`) but emits expanded decimal form for very large magnitudes (`{:?}` does not auto-switch to scientific notation the way ryu does). |
-| `strict-deserialise` | `dep:serde_ignored` | `from_str_strict` / `from_slice_strict` / `from_reader_strict` — surface YAML keys that the target struct does not declare as typed `Error::UnknownField`. Backed by `serde_ignored`. Off in the `minimal` profile for FIPS / embedded users with strict dep-budget policies; the regular `from_str` path is unaffected. |
+| `strict-deserialise` | `dep:serde_ignored` | Alloc-capable `from_str_strict` / `from_slice_strict`; `from_reader_strict` additionally requires std. These helpers — surface YAML keys that the target struct does not declare as typed `Error::UnknownField`. Backed by `serde_ignored`. Off in the `minimal` profile for FIPS / embedded users with strict dep-budget policies; the regular `from_str` path is unaffected. |
 | `minimal` | `std` | Meta-feature: alias for "std-only, no formatting accelerators, no strict-deserialise helper" — for users with strict dep budgets (FIPS, embedded, audit-heavy environments) who want one explicit opt-in. Equivalent to `default-features = false, features = ["std"]`. |
 | `std` | `serde_core/std`, `indexmap/std`, `rustc-hash/std`, `memchr/std` | Synchronise serde's std mode with ours so the `serde_core::de::Error` trait's `StdError` super-trait resolves consistently. With this wired, `cargo build --no-default-features` truly compiles in no_std and serde's de::Error does not require `std::error::Error`. |
 | `miette` | `dep:miette`, `std` | `miette` 7 requires `std` (its `Diagnostic` supertrait is `std::error::Error`), so the feature implies it — the combination `--no-default-features --features miette` never compiled without this, caught by the feature-powerset sweep. |
@@ -146,7 +147,7 @@ likely to cost something. The `benches/` directory measures them.
 | `tokio` | `dep:tokio`, `dep:tokio-util`, `dep:bytes`, `std` | Native async stream parsing on top of `tokio::io::AsyncRead`. Adds `noyalib::tokio_async` with bounded reader helpers, `AsyncYamlStream`, and a `YamlDecoder` codec for custom framed pipelines. Off by default to keep the dep list lean for sync-only callers. |
 | `sval` | `dep:sval` | `sval` zero-allocation streaming serialization framework adapter. Adds `impl sval::Value for Value` (and the other in-tree value types) plus a `noyalib::sval_adapter::to_sval_writer` entry point. serde remains the default; this is opt-in for callers that want to skip serde monomorphisation overhead. |
 | `arbitrary` | `dep:arbitrary`, `std` | Structure-aware fuzzing and property testing: `arbitrary::Arbitrary` for every public value type. The arbitrary crate needs std. |
-| `recovery` | `std` | Error-recovering parser for LSP / IDE partial parsing. Adds the `noyalib::recovery` module with `parse_lenient` / `parse_lenient_with` entry points returning a `ParseResult` carrying the best-effort tree plus the collected error list. Pure Rust, no extra deps — turns existing strict-parse retries into a recovery pipeline. Off by default because the strict path is what most callers want. |
+| `recovery` | — | Error-recovering parser for LSP / IDE partial parsing. Adds the `noyalib::recovery` module with `parse_lenient` / `parse_lenient_with` entry points returning a `ParseResult` carrying the best-effort tree plus the collected error list. Pure Rust with alloc, no std requirement or extra deps — turns strict-parse retries into a recovery pipeline. Off by default because the strict path is what most callers want. |
 | `parallel` | `dep:rayon`, `std` | Parallel multi-document deserialisation via Rayon. Adds the `noyalib::parallel` module: - `parallel::parse<T>(&str) -> Result<Vec<T>>` — typed deserialise. - `parallel::parse_with_config_in_pool<T>(...)` — bounded caller pool. - `parallel::values(&str) -> Result<Vec<Value>>` — dynamic-tree variant. - `parallel::split(&str) -> Vec<&str>` — exposed boundary scanner for callers driving their own concurrency primitives. Parsing validates the document budget without retaining offsets, then discovers `---` boundaries on demand. Rayon's worker count bounds in-flight deserialisation, and the pool-aware entry point lets services own their concurrency limit and thread lifecycle. Off by default to keep the runtime dep list lean for users that only parse single-document inputs. |
 | `nightly-simd` | `simd` | Portable-SIMD (`std::simd`) structural scanner. Builds a 16/32/ 64-byte-wide `SimdScanner` that finds any byte in a needle set in a single SIMD pass. Requires the nightly toolchain because `core::simd` is unstable (`#![feature(portable_simd)]`). On by default for nightly users who want maximum throughput; the stable `simd` feature still ships the memchr / SWAR fall-back so stable builds are not regressed. |
 
