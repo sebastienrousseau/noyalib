@@ -55,6 +55,10 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Fixed
 
+- Library unit tests now run with the std feature disabled. The host test
+  harness imports std explicitly for test helpers and uses the alloc prelude
+  where needed. A separate CI job checks this configuration without enabling
+  std in the library or its downstream builds.
 - **Hosted consumers no longer pull in `libm` through noyalib** (#500).
   The alloc-only prelude uses private `core` helpers for fractional parts
   and fused multiply-add, preserving existing float results and the unchanged

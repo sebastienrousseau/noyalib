@@ -893,6 +893,7 @@ fn parse_8_digits(arr: [u8; 8]) -> Option<u64> {
 #[allow(clippy::byte_char_slices)]
 mod tests {
     use super::*;
+    use crate::prelude::{ToString as _, Vec, vec};
 
     // memchr aligns SSE2 loads using pointer arithmetic. Give symbolic Miri
     // a known allocation alignment; subslices below still cover every offset.

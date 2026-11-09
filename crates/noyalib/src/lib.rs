@@ -428,6 +428,11 @@ mod readme_doctests {}
 #[cfg(not(feature = "std"))]
 extern crate alloc;
 
+// Unit tests run on a host even when the library's std feature is disabled.
+// Keep std available only to the test harness and its fault-injection helpers.
+#[cfg(all(test, not(feature = "std")))]
+extern crate std;
+
 /// Internal prelude for no_std compatibility.
 /// Provides String, Vec, Box, etc. from alloc when std is absent.
 #[cfg(not(feature = "std"))]

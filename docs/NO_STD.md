@@ -69,3 +69,13 @@ minimal std, and alloc-only consumers:
 ```sh
 python3 scripts/check-float-portability.py
 ```
+
+Run every library unit test with the std feature disabled:
+
+```sh
+cargo test --locked --no-default-features --lib
+```
+
+The unit-test harness runs on a host and imports std for test helpers such as
+thread-local fault injection. The library keeps its alloc-only configuration;
+the bare-metal builds above check it without a host test harness.

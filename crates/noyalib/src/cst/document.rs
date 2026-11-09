@@ -144,7 +144,7 @@ pub enum RepairScope {
 pub(crate) mod fault {
     use core::cell::Cell;
 
-    thread_local! {
+    std::thread_local! {
         static FAIL_SPLICE: Cell<bool> = const { Cell::new(false) };
         static FAIL_VALIDATE: Cell<bool> = const { Cell::new(false) };
         static FAIL_ORACLE: Cell<bool> = const { Cell::new(false) };
@@ -7076,6 +7076,7 @@ mod rollback_invariant_tests {
     use super::fault;
     use super::{Document, parse_document};
     use crate::Value;
+    use crate::prelude::{ToString as _, Vec, vec};
 
     /// Carries an inline comment so the comment mutators have
     /// something to edit; without one they are documented no-ops and

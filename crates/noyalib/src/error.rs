@@ -2086,6 +2086,7 @@ pub(crate) fn invariant_violated(msg: &'static str) -> ! {
 #[cfg(test)]
 mod truncate_tests {
     use super::truncate_with_ellipsis;
+    use crate::prelude::ToString as _;
 
     #[test]
     fn under_budget_passthrough() {

@@ -54,7 +54,7 @@ likely to cost something. The `benches/` directory measures them.
 | `cst/document/path.rs` | 411 | Green-tree path resolution without typed-cache materialization. |
 | `cst/document/transaction.rs` | 152 | Atomic batches of byte-range CST edits. |
 | `cst/document/validation.rs` | 87 | Typed-cache validation and atomic document-state replacement. |
-| `cst/document.rs` | 7366 | Public `Document` handle and parse / mutation entry points. |
+| `cst/document.rs` | 7367 | Public `Document` handle and parse / mutation entry points. |
 | `cst/emit.rs` | 463 | Auto-formatting for values spliced by the CST insertion mutators. |
 | `cst/entry.rs` | 671 | Path-shaped mutable handle to a CST node — the `Entry` "pro" |
 | `cst/format.rs` | 610 | Formatter for YAML CST. |
@@ -65,9 +65,9 @@ likely to cost something. The `benches/` directory measures them.
 | `de/deserializer.rs` | 1061 | The serde `Deserializer` over a `&Value` and its access types. |
 | `de.rs` | 1300 | YAML Deserialization. |
 | `diagnostic.rs` | 447 | Framework-neutral structured diagnostics and optional `miette` bridges. |
-| `doc_boundary.rs` | 354 | Workspace-private `---` document-boundary scanner. |
+| `doc_boundary.rs` | 355 | Workspace-private `---` document-boundary scanner. |
 | `document.rs` | 518 | Multi-document YAML loading. |
-| `error.rs` | 2276 | Error handling types. |
+| `error.rs` | 2277 | Error handling types. |
 | `figment.rs` | 241 | [`figment`] provider for noyalib YAML. |
 | `flattened.rs` | 165 | `Flattened<T>` — capture the underlying [`Value`] alongside the |
 | `fmt.rs` | 648 | Formatting wrappers for fine-grained control over YAML output style. |
@@ -80,7 +80,7 @@ likely to cost something. The `benches/` directory measures them.
 | `parallel.rs` | 526 | Parallel multi-document YAML parsing — the "MapReduce" path. |
 | `parser/budget.rs` | 282 | The resource budgets the loaders enforce, as pure predicates. |
 | `parser/events.rs` | 820 | YAML 1.2 event-based parser. |
-| `parser/loader.rs` | 2233 | Event-to-Value tree builder with security limits. |
+| `parser/loader.rs` | 2234 | Event-to-Value tree builder with security limits. |
 | `parser/meter.rs` | 422 | The stateful half of the budgets: one meter every loader charges. |
 | `parser/mod.rs` | 108 | Native YAML 1.2 parser. |
 | `parser/scanner/block_scalars.rs` | 401 | Literal and folded block scalar scanning for the YAML scanner, as a |
@@ -94,10 +94,10 @@ likely to cost something. The `benches/` directory measures them.
 | `schema_codegen.rs` | 322 | JSON Schema codegen for Rust types. |
 | `schema_validate.rs` | 1010 | JSON Schema 2020-12 validation against a parsed [`crate::Value`]. |
 | `ser.rs` | 2516 | YAML serialization. |
-| `simd.rs` | 1553 | SIMD-friendly structural-scanning primitives. |
+| `simd.rs` | 1554 | SIMD-friendly structural-scanning primitives. |
 | `span_context.rs` | 441 | Source context for typed deserialization and `Spanned<T>` locations. |
 | `spanned.rs` | 291 | Source location tracking for deserialized values. |
-| `streaming.rs` | 2539 | Streaming YAML deserializer that operates directly on parser events. |
+| `streaming.rs` | 2540 | Streaming YAML deserializer that operates directly on parser events. |
 | `sval_adapter.rs` | 442 | `sval` adapter — stream noyalib values through any |
 | `tag_registry.rs` | 215 | Streaming-path registry for custom YAML tag pass-through. |
 | `tokio_async.rs` | 831 | Native async YAML parsing for [`tokio`](https://tokio.rs) |

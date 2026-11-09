@@ -2431,6 +2431,7 @@ mod lookahead_tests {
 
     use super::{Event, Lookahead, ScalarStyle};
     use crate::parser::scanner_span_default;
+    use crate::prelude::{ToString as _, format};
 
     fn scalar(v: &'static str) -> Event<'static> {
         Event::Scalar {

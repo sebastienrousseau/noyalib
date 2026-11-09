@@ -2122,6 +2122,7 @@ mod merge_key_eligibility_tests {
     //! patched one of them and changed nothing observable.
 
     use super::{MERGE_KEY, MergeKeyPolicy, Value};
+    use crate::prelude::{ToOwned as _, vec};
 
     /// Reproduces the eligibility decision made at both `MappingKey` arms.
     fn buffered_as_merge(value: &Value, may_be_merge_key: bool, policy: MergeKeyPolicy) -> bool {
