@@ -5,6 +5,26 @@ All notable changes to this project are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+## [v0.0.60] - 2026-11-10
+
+### Fixed
+
+- Restore missing CI and SAST evidence for merged PR #482 after its
+  fork-workflow approval expired. Historical recovery runs real tests and
+  CodeQL against the verified source commit and reports the actual result.
+- Restrict historical test execution to commits already merged into the
+  default branch. Remote ancestry checks and a local Git check precede
+  selection of historical source; test execution uses read-only permissions
+  and no build cache. A separate job publishes the result with only
+  commit-status write permission.
+
+### Changed
+
+- Update the alloc integration build's rust-cache action to 2.9.3 (#516).
+- Update the Markdown lint action to 25.0.0 (#517).
+
 ## [v0.0.59] - 2026-11-09
 
 ### Security

@@ -10,7 +10,7 @@ wants to *use* the library. The full reference is the
 
 ```toml
 [dependencies]
-noyalib = "0.0.59"
+noyalib = "0.0.60"
 ```
 
 `no_std` (alloc-only) and lean profiles are documented in the
