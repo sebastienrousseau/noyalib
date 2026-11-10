@@ -86,11 +86,13 @@ def main():
     done = re.findall(r'Done (\d+) runs in (\d+) second\(s\)', raw)
     executions, seconds = map(int, done[-1]) if done else (0, 0)
     locks_match = digest(lock) == lock_hash
-    passed = result.returncode == 0 and executions > 0 and seconds >= args.seconds and locks_match
+    findings = sorted(file.name for file in artifacts.iterdir() if file.is_file())
+    passed = (result.returncode == 0 and executions > 0 and seconds >= args.seconds
+              and locks_match and not findings)
     report.update(status='passed' if passed else 'failed', exit_code=result.returncode,
                   executions=executions, measured_seconds=seconds, wall_seconds=time.monotonic() - start,
                   lockfile_unchanged=locks_match, log_sha256=digest(log),
-                  findings=sorted(file.name for file in artifacts.iterdir() if file.is_file()))
+                  findings=findings)
     (out / 'receipt.json').write_text(json.dumps(report, indent=2) + '\n')
     print(f'{args.scope}/{args.target}: {report["status"]}; {executions} executions in {seconds}s; {out}')
     return 0 if passed else 1

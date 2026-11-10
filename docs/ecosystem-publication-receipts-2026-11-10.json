@@ -1,0 +1,117 @@
+{
+  "scope": "Verified public crate bytes and signed source provenance. Secondary channels have separate acceptance.",
+  "published_crates": [
+    {
+      "verified_utc": "2026-11-10T22:59:54.897719+00:00",
+      "repo": "sebastienrousseau/noyalib",
+      "version": "0.0.60",
+      "tag": "v0.0.60",
+      "tag_object": "833195dfaa8c87003975b2f76c0f313990a6564a",
+      "source": "2b3966235352c44b70071390faf6f06ec8b4d65d",
+      "release": "https://github.com/sebastienrousseau/noyalib/releases/tag/v0.0.60",
+      "registry_sha256": "c4f58e0d7f94aac1ff656e07a05512093b0a0f866f5778f94e84909f50fc3157",
+      "registry_matches_github_asset": true,
+      "gpg_fingerprint": "4B7F16C909C7A8EE9BED338A4F047EDF5F90F638",
+      "sigstore_identity": "https://github.com/sebastienrousseau/noyalib/.github/workflows/release.yml@refs/tags/v0.0.60",
+      "workflow_invocation": "https://github.com/sebastienrousseau/noyalib/actions/runs/42789260355/attempts/1"
+    },
+    {
+      "verified_utc": "2026-11-10T22:59:54.906157+00:00",
+      "repo": "sebastienrousseau/noya-cli",
+      "version": "0.0.60",
+      "tag": "v0.0.60",
+      "tag_object": "ffe83737d53799d97604d9e624bc2dfb777fa6a3",
+      "source": "9fdd09a177b6bf29084f0897db0d3e6823a27e96",
+      "release": "https://github.com/sebastienrousseau/noya-cli/releases/tag/v0.0.60",
+      "registry_sha256": "4fc88b5c5507f3e49b446ff0cf0f8ceb2bed66a407f3409c901029757493da5e",
+      "registry_matches_github_asset": true,
+      "gpg_fingerprint": "4B7F16C909C7A8EE9BED338A4F047EDF5F90F638",
+      "sigstore_identity": "https://github.com/sebastienrousseau/noya-cli/.github/workflows/release.yml@refs/tags/v0.0.60",
+      "workflow_invocation": "https://github.com/sebastienrousseau/noya-cli/actions/runs/42802913059/attempts/1"
+    },
+    {
+      "verified_utc": "2026-11-10T23:00:20.726713+00:00",
+      "repo": "sebastienrousseau/noyalib-lsp",
+      "version": "0.0.60",
+      "tag": "v0.0.60",
+      "tag_object": "6b75ab635eef9b7a630f61deece1089b34d4d291",
+      "source": "3fccfbe5782e5b43f6ac6c8bb04595063e024e8d",
+      "release": "https://github.com/sebastienrousseau/noyalib-lsp/releases/tag/v0.0.60",
+      "registry_sha256": "65ad51daa4b55ec76b16dd8aec9e2b50089e63e0e5b4a4d768970741b0b86718",
+      "registry_matches_github_asset": true,
+      "gpg_fingerprint": "4B7F16C909C7A8EE9BED338A4F047EDF5F90F638",
+      "sigstore_identity": "https://github.com/sebastienrousseau/noyalib-lsp/.github/workflows/release.yml@refs/tags/v0.0.60",
+      "workflow_invocation": "https://github.com/sebastienrousseau/noyalib-lsp/actions/runs/42792523036/attempts/1"
+    },
+    {
+      "verified_utc": "2026-11-10T23:00:20.792222+00:00",
+      "repo": "sebastienrousseau/noyalib-mcp",
+      "version": "0.0.59",
+      "tag": "v0.0.59",
+      "tag_object": "ad20009c7554935c1f395cbd8e52da72157644c5",
+      "source": "2b281dbfa8e0ca5fb59c4a7afe53f049d6034b55",
+      "release": "https://github.com/sebastienrousseau/noyalib-mcp/releases/tag/v0.0.59",
+      "registry_sha256": "f6d1814781c20b9e9d67acee769b7d896830008e776c53be1548c66283692cfe",
+      "registry_matches_github_asset": true,
+      "gpg_fingerprint": "4B7F16C909C7A8EE9BED338A4F047EDF5F90F638",
+      "sigstore_identity": "https://github.com/sebastienrousseau/noyalib-mcp/.github/workflows/release.yml@refs/tags/v0.0.59",
+      "workflow_invocation": "https://github.com/sebastienrousseau/noyalib-mcp/actions/runs/42892838622/attempts/1"
+    },
+    {
+      "verified_utc": "2026-11-10T23:00:37.401199+00:00",
+      "repo": "sebastienrousseau/noyalib-wasm",
+      "version": "0.0.60",
+      "tag": "v0.0.60",
+      "tag_object": "7e4d0d25c5b6d00a242b0b1d7f26e376fb89e8f9",
+      "source": "b00e5ece6281c1d0e137445464734037f6531e53",
+      "release": "https://github.com/sebastienrousseau/noyalib-wasm/releases/tag/v0.0.60",
+      "registry_sha256": "77ad404ece4d36746f6954171d14eb52fb99b1a19ebfd5c5dfa3c3eca778ae08",
+      "registry_matches_github_asset": true,
+      "gpg_fingerprint": "4B7F16C909C7A8EE9BED338A4F047EDF5F90F638",
+      "sigstore_identity": "https://github.com/sebastienrousseau/noyalib-wasm/.github/workflows/release.yml@refs/tags/v0.0.60",
+      "workflow_invocation": "https://github.com/sebastienrousseau/noyalib-wasm/actions/runs/42792597701/attempts/1"
+    },
+    {
+      "verified_utc": "2026-11-10T23:00:39.337427+00:00",
+      "repo": "sebastienrousseau/noyalib-serde-yaml",
+      "version": "0.0.60",
+      "tag": "v0.0.60",
+      "tag_object": "03879a3d50763530916713109ff8f538c28cac2c",
+      "source": "91e2b3cbdf04549893c983704c81f6d4cdf61865",
+      "release": "https://github.com/sebastienrousseau/noyalib-serde-yaml/releases/tag/v0.0.60",
+      "registry_sha256": "781246c307fe8df6bea8495462618c4da9de1fe429d9e59e6f6308c7f15b903d",
+      "registry_matches_github_asset": true,
+      "gpg_fingerprint": "4B7F16C909C7A8EE9BED338A4F047EDF5F90F638",
+      "sigstore_identity": "https://github.com/sebastienrousseau/noyalib-serde-yaml/.github/workflows/release.yml@refs/tags/v0.0.60",
+      "workflow_invocation": "https://github.com/sebastienrousseau/noyalib-serde-yaml/actions/runs/42792610738/attempts/1"
+    }
+  ],
+  "npm_mcp_v0.0.59_offline_recovery": {
+    "status": "passed",
+    "version": "0.0.59",
+    "target": "aarch64-apple-darwin",
+    "node": "v24.22.2",
+    "archive_sha256": "e7502c06df6115bb372ded4b286de0f7117894a97ee19a015e46e72c3ddfb7bb",
+    "binary_sha256": "da911bae363b3c9b083e0df0ce739abec9a5846ece2da422efa3030fd56873ca",
+    "checks": [
+      "missing cache offline",
+      "corrupt archive refusal",
+      "warm cache offline",
+      "corrupt binary refusal",
+      "restore verified cache",
+      "stdio parse offline"
+    ]
+  },
+  "mcp_v0.0.60_hold": {
+    "signed_tag_object": "b28d529f8bae59bbe94bdd91d25ec50173c8702b",
+    "source": "aa3c9db6409c108bc5c1911c076181763a965021",
+    "workflow": "https://github.com/sebastienrousseau/noyalib-mcp/actions/runs/42897537938",
+    "workflow_conclusion": "cancelled",
+    "published_version": "0.0.59",
+    "affected_lockfile": "fuzz/Cargo.lock",
+    "affected_tokio": "1.53.1",
+    "production_tokio": "1.54.1",
+    "fuzz_workspace_in_crate_package": false,
+    "advisory": "https://rustsec.org/advisories/RUSTSEC-2026-0386.html"
+  }
+}

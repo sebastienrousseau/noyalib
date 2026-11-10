@@ -47,7 +47,9 @@ def execute(command, root, env, log):
 
 def prepare(root, output, repos):
     output.mkdir(parents=True, exist_ok=True)
-    prepared = {}
+    record = output / 'prepared.json'
+    # A targeted rebuild must preserve the other verified artifacts.
+    prepared = json.loads(record.read_text()) if record.is_file() else {}
     core_source = source(root / "noyalib")
     for name in repos:
         directory = root / name
@@ -82,7 +84,7 @@ def prepare(root, output, repos):
                           'measurement_command': command_to_measure, 'artifact': str(artifact),
                           'artifact_bytes': artifact.stat().st_size,
                           'artifact_sha256': hashlib.sha256(artifact.read_bytes()).hexdigest()}
-        (output / 'prepared.json').write_text(json.dumps(prepared, indent=2) + '\n')
+        record.write_text(json.dumps(prepared, indent=2) + '\n')
         print(f'{name}: built {artifact.name}', flush=True)
 
 
@@ -115,7 +117,11 @@ def measure(root, output, reps):
     host = {'os': platform.system(), 'release': platform.release(), 'arch': platform.machine(),
             'logical_cpus': os.cpu_count()}
     if platform.system() == 'Darwin':
-        host['cpu'] = capture(['sysctl', '-n', 'machdep.cpu.brand_string'], root)
+        try:
+            host['cpu'] = subprocess.check_output(['sysctl', '-n', 'machdep.cpu.brand_string'],
+                                                  cwd=root, stderr=subprocess.DEVNULL, text=True).strip()
+        except (OSError, subprocess.CalledProcessError):
+            host['cpu'] = 'unavailable'
     report = {'started_utc': datetime.now(timezone.utc).isoformat(), 'host': host,
               'repetitions': reps, 'repositories': {}}
     for name, row in prepared.items():

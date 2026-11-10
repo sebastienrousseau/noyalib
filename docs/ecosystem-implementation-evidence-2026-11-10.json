@@ -1,0 +1,768 @@
+{
+  "recorded_utc": "2026-11-10T23:01:56.505183+00:00",
+  "scope": "Local v0.0.61 source checks with satellite core path overrides, except explicitly published artifacts.",
+  "satellite_signed_heads": {
+    "noya-cli": "185c0e9d40def102ad6de2580981fbf4d1a8104c",
+    "noyalib-lsp": "e7ca5deaa280d3bb741eaf4408d664c1f265f395",
+    "noyalib-mcp": "5e844d00f29e1b3f09139bdcd87b8eee95c4346f",
+    "noyalib-wasm": "11c024559e7e380ba3c35055422d9ccfa7d0cb85",
+    "noyalib-serde-yaml": "57dea34e9ee5b00ee20d2b86531e817c801089da"
+  },
+  "core_source_checkpoint": "5e1d88ccb20b23d3a54ef2fcc786ee72744e637d",
+  "rustc": "rustc 1.99.0 (b940084d7 2026-09-28)\nbinary: rustc\ncommit-hash: b940084d7eb6a299eb4bfeb8e34901bc051e7ac4\ncommit-date: 2026-09-28\nhost: aarch64-apple-darwin\nrelease: 1.99.0\nLLVM version: 23.1.1",
+  "locked_advisory_scans": {
+    "noyalib": {
+      "head_at_scan": "5e1d88ccb20b23d3a54ef2fcc786ee72744e637d",
+      "worktree_dirty": true,
+      "advisory_db_commit": "28d73fc95e5972af3403225a217def57dcaba3c4",
+      "cargo_manifests": [
+        "Cargo.toml",
+        "crates/noyalib/Cargo.toml",
+        "demos/wasm/Cargo.toml",
+        "fuzz-nostd/Cargo.toml",
+        "fuzz/Cargo.toml"
+      ],
+      "node_manifests": [],
+      "node_lockfiles": [],
+      "locks": [
+        {
+          "lockfile": "Cargo.lock",
+          "sha256": "0ebb308224e3ea0cba9bcd653e7818d23122174fcac7738874754091ada9325c",
+          "manifest_sha256": "84f390e628027b63a485016bc262c4d88e11bc6c48bb7b6060f4bc6064c382d7",
+          "status": "passed",
+          "warnings": {}
+        },
+        {
+          "lockfile": "fuzz-nostd/Cargo.lock",
+          "sha256": "21730474ea11769b745f756843fdff0f3d1605ca67b07d490c4416f59f773522",
+          "manifest_sha256": "78c36006659886efea2dead7a67261be86c64fda107b9abfae822b34ed230175",
+          "status": "passed",
+          "warnings": {}
+        },
+        {
+          "lockfile": "fuzz/Cargo.lock",
+          "sha256": "8aa4375e2f47f4b44062efdac32178c2c3c431438841eef6d4673ce523c0cd8e",
+          "manifest_sha256": "cf37067b4a86ccab0dd1818be0c8b8a0194d921a3039aff7d1b5c1b94915fd55",
+          "status": "passed",
+          "warnings": {
+            "unmaintained": [
+              "RUSTSEC-2024-0449"
+            ]
+          }
+        }
+      ]
+    },
+    "noya-cli": {
+      "head_at_scan": "bdfc6957fa4dd4329e29f30ef2a8a60ab840cd88",
+      "worktree_dirty": true,
+      "advisory_db_commit": "28d73fc95e5972af3403225a217def57dcaba3c4",
+      "cargo_manifests": [
+        "Cargo.toml",
+        "fuzz/Cargo.toml"
+      ],
+      "node_manifests": [],
+      "node_lockfiles": [],
+      "locks": [
+        {
+          "lockfile": "Cargo.lock",
+          "sha256": "6868d4b46740b6bad263761506ecdeab2cb9a26e73154de389ac96cd0fe96da7",
+          "manifest_sha256": "864ec93ea973a1b6c5fbf9c5bd735c596354f0ed007db486de29421726c2b406",
+          "status": "passed",
+          "warnings": {}
+        },
+        {
+          "lockfile": "fuzz/Cargo.lock",
+          "sha256": "4ba2ab4b5854010ff161d50b60a124207b52d96d9f7ddee44943744d1ec107e0",
+          "manifest_sha256": "40d5da36b748aad1e2a26dd407b830a1ddfd016625b5e4681d41bd7d66fe2320",
+          "status": "passed",
+          "warnings": {}
+        }
+      ]
+    },
+    "noyalib-lsp": {
+      "head_at_scan": "225a2f5a45c75ecaf7a681654a8a0a1d3d89a2a6",
+      "worktree_dirty": true,
+      "advisory_db_commit": "28d73fc95e5972af3403225a217def57dcaba3c4",
+      "cargo_manifests": [
+        "Cargo.toml",
+        "fuzz/Cargo.toml"
+      ],
+      "node_manifests": [
+        "editors/vscode/package.json"
+      ],
+      "node_lockfiles": [
+        "editors/vscode/package-lock.json"
+      ],
+      "locks": [
+        {
+          "lockfile": "Cargo.lock",
+          "sha256": "d3cd661f1bc9a9c9eebdf1693b7a0af8526939cb6cf254420405fd358a671e09",
+          "manifest_sha256": "b0e671f295c18919dbeb3cae9d52813411bfe3f2a94d3e44318bcfb792f164da",
+          "status": "passed",
+          "warnings": {}
+        },
+        {
+          "lockfile": "fuzz/Cargo.lock",
+          "sha256": "c8e44c564ec735e3a68a09239d0793cd978501ac378c821f4e9aaa68450b75bb",
+          "manifest_sha256": "3714f8f03c80407f1b7f09ca20e43281d164bfc1682f01ddb9a60baa7c8ee4d6",
+          "status": "passed",
+          "warnings": {}
+        }
+      ]
+    },
+    "noyalib-mcp": {
+      "head_at_scan": "3a07fd7060648cdfda6bc68b006732daa537d2ef",
+      "worktree_dirty": true,
+      "advisory_db_commit": "28d73fc95e5972af3403225a217def57dcaba3c4",
+      "cargo_manifests": [
+        "Cargo.toml",
+        "fuzz/Cargo.toml",
+        "tests/const-oid-regression/Cargo.toml"
+      ],
+      "node_manifests": [
+        "pkg/npm-wrapper/package.json"
+      ],
+      "node_lockfiles": [],
+      "locks": [
+        {
+          "lockfile": "Cargo.lock",
+          "sha256": "4caf8bc7bd2d4cf6b6b1af519f2e6946eda6cc9fb1fbbbbee69fa5164a3b9f6a",
+          "manifest_sha256": "7bbe47e737d512d8e936933a360d649d8cf343c038c117f7649a4114939bd8d3",
+          "status": "passed",
+          "warnings": {}
+        },
+        {
+          "lockfile": "fuzz/Cargo.lock",
+          "sha256": "0f6af7b656015031fdf6ab9e28eb7663f2d0e6bb9017da0d5c97c5d58b75483a",
+          "manifest_sha256": "c15eff1a4907915bda4bea2bf963229a18c6b7a9e6024a1c15cf83d102955ab5",
+          "status": "passed",
+          "warnings": {}
+        },
+        {
+          "lockfile": "tests/const-oid-regression/Cargo.lock",
+          "sha256": "b543295350c202ae3a2becccb7f53214fa39794d7b282a5163499581796bac42",
+          "manifest_sha256": "52be449d571a3d3e7c88efb37cabda86f1fd2455b25658ad52a48b808519a6b8",
+          "status": "passed",
+          "warnings": {}
+        }
+      ]
+    },
+    "noyalib-wasm": {
+      "head_at_scan": "8b9526467f61793933f4aae19ec057b3a04acf2b",
+      "worktree_dirty": true,
+      "advisory_db_commit": "28d73fc95e5972af3403225a217def57dcaba3c4",
+      "cargo_manifests": [
+        "Cargo.toml",
+        "fuzz/Cargo.toml"
+      ],
+      "node_manifests": [
+        "tests/typescript/package.json"
+      ],
+      "node_lockfiles": [
+        "tests/typescript/package-lock.json"
+      ],
+      "locks": [
+        {
+          "lockfile": "Cargo.lock",
+          "sha256": "c997a746fdd84a827724ec3330d3bb2eb584a4c9d7c15fb50a170e731cbfe101",
+          "manifest_sha256": "811c6d9070f13e8bccd98341cdd82762668df7e0e8a93a21414ac509ae9c94a5",
+          "status": "passed",
+          "warnings": {}
+        },
+        {
+          "lockfile": "fuzz/Cargo.lock",
+          "sha256": "0836eb81a73f52ba722c79d72978832bc03d5c34bdabb0a81f77ebe8e78a25fa",
+          "manifest_sha256": "96cc653570e34d699296672a7ce156618555ad7b834b78b159d3237081153056",
+          "status": "passed",
+          "warnings": {}
+        }
+      ]
+    },
+    "noyalib-serde-yaml": {
+      "head_at_scan": "638378376cc8958c97fc5d9171a57e491efde46f",
+      "worktree_dirty": true,
+      "advisory_db_commit": "28d73fc95e5972af3403225a217def57dcaba3c4",
+      "cargo_manifests": [
+        "Cargo.toml",
+        "fuzz/Cargo.toml"
+      ],
+      "node_manifests": [],
+      "node_lockfiles": [],
+      "locks": [
+        {
+          "lockfile": "Cargo.lock",
+          "sha256": "921ffbc75daaa46f35c19c3fa4030db83188e33dc118d4897570efe1249cedfd",
+          "manifest_sha256": "43a957a5ec8d927b0bdfdb8e54f192e62b370373d14e05d50d51941e98eba768",
+          "status": "passed",
+          "warnings": {}
+        },
+        {
+          "lockfile": "fuzz/Cargo.lock",
+          "sha256": "74288edc5901830cded0c59fd378180ba725bfb4d02394b53defa0564f94eb0c",
+          "manifest_sha256": "4f1143fb6294a8a770c7d51af186ed344a1da97ddc0eebe6f8114f9005f3c1d5",
+          "status": "passed",
+          "warnings": {}
+        }
+      ]
+    }
+  },
+  "cargo_vet": {
+    "noyalib": "Vetting Succeeded (251 fully audited, 2 partially audited, 26 exempted)",
+    "noya-cli": "Vetting Succeeded (80 fully audited, 3 partially audited, 82 exempted)",
+    "noyalib-lsp": "Vetting Succeeded (67 fully audited, 3 partially audited, 59 exempted)",
+    "noyalib-mcp": "Vetting Succeeded (99 fully audited, 23 partially audited, 104 exempted)",
+    "noyalib-wasm": "Vetting Succeeded (37 fully audited, 18 exempted)",
+    "noyalib-serde-yaml": "Vetting Succeeded (48 fully audited, 1 partially audited, 31 exempted)"
+  },
+  "alloc_host_tests_passed": {
+    "core": 1747,
+    "accelerated": 1747,
+    "portable": 1832,
+    "schema": 23,
+    "unit": 250
+  },
+  "bare_metal_initial": [
+    {
+      "toolchain": "1.89.0",
+      "target": "thumbv7em-none-eabihf",
+      "configuration": "baseline",
+      "command": [
+        "cargo",
+        "+1.89.0",
+        "check",
+        "--no-default-features",
+        "--lib",
+        "--locked",
+        "--target",
+        "thumbv7em-none-eabihf"
+      ],
+      "status": 101,
+      "log": "/private/tmp/noyalib-implementation-portability/1.89.0-thumbv7em-none-eabihf-baseline.log"
+    },
+    {
+      "toolchain": "1.89.0",
+      "target": "thumbv7em-none-eabihf",
+      "configuration": "portable",
+      "command": [
+        "cargo",
+        "+1.89.0",
+        "check",
+        "--no-default-features",
+        "--lib",
+        "--locked",
+        "--target",
+        "thumbv7em-none-eabihf",
+        "--features",
+        "fast-int,fast-float,strict-deserialise,lossless-float,lossless-u64,include,compat-serde-yaml,sval,simd,wasm-opt,nightly-simd,recovery"
+      ],
+      "status": 101,
+      "log": "/private/tmp/noyalib-implementation-portability/1.89.0-thumbv7em-none-eabihf-portable.log"
+    },
+    {
+      "toolchain": "1.89.0",
+      "target": "riscv32imac-unknown-none-elf",
+      "configuration": "baseline",
+      "command": [
+        "cargo",
+        "+1.89.0",
+        "check",
+        "--no-default-features",
+        "--lib",
+        "--locked",
+        "--target",
+        "riscv32imac-unknown-none-elf"
+      ],
+      "status": 101,
+      "log": "/private/tmp/noyalib-implementation-portability/1.89.0-riscv32imac-unknown-none-elf-baseline.log"
+    },
+    {
+      "toolchain": "1.89.0",
+      "target": "riscv32imac-unknown-none-elf",
+      "configuration": "portable",
+      "command": [
+        "cargo",
+        "+1.89.0",
+        "check",
+        "--no-default-features",
+        "--lib",
+        "--locked",
+        "--target",
+        "riscv32imac-unknown-none-elf",
+        "--features",
+        "fast-int,fast-float,strict-deserialise,lossless-float,lossless-u64,include,compat-serde-yaml,sval,simd,wasm-opt,nightly-simd,recovery"
+      ],
+      "status": 101,
+      "log": "/private/tmp/noyalib-implementation-portability/1.89.0-riscv32imac-unknown-none-elf-portable.log"
+    },
+    {
+      "toolchain": "1.89.0",
+      "target": "aarch64-unknown-none",
+      "configuration": "baseline",
+      "command": [
+        "cargo",
+        "+1.89.0",
+        "check",
+        "--no-default-features",
+        "--lib",
+        "--locked",
+        "--target",
+        "aarch64-unknown-none"
+      ],
+      "status": 0,
+      "log": "/private/tmp/noyalib-implementation-portability/1.89.0-aarch64-unknown-none-baseline.log"
+    },
+    {
+      "toolchain": "1.89.0",
+      "target": "aarch64-unknown-none",
+      "configuration": "portable",
+      "command": [
+        "cargo",
+        "+1.89.0",
+        "check",
+        "--no-default-features",
+        "--lib",
+        "--locked",
+        "--target",
+        "aarch64-unknown-none",
+        "--features",
+        "fast-int,fast-float,strict-deserialise,lossless-float,lossless-u64,include,compat-serde-yaml,sval,simd,wasm-opt,nightly-simd,recovery"
+      ],
+      "status": 0,
+      "log": "/private/tmp/noyalib-implementation-portability/1.89.0-aarch64-unknown-none-portable.log"
+    },
+    {
+      "toolchain": "stable",
+      "target": "thumbv7em-none-eabihf",
+      "configuration": "baseline",
+      "command": [
+        "cargo",
+        "+stable",
+        "check",
+        "--no-default-features",
+        "--lib",
+        "--locked",
+        "--target",
+        "thumbv7em-none-eabihf"
+      ],
+      "status": 0,
+      "log": "/private/tmp/noyalib-implementation-portability/stable-thumbv7em-none-eabihf-baseline.log"
+    },
+    {
+      "toolchain": "stable",
+      "target": "thumbv7em-none-eabihf",
+      "configuration": "portable",
+      "command": [
+        "cargo",
+        "+stable",
+        "check",
+        "--no-default-features",
+        "--lib",
+        "--locked",
+        "--target",
+        "thumbv7em-none-eabihf",
+        "--features",
+        "fast-int,fast-float,strict-deserialise,lossless-float,lossless-u64,include,compat-serde-yaml,sval,simd,wasm-opt,nightly-simd,recovery"
+      ],
+      "status": 0,
+      "log": "/private/tmp/noyalib-implementation-portability/stable-thumbv7em-none-eabihf-portable.log"
+    },
+    {
+      "toolchain": "stable",
+      "target": "riscv32imac-unknown-none-elf",
+      "configuration": "baseline",
+      "command": [
+        "cargo",
+        "+stable",
+        "check",
+        "--no-default-features",
+        "--lib",
+        "--locked",
+        "--target",
+        "riscv32imac-unknown-none-elf"
+      ],
+      "status": 0,
+      "log": "/private/tmp/noyalib-implementation-portability/stable-riscv32imac-unknown-none-elf-baseline.log"
+    },
+    {
+      "toolchain": "stable",
+      "target": "riscv32imac-unknown-none-elf",
+      "configuration": "portable",
+      "command": [
+        "cargo",
+        "+stable",
+        "check",
+        "--no-default-features",
+        "--lib",
+        "--locked",
+        "--target",
+        "riscv32imac-unknown-none-elf",
+        "--features",
+        "fast-int,fast-float,strict-deserialise,lossless-float,lossless-u64,include,compat-serde-yaml,sval,simd,wasm-opt,nightly-simd,recovery"
+      ],
+      "status": 0,
+      "log": "/private/tmp/noyalib-implementation-portability/stable-riscv32imac-unknown-none-elf-portable.log"
+    },
+    {
+      "toolchain": "stable",
+      "target": "aarch64-unknown-none",
+      "configuration": "baseline",
+      "command": [
+        "cargo",
+        "+stable",
+        "check",
+        "--no-default-features",
+        "--lib",
+        "--locked",
+        "--target",
+        "aarch64-unknown-none"
+      ],
+      "status": 0,
+      "log": "/private/tmp/noyalib-implementation-portability/stable-aarch64-unknown-none-baseline.log"
+    },
+    {
+      "toolchain": "stable",
+      "target": "aarch64-unknown-none",
+      "configuration": "portable",
+      "command": [
+        "cargo",
+        "+stable",
+        "check",
+        "--no-default-features",
+        "--lib",
+        "--locked",
+        "--target",
+        "aarch64-unknown-none",
+        "--features",
+        "fast-int,fast-float,strict-deserialise,lossless-float,lossless-u64,include,compat-serde-yaml,sval,simd,wasm-opt,nightly-simd,recovery"
+      ],
+      "status": 0,
+      "log": "/private/tmp/noyalib-implementation-portability/stable-aarch64-unknown-none-portable.log"
+    }
+  ],
+  "bare_metal_setup_retry": [
+    {
+      "toolchain": "1.89.0",
+      "target": "thumbv7em-none-eabihf",
+      "configuration": "baseline",
+      "command": [
+        "cargo",
+        "+1.89.0",
+        "check",
+        "--no-default-features",
+        "--lib",
+        "--locked",
+        "--target",
+        "thumbv7em-none-eabihf"
+      ],
+      "status": 0,
+      "log": "/private/tmp/noyalib-implementation-portability/1.89.0-thumbv7em-none-eabihf-baseline.log"
+    },
+    {
+      "toolchain": "1.89.0",
+      "target": "thumbv7em-none-eabihf",
+      "configuration": "portable",
+      "command": [
+        "cargo",
+        "+1.89.0",
+        "check",
+        "--no-default-features",
+        "--lib",
+        "--locked",
+        "--target",
+        "thumbv7em-none-eabihf",
+        "--features",
+        "fast-int,fast-float,strict-deserialise,lossless-float,lossless-u64,include,compat-serde-yaml,sval,simd,wasm-opt,nightly-simd,recovery"
+      ],
+      "status": 0,
+      "log": "/private/tmp/noyalib-implementation-portability/1.89.0-thumbv7em-none-eabihf-portable.log"
+    },
+    {
+      "toolchain": "1.89.0",
+      "target": "riscv32imac-unknown-none-elf",
+      "configuration": "baseline",
+      "command": [
+        "cargo",
+        "+1.89.0",
+        "check",
+        "--no-default-features",
+        "--lib",
+        "--locked",
+        "--target",
+        "riscv32imac-unknown-none-elf"
+      ],
+      "status": 0,
+      "log": "/private/tmp/noyalib-implementation-portability/1.89.0-riscv32imac-unknown-none-elf-baseline.log"
+    },
+    {
+      "toolchain": "1.89.0",
+      "target": "riscv32imac-unknown-none-elf",
+      "configuration": "portable",
+      "command": [
+        "cargo",
+        "+1.89.0",
+        "check",
+        "--no-default-features",
+        "--lib",
+        "--locked",
+        "--target",
+        "riscv32imac-unknown-none-elf",
+        "--features",
+        "fast-int,fast-float,strict-deserialise,lossless-float,lossless-u64,include,compat-serde-yaml,sval,simd,wasm-opt,nightly-simd,recovery"
+      ],
+      "status": 0,
+      "log": "/private/tmp/noyalib-implementation-portability/1.89.0-riscv32imac-unknown-none-elf-portable.log"
+    }
+  ],
+  "mcp_tools_campaign": {
+    "target": "tools",
+    "executions": 8903049,
+    "seconds": 3601,
+    "finished_without_finding_in_log": true,
+    "max_rss_mb": 295,
+    "new_corpus_files": 8839,
+    "corpus_manifest_sha256": "026175b211b2ad6602b52ac7c0d60059774b805cabf50e9707f62a8284b13915",
+    "log_sha256": "ed51578f072c71e0d1e6a1bf8e1646a9f76fae44ef960c05594b5f19b8ffeeab"
+  },
+  "mcp_header_smoke": {
+    "executions": 958775,
+    "seconds": 61,
+    "findings": 0
+  },
+  "lsp_installed_vsix": {
+    "status": "passed",
+    "editor": "1.141.0",
+    "extension": "0.0.61",
+    "checks": [
+      "VSIX install",
+      "configured binary",
+      "diagnostics",
+      "didChange clear",
+      "Unicode hover",
+      "comment-preserving format",
+      "server restart"
+    ],
+    "vsix_sha256": "7d37df418d4c0e9cac02a9170760e1d3a31ed51662e86b2cd85109d485c1a5bd",
+    "server_sha256": "23fad0a013b41cb5df276f07e67f9adc144e66b6deb82ddf68df134720ed9b8f"
+  },
+  "wasm_optimized_installed_package": {
+    "status": "passed",
+    "version": "0.0.61",
+    "bundle": {
+      "webpack": "5.112.2",
+      "status": "passed",
+      "checks": 21,
+      "browser": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/158.0.0.0 Safari/537.36"
+    },
+    "node": "v24.22.2",
+    "typescript": "Version 7.0.2",
+    "sha256": "c4888870b89589f3385c39427d76f36fec79943864dde5e5ed70fde72c123ce1",
+    "files": [
+      "LICENSE-APACHE",
+      "LICENSE-MIT",
+      "README.md",
+      "noyalib_wasm_bg.js",
+      "noyalib_wasm_bg.wasm",
+      "noyalib_wasm.d.ts",
+      "noyalib_wasm.js",
+      "package.json"
+    ]
+  },
+  "wasm_optimized_module": {
+    "raw_bytes": 598344,
+    "gzip_bytes": 208851,
+    "sha256": "7f479e17a0f89d65c2f57e0232fd92af0aef5721491190feb86ad2758a83baa5"
+  },
+  "parity": {
+    "utc": "2026-11-10T22:31:54.238297+00:00",
+    "corpus_sha256": "cd5f5fa099ef9e887123b6a4fc37fc62860f9ae9a0ee4674ac209f530c92fcf8",
+    "sources": {
+      "noyalib": {
+        "head_sha": "d082f2a2d32c456173020ed8321005236c12b2cf",
+        "dirty": true,
+        "lockfile_sha256": "0ebb308224e3ea0cba9bcd653e7818d23122174fcac7738874754091ada9325c"
+      },
+      "noya-cli": {
+        "head_sha": "9fdd09a177b6bf29084f0897db0d3e6823a27e96",
+        "dirty": true,
+        "lockfile_sha256": "6868d4b46740b6bad263761506ecdeab2cb9a26e73154de389ac96cd0fe96da7"
+      },
+      "noyalib-lsp": {
+        "head_sha": "3fccfbe5782e5b43f6ac6c8bb04595063e024e8d",
+        "dirty": true,
+        "lockfile_sha256": "d3cd661f1bc9a9c9eebdf1693b7a0af8526939cb6cf254420405fd358a671e09"
+      },
+      "noyalib-mcp": {
+        "head_sha": "aa3c9db6409c108bc5c1911c076181763a965021",
+        "dirty": true,
+        "lockfile_sha256": "4caf8bc7bd2d4cf6b6b1af519f2e6946eda6cc9fb1fbbbbee69fa5164a3b9f6a"
+      },
+      "noyalib-wasm": {
+        "head_sha": "b00e5ece6281c1d0e137445464734037f6531e53",
+        "dirty": true,
+        "lockfile_sha256": "c997a746fdd84a827724ec3330d3bb2eb584a4c9d7c15fb50a170e731cbfe101"
+      },
+      "noyalib-serde-yaml": {
+        "head_sha": "91e2b3cbdf04549893c983704c81f6d4cdf61865",
+        "dirty": true,
+        "lockfile_sha256": "921ffbc75daaa46f35c19c3fa4030db83188e33dc118d4897570efe1249cedfd"
+      }
+    },
+    "artifacts": {
+      "cli": "7ed16f40e77d6bed3d719b016dcb17abbaeff4851220e0cd9fce9d510a262518",
+      "lsp": "a5c8e0832a276f5a78c24769aeb05b3887151513d5eccb2e6d1c6fd4c96396af",
+      "mcp": "71f67e4faa40e1968c7f122b0515472480f985b9f6e4c48d6d942e990eae68b2",
+      "wasm": "c60655efe354646020dc40af9884f9d06e904be820d71cc89dcc03d3d513c9d1"
+    },
+    "cases": [
+      {
+        "id": "structured-values",
+        "projections": {
+          "core": {
+            "enabled": true,
+            "missing": null,
+            "nodes": [
+              "alpha",
+              "beta"
+            ],
+            "server": {
+              "name": "gateway",
+              "port": 8080
+            }
+          },
+          "CLI": {
+            "enabled": true,
+            "missing": null,
+            "nodes": [
+              "alpha",
+              "beta"
+            ],
+            "server": {
+              "name": "gateway",
+              "port": 8080
+            }
+          },
+          "LSP": {
+            "enabled": true,
+            "missing": null,
+            "nodes": [
+              "alpha",
+              "beta"
+            ],
+            "server": {
+              "name": "gateway",
+              "port": 8080
+            }
+          },
+          "MCP": {
+            "enabled": true,
+            "missing": null,
+            "nodes": [
+              "alpha",
+              "beta"
+            ],
+            "server": {
+              "name": "gateway",
+              "port": 8080
+            }
+          },
+          "WASM": {
+            "server": {
+              "name": "gateway",
+              "port": 8080
+            },
+            "enabled": true,
+            "nodes": [
+              "alpha",
+              "beta"
+            ],
+            "missing": null
+          },
+          "facade": {
+            "enabled": true,
+            "missing": null,
+            "nodes": [
+              "alpha",
+              "beta"
+            ],
+            "server": {
+              "name": "gateway",
+              "port": 8080
+            }
+          }
+        },
+        "difference": null
+      },
+      {
+        "id": "unicode-and-quoted-scalars",
+        "projections": {
+          "core": {
+            "code": "0123",
+            "mode": "NO",
+            "name": "café 🚀"
+          },
+          "CLI": {
+            "code": "0123",
+            "mode": "NO",
+            "name": "café 🚀"
+          },
+          "LSP": {
+            "code": "0123",
+            "mode": "NO",
+            "name": "café 🚀"
+          },
+          "MCP": {
+            "code": "0123",
+            "mode": "NO",
+            "name": "café 🚀"
+          },
+          "WASM": {
+            "name": "café 🚀",
+            "code": "0123",
+            "mode": "NO"
+          },
+          "facade": {
+            "code": "0123",
+            "mode": "NO",
+            "name": "café 🚀"
+          }
+        },
+        "difference": null
+      },
+      {
+        "id": "legacy-compatibility-profile",
+        "projections": {
+          "core": {
+            "code": 123
+          },
+          "CLI": {
+            "code": 123
+          },
+          "LSP": {
+            "code": 123
+          },
+          "MCP": {
+            "code": 123
+          },
+          "WASM": {
+            "code": 123
+          },
+          "facade": {
+            "code": "0123"
+          }
+        },
+        "difference": "The documented serde_yaml compatibility profile preserves this legacy spelling as text."
+      },
+      {
+        "id": "malformed-flow",
+        "rejected_by": [
+          "core",
+          "facade",
+          "CLI",
+          "LSP",
+          "MCP",
+          "WASM"
+        ]
+      }
+    ]
+  }
+}

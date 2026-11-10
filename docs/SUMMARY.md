@@ -46,6 +46,8 @@
 - [Ecosystem map and scorecard](ECOSYSTEM.md)
   - [Six-repository assessment and acceptance criteria](ROADMAP-TO-10.md)
   - [Ecosystem implementation work order](PLAN.md)
+  - [Ecosystem contracts and verification](ECOSYSTEM-CONTRACTS.md)
+  - [Ecosystem implementation record](IMPLEMENTATION-STATUS.md)
 
 # Decisions
 
