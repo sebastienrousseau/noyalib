@@ -7,6 +7,20 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+## [v0.0.61] - Unreleased
+
+### Changed
+
+- Prepare the next lockstep version for the ecosystem assurance work.
+  Release dates and completed changes are recorded after verification.
+
+### Fixed
+
+- Read actual llvm-cov line totals, preserve full source identities and
+  distinguish unmeasured tests from failures in the family scorecard.
+- Audit all tracked Cargo lockfiles and retain scoped evidence.
+- Add repeatable bounded fuzz campaigns and a shared six-consumer corpus.
+
 ## [v0.0.60] - 2026-11-10
 
 ### Fixed

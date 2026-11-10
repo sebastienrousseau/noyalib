@@ -1,0 +1,65 @@
+# SPDX-FileCopyrightText: 2026 Noyalib
+# SPDX-License-Identifier: MIT OR Apache-2.0
+
+name: Bounded fuzz campaigns
+
+on:
+  schedule:
+    - cron: '30 2 * * 6'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fuzz-campaign-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  targets:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.inventory.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - id: inventory
+        run: echo "matrix=$(python3 scripts/run-fuzz-campaign.py --matrix)" >> "$GITHUB_OUTPUT"
+  fuzz:
+    name: ${{ matrix.scope }} / ${{ matrix.target }} (one hour)
+    needs: targets
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix: ${{ fromJSON(needs.targets.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8
+        with:
+          toolchain: nightly
+      - name: Install the pinned fuzz driver
+        run: cargo install --locked cargo-fuzz --version 0.13.2
+      - name: Run the campaign
+        env:
+          FUZZ_SCOPE: ${{ matrix.scope }}
+          FUZZ_TARGET: ${{ matrix.target }}
+        run: |
+          python3 scripts/run-fuzz-campaign.py --scope "$FUZZ_SCOPE" --target "$FUZZ_TARGET" \
+            --output "$RUNNER_TEMP/campaign"
+      - name: Retain campaign evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: ${{ matrix.scope }}-${{ matrix.target }}
+          path: |
+            ${{ runner.temp }}/campaign/campaign.log
+            ${{ runner.temp }}/campaign/receipt.json
+            ${{ runner.temp }}/campaign/artifacts/
+            ${{ runner.temp }}/campaign/corpus/
+          if-no-files-found: error
+          retention-days: 14

@@ -251,7 +251,8 @@ including `tests/protocol.rs`, `tests/limits.rs`, `src/transport/`,
 
 Evidence: [source](https://github.com/sebastienrousseau/noyalib-wasm/tree/b00e5ece6281c1d0e137445464734037f6531e53),
 including `src/guard.rs`, `tests/wasm.rs`, `benches/bench.js`,
-`docs/js-api.md`, `docs/bundling.md`, `scripts/check-npm-package.sh`
+`docs/js-api.md`, `docs/bundling.md`, the
+[package-content gate](https://github.com/sebastienrousseau/noyalib-wasm/blob/b00e5ece6281c1d0e137445464734037f6531e53/scripts/check-npm-package.sh)
 and the release workflow that generates `pkg/package.json`.
 
 | Category | Basis and remaining acceptance work | Tasks |

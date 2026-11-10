@@ -21,11 +21,15 @@ on:
     branches: [main]
     paths:
       - scripts/ecosystem-scorecard.sh
+      - scripts/coverage-summary.py
+      - scripts/tests/test_ecosystem_coverage.py
       - docs/ECOSYSTEM.md
       - .github/workflows/ecosystem-scorecard.yml
   pull_request:
     paths:
       - scripts/ecosystem-scorecard.sh
+      - scripts/coverage-summary.py
+      - scripts/tests/test_ecosystem_coverage.py
       - docs/ECOSYSTEM.md
       - .github/workflows/ecosystem-scorecard.yml
 

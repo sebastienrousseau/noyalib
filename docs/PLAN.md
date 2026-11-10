@@ -10,9 +10,9 @@ product scope. The [assessment](ROADMAP-TO-10.md) gives the baseline and the
 This plan replaces the historical monorepo/`xtask` production-readiness plan;
 its history remains in Git.
 
-Only the assessment and plan refresh are completed by this documentation
-change. Implementation tasks below remain **open**. Publishing remains held;
-no rating, future feature or unexecuted command is presented as completed.
+Implementation is in progress on the single future `feat/v0.0.61` branch.
+The dated assessment remains the baseline, not a claim about uncommitted
+changes. Publishing remains held; tasks close only against observed evidence.
 
 ## Constraints and work order
 
@@ -64,7 +64,7 @@ A failed acceptance check leaves its task open and blocks dependent work.
 |---|---|---|---|---|
 | S1 | All / security maintainer | Enumerate every Cargo manifest and lockfile, fuzz and standalone test crates, Node lockfiles and generated wrapper inputs. Scan each scope; classify every finding by package, version, source and affected use. | Commit-bound inventory plus `cargo audit`, `cargo deny check`, `cargo vet` for each supported Cargo workspace; wrapper audit reports. Unsupported checks state why and retain the alternative evidence. No scope silently omitted. | None; M; medium |
 | R0 | MCP / release maintainer | Resolve alert 25 and the immutable held tag before publication. Record whether the original tagged source can be released with a justified development-only finding, or requires a separately authorized recovery. Any changed-source proposal must satisfy signing, version and tag rules before execution. | Written source/ref decision referencing `b28d529f8bae59bbe94bdd91d25ec50173c8702b`, scan scope and production reachability evidence. Run 42897537938 remains cancelled until this decision and release gates are satisfied. | S1; S; high |
-| MCP1 | MCP / security maintainer | Update affected Tokio 1.53.1 in `fuzz/Cargo.lock` through Cargo to a patched compatible release; review its dependency delta and audit evidence. Preserve production SDK 3.9.0 and registry const-oid 0.10.3 unless evidence requires another change. | Fresh advisory scan of both root and fuzz locks, `cargo +nightly fuzz build`, replay existing corpus, relevant tests and source verification. New scan of corrected ref resolves alert 25; no manual false-positive dismissal. | S1, R0; S; medium |
+| MCP1 | MCP / security maintainer | Update affected Tokio 1.53.1 in `fuzz/Cargo.lock` through Cargo to a patched compatible release; review its dependency delta and audit evidence. Preserve production SDK 3.9.0 and registry const-oid 0.10.3 unless evidence requires another change. | Fresh advisory scan of both root and fuzz locks, `cargo +nightly fuzz build`, replay existing corpus, relevant tests and source verification. New scan of corrected ref resolves alert 25; no manual false-positive dismissal. | S1; S; medium |
 | D1 | All / documentation maintainer | Reconcile public claims against source and actual package contents. Remove unsupported speed/size and channel assertions or attach reproducible evidence. Correct stale monorepo paths and distinguish historical reports from current evidence. | Claim ledger with source/test/consumer link per retained claim; docs examples, links, spelling, Markdown and version gates pass. | None; M; low |
 | LSP1 | LSP / editor maintainer | Align README capability claims and protocol coverage with actual dispatch and initialize response. Replace raw unframed echo guidance with an executable framed client example. Missing completion/symbol features remain explicitly unsupported pending a separate product decision. | Capability table derived from tested `initialize` and method responses; documented framed handshake runs against installed server. No unapproved new API. | D1; S; low |
 | SHIM2 | Facade / compatibility maintainer | Correct `docs/CONTRACT.md` no_std claim and old workspace paths. Clearly distinguish the std-requiring facade from core alloc-only `compat-serde-yaml`. | Manifest dependency graph and executed consumer examples agree with docs; core compatibility bare-metal checks remain green. | D1; S; low |

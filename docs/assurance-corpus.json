@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "cases": [
+    {
+      "id": "structured-values",
+      "yaml": "# keep\nserver:\n  name: gateway\n  port: 8080\nenabled: true\nnodes: [alpha, beta]\nmissing: null\n",
+      "expected": {"server": {"name": "gateway", "port": 8080}, "enabled": true, "nodes": ["alpha", "beta"], "missing": null},
+      "preserve": "# keep"
+    },
+    {
+      "id": "unicode-and-quoted-scalars",
+      "yaml": "# configuration\nname: 'café 🚀'\ncode: '0123'\nmode: 'NO'\n",
+      "expected": {"name": "café 🚀", "code": "0123", "mode": "NO"},
+      "preserve": "# configuration"
+    },
+    {
+      "id": "legacy-compatibility-profile",
+      "yaml": "code: 0123\n",
+      "expected": {"code": 123},
+      "facade_expected": {"code": "0123"},
+      "difference": "The documented serde_yaml compatibility profile preserves this legacy spelling as text."
+    },
+    {
+      "id": "malformed-flow",
+      "yaml": "broken: [1,\n",
+      "reject": true
+    }
+  ]
+}
