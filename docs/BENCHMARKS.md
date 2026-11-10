@@ -282,3 +282,19 @@ cargo bench --bench v006_features --features recovery,sval,tokio
 | **Dependencies** | 5 unconditional + 3 default-on optional (`itoa`, `ryu`, `serde_ignored`) + 12 opt-in optional (`miette`, `garde`, `validator`, `schemars`, `serde_json`, `jsonschema`, `figment`, `rayon`, `serde-saphyr`, plus the three default-on opt-outs) |
 | **WASM binary** | 338 KB (release, LTO) |
 | **MSRV** | Rust 1.89.0 (whole lockstep set, since v0.0.58); the opt-in `compare-saphyr` bench feature needs 1.88+, inside that floor (see [POLICIES.md](POLICIES.md#1-msrv-minimum-supported-rust-version)) |
+
+## Local ecosystem baseline, 2026-11-10
+
+The [machine-readable baseline](ecosystem-performance-2026-11-10.json)
+records three release-profile repetitions for each of the six products on
+one Apple A18 Pro host. It includes source and lock hashes, measured
+artifact digests, toolchain versions, scenario medians, per-run process
+peak RSS and repeatability. The satellite runs used a local core override.
+The published comparisons above retain their original dates and scope.
+
+Repeat the measurements with the
+[prepare and measure runner](../scripts/measure-ecosystem.py). These are
+component benchmarks. They do not measure full client request latency on
+dedicated hardware. The worst scenario ranges were approximately 35% for
+core, 28% for LSP and 24% for MCP. Those results do not support a shared
+timing gate. The WASM module size limit is measured separately.

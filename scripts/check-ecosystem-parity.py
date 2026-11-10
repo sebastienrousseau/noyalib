@@ -166,9 +166,17 @@ def main():
     output.mkdir(parents=True, exist_ok=False)
     projection = projection_consumer(family, output)
     corpus = family / 'noyalib/docs/assurance-corpus.json'
+    mcp_lock = tomllib.loads((family / 'noyalib-mcp/Cargo.lock').read_text())
+    sdk = next(package['version'] for package in mcp_lock['package'] if package['name'] == 'rmcp')
     report = {'utc': datetime.now(timezone.utc).isoformat(), 'corpus_sha256': digest(corpus),
+              'runner_sha256': digest(Path(__file__)),
+              'runtimes': {'rustc': subprocess.check_output(['rustc', '-Vv'], text=True).strip(),
+                           'node': subprocess.check_output(['node', '--version'], text=True).strip(),
+                           'mcp_server_sdk': sdk},
               'sources': {}, 'artifacts': {name: digest(getattr(a, name))
                                            for name in ['cli', 'lsp', 'mcp', 'wasm']}, 'cases': []}
+    report['artifacts']['rust_projection'] = digest(projection)
+    report['artifacts']['wasm_module'] = digest(a.wasm.with_name('noyalib_wasm_bg.wasm'))
     for repo in ['noyalib', 'noya-cli', 'noyalib-lsp', 'noyalib-mcp', 'noyalib-wasm', 'noyalib-serde-yaml']:
         d = family / repo
         report['sources'][repo] = {'head_sha': subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=d, text=True).strip(),

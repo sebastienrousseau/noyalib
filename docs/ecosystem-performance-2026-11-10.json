@@ -1,0 +1,518 @@
+{
+  "measured_utc": "2026-11-10T23:09:42.072863+00:00",
+  "host": {
+    "os": "Darwin",
+    "release": "27.2.0",
+    "arch": "arm64",
+    "logical_cpus": 6,
+    "cpu": "Apple A18 Pro"
+  },
+  "repetitions": 3,
+  "scope": "Single-host local v0.0.61 baseline with local satellite core overrides. No CI latency gate.",
+  "criterion": {
+    "warmup_seconds": 1,
+    "measurement_seconds": 2,
+    "sample_size": 20
+  },
+  "repositories": {
+    "noyalib": {
+      "source": {
+        "head_sha": "d082f2a2d32c456173020ed8321005236c12b2cf",
+        "dirty": true,
+        "inputs_sha256": "be96e91b50969249016620d921e92dd3f1f74491f59d5e9460e65a87307787cd",
+        "lockfile_sha256": "0ebb308224e3ea0cba9bcd653e7818d23122174fcac7738874754091ada9325c",
+        "rustc": "rustc 1.99.0 (b940084d7 2026-09-28)\nbinary: rustc\ncommit-hash: b940084d7eb6a299eb4bfeb8e34901bc051e7ac4\ncommit-date: 2026-09-28\nhost: aarch64-apple-darwin\nrelease: 1.99.0\nLLVM version: 23.1.1",
+        "cargo": "cargo 1.99.0 (5f94df478 2026-08-27)"
+      },
+      "core_source": {
+        "head_sha": "d082f2a2d32c456173020ed8321005236c12b2cf",
+        "dirty": true,
+        "inputs_sha256": "be96e91b50969249016620d921e92dd3f1f74491f59d5e9460e65a87307787cd",
+        "lockfile_sha256": "0ebb308224e3ea0cba9bcd653e7818d23122174fcac7738874754091ada9325c",
+        "rustc": "rustc 1.99.0 (b940084d7 2026-09-28)\nbinary: rustc\ncommit-hash: b940084d7eb6a299eb4bfeb8e34901bc051e7ac4\ncommit-date: 2026-09-28\nhost: aarch64-apple-darwin\nrelease: 1.99.0\nLLVM version: 23.1.1",
+        "cargo": "cargo 1.99.0 (5f94df478 2026-08-27)"
+      },
+      "artifact_bytes": 3318304,
+      "artifact_sha256": "109f89ffdfa94a3da06f34d5dd366bb9a460d33fba4ee9a0ecd83e5a81b66260",
+      "repeatability": {
+        "dyn_mapping_deserialize/ast": {
+          "median_ns": 494524.02631578944,
+          "min_ns": 484671.5933518006,
+          "max_ns": 501877.8816993464,
+          "relative_range": 0.03479363475164779
+        },
+        "dyn_mapping_deserialize/streaming": {
+          "median_ns": 557254.6526374859,
+          "min_ns": 555236.7941176471,
+          "max_ns": 701010.7078431372,
+          "relative_range": 0.26159299529495583
+        },
+        "streaming_vs_value/ast/large": {
+          "median_ns": 10536773.6,
+          "min_ns": 10135015.625,
+          "max_ns": 13794600.75,
+          "relative_range": 0.3473155316728073
+        },
+        "streaming_vs_value/ast/medium": {
+          "median_ns": 1063405.2791497975,
+          "min_ns": 998188.0538157895,
+          "max_ns": 1064290.1531986534,
+          "relative_range": 0.062160777907472015
+        },
+        "streaming_vs_value/ast/small": {
+          "median_ns": 12225.974804851689,
+          "min_ns": 11407.421829490291,
+          "max_ns": 12561.088508421986,
+          "relative_range": 0.09436193819685285
+        },
+        "streaming_vs_value/streaming/large": {
+          "median_ns": 11627535.1875,
+          "min_ns": 11311653.55,
+          "max_ns": 12099904.778571427,
+          "relative_range": 0.0677917732228257
+        },
+        "streaming_vs_value/streaming/medium": {
+          "median_ns": 1172052.7506944444,
+          "min_ns": 1124000.3935185187,
+          "max_ns": 1179621.2416666667,
+          "relative_range": 0.04745592561016775
+        },
+        "streaming_vs_value/streaming/small": {
+          "median_ns": 13588.615506904069,
+          "min_ns": 12527.376288096513,
+          "max_ns": 13799.058737904572,
+          "relative_range": 0.0935844015280251
+        }
+      },
+      "reproduce": "cargo bench --locked --bench streaming_vs_value",
+      "peak_rss_bytes": [
+        26624000,
+        25690112,
+        26148864
+      ],
+      "load_average": [
+        [
+          1.7431640625,
+          3.36181640625,
+          12.11181640625
+        ],
+        [
+          1.7294921875,
+          3.19921875,
+          11.74853515625
+        ],
+        [
+          2.18505859375,
+          3.17626953125,
+          11.4443359375
+        ]
+      ]
+    },
+    "noya-cli": {
+      "source": {
+        "head_sha": "185c0e9d40def102ad6de2580981fbf4d1a8104c",
+        "dirty": true,
+        "inputs_sha256": "f2745fe5a9991b1bbb7808289fd9ecfe4ae40b47385ed0538e565b2627c8de2f",
+        "lockfile_sha256": "6868d4b46740b6bad263761506ecdeab2cb9a26e73154de389ac96cd0fe96da7",
+        "rustc": "rustc 1.99.0 (b940084d7 2026-09-28)\nbinary: rustc\ncommit-hash: b940084d7eb6a299eb4bfeb8e34901bc051e7ac4\ncommit-date: 2026-09-28\nhost: aarch64-apple-darwin\nrelease: 1.99.0\nLLVM version: 23.1.1",
+        "cargo": "cargo 1.99.0 (5f94df478 2026-08-27)"
+      },
+      "core_source": {
+        "head_sha": "5e1d88ccb20b23d3a54ef2fcc786ee72744e637d",
+        "dirty": true,
+        "inputs_sha256": "be96e91b50969249016620d921e92dd3f1f74491f59d5e9460e65a87307787cd",
+        "lockfile_sha256": "0ebb308224e3ea0cba9bcd653e7818d23122174fcac7738874754091ada9325c",
+        "rustc": "rustc 1.99.0 (b940084d7 2026-09-28)\nbinary: rustc\ncommit-hash: b940084d7eb6a299eb4bfeb8e34901bc051e7ac4\ncommit-date: 2026-09-28\nhost: aarch64-apple-darwin\nrelease: 1.99.0\nLLVM version: 23.1.1",
+        "cargo": "cargo 1.99.0 (5f94df478 2026-08-27)"
+      },
+      "artifact_bytes": 4894944,
+      "artifact_sha256": "cf4e4777e3c8cc874fd67bb01f0eec2b9d852e6381d97f1b8f018d4c69a20429",
+      "repeatability": {
+        "noyafmt_ build clap__Command (xtask _ build.rs path)": {
+          "median_ns": 1279.779998469596,
+          "min_ns": 1278.9055784027591,
+          "max_ns": 1297.4535467022026,
+          "relative_range": 0.01449309125132739
+        },
+        "noyafmt_ parse `--check ci__.yaml`": {
+          "median_ns": 4187.98572401271,
+          "min_ns": 4064.19938633107,
+          "max_ns": 4276.529588561896,
+          "relative_range": 0.05069983906902683
+        },
+        "noyafmt_ parse `--write --indent 4 a.yaml`": {
+          "median_ns": 4237.41930277904,
+          "min_ns": 4220.574756606398,
+          "max_ns": 4393.264632592382,
+          "relative_range": 0.0407535491879995
+        },
+        "noyavalidate_ build clap__Command": {
+          "median_ns": 1205.7977563824559,
+          "min_ns": 1202.5015733737023,
+          "max_ns": 1226.499634591961,
+          "relative_range": 0.019902227459981277
+        },
+        "noyavalidate_ parse `--schema s.yaml --fix in.yaml`": {
+          "median_ns": 4106.367340374294,
+          "min_ns": 3997.9741463674077,
+          "max_ns": 4143.985528998641,
+          "relative_range": 0.03555731149418411
+        }
+      },
+      "reproduce": "cargo bench --locked --bench cli_dispatch",
+      "peak_rss_bytes": [
+        19693568,
+        19267584,
+        21479424
+      ],
+      "load_average": [
+        [
+          1.9521484375,
+          3.029296875,
+          11.10400390625
+        ],
+        [
+          2.49755859375,
+          3.09375,
+          10.98486328125
+        ],
+        [
+          2.787109375,
+          3.12255859375,
+          10.8564453125
+        ]
+      ]
+    },
+    "noyalib-lsp": {
+      "source": {
+        "head_sha": "225a2f5a45c75ecaf7a681654a8a0a1d3d89a2a6",
+        "dirty": true,
+        "inputs_sha256": "257925987219d9ba6951dca09033943a6749ab2698977f12ee714f9d7494e038",
+        "lockfile_sha256": "d3cd661f1bc9a9c9eebdf1693b7a0af8526939cb6cf254420405fd358a671e09",
+        "rustc": "rustc 1.99.0 (b940084d7 2026-09-28)\nbinary: rustc\ncommit-hash: b940084d7eb6a299eb4bfeb8e34901bc051e7ac4\ncommit-date: 2026-09-28\nhost: aarch64-apple-darwin\nrelease: 1.99.0\nLLVM version: 23.1.1",
+        "cargo": "cargo 1.99.0 (5f94df478 2026-08-27)"
+      },
+      "core_source": {
+        "head_sha": "d082f2a2d32c456173020ed8321005236c12b2cf",
+        "dirty": true,
+        "inputs_sha256": "be96e91b50969249016620d921e92dd3f1f74491f59d5e9460e65a87307787cd",
+        "lockfile_sha256": "0ebb308224e3ea0cba9bcd653e7818d23122174fcac7738874754091ada9325c",
+        "rustc": "rustc 1.99.0 (b940084d7 2026-09-28)\nbinary: rustc\ncommit-hash: b940084d7eb6a299eb4bfeb8e34901bc051e7ac4\ncommit-date: 2026-09-28\nhost: aarch64-apple-darwin\nrelease: 1.99.0\nLLVM version: 23.1.1",
+        "cargo": "cargo 1.99.0 (5f94df478 2026-08-27)"
+      },
+      "artifact_bytes": 5022768,
+      "artifact_sha256": "ea9ba8907a48fe30f74c2e58a36a46267619249b9da2da712696566a53d400fc",
+      "repeatability": {
+        "publishDiagnostics_ parse cost/kube manifest": {
+          "median_ns": 24676.476892633727,
+          "min_ns": 24390.18365633075,
+          "max_ns": 26494.177039129238,
+          "relative_range": 0.08526311887847156
+        },
+        "publishDiagnostics_ parse cost/small (2 keys)": {
+          "median_ns": 2198.2190919733293,
+          "min_ns": 2169.9391923710855,
+          "max_ns": 2215.5946640637712,
+          "relative_range": 0.02076929995713079
+        },
+        "textDocument_formatting/kube manifest (~30 keys)": {
+          "median_ns": 63524.25513538749,
+          "min_ns": 63037.291319791315,
+          "max_ns": 80680.27283653847,
+          "relative_range": 0.2777361415595532
+        },
+        "textDocument_formatting/small (2 keys)": {
+          "median_ns": 5844.515296218651,
+          "min_ns": 5818.798,
+          "max_ns": 5994.9408038444735,
+          "relative_range": 0.030138137196498837
+        }
+      },
+      "reproduce": "cargo bench --locked --bench lsp_handlers",
+      "peak_rss_bytes": [
+        18333696,
+        21823488,
+        25772032
+      ],
+      "load_average": [
+        [
+          2.59912109375,
+          3.05078125,
+          10.64990234375
+        ],
+        [
+          2.49462890625,
+          2.99755859375,
+          10.45361328125
+        ],
+        [
+          2.498046875,
+          2.98095703125,
+          10.3603515625
+        ]
+      ]
+    },
+    "noyalib-mcp": {
+      "source": {
+        "head_sha": "3a07fd7060648cdfda6bc68b006732daa537d2ef",
+        "dirty": true,
+        "inputs_sha256": "b01843fbb862c45a7da2084236d59613a5e1b241e82e708d019d344c72bbc9de",
+        "lockfile_sha256": "4caf8bc7bd2d4cf6b6b1af519f2e6946eda6cc9fb1fbbbbee69fa5164a3b9f6a",
+        "rustc": "rustc 1.99.0 (b940084d7 2026-09-28)\nbinary: rustc\ncommit-hash: b940084d7eb6a299eb4bfeb8e34901bc051e7ac4\ncommit-date: 2026-09-28\nhost: aarch64-apple-darwin\nrelease: 1.99.0\nLLVM version: 23.1.1",
+        "cargo": "cargo 1.99.0 (5f94df478 2026-08-27)"
+      },
+      "core_source": {
+        "head_sha": "d082f2a2d32c456173020ed8321005236c12b2cf",
+        "dirty": true,
+        "inputs_sha256": "be96e91b50969249016620d921e92dd3f1f74491f59d5e9460e65a87307787cd",
+        "lockfile_sha256": "0ebb308224e3ea0cba9bcd653e7818d23122174fcac7738874754091ada9325c",
+        "rustc": "rustc 1.99.0 (b940084d7 2026-09-28)\nbinary: rustc\ncommit-hash: b940084d7eb6a299eb4bfeb8e34901bc051e7ac4\ncommit-date: 2026-09-28\nhost: aarch64-apple-darwin\nrelease: 1.99.0\nLLVM version: 23.1.1",
+        "cargo": "cargo 1.99.0 (5f94df478 2026-08-27)"
+      },
+      "artifact_bytes": 5121040,
+      "artifact_sha256": "8ec95d30363c7f4174df480ff60ce5f0aa23e2cd1d3b6f9ae422bf28c4a84b86",
+      "repeatability": {
+        "tools_call format": {
+          "median_ns": 14157.123870281765,
+          "min_ns": 14049.302280863003,
+          "max_ns": 14529.843930390492,
+          "relative_range": 0.033943451645304094
+        },
+        "tools_call get (existing path)": {
+          "median_ns": 76.3390046862323,
+          "min_ns": 73.00700733534072,
+          "max_ns": 79.40217892021374,
+          "relative_range": 0.08377331629038637
+        },
+        "tools_call get (missing path)": {
+          "median_ns": 80.30453825654843,
+          "min_ns": 78.94649218323192,
+          "max_ns": 81.57168214239819,
+          "relative_range": 0.03269043090416117
+        },
+        "tools_call parse": {
+          "median_ns": 2701.2021995399655,
+          "min_ns": 2682.8161020356165,
+          "max_ns": 3322.600525768662,
+          "relative_range": 0.23685173358810588
+        },
+        "tools_call set (CST surgical edit)": {
+          "median_ns": 18251.236762152777,
+          "min_ns": 18188.482220690268,
+          "max_ns": 18695.995722053412,
+          "relative_range": 0.027807074554835914
+        }
+      },
+      "reproduce": "cargo bench --locked --bench mcp_tools",
+      "peak_rss_bytes": [
+        26656768,
+        19316736,
+        22560768
+      ],
+      "load_average": [
+        [
+          2.166015625,
+          2.8828125,
+          10.19580078125
+        ],
+        [
+          2.0615234375,
+          2.8095703125,
+          9.99853515625
+        ],
+        [
+          2.126953125,
+          2.78564453125,
+          9.8642578125
+        ]
+      ]
+    },
+    "noyalib-serde-yaml": {
+      "source": {
+        "head_sha": "638378376cc8958c97fc5d9171a57e491efde46f",
+        "dirty": true,
+        "inputs_sha256": "dad2c8244453a14fbf5b6b5db1b3b044f35c576fff6dc28077dfa131bf510e8a",
+        "lockfile_sha256": "921ffbc75daaa46f35c19c3fa4030db83188e33dc118d4897570efe1249cedfd",
+        "rustc": "rustc 1.99.0 (b940084d7 2026-09-28)\nbinary: rustc\ncommit-hash: b940084d7eb6a299eb4bfeb8e34901bc051e7ac4\ncommit-date: 2026-09-28\nhost: aarch64-apple-darwin\nrelease: 1.99.0\nLLVM version: 23.1.1",
+        "cargo": "cargo 1.99.0 (5f94df478 2026-08-27)"
+      },
+      "core_source": {
+        "head_sha": "d082f2a2d32c456173020ed8321005236c12b2cf",
+        "dirty": true,
+        "inputs_sha256": "be96e91b50969249016620d921e92dd3f1f74491f59d5e9460e65a87307787cd",
+        "lockfile_sha256": "0ebb308224e3ea0cba9bcd653e7818d23122174fcac7738874754091ada9325c",
+        "rustc": "rustc 1.99.0 (b940084d7 2026-09-28)\nbinary: rustc\ncommit-hash: b940084d7eb6a299eb4bfeb8e34901bc051e7ac4\ncommit-date: 2026-09-28\nhost: aarch64-apple-darwin\nrelease: 1.99.0\nLLVM version: 23.1.1",
+        "cargo": "cargo 1.99.0 (5f94df478 2026-08-27)"
+      },
+      "artifact_bytes": 3539744,
+      "artifact_sha256": "eaf9761f23b3ed9a5aa73ea9affc173c1e4bb54b0182448127b4ac84755cc373",
+      "repeatability": {
+        "from_str_value/direct_medium": {
+          "median_ns": 255915.22106481483,
+          "min_ns": 249191.38815789475,
+          "max_ns": 266650.5144850733,
+          "relative_range": 0.06822230524051835
+        },
+        "from_str_value/direct_small": {
+          "median_ns": 1883.7457181180357,
+          "min_ns": 1870.3177247181807,
+          "max_ns": 1901.2411507375245,
+          "relative_range": 0.016415923721508473
+        },
+        "from_str_value/shim_medium": {
+          "median_ns": 254605.89423076925,
+          "min_ns": 253947.16228070174,
+          "max_ns": 265803.3344298246,
+          "relative_range": 0.04656676226975598
+        },
+        "from_str_value/shim_small": {
+          "median_ns": 1935.2875825233816,
+          "min_ns": 1906.6158306831658,
+          "max_ns": 1951.8436788536226,
+          "relative_range": 0.02337009164885208
+        }
+      },
+      "reproduce": "cargo bench --locked --bench shim_overhead",
+      "peak_rss_bytes": [
+        21250048,
+        21053440,
+        18644992
+      ],
+      "load_average": [
+        [
+          2.6015625,
+          2.84814453125,
+          9.72119140625
+        ],
+        [
+          2.689453125,
+          2.85498046875,
+          9.60302734375
+        ],
+        [
+          2.81640625,
+          2.87548828125,
+          9.53125
+        ]
+      ]
+    },
+    "noyalib-wasm": {
+      "source": {
+        "head_sha": "8b9526467f61793933f4aae19ec057b3a04acf2b",
+        "dirty": true,
+        "inputs_sha256": "c938bba029e9a2a4ed0689e6b7135340e1d7520c611a58f7d7b6dada04ec8023",
+        "lockfile_sha256": "c997a746fdd84a827724ec3330d3bb2eb584a4c9d7c15fb50a170e731cbfe101",
+        "rustc": "rustc 1.99.0 (b940084d7 2026-09-28)\nbinary: rustc\ncommit-hash: b940084d7eb6a299eb4bfeb8e34901bc051e7ac4\ncommit-date: 2026-09-28\nhost: aarch64-apple-darwin\nrelease: 1.99.0\nLLVM version: 23.1.1",
+        "cargo": "cargo 1.99.0 (5f94df478 2026-08-27)"
+      },
+      "core_source": {
+        "head_sha": "d082f2a2d32c456173020ed8321005236c12b2cf",
+        "dirty": true,
+        "inputs_sha256": "be96e91b50969249016620d921e92dd3f1f74491f59d5e9460e65a87307787cd",
+        "lockfile_sha256": "0ebb308224e3ea0cba9bcd653e7818d23122174fcac7738874754091ada9325c",
+        "rustc": "rustc 1.99.0 (b940084d7 2026-09-28)\nbinary: rustc\ncommit-hash: b940084d7eb6a299eb4bfeb8e34901bc051e7ac4\ncommit-date: 2026-09-28\nhost: aarch64-apple-darwin\nrelease: 1.99.0\nLLVM version: 23.1.1",
+        "cargo": "cargo 1.99.0 (5f94df478 2026-08-27)"
+      },
+      "artifact_bytes": 598344,
+      "artifact_sha256": "7f479e17a0f89d65c2f57e0232fd92af0aef5721491190feb86ad2758a83baa5",
+      "repeatability": {
+        "parse (small, 3 keys)": {
+          "median_ns": 3267.08,
+          "min_ns": 3000.42,
+          "max_ns": 3271.25,
+          "relative_range": 0.08289665389277273
+        },
+        "parse (medium, 50 services)": {
+          "median_ns": 163538.75,
+          "min_ns": 160709.17,
+          "max_ns": 170359.16,
+          "relative_range": 0.05900736064082666
+        },
+        "JSON.parse (same data, baseline)": {
+          "median_ns": 9085,
+          "min_ns": 8783.34,
+          "max_ns": 9387.92,
+          "relative_range": 0.06654705558613097
+        },
+        "stringify (small)": {
+          "median_ns": 2215.83,
+          "min_ns": 2204.58,
+          "max_ns": 2221.67,
+          "relative_range": 0.007712685539955748
+        },
+        "stringify (medium)": {
+          "median_ns": 131842.91,
+          "min_ns": 129547.92,
+          "max_ns": 133816.25,
+          "relative_range": 0.03237436127585474
+        },
+        "getPath (one-shot, medium)": {
+          "median_ns": 119724.17,
+          "min_ns": 118625,
+          "max_ns": 125770,
+          "relative_range": 0.05967884346160011
+        },
+        "doc.get (reused Document)": {
+          "median_ns": 323.33,
+          "min_ns": 322.92,
+          "max_ns": 379.58,
+          "relative_range": 0.1752389199888658
+        },
+        "new WasmDocument (medium)": {
+          "median_ns": 187292.5,
+          "min_ns": 184953.75,
+          "max_ns": 217504.17,
+          "relative_range": 0.17379457266041093
+        },
+        "setValue on a live Document": {
+          "median_ns": 785.41,
+          "min_ns": 782.5,
+          "max_ns": 848.75,
+          "relative_range": 0.08435084860136745
+        },
+        "merge (medium + small overlay)": {
+          "median_ns": 149722.5,
+          "min_ns": 148190.83,
+          "max_ns": 156125.42,
+          "relative_range": 0.05299530798644175
+        }
+      },
+      "reproduce": "wasm-pack build --release --target nodejs --out-dir pkg-node -- --locked; node benches/bench.js",
+      "peak_rss_bytes": [
+        87441408,
+        87277568,
+        82132992
+      ],
+      "load_average": [
+        [
+          3.353515625,
+          2.99609375,
+          9.41943359375
+        ],
+        [
+          3.353515625,
+          2.99609375,
+          9.41943359375
+        ],
+        [
+          3.3251953125,
+          2.99609375,
+          9.38134765625
+        ]
+      ],
+      "runtime": "v24.22.2",
+      "wasm_bytes": 598344,
+      "gzip_bytes": 210509,
+      "import_ns": [
+        8832667,
+        1867084,
+        2194917
+      ],
+      "fixture_sha256": {
+        "small": "dbd2924e6f297a010c144f41aed49c1a89a36004dd2398a7f27aba1134ee0b36",
+        "medium": "4f69ff6cef9ffc4aff61509274cd897373c9b04e1e7c2241f877140b3d184702",
+        "json": "f93d2c229a72e35b08e677d426ab9026fbae3fe7da3f9778e85cde2ec2cfc541"
+      }
+    }
+  }
+}

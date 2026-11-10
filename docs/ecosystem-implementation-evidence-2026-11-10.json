@@ -5,7 +5,7 @@
     "noya-cli": "185c0e9d40def102ad6de2580981fbf4d1a8104c",
     "noyalib-lsp": "e7ca5deaa280d3bb741eaf4408d664c1f265f395",
     "noyalib-mcp": "5e844d00f29e1b3f09139bdcd87b8eee95c4346f",
-    "noyalib-wasm": "11c024559e7e380ba3c35055422d9ccfa7d0cb85",
+    "noyalib-wasm": "c10cdb13e22ce76dcc65f83f58e8ef3ac5d93cd7",
     "noyalib-serde-yaml": "57dea34e9ee5b00ee20d2b86531e817c801089da"
   },
   "core_source_checkpoint": "5e1d88ccb20b23d3a54ef2fcc786ee72744e637d",
@@ -573,45 +573,53 @@
     "sha256": "7f479e17a0f89d65c2f57e0232fd92af0aef5721491190feb86ad2758a83baa5"
   },
   "parity": {
-    "utc": "2026-11-10T22:31:54.238297+00:00",
+    "utc": "2026-11-10T23:15:32.692091+00:00",
     "corpus_sha256": "cd5f5fa099ef9e887123b6a4fc37fc62860f9ae9a0ee4674ac209f530c92fcf8",
+    "runner_sha256": "d459ced1a47bd019c5062f2bc5098e0f203ac8b9998289e436f5506504dc7935",
+    "runtimes": {
+      "rustc": "rustc 1.99.0 (b940084d7 2026-09-28)\nbinary: rustc\ncommit-hash: b940084d7eb6a299eb4bfeb8e34901bc051e7ac4\ncommit-date: 2026-09-28\nhost: aarch64-apple-darwin\nrelease: 1.99.0\nLLVM version: 23.1.1",
+      "node": "v24.22.2",
+      "mcp_server_sdk": "3.9.0"
+    },
     "sources": {
       "noyalib": {
-        "head_sha": "d082f2a2d32c456173020ed8321005236c12b2cf",
+        "head_sha": "ef8336fd3b8ed97ce4c4695c99f98734aec65dff",
         "dirty": true,
         "lockfile_sha256": "0ebb308224e3ea0cba9bcd653e7818d23122174fcac7738874754091ada9325c"
       },
       "noya-cli": {
-        "head_sha": "9fdd09a177b6bf29084f0897db0d3e6823a27e96",
+        "head_sha": "185c0e9d40def102ad6de2580981fbf4d1a8104c",
         "dirty": true,
         "lockfile_sha256": "6868d4b46740b6bad263761506ecdeab2cb9a26e73154de389ac96cd0fe96da7"
       },
       "noyalib-lsp": {
-        "head_sha": "3fccfbe5782e5b43f6ac6c8bb04595063e024e8d",
+        "head_sha": "e7ca5deaa280d3bb741eaf4408d664c1f265f395",
         "dirty": true,
         "lockfile_sha256": "d3cd661f1bc9a9c9eebdf1693b7a0af8526939cb6cf254420405fd358a671e09"
       },
       "noyalib-mcp": {
-        "head_sha": "aa3c9db6409c108bc5c1911c076181763a965021",
+        "head_sha": "5e844d00f29e1b3f09139bdcd87b8eee95c4346f",
         "dirty": true,
         "lockfile_sha256": "4caf8bc7bd2d4cf6b6b1af519f2e6946eda6cc9fb1fbbbbee69fa5164a3b9f6a"
       },
       "noyalib-wasm": {
-        "head_sha": "b00e5ece6281c1d0e137445464734037f6531e53",
+        "head_sha": "c10cdb13e22ce76dcc65f83f58e8ef3ac5d93cd7",
         "dirty": true,
         "lockfile_sha256": "c997a746fdd84a827724ec3330d3bb2eb584a4c9d7c15fb50a170e731cbfe101"
       },
       "noyalib-serde-yaml": {
-        "head_sha": "91e2b3cbdf04549893c983704c81f6d4cdf61865",
+        "head_sha": "57dea34e9ee5b00ee20d2b86531e817c801089da",
         "dirty": true,
         "lockfile_sha256": "921ffbc75daaa46f35c19c3fa4030db83188e33dc118d4897570efe1249cedfd"
       }
     },
     "artifacts": {
-      "cli": "7ed16f40e77d6bed3d719b016dcb17abbaeff4851220e0cd9fce9d510a262518",
-      "lsp": "a5c8e0832a276f5a78c24769aeb05b3887151513d5eccb2e6d1c6fd4c96396af",
+      "cli": "7915dd239f3b3970e7712c409c50191253fd8c5f7af6632179c1ab1260e1ebf8",
+      "lsp": "23fad0a013b41cb5df276f07e67f9adc144e66b6deb82ddf68df134720ed9b8f",
       "mcp": "71f67e4faa40e1968c7f122b0515472480f985b9f6e4c48d6d942e990eae68b2",
-      "wasm": "c60655efe354646020dc40af9884f9d06e904be820d71cc89dcc03d3d513c9d1"
+      "wasm": "ab13b3e938c1fd9e8101e43107520561ff95e15c770121331d1c637ecc93cc9d",
+      "rust_projection": "883fe8017b91d61cdf3db5d4d902fb4ae8ea90262e020e4bd574aff42f89d857",
+      "wasm_module": "7f479e17a0f89d65c2f57e0232fd92af0aef5721491190feb86ad2758a83baa5"
     },
     "cases": [
       {
@@ -764,5 +772,74 @@
         ]
       }
     ]
+  },
+  "performance_receipt": "ecosystem-performance-2026-11-10.json",
+  "facade_fuzz_runner_smoke": {
+    "source_commit": "57dea34e9ee5b00ee20d2b86531e817c801089da",
+    "scope": "fuzz",
+    "target": "fuzz_roundtrip",
+    "requested_seconds": 5,
+    "measured_seconds": 6,
+    "executions": 102941,
+    "initial_inputs_sha256": {
+      "fuzz/corpus/seed/basic.yaml": "a43ef858013c1619b6be1785906e7b0791a56ade4c12cc98e08411a1e9ccaa9d",
+      "fuzz/corpus/seed/merge.yaml": "645ebcd73acee5e7ab5d2e224121c7807ba974152206dbe99f7d9d1b4947e0e2",
+      "fuzz/corpus/seed/scalars.yaml": "f13eec970c6cf44ef588cf9804fe53a24f170156692984483fbfe53ddc52be17"
+    },
+    "lockfile_sha256": "74288edc5901830cded0c59fd378180ba725bfb4d02394b53defa0564f94eb0c",
+    "lockfile_unchanged": true,
+    "log_sha256": "6eeda15b8448498362c94ce3b11a84accb2abc9362a26ca1a763d10a638a94f4",
+    "findings": []
+  },
+  "local_msrv_checks": {
+    "noya-cli": {
+      "toolchain": "1.89.0",
+      "target": "aarch64-apple-darwin",
+      "configuration": "default library and bins",
+      "status": "passed",
+      "log_sha256": "d8357c93ae11d8f2904f6cae978b56f0e4c18bdc861f249b9102aa1d421f1835"
+    },
+    "noyalib-lsp": {
+      "toolchain": "1.89.0",
+      "target": "aarch64-apple-darwin",
+      "configuration": "default library and bins",
+      "status": "passed",
+      "log_sha256": "2bd5a65dac6744a45aed5941b26b778266ec191fabce053c2099455aa6375887"
+    },
+    "noyalib-mcp": {
+      "toolchain": "1.89.0",
+      "target": "aarch64-apple-darwin",
+      "configuration": "default library and bins",
+      "status": "passed",
+      "log_sha256": "55bf0c21beec9c4ff7a09a1bc8c08a02449dee79cc3c3c8e60e0c139baad775a"
+    },
+    "noyalib-wasm": {
+      "toolchain": "1.89.0",
+      "target": "aarch64-apple-darwin",
+      "configuration": "default library and bins",
+      "status": "passed",
+      "log_sha256": "af5d380040ffed430a61d8c3eba81c821d3b45ff6b4cda39ad860bd38de34667"
+    },
+    "noyalib-serde-yaml": {
+      "toolchain": "1.89.0",
+      "target": "aarch64-apple-darwin",
+      "configuration": "default library and bins",
+      "status": "passed",
+      "log_sha256": "ced8a9ec97908094459c98a7c3036c6520dd9680d44f543578b202346ba4e0ff"
+    },
+    "wasm-target": {
+      "toolchain": "1.89.0",
+      "target": "wasm32-unknown-unknown",
+      "configuration": "default library",
+      "status": "passed",
+      "log_sha256": "bbfe518bb28bd33bc6ce70e0340286797784e31ad3f8889d2ba86986d1411cc3"
+    },
+    "core-wasm-target": {
+      "toolchain": "1.89.0",
+      "target": "wasm32-unknown-unknown",
+      "configuration": "portable alloc-only",
+      "status": "passed",
+      "log_sha256": "37cdae4a520368b5c7ed97ccf39a00632742f449f4736f93f9fc620e31da4437"
+    }
   }
 }

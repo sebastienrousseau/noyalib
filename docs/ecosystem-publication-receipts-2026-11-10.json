@@ -112,6 +112,22 @@
     "affected_tokio": "1.53.1",
     "production_tokio": "1.54.1",
     "fuzz_workspace_in_crate_package": false,
-    "advisory": "https://rustsec.org/advisories/RUSTSEC-2026-0386.html"
+    "advisory": "https://rustsec.org/advisories/RUSTSEC-2026-0386.html",
+    "audited_clean_checkout_with_identical_tree": "381244fae36fd7ea1725f433f33c3fb7fc65ffd4",
+    "advisory_db_commit": "28d73fc95e5972af3403225a217def57dcaba3c4",
+    "lock_scopes": {
+      "Cargo.lock": {
+        "sha256": "28c1cb50804a74be8366dca7a5912cfd7d0692db2d338de37465c5a3f233fcfd",
+        "status": "passed"
+      },
+      "fuzz/Cargo.lock": {
+        "sha256": "259471b3167454a7252d53144c74ca8c994830e97f16b109ac564fcb5d0b727e",
+        "status": "failed"
+      },
+      "tests/const-oid-regression/Cargo.lock": {
+        "sha256": "b543295350c202ae3a2becccb7f53214fa39794d7b282a5163499581796bac42",
+        "status": "passed"
+      }
+    }
   }
 }
