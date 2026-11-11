@@ -37,6 +37,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Security
 
+- Refuse synthetic sibling entries during local CST repair. Root shape
+  changes use a full parse, preserving UTF-8 token boundaries and keeping
+  MCP edit sessions alive.
 - Bound repeated recursive-descent lookups by tracking visited states.
   First-result lookup stops at its first match. Queries cache failed
   states while preserving result order and repeated matches.

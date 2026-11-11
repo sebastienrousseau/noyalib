@@ -163,3 +163,31 @@ fn invalid_replacement_is_rejected_before_commit() {
     assert_eq!(doc.to_string(), "name: foo\n");
     assert_eq!(doc.as_value()["name"].as_str(), Some("foo"));
 }
+
+#[test]
+fn root_shape_changes_cannot_reuse_the_sentinel_sibling() {
+    for source in ["-", "key:"] {
+        for replacement in ["\u{799}\r#", "é\r#", "中\n#", "🌊\r#", "abc\n"] {
+            let mut doc = parse_document(source).unwrap();
+            doc.set("", replacement).unwrap();
+            assert_eq!(doc.source(), replacement);
+            assert_eq!(doc.to_string(), replacement);
+            assert_eq!(doc.last_repair_scope(), Some(RepairScope::Document));
+            assert_equivalent_to_full_reparse(&doc);
+        }
+    }
+}
+
+#[test]
+fn original_mcp_unicode_root_edit_keeps_valid_token_boundaries() {
+    let input = include_str!("../fixtures/cst-root-edit-utf8.bin");
+    let mut parts = input.splitn(3, '\0');
+    let source = parts.next().unwrap();
+    let path = parts.next().unwrap();
+    let replacement = parts.next().unwrap();
+    let mut doc = parse_document(source).unwrap();
+    doc.set(path, replacement).unwrap();
+    assert_eq!(doc.source(), replacement);
+    assert_eq!(doc.to_string(), replacement);
+    assert_equivalent_to_full_reparse(&doc);
+}
