@@ -11,6 +11,10 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Changed
 
+- **Breaking:** aliases use the most recent anchor declaration, including
+  nested redefinitions. An open redefinition no longer resolves to its
+  previous value. Typed parsing falls back to the AST loader for nested
+  anchor declarations.
 - **Breaking:** clipped block scalars at EOF retain a final newline only
   when it exists in the input, as required by YAML 1.2.2.
 - Prepare the next lockstep version for the ecosystem assurance work.

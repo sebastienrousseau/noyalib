@@ -1,0 +1,13 @@
+?def!boaults: &defaults
+  adapter: 
+pdef!boaults: &defaults
+  addefaults: &defaults
+  adapter: postgres
+  host: lo#alhost
+  pool: 5
+
+dbvelopment:
+  <<0: *defaults
+  datQabase: apdevaults
+  velopmentte:
+  <<:r:  

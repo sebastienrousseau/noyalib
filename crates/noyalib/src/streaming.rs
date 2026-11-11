@@ -359,12 +359,12 @@ impl<'a> StreamingDeserializer<'a> {
             // duplicate into any in-flight anchor buffer.
             Some(Lookahead::Processed(ev)) => Ok(ev),
             Some(Lookahead::Raw(mut ev)) => {
-                self.anchor_and_record(&mut ev);
+                self.anchor_and_record(&mut ev)?;
                 Ok(ev)
             }
             None => {
                 let mut ev = self.pull_parser_event()?;
-                self.anchor_and_record(&mut ev);
+                self.anchor_and_record(&mut ev)?;
                 Ok(ev)
             }
         }
@@ -413,9 +413,10 @@ impl<'a> StreamingDeserializer<'a> {
     ///
     /// Not idempotent: `maybe_record` appends, so calling it twice on one
     /// event puts that event into the in-flight anchor buffer twice.
-    fn anchor_and_record(&mut self, ev: &mut Event<'a>) {
-        self.handle_anchor(ev);
+    fn anchor_and_record(&mut self, ev: &mut Event<'a>) -> Result<()> {
+        self.handle_anchor(ev)?;
         self.maybe_record(ev);
+        Ok(())
     }
 
     /// Alias resolution + [`Self::anchor_and_record`], in one place so the
@@ -430,7 +431,7 @@ impl<'a> StreamingDeserializer<'a> {
             let start = span.start;
             ev = self.resolve_alias(anchor, start)?;
         }
-        self.anchor_and_record(&mut ev);
+        self.anchor_and_record(&mut ev)?;
         Ok(ev)
     }
 
@@ -488,9 +489,26 @@ impl<'a> StreamingDeserializer<'a> {
         }
     }
 
-    fn handle_anchor(&mut self, ev: &mut Event<'_>) {
+    fn handle_anchor(&mut self, ev: &mut Event<'_>) -> Result<()> {
         if self.recording.is_some() {
-            return;
+            if matches!(
+                ev,
+                Event::Scalar {
+                    anchor: Some(_),
+                    ..
+                } | Event::SequenceStart {
+                    anchor: Some(_),
+                    ..
+                } | Event::MappingStart {
+                    anchor: Some(_),
+                    ..
+                }
+            ) {
+                // The single recording buffer cannot retain nested anchor
+                // definitions. Let the AST loader preserve declaration order.
+                return Err(self.fallback());
+            }
+            return Ok(());
         }
         let def_start = match ev {
             Event::Scalar { span, .. }
@@ -508,8 +526,11 @@ impl<'a> StreamingDeserializer<'a> {
             if let Some(start) = def_start {
                 let _ = self.anchor_def_spans.insert(name.clone(), start);
             }
+            let _ = self.anchor_events.remove(&name);
+            let _ = self.anchor_costs.remove(&name);
             self.recording = Some((name, 0, SmallVec::new()));
         }
+        Ok(())
     }
 
     fn maybe_record(&mut self, ev: &Event<'_>) {

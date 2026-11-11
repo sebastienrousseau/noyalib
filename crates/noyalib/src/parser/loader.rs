@@ -586,6 +586,9 @@ impl<'a> Loader<'a> {
                 }
                 if let Some(name) = anchor.as_ref() {
                     let _ = self.anchor_def_spans.insert(name.clone(), span.start);
+                    // A redefinition shadows its previous value immediately,
+                    // including while the new collection is still open.
+                    let _ = self.anchor_map.shift_remove(name);
                 }
                 self.stack.push(Frame::Sequence {
                     items: Vec::new(),
@@ -624,7 +627,11 @@ impl<'a> Loader<'a> {
                         end,
                         items: span_items,
                     };
-                    if let Some(name) = anchor {
+                    if let Some(name) = anchor
+                        && self.anchor_def_spans.get(&name) == Some(&start)
+                    {
+                        // Nested declarations take precedence over completion
+                        // of the surrounding anchored collection.
                         let cost = self.alias_cost(&v, &st);
                         let _ = self.anchor_map.insert(name, (v.clone(), st.clone(), cost));
                     }
@@ -647,6 +654,9 @@ impl<'a> Loader<'a> {
                 }
                 if let Some(name) = anchor.as_ref() {
                     let _ = self.anchor_def_spans.insert(name.clone(), span.start);
+                    // A redefinition shadows its previous value immediately,
+                    // including while the new collection is still open.
+                    let _ = self.anchor_map.shift_remove(name);
                 }
                 self.stack.push(Frame::MappingKey {
                     map: Mapping::new(),
@@ -679,7 +689,11 @@ impl<'a> Loader<'a> {
                         end: span.end,
                         entries: span_entries,
                     };
-                    if let Some(name) = anchor {
+                    if let Some(name) = anchor
+                        && self.anchor_def_spans.get(&name) == Some(&start)
+                    {
+                        // Nested declarations take precedence over completion
+                        // of the surrounding anchored collection.
                         let cost = self.alias_cost(&v, &st);
                         let _ = self.anchor_map.insert(name, (v.clone(), st.clone(), cost));
                     }
@@ -1286,6 +1300,9 @@ impl<'a> NoSpanLoader<'a> {
                 }
                 if let Some(name) = anchor.as_ref() {
                     let _ = self.anchor_def_spans.insert(name.clone(), span.start);
+                    // A redefinition shadows its previous value immediately,
+                    // including while the new collection is still open.
+                    let _ = self.anchor_map.shift_remove(name);
                 }
                 self.stack.push(NoSpanFrame::Sequence {
                     items: Vec::new(),
@@ -1305,7 +1322,11 @@ impl<'a> NoSpanLoader<'a> {
                 {
                     let inner = Value::Sequence(items);
                     let v = wrap_with_tag(inner, tag.as_ref(), self.config.tag_registry.as_deref());
-                    if let Some(name) = anchor {
+                    if let Some(name) = anchor
+                        && self.anchor_def_spans.get(&name) == Some(&start)
+                    {
+                        // Nested declarations take precedence over completion
+                        // of the surrounding anchored collection.
                         let cost = AliasCost::of_value(&v);
                         let _ = self.anchor_map.insert(name, (v.clone(), cost));
                     }
@@ -1319,6 +1340,9 @@ impl<'a> NoSpanLoader<'a> {
                 }
                 if let Some(name) = anchor.as_ref() {
                     let _ = self.anchor_def_spans.insert(name.clone(), span.start);
+                    // A redefinition shadows its previous value immediately,
+                    // including while the new collection is still open.
+                    let _ = self.anchor_map.shift_remove(name);
                 }
                 self.stack.push(NoSpanFrame::MappingKey {
                     map: Mapping::new(),
@@ -1345,7 +1369,11 @@ impl<'a> NoSpanLoader<'a> {
                     }
                     let inner = Value::Mapping(map);
                     let v = wrap_with_tag(inner, tag.as_ref(), self.config.tag_registry.as_deref());
-                    if let Some(name) = anchor {
+                    if let Some(name) = anchor
+                        && self.anchor_def_spans.get(&name) == Some(&start)
+                    {
+                        // Nested declarations take precedence over completion
+                        // of the surrounding anchored collection.
                         let cost = AliasCost::of_value(&v);
                         let _ = self.anchor_map.insert(name, (v.clone(), cost));
                     }

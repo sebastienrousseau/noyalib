@@ -14,6 +14,8 @@
 mod alias_depth;
 #[path = "limits/alias_expansion.rs"]
 mod alias_expansion;
+#[path = "anchors/redefinition.rs"]
+mod anchor_redefinition;
 #[path = "values/binary_serde_bytes.rs"]
 mod binary_serde_bytes;
 #[path = "regressions/competitive_features.rs"]
