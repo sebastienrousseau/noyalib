@@ -24,7 +24,7 @@ set -euo pipefail
 
 cd "$(cd "$(dirname -- "$0")/.." && pwd)"
 exec python3 - "${1:-}" <<'PY'
-import json, pathlib, re, sys
+import json, pathlib, re, subprocess, sys, tomllib
 
 root = pathlib.Path.cwd()
 wanted = sys.argv[1].lstrip("v") if len(sys.argv) > 1 and sys.argv[1] else ""
@@ -91,6 +91,26 @@ elif own == version:
     ok("Cargo.lock", own)
 else:
     bad("Cargo.lock", f"{own} — run cargo check to refresh")
+
+# Fuzz and standalone workspaces have their own tracked locks. A root-only
+# check missed an alloc fuzz lock pinned to core 0.0.50 during the 0.0.61 cycle.
+family = {"noyalib", "noya-cli", "noyalib-lsp", "noyalib-mcp", "noyalib-wasm", "noyalib-serde-yaml"}
+tracked = subprocess.check_output(["git", "ls-files", "-z"], cwd=root).decode().split("\0")
+for rel in sorted(p for p in tracked if p and pathlib.Path(p).name == "Cargo.lock"):
+    try:
+        packages = tomllib.loads((root / rel).read_text(encoding="utf-8")).get("package", [])
+    except (OSError, tomllib.TOMLDecodeError) as error:
+        bad(rel, f"cannot read lock: {error}")
+        continue
+    for package in packages:
+        if package.get("name") in family:
+            got = package.get("version")
+            label = f"{rel} {package['name']}"
+            if got == version:
+                ok(label, got)
+            else:
+                bad(label, f"{got} — lockstep requires {version}; refresh this workspace's lock")
+
 
 # Satellites pin the core exactly; the pin and its lock entry must move
 # together or CI, which builds --locked, fails on a stale lock.
