@@ -366,6 +366,42 @@ a dedicated-host latency baseline, registry acceptance or human review.
 
 ## Implementation and acceptance
 
+The next signed MCP checkpoint fixes session admission in `839e637` and
+corrects executable references in `41d49d1`. A cap of one previously
+admitted two concurrent creations. The deterministic queued-reader
+reproducer fails before the shared creation/restore admission lock and
+passes afterward. All eight session tests and the full 132-test MCP
+battery pass with no failures or ignores; strict clippy, deny and vet pass.
+No public API, feature, MSRV or dependency changes are involved.
+
+Four real-server example scenarios pass, including a server that answers
+correctly and then exits with failure. File demos operate in private
+scratch roots, preserve surrounding source and verify readback. The
+references now describe the actual six tools, prompts, resources,
+`--root`, readable tool failures and the limits of timeout cancellation.
+The [MCP boundary receipt](ecosystem-mcp-boundaries-2026-11-11.json)
+retains failures, corrections, exact sources and raw logs. Three-OS hosted
+example acceptance remains separate.
+
+The [new performance observations](ecosystem-performance-2026-11-11.json)
+retain three repetitions of 70 scenarios, complete raw Criterion/JS
+samples, source/binary/workload identities and cold CLI/LSP/MCP cycles.
+All 21 benchmark executions pass. The added cold CLI probe initially
+omitted `--stdin`; its failure and corrected separate runs remain visible.
+Own fuzz workers were absent during the in-process benchmark collection;
+historical workers resumed before the cold cycles. Substantial unrelated
+host load and run-to-run variation prevent a dedicated-host timing claim
+or justified latency threshold. The old MCP and LSP microbenchmarks
+exercise core primitives, not live protocol dispatch.
+
+All eleven signed-source WASM resource outcomes match expectations:
+three normal Node and three normal installed-browser repetitions pass,
+real WASM/JS retention faults fail in both engines, and missing Node heap
+observations fail. The raw performance/resource and WASM archives are
+retained under [evidence](evidence/), with member hashes in their records.
+These observations do not close independent review, registry or sustained
+final-source campaign acceptance.
+
 “Local evidence” means the named check passed in its stated scope. Missing
 platforms, independent review, registry resolution and CI are listed as
 remaining evidence. They are not implied by the local results.
@@ -381,8 +417,8 @@ remaining evidence. They are not implied by the local results.
 | Q1 | Contract ledger links product operations and refusals to the tests that exercise them. | Fill the specifically untested product and deployment combinations in the ledger. |
 | Q2 | Thirty targets discovered; scheduled runner records elapsed time, inputs, execution-count scope and findings. Interrupted counts are preserved as lower bounds and missing durations remain unknown; four accounting regressions pass in every repo. MCP tools completed a full campaign; HTTP headers ran 958,775 inputs in 61 seconds. The facade runner smoke completed 102,941 inputs. | One-hour receipts for every remaining target and a successful scheduled run. |
 | Q3 | Structured LLVM line totals replace the ambiguous last column. Invalid, timed-out and absent measurements remain N/A. The fresh snapshot measured 139 probes, seven N/A, and scored 92.1%. | Repeat on the final signed release sources and registry graph. |
-| P1 | Three release-profile repetitions ran for all six products. The [baseline](ecosystem-performance-2026-11-10.json) records source, artifact, medians, memory and observed variance. | Dedicated-host end-to-end latency and resource cases. |
-| P2 | Optimized WASM raw/gzip limits verified. A padded module failed the gate. | Measured budgets and injection checks for the remaining scenarios and products. |
+| P1 | The [latest observations](ecosystem-performance-2026-11-11.json) retain three repetitions of 70 scenarios and real cold CLI/LSP/MCP cycles, with raw samples, hashes and variance. Substantial host noise is explicit. | Dedicated-host end-to-end latency and remaining resource cases. |
+| P2 | WASM byte and real WASM/JS growth budgets reject padding, retained documents/values and missing observations. MCP admission rejects the deterministic concurrent cap violation. | Measured budgets and injection checks for remaining scenarios and products; no shared-host latency threshold. |
 | X1 | Staged CLI install/uninstall, installed VSIX, Node and browser WASM, renamed Rust consumer and MCP offline drill passed. | Fresh-clone, failure and recovery transcripts across the rest of the support matrix. |
 | C1 | At the continuation checkpoint, all-feature test binaries pass 6,748 tests with no failures or ignores, including 152 properties. Shared fixtures check semantics and refusals. | Complete the case-level parity and diagnostics ledger; keep intentional loader differences explicit. |
 | C2 | Documented loader responsibilities and fixed the recorded runtime defects. The collection-anchor extraction retains behavior under std and alloc characterization suites and reduces the measured complexity baseline. | Independent architecture review of the resulting boundaries. |
@@ -391,10 +427,10 @@ remaining evidence. They are not implied by the local results.
 | CLI2 | A refused rename preserved destination contents and removed the temporary file; mode and symlink tests also pass. | Cross-OS interruption and metadata evidence, with independent review. |
 | LSP2 | Tests cover UTF-16 positions, stale changes, initialization, header limits and exit while stdin is open. Final real client checks passed. | Resource and latency budgets for editor workloads. |
 | LSP3 | Neovim 0.12.6 and installed VS Code 1.141.0 VSIX passed. The VSIX startup bug was reproduced and fixed. | Installed marketplace artifacts and the rest of the claimed OS matrix. |
-| MCP2 | Stdio, negotiated and stateless HTTP, legacy SSE, SDK, limits and guard suites passed 124 tests. Added HTTP header fuzz coverage. | Complete revision-by-transport acceptance for disconnect, cancellation, concurrency and supported filesystems; independent review. |
+| MCP2 | The current stdio, HTTP/SSE, SDK, limit and guard battery passes 132 tests. Eight session tests cover deterministic cap enforcement, concurrent create/restore, and reuse. Four actual example scenarios pass, including failed-exit refusal. | Complete revision-by-transport acceptance for disconnect, cancellation, remaining concurrency and supported filesystems; independent review. |
 | MCP3 | Published v0.0.59 npm package recovered from the verified native archive offline, refused corrupt cache and ran a real stdio parse. A future npm release gate repeats the drill. | Apply all five channel checks to v0.0.60 after the hold is resolved. |
 | WASM1 | Thirty-one real Node WASM tests and 34 shared runtime-contract checks pass. Classic Chromium passes 55 combined checks. Actual Node/browser memory and cleanup fault regressions pass. | Complete final-source hosted and sustained campaign acceptance; keep per-case coverage explicit. |
-| WASM2 | Optimized module is 614,712 bytes raw and 212,267 bytes gzip within unchanged limits. Actual Node/browser normal runs pass both growth budgets; real WASM/JS retention and missing observations fail. | Comparable dedicated-host timing evidence and final signed-source repeated resource receipts. |
+| WASM2 | Optimized module is 614,712 bytes raw and 212,267 bytes gzip within unchanged limits. Eleven signed-source Node/browser resource outcomes match expectations, including three normal repetitions per engine and real WASM/JS retention faults. | Comparable dedicated-host timing and eventual registry-module acceptance. |
 | WASM3 | Installed optimized tarball includes both licenses; TypeScript, Node and webpack/Chromium pass. Optimized Node, Bun 1.4.4, Deno 2.9.8 and classic Chromium execute the shared contract. | Eventual registry artifact and final-source hosted runtime receipts. |
 | SHIM1 | The standalone captured contract and extended tag, number and location cases passed. Equivalent compatibility entry points now have a separate benchmark from resolver-profile costs. | Complete extended location, tag and number cases and measure equivalent core overhead. |
 | I1 | Eleven shared cases pass in the earlier hosted job; the expanded thirteen-case corpus passes locally through the corrected products. Receipts record Node, Rust and SDK versions and source identities. The workflow builds each checkout from its lock. | Scheduled execution, additional contract cases and final registry-source parity. |

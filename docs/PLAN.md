@@ -72,6 +72,8 @@ and runtime-contract work now has signed implementation and local
 [assurance evidence](ecosystem-wasm-assurance-2026-11-11.json). The remaining
 human review has no recorded reviewer yet; a reviewer identity is requested
 while independent technical work continues.
+The [review packet](ECOSYSTEM-REVIEW.md) gives the source scopes, review
+boundaries and concrete decisions without implying approval.
 
 ## Constraints and work order
 
@@ -133,6 +135,14 @@ production lock uses patched Tokio 1.54.1. This is not an established
 production exploit. S1/R0 must retain that distinction while resolving the
 finding. The existing signed source cannot be silently replaced to make a
 scan green.
+
+The later session-cap reproducer also applies to the held MCP v0.0.60
+source: concurrent creation can exceed its configured limit. The signed
+future fix and tests are retained in the
+[MCP boundary record](ecosystem-mcp-boundaries-2026-11-11.json). A detached
+recovery checkout is being prepared against registry core 0.0.60. This
+adds a runtime finding to R0; the earlier development-only release option
+is insufficient. Neither the immutable tag nor publication has changed.
 
 ## P1: trustworthy measurements and contracts
 

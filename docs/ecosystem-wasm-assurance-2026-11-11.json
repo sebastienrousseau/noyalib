@@ -16,9 +16,9 @@
     "browser_shutdown": 3
   },
   "scope": "Local macOS arm64 final-content checks. The shared contract whitespace-only cleanup followed execution. Hosted candidate checks and final-source resource repetitions are separate receipts. Package APIs, features and dependencies unchanged. No registry-resolution or independent review claim.",
-  "raw_archive": "target/ecosystem-v0.0.61/wasm-assurance-2026-11-11.tar.gz",
-  "archive_bytes": 30387,
-  "archive_sha256": "c6d998ef3e681dfbed62d0a0e3c7bd6ee244b360d4dcae1bd1de8bf633819d7b",
+  "raw_archive": "docs/evidence/wasm-assurance-2026-11-11.tar.gz",
+  "archive_bytes": 11879,
+  "archive_sha256": "a99ec04b1be59946c6914b866a4427b5917e69df78138fa226fd7edd75e734c0",
   "members": [
     {
       "path": "noyalib-100-browser-descendant-green.log",
@@ -166,81 +166,6 @@
       "sha256": "7d3880e4e8ac5757966c59a353cf6f69c146a52fc911f44a00b0ef6047b519d6"
     },
     {
-      "path": "noyalib-100-runtime-action-review/denoland-setup-deno/package.json",
-      "bytes": 462,
-      "sha256": "25eee05ff7f26ce9a6b89bbb4a506f9d30342c6f9f886a05dc66006bbdb12461"
-    },
-    {
-      "path": "noyalib-100-runtime-action-review/denoland-setup-deno/src/cache.ts",
-      "bytes": 2992,
-      "sha256": "db3819c3195866b11ee23b3dd9425e0034f6f7d7fafdd020a74e87e7f8d693b1"
-    },
-    {
-      "path": "noyalib-100-runtime-action-review/denoland-setup-deno/src/install.ts",
-      "bytes": 2513,
-      "sha256": "0da0a29cf1ef9545830bef6601a49bf90d58a504e2e41eb3f1f059e73833645e"
-    },
-    {
-      "path": "noyalib-100-runtime-action-review/denoland-setup-deno/src/main.ts",
-      "bytes": 1738,
-      "sha256": "2bb9e59c21430d65955fe81d3e3eb01c502cc39e098d3196c29beaa31da43c24"
-    },
-    {
-      "path": "noyalib-100-runtime-action-review/denoland-setup-deno/src/post.ts",
-      "bytes": 283,
-      "sha256": "f65f87afbe290cd227f27d300d84ff589329b6cfe81fc2763fda5826346d87ae"
-    },
-    {
-      "path": "noyalib-100-runtime-action-review/denoland-setup-deno/src/version.ts",
-      "bytes": 5871,
-      "sha256": "771f38754c4405d7229d5d08297777007044b72c36baa17c97d5b361e0a616be"
-    },
-    {
-      "path": "noyalib-100-runtime-action-review/oven-sh-setup-bun/bun.lock",
-      "bytes": 20873,
-      "sha256": "797aa130c1d19ba5a0080717e9d380ee017abefd2eb27578ce56519c500eb918"
-    },
-    {
-      "path": "noyalib-100-runtime-action-review/oven-sh-setup-bun/package.json",
-      "bytes": 1428,
-      "sha256": "2ad54d7d77f95291c19bec6edca3d90665d4424875f161b2e3ad138360a66871"
-    },
-    {
-      "path": "noyalib-100-runtime-action-review/oven-sh-setup-bun/src/action.ts",
-      "bytes": 6698,
-      "sha256": "e45db3cd7a69a1921deb6de230f87c66c492001f47435b1a9ae4ae29d3a6afdc"
-    },
-    {
-      "path": "noyalib-100-runtime-action-review/oven-sh-setup-bun/src/bunfig.ts",
-      "bytes": 2066,
-      "sha256": "760438e9f77023b8ae06d7f7ae71aa2590f6f244fbab005273074a9fcdc5e069"
-    },
-    {
-      "path": "noyalib-100-runtime-action-review/oven-sh-setup-bun/src/cache-save.ts",
-      "bytes": 508,
-      "sha256": "fe89ec962436862ff96bd413a6d939110f56cb0d5602a258b6819593c76782c9"
-    },
-    {
-      "path": "noyalib-100-runtime-action-review/oven-sh-setup-bun/src/download-url.ts",
-      "bytes": 2319,
-      "sha256": "e41224cae711ad78ce24c197ccbc6d60f64ed03bd182c06bb756c03680af8c08"
-    },
-    {
-      "path": "noyalib-100-runtime-action-review/oven-sh-setup-bun/src/index.ts",
-      "bytes": 1342,
-      "sha256": "bacf4035810d9c179fe72ec2b00057d1b3125d83dbbe2125e94e830dab8918ec"
-    },
-    {
-      "path": "noyalib-100-runtime-action-review/oven-sh-setup-bun/src/registry.ts",
-      "bytes": 1507,
-      "sha256": "b280a2201f428f76066aee011b03aad41ac620a6454e9d602b7124a52c5b9b02"
-    },
-    {
-      "path": "noyalib-100-runtime-action-review/oven-sh-setup-bun/src/utils.ts",
-      "bytes": 4780,
-      "sha256": "2adb1664810832dc8a6b9fb41cc5b78ebbac38fc5a090e38dad0b7a708a47e52"
-    },
-    {
       "path": "noyalib-100-runtime-actions.json",
       "bytes": 4546,
       "sha256": "60a36fb0733efc409a65c10bc7e6d19c63313e4dff4a1761da6cdc33b2d996fa"
@@ -326,5 +251,6 @@
       "sha256": "6a1c1f557dab4628a5cd2124f6b5e6acfb0483833877cbb2400bf7e76f9584db"
     }
   ],
-  "source_signature": "GPG signature verified locally for 9ab1502 and 2ed44f3"
+  "source_signature": "GPG signature verified locally for 9ab1502 and 2ed44f3",
+  "installer_review_scope": "Pinned upstream installer sources were inspected locally and remain retrievable at their official immutable refs. The evidence archive distributes observations and metadata, without copying third-party action source."
 }
