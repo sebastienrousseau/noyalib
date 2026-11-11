@@ -27,6 +27,11 @@ on:
           Scorecard's SAST check reads for a merged commit.
         required: false
         type: string
+      run_ecosystem_fuzz:
+        description: 'Run every pinned family fuzz target for one hour and retain actual receipts'
+        required: false
+        type: boolean
+        default: false
       run_tests:
         description: 'Test a SHA already merged into the default branch and record its result'
         required: false
@@ -236,6 +241,10 @@ jobs:
           # END HISTORICAL TEST STATUS
           PY
 
+  ecosystem-fuzz:
+    if: github.event_name == 'workflow_dispatch' && inputs.run_ecosystem_fuzz
+    uses: ./.github/workflows/ecosystem-fuzz.yml
+
   # ── Soak fuzz (weekly) ─────────────────────────────────────────────
   # Long-running fuzz campaigns that don't fit the per-push budget.
   # Each target gets a multi-hour slot per week; crashes / corpus
@@ -249,7 +258,7 @@ jobs:
     # set. Sharing target/ across fuzz configurations is exactly
     # how a stale cache could hide a fuzz regression.
     # A dispatch that names a sha is a targeted CodeQL scan, not a soak.
-    if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && !inputs.sha && !inputs.run_tests)
+    if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && !inputs.sha && !inputs.run_tests && !inputs.run_ecosystem_fuzz)
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -297,7 +306,7 @@ jobs:
     # CACHE-POISONING GUARD: isolated CARGO_TARGET_DIR — Miri's
     # interpreter fingerprint is distinct from every other job.
     # A dispatch that names a sha is a targeted CodeQL scan, not a soak.
-    if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && !inputs.sha && !inputs.run_tests)
+    if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && !inputs.sha && !inputs.run_tests && !inputs.run_ecosystem_fuzz)
     runs-on: ubuntu-latest
     permissions:
       contents: read

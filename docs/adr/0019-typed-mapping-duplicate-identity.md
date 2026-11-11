@@ -63,3 +63,9 @@ Require failing-first cases across streaming and fallback, std and alloc,
 all duplicate policies, aliases and tagged keys. Re-run complete batteries,
 the actual consumer corpus and sustained differential fuzzing. Document
 any resulting parse behavior change as breaking under the patch policy.
+
+
+The original 88-byte finding is retained as
+[tracked evidence](../evidence/pending-typed-duplicate-identity.bin).
+The full-family campaign includes it in the comparison corpus. Its failure
+remains visible until the maintainer selects and verifies the contract.

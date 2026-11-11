@@ -448,6 +448,21 @@ exception or publication approval. The v0.0.61 candidate already passes
 that input. Keep v0.0.60 publication held while the source strategy and
 independent review remain unresolved.
 
+## Full family campaign preflight, 2026-11-11
+
+Six new matrix guards fail against the earlier core-only composition and
+pass after discovering every pinned repository. The actual local inventory
+yields 31 targets. Wrong checkouts, altered tracked fuzz manifests, omitted
+products, unsafe target names and empty inventories are refused. Actionlint,
+workflow security analysis and all 22 historical-dispatch tests pass.
+
+The new full-family workflow is an opt-in Security dispatch. It uses the
+core campaign driver for every product and preserves the known 88-byte
+typed-duplicate input as a real comparison failure. Its one-hour runtime
+receipts remain pending; the unchanged weekly workflows and local campaign
+records retain their own sources and results. No release or review gate is
+waived by the added execution path.
+
 ## Implementation and acceptance
 
 The next signed MCP checkpoint fixes session admission in `839e637` and

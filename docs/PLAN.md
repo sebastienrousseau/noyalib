@@ -81,6 +81,31 @@ repair and signed detached recovery, including its failed core edit gate.
 The [review packet](ECOSYSTEM-REVIEW.md) gives the source scopes, review
 boundaries and concrete decisions without implying approval.
 
+## Full family campaign execution
+
+The current inventory has 31 targets: twenty core, two CLI, two LSP, three
+MCP, two WASM and two facade. A manual full-family run uses the existing
+Security workflow's `run_ecosystem_fuzz` input on this branch. Inventory
+comes from the six pinned checkouts, refuses changed tracked fuzz sources,
+and rejects missing products, wrong commits, unsafe names and empty
+inventories. Six failing-first guard cases pass locally.
+
+The reusable campaign workflow uses separate read-only Linux jobs, no
+restored build cache, isolated sanitizer directories and at most sixteen
+concurrent jobs. Every target requests 3,600 seconds and retains source,
+input hashes, actual elapsed execution, lock integrity, logs, corpus and
+findings. Satellite overrides are explicit candidate evidence, never
+registry-resolution proof. The duplicate-key input is retained in
+[tracked evidence](evidence/pending-typed-duplicate-identity.bin) and copied
+into its comparison corpus; it remains a failure until the contract is
+resolved. Full dispatch skips the older four-target soak and Miri jobs.
+
+Done means each required target has a successful full-duration receipt
+on its recorded source, or a clearly open finding. A successful matrix
+inventory or smoke run is not a completed campaign. Preserve existing
+local campaigns until equivalent source-bound replacement evidence exists.
+No unfinished target receives time or execution credit.
+
 ## Constraints and work order
 
 The live values are edition 2024, `rust-version = "1.89.0"`.
