@@ -49,6 +49,30 @@ separates completed totals from lower bounds and unknown measurements. The
 records the exact source scopes and raw log hashes. Sustained campaigns
 and independent review remain acceptance work.
 
+## Completion campaign
+
+The renewed request is to finish every acceptance row. Work proceeds in
+this order on the existing future branches:
+
+1. Close reproduced parser/oracle findings and retain full-value checks.
+   Run the exact-source fuzz inventory and fix failures before crediting it.
+2. Add resource gates using actual product boundaries, beginning with WASM
+   parse/edit/free memory growth. A real retained-document leak must fail
+   the same gate that passes repeated normal runs.
+3. Complete remaining protocol, filesystem, diagnostics and consumer cases;
+   obtain fresh target/OS, package, recovery and performance receipts.
+4. Consolidate the review packet and resolve the duplicate-key contract,
+   held MCP source decision, independent reviewer and continuity owner.
+5. Reassess all 66 category/repository cells against recorded evidence.
+   Keep an unmet criterion open until its observation exists.
+
+Hosted checkpoint `a346c3e` has eighty successful checks and ten conditional
+skips. Subsequent changes require their own CI receipt. The WASM resource
+and runtime-contract work now has signed implementation and local
+[assurance evidence](ecosystem-wasm-assurance-2026-11-11.json). The remaining
+human review has no recorded reviewer yet; a reviewer identity is requested
+while independent technical work continues.
+
 ## Constraints and work order
 
 The live values are edition 2024, `rust-version = "1.89.0"`.

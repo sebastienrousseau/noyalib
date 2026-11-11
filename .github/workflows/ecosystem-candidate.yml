@@ -139,6 +139,15 @@ jobs:
       - uses: jetli/wasm-pack-action@0d096b08b4e5a7de8c28de67e11e945404e9eefa
         with:
           version: 'v0.15.0'
+      - uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed
+        with:
+          deno-version: '2.9.8'
+          cache: 'false'
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: '1.4.4'
+          no-cache: true
+          token: ''
       - name: Prepare the pinned WASM candidate
         env:
           PRODUCT_COMMIT: ${{ needs.sources.outputs.wasm }}
@@ -151,13 +160,25 @@ jobs:
         run: |
           node --test scripts/tests/test-browser-shutdown.mjs
           wasm-pack test --node
+          wasm-pack build --release --target nodejs --out-dir pkg-node -- --locked
+          node --test scripts/tests/test-runtime-resources.mjs
+          node --expose-gc scripts/check-runtime-resources.mjs pkg-node normal > runtime-resources-node.json
+          node scripts/check-runtime-contract.mjs pkg-node/noyalib_wasm.js > runtime-contract-node.json
+          bun -e 'if (Bun.version !== "1.4.4") throw Error("Unexpected Bun version")'
+          bun scripts/check-runtime-contract.mjs pkg-node/noyalib_wasm.js > runtime-contract-bun.json
+          wasm-pack build --release --target deno --out-dir pkg-deno -- --locked
+          deno eval 'if (Deno.version.deno !== "2.9.8") throw Error("Unexpected Deno version")'
+          deno run --no-config --allow-read=pkg-deno scripts/check-runtime-contract.mjs pkg-deno/noyalib_wasm.js > runtime-contract-deno.json
+          wasm-pack build --release --target no-modules --out-dir pkg-no-modules -- --locked
+          node scripts/check-browser-consumer.mjs pkg-no-modules "$(command -v google-chrome)" --no-modules > runtime-contract-classic.json
           wasm-pack build --release --target bundler --scope sebastienrousseau -- --locked
           python3 scripts/prepare-npm-package.py pkg
           scripts/check-npm-package.sh pkg
           python3 scripts/check-package-size.py pkg/noyalib_wasm_bg.wasm
           npm ci --ignore-scripts --prefix tests/typescript
           npm audit --package-lock-only --ignore-scripts --prefix tests/typescript
-          node scripts/check-installed-consumer.mjs pkg "$(command -v google-chrome)"
+          CHROME_BIN="$(command -v google-chrome)" node --test scripts/tests/test-browser-resources.mjs
+          node scripts/check-installed-consumer.mjs pkg "$(command -v google-chrome)" --resources > runtime-resources-browser.json
       - name: Refuse changed sources or locks
         if: always()
         run: python3 noyalib/scripts/prepare-ecosystem-candidate.py verify --receipt candidate-receipt.json
@@ -165,7 +186,11 @@ jobs:
         if: always()
         with:
           name: candidate-wasm-consumer
-          path: candidate-receipt.json
+          path: |
+            candidate-receipt.json
+            product/runtime-resources-node.json
+            product/runtime-resources-browser.json
+            product/runtime-contract-*.json
           if-no-files-found: error
 
   parity:

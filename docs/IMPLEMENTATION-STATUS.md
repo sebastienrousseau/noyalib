@@ -326,6 +326,44 @@ Production source and Cargo declarations remain byte-identical to
 that production scope. Final-source sustained campaigns, the duplicate-key
 decision, independent review and release acceptance remain open.
 
+## Runtime and oracle assurance follow-up
+
+Signed core fix `48f2b96` extends the empty-line repair to plain-scalar
+tokens that consume a trailing tab-only line. The original six bytes are
+retained. The expanded regression failed before the change and passes
+with LF, CRLF and lone CR. All 153 properties, eighteen alloc oracle tests,
+strict clippy and both complete replay inventories pass. Candidate values
+and fresh archive values still have to agree in full. Production source
+and Cargo declarations remain identical to `a57b719`. The clean signed
+package is 1,319,791 bytes within the unchanged 1,320,000-byte limit.
+
+WASM signed source `2ed44f3aee8d76128b903b57d1371332e511a12f` adds
+34 shared public-boundary checks. They execute against actual optimized
+Node, Bun and Deno exports; classic Chromium passes 55 combined checks.
+The installed bundler consumer runs the same contract before its memory
+workload. Numeric safety, non-finite projection versus validation, tags,
+UTF-8 spans, cycles, shared references and atomic refused edits are covered.
+Public exports, Cargo features, MSRV and dependencies remain unchanged.
+
+The resource workload checks both WASM linear memory and JavaScript heap
+after collection. Normal operations must stay within 131,072 and 524,288
+bytes of growth after warm-up. Retaining real documents and retaining
+parsed JavaScript values each breach the same unchanged budgets; losing
+heap observations also fails. Four Node tests, three installed-browser
+tests and three shutdown regressions pass. The cleanup correction
+`9ab1502` reaches a private browser process group's descendants after its
+parent exits. Its failing-first regression and actual browser consumers
+pass after the fix.
+
+The final WASM export, package, size, resource and shutdown battery passes
+all nine checks. The optimized module remains 614,712 bytes raw and
+212,267 bytes at gzip level 9. Deno 2.9.8 and Bun 1.4.4 installers are
+pinned to reviewed immutable official action commits. The candidate CI
+retains runtime reports and repeats these checks on Linux. The
+[assurance receipt](ecosystem-wasm-assurance-2026-11-11.json) records raw
+log hashes and its archive. Local timing observations do not establish
+a dedicated-host latency baseline, registry acceptance or human review.
+
 ## Implementation and acceptance
 
 “Local evidence” means the named check passed in its stated scope. Missing
@@ -355,9 +393,9 @@ remaining evidence. They are not implied by the local results.
 | LSP3 | Neovim 0.12.6 and installed VS Code 1.141.0 VSIX passed. The VSIX startup bug was reproduced and fixed. | Installed marketplace artifacts and the rest of the claimed OS matrix. |
 | MCP2 | Stdio, negotiated and stateless HTTP, legacy SSE, SDK, limits and guard suites passed 124 tests. Added HTTP header fuzz coverage. | Complete revision-by-transport acceptance for disconnect, cancellation, concurrency and supported filesystems; independent review. |
 | MCP3 | Published v0.0.59 npm package recovered from the verified native archive offline, refused corrupt cache and ran a real stdio parse. A future npm release gate repeats the drill. | Apply all five channel checks to v0.0.60 after the hold is resolved. |
-| WASM1 | Thirty-one real Node WASM tests passed. Browser tests cover projection, spans, failed edits, cycles, sparse arrays and resource release. | Fill unmeasured numeric, memory and lifetime boundary cases. |
-| WASM2 | Optimized corrected module is 614,712 bytes raw and 212,267 bytes gzip, within the 628,759 and 219,025 byte limits. Three Node benchmark runs record cold import, warmed operations and process RSS. | Establish sustained memory-growth bounds and comparable browser timings. |
-| WASM3 | Installed optimized tarball includes both licenses; TypeScript 7.0.2, Node 24.22.2 and a webpack 5.112.2 bundle in Chromium passed. | Repeat against the eventual registry artifact and any newly claimed platforms. |
+| WASM1 | Thirty-one real Node WASM tests and 34 shared runtime-contract checks pass. Classic Chromium passes 55 combined checks. Actual Node/browser memory and cleanup fault regressions pass. | Complete final-source hosted and sustained campaign acceptance; keep per-case coverage explicit. |
+| WASM2 | Optimized module is 614,712 bytes raw and 212,267 bytes gzip within unchanged limits. Actual Node/browser normal runs pass both growth budgets; real WASM/JS retention and missing observations fail. | Comparable dedicated-host timing evidence and final signed-source repeated resource receipts. |
+| WASM3 | Installed optimized tarball includes both licenses; TypeScript, Node and webpack/Chromium pass. Optimized Node, Bun 1.4.4, Deno 2.9.8 and classic Chromium execute the shared contract. | Eventual registry artifact and final-source hosted runtime receipts. |
 | SHIM1 | The standalone captured contract and extended tag, number and location cases passed. Equivalent compatibility entry points now have a separate benchmark from resolver-profile costs. | Complete extended location, tag and number cases and measure equivalent core overhead. |
 | I1 | Eleven shared cases pass in the earlier hosted job; the expanded thirteen-case corpus passes locally through the corrected products. Receipts record Node, Rust and SDK versions and source identities. The workflow builds each checkout from its lock. | Scheduled execution, additional contract cases and final registry-source parity. |
 | S2 | Reviewed changed source and trust boundaries, retained existing vet criteria, and recorded the source and advisory identities. | Independent security review, registry locks and closing scans. |
