@@ -789,6 +789,7 @@ mod tests {
         assert_eq!(cfg.port, 8080);
     }
 
+    #[cfg(feature = "std")]
     #[test]
     fn from_reader_typed() {
         // `serde_yaml::from_reader` drop-in: deserialize straight from
@@ -804,6 +805,7 @@ mod tests {
         );
     }
 
+    #[cfg(feature = "std")]
     #[test]
     fn to_writer_then_from_str_round_trips() {
         // `serde_yaml::to_writer` drop-in: serialize into an
