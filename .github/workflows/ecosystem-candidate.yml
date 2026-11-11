@@ -5,7 +5,6 @@ name: Ecosystem candidate
 
 on:
   pull_request:
-  workflow_dispatch:
 
 permissions:
   contents: read
@@ -147,6 +146,7 @@ jobs:
       - name: Exercise actual JS exports and the optimized installed package
         working-directory: product
         run: |
+          node --test scripts/tests/test-browser-shutdown.mjs
           wasm-pack test --node
           wasm-pack build --release --target bundler --scope sebastienrousseau -- --locked
           python3 scripts/prepare-npm-package.py pkg
