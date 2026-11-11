@@ -20,10 +20,6 @@ const REFUSED: &[&str] = &[
     // a key the formatter re-indents by one column: kept verbatim, the
     // lines would no longer be indented past the key.
     "6HB6#0",
-    // A literal scalar whose last line is spaces with no line break:
-    // the spaces are content (one past the indent), but the formatter
-    // trims a spaces-only last line.
-    "L24T#1",
 ];
 
 fn decode_markers(input: &str) -> String {
