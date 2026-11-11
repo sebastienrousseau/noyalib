@@ -64,10 +64,33 @@ pub(crate) fn spaced_sequence_tabs(source: &str) -> Option<String> {
     (!replacements.is_empty()).then(|| apply_replacements(source, replacements))
 }
 
-/// Compose the proven sequence and flow spelling repairs.
+/// Replace tab separation on empty lines, outside scalar tokens.
+fn spaced_empty_line_tabs(source: &str) -> Option<String> {
+    let mut replacements = Vec::new();
+    for (kind, start, end) in lexical_tokens(source)? {
+        let text = source.get(start..end)?;
+        if kind != SyntaxKind::Whitespace || !text.contains('\t') {
+            continue;
+        }
+        let line_start = source[..start].rfind(['\n', '\r']).map_or(0, |i| i + 1);
+        let line_end = source[end..]
+            .find(['\n', '\r'])
+            .map_or(source.len(), |i| end + i);
+        if source[line_start..line_end]
+            .bytes()
+            .all(|b| b == b' ' || b == b'\t')
+        {
+            replacements.push((start, end, text.replace('\t', " ")));
+        }
+    }
+    (!replacements.is_empty()).then(|| apply_replacements(source, replacements))
+}
+
+/// Compose the proven separation and flow spelling repairs.
 #[allow(dead_code)]
 pub(crate) fn collection_spelling(source: &str) -> Option<String> {
     let separated = spaced_sequence_tabs(source);
+    let separated = spaced_empty_line_tabs(separated.as_deref().unwrap_or(source)).or(separated);
     quoted_empty_flow_keys(separated.as_deref().unwrap_or(source)).or(separated)
 }
 
@@ -322,6 +345,20 @@ mod tests {
         let before: serde_json::Value = noyalib::from_str(source).unwrap();
         let after: serde_json::Value = noyalib::from_str(&normalized).unwrap();
         assert_eq!(before, after);
+    }
+
+    #[test]
+    fn empty_line_tab_separation_preserves_the_complete_value() {
+        for source in ["-  \r\t\t", "-  \n\t\t", "-  \r\n\t\t"] {
+            let normalized = collection_spelling(source).expect("empty-line separation");
+            assert_eq!(normalized, source.replace('\t', " "));
+            let before: serde_json::Value = noyalib::from_str(source).unwrap();
+            let after: serde_json::Value = noyalib::from_str(&normalized).unwrap();
+            assert_eq!(before, after);
+        }
+        for source in ["text: 'value\tkept'\n", "text: |\n  \t\n"] {
+            assert!(collection_spelling(source).is_none(), "{source:?}");
+        }
     }
 
     #[test]
