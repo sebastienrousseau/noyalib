@@ -40,6 +40,7 @@ fuzz_target!(|data: &[u8]| {
                 && !anchor_name_outside_libyaml(s)
                 && !yaml_1_1_line_break(s)
                 && !oracle_agrees(oracle_normalization::unique_colliding_anchors(s), &a)
+                && !oracle_agrees(oracle_normalization::terminated_spaced_block(s), &a)
             {
                 panic!(
                     "shim != serde_yaml on accepted input (len {}):\n  shim     : {}\n  upstream : {}",

@@ -64,6 +64,13 @@ fuzz_target!(|data: &[u8]| {
         && !anchor_name_outside_libyaml(s)
         && !flow_entry_starts_with_indicator(s)
         && !yaml_1_1_line_break(s)
+        && !oracle_normalization::terminated_spaced_block(s)
+            .filter(|source| {
+                noyalib::from_str::<serde_json::Value>(source)
+                    .is_ok_and(|value| numeric_equal(&noya, &value))
+            })
+            .and_then(|source| serde_yaml_ng::from_str::<serde_json::Value>(&source).ok())
+            .is_some_and(|expected| numeric_equal(&noya, &expected))
         && !oracle_normalization::unique_colliding_anchors(s)
             .filter(|source| {
                 noyalib::from_str::<serde_json::Value>(source)

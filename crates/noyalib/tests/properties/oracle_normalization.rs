@@ -9,6 +9,20 @@ use std::collections::BTreeMap;
 type Lexeme = (SyntaxKind, usize, usize);
 type Replacement = (usize, usize, String);
 
+/// YAML suite L24T retains a final break after surplus spaces at EOF.
+/// Terminate that source line for archived parsers. Callers must first
+/// prove the candidate value unchanged, then compare the entire oracle value.
+pub(crate) fn terminated_spaced_block(source: &str) -> Option<String> {
+    let tokens = lexical_tokens(source)?;
+    let (kind, _, end) = tokens.last()?;
+    let last_line = source.rsplit(['\n', '\r']).next()?;
+    (matches!(kind, SyntaxKind::LiteralScalar | SyntaxKind::FoldedScalar)
+        && *end == source.len()
+        && !last_line.is_empty()
+        && last_line.bytes().all(|byte| byte == b' '))
+    .then(|| format!("{source}\n"))
+}
+
 // The compatibility target needs this classifier; the value-only target
 // includes this shared module without using acceptance classifications.
 #[allow(dead_code)]
@@ -66,14 +80,14 @@ pub(crate) fn unique_colliding_anchors(source: &str) -> Option<String> {
     collision.then(|| apply_replacements(source, replacements))
 }
 
-/// Quote omitted flow keys for a string-keyed JSON comparison. Callers
-/// must reparse with the oracle and compare the entire resulting value.
+/// Quote omitted keys and leading-colon flow scalars for archived parsers.
+/// Callers must reparse and compare the entire resulting JSON value.
 pub(crate) fn quoted_empty_flow_keys(source: &str) -> Option<String> {
     let tokens = lexical_tokens(source)?;
     let mut previous = None;
     let mut flow = Vec::new();
     let mut replacements = Vec::new();
-    for (kind, start, _) in tokens {
+    for (kind, start, end) in tokens {
         match kind {
             SyntaxKind::Whitespace
             | SyntaxKind::Newline
@@ -86,6 +100,14 @@ pub(crate) fn quoted_empty_flow_keys(source: &str) -> Option<String> {
                 ) && !flow.is_empty() =>
             {
                 replacements.push((start, start, "\"\"".to_owned()));
+            }
+            SyntaxKind::PlainScalar if !flow.is_empty() => {
+                // YAML 1.2.2 §7.3.3 permits ':' followed by a plain-safe
+                // character, including in a flow collection.
+                let text = source.get(start..end)?.trim_matches([' ', '\t']);
+                if text.starts_with(':') && !text.contains(['\n', '\r']) {
+                    replacements.push((start, end, serde_json::to_string(text).ok()?));
+                }
             }
             SyntaxKind::OpenBrace | SyntaxKind::OpenBracket => flow.push(kind),
             SyntaxKind::CloseBrace | SyntaxKind::CloseBracket => {
@@ -130,6 +152,33 @@ fn apply_replacements(source: &str, replacements: Vec<Replacement>) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn terminal_spaced_block_normalization_preserves_l24t_values() {
+        for source in ["foo: |\n  x\n   ", "foo: >\n  x\n   "] {
+            let normalized = terminated_spaced_block(source).expect("spaced terminal line");
+            let before: noyalib::Value = noyalib::from_str(source).unwrap();
+            assert_eq!(before["foo"].as_str(), Some("x\n \n"));
+            let after: noyalib::Value = noyalib::from_str(&normalized).unwrap();
+            assert_eq!(before, after);
+            assert_eq!(normalized, format!("{source}\n"));
+        }
+        for source in ["foo: |\n  x", "foo: plain   ", "foo: |\n  x\n   \n"] {
+            assert!(terminated_spaced_block(source).is_none(), "{source:?}");
+        }
+    }
+
+    #[test]
+    fn leading_colon_flow_plain_scalars_remain_compared() {
+        let source = "{:m, other: [:value]}";
+        let normalized = quoted_empty_flow_keys(source).expect("leading-colon flow scalar");
+        let before: serde_json::Value = noyalib::from_str(source).unwrap();
+        let after: serde_json::Value = noyalib::from_str(&normalized).unwrap();
+        assert_eq!(before, after);
+        assert_eq!(normalized, "{\":m\", other: [\":value\"]}");
+        assert_eq!(before[":m"], serde_json::Value::Null);
+        assert_eq!(before["other"][0], ":value");
+    }
 
     #[test]
     fn later_id_collision_does_not_change_an_earlier_alias() {

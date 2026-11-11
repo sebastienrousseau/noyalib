@@ -32,6 +32,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   registry-resolution evidence as a distinct release gate.
 - Compare archived parser oracles without accepting under-indented quoted
   continuations or allowing later anchor-ID collisions to corrupt aliases.
+- Keep archived comparisons active for leading-colon flow scalars and the
+  official L24T terminal-space case, with full-value checks after normalization.
 - Quote unsigned radix strings under lossless resolution while retaining
   quoting for decimal overflow strings. Compatibility roundtrips preserve
   their original string values and keys.
