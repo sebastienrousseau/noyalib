@@ -2227,7 +2227,7 @@ fn loader_sequence_mapping_lifecycle() {
     assert_eq!(v["items"][1]["val"].as_i64(), Some(2));
 }
 
-// --- loader.rs: duplicate key error (line 293 - ScalarInMergeElement) ---
+// --- loader.rs: duplicate key error (ScalarInMergeElement) ---
 
 #[test]
 fn loader_merge_key_with_scalar_in_sequence() {
@@ -2745,8 +2745,7 @@ fn loader_merge_key_value_push() {
     assert_eq!(v["child"]["z"].as_i64(), Some(3));
 }
 
-// --- loader.rs: duplicate key Last policy replaces at same position (lines
-// 423-435) ---
+// --- loader.rs: duplicate key Last policy replaces at same position ---
 
 #[test]
 fn loader_duplicate_key_last_replaces() {
@@ -3863,7 +3862,7 @@ fn ref_value_deserialize_struct_spanned_nested_in_mapping() {
 fn singleton_map_recursive_transform_tagged() {
     use noyalib::with::singleton_map_recursive;
 
-    // Create a value that has Tagged variant to exercise lines 47-51
+    // Exercise the Tagged variant.
     // The transform_to_singleton_map function processes Tagged values recursively
     #[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
     enum Op {
@@ -3940,7 +3939,7 @@ fn singleton_map_with_deserialize_tagged_transform() {
 #[test]
 fn events_flow_mapping_empty_value_state() {
     // Flow mapping with implicit key (no ?) -> FlowMappingEmptyValue state
-    // This is the path at line 606-607 -> State::FlowMappingEmptyValue -> line 124
+    // Exercise State::FlowMappingEmptyValue.
     let yaml = "{a, b: 1}\n";
     let result: Result<Value> = from_str(yaml);
     // 'a' is an implicit key with empty value
