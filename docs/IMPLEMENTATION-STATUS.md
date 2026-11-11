@@ -170,8 +170,161 @@ formatter delta in their first-party audits; all five pass cargo-vet.
 
 The hosted [strict MCP Inspector check](https://github.com/sebastienrousseau/noyalib-mcp/actions/runs/43040927622)
 passes on the exact MCP candidate with the audited core. Cross-platform
-candidate CI and final-source fuzz acceptance remain open. No registry
+candidate CI and final-source fuzz acceptance remain open at that earlier checkpoint. No registry
 publication, tag change or default-branch merge took place in this follow-up.
+
+## CI correction checkpoint, 2026-11-11
+
+Signed core source `0ff5b3c2119ce60a1830b205b6c5c9c466234fad` passes
+[CodeQL](https://github.com/sebastienrousseau/noyalib/runs/130618470574),
+[package size](https://github.com/sebastienrousseau/noyalib/actions/runs/43047370527/job/130614953440),
+[complexity](https://github.com/sebastienrousseau/noyalib/actions/runs/43047370527/job/130614952935)
+and the [installed WASM consumer](https://github.com/sebastienrousseau/noyalib/actions/runs/43047369493/job/130614932550).
+The candidate workflow now runs on pull-request refs, removing the manual
+default-branch execution path that CodeQL flagged. No alert suppression or
+budget increase was added. All fifteen native product/OS jobs pass.
+
+The loader extraction retains both declaration-span guards and alias-cost
+calculations. Std and alloc anchor, serializer and property suites pass.
+The `process_event` complexity baseline shrinks from 177 to 173 lines.
+Removing obsolete source coordinates from test comments keeps every test
+and assertion. At signed source `266f584`, the clean package with the two new oracle
+regressions is 1,319,431 bytes against the unchanged 1,320,000-byte ceiling.
+The subsequent comment-separation case retains that ceiling.
+
+Chromium cleanup waits for inherited streams to close and retries transient
+profile-directory races with a fixed bound. The real child-process test
+fails with the former exit-only wait. Both shutdown tests and the installed
+npm consumer's 21 browser checks pass. Persistent cleanup errors still fail
+the gate. All five refreshed satellite source reviews pass cargo-vet.
+
+Signed source `266f5844d06ef4df229a83db706b7aa8a1954f27` repairs two
+further comparison assumptions. Multiline flow-map plain keys receive a
+semantics-preserving quoted spelling for libyaml. Large unsigned radix
+strings match only the exact integer outside the default i64 range,
+consistent with ADR-0004. Production resolution is unchanged. Both original
+inputs pass sanitizer replay. The subsequent compatibility campaign found
+libyaml accepting a comment marker attached to a closed quote. That
+specific scanner mismatch is now pinned with its original input. All three
+original inputs pass sanitizer replay; 148 hosted properties and thirteen
+alloc-only oracle tests pass. A fresh compatibility campaign runs on signed
+source `390af59`; the prior failure remains recorded.
+
+The hosted [six-consumer parity job](https://github.com/sebastienrousseau/noyalib/actions/runs/43047369493/job/130614933181)
+passes. The [CI correction evidence](ecosystem-ci-repair-evidence-2026-11-11.json)
+records source identities, check URLs and hashes for the checkpoint
+archive. These observations supplement the earlier full batteries; the
+final signed-source matrix, independent review and registry release gates
+remain separate. Daybreak access is not required.
+
+The six campaign runners now retain observed execution counts as lower
+bounds when the final summary is absent. Missing counts and durations stay
+unknown. A completion summary, full duration, successful exit, unchanged
+lock and no finding are required to pass. Four regression cases fail with
+the old accounting and pass in every repository. A real short smoke reports
+fourteen executions in four seconds; it is not a sustained release receipt.
+Re-reading three failed logs recovers lower bounds of 929,138, 65 and
+23,735 executions. Original receipts remain unchanged and marked failed.
+
+## Scanner, oracle and typed-key checkpoint, 2026-11-11
+
+Signed core source `5b8a1f9ac109e758088fbf24035454d2b6e73f64` rejects a
+block-level scalar whose required mapping key expires without a colon.
+The original input was accepted through value, streaming and CST parsing;
+all three now reject it. Valid indented values, mapping siblings and
+indentless sequences remain covered. The changelog records the breaking
+acceptance change.
+
+The development-oracle follow-up at `0c987e3` handles trailing line
+separation and legal inline tabs after sequence markers. Both spelling
+repairs compose, preserving the complete candidate value and requiring a
+fresh archive parse to agree. Scalar content remains untouched. All 152
+properties, seventeen alloc-only oracle tests, fourteen differential
+regressions and twelve compatibility regressions pass with both seed corpora.
+
+The later production fix `e78a36b` preserves written explicit typed-map
+keys when AST fallback consumes trailing separation. A tag elsewhere no
+longer respells `0x1F` as "31" or `~` as "null". Only the key-text slice
+changes; diagnostic spans and canonical `Value` keys retain their contracts.
+Both new regressions fail before the fix. All eight typed-key tests and
+the exact original 188-byte sanitizer replay pass afterward. The original
+bytes are retained in both the crate fixtures and fuzz regressions.
+
+At signed checkpoint `6d2f324db7f04b5788deaf2393ab58b7727e5664`, the
+complete batteries pass 6,745 std, 6,723 baseline alloc and 7,064 portable
+feature tests, with zero failures or ignores. All 590 doctests pass with
+eight existing ignores. Strict clippy and the unchanged 81-entry complexity
+baseline pass. All twelve isolated bare-metal checks pass across stable
+and Rust 1.89, baseline and portable features, on three architectures.
+All five products pass strict clippy, tests, doctests and cargo-vet against
+the corrected core. All thirty family hygiene checks pass. The official
+clean package is 1,319,801 bytes against the unchanged 1,320,000-byte limit.
+
+The [evidence record](ecosystem-ci-repair-evidence-2026-11-11.json) retains
+source identities and a verified raw-output archive. The thirty-target
+inventory keeps its original source identities and outcomes. Fresh one-hour
+oracle campaigns use immutable signed snapshots of the corrected source.
+Final hosted CI, sustained final-source acceptance, independent review and
+registry checks remain open. The MCP immutable-tag decision remains held.
+Daybreak access is not an acceptance prerequisite.
+
+## Plain continuation indentation follow-up
+
+Signed fix `6b913fe` rejects tabs that precede required plain-scalar
+continuation spaces. The exact 12-byte input previously passed value,
+streaming and CST parsing; its failing-first regression now rejects it
+through all three paths. Tabs after required spaces, in content, and on
+blank or comment lines retain their behavior.
+
+The stricter check exposed a formatter layout defect in official case
+UV7Q. Reindenting its parent left too few spaces before a continuation tab.
+The formatter now supplies the required prefix spaces. Its new regression
+passes with LF, CRLF and lone CR at indentation sizes two and four, including
+idempotence. The existing formatter refusal set is unchanged.
+
+At signed checkpoint `a57b7198669e41fe3034db4e44f2e274baf96388`, complete
+batteries pass 6,748 std, 6,726 baseline alloc and 7,067 portable tests,
+with zero failures or ignores. All 590 doctests pass with eight existing
+ignores. Strict clippy and the unchanged 81-entry complexity baseline pass.
+All retained differential and compatibility findings and their current
+corpora pass sanitizer replay. The official clean package is 1,319,847 bytes
+within the unchanged 1,320,000-byte limit.
+
+All twelve stable/MSRV bare-metal checks and all twenty native product
+and audit gates pass against this checkpoint. The thirteen-case corpus
+passes through all six actual consumer interfaces. Thirty-one Node WASM
+tests pass. The optimized module is 614,712 bytes raw and 212,267 bytes with
+gzip level 9, below the unchanged 628,759 and 219,025-byte limits. The
+installed tarball passes TypeScript, Node and 21 Chromium checks. The first
+browser attempt did not expose a debugging port; a separate startup probe
+succeeded and one repeat passed. Both logs remain in the evidence, and the
+startup failure's cause is unconfirmed.
+
+The subsequent duplicate-key finding remains unresolved. Streaming returns
+both written keys for `null: 1` followed by `~: 2`; a tag elsewhere forces
+AST fallback and canonical duplicate handling keeps only the last. The
+[proposed decision](adr/0019-typed-mapping-duplicate-identity.md) records
+both choices and their required checks. Its original 88 bytes and failed
+campaign remain in the raw evidence. No oracle exception hides this result.
+
+## Empty-line oracle follow-up
+
+Development-only fix `1ca7573` retains the six-byte tab-only final-line
+finding. Archived libyaml rejects that separation after an empty sequence
+item. The repair changes only whitespace tokens on otherwise empty lines;
+quoted and block scalar tokens remain untouched. Callers still require
+unchanged candidate semantics and complete fresh archive-value agreement.
+The new test fails before the repair. All 153 properties, eighteen alloc
+oracle tests, strict clippy and the original sanitizer replay pass. All
+retained findings and current corpora also pass replay.
+
+The clean package from the signed checkpoint is 1,319,876 bytes under
+the unchanged 1,320,000-byte limit.
+
+Production source and Cargo declarations remain byte-identical to
+`a57b719`; the complete batteries, product and bare-metal results retain
+that production scope. Final-source sustained campaigns, the duplicate-key
+decision, independent review and release acceptance remain open.
 
 ## Implementation and acceptance
 
@@ -188,14 +341,14 @@ remaining evidence. They are not implied by the local results.
 | LSP1 | Capability and framed handshake tests agree with the documentation. Neovim and VS Code exercised the advertised methods. | Carry the evidence through CI at the release ref. |
 | SHIM2 | Clarified the standalone std facade and the separate alloc-only core compatibility profile. Both ran in their scoped matrix. | Carry the evidence through CI at the release ref. |
 | Q1 | Contract ledger links product operations and refusals to the tests that exercise them. | Fill the specifically untested product and deployment combinations in the ledger. |
-| Q2 | Thirty targets discovered; scheduled runner records elapsed time, inputs, executions and findings. MCP tools completed a full campaign; HTTP headers ran 958,775 inputs in 61 seconds. The facade runner smoke completed 102,941 inputs. | One-hour receipts for every remaining target and a successful scheduled run. |
+| Q2 | Thirty targets discovered; scheduled runner records elapsed time, inputs, execution-count scope and findings. Interrupted counts are preserved as lower bounds and missing durations remain unknown; four accounting regressions pass in every repo. MCP tools completed a full campaign; HTTP headers ran 958,775 inputs in 61 seconds. The facade runner smoke completed 102,941 inputs. | One-hour receipts for every remaining target and a successful scheduled run. |
 | Q3 | Structured LLVM line totals replace the ambiguous last column. Invalid, timed-out and absent measurements remain N/A. The fresh snapshot measured 139 probes, seven N/A, and scored 92.1%. | Repeat on the final signed release sources and registry graph. |
 | P1 | Three release-profile repetitions ran for all six products. The [baseline](ecosystem-performance-2026-11-10.json) records source, artifact, medians, memory and observed variance. | Dedicated-host end-to-end latency and resource cases. |
 | P2 | Optimized WASM raw/gzip limits verified. A padded module failed the gate. | Measured budgets and injection checks for the remaining scenarios and products. |
 | X1 | Staged CLI install/uninstall, installed VSIX, Node and browser WASM, renamed Rust consumer and MCP offline drill passed. | Fresh-clone, failure and recovery transcripts across the rest of the support matrix. |
-| C1 | Current all-feature test binaries: 6,734 passed. Doctests: 590 passed, eight existing ignores. Shared fixtures check semantics and refusals. | Complete the case-level parity and diagnostics ledger; keep intentional loader differences explicit. |
-| C2 | Documented scanner, typed, value and CST responsibilities. Seven fuzz-discovered runtime defects and the formatter EOF refusal have regression tests and signed fixes. | Independent architecture review and measured maintenance evidence before any extraction. |
-| C3 | Complete alloc-only hosted battery: 6,705 baseline and 7,046 portable tests, including all ten oracle helper tests. Hosted schema composition previously passed 23 tests. Baseline and portable built on three bare-metal targets with stable and Rust 1.89.0. Default, minimal std and alloc float consumers had no active libm. | Rerun the final registry consumer and CI target matrix before release. |
+| C1 | At the continuation checkpoint, all-feature test binaries pass 6,748 tests with no failures or ignores, including 152 properties. Shared fixtures check semantics and refusals. | Complete the case-level parity and diagnostics ledger; keep intentional loader differences explicit. |
+| C2 | Documented loader responsibilities and fixed the recorded runtime defects. The collection-anchor extraction retains behavior under std and alloc characterization suites and reduces the measured complexity baseline. | Independent architecture review of the resulting boundaries. |
+| C3 | Complete alloc-only hosted batteries at the continuation checkpoint pass 6,726 baseline and 7,067 portable tests, including seventeen oracle helper tests. Hosted schema composition previously passed 23 tests. Baseline and portable built on three bare-metal targets with stable and Rust 1.89.0. Default, minimal std and alloc float consumers had no active libm. | Rerun the final registry consumer and CI target matrix before release. |
 | CLI1 | All-feature CLI probe passed 123 tests. Generated manpages match; staged install, both binary version checks and uninstall passed with a custom target directory. | Hosted Action and package-manager acceptance on the remaining operating systems. |
 | CLI2 | A refused rename preserved destination contents and removed the temporary file; mode and symlink tests also pass. | Cross-OS interruption and metadata evidence, with independent review. |
 | LSP2 | Tests cover UTF-16 positions, stale changes, initialization, header limits and exit while stdin is open. Final real client checks passed. | Resource and latency budgets for editor workloads. |
@@ -203,10 +356,10 @@ remaining evidence. They are not implied by the local results.
 | MCP2 | Stdio, negotiated and stateless HTTP, legacy SSE, SDK, limits and guard suites passed 124 tests. Added HTTP header fuzz coverage. | Complete revision-by-transport acceptance for disconnect, cancellation, concurrency and supported filesystems; independent review. |
 | MCP3 | Published v0.0.59 npm package recovered from the verified native archive offline, refused corrupt cache and ran a real stdio parse. A future npm release gate repeats the drill. | Apply all five channel checks to v0.0.60 after the hold is resolved. |
 | WASM1 | Thirty-one real Node WASM tests passed. Browser tests cover projection, spans, failed edits, cycles, sparse arrays and resource release. | Fill unmeasured numeric, memory and lifetime boundary cases. |
-| WASM2 | Optimized final module is 613,905 bytes raw and 211,810 bytes gzip, within the 628,759 and 219,025 byte limits. Three Node benchmark runs record cold import, warmed operations and process RSS. | Establish sustained memory-growth bounds and comparable browser timings. |
+| WASM2 | Optimized corrected module is 614,712 bytes raw and 212,267 bytes gzip, within the 628,759 and 219,025 byte limits. Three Node benchmark runs record cold import, warmed operations and process RSS. | Establish sustained memory-growth bounds and comparable browser timings. |
 | WASM3 | Installed optimized tarball includes both licenses; TypeScript 7.0.2, Node 24.22.2 and a webpack 5.112.2 bundle in Chromium passed. | Repeat against the eventual registry artifact and any newly claimed platforms. |
 | SHIM1 | The standalone captured contract and extended tag, number and location cases passed. Equivalent compatibility entry points now have a separate benchmark from resolver-profile costs. | Complete extended location, tag and number cases and measure equivalent core overhead. |
-| I1 | Eleven shared cases passed through six real boundaries. The receipt records Node, Rust and SDK versions, plus the generated module digest. The scheduled workflow builds each checkout from its lock. | First hosted workflow receipt and additional contract cases. |
+| I1 | Eleven shared cases pass in the earlier hosted job; the expanded thirteen-case corpus passes locally through the corrected products. Receipts record Node, Rust and SDK versions and source identities. The workflow builds each checkout from its lock. | Scheduled execution, additional contract cases and final registry-source parity. |
 | S2 | Reviewed changed source and trust boundaries, retained existing vet criteria, and recorded the source and advisory identities. | Independent security review, registry locks and closing scans. |
 | R1 | Reverified six public registry crates against signed GitHub assets, exact tags, GPG, Sigstore and GitHub source provenance. | Install and recovery evidence for all claimed secondary channels and held MCP v0.0.60. |
 | R2 | Published MCP offline/corruption/restore drill passed. CLI staged uninstall left no files. | Remaining supported channels, missing services, corruption and privately recorded recovery ownership. |

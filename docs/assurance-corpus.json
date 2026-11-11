@@ -96,6 +96,16 @@
       "id": "under-indented-quoted-continuation",
       "yaml": "name: test\nve teplain: hello world\nsingle: 'canst\nver'",
       "reject": true
+    },
+    {
+      "id": "unindented-mapping-value",
+      "yaml": "plain: \ninfinite\nbool_false: false\nempty: ''\n",
+      "reject": true
+    },
+    {
+      "id": "plain-continuation-tab-indentation",
+      "yaml": "- a\n\tb\n",
+      "reject": true
     }
   ]
 }

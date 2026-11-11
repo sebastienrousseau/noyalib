@@ -41,6 +41,7 @@ reference back. Nothing is silently rewritten.
 | [0016](./0016-plain-scalar-source-spelling.md) | Preserve plain scalar spelling on typed AST fallback | accepted |
 | [0017](./0017-alloc-capable-tooling.md) | Make allocation-based tooling available without std | accepted |
 | [0018](./0018-portable-float-math.md) | Keep portable float math independent of runtime dependencies | accepted |
+| [0019](./0019-typed-mapping-duplicate-identity.md) | Settle typed mapping duplicate-key identity | proposed |
 
 ## When to add an ADR
 

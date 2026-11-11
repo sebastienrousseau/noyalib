@@ -23,8 +23,10 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
-      - name: Test source and version refusal guards
-        run: python3 scripts/tests/test_ecosystem_candidate.py
+      - name: Test candidate guards and campaign accounting
+        run: |
+          python3 scripts/tests/test_ecosystem_candidate.py
+          python3 scripts/tests/test_fuzz_campaign.py
       - name: Validate the five immutable product refs
         id: matrix
         run: |
@@ -86,6 +88,7 @@ jobs:
         working-directory: product
         run: |
           bash scripts/verify-release-versions.sh
+          python3 scripts/tests/test_fuzz_campaign.py
           cargo fmt --all -- --check
           cargo clippy --locked --all-features --all-targets -- -D warnings
           cargo test --locked --all-features --lib --tests

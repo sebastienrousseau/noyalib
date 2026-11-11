@@ -28,6 +28,27 @@ The [implementation record](IMPLEMENTATION-STATUS.md) retains test scopes,
 new oracle findings and the remaining acceptance work. Daybreak remains
 outside the acceptance criteria.
 
+The CI correction checkpoint passes the unchanged package and complexity
+budgets, the installed WASM browser consumer, CodeQL and all six actual
+consumer boundaries in GitHub. The latest scanner correction rejects unindented mapping values through
+all three loader paths, and twelve shared cases pass through all six products.
+The follow-up also corrects explicit typed-key spelling on AST fallback.
+At the explicit-key checkpoint, nine new fuzz inputs have failing-first
+tests and scoped sanitizer replay evidence. Complete std, baseline alloc and
+portable batteries pass 6,745, 6,723 and 7,064 tests; all twelve bare-metal
+checks pass. Later campaigns expose plain-scalar tab indentation and a
+canonical-duplicate typed-key mismatch. The signed continuation correction and formatter repair pass 6,748 std,
+6,726 baseline alloc and 7,067 portable tests. The
+[duplicate-key decision](adr/0019-typed-mapping-duplicate-identity.md) remains
+proposed; its finding is retained and its contract choice is pending. A
+further development-only empty-line tab repair passes all 153 properties,
+eighteen alloc oracle tests and original-input replay. Production source
+and Cargo declarations remain unchanged. Campaign accounting now
+separates completed totals from lower bounds and unknown measurements. The
+[CI correction evidence](ecosystem-ci-repair-evidence-2026-11-11.json)
+records the exact source scopes and raw log hashes. Sustained campaigns
+and independent review remain acceptance work.
+
 ## Constraints and work order
 
 The live values are edition 2024, `rust-version = "1.89.0"`.
