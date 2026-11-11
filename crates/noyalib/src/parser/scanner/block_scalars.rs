@@ -63,14 +63,16 @@ impl BlockBody {
 
     /// Apply chomping. YAML 1.2.2 §8.1.1.2:
     ///   `+` (keep): preserve every trailing line break.
-    ///   default (clip): a single trailing `\n` if and only if the
-    ///     scalar has any content. An empty scalar with `>`/`|` and
+    ///   default (clip): retain a single final line break when one
+    ///     follows content. An empty scalar with `>`/`|` and
     ///     trailing blank lines stays empty.
     ///   `-` (strip): no trailing line break.
     fn chomp(mut self, chomping: i8) -> String {
         match chomping {
             1 => self.string.push_str(&self.trailing_breaks),
-            0 if !self.string.is_empty() => self.string.push('\n'),
+            0 if !self.string.is_empty() && !self.trailing_breaks.is_empty() => {
+                self.string.push('\n')
+            }
             _ => {}
         }
         self.string

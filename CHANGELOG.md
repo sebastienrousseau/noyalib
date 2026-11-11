@@ -11,6 +11,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Changed
 
+- **Breaking:** clipped block scalars at EOF retain a final newline only
+  when it exists in the input, as required by YAML 1.2.2.
 - Prepare the next lockstep version for the ecosystem assurance work.
   Release dates and completed changes are recorded after verification.
 
