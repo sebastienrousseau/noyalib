@@ -15,8 +15,8 @@ fn recursive_get_path_missing_leaf_does_not_expand_equivalent_routes() {
     assert!(value.get_path(&path).is_none());
     let compiled = noyalib::QueryPath::parse(&path).unwrap();
     assert!(value.get_query_path(&compiled).is_none());
-    assert!(value.query(&path).is_empty());
-    assert!(value.query_path(&compiled).is_empty());
+    assert_eq!(value.query(&path), Vec::<&Value>::new());
+    assert_eq!(value.query_path(&compiled), Vec::<&Value>::new());
 }
 
 #[test]
@@ -43,5 +43,5 @@ fn document_path_timeout_corpus_returns_without_a_match() {
     let (yaml, path) = source.split_once('\0').unwrap();
     let value: Value = noyalib::from_str(yaml).unwrap();
     assert!(value.get_path(path).is_none());
-    assert!(value.query(path).is_empty());
+    assert_eq!(value.query(path), Vec::<&Value>::new());
 }

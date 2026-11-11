@@ -71,7 +71,7 @@ impl BlockBody {
         match chomping {
             1 => self.string.push_str(&self.trailing_breaks),
             0 if !self.string.is_empty() && !self.trailing_breaks.is_empty() => {
-                self.string.push('\n')
+                self.string.push('\n');
             }
             _ => {}
         }
