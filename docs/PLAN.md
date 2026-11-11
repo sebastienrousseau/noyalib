@@ -20,6 +20,14 @@ Daybreak access is outside this plan and is not an acceptance prerequisite.
 Continue the local and GitHub gates; retain G1 as an actual independent
 human review requirement through an available channel.
 
+The November 11 follow-up closes the complete hosted alloc test-harness gap,
+fixes terminal-block-scalar formatting and typed anchored empty keys, and expands actual
+six-consumer parity to eleven cases. The three integrated dependency PRs
+are closed with credit, and the hosted strict MCP Inspector check passes.
+The [implementation record](IMPLEMENTATION-STATUS.md) retains test scopes,
+new oracle findings and the remaining acceptance work. Daybreak remains
+outside the acceptance criteria.
+
 ## Constraints and work order
 
 The live values are edition 2024, `rust-version = "1.89.0"`.

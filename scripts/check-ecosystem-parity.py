@@ -103,6 +103,8 @@ def lsp(binary, text):
     formatting = next(reply for reply in replies if reply.get('id') == 2)
     if diagnostics:
         return None, diagnostics
+    if 'error' in formatting:
+        raise ValueError(f'LSP formatting failed for accepted YAML: {formatting["error"]}')
     edits = formatting['result']
     if len(edits) > 1:
         raise ValueError('expected a full-document formatting edit')

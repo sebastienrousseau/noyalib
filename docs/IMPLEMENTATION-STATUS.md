@@ -111,6 +111,68 @@ and locks, and never count as registry-resolution proof.
 Daybreak access is outside the plan. The independent human review criterion
 remains open through an available review channel.
 
+## Portable battery and hosted candidates, 2026-11-11
+
+The [follow-up receipt](ecosystem-followup-evidence-2026-11-11.json) records
+signed source identities and hashes of the raw verification logs. The full
+hosted batteries pass 6,734 all-feature std tests, 6,705 baseline alloc-only
+tests and 7,046 portable alloc-only tests. All 590 doctests pass, with eight
+existing ignores. The expanded ten-test oracle helper suite is included.
+CI now runs the complete baseline, accelerated
+and portable batteries. All twelve baseline/portable bare-metal checks pass
+on stable and Rust 1.89.0 across the three supported targets.
+
+The six-consumer corpus grew from four to eleven cases. Its first execution
+exposed a formatter refusal: adding a line break after a terminal block
+scalar changed the parsed value. The signed correction preserves EOF and
+keeps the semantic guard. All 1,090 CST tests pass, including the formerly
+refused L24T formatter case. The eleven cases then passed through actual
+core, facade, CLI, LSP, MCP and Node WASM consumers.
+
+Fresh campaigns found two additional archive differences. The terminal-space
+case matches the vendored official L24T expectation; leading-colon flow
+scalars follow YAML 1.2.2 section 7.3.3. Narrow source normalization retains
+the candidate value and requires the complete reparsed oracle value to
+agree. Both original byte inputs pass sanitizer replay. The ten helper
+tests include observed failures before implementation; all 145 hosted
+properties and 158 diagnostic tests pass. Fresh sustained runs are still
+required for these corrections; fixed-input replay is a separate result.
+
+A later original input exposed a typed-key loader inconsistency. An omitted
+anchored scalar kept its property span, so AST fallback exposed the canonical
+null spelling as a string key. The signed fix restores an empty typed key
+without changing canonical Value keys or diagnostic spans. The exact 170-byte
+input is retained in both the crate fixtures and the fuzz regressions; all six
+typed-key tests and its sanitizer replay pass on std and alloc paths.
+
+Concurrent verification also exposed a scheduling-sensitive elapsed-time
+assertion. The replacement counts uncached lookahead bytes under cfg(test),
+bounds work by input length and requires forced cache invalidation to exceed
+the bound. The original queue-compaction bound remains. Owned, borrowed and
+CST integration tests check all values in the same large flow inputs. No
+counter is compiled into production builds. The initial failure and passing
+replacement are both retained in the receipt.
+
+The final optimized WASM module is 613,905 bytes raw and 211,810 bytes with
+gzip level 9, within the unchanged limits. Actual npm installation,
+TypeScript 7.0.2, Node 24.22.2 and Chromium pass; all 31 real Node WASM tests
+also pass. The earlier binding-update size receipt remains historical.
+
+All six future branches are now pushed. The facade's fully merged v0.0.58
+branch was verified against main and backed up before retiring its stale
+ref, preserving the two-version-branch limit. Dependabot PRs
+[CLI #131](https://github.com/sebastienrousseau/noya-cli/pull/131),
+[LSP #115](https://github.com/sebastienrousseau/noyalib-lsp/pull/115) and
+[WASM #123](https://github.com/sebastienrousseau/noyalib-wasm/pull/123) are
+closed with links to their signed integrations. Original bot authorship and
+changelog credit remain. The pinned satellite candidates include the
+formatter delta in their first-party audits; all five pass cargo-vet.
+
+The hosted [strict MCP Inspector check](https://github.com/sebastienrousseau/noyalib-mcp/actions/runs/43040927622)
+passes on the exact MCP candidate with the audited core. Cross-platform
+candidate CI and final-source fuzz acceptance remain open. No registry
+publication, tag change or default-branch merge took place in this follow-up.
+
 ## Implementation and acceptance
 
 “Local evidence” means the named check passed in its stated scope. Missing
@@ -119,7 +181,7 @@ remaining evidence. They are not implied by the local results.
 
 | Task | Local evidence | Remaining acceptance |
 |---|---|---|
-| S1 | Fourteen tracked Cargo locks passed against clean RustSec revision `28d73fc95e5972af3403225a217def57dcaba3c4`. All six current root graphs passed cargo-deny and the existing cargo-vet policy. VS Code and WASM test npm scopes reported zero advisories; MCP wrapper declares no dependencies. | Retain the same gates on registry-resolved locks and every supported CI scope. Core differential fuzz uses an unmaintained archive oracle; the warning remains visible. |
+| S1 | Fourteen tracked Cargo locks pass the refreshed RustSec revision `2c684a5d6746d4508eff9e3cb529b3e33f56d438` after correcting both CLI locks to rustix 1.1.6. The initial failure and corrected receipts are retained. All six current root graphs passed cargo-deny and the existing cargo-vet policy. VS Code and WASM test npm scopes reported zero advisories; MCP wrapper declares no dependencies. | Retain the same gates on registry-resolved locks and every supported CI scope. Core differential fuzz uses an unmaintained archive oracle; the warning remains visible. |
 | R0 | Checked the exact held tag's lockfiles and package listing. | Written maintainer decision, exact-source release gates and a closing scan. |
 | MCP1 | Patched fuzz Tokio; scanned all three locks; built both targets. The tools campaign ran 8,903,049 inputs in 3,601 seconds with no finding in the log. | Corrected-ref remote scan and merge. |
 | D1 | Reconciled published package scope, version references, LSP capabilities, WASM entry points and unverified benchmark claims. | Current scorecard and remaining channel claims need their acceptance evidence. |
@@ -131,20 +193,20 @@ remaining evidence. They are not implied by the local results.
 | P1 | Three release-profile repetitions ran for all six products. The [baseline](ecosystem-performance-2026-11-10.json) records source, artifact, medians, memory and observed variance. | Dedicated-host end-to-end latency and resource cases. |
 | P2 | Optimized WASM raw/gzip limits verified. A padded module failed the gate. | Measured budgets and injection checks for the remaining scenarios and products. |
 | X1 | Staged CLI install/uninstall, installed VSIX, Node and browser WASM, renamed Rust consumer and MCP offline drill passed. | Fresh-clone, failure and recovery transcripts across the rest of the support matrix. |
-| C1 | Current hosted test binaries: 6,188 passed. All-feature tests and doctests: 7,314 passed, eight existing ignores. Shared fixtures check semantics and refusals. | Complete the case-level parity and diagnostics ledger; keep intentional loader differences explicit. |
-| C2 | Documented scanner, typed, value and CST responsibilities. Six fuzz-discovered runtime defects have regression tests and signed fixes. | Independent architecture review and measured maintenance evidence before any extraction. |
-| C3 | Alloc core and accelerated: 1,747 tests each; portable: 1,832; hosted schema composition: 23; no-std-feature library: 250. Baseline and portable built on three bare-metal targets with stable and Rust 1.89.0. Default, minimal std and alloc float consumers had no active libm. | Rerun the final registry consumer and CI target matrix before release. |
+| C1 | Current all-feature test binaries: 6,734 passed. Doctests: 590 passed, eight existing ignores. Shared fixtures check semantics and refusals. | Complete the case-level parity and diagnostics ledger; keep intentional loader differences explicit. |
+| C2 | Documented scanner, typed, value and CST responsibilities. Seven fuzz-discovered runtime defects and the formatter EOF refusal have regression tests and signed fixes. | Independent architecture review and measured maintenance evidence before any extraction. |
+| C3 | Complete alloc-only hosted battery: 6,705 baseline and 7,046 portable tests, including all ten oracle helper tests. Hosted schema composition previously passed 23 tests. Baseline and portable built on three bare-metal targets with stable and Rust 1.89.0. Default, minimal std and alloc float consumers had no active libm. | Rerun the final registry consumer and CI target matrix before release. |
 | CLI1 | All-feature CLI probe passed 123 tests. Generated manpages match; staged install, both binary version checks and uninstall passed with a custom target directory. | Hosted Action and package-manager acceptance on the remaining operating systems. |
 | CLI2 | A refused rename preserved destination contents and removed the temporary file; mode and symlink tests also pass. | Cross-OS interruption and metadata evidence, with independent review. |
 | LSP2 | Tests cover UTF-16 positions, stale changes, initialization, header limits and exit while stdin is open. Final real client checks passed. | Resource and latency budgets for editor workloads. |
 | LSP3 | Neovim 0.12.6 and installed VS Code 1.141.0 VSIX passed. The VSIX startup bug was reproduced and fixed. | Installed marketplace artifacts and the rest of the claimed OS matrix. |
 | MCP2 | Stdio, negotiated and stateless HTTP, legacy SSE, SDK, limits and guard suites passed 124 tests. Added HTTP header fuzz coverage. | Complete revision-by-transport acceptance for disconnect, cancellation, concurrency and supported filesystems; independent review. |
 | MCP3 | Published v0.0.59 npm package recovered from the verified native archive offline, refused corrupt cache and ran a real stdio parse. A future npm release gate repeats the drill. | Apply all five channel checks to v0.0.60 after the hold is resolved. |
-| WASM1 | Thirty real Node WASM tests passed. Browser tests cover projection, spans, failed edits, cycles, sparse arrays and resource release. | Fill unmeasured numeric, memory and lifetime boundary cases. |
-| WASM2 | Optimized module is 598,344 bytes raw and 208,851 bytes gzip, within the 628,759 and 219,025 byte limits. Three Node benchmark runs record cold import, warmed operations and process RSS. | Establish sustained memory-growth bounds and comparable browser timings. |
+| WASM1 | Thirty-one real Node WASM tests passed. Browser tests cover projection, spans, failed edits, cycles, sparse arrays and resource release. | Fill unmeasured numeric, memory and lifetime boundary cases. |
+| WASM2 | Optimized final module is 613,905 bytes raw and 211,810 bytes gzip, within the 628,759 and 219,025 byte limits. Three Node benchmark runs record cold import, warmed operations and process RSS. | Establish sustained memory-growth bounds and comparable browser timings. |
 | WASM3 | Installed optimized tarball includes both licenses; TypeScript 7.0.2, Node 24.22.2 and a webpack 5.112.2 bundle in Chromium passed. | Repeat against the eventual registry artifact and any newly claimed platforms. |
 | SHIM1 | The standalone captured contract and extended tag, number and location cases passed. Equivalent compatibility entry points now have a separate benchmark from resolver-profile costs. | Complete extended location, tag and number cases and measure equivalent core overhead. |
-| I1 | Four shared cases passed through six real boundaries. The receipt records Node, Rust and SDK versions, plus the generated module digest. The scheduled workflow builds each checkout from its lock. | First hosted workflow receipt and additional contract cases. |
+| I1 | Eleven shared cases passed through six real boundaries. The receipt records Node, Rust and SDK versions, plus the generated module digest. The scheduled workflow builds each checkout from its lock. | First hosted workflow receipt and additional contract cases. |
 | S2 | Reviewed changed source and trust boundaries, retained existing vet criteria, and recorded the source and advisory identities. | Independent security review, registry locks and closing scans. |
 | R1 | Reverified six public registry crates against signed GitHub assets, exact tags, GPG, Sigstore and GitHub source provenance. | Install and recovery evidence for all claimed secondary channels and held MCP v0.0.60. |
 | R2 | Published MCP offline/corruption/restore drill passed. CLI staged uninstall left no files. | Remaining supported channels, missing services, corruption and privately recorded recovery ownership. |

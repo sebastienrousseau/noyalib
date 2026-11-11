@@ -164,3 +164,82 @@ jobs:
           name: candidate-wasm-consumer
           path: candidate-receipt.json
           if-no-files-found: error
+
+  parity:
+    needs: sources
+    name: Six actual consumers
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      CARGO_BUILD_JOBS: '2'
+      CARGO_INCREMENTAL: '0'
+      CARGO_PROFILE_DEV_DEBUG: '0'
+      CARGO_PROFILE_TEST_DEBUG: '0'
+      PARITY_OUTPUT: ${{ github.workspace }}/candidate-parity
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          path: noyalib
+      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8
+        with:
+          toolchain: stable
+          targets: wasm32-unknown-unknown
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - uses: jetli/wasm-pack-action@0d096b08b4e5a7de8c28de67e11e945404e9eefa
+        with:
+          version: 'v0.15.0'
+      - name: Check out and prepare the five pinned product sources
+        run: |
+          python3 - <<'PY'
+          import json, pathlib, subprocess
+          root = pathlib.Path.cwd()
+          script = root / 'noyalib/scripts/prepare-ecosystem-candidate.py'
+          rows = json.loads(subprocess.check_output([
+              'python3', str(script), 'matrix', 'noyalib/docs/ecosystem-candidate.json']))
+          receipts = root / 'candidate-source-receipts'
+          receipts.mkdir()
+          for row in rows:
+              repo, commit = row['repo'], row['commit']
+              subprocess.run(['git', 'clone', '--quiet', '--no-checkout', '--depth', '1',
+                              'https://github.com/sebastienrousseau/' + repo + '.git', repo], check=True)
+              subprocess.run(['git', '-C', repo, 'fetch', '--quiet', '--depth', '1', 'origin', commit], check=True)
+              subprocess.run(['git', '-C', repo, 'checkout', '--quiet', '--detach', commit], check=True)
+              subprocess.run(['python3', str(script), 'prepare', '--core', 'noyalib',
+                              '--satellite', repo, '--repo', repo, '--commit', commit,
+                              '--receipt', str(receipts / (repo + '.json'))], check=True)
+          PY
+      - name: Build locked products with their local candidate configuration
+        run: |
+          cargo fetch --locked --manifest-path noyalib/Cargo.toml
+          (cd noyalib-serde-yaml && cargo fetch --locked)
+          for repo in noya-cli noyalib-lsp noyalib-mcp; do
+            (cd "$repo" && cargo build --locked --bins)
+          done
+          (cd noyalib-wasm && wasm-pack build --dev --target nodejs --out-dir pkg-node -- --locked)
+      - name: Compare the same regression cases through all six boundaries
+        run: |
+          python3 noyalib/scripts/check-ecosystem-parity.py --root "$GITHUB_WORKSPACE" \
+            --cli noya-cli/target/debug/noyafmt \
+            --lsp noyalib-lsp/target/debug/noyalib-lsp \
+            --mcp noyalib-mcp/target/debug/noyalib-mcp \
+            --wasm noyalib-wasm/pkg-node/noyalib_wasm.js \
+            --output "$PARITY_OUTPUT"
+      - name: Refuse changed candidate sources or locks
+        if: always()
+        run: |
+          for receipt in candidate-source-receipts/*.json; do
+            python3 noyalib/scripts/prepare-ecosystem-candidate.py verify --receipt "$receipt"
+          done
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always()
+        with:
+          name: candidate-six-consumer-parity
+          path: |
+            candidate-parity/receipt.json
+            candidate-parity/projection-build.log
+            candidate-source-receipts/*.json
+          if-no-files-found: error

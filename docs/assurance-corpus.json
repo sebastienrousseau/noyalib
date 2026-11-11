@@ -4,25 +4,97 @@
     {
       "id": "structured-values",
       "yaml": "# keep\nserver:\n  name: gateway\n  port: 8080\nenabled: true\nnodes: [alpha, beta]\nmissing: null\n",
-      "expected": {"server": {"name": "gateway", "port": 8080}, "enabled": true, "nodes": ["alpha", "beta"], "missing": null},
+      "expected": {
+        "server": {
+          "name": "gateway",
+          "port": 8080
+        },
+        "enabled": true,
+        "nodes": [
+          "alpha",
+          "beta"
+        ],
+        "missing": null
+      },
       "preserve": "# keep"
     },
     {
       "id": "unicode-and-quoted-scalars",
       "yaml": "# configuration\nname: 'café 🚀'\ncode: '0123'\nmode: 'NO'\n",
-      "expected": {"name": "café 🚀", "code": "0123", "mode": "NO"},
+      "expected": {
+        "name": "café 🚀",
+        "code": "0123",
+        "mode": "NO"
+      },
       "preserve": "# configuration"
     },
     {
       "id": "legacy-compatibility-profile",
       "yaml": "code: 0123\n",
-      "expected": {"code": 123},
-      "facade_expected": {"code": "0123"},
+      "expected": {
+        "code": 123
+      },
+      "facade_expected": {
+        "code": "0123"
+      },
       "difference": "The documented serde_yaml compatibility profile preserves this legacy spelling as text."
     },
     {
       "id": "malformed-flow",
       "yaml": "broken: [1,\n",
+      "reject": true
+    },
+    {
+      "id": "literal-clip-at-eof",
+      "yaml": "message: |\n  value",
+      "expected": {
+        "message": "value"
+      }
+    },
+    {
+      "id": "folded-clip-at-eof",
+      "yaml": "message: >\n  first\n  second",
+      "expected": {
+        "message": "first second"
+      }
+    },
+    {
+      "id": "nested-anchor-redefinition",
+      "yaml": "first: &x old\nsecond: &x [&x inner]\ncopy: *x\n",
+      "expected": {
+        "first": "old",
+        "second": [
+          "inner"
+        ],
+        "copy": "inner"
+      }
+    },
+    {
+      "id": "quoted-compatibility-strings",
+      "yaml": "'0b11': '0xBBB9BBBBBBB73788'\n",
+      "expected": {
+        "0b11": "0xBBB9BBBBBBB73788"
+      }
+    },
+    {
+      "id": "unicode-root-with-cr-comment",
+      "yaml": "ޙ\r# keep",
+      "expected": "ޙ",
+      "preserve": "# keep"
+    },
+    {
+      "id": "alias-before-later-anchor",
+      "yaml": "first: &x old\nsecond: &x new\ncopy: *x\nlast: &y leaf\n",
+      "expected": {
+        "first": "old",
+        "second": "new",
+        "copy": "new",
+        "last": "leaf"
+      }
+    },
+    {
+      "id": "under-indented-quoted-continuation",
+      "yaml": "name: test\nve teplain: hello world\nsingle: 'canst\nver'",
       "reject": true
     }
   ]
