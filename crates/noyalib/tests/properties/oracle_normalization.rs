@@ -80,7 +80,7 @@ pub(crate) fn unique_colliding_anchors(source: &str) -> Option<String> {
     collision.then(|| apply_replacements(source, replacements))
 }
 
-/// Quote omitted keys and leading-colon flow scalars for archived parsers.
+/// Quote flow spellings the archived parsers cannot load, preserving values.
 /// Callers must reparse and compare the entire resulting JSON value.
 pub(crate) fn quoted_empty_flow_keys(source: &str) -> Option<String> {
     let tokens = lexical_tokens(source)?;
@@ -107,7 +107,14 @@ pub(crate) fn quoted_empty_flow_keys(source: &str) -> Option<String> {
                 let text = source.get(start..end)?.trim_matches([' ', '\t']);
                 let rest = source.get(end..)?;
                 let compact_empty_value = rest.starts_with(":,") || rest.starts_with(":}");
-                if (text.starts_with(':') || compact_empty_value) && !text.contains(['\n', '\r']) {
+                if text.contains(['\n', '\r']) {
+                    // Flow mappings permit multiline YAML keys (production
+                    // 145); libyaml applies its single-line key restriction.
+                    let noyalib::Value::String(value) = noyalib::from_str(text).ok()? else {
+                        return None;
+                    };
+                    replacements.push((start, end, serde_json::to_string(&value).ok()?));
+                } else if text.starts_with(':') || compact_empty_value {
                     replacements.push((start, end, serde_json::to_string(text).ok()?));
                 }
             }
@@ -120,6 +127,22 @@ pub(crate) fn quoted_empty_flow_keys(source: &str) -> Option<String> {
         previous = Some(kind);
     }
     (!replacements.is_empty()).then(|| apply_replacements(source, replacements))
+}
+
+/// The default i64 model retains out-of-range radix literals as strings.
+/// Only an exact u64 oracle value may match that spelling (ADR-0004).
+// The compatibility fuzzer includes this module but opts into u64 resolution.
+#[allow(dead_code)]
+pub(crate) fn default_radix_value(source: &str) -> Option<u64> {
+    let (digits, radix) = source
+        .strip_prefix("0x")
+        .map(|rest| (rest, 16))
+        .or_else(|| source.strip_prefix("0o").map(|rest| (rest, 8)))?;
+    if digits.is_empty() || !digits.chars().all(|c| c.is_digit(radix)) {
+        return None;
+    }
+    let value = u64::from_str_radix(digits, radix).ok()?;
+    (value > i64::MAX as u64).then_some(value)
 }
 
 fn lexical_tokens(source: &str) -> Option<Vec<Lexeme>> {
@@ -180,6 +203,42 @@ mod tests {
         assert_eq!(normalized, "{\":m\", other: [\":value\"]}");
         assert_eq!(before[":m"], serde_json::Value::Null);
         assert_eq!(before["other"][0], ":value");
+    }
+
+    #[test]
+    fn multiline_flow_mapping_keys_remain_compared() {
+        let source = include_str!("../fixtures/multiline-flow-oracle.yaml");
+        let normalized = quoted_empty_flow_keys(source).expect("flow spelling repair");
+        let before: serde_json::Value = noyalib::from_str(source).unwrap();
+        let after: serde_json::Value = noyalib::from_str(&normalized).unwrap();
+        assert_eq!(before, after);
+        assert!(normalized.contains("\"1\\nab\""), "{normalized}");
+        assert_eq!(before["1\nab"][0], 2);
+        assert_eq!(before[":m"], serde_json::Value::Null);
+    }
+
+    #[test]
+    fn default_radix_range_difference_is_exact_and_bounded() {
+        for source in ["0x8000000000000000", "0o1000000000000000000000"] {
+            assert_eq!(default_radix_value(source), Some(i64::MAX as u64 + 1));
+            let value: noyalib::Value = noyalib::from_str(source).unwrap();
+            assert_eq!(value.as_str(), Some(source));
+        }
+        assert_eq!(default_radix_value("0xffffffffffffffff"), Some(u64::MAX));
+        for source in [
+            "0x7fffffffffffffff",
+            "0x10000000000000000",
+            "0x+ffffffffffffffff",
+            "-0xffffffffffffffff",
+            "0Xffffffffffffffff",
+            "0xffff_ffff_ffff_ffff",
+            "18446744073709551615",
+            "0b111",
+            "0x",
+            "0xgg",
+        ] {
+            assert_eq!(default_radix_value(source), None, "{source}");
+        }
     }
 
     #[test]

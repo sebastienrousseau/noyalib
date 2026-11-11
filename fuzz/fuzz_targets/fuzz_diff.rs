@@ -128,6 +128,14 @@ fn numeric_equal(a: &serde_json::Value, b: &serde_json::Value) -> bool {
             // resolved (f64 parsing accepts the leading zeros).
             s.parse::<f64>().ok() == n.as_f64()
         }
+        // ADR-0004 keeps large radix integers as strings by default;
+        // the archive always resolves the u64 range. Require exact digits.
+        (V::Number(n), V::String(s)) | (V::String(s), V::Number(n))
+            if oracle_normalization::default_radix_value(s)
+                .is_some_and(|value| n.as_u64() == Some(value)) =>
+        {
+            true
+        }
         // Known divergence: a core-schema float literal that overflows
         // f64 (`3e999`) is infinity in noyalib, which JSON can only hold
         // as null; serde_yaml_ng keeps the text as a string.
