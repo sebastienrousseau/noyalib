@@ -11,6 +11,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Changed
 
+- **Breaking:** preserve written explicit typed mapping keys across trailing
+  separation on AST fallback. Tags elsewhere no longer respell `~` as
+  "null" or `0x1F` as "31". Untyped `Value` keys keep canonical spellings.
 - **Breaking:** reject unindented scalar mapping values whose required key
   never receives a colon. A following sibling can no longer discard that
   missing-key error. Indented values and indentless sequences remain valid.

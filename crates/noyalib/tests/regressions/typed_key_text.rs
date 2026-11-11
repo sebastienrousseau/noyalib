@@ -34,6 +34,29 @@ fn a_tag_elsewhere_does_not_respell_typed_keys() {
 }
 
 #[test]
+fn trailing_separation_does_not_respell_explicit_typed_keys() {
+    let cfg = ParserConfig::new();
+    for key in KEYS {
+        for newline in ["\n", "\r\n", "\r"] {
+            let plain = format!("{{? {key}{newline}: 1}}{newline}");
+            let tagged = format!("{{? {key}{newline}: 1, z: !t 2}}{newline}");
+            assert_eq!(keys(&plain, &cfg), [*key], "streaming {plain:?}");
+            assert_eq!(keys(&tagged, &cfg), [*key], "fallback {tagged:?}");
+        }
+    }
+}
+
+#[test]
+fn original_explicit_key_separation_keeps_typed_and_value_contracts() {
+    let source = include_str!("../fixtures/explicit-key-trailing-separation.yaml");
+    let typed: serde_json::Value = from_str(source).unwrap();
+    assert_eq!(typed.get("~"), Some(&serde_json::json!(1)));
+    assert!(typed.get("null").is_none());
+    let value: Value = from_str(source).unwrap();
+    assert_eq!(value.get("null"), Some(&Value::from(1)));
+}
+
+#[test]
 fn an_empty_key_stays_empty() {
     let cfg = ParserConfig::new();
     assert_eq!(keys("? \n: 1\nz: !t 2\n", &cfg), [""]);

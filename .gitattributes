@@ -29,6 +29,7 @@ Cargo.lock text eol=lf -merge
 fuzz/regressions/** binary
 crates/noyalib/tests/fixtures/anchored-empty-key.yaml binary
 crates/noyalib/tests/fixtures/unindented-mapping-value.yaml binary
+crates/noyalib/tests/fixtures/explicit-key-trailing-separation.yaml binary
 fuzz/corpus/** binary
 fuzz-nostd/regressions/** binary
 fuzz-nostd/corpus/** binary

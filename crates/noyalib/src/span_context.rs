@@ -384,8 +384,16 @@ fn walk_keys(
                     });
                 if anchored_empty {
                     let _ = out.insert(core::ptr::from_ref(k) as usize, (end, end));
-                } else if written.is_some_and(|w| is_canonicalised_plain_key(k, w)) {
-                    let _ = out.insert(core::ptr::from_ref(k) as usize, (start, end));
+                } else if let Some(written) =
+                    written.map(|text| text.trim_end_matches([' ', '\t', '\n', '\r']))
+                    && is_canonicalised_plain_key(k, written)
+                {
+                    // Plain spans may include consumed separation. Keep it
+                    // out of typed key text without changing diagnostic spans.
+                    let _ = out.insert(
+                        core::ptr::from_ref(k) as usize,
+                        (start, start + written.len()),
+                    );
                 }
                 walk_keys(v, vt, source, out);
             }
