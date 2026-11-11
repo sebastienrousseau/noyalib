@@ -39,6 +39,7 @@ fuzz_target!(|data: &[u8]| {
             if !equivalent(&a, &b)
                 && !anchor_name_outside_libyaml(s)
                 && !yaml_1_1_line_break(s)
+                && !oracle_agrees(oracle_normalization::quoted_empty_flow_keys(s), &a)
                 && !oracle_agrees(oracle_normalization::unique_colliding_anchors(s), &a)
                 && !oracle_agrees(oracle_normalization::terminated_spaced_block(s), &a)
             {
