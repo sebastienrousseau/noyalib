@@ -1240,6 +1240,14 @@ impl<'a> Scanner<'a> {
                 if !self.simple_key_is_stale(self.live_key_floor, sk) {
                     break;
                 }
+                // A block-level node still needs its colon before its key
+                // expires; a following sibling must not replace that duty.
+                if sk.required {
+                    return Err(ScanError {
+                        message: Cow::Borrowed("simple key was required but not found"),
+                        index: sk.index,
+                    });
+                }
                 self.simple_keys[self.live_key_floor].stale = true;
             }
             self.live_key_floor += 1;

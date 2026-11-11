@@ -11,6 +11,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Changed
 
+- **Breaking:** reject unindented scalar mapping values whose required key
+  never receives a colon. A following sibling can no longer discard that
+  missing-key error. Indented values and indentless sequences remain valid.
 - **Breaking:** typed parsing preserves an anchored omitted key as an empty
   string when it uses the AST fallback, consistently with streaming parsing.
   `Value` mappings retain the canonical null-key spelling.
