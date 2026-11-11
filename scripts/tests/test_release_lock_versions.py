@@ -16,13 +16,19 @@ VERSION = '0.0.61'
 
 
 class ReleaseLockVersions(unittest.TestCase):
-    def check_tree(self, nested, *, name='noyalib', tracked=True):
+    def check_tree(self, nested, *, name='noyalib', tracked=True, workspace=False):
         with tempfile.TemporaryDirectory() as scratch:
             root = Path(scratch)
             (root / 'scripts').mkdir()
             shutil.copyfile(SCRIPT, root / 'scripts/verify-release-versions.sh')
-            (root / 'Cargo.toml').write_text(
-                f'[package]\nname = "{name}"\nversion = "{VERSION}"\n')
+            package = f'[package]\nname = "{name}"\nversion = "{VERSION}"\n'
+            if workspace:
+                member = root / 'crates/noyalib'
+                member.mkdir(parents=True)
+                (member / 'Cargo.toml').write_text(package)
+                (root / 'Cargo.toml').write_text('[workspace]\nmembers = ["crates/noyalib"]\n')
+            else:
+                (root / 'Cargo.toml').write_text(package)
             (root / 'Cargo.lock').write_text(
                 f'version = 4\n[[package]]\nname = "{name}"\nversion = "{VERSION}"\n')
             (root / 'fuzz').mkdir()
@@ -38,6 +44,10 @@ class ReleaseLockVersions(unittest.TestCase):
 
     def test_current_family_and_unrelated_dependencies_pass(self):
         result = self.check_tree([('noyalib', VERSION), ('serde', '1.0.228')])
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+    def test_workspace_works_in_a_renamed_checkout(self):
+        result = self.check_tree([('noyalib', VERSION)], workspace=True)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
     def test_stale_nested_core_fails(self):

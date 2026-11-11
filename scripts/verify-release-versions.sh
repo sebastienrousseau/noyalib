@@ -48,7 +48,7 @@ def skip(what, detail):
 
 def package_field(key):
     """Read a key from the [package] table of the crate's manifest."""
-    for candidate in (root / "crates" / root.name / "Cargo.toml", root / "Cargo.toml"):
+    for candidate in (root / "crates" / "noyalib" / "Cargo.toml", root / "Cargo.toml"):
         if not candidate.is_file():
             continue
         text = candidate.read_text(encoding="utf-8")
