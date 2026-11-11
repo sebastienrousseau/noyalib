@@ -62,7 +62,12 @@ fuzz_target!(|data: &[u8]| {
             }
         }
         (Err(e), Ok(b)) => {
-            if !known_reject_divergence(s) {
+            // YAML 1.2.2 §7.3.2 and §7.3.1 require the continuation
+            // indentation pinned by yaml-test-suite QB6E. Libyaml also
+            // accepts the under-indented single-quoted equivalent.
+            if !known_reject_divergence(s)
+                && !oracle_normalization::quoted_indent_rejection(&e.to_string())
+            {
                 panic!(
                     "shim rejected what serde_yaml accepts (len {}):\n  shim     : {e}\n  upstream : {}",
                     s.len(),

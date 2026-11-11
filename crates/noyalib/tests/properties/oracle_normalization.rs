@@ -9,6 +9,20 @@ use std::collections::BTreeMap;
 type Lexeme = (SyntaxKind, usize, usize);
 type Replacement = (usize, usize, String);
 
+// The compatibility target needs this classifier; the value-only target
+// includes this shared module without using acceptance classifications.
+#[allow(dead_code)]
+pub(crate) fn quoted_indent_rejection(message: &str) -> bool {
+    let Some((reason, _)) = message.split_once(" at line ") else {
+        return false;
+    };
+    matches!(
+        reason,
+        "single-quoted continuation must be indented more than the parent block"
+            | "double-quoted continuation must be indented more than the parent block"
+    )
+}
+
 /// Give each declaration a unique name only when the archive's anchor IDs
 /// collide at an alias. Callers must still compare the entire parsed value.
 pub(crate) fn unique_colliding_anchors(source: &str) -> Option<String> {
@@ -18,6 +32,7 @@ pub(crate) fn unique_colliding_anchors(source: &str) -> Option<String> {
     let mut archive_owners = BTreeMap::new();
     let mut next = 0;
     let mut collision = false;
+    let mut aliases = Vec::new();
     let mut replacements = Vec::new();
     for (kind, start, end) in tokens {
         match kind {
@@ -37,11 +52,17 @@ pub(crate) fn unique_colliding_anchors(source: &str) -> Option<String> {
                 let declaration = *declarations.get(name)?;
                 let archive_id = *archive_ids.get(name)?;
                 collision |= archive_owners.get(&archive_id) != Some(&declaration);
+                aliases.push((archive_id, declaration));
                 replacements.push((start, end, format!("*noya_oracle_{declaration}")));
             }
             _ => {}
         }
     }
+    // The archive composes values after loading the complete document.
+    // A later ID overwrite can therefore corrupt an earlier alias too.
+    collision |= aliases
+        .iter()
+        .any(|(id, declaration)| archive_owners.get(id) != Some(declaration));
     collision.then(|| apply_replacements(source, replacements))
 }
 
@@ -109,6 +130,44 @@ fn apply_replacements(source: &str, replacements: Vec<Replacement>) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn later_id_collision_does_not_change_an_earlier_alias() {
+        let source = "first: &x old\nsecond: &x new\ncopy: *x\nlast: &y leaf\n";
+        let normalized = unique_colliding_anchors(source).expect("later collision affects alias");
+        let before: noyalib::Value = noyalib::from_str(source).unwrap();
+        let after: noyalib::Value = noyalib::from_str(&normalized).unwrap();
+        assert_eq!(before, after);
+        assert_eq!(before["copy"].as_str(), Some("new"));
+    }
+
+    #[test]
+    fn quoted_indent_oracle_difference_requires_the_specific_scanner_error() {
+        for style in ["single-quoted", "double-quoted"] {
+            assert!(quoted_indent_rejection(&format!(
+                "{style} continuation must be indented more than the parent block at line 4 column 1"
+            )));
+        }
+        for unrelated in [
+            "unterminated single-quoted scalar at line 4 column 1",
+            "single-quoted scalar contains an invalid character at line 4 column 1",
+            "an unrelated parse error",
+        ] {
+            assert!(!quoted_indent_rejection(unrelated));
+        }
+    }
+
+    #[test]
+    fn original_under_indented_quote_remains_rejected() {
+        let source = include_str!("../fixtures/quoted-continuation-indent.yaml");
+        assert!(noyalib::from_str::<noyalib::Value>(source).is_err());
+        #[cfg(feature = "compat-serde-yaml")]
+        {
+            let error = noyalib::compat::serde_yaml::from_str::<serde_json::Value>(source)
+                .expect_err("continuation must be indented beyond the containing block");
+            assert!(quoted_indent_rejection(&error.to_string()));
+        }
+    }
 
     #[test]
     fn archive_anchor_id_collision_is_repaired_without_changing_values() {

@@ -22,6 +22,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Fixed
 
+- Compare archived parser oracles without accepting under-indented quoted
+  continuations or allowing later anchor-ID collisions to corrupt aliases.
 - Quote unsigned radix strings under lossless resolution while retaining
   quoting for decimal overflow strings. Compatibility roundtrips preserve
   their original string values and keys.
