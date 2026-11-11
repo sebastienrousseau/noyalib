@@ -598,7 +598,7 @@ fn scanner_flow_mapping() {
 
 #[test]
 fn scanner_crlf_line_endings() {
-    // CRLF handling (lines 286-287, 905, 914, 1017, 1027, etc.)
+    // CRLF handling
     let yaml = "key: value\r\nother: data\r\n";
     let v: Value = from_str(yaml).unwrap();
     assert_eq!(v["key"].as_str(), Some("value"));
@@ -1181,7 +1181,7 @@ fn fmt_commented_roundtrip() {
 }
 
 // ============================================================================
-// 5. with/singleton_map_recursive.rs — Tagged value transform (lines 47-51)
+// 5. with/singleton_map_recursive.rs : Tagged value transform
 // ============================================================================
 
 #[test]
@@ -1453,7 +1453,7 @@ fn loader_estimate_value_covers_tagged() {
 
 #[test]
 fn events_flow_mapping_value_empty() {
-    // parse_flow_mapping_value empty (lines 609ff)
+    // parse_flow_mapping_value empty
     let yaml = "{a: , b: 2}\n";
     let v: Value = from_str(yaml).unwrap();
     assert!(v["a"].is_null());
@@ -1469,12 +1469,12 @@ fn events_flow_mapping_implicit_key() {
 }
 
 // ============================================================================
-// Scanner: ScanError Display (line 64)
+// Scanner: ScanError Display
 // ============================================================================
 
 #[test]
 fn scan_error_display() {
-    // The scanner error Display impl (lines 62-65)
+    // The scanner error Display impl
     let yaml = r#"key: "\z""#;
     let err = from_str::<Value>(yaml).unwrap_err();
     let msg = format!("{err}");
@@ -1821,7 +1821,7 @@ fn value_map_access_through_tagged() {
     assert!(matches!(result, Value::Mapping(_)));
 }
 
-// --- scanner.rs: ScanError Display (lines 63-64) ---
+// --- scanner.rs: ScanError Display ---
 
 #[test]
 fn scan_error_display_format() {
@@ -1935,7 +1935,7 @@ fn scanner_single_quoted_unterminated() {
 
 #[test]
 fn scanner_single_quoted_line_folding_multi_break() {
-    // Single-quoted with multiple line breaks (tests lines 1001-1011, 1024-1031)
+    // Single-quoted with multiple line breaks
     let yaml = "'first\n\n\nsecond'\n";
     let v: Value = from_str(yaml).unwrap();
     let s = v.as_str().unwrap();
@@ -1945,7 +1945,7 @@ fn scanner_single_quoted_line_folding_multi_break() {
 
 #[test]
 fn scanner_single_quoted_whitespace_between_words() {
-    // Tests line 1047-1048: whitespace buffering between words
+    // whitespace buffering between words
     let yaml = "'word1   word2'\n";
     let v: Value = from_str(yaml).unwrap();
     assert_eq!(v.as_str(), Some("word1   word2"));
@@ -1961,7 +1961,7 @@ fn scanner_double_quoted_unterminated() {
 
 #[test]
 fn scanner_double_quoted_close_after_break() {
-    // Tests line 1077-1083: closing quote after line break
+    // closing quote after line break
     let yaml = "\"word\n  \"\n";
     let v: Value = from_str(yaml).unwrap();
     // Line folding converts the break to space
@@ -1971,7 +1971,7 @@ fn scanner_double_quoted_close_after_break() {
 
 #[test]
 fn scanner_double_quoted_escape_after_break() {
-    // Tests line 1091-1100: escape sequence after line break
+    // escape sequence after line break
     let yaml = "\"word\n  \\nmore\"\n";
     let v: Value = from_str(yaml).unwrap();
     let s = v.as_str().unwrap();
@@ -1980,7 +1980,7 @@ fn scanner_double_quoted_escape_after_break() {
 
 #[test]
 fn scanner_double_quoted_multi_line_breaks() {
-    // Tests lines 1170-1176: multiple breaks in double-quoted
+    // multiple breaks in double-quoted
     let yaml = "\"first\n\n\nsecond\"\n";
     let v: Value = from_str(yaml).unwrap();
     let s = v.as_str().unwrap();
@@ -1990,7 +1990,7 @@ fn scanner_double_quoted_multi_line_breaks() {
 
 #[test]
 fn scanner_double_quoted_whitespace_buffering() {
-    // Tests lines 1203-1214: whitespace between words in double-quoted
+    // whitespace between words in double-quoted
     let yaml = "\"word1   word2\"\n";
     let v: Value = from_str(yaml).unwrap();
     assert_eq!(v.as_str(), Some("word1   word2"));
@@ -2040,7 +2040,7 @@ fn scanner_block_scalar_utf8_content() {
     assert_eq!(v.as_str(), Some("caf\u{00e9}\n"));
 }
 
-// --- scanner.rs: line 1130-1145: double-quoted \r\n escape ---
+// --- scanner.rs: double-quoted \r\n escape ---
 
 #[test]
 fn scanner_double_quoted_cr_lf_escape() {
@@ -2050,7 +2050,7 @@ fn scanner_double_quoted_cr_lf_escape() {
     assert_eq!(v.as_str(), Some("wordmore"));
 }
 
-// --- scanner.rs: line 1108: unexpected EOF in escape ---
+// --- scanner.rs: unexpected EOF in escape ---
 
 #[test]
 fn scanner_double_quoted_eof_in_escape() {
@@ -2058,7 +2058,7 @@ fn scanner_double_quoted_eof_in_escape() {
     assert!(result.is_err());
 }
 
-// --- scanner.rs: line 936: empty plain scalar error ---
+// --- scanner.rs: empty plain scalar error ---
 
 #[test]
 fn scanner_empty_plain_scalar_error() {
@@ -2076,7 +2076,7 @@ fn scanner_plain_scalar_crlf_multiline() {
     assert_eq!(v["key"].as_str(), Some("val"));
 }
 
-// --- scanner.rs: line 803, 807: plain scalar peek_at loop ---
+// --- scanner.rs: plain scalar peek_at loop ---
 
 #[test]
 fn scanner_plain_scalar_with_colon_space() {
@@ -2276,7 +2276,7 @@ fn loader_merge_key_sequence_of_mappings() {
     assert_eq!(v["result"]["c"].as_i64(), Some(3));
 }
 
-// --- loader.rs: First policy (line 468 / 417-421) ---
+// --- loader.rs: First policy ---
 
 #[test]
 fn loader_duplicate_key_first_policy() {
@@ -2406,7 +2406,7 @@ fn ser_looks_like_number_dot_five() {
     assert!(yaml.contains('"') || yaml.contains('\''));
 }
 
-// --- ser.rs: reserved word check (line 376/500) ---
+// --- ser.rs: reserved word check ---
 
 #[test]
 fn ser_reserved_words_quoted() {
@@ -2420,7 +2420,7 @@ fn ser_reserved_words_quoted() {
     assert!(yaml.contains('"') || yaml.contains('\''));
 }
 
-// --- ser.rs: first-char special for ' (line 404/461) ---
+// --- ser.rs: first-char special for ' ---
 
 #[test]
 fn ser_first_char_single_quote() {
@@ -2433,7 +2433,7 @@ fn ser_first_char_single_quote() {
 #[test]
 fn ser_commented_value_in_sequence() {
     // Sequence item that is a mapping with multiple entries
-    // Line 631-632: write_value for nested mapping in sequence
+    // write_value for nested mapping in sequence
     let mut inner = Mapping::new();
     let _ = inner.insert("a".to_string(), Value::from(1));
     let _ = inner.insert(
@@ -2565,7 +2565,7 @@ fn ser_folded_block_strip_chomping() {
     assert!(yaml.contains(">-"));
 }
 
-// --- singleton_map_recursive.rs: tagged value (lines 47-51) ---
+// --- singleton_map_recursive.rs: tagged value ---
 
 #[test]
 fn singleton_map_recursive_with_tagged() {
@@ -2617,7 +2617,6 @@ fn singleton_map_with_serialize_non_mapping() {
 #[test]
 fn scanner_single_quoted_break_followed_by_break() {
     // Test the path where leading_break is true and more breaks follow
-    // This exercises lines 1005-1011
     let yaml = "'a\n\nb'\n";
     let v: Value = from_str(yaml).unwrap();
     let s = v.as_str().unwrap();
@@ -2627,7 +2626,7 @@ fn scanner_single_quoted_break_followed_by_break() {
 
 #[test]
 fn scanner_double_quoted_break_followed_by_normal() {
-    // After line break, next char is normal - exercises lines 1203-1211
+    // After line break, next char is normal
     let yaml = "\"hello\nworld\"\n";
     let v: Value = from_str(yaml).unwrap();
     assert_eq!(v.as_str(), Some("hello world"));
@@ -2635,7 +2634,7 @@ fn scanner_double_quoted_break_followed_by_normal() {
 
 #[test]
 fn scanner_block_scalar_empty_only_lines() {
-    // Block scalar with only empty lines (exercises line 1396-1397)
+    // Block scalar with only empty lines
     let yaml = "|\n\n\n";
     let v: Value = from_str(yaml).unwrap();
     // Empty block scalar with trailing breaks, clip chomping
@@ -2761,7 +2760,7 @@ fn loader_duplicate_key_last_replaces() {
 
 #[test]
 fn ser_sequence_nested_mapping_and_sequence() {
-    // Line 632: nested mapping value in sequence items
+    // nested mapping value in sequence items
     let mut m = Mapping::new();
     let _ = m.insert(
         "x".to_string(),
@@ -2777,7 +2776,7 @@ fn ser_sequence_nested_mapping_and_sequence() {
 
 #[test]
 fn ser_sequence_with_nested_sequence() {
-    // Line 638-639: sequence item that is a sequence
+    // sequence item that is a sequence
     let seq = Value::Sequence(vec![Value::Sequence(vec![Value::from(1), Value::from(2)])]);
     let yaml = to_string(&seq).unwrap();
     assert!(yaml.contains("- 1"));
@@ -2797,7 +2796,6 @@ fn scanner_directive() {
 #[test]
 fn scanner_single_quoted_leading_break_then_spaces() {
     // Single-quoted: line folding with leading break and then chars
-    // This exercises the path at line 1037-1048
     let yaml = "'hello\n  world'\n";
     let v: Value = from_str(yaml).unwrap();
     assert_eq!(v.as_str(), Some("hello world"));
@@ -3074,7 +3072,7 @@ fn scanner_block_scalar_clip_trailing() {
     assert!(!s.ends_with("\n\n"));
 }
 
-// --- scanner.rs: line 152 EOF token stream ---
+// --- scanner.rs EOF token stream ---
 
 #[test]
 fn scanner_eof_token_stream() {
@@ -3140,7 +3138,7 @@ fn loader_merge_with_scalar_value() {
 // ADDITIONAL COVERAGE TESTS - BATCH 2
 // ============================================================================
 
-// --- de.rs 648, 652: deserialize_identifier via from_value enum ---
+// --- de.rs: deserialize_identifier via from_value enum ---
 
 #[test]
 fn de_deserialize_identifier_via_from_value_enum() {
@@ -3176,7 +3174,7 @@ fn de_deserialize_identifier_via_from_value_struct_fields() {
     assert_eq!(p, Point { x: 10, y: 20 });
 }
 
-// --- de.rs 786-814: SpannedMapAccess via from_str (all field states) ---
+// --- de.rs: SpannedMapAccess via from_str (all field states) ---
 
 #[test]
 fn de_spanned_map_access_complete_lifecycle() {
@@ -3211,7 +3209,7 @@ fn de_spanned_in_struct_from_str() {
     assert!(*config.debug);
 }
 
-// --- events.rs 112: IndentlessSequenceEntry ---
+// --- events.rs: IndentlessSequenceEntry ---
 
 #[test]
 fn events_indentless_sequence_at_mapping_level() {
@@ -3225,10 +3223,10 @@ fn events_indentless_sequence_at_mapping_level() {
     assert_eq!(v["items"][2].as_str(), Some("c"));
 }
 
-// --- events.rs 125-127: End state error ---
+// --- events.rs: End state error ---
 // This is unreachable through normal public API; parser is consumed after use.
 
-// --- events.rs 221: DocumentContent state after explicit --- ---
+// --- events.rs: DocumentContent state after explicit --- ---
 
 #[test]
 fn events_document_content_state() {
@@ -3238,7 +3236,7 @@ fn events_document_content_state() {
     assert_eq!(v.as_str(), Some("hello"));
 }
 
-// --- events.rs 232: DocumentContent empty scalar ---
+// --- events.rs: DocumentContent empty scalar ---
 
 #[test]
 fn events_document_content_empty_before_end() {
@@ -3250,7 +3248,7 @@ fn events_document_content_empty_before_end() {
     assert_eq!(docs[1].as_str(), Some("hello"));
 }
 
-// --- events.rs 281-284: Anchor after tag ---
+// --- events.rs: Anchor after tag ---
 
 #[test]
 fn events_anchor_after_tag_parsed() {
@@ -3260,7 +3258,7 @@ fn events_anchor_after_tag_parsed() {
     assert_eq!(v.as_str(), Some("hello"));
 }
 
-// --- events.rs 321, 330: FlowSequenceStart and FlowMappingStart in parse_node
+// --- events.rs: FlowSequenceStart and FlowMappingStart in parse_node
 // ---
 
 #[test]
@@ -3279,7 +3277,7 @@ fn events_flow_mapping_start_in_node() {
     assert_eq!(v["data"]["x"].as_i64(), Some(1));
 }
 
-// --- events.rs 357, 368, 369: tag/anchor without matching node ---
+// --- events.rs: tag/anchor without matching node ---
 
 #[test]
 fn events_tag_only_empty_scalar() {
@@ -3290,10 +3288,10 @@ fn events_tag_only_empty_scalar() {
     let _ = result;
 }
 
-// --- events.rs 401-403: block sequence entry error ---
+// --- events.rs: block sequence entry error ---
 // Already tested via events_block_sequence_bad_token
 
-// --- events.rs 408-428: indentless sequence with empty entries ---
+// --- events.rs: indentless sequence with empty entries ---
 
 #[test]
 fn events_indentless_sequence_empty_entry_followed_by_key() {
@@ -3307,7 +3305,7 @@ fn events_indentless_sequence_empty_entry_followed_by_key() {
     assert_eq!(v["b"].as_i64(), Some(2));
 }
 
-// --- events.rs 443, 444: block mapping key empty scalar ---
+// --- events.rs: block mapping key empty scalar ---
 
 #[test]
 fn events_block_mapping_key_followed_by_key() {
@@ -3318,7 +3316,7 @@ fn events_block_mapping_key_followed_by_key() {
     assert_eq!(v["b"].as_str(), Some("value"));
 }
 
-// --- events.rs 529: flow_sequence_entry_mapping_key empty scalar ---
+// --- events.rs: flow_sequence_entry_mapping_key empty scalar ---
 
 #[test]
 fn events_flow_sequence_entry_mapping_key_empty() {
@@ -3330,7 +3328,7 @@ fn events_flow_sequence_entry_mapping_key_empty() {
     let _ = result;
 }
 
-// --- events.rs 595: flow_mapping_key with Key token ---
+// --- events.rs: flow_mapping_key with Key token ---
 
 #[test]
 fn events_flow_mapping_explicit_key() {
@@ -3342,7 +3340,7 @@ fn events_flow_mapping_explicit_key() {
     let _ = result;
 }
 
-// --- events.rs 601, 602: flow mapping key empty scalar after ? ---
+// --- events.rs: flow mapping key empty scalar after ? ---
 
 #[test]
 fn events_flow_mapping_explicit_key_empty_value_after_key() {
@@ -3352,10 +3350,10 @@ fn events_flow_mapping_explicit_key_empty_value_after_key() {
     let _ = result; // Exercise the path
 }
 
-// --- loader.rs 147, 155: DocumentStart/DocumentEnd in process_event ---
+// --- loader.rs: DocumentStart/DocumentEnd in process_event ---
 // Already covered via multi-document tests
 
-// --- loader.rs 159, 165: Scalar event with tag ---
+// --- loader.rs: Scalar event with tag ---
 
 #[test]
 fn loader_scalar_event_with_quoted_style_and_tag() {
@@ -3365,7 +3363,7 @@ fn loader_scalar_event_with_quoted_style_and_tag() {
     assert_eq!(v.as_str(), Some("hello"));
 }
 
-// --- loader.rs 209: depth exceeded ---
+// --- loader.rs: depth exceeded ---
 
 #[test]
 fn loader_max_depth_exceeded() {
@@ -3376,7 +3374,7 @@ fn loader_max_depth_exceeded() {
     assert!(result.is_err());
 }
 
-// --- loader.rs 222, 227: SequenceEnd with anchor ---
+// --- loader.rs: SequenceEnd with anchor ---
 
 #[test]
 fn loader_sequence_end_with_anchor() {
@@ -3386,10 +3384,10 @@ fn loader_sequence_end_with_anchor() {
     assert_eq!(v["b"][0].as_i64(), Some(1));
 }
 
-// --- loader.rs 246: unexpected sequence end ---
+// --- loader.rs: unexpected sequence end ---
 // This is a defensive check - hard to trigger through the public API
 
-// --- loader.rs 267, 273: MappingEnd lifecycle ---
+// --- loader.rs: MappingEnd lifecycle ---
 
 #[test]
 fn loader_mapping_end_with_anchor() {
@@ -3399,10 +3397,10 @@ fn loader_mapping_end_with_anchor() {
     assert_eq!(v["site"]["host"].as_str(), Some("localhost"));
 }
 
-// --- loader.rs 319-324: MappingValue/unexpected mapping end error ---
+// --- loader.rs: MappingValue/unexpected mapping end error ---
 // These are defensive error paths
 
-// --- loader.rs 402, 410, 417, 423: push_value MappingValue frame ---
+// --- loader.rs: push_value MappingValue frame ---
 
 #[test]
 fn loader_mapping_value_frame_merge() {
@@ -3424,7 +3422,7 @@ fn loader_mapping_value_frame_first_policy() {
     assert_eq!(v["b"].as_i64(), Some(2));
 }
 
-// --- loader.rs 468: non-scalar key error ---
+// --- loader.rs: non-scalar key error ---
 
 #[test]
 fn loader_non_scalar_key_error() {
@@ -3437,7 +3435,7 @@ fn loader_non_scalar_key_error() {
     let _ = result;
 }
 
-// --- loader.rs 549: tag with non-!! handle ---
+// --- loader.rs: tag with non-!! handle ---
 
 #[test]
 fn loader_tag_with_custom_handle() {
@@ -3448,7 +3446,7 @@ fn loader_tag_with_custom_handle() {
     assert!(v.is_tagged() || v.as_str().is_some());
 }
 
-// --- loader.rs 588: estimate_value_size with string ---
+// --- loader.rs: estimate_value_size with string ---
 
 #[test]
 fn loader_alias_large_string() {
@@ -3461,16 +3459,16 @@ fn loader_alias_large_string() {
     assert_eq!(v["ref2"].as_str().unwrap().len(), 100);
 }
 
-// --- loader.rs 638: hex integer parsing ---
+// --- loader.rs: hex integer parsing ---
 // Already tested
 
-// --- loader.rs 688: try_parse_float ---
+// --- loader.rs: try_parse_float ---
 // Already tested via large_int_overflow
 
-// --- scanner.rs 63, 64: ScanError Display ---
+// --- scanner.rs: ScanError Display ---
 // Already tested
 
-// --- scanner.rs 152: unexpected end of token stream ---
+// --- scanner.rs: unexpected end of token stream ---
 
 #[test]
 fn scanner_eof_mid_structure() {
@@ -3479,7 +3477,7 @@ fn scanner_eof_mid_structure() {
     assert!(result.is_err());
 }
 
-// --- scanner.rs 170, 172, 173: next_simple_key_token_number ---
+// --- scanner.rs: next_simple_key_token_number ---
 
 #[test]
 fn scanner_simple_key_tracking() {
@@ -3490,10 +3488,10 @@ fn scanner_simple_key_tracking() {
     assert_eq!(v["c"].as_i64(), Some(3));
 }
 
-// --- scanner.rs 294, 327: skip_to_next_token loop and roll_indent ---
+// --- scanner.rs: skip_to_next_token loop and roll_indent ---
 // Already covered
 
-// --- scanner.rs 458, 459: colon followed by flow indicators ---
+// --- scanner.rs: colon followed by flow indicators ---
 
 #[test]
 fn scanner_colon_followed_by_colon() {
@@ -3503,10 +3501,10 @@ fn scanner_colon_followed_by_colon() {
     let _ = result; // May be valid or error
 }
 
-// --- scanner.rs 473-475: BOM handling ---
+// --- scanner.rs: BOM handling ---
 // Already tested
 
-// --- scanner.rs 583: fetch_block_entry in block context ---
+// --- scanner.rs: fetch_block_entry in block context ---
 
 #[test]
 fn scanner_block_entry_not_allowed() {
@@ -3517,7 +3515,7 @@ fn scanner_block_entry_not_allowed() {
     let _ = result;
 }
 
-// --- scanner.rs 599: fetch_key not allowed ---
+// --- scanner.rs: fetch_key not allowed ---
 
 #[test]
 fn scanner_mapping_key_not_allowed() {
@@ -3527,7 +3525,7 @@ fn scanner_mapping_key_not_allowed() {
     let _ = result;
 }
 
-// --- scanner.rs 633: fetch_value col from simple key start ---
+// --- scanner.rs: fetch_value col from simple key start ---
 
 #[test]
 fn scanner_value_after_simple_key_multiline() {
@@ -3537,7 +3535,7 @@ fn scanner_value_after_simple_key_multiline() {
     assert_eq!(v["nested"]["inner_key"].as_str(), Some("inner_value"));
 }
 
-// --- scanner.rs 650: mapping values not allowed ---
+// --- scanner.rs: mapping values not allowed ---
 
 #[test]
 fn scanner_value_not_allowed_context() {
@@ -3548,13 +3546,13 @@ fn scanner_value_not_allowed_context() {
     let _ = result;
 }
 
-// --- scanner.rs 659-666: no simple key tracking ---
+// --- scanner.rs: no simple key tracking ---
 // Defensive path, hard to trigger
 
-// --- scanner.rs 733: anchor name limit ---
+// --- scanner.rs: anchor name limit ---
 // Already tested
 
-// --- scanner.rs 803, 807: plain scalar inner loop ---
+// --- scanner.rs: plain scalar inner loop ---
 
 #[test]
 fn scanner_plain_scalar_stops_at_colon_space() {
@@ -3573,7 +3571,7 @@ fn scanner_plain_scalar_stops_at_flow_indicators() {
     assert_eq!(v[1].as_str(), Some("second"));
 }
 
-// --- scanner.rs 915, 916: plain scalar multiline CRLF ---
+// --- scanner.rs: plain scalar multiline CRLF ---
 
 #[test]
 fn scanner_plain_scalar_multiline_continuation() {
@@ -3583,16 +3581,16 @@ fn scanner_plain_scalar_multiline_continuation() {
     assert_eq!(v["key"].as_str(), Some("line1 line2 line3"));
 }
 
-// --- scanner.rs 936: empty plain scalar ---
+// --- scanner.rs: empty plain scalar ---
 // Already tested
 
-// --- scanner.rs 978, 984: single-quoted EOF and escape ---
+// --- scanner.rs: single-quoted EOF and escape ---
 // Already tested
 
-// --- scanner.rs 1001-1011: single-quoted line folding ---
+// --- scanner.rs: single-quoted line folding ---
 // Already tested
 
-// --- scanner.rs 1037, 1047, 1048: single-quoted whitespace ---
+// --- scanner.rs: single-quoted whitespace ---
 
 #[test]
 fn scanner_single_quoted_trailing_whitespace() {
@@ -3605,10 +3603,10 @@ fn scanner_single_quoted_trailing_whitespace() {
     assert!(s.contains("world"));
 }
 
-// --- scanner.rs 1071, 1077, 1083: double-quoted ---
+// --- scanner.rs: double-quoted ---
 // Already tested
 
-// --- scanner.rs 1091, 1097: escape after break in double-quoted ---
+// --- scanner.rs: escape after break in double-quoted ---
 
 #[test]
 fn scanner_double_quoted_escape_after_line_break() {
@@ -3620,25 +3618,25 @@ fn scanner_double_quoted_escape_after_line_break() {
     assert!(s.contains('\t'));
 }
 
-// --- scanner.rs 1130, 1134, 1138, 1142: escape sequences ---
+// --- scanner.rs: escape sequences ---
 // Already tested via scanner_double_quoted_escapes and similar
 
-// --- scanner.rs 1152: unknown escape ---
+// --- scanner.rs: unknown escape ---
 // Already tested
 
-// --- scanner.rs 1171-1176: double-quoted multiple line breaks ---
+// --- scanner.rs: double-quoted multiple line breaks ---
 // Already tested
 
-// --- scanner.rs 1203, 1213, 1214: double-quoted whitespace buffering ---
+// --- scanner.rs: double-quoted whitespace buffering ---
 // Already tested
 
-// --- scanner.rs 1324, 1335: block scalar explicit indent ---
+// --- scanner.rs: block scalar explicit indent ---
 // Already tested
 
-// --- scanner.rs 1397, 1412, 1449: block scalar content ---
+// --- scanner.rs: block scalar content ---
 // Already tested
 
-// --- ser.rs 361-363: looks_like_number with .digit pattern ---
+// --- ser.rs: looks_like_number with .digit pattern ---
 
 #[test]
 fn ser_looks_like_number_dot_digit_pattern() {
@@ -3653,7 +3651,7 @@ fn ser_looks_like_number_dot_digit_pattern() {
     assert!(yaml.contains('\'') || yaml.contains('"'));
 }
 
-// --- ser.rs 376: reserved word ---
+// --- ser.rs: reserved word ---
 
 #[test]
 fn ser_reserved_words_comprehensive() {
@@ -3670,7 +3668,7 @@ fn ser_reserved_words_comprehensive() {
     }
 }
 
-// --- ser.rs 404: first char single quote ---
+// --- ser.rs: first char single quote ---
 
 #[test]
 fn ser_first_char_single_quote_needs_double() {
@@ -3680,7 +3678,7 @@ fn ser_first_char_single_quote_needs_double() {
     assert!(yaml.contains('"'));
 }
 
-// --- ser.rs 711, 718: write_literal_block/write_folded_block internals ---
+// --- ser.rs: write_literal_block/write_folded_block internals ---
 
 #[test]
 fn ser_literal_block_with_leading_space() {
@@ -3698,10 +3696,10 @@ fn ser_folded_block_with_leading_space() {
     assert!(yaml.contains('>'));
 }
 
-// --- ser.rs 731, 734, 743: commented/space-after/unknown internal tags ---
+// --- ser.rs: commented/space-after/unknown internal tags ---
 // Already tested
 
-// --- spanned.rs 117, 118: Spanned::deserialize ---
+// --- spanned.rs: Spanned::deserialize ---
 
 #[test]
 fn spanned_deserialize_calls_deserialize_struct() {
@@ -3715,7 +3713,7 @@ fn spanned_deserialize_calls_deserialize_struct() {
     let _ = v.end;
 }
 
-// --- spanned.rs 129, 130: SpannedVisitor expecting ---
+// --- spanned.rs: SpannedVisitor expecting ---
 
 #[test]
 fn spanned_expecting_message() {
@@ -3727,7 +3725,7 @@ fn spanned_expecting_message() {
     let _ = result;
 }
 
-// --- spanned.rs 154, 156: unknown field in SpannedVisitor ---
+// --- spanned.rs: unknown field in SpannedVisitor ---
 
 #[test]
 fn spanned_unknown_field_skipped() {
@@ -3740,28 +3738,28 @@ fn spanned_unknown_field_skipped() {
     assert_eq!(*result, "hello");
 }
 
-// --- value.rs 399: MappingVisitor expecting ---
+// --- value.rs: MappingVisitor expecting ---
 // Already tested
 
-// --- value.rs 855: MappingAnyVisitor expecting ---
+// --- value.rs: MappingAnyVisitor expecting ---
 // Already tested
 
-// --- value.rs 1446: TaggedValueVisitor expecting ---
+// --- value.rs: TaggedValueVisitor expecting ---
 // Already tested
 
-// --- value.rs 1526: TaggedValueMapAccess next_value_seed ---
+// --- value.rs: TaggedValueMapAccess next_value_seed ---
 // Already tested
 
-// --- value.rs 2468: usize::index_or_insert through Tagged ---
+// --- value.rs: usize::index_or_insert through Tagged ---
 // Already tested
 
-// --- value.rs 2586-2604: value_type_name arms ---
+// --- value.rs: value_type_name arms ---
 // Already tested
 
-// --- value.rs 2627-2628: visit_string ---
+// --- value.rs: visit_string ---
 // Already tested
 
-// --- value.rs 2755: ValueMapAccess::next_value_seed ---
+// --- value.rs: ValueMapAccess::next_value_seed ---
 
 #[test]
 fn value_map_access_next_value_via_ref_value() {
@@ -3780,7 +3778,7 @@ fn value_map_access_next_value_via_ref_value() {
     assert_eq!(p.val, 42);
 }
 
-// --- value.rs 2801: deserialize_enum fallback to deserialize_any ---
+// --- value.rs: deserialize_enum fallback to deserialize_any ---
 
 #[test]
 fn ref_value_deserialize_enum_mapping() {
@@ -3804,7 +3802,7 @@ fn ref_value_deserialize_enum_mapping() {
     );
 }
 
-// --- value.rs 2828: deserialize_struct ---
+// --- value.rs: deserialize_struct ---
 
 #[test]
 fn ref_value_deserialize_struct_via_mapping() {
@@ -3832,7 +3830,7 @@ fn ref_value_deserialize_struct_via_mapping() {
     );
 }
 
-// --- value.rs 2837-2844: deserialize_struct with Spanned ---
+// --- value.rs: deserialize_struct with Spanned ---
 
 #[test]
 fn ref_value_deserialize_struct_spanned_via_value() {
@@ -3859,7 +3857,7 @@ fn ref_value_deserialize_struct_spanned_nested_in_mapping() {
     assert_eq!(*item.count, 5);
 }
 
-// --- singleton_map_recursive.rs 47-51: Tagged arm ---
+// --- singleton_map_recursive.rs: Tagged arm ---
 
 #[test]
 fn singleton_map_recursive_transform_tagged() {
@@ -3887,7 +3885,7 @@ fn singleton_map_recursive_transform_tagged() {
     assert_eq!(ops, roundtrip);
 }
 
-// --- singleton_map_with.rs 141, 143: fallback serialize path ---
+// --- singleton_map_with.rs: fallback serialize path ---
 
 #[test]
 fn singleton_map_with_serialize_fallback_non_mapping_non_string() {
@@ -3912,7 +3910,7 @@ fn singleton_map_with_serialize_fallback_sequence() {
     assert!(result.is_sequence());
 }
 
-// --- singleton_map_with.rs 214-217: transform_value_keys on Tagged ---
+// --- singleton_map_with.rs: transform_value_keys on Tagged ---
 
 #[test]
 fn singleton_map_with_deserialize_tagged_transform() {
@@ -3977,7 +3975,7 @@ fn spanned_mapping_value_from_str() {
     assert_eq!(*doc.data.get("y").unwrap(), 2);
 }
 
-// --- Exercise events.rs line 117: FlowSequenceEntry (not first) ---
+// --- Exercise events.rs: FlowSequenceEntry (not first) ---
 
 #[test]
 fn events_flow_sequence_not_first_entry() {
@@ -3987,7 +3985,7 @@ fn events_flow_sequence_not_first_entry() {
     assert_eq!(v[4].as_i64(), Some(5));
 }
 
-// --- Exercise events.rs line 122: FlowMappingKey (not first) ---
+// --- Exercise events.rs: FlowMappingKey (not first) ---
 
 #[test]
 fn events_flow_mapping_key_not_first() {
@@ -4010,7 +4008,7 @@ fn loader_span_tree_sequence_and_mapping() {
     assert_eq!(v["other"][1].as_i64(), Some(20));
 }
 
-// --- Exercise fmt.rs 381: Inner<T> serialize ---
+// --- Exercise fmt.rs: Inner<T> serialize ---
 
 #[test]
 fn fmt_commented_inner_serialize_roundtrip() {
@@ -4022,7 +4020,7 @@ fn fmt_commented_inner_serialize_roundtrip() {
     assert!(v.is_tagged());
 }
 
-// --- Exercise de.rs 723: missing value in map ---
+// --- Exercise de.rs: missing value in map ---
 // This is an internal defensive error in MapDeserializer::next_value_seed
 // when next_value_seed is called without a preceding next_key_seed.
 // Not reachable through normal public API.
@@ -4076,7 +4074,7 @@ fn events_indentless_sequence_with_nested_nodes() {
     assert_eq!(v["mapping"][0]["key"].as_str(), Some("value"));
 }
 
-// --- Exercise scanner.rs 807: peek_at in flow context for plain scalar ---
+// --- Exercise scanner.rs: peek_at in flow context for plain scalar ---
 
 #[test]
 fn scanner_plain_scalar_in_flow_with_colon() {

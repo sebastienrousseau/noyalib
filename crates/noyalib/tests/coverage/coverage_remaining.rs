@@ -572,7 +572,7 @@ fn block_clip_chomping() {
 
 #[test]
 fn scan_error_display() {
-    // scanner.rs:63-64 — ScanError Display trait
+    // scanner.rs : ScanError Display trait
     let result: Result<Value, _> = from_str("key: \"\\q\"");
     let err = result.unwrap_err();
     let msg = err.to_string();
@@ -962,7 +962,7 @@ fn from_kebab_case_edge_cases() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════
-// with/singleton_map_recursive.rs — Tagged transform (lines 47–51)
+// with/singleton_map_recursive.rs : Tagged transform
 // ═══════════════════════════════════════════════════════════════════════
 
 #[test]

@@ -993,7 +993,7 @@ fn value_deserialize_map() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════
-// schema.rs — Validation edge cases (lines 61–193)
+// schema.rs : Validation edge cases
 // ═══════════════════════════════════════════════════════════════════════
 
 #[test]
@@ -1023,7 +1023,7 @@ fn failsafe_schema_rejects_tagged() {
 
 #[test]
 fn failsafe_schema_validates_nested_strings() {
-    // schema.rs:61, 67 — recursive validation in seq/map
+    // schema.rs : recursive validation in seq/map
     let seq = Value::Sequence(vec![Value::from("a"), Value::from("b")]);
     assert!(noyalib::validate_yaml_failsafe_schema(&seq).is_ok());
 
@@ -1034,7 +1034,7 @@ fn failsafe_schema_validates_nested_strings() {
 
 #[test]
 fn failsafe_schema_rejects_nested_number() {
-    // schema.rs:61 — nested non-string in sequence
+    // schema.rs : nested non-string in sequence
     let seq = Value::Sequence(vec![Value::from(42)]);
     assert!(noyalib::validate_yaml_failsafe_schema(&seq).is_err());
 }
@@ -1180,12 +1180,12 @@ fn fold_str_as_str_and_into_inner() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════
-// with/singleton_map_recursive.rs — Tagged transform (lines 47–51)
+// with/singleton_map_recursive.rs : Tagged transform
 // ═══════════════════════════════════════════════════════════════════════
 
 #[test]
 fn singleton_map_recursive_with_tagged() {
-    // singleton_map_recursive.rs:47-51 — tagged value transformation
+    // singleton_map_recursive.rs : tagged value transformation
     #[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
     enum Action {
         Run(String),
