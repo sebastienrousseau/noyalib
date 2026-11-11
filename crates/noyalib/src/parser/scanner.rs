@@ -277,6 +277,9 @@ pub(crate) struct Scanner<'a> {
     /// Keeping the floor makes the staleness and queue checks O(1)
     /// amortised instead of a walk of the whole stack per token.
     live_key_floor: usize,
+    /// Key-inspection work measured by the asymptotic regression test.
+    #[cfg(test)]
+    simple_key_checks: core::cell::Cell<usize>,
 }
 
 /// Compact record of the most recent emit, used by guard checks
@@ -484,6 +487,8 @@ impl<'a> Scanner<'a> {
             line_end_memo: (usize::MAX, 0, false),
             last_token_end: 0,
             live_key_floor: 0,
+            #[cfg(test)]
+            simple_key_checks: core::cell::Cell::new(0),
         }
     }
 
@@ -610,7 +615,11 @@ impl<'a> Scanner<'a> {
             .get(self.live_key_floor..)
             .unwrap_or_default()
             .iter()
-            .find(|sk| sk.possible && !sk.stale)
+            .find(|sk| {
+                #[cfg(test)]
+                self.simple_key_checks.set(self.simple_key_checks.get() + 1);
+                sk.possible && !sk.stale
+            })
             .is_some_and(|sk| sk.token_number == next_token)
     }
 
@@ -1220,6 +1229,8 @@ impl<'a> Scanner<'a> {
     /// younger key's length itself.
     fn stale_simple_keys(&mut self) -> ScanResult<()> {
         while let Some(sk) = self.simple_keys.get(self.live_key_floor) {
+            #[cfg(test)]
+            self.simple_key_checks.set(self.simple_key_checks.get() + 1);
             if sk.possible && !sk.stale {
                 if !self.simple_key_is_stale(self.live_key_floor, sk) {
                     break;
@@ -2652,34 +2663,39 @@ mod tests {
         }
     }
 
-    /// Deep flow nesting keeps one pending simple key per level; the
-    /// staleness and queue checks must not walk every level per token.
-    /// Linear work grows about eight times between the two depths,
-    /// quadratic work about sixty-four times.
+    /// Eight times the nesting must use less than 24 times the key
+    /// inspection work. Count inspections instead of elapsed wall time,
+    /// which varies with other tests, fuzzers and CI scheduling.
     #[test]
     #[cfg_attr(
         miri,
-        ignore = "a wall-clock scaling check; Miri's timing means nothing and took 38 minutes"
+        ignore = "large scaling input; native tests check the work bound"
     )]
-    fn deep_flow_nesting_scans_in_linear_time() {
-        fn drain(depth: usize) -> core::time::Duration {
+    fn deep_flow_nesting_scans_with_linear_key_work() {
+        fn drain(depth: usize) -> usize {
             let input = format!("{}{}", "[".repeat(depth), "]".repeat(depth));
-            let start = std::time::Instant::now();
             let mut scanner = Scanner::new(&input);
-            while let Ok(token) = scanner.next_token() {
+            let mut tokens = 0;
+            loop {
+                let token = scanner.next_token().expect("valid nested flow sequence");
+                tokens += 1;
+                assert!(
+                    scanner.simple_key_checks.get() <= 16 * depth,
+                    "key checks exceeded the linear work bound at depth {depth}"
+                );
                 if matches!(token.kind, TokenKind::StreamEnd) {
                     break;
                 }
             }
-            start.elapsed()
+            assert_eq!(tokens, 2 * depth + 2);
+            scanner.simple_key_checks.get()
         }
-        let small = (0..5).map(|_| drain(5_000)).min().unwrap_or_default();
-        let large = (0..3).map(|_| drain(40_000)).min().unwrap_or_default();
-        let small = small.max(core::time::Duration::from_micros(200));
-        let ratio = large.as_secs_f64() / small.as_secs_f64();
+        let small = drain(5_000);
+        let large = drain(40_000);
+        assert!(small > 0);
         assert!(
-            ratio < 24.0,
-            "8x deeper took {ratio:.1}x ({small:?} -> {large:?})"
+            large < 24 * small,
+            "8x deeper used {large} key checks versus {small}"
         );
     }
 
