@@ -11,6 +11,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Changed
 
+- **Breaking:** typed parsing preserves an anchored omitted key as an empty
+  string when it uses the AST fallback, consistently with streaming parsing.
+  `Value` mappings retain the canonical null-key spelling.
 - **Breaking:** aliases use the most recent anchor declaration, including
   nested redefinitions. An open redefinition no longer resolves to its
   previous value. Typed parsing falls back to the AST loader for nested

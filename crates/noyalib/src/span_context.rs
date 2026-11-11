@@ -373,7 +373,18 @@ fn walk_keys(
         (Value::Mapping(mapping), SpanTree::Mapping { entries, .. }) => {
             for ((k, v), &((start, end), ref vt)) in mapping.iter().zip(entries) {
                 let written = source.get(start..end);
-                if written.is_some_and(|w| is_canonicalised_plain_key(k, w)) {
+                // An omitted scalar may still carry an anchor. Its span
+                // deliberately includes that property for diagnostics, but
+                // a typed string key reads the empty scalar, not "null".
+                let anchored_empty = k == "null"
+                    && written.is_some_and(|text| {
+                        text.strip_prefix('&').is_some_and(|name| {
+                            !name.is_empty() && !name.contains([' ', '\t', '\n', '\r'])
+                        })
+                    });
+                if anchored_empty {
+                    let _ = out.insert(core::ptr::from_ref(k) as usize, (end, end));
+                } else if written.is_some_and(|w| is_canonicalised_plain_key(k, w)) {
                     let _ = out.insert(core::ptr::from_ref(k) as usize, (start, end));
                 }
                 walk_keys(v, vt, source, out);

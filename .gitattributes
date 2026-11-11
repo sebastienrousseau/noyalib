@@ -27,6 +27,7 @@ Cargo.lock text eol=lf -merge
 
 # Fuzz findings are byte sequences; CRLF is part of the reproducer.
 fuzz/regressions/** binary
+crates/noyalib/tests/fixtures/anchored-empty-key.yaml binary
 fuzz/corpus/** binary
 fuzz-nostd/regressions/** binary
 fuzz-nostd/corpus/** binary

@@ -41,6 +41,31 @@ fn an_empty_key_stays_empty() {
 }
 
 #[test]
+fn an_anchored_empty_key_stays_empty_on_the_ast_path() {
+    let cfg = ParserConfig::new();
+    for doc in ["? &a\n: 1\nz: !t 2\n", "? &a\n: 1\n"] {
+        assert_eq!(keys(doc, &cfg), [""], "{doc:?}");
+        let value: Value = from_str(doc).unwrap();
+        assert!(value.get("null").is_some(), "Value keeps canonical keys");
+    }
+}
+
+#[test]
+fn original_anchored_empty_key_projection() {
+    let doc = include_str!("../fixtures/anchored-empty-key.yaml");
+    let actual: serde_json::Value = from_str(doc).unwrap();
+    assert_eq!(
+        actual,
+        serde_json::json!({
+            "": null,
+            "x  adapter": null,
+            "pdef!boaults": {"<<:r": null},
+            "aults": {"adapter": null},
+        })
+    );
+}
+
+#[test]
 fn yaml_1_1_on_key_reaches_a_struct_field() {
     #[derive(Deserialize)]
     struct Workflow {
