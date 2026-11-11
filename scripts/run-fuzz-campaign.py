@@ -16,6 +16,19 @@ import time
 import tomllib
 
 
+def campaign_stats(raw):
+    done = re.findall(r'^Done (\d+) runs in (\d+) second\(s\)$', raw, re.MULTILINE)
+    if done:
+        executions, seconds = map(int, done[-1])
+        return {'executions': executions, 'measured_seconds': seconds,
+                'completion_reported': True, 'execution_count_kind': 'complete'}
+    progress = re.findall(r'^#(\d+)\s+(?:INITED|NEW|REDUCE|pulse|RELOAD|DONE)\b',
+                          raw, re.MULTILINE)
+    return {'executions': max(map(int, progress)) if progress else None,
+            'measured_seconds': None, 'completion_reported': False,
+            'execution_count_kind': 'lower_bound' if progress else 'unavailable'}
+
+
 def digest(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
@@ -89,18 +102,21 @@ def main():
     with log.open('w') as stream:
         result = subprocess.run(command, cwd=root, env=env, stdout=stream, stderr=subprocess.STDOUT)
     raw = log.read_text(errors='replace')
-    done = re.findall(r'Done (\d+) runs in (\d+) second\(s\)', raw)
-    executions, seconds = map(int, done[-1]) if done else (0, 0)
+    stats = campaign_stats(raw)
     locks_match = digest(lock) == lock_hash
     findings = sorted(file.name for file in artifacts.iterdir() if file.is_file())
-    passed = (result.returncode == 0 and executions > 0 and seconds >= args.seconds
+    passed = (result.returncode == 0 and stats['completion_reported']
+              and stats['executions'] > 0 and stats['measured_seconds'] >= args.seconds
               and locks_match and not findings)
     report.update(status='passed' if passed else 'failed', exit_code=result.returncode,
-                  executions=executions, measured_seconds=seconds, wall_seconds=time.monotonic() - start,
+                  **stats, wall_seconds=time.monotonic() - start,
                   lockfile_unchanged=locks_match, log_sha256=digest(log),
                   findings=findings)
     (out / 'receipt.json').write_text(json.dumps(report, indent=2) + '\n')
-    print(f'{args.scope}/{args.target}: {report["status"]}; {executions} executions in {seconds}s; {out}')
+    count = stats['executions'] if stats['executions'] is not None else 'unknown'
+    duration = stats['measured_seconds'] if stats['measured_seconds'] is not None else 'unknown'
+    print(f'{args.scope}/{args.target}: {report["status"]}; {count} executions '
+          f'({stats["execution_count_kind"]}) in {duration}s; {out}')
     return 0 if passed else 1
 
 

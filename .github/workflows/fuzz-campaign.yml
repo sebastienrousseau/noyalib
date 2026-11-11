@@ -24,6 +24,8 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
+      - name: Test receipt accounting
+        run: python3 scripts/tests/test_fuzz_campaign.py
       - id: inventory
         run: echo "matrix=$(python3 scripts/run-fuzz-campaign.py --matrix)" >> "$GITHUB_OUTPUT"
   fuzz:
