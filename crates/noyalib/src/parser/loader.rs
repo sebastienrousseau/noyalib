@@ -627,14 +627,7 @@ impl<'a> Loader<'a> {
                         end,
                         items: span_items,
                     };
-                    if let Some(name) = anchor
-                        && self.anchor_def_spans.get(&name) == Some(&start)
-                    {
-                        // Nested declarations take precedence over completion
-                        // of the surrounding anchored collection.
-                        let cost = self.alias_cost(&v, &st);
-                        let _ = self.anchor_map.insert(name, (v.clone(), st.clone(), cost));
-                    }
+                    self.record_collection_anchor(anchor, start, &v, &st);
                     // A sequence or mapping is never the string `<<`.
                     self.push_node(v, st, input, false)?;
                 } else {
@@ -689,14 +682,7 @@ impl<'a> Loader<'a> {
                         end: span.end,
                         entries: span_entries,
                     };
-                    if let Some(name) = anchor
-                        && self.anchor_def_spans.get(&name) == Some(&start)
-                    {
-                        // Nested declarations take precedence over completion
-                        // of the surrounding anchored collection.
-                        let cost = self.alias_cost(&v, &st);
-                        let _ = self.anchor_map.insert(name, (v.clone(), st.clone(), cost));
-                    }
+                    self.record_collection_anchor(anchor, start, &v, &st);
                     // A sequence or mapping is never the string `<<`.
                     self.push_node(v, st, input, false)?;
                 } else {
@@ -708,6 +694,24 @@ impl<'a> Loader<'a> {
     }
 
     #[inline]
+    /// Preserve a nested redefinition when its enclosing collection ends.
+    fn record_collection_anchor(
+        &mut self,
+        anchor: Option<String>,
+        start: usize,
+        value: &Value,
+        tree: &SpanTree,
+    ) {
+        if let Some(name) = anchor
+            && self.anchor_def_spans.get(&name) == Some(&start)
+        {
+            let cost = self.alias_cost(value, tree);
+            let _ = self
+                .anchor_map
+                .insert(name, (value.clone(), tree.clone(), cost));
+        }
+    }
+
     /// Push a completed node into the enclosing frame.
     ///
     /// `may_be_merge_key` says whether this value is *eligible* to be read
@@ -1322,14 +1326,7 @@ impl<'a> NoSpanLoader<'a> {
                 {
                     let inner = Value::Sequence(items);
                     let v = wrap_with_tag(inner, tag.as_ref(), self.config.tag_registry.as_deref());
-                    if let Some(name) = anchor
-                        && self.anchor_def_spans.get(&name) == Some(&start)
-                    {
-                        // Nested declarations take precedence over completion
-                        // of the surrounding anchored collection.
-                        let cost = AliasCost::of_value(&v);
-                        let _ = self.anchor_map.insert(name, (v.clone(), cost));
-                    }
+                    self.record_collection_anchor(anchor, start, &v);
                     self.push_value(v, false, start, input)?;
                 }
             }
@@ -1369,19 +1366,22 @@ impl<'a> NoSpanLoader<'a> {
                     }
                     let inner = Value::Mapping(map);
                     let v = wrap_with_tag(inner, tag.as_ref(), self.config.tag_registry.as_deref());
-                    if let Some(name) = anchor
-                        && self.anchor_def_spans.get(&name) == Some(&start)
-                    {
-                        // Nested declarations take precedence over completion
-                        // of the surrounding anchored collection.
-                        let cost = AliasCost::of_value(&v);
-                        let _ = self.anchor_map.insert(name, (v.clone(), cost));
-                    }
+                    self.record_collection_anchor(anchor, start, &v);
                     self.push_value(v, false, start, input)?;
                 }
             }
         }
         Ok(())
+    }
+
+    /// Preserve a nested redefinition when its enclosing collection ends.
+    fn record_collection_anchor(&mut self, anchor: Option<String>, start: usize, value: &Value) {
+        if let Some(name) = anchor
+            && self.anchor_def_spans.get(&name) == Some(&start)
+        {
+            let cost = AliasCost::of_value(value);
+            let _ = self.anchor_map.insert(name, (value.clone(), cost));
+        }
     }
 
     /// Push a completed value into the enclosing frame.

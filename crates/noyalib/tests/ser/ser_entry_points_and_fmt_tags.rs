@@ -82,36 +82,39 @@ fn every_entry_point_agrees_on_the_same_value() {
     assert_eq!(s, baseline, "to_fmt_writer_with_config");
 
     #[cfg(feature = "std")]
-    {
-        assert_eq!(
-            noyalib::to_string_tracking_shared(&doc).expect("tracking_shared"),
-            baseline,
-            "to_string_tracking_shared"
-        );
-        assert_eq!(
-            noyalib::to_string_tracking_shared_with_config(&doc, &cfg)
-                .expect("tracking_shared_with_config"),
-            baseline,
-            "to_string_tracking_shared_with_config"
-        );
+    assert_tracking_entry_points(&doc, &cfg, &baseline);
+}
 
-        let mut buf = Vec::new();
-        noyalib::to_writer_tracking_shared(&mut buf, &doc).expect("to_writer_tracking_shared");
-        assert_eq!(
-            String::from_utf8(buf).expect("utf8"),
-            baseline,
-            "to_writer_tracking_shared"
-        );
+#[cfg(feature = "std")]
+fn assert_tracking_entry_points<T: Serialize>(doc: &T, cfg: &SerializerConfig, expected: &str) {
+    assert_eq!(
+        noyalib::to_string_tracking_shared(doc).expect("tracking_shared"),
+        expected,
+        "to_string_tracking_shared"
+    );
+    assert_eq!(
+        noyalib::to_string_tracking_shared_with_config(doc, cfg)
+            .expect("tracking_shared_with_config"),
+        expected,
+        "to_string_tracking_shared_with_config"
+    );
 
-        let mut buf = Vec::new();
-        noyalib::to_writer_tracking_shared_with_config(&mut buf, &doc, &cfg)
-            .expect("to_writer_tracking_shared_with_config");
-        assert_eq!(
-            String::from_utf8(buf).expect("utf8"),
-            baseline,
-            "to_writer_tracking_shared_with_config"
-        );
-    }
+    let mut buf = Vec::new();
+    noyalib::to_writer_tracking_shared(&mut buf, doc).expect("to_writer_tracking_shared");
+    assert_eq!(
+        String::from_utf8(buf).expect("utf8"),
+        expected,
+        "to_writer_tracking_shared"
+    );
+
+    let mut buf = Vec::new();
+    noyalib::to_writer_tracking_shared_with_config(&mut buf, doc, cfg)
+        .expect("to_writer_tracking_shared_with_config");
+    assert_eq!(
+        String::from_utf8(buf).expect("utf8"),
+        expected,
+        "to_writer_tracking_shared_with_config"
+    );
 }
 
 /// The `Value`-typed entry points take the same path without serde in
