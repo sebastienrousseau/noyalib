@@ -19,7 +19,9 @@
 #![cfg(feature = "strict-deserialise")]
 #![allow(missing_docs)]
 
-use noyalib::{Error, from_reader_strict, from_slice_strict, from_str, from_str_strict};
+#[cfg(feature = "std")]
+use noyalib::from_reader_strict;
+use noyalib::{Error, from_slice_strict, from_str, from_str_strict};
 
 #[derive(Debug, serde::Deserialize)]
 #[allow(dead_code)]
@@ -144,6 +146,7 @@ fn strict_from_slice_rejects_invalid_utf8() {
 }
 
 #[test]
+#[cfg(feature = "std")]
 fn strict_from_reader_surfaces_typo_as_typed_error() {
     let yaml = b"port: 8080\nhost: api.example.com\nporrt: 9090\n".to_vec();
     let res: Result<ServerConfig, _> = from_reader_strict(&yaml[..]);
@@ -155,6 +158,7 @@ fn strict_from_reader_surfaces_typo_as_typed_error() {
 }
 
 #[test]
+#[cfg(feature = "std")]
 fn strict_from_reader_passes_when_every_key_is_declared() {
     let yaml = b"port: 8080\nhost: api.example.com\ntls: true\n".to_vec();
     let cfg: ServerConfig = from_reader_strict(&yaml[..]).unwrap();
@@ -163,6 +167,7 @@ fn strict_from_reader_passes_when_every_key_is_declared() {
 }
 
 #[test]
+#[cfg(feature = "std")]
 fn strict_from_reader_surfaces_io_error() {
     // A reader that returns an `io::Error` on first poll exercises
     // the `map_err(Error::Io)?` branch in `from_reader_strict`.
@@ -181,6 +186,7 @@ fn strict_from_reader_surfaces_io_error() {
 }
 
 #[test]
+#[cfg(feature = "std")]
 fn strict_from_reader_rejects_invalid_utf8() {
     // `read_to_string` returns an `io::Error` of kind InvalidData
     // when the bytes aren't UTF-8, so this also lands on the

@@ -227,7 +227,7 @@ jobs:
       - run: >-
           cargo test --locked --no-default-features
           --features "${{ matrix.features }}"
-          --test no_std --test issue_494 --test alloc_apis --test cst
+          --lib --tests
       - name: Document the alloc-only API
         env:
           CARGO_TARGET_DIR: ${{ github.workspace }}/target-alloc-docs-${{ matrix.profile }}
