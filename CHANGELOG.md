@@ -16,6 +16,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Fixed
 
+- Quote binary-looking strings during serialization so compatibility-mode
+  parsing preserves their values and mapping keys.
 - Read actual llvm-cov line totals, preserve full source identities and
   distinguish unmeasured tests from failures in the family scorecard.
 - Audit all tracked Cargo lockfiles and retain scoped evidence.

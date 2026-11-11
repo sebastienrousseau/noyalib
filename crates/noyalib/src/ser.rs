@@ -945,10 +945,11 @@ fn looks_like_number(s: &str) -> bool {
 /// string is quoted whenever any reader configuration would turn it into
 /// something else.
 fn resolves_as_non_string(s: &str) -> bool {
-    !matches!(
-        crate::streaming::resolve_plain_ext(s, false, true, false, true, true, false),
-        crate::streaming::Scalar::Str(_)
-    )
+    crate::parser::parse_legacy_binary(s).is_some()
+        || !matches!(
+            crate::streaming::resolve_plain_ext(s, false, true, false, true, true, false),
+            crate::streaming::Scalar::Str(_)
+        )
 }
 
 /// A `:` ends a plain scalar only when a space, a tab, a flow indicator,

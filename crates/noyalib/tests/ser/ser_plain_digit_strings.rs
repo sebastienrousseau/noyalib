@@ -18,7 +18,8 @@ const PLAIN: &[&str] = &["2026-12-31", "2026-12", "1.2.3", "3rd", "8080abc", "1/
 // so they stay quoted for a reader with the legacy forms enabled. `++1`
 // stays quoted because a permissive reader collapses the stacked signs.
 const QUOTED: &[&str] = &[
-    "42", "1.5", "1e3", "0x1F", "0o17", "007", "0755", "12:30:00", "+3", ".5", "++1",
+    "42", "1.5", "1e3", "0x1F", "0o17", "007", "0755", "12:30:00", "+3", ".5", "++1", "0b11",
+    "0B11", "+0b11", "-0b11", "0b1_0",
 ];
 
 fn emit(s: &str) -> String {
@@ -60,4 +61,14 @@ fn every_case_reads_back_as_the_same_string() {
             "round trip of {doc:?}"
         );
     }
+}
+
+#[cfg(feature = "compat-serde-yaml")]
+#[test]
+fn compatibility_roundtrip_preserves_a_binary_looking_string_key() {
+    use noyalib::compat::serde_yaml;
+    let value: Value = serde_yaml::from_str("! 0b11:").unwrap();
+    let emitted = serde_yaml::to_string(&value).unwrap();
+    let reparsed: Value = serde_yaml::from_str(&emitted).unwrap();
+    assert_eq!(reparsed, value, "{emitted}");
 }

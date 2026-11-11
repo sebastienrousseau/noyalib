@@ -1546,7 +1546,7 @@ fn is_leading_zero_decimal(s: &str) -> bool {
 }
 
 /// YAML 1.1 binary integer: `[-+]?0b[0-1_]+`.
-fn parse_legacy_binary(s: &str) -> Option<i64> {
+pub(crate) fn parse_legacy_binary(s: &str) -> Option<i64> {
     let (negative, rest) = match s.as_bytes().first() {
         Some(b'-') => (true, &s[1..]),
         Some(b'+') => (false, &s[1..]),
