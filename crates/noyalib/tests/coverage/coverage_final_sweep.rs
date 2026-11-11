@@ -10,10 +10,11 @@
 
 use noyalib::{
     Commented, FlowMap, FlowSeq, FoldString, LitString, Mapping, MappingAny, Number, ParserConfig,
-    RcAnchor, SerializerConfig, SpaceAfter, Spanned, Tag, TaggedValue, Value, from_str,
-    from_str_with_config, to_string, to_string_with_config, to_value, to_writer_tracking_shared,
-    to_writer_tracking_shared_with_config,
+    SerializerConfig, SpaceAfter, Spanned, Tag, TaggedValue, Value, from_str, from_str_with_config,
+    to_string, to_string_with_config, to_value,
 };
+#[cfg(feature = "std")]
+use noyalib::{to_writer_tracking_shared, to_writer_tracking_shared_with_config};
 use std::collections::BTreeMap;
 
 // ── de.rs AST paths (Spanned<T> forces AST) ─────────────────────────────
@@ -110,6 +111,7 @@ fn ast_deserialize_option_none() {
 // ── ser.rs tracking-shared writers ──────────────────────────────────────
 
 #[test]
+#[cfg(feature = "std")]
 fn to_writer_tracking_shared_default_config() {
     let a: RcAnchor<String> = RcAnchor::from("payload".to_string());
     let doc = vec![a.clone(), a];
@@ -121,6 +123,7 @@ fn to_writer_tracking_shared_default_config() {
 }
 
 #[test]
+#[cfg(feature = "std")]
 fn to_writer_tracking_shared_with_config_indent_four() {
     let a: RcAnchor<String> = RcAnchor::from("x".to_string());
     let doc = vec![a.clone(), a];
@@ -563,3 +566,6 @@ fn with_span_roundtrip() {
     let out = to_string(&w).unwrap();
     assert!(out.contains("app"));
 }
+
+#[cfg(feature = "std")]
+use noyalib::RcAnchor;

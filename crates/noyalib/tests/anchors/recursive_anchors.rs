@@ -6,7 +6,9 @@
 
 #![allow(missing_docs)]
 
-use noyalib::{ArcRecursion, ArcRecursive, RcRecursion, RcRecursive};
+#[cfg(feature = "std")]
+use noyalib::{ArcRecursion, ArcRecursive};
+use noyalib::{RcRecursion, RcRecursive};
 
 #[test]
 fn rc_recursive_late_init() {
@@ -73,6 +75,7 @@ fn rc_recursion_upgrade_while_strong_alive() {
 }
 
 #[test]
+#[cfg(feature = "std")]
 fn arc_recursive_basic_lock() {
     let r = ArcRecursive::new(7_i32);
     let guard = r.lock();
@@ -80,6 +83,7 @@ fn arc_recursive_basic_lock() {
 }
 
 #[test]
+#[cfg(feature = "std")]
 fn arc_recursive_thread_safe() {
     use std::thread;
     let r = ArcRecursive::new(0_i32);
@@ -100,6 +104,7 @@ fn arc_recursive_thread_safe() {
 }
 
 #[test]
+#[cfg(feature = "std")]
 fn arc_recursion_upgrade_round_trip() {
     let strong = ArcRecursive::new("payload".to_string());
     let weak: ArcRecursion<String> = strong.downgrade();
@@ -108,6 +113,7 @@ fn arc_recursion_upgrade_round_trip() {
 }
 
 #[test]
+#[cfg(feature = "std")]
 fn arc_recursion_upgrade_after_drop_returns_none() {
     let weak: ArcRecursion<i32> = {
         let strong = ArcRecursive::new(1_i32);
@@ -143,6 +149,7 @@ fn rc_recursive_serde_roundtrip_via_serde_json() {
 }
 
 #[test]
+#[cfg(feature = "std")]
 fn arc_recursive_serde_roundtrip_via_serde_json() {
     let r = ArcRecursive::new("hi".to_string());
     let json = serde_json::to_string(&r).unwrap();
@@ -167,6 +174,7 @@ fn rc_recursive_default_is_empty() {
 }
 
 #[test]
+#[cfg(feature = "std")]
 fn arc_recursive_default_is_empty() {
     let r: ArcRecursive<i32> = ArcRecursive::default();
     assert!(r.lock().is_none());
@@ -179,6 +187,7 @@ fn rc_recursion_default_is_empty_weak() {
 }
 
 #[test]
+#[cfg(feature = "std")]
 fn arc_recursion_default_is_empty_weak() {
     let w: ArcRecursion<i32> = ArcRecursion::default();
     assert!(w.upgrade().is_none());
@@ -192,6 +201,7 @@ fn rc_recursive_debug_impl() {
 }
 
 #[test]
+#[cfg(feature = "std")]
 fn arc_recursive_debug_impl() {
     let r = ArcRecursive::new(7_i32);
     let s = format!("{r:?}");
@@ -207,6 +217,7 @@ fn rc_recursion_debug_impl() {
 }
 
 #[test]
+#[cfg(feature = "std")]
 fn arc_recursion_debug_impl() {
     let r = ArcRecursive::new(1_i32);
     let w = r.downgrade();
@@ -223,6 +234,7 @@ fn rc_recursive_clone_shares_storage() {
 }
 
 #[test]
+#[cfg(feature = "std")]
 fn arc_recursive_clone_shares_storage() {
     let a = ArcRecursive::new(1_i32);
     let b = a.clone();
@@ -239,6 +251,7 @@ fn rc_recursion_clone() {
 }
 
 #[test]
+#[cfg(feature = "std")]
 fn arc_recursion_clone() {
     let r = ArcRecursive::new(1_i32);
     let w1 = r.downgrade();
@@ -253,12 +266,14 @@ fn rc_recursive_take_on_empty_returns_none() {
 }
 
 #[test]
+#[cfg(feature = "std")]
 fn arc_recursive_take_on_empty_returns_none() {
     let r: ArcRecursive<i32> = ArcRecursive::empty();
     assert!(r.take().is_none());
 }
 
 #[test]
+#[cfg(feature = "std")]
 fn arc_recursive_strong_count_tracks_clones() {
     let r = ArcRecursive::new(1_i32);
     assert_eq!(r.strong_count(), 1);

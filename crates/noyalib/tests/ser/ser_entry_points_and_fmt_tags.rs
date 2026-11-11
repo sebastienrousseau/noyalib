@@ -21,12 +21,15 @@
 #![allow(missing_docs, clippy::unwrap_used, clippy::expect_used)]
 
 use std::collections::BTreeMap;
+#[cfg(feature = "std")]
 use std::rc::Rc;
+#[cfg(feature = "std")]
 use std::sync::Arc;
 
 use noyalib::fmt::{
     Commented, FlowMap, FlowSeq, FoldStr, FoldString, LitStr, LitString, SpaceAfter,
 };
+#[cfg(feature = "std")]
 use noyalib::{ArcAnchor, RcAnchor};
 use noyalib::{SerializerConfig, Value};
 use serde::Serialize;
@@ -50,18 +53,20 @@ fn every_entry_point_agrees_on_the_same_value() {
 
     let baseline = noyalib::to_string(&doc).expect("to_string");
 
-    let mut buf = Vec::new();
-    noyalib::to_writer(&mut buf, &doc).expect("to_writer");
-    assert_eq!(String::from_utf8(buf).expect("utf8"), baseline, "to_writer");
+    #[cfg(feature = "std")]
+    {
+        let mut buf = Vec::new();
+        noyalib::to_writer(&mut buf, &doc).expect("to_writer");
+        assert_eq!(String::from_utf8(buf).expect("utf8"), baseline, "to_writer");
 
-    let mut buf = Vec::new();
-    noyalib::to_writer_with_config(&mut buf, &doc, &cfg).expect("to_writer_with_config");
-    assert_eq!(
-        String::from_utf8(buf).expect("utf8"),
-        baseline,
-        "to_writer_with_config"
-    );
-
+        let mut buf = Vec::new();
+        noyalib::to_writer_with_config(&mut buf, &doc, &cfg).expect("to_writer_with_config");
+        assert_eq!(
+            String::from_utf8(buf).expect("utf8"),
+            baseline,
+            "to_writer_with_config"
+        );
+    }
     assert_eq!(
         noyalib::to_string_with_config(&doc, &cfg).expect("to_string_with_config"),
         baseline,
@@ -76,34 +81,37 @@ fn every_entry_point_agrees_on_the_same_value() {
     noyalib::to_fmt_writer_with_config(&mut s, &doc, &cfg).expect("to_fmt_writer_with_config");
     assert_eq!(s, baseline, "to_fmt_writer_with_config");
 
-    assert_eq!(
-        noyalib::to_string_tracking_shared(&doc).expect("tracking_shared"),
-        baseline,
-        "to_string_tracking_shared"
-    );
-    assert_eq!(
-        noyalib::to_string_tracking_shared_with_config(&doc, &cfg)
-            .expect("tracking_shared_with_config"),
-        baseline,
-        "to_string_tracking_shared_with_config"
-    );
+    #[cfg(feature = "std")]
+    {
+        assert_eq!(
+            noyalib::to_string_tracking_shared(&doc).expect("tracking_shared"),
+            baseline,
+            "to_string_tracking_shared"
+        );
+        assert_eq!(
+            noyalib::to_string_tracking_shared_with_config(&doc, &cfg)
+                .expect("tracking_shared_with_config"),
+            baseline,
+            "to_string_tracking_shared_with_config"
+        );
 
-    let mut buf = Vec::new();
-    noyalib::to_writer_tracking_shared(&mut buf, &doc).expect("to_writer_tracking_shared");
-    assert_eq!(
-        String::from_utf8(buf).expect("utf8"),
-        baseline,
-        "to_writer_tracking_shared"
-    );
+        let mut buf = Vec::new();
+        noyalib::to_writer_tracking_shared(&mut buf, &doc).expect("to_writer_tracking_shared");
+        assert_eq!(
+            String::from_utf8(buf).expect("utf8"),
+            baseline,
+            "to_writer_tracking_shared"
+        );
 
-    let mut buf = Vec::new();
-    noyalib::to_writer_tracking_shared_with_config(&mut buf, &doc, &cfg)
-        .expect("to_writer_tracking_shared_with_config");
-    assert_eq!(
-        String::from_utf8(buf).expect("utf8"),
-        baseline,
-        "to_writer_tracking_shared_with_config"
-    );
+        let mut buf = Vec::new();
+        noyalib::to_writer_tracking_shared_with_config(&mut buf, &doc, &cfg)
+            .expect("to_writer_tracking_shared_with_config");
+        assert_eq!(
+            String::from_utf8(buf).expect("utf8"),
+            baseline,
+            "to_writer_tracking_shared_with_config"
+        );
+    }
 }
 
 /// The `Value`-typed entry points take the same path without serde in
@@ -119,13 +127,17 @@ fn the_value_entry_points_agree_with_each_other() {
         baseline
     );
 
-    let mut buf = Vec::new();
-    noyalib::to_writer_value(&mut buf, &v).expect("to_writer_value");
-    assert_eq!(String::from_utf8(buf).expect("utf8"), baseline);
+    #[cfg(feature = "std")]
+    {
+        let mut buf = Vec::new();
+        noyalib::to_writer_value(&mut buf, &v).expect("to_writer_value");
+        assert_eq!(String::from_utf8(buf).expect("utf8"), baseline);
 
-    let mut buf = Vec::new();
-    noyalib::to_writer_value_with_config(&mut buf, &v, &cfg).expect("to_writer_value_with_config");
-    assert_eq!(String::from_utf8(buf).expect("utf8"), baseline);
+        let mut buf = Vec::new();
+        noyalib::to_writer_value_with_config(&mut buf, &v, &cfg)
+            .expect("to_writer_value_with_config");
+        assert_eq!(String::from_utf8(buf).expect("utf8"), baseline);
+    }
 }
 
 /// Multi-document output: `---` between documents, and the writer form
@@ -147,14 +159,16 @@ fn the_multi_document_entry_points_agree_and_separate_documents() {
         baseline
     );
 
-    let mut buf = Vec::new();
-    noyalib::to_writer_multi(&mut buf, &docs).expect("to_writer_multi");
-    assert_eq!(String::from_utf8(buf).expect("utf8"), baseline);
+    #[cfg(feature = "std")]
+    {
+        let mut buf = Vec::new();
+        noyalib::to_writer_multi(&mut buf, &docs).expect("to_writer_multi");
+        assert_eq!(String::from_utf8(buf).expect("utf8"), baseline);
 
-    let mut buf = Vec::new();
-    noyalib::to_writer_multi_with_config(&mut buf, &docs, &cfg).expect("multi_writer_config");
-    assert_eq!(String::from_utf8(buf).expect("utf8"), baseline);
-
+        let mut buf = Vec::new();
+        noyalib::to_writer_multi_with_config(&mut buf, &docs, &cfg).expect("multi_writer_config");
+        assert_eq!(String::from_utf8(buf).expect("utf8"), baseline);
+    }
     // Round-trips back to the same two documents.
     let back: Vec<BTreeMap<String, i64>> = noyalib::load_all_as(&baseline).expect("load_all_as");
     assert_eq!(back, docs, "multi-document output did not round-trip");
@@ -251,6 +265,7 @@ fn a_wrapper_around_the_wrong_shape_falls_back_to_plain_output() {
 /// anchored value's own shape decides whether the inner starts on the
 /// anchor's line or the next one, so all three shapes are checked.
 #[test]
+#[cfg(feature = "std")]
 fn a_shared_value_is_anchored_once_and_aliased_after() {
     #[derive(Serialize)]
     struct Doc {
@@ -287,6 +302,7 @@ fn a_shared_value_is_anchored_once_and_aliased_after() {
 /// The same, through `Arc`, and with the anchored value being each of
 /// the three shapes on its own so every arm of the anchor writer runs.
 #[test]
+#[cfg(feature = "std")]
 fn anchors_cover_mapping_sequence_and_scalar_inners() {
     #[derive(Serialize)]
     struct Pair<T> {

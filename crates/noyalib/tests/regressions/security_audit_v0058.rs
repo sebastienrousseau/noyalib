@@ -3,12 +3,14 @@
 
 //! Regression tests for the v0.0.58 3-phase security audit findings.
 
+#[cfg(feature = "std")]
+use noyalib::read_with_config;
+
 use noyalib::{
     BudgetBreach, DuplicateKeyPolicy, Error, ParserConfig, Spanned, Value, from_str_with_config,
-    load_all_as_with_config, load_all_with_config, policy::Policy, read_with_config,
+    load_all_as_with_config, load_all_with_config, policy::Policy,
 };
 
-#[cfg(feature = "std")]
 #[test]
 fn cst_set_respects_yaml_11_boolean_config_and_blocks_key_smuggling() {
     let cfg = ParserConfig::new()
@@ -33,7 +35,6 @@ fn cst_set_respects_yaml_11_boolean_config_and_blocks_key_smuggling() {
     );
 }
 
-#[cfg(feature = "std")]
 #[test]
 fn cst_insert_and_collection_edits_preserve_document_config() {
     let cfg = ParserConfig::new().legacy_booleans(true);
@@ -109,10 +110,12 @@ fn yaml_decoder_defers_chunk_boundary_triple_dash_until_lookahead() {
     assert_eq!(second["b"], Value::from(3));
 }
 
-#[cfg(feature = "std")]
 #[test]
 fn cst_and_multi_doc_loaders_enforce_policies_and_options_parity() {
+    #[cfg(feature = "std")]
     use std::collections::HashMap;
+    #[cfg(not(feature = "std"))]
+    type HashMap<K, V> = hashbrown::HashMap<K, V, rustc_hash::FxBuildHasher>;
     use std::sync::Arc;
 
     #[derive(Debug)]
@@ -126,7 +129,7 @@ fn cst_and_multi_doc_loaders_enforce_policies_and_options_parity() {
         }
     }
 
-    let mut props = HashMap::new();
+    let mut props = HashMap::default();
     let _ = props.insert("ENV".to_owned(), "prod".to_owned());
     let cfg = ParserConfig::new()
         .with_policy(ForbidSecretKey)
@@ -159,22 +162,27 @@ fn cst_and_multi_doc_loaders_enforce_policies_and_options_parity() {
     assert_eq!(typed[0].flag, "true");
     assert_eq!(typed[0].env.start.line(), 1);
 
-    let from_reader: Vec<Item> = read_with_config(std::io::Cursor::new(multi_yaml), &cfg)
-        .unwrap()
-        .collect::<noyalib::Result<Vec<_>>>()
-        .unwrap();
-    assert_eq!(from_reader[0].env.value, "prod");
-    assert_eq!(from_reader[0].flag, "true");
-    assert_eq!(from_reader[1].env.start.line(), 4);
+    #[cfg(feature = "std")]
+    {
+        let from_reader: Vec<Item> = read_with_config(std::io::Cursor::new(multi_yaml), &cfg)
+            .unwrap()
+            .collect::<noyalib::Result<Vec<_>>>()
+            .unwrap();
+        assert_eq!(from_reader[0].env.value, "prod");
+        assert_eq!(from_reader[0].flag, "true");
+        assert_eq!(from_reader[1].env.start.line(), 4);
+    }
 }
 
-#[cfg(feature = "std")]
 #[test]
 fn property_interpolation_enforces_max_total_scalar_bytes() {
+    #[cfg(feature = "std")]
     use std::collections::HashMap;
+    #[cfg(not(feature = "std"))]
+    type HashMap<K, V> = hashbrown::HashMap<K, V, rustc_hash::FxBuildHasher>;
     use std::sync::Arc;
 
-    let mut props = HashMap::new();
+    let mut props = HashMap::default();
     let _ = props.insert("BIG".to_owned(), "x".repeat(128));
     let cfg = ParserConfig::new()
         .properties(Arc::new(props))

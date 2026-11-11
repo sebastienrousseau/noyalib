@@ -12,7 +12,7 @@
     unused_qualifications
 )]
 
-use noyalib::{ParserConfig, RcAnchor, Spanned, Value, from_str, from_str_with_config};
+use noyalib::{ParserConfig, Spanned, Value, from_str, from_str_with_config};
 
 // ── streaming: anchor whose body contains an alias (maybe_record Alias arm) ─
 
@@ -255,6 +255,7 @@ fn ast_deserialize_bytes_type_mismatch() {
 // ── RcAnchor round-trip hits anchor-tracking serializer paths ───────
 
 #[test]
+#[cfg(feature = "std")]
 fn rc_anchor_three_aliases_reuses_same_id() {
     let shared: RcAnchor<String> = RcAnchor::from("payload".to_string());
     let doc = vec![shared.clone(), shared.clone(), shared];
@@ -296,3 +297,6 @@ fn streaming_map_drop_on_partial_read() {
     struct Empty {}
     let _: Empty = from_str(yaml).unwrap();
 }
+
+#[cfg(feature = "std")]
+use noyalib::RcAnchor;

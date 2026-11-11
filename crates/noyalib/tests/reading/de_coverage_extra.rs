@@ -20,25 +20,32 @@
 //!   L2021-L2022).
 //! - `is_binary_tag` exhaustive matching (L2136).
 
+#[cfg(feature = "std")]
 use std::io::Cursor;
 
+#[cfg(all(feature = "std", feature = "strict-deserialise"))]
+use noyalib::from_reader_strict;
+#[cfg(feature = "std")]
+use noyalib::from_reader_with_config;
 use noyalib::{
-    Deserializer, ParserConfig, Tag, TaggedValue, Value, from_reader_strict,
-    from_reader_with_config, from_slice_strict, from_str, from_str_strict, from_str_with_config,
-    from_value,
+    Deserializer, ParserConfig, Tag, TaggedValue, Value, from_str, from_str_with_config, from_value,
 };
+#[cfg(feature = "strict-deserialise")]
+use noyalib::{from_slice_strict, from_str_strict};
 use serde_core::Deserialize as _;
 
 // ============================================================================
 // from_str_strict / from_slice_strict / from_reader_strict — happy + error
 // ============================================================================
 
+#[cfg(any(feature = "std", feature = "strict-deserialise"))]
 #[derive(Debug, serde::Deserialize)]
 struct StrictCfg {
     port: u16,
 }
 
 #[test]
+#[cfg(feature = "strict-deserialise")]
 fn from_str_strict_extra_field_errors() {
     let yaml = "port: 8080\nporrt: 9090\n";
     let r: Result<StrictCfg, _> = from_str_strict(yaml);
@@ -48,6 +55,7 @@ fn from_str_strict_extra_field_errors() {
 }
 
 #[test]
+#[cfg(feature = "strict-deserialise")]
 fn from_str_strict_multiple_extras_lists_all() {
     let yaml = "port: 8080\nfoo: 1\nbar: 2\n";
     let r: Result<StrictCfg, _> = from_str_strict(yaml);
@@ -56,6 +64,7 @@ fn from_str_strict_multiple_extras_lists_all() {
 }
 
 #[test]
+#[cfg(feature = "strict-deserialise")]
 fn from_str_strict_clean_input_succeeds() {
     let yaml = "port: 8080\n";
     let s: StrictCfg = from_str_strict(yaml).expect("strict ok");
@@ -63,6 +72,7 @@ fn from_str_strict_clean_input_succeeds() {
 }
 
 #[test]
+#[cfg(feature = "strict-deserialise")]
 fn from_slice_strict_clean_succeeds() {
     let yaml = b"port: 8080\n";
     let s: StrictCfg = from_slice_strict(yaml).expect("slice strict ok");
@@ -70,6 +80,7 @@ fn from_slice_strict_clean_succeeds() {
 }
 
 #[test]
+#[cfg(feature = "strict-deserialise")]
 fn from_slice_strict_invalid_utf8_errors() {
     let bad: &[u8] = &[0xFF, 0xFE];
     let r: Result<StrictCfg, _> = from_slice_strict(bad);
@@ -77,6 +88,7 @@ fn from_slice_strict_invalid_utf8_errors() {
 }
 
 #[test]
+#[cfg(all(feature = "std", feature = "strict-deserialise"))]
 fn from_reader_strict_extra_field_errors() {
     let yaml = b"port: 8080\nporrt: 9090\n".to_vec();
     let r: Result<StrictCfg, _> = from_reader_strict(&yaml[..]);
@@ -84,6 +96,7 @@ fn from_reader_strict_extra_field_errors() {
 }
 
 #[test]
+#[cfg(all(feature = "std", feature = "strict-deserialise"))]
 fn from_reader_strict_clean_succeeds() {
     let yaml = b"port: 8080\n".to_vec();
     let s: StrictCfg = from_reader_strict(&yaml[..]).expect("reader strict");
@@ -95,6 +108,7 @@ fn from_reader_strict_clean_succeeds() {
 // ============================================================================
 
 #[test]
+#[cfg(feature = "std")]
 fn from_reader_with_config_typed() {
     let yaml = "port: 8080\n";
     let reader = Cursor::new(yaml.as_bytes());

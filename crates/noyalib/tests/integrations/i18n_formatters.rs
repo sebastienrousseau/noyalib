@@ -128,6 +128,7 @@ fn user_formatter_for_deserialize_with_location() {
 }
 
 #[test]
+#[cfg(feature = "std")]
 fn user_formatter_for_io_error() {
     let err = Error::Io(std::io::Error::other("synthetic io"));
     let msg = UserFormatter.format(&err);

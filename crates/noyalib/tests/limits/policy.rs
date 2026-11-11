@@ -187,6 +187,7 @@ fn policy_entry_points() -> Vec<(&'static str, Reader)> {
         ("load_all_with_config", |s, c| {
             noyalib::load_all_with_config(s, c).map(drop)
         }),
+        #[cfg(feature = "std")]
         ("read_with_config", |s, c| {
             noyalib::read_with_config::<_, Value>(std::io::Cursor::new(s.to_owned()), c).map(drop)
         }),

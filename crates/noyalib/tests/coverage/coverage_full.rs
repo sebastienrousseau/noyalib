@@ -1286,6 +1286,7 @@ fn try_load_all_alias() {
 // ═══════════════════════════════════════════════════════════════════════
 
 #[test]
+#[cfg(feature = "std")]
 fn from_reader_basic() {
     let yaml = b"key: value";
     let v: Value = noyalib::from_reader(&yaml[..]).unwrap();
@@ -1293,6 +1294,7 @@ fn from_reader_basic() {
 }
 
 #[test]
+#[cfg(feature = "std")]
 fn from_reader_with_config() {
     let yaml = b"key: value";
     let config = ParserConfig::new().max_depth(10);
@@ -1347,6 +1349,7 @@ fn serializer_config_options() {
 }
 
 #[test]
+#[cfg(feature = "std")]
 fn to_writer_basic() {
     let v = Value::from("test");
     let mut buf = Vec::new();
@@ -1355,6 +1358,7 @@ fn to_writer_basic() {
 }
 
 #[test]
+#[cfg(feature = "std")]
 fn to_writer_with_config() {
     let config = SerializerConfig::new().document_start(true);
     let v = Value::from("test");
@@ -1372,6 +1376,7 @@ fn multi_document_serialization() {
 }
 
 #[test]
+#[cfg(feature = "std")]
 fn multi_document_writer() {
     let docs = vec![Value::from("doc1"), Value::from("doc2")];
     let mut buf = Vec::new();

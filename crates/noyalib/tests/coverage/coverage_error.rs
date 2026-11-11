@@ -138,6 +138,7 @@ fn error_deserialize_with_location_display() {
 }
 
 #[test]
+#[cfg(feature = "std")]
 fn error_io() {
     let io_err = std::io::Error::new(std::io::ErrorKind::NotFound, "file not found");
     let e: Error = io_err.into();

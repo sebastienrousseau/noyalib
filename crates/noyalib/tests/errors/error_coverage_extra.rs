@@ -80,6 +80,7 @@ fn variant_gallery() -> Vec<Error> {
         Error::FailedToParseNumber("nan".into()),
         Error::Message("m".into(), Some(7)),
         Error::Message("m".into(), None),
+        #[cfg(feature = "std")]
         Error::Io(std::io::Error::other("i")),
     ]
 }
@@ -144,6 +145,7 @@ fn miette_code_help_labels_cover_every_variant() {
 // ============================================================================
 
 #[test]
+#[cfg(feature = "std")]
 fn error_source_io_some() {
     use std::error::Error as _;
     let ioe = std::io::Error::other("nope");
@@ -171,6 +173,7 @@ fn error_source_other_none() {
 // ============================================================================
 
 #[test]
+#[cfg(feature = "std")]
 fn error_from_io_error() {
     let ioe = std::io::Error::new(std::io::ErrorKind::PermissionDenied, "x");
     let e: Error = ioe.into();
@@ -543,6 +546,7 @@ fn display_every_variant() {
         Error::FailedToParseNumber("nan".into()),
         Error::Message("m".into(), Some(7)),
         Error::Message("m".into(), None),
+        #[cfg(feature = "std")]
         Error::Io(std::io::Error::other("i")),
     ];
     for e in cases {

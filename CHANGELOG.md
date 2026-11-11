@@ -24,6 +24,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 - Preserve a terminal block scalar's missing line break during formatting,
   including literal and folded scalars with comments and explicit indentation.
+- Run the complete hosted test battery with std disabled. Use the alloc map
+  types in interpolation and conversion tests, and gate I/O and mutex tests
+  on the features required by their APIs.
 - Validate signed satellite candidates against the checked-out core on
   Linux, macOS and Windows, with separate WASM package checks. Keep
   registry-resolution evidence as a distinct release gate.

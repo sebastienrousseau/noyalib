@@ -294,6 +294,7 @@ mod table {
             ("from_slice_with_config<Value>", |s, c| {
                 done(noyalib::from_slice_with_config::<Value>(s.as_bytes(), c))
             }),
+            #[cfg(feature = "std")]
             ("from_reader_with_config<Value>", |s, c| {
                 done(noyalib::from_reader_with_config::<_, Value>(
                     s.as_bytes(),
@@ -328,6 +329,7 @@ mod table {
             ("load_all_as_with_config<Value>", |s, c| {
                 done(noyalib::load_all_as_with_config::<Value>(s, c))
             }),
+            #[cfg(feature = "std")]
             ("read_with_config<Value>", |s, c| {
                 done(noyalib::read_with_config::<_, Value>(s.as_bytes(), c))
             }),

@@ -32,6 +32,7 @@ mod phase4;
 mod phase5;
 mod plain_trailing_blank_continuation;
 mod radix_int_spelling;
+#[cfg(feature = "std")]
 mod read_iterator;
 mod recovery;
 mod reference_docs_are_complete;
