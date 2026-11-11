@@ -40,6 +40,8 @@ def main():
     parser.add_argument('--target')
     parser.add_argument('--seconds', type=int, default=3600)
     parser.add_argument('--output', type=Path)
+    parser.add_argument('--target-dir', type=Path,
+                        help='reuse build artifacts for the same checkout and fuzz scope')
     args = parser.parse_args()
     root = Path(subprocess.check_output(['git', 'rev-parse', '--show-toplevel'], text=True).strip())
     targets = inventory(root)
@@ -55,6 +57,9 @@ def main():
     out = args.output.resolve()
     if out == root or root in out.parents:
         parser.error('place campaign output outside the source checkout')
+    build_target = args.target_dir.resolve() if args.target_dir else out / 'target'
+    if build_target == root or root in build_target.parents:
+        parser.error('place build artifacts outside the source checkout')
     out.mkdir(parents=True, exist_ok=False)
     corpus = out / 'corpus'
     artifacts = out / 'artifacts'
@@ -76,10 +81,11 @@ def main():
               'worktree_dirty': bool(subprocess.check_output(['git', 'status', '--porcelain'], cwd=root)),
               'rustc': subprocess.check_output(['rustc', '+nightly', '-Vv'], cwd=root, text=True).strip(),
               'scope': args.scope, 'target': args.target, 'requested_seconds': args.seconds,
-              'initial_inputs_sha256': input_hashes, 'lockfile_sha256': lock_hash, 'command': command}
+              'initial_inputs_sha256': input_hashes, 'lockfile_sha256': lock_hash,
+              'build_target_dir': str(build_target), 'command': command}
     start = time.monotonic()
     log = out / 'campaign.log'
-    env = {**os.environ, 'CARGO_TARGET_DIR': str(out / 'target')}
+    env = {**os.environ, 'CARGO_TARGET_DIR': str(build_target)}
     with log.open('w') as stream:
         result = subprocess.run(command, cwd=root, env=env, stdout=stream, stderr=subprocess.STDOUT)
     raw = log.read_text(errors='replace')
