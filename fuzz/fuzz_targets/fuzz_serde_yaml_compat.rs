@@ -68,6 +68,7 @@ fuzz_target!(|data: &[u8]| {
             // accepts the under-indented single-quoted equivalent.
             if !known_reject_divergence(s)
                 && !oracle_normalization::quoted_indent_rejection(&e.to_string())
+                && !oracle_normalization::missing_comment_separator_rejection(&e.to_string())
             {
                 panic!(
                     "shim rejected what serde_yaml accepts (len {}):\n  shim     : {e}\n  upstream : {}",

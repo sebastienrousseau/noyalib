@@ -37,6 +37,14 @@ pub(crate) fn quoted_indent_rejection(message: &str) -> bool {
     )
 }
 
+// YAML 1.2.2 section 6.6 requires separation before a comment marker.
+#[allow(dead_code)]
+pub(crate) fn missing_comment_separator_rejection(message: &str) -> bool {
+    message.split_once(" at line ").is_some_and(|(reason, _)| {
+        reason == "comment indicator '#' must be preceded by a space, tab, or line break"
+    })
+}
+
 /// Give each declaration a unique name only when the archive's anchor IDs
 /// collide at an alias. Callers must still compare the entire parsed value.
 pub(crate) fn unique_colliding_anchors(source: &str) -> Option<String> {
@@ -280,6 +288,28 @@ mod tests {
         ] {
             assert!(!quoted_indent_rejection(unrelated));
         }
+    }
+
+    #[test]
+    fn unseparated_comment_archive_difference_is_specific() {
+        let error = noyalib::from_str::<noyalib::Value>("key: 'can'#t stop'\n")
+            .expect_err("a comment after a quoted scalar requires separation");
+        assert!(error.to_string().contains("comment indicator '#'"));
+        assert!(missing_comment_separator_rejection(
+            "comment indicator '#' must be preceded by a space, tab, or line break at line 1 column 11"
+        ));
+        #[cfg(feature = "compat-serde-yaml")]
+        {
+            let error =
+                noyalib::compat::serde_yaml::from_str::<serde_json::Value>("key: 'can'#t stop'\n")
+                    .unwrap_err();
+            assert!(missing_comment_separator_rejection(&error.to_string()));
+        }
+        assert!(!missing_comment_separator_rejection(
+            "unterminated single-quoted scalar at line 1 column 1"
+        ));
+        let value: noyalib::Value = noyalib::from_str("key: 'can#t stop'\n").unwrap();
+        assert_eq!(value["key"].as_str(), Some("can#t stop"));
     }
 
     #[test]
