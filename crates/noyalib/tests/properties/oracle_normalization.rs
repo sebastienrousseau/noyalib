@@ -64,23 +64,31 @@ pub(crate) fn spaced_sequence_tabs(source: &str) -> Option<String> {
     (!replacements.is_empty()).then(|| apply_replacements(source, replacements))
 }
 
-/// Replace tab separation on empty lines, outside scalar tokens.
+/// Replace empty-line tab separation, including consumed plain-scalar trivia.
 fn spaced_empty_line_tabs(source: &str) -> Option<String> {
     let mut replacements = Vec::new();
     for (kind, start, end) in lexical_tokens(source)? {
         let text = source.get(start..end)?;
-        if kind != SyntaxKind::Whitespace || !text.contains('\t') {
+        if !matches!(kind, SyntaxKind::Whitespace | SyntaxKind::PlainScalar) || !text.contains('\t')
+        {
             continue;
         }
-        let line_start = source[..start].rfind(['\n', '\r']).map_or(0, |i| i + 1);
-        let line_end = source[end..]
-            .find(['\n', '\r'])
-            .map_or(source.len(), |i| end + i);
-        if source[line_start..line_end]
-            .bytes()
-            .all(|b| b == b' ' || b == b'\t')
-        {
-            replacements.push((start, end, text.replace('\t', " ")));
+        let mut offset = start;
+        for line in text.split_inclusive(['\n', '\r']) {
+            let body = line.trim_end_matches(['\n', '\r']);
+            let end = offset + body.len();
+            let line_start = source[..offset].rfind(['\n', '\r']).map_or(0, |i| i + 1);
+            let line_end = source[end..]
+                .find(['\n', '\r'])
+                .map_or(source.len(), |i| end + i);
+            if body.contains('\t')
+                && source[line_start..line_end]
+                    .bytes()
+                    .all(|b| b == b' ' || b == b'\t')
+            {
+                replacements.push((offset, end, body.replace('\t', " ")));
+            }
+            offset += line.len();
         }
     }
     (!replacements.is_empty()).then(|| apply_replacements(source, replacements))
@@ -349,7 +357,14 @@ mod tests {
 
     #[test]
     fn empty_line_tab_separation_preserves_the_complete_value() {
-        for source in ["-  \r\t\t", "-  \n\t\t", "-  \r\n\t\t"] {
+        for source in [
+            "- /\r\t\t",
+            "- /\n\t\t",
+            "- /\r\n\t\t",
+            "-  \r\t\t",
+            "-  \n\t\t",
+            "-  \r\n\t\t",
+        ] {
             let normalized = collection_spelling(source).expect("empty-line separation");
             assert_eq!(normalized, source.replace('\t', " "));
             let before: serde_json::Value = noyalib::from_str(source).unwrap();
