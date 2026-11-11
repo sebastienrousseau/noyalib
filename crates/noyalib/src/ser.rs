@@ -942,14 +942,24 @@ fn looks_like_number(s: &str) -> bool {
 ///
 /// Runs the resolver the loaders and the streaming path share, with the
 /// YAML 1.1 legacy forms enabled (`0`-prefixed octals, sexagesimals) so a
-/// string is quoted whenever any reader configuration would turn it into
-/// something else.
+/// string is quoted whenever signed or lossless unsigned resolution would
+/// turn it into something else.
 fn resolves_as_non_string(s: &str) -> bool {
     crate::parser::parse_legacy_binary(s).is_some()
-        || !matches!(
-            crate::streaming::resolve_plain_ext(s, false, true, false, true, true, false),
-            crate::streaming::Scalar::Str(_)
-        )
+        || [false, true].into_iter().any(|lossless_u64| {
+            !matches!(
+                crate::streaming::resolve_plain_ext(
+                    s,
+                    false,
+                    true,
+                    false,
+                    true,
+                    true,
+                    lossless_u64
+                ),
+                crate::streaming::Scalar::Str(_)
+            )
+        })
 }
 
 /// A `:` ends a plain scalar only when a space, a tab, a flow indicator,
