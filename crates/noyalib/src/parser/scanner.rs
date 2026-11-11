@@ -280,6 +280,9 @@ pub(crate) struct Scanner<'a> {
     /// Key-inspection work measured by the asymptotic regression test.
     #[cfg(test)]
     simple_key_checks: core::cell::Cell<usize>,
+    /// Bytes searched by uncached plain-scalar line lookahead.
+    #[cfg(test)]
+    plain_line_bytes: usize,
 }
 
 /// Compact record of the most recent emit, used by guard checks
@@ -489,6 +492,8 @@ impl<'a> Scanner<'a> {
             live_key_floor: 0,
             #[cfg(test)]
             simple_key_checks: core::cell::Cell::new(0),
+            #[cfg(test)]
+            plain_line_bytes: 0,
         }
     }
 
@@ -2724,6 +2729,36 @@ mod tests {
                 assert_eq!(scanner.plain_line_end(), fresh, "{input:?} at {pos}");
             }
         }
+    }
+
+    #[test]
+    #[cfg_attr(miri, ignore = "large input; native tests check the work bound")]
+    fn long_flow_lines_have_linear_lookahead_work() {
+        fn measure(n: usize, invalidate: bool) -> Option<usize> {
+            let inner = format!("[{}a]", "a,".repeat(999));
+            let input = format!("[{}]\n", vec![inner; n / 1000].join(","));
+            let mut scanner = Scanner::new(&input);
+            loop {
+                if invalidate {
+                    scanner.line_end_memo = (usize::MAX, 0, false);
+                }
+                let token = scanner.next_token().expect("valid flow sequence");
+                if scanner.plain_line_bytes > 2 * input.len() {
+                    return None;
+                }
+                if matches!(token.kind, TokenKind::StreamEnd) {
+                    return Some(scanner.plain_line_bytes);
+                }
+            }
+        }
+        let small = measure(10_000, false).expect("small input has linear work");
+        let large = measure(80_000, false).expect("large input has linear work");
+        assert!(small > 0, "lookahead work must be measured");
+        assert!(large < 24 * small, "8x input exceeds the work bound");
+        assert!(
+            measure(10_000, true).is_none(),
+            "the work bound must reject restarting lookahead at every scalar"
+        );
     }
 
     /// A flow-mapping key may be any length, so the scanner holds its

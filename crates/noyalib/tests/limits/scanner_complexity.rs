@@ -10,11 +10,10 @@
 //! until the scan was done. The token queue's compaction had the same
 //! shape: it shifted the whole backlog every 256 tokens.
 //!
-//! Timing tests are noisy, so these compare two sizes eight times apart
-//! and keep the fastest of several runs: linear work grows about eight
-//! times, quadratic work about sixty-four. The bound sits well between.
-
-use std::time::{Duration, Instant};
+//! Scanner unit tests bound actual lookahead work and queue compactions,
+//! including a cache-invalidation witness that must exceed the work bound.
+//! These integration tests preserve all parsed values through each entry
+//! point without depending on wall-clock scheduling.
 
 /// One line of nested flow sequences holding `n` one-byte scalars, the
 /// shape that exposed the per-scalar lookahead.
@@ -23,51 +22,41 @@ fn long_flow_line(n: usize) -> String {
     format!("[{}]\n", vec![inner; n / 1000].join(","))
 }
 
-fn fastest(runs: usize, mut f: impl FnMut()) -> Duration {
-    (0..runs)
-        .map(|_| {
-            let t = Instant::now();
-            f();
-            t.elapsed()
-        })
-        .min()
-        .unwrap_or_default()
-}
-
-fn assert_linear(entry: &str, parse: fn(&str)) {
-    let small = long_flow_line(10_000);
-    let large = long_flow_line(80_000);
-    let t_small = fastest(5, || parse(&small));
-    let t_large = fastest(3, || parse(&large));
-    // Guard against a zero-duration small run on a very fast machine.
-    let t_small = t_small.max(Duration::from_micros(200));
-    let ratio = t_large.as_secs_f64() / t_small.as_secs_f64();
-    assert!(
-        ratio < 24.0,
-        "{entry}: 8x longer line took {ratio:.1}x as long \
-         ({t_small:?} -> {t_large:?}); expected linear growth",
-    );
+fn assert_long_flow_values(parse: fn(&str) -> noyalib::Value) {
+    for n in [10_000, 80_000] {
+        let parsed = parse(&long_flow_line(n));
+        let rows = parsed.as_sequence().expect("outer sequence");
+        assert_eq!(rows.len(), n / 1000);
+        for row in rows {
+            let values = row.as_sequence().expect("inner sequence");
+            assert_eq!(values.len(), 1000);
+            assert!(values.iter().all(|value| value.as_str() == Some("a")));
+        }
+    }
 }
 
 #[test]
-fn long_flow_line_parses_in_linear_time_value() {
-    assert_linear("from_str::<Value>", |s| {
-        let _ = noyalib::from_str::<noyalib::Value>(s).expect("valid input");
-    });
+fn long_flow_line_preserves_all_values() {
+    assert_long_flow_values(|s| noyalib::from_str(s).expect("valid input"));
 }
 
 #[test]
-fn long_flow_line_parses_in_linear_time_borrowed() {
-    assert_linear("borrowed::from_str_borrowed", |s| {
-        let _ = noyalib::borrowed::from_str_borrowed(s).expect("valid input");
+fn long_flow_line_preserves_all_borrowed_values() {
+    assert_long_flow_values(|s| {
+        noyalib::borrowed::from_str_borrowed(s)
+            .expect("valid input")
+            .into_owned()
     });
 }
 
 #[cfg(feature = "std")]
 #[test]
-fn long_flow_line_parses_in_linear_time_cst() {
-    assert_linear("cst::parse_document", |s| {
-        let _ = noyalib::cst::parse_document(s).expect("valid input");
+fn long_flow_line_preserves_all_cst_values() {
+    assert_long_flow_values(|s| {
+        noyalib::cst::parse_document(s)
+            .expect("valid input")
+            .as_value()
+            .clone()
     });
 }
 

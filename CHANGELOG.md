@@ -30,6 +30,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - Run the complete hosted test battery with std disabled. Use the alloc map
   types in interpolation and conversion tests, and gate I/O and mutex tests
   on the features required by their APIs.
+- Bound scanner lookahead by measured work, including a cache-invalidation
+  regression witness. Preserve large-flow values through all entry points
+  without relying on elapsed-time ratios under shared CPU load.
 - Validate signed satellite candidates against the checked-out core on
   Linux, macOS and Windows, with separate WASM package checks. Keep
   registry-resolution evidence as a distinct release gate.

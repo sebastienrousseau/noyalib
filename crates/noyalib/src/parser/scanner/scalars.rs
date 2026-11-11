@@ -33,6 +33,10 @@ impl Scanner<'_> {
             from <= pos && (pos < end || (pos == end && (is_break || end == self.input.len())));
         if !reusable {
             let (rel, brk) = Self::scan_line_end(&self.input[pos..]);
+            #[cfg(test)]
+            {
+                self.plain_line_bytes += rel + usize::from(pos + rel < self.input.len());
+            }
             self.line_end_memo = (pos, pos + rel, brk);
         }
         let (_, end, is_break) = self.line_end_memo;
