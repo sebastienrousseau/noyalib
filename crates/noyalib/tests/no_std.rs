@@ -48,6 +48,8 @@ mod number_float_display;
 mod official_suite;
 #[path = "values/plain_float_specials.rs"]
 mod plain_float_specials;
+#[path = "values/query_recursive.rs"]
+mod query_recursive;
 #[path = "limits/require_indent.rs"]
 mod require_indent;
 #[path = "values/scalar_resolution_toggles.rs"]

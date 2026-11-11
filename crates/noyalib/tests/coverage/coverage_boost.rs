@@ -884,14 +884,14 @@ fn scanner_unicode_escape_special() {
 fn scanner_block_literal_explicit_indent() {
     let yaml = "data: |2\n  hello\n  world";
     let v: Value = from_str(yaml).unwrap();
-    assert_eq!(v["data"].as_str(), Some("hello\nworld\n"));
+    assert_eq!(v["data"].as_str(), Some("hello\nworld"));
 }
 
 #[test]
 fn scanner_block_folded_explicit_indent() {
     let yaml = "data: >2\n  hello\n  world";
     let v: Value = from_str(yaml).unwrap();
-    assert_eq!(v["data"].as_str(), Some("hello world\n"));
+    assert_eq!(v["data"].as_str(), Some("hello world"));
 }
 
 #[test]
@@ -1806,14 +1806,14 @@ fn parser_nested_flow() {
 fn parser_multiline_string() {
     let yaml = "text: |\n  line1\n  line2\n  line3";
     let v: Value = from_str(yaml).unwrap();
-    assert_eq!(v["text"].as_str(), Some("line1\nline2\nline3\n"));
+    assert_eq!(v["text"].as_str(), Some("line1\nline2\nline3"));
 }
 
 #[test]
 fn parser_folded_string() {
     let yaml = "text: >\n  hello\n  world";
     let v: Value = from_str(yaml).unwrap();
-    assert_eq!(v["text"].as_str(), Some("hello world\n"));
+    assert_eq!(v["text"].as_str(), Some("hello world"));
 }
 
 // ============================================================================

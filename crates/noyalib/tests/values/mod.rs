@@ -26,3 +26,5 @@ mod value;
 mod value_coverage_extra;
 mod value_final_push;
 mod zero_copy_str_deser;
+
+mod query_recursive;
