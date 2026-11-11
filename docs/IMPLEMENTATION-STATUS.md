@@ -72,6 +72,45 @@ on tags. The immutable v0.0.60 workflow predates that correction. The new
 runtime fixes are also absent from that held source and need to be included
 in the release recovery decision.
 
+## Candidate integration follow-up, 2026-11-11
+
+The CLI action update ([#131](https://github.com/sebastienrousseau/noya-cli/pull/131)),
+LSP packager update ([#115](https://github.com/sebastienrousseau/noyalib-lsp/pull/115))
+and WASM binding update ([#123](https://github.com/sebastienrousseau/noyalib-wasm/pull/123)) are incorporated in signed commits with Dependabot authorship
+and changelog credit. The VSCE consumer passes six extension tests, VSIX
+packaging and npm audit. WASM passes 31 Node tests, Rust 1.89 wasm32, actual
+optimized npm installation, TypeScript and Chromium checks. Its module is
+615,695 bytes raw and 213,419 bytes with gzip level 9, within the unchanged
+628,759 and 219,025 byte limits. Nine binding delta audits pass cargo-vet.
+
+A refreshed RustSec snapshot at `2c684a5d6746d4508eff9e3cb529b3e33f56d438`
+identified RUSTSEC-2026-0486 in both CLI locks. Both now use rustix 1.1.6
+and pass the same pinned advisory scan, cargo-vet and cargo-deny without
+an added suppression. CLI tests, clippy and Rust 1.89 pass. The other five
+repositories passed the refreshed lock, vet and deny gates.
+
+Strict MCP Inspector 2.14.0 exposed a legal boolean schema that some clients
+reject. Object schemas now name all JSON value types and use single-type
+nullable branches. Captured pre-change schemas and positive/negative inputs
+confirm the accepted value contract is preserved. Native suites, clippy,
+Rust 1.89, schema equivalence, strict Inspector and its locked npm audit pass.
+
+Two further oracle regressions preserve rejection of an under-indented
+quoted continuation and repair an archive ID overwritten after an alias.
+Both original findings pass sanitizer replay. All 142 hosted properties
+and seven alloc-only oracle tests pass. New sustained runs remain required;
+their receipts must identify the actual candidate used.
+
+The [candidate manifest](ecosystem-candidate.json) pins the five signed
+satellite heads. The candidate workflow defines native Linux, macOS and
+Windows checks plus an actual WASM consumer check against the checked-out
+core. Six candidate gate tests and actionlint pass locally. Remote
+execution remains acceptance work. Local overrides preserve registry pins
+and locks, and never count as registry-resolution proof.
+
+Daybreak access is outside the plan. The independent human review criterion
+remains open through an available review channel.
+
 ## Implementation and acceptance
 
 “Local evidence” means the named check passed in its stated scope. Missing

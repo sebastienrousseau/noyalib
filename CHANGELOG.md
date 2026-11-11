@@ -22,6 +22,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Fixed
 
+- Validate signed satellite candidates against the checked-out core on
+  Linux, macOS and Windows, with separate WASM package checks. Keep
+  registry-resolution evidence as a distinct release gate.
 - Compare archived parser oracles without accepting under-indented quoted
   continuations or allowing later anchor-ID collisions to corrupt aliases.
 - Quote unsigned radix strings under lossless resolution while retaining

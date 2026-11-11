@@ -3,7 +3,7 @@
 
 # Ecosystem implementation plan
 
-Updated **2026-11-10**. Goal: close the measured gaps in all six repositories
+Updated **2026-11-11**. Goal: close the measured gaps in all six repositories
 so every category can earn a defensible, maintained 10/10 within its declared
 product scope. The [assessment](ROADMAP-TO-10.md) gives the baseline and the
 [evidence snapshot](ecosystem-assessment-2026-11-10.json) pins its sources.
@@ -15,6 +15,10 @@ The dated assessment remains the baseline. The
 [contract ledger](ECOSYSTEM-CONTRACTS.md) maps supported behavior to its
 tests, and the [implementation record](IMPLEMENTATION-STATUS.md) tracks
 observed results and open criteria. Publishing remains held.
+
+Daybreak access is outside this plan and is not an acceptance prerequisite.
+Continue the local and GitHub gates; retain G1 as an actual independent
+human review requirement through an available channel.
 
 ## Constraints and work order
 

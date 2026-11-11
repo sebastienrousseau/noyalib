@@ -1,0 +1,166 @@
+# SPDX-FileCopyrightText: 2026 Noyalib
+# SPDX-License-Identifier: MIT OR Apache-2.0
+
+name: Ecosystem candidate
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: candidate-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  sources:
+    runs-on: ubuntu-latest
+    outputs:
+      products: ${{ steps.matrix.outputs.products }}
+      wasm: ${{ steps.matrix.outputs.wasm }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Test source and version refusal guards
+        run: python3 scripts/tests/test_ecosystem_candidate.py
+      - name: Validate the five immutable product refs
+        id: matrix
+        run: |
+          python3 scripts/prepare-ecosystem-candidate.py matrix docs/ecosystem-candidate.json > products.json
+          python3 - <<'PY'
+          import json, os
+          rows = json.load(open('products.json'))
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              print('products=' + json.dumps(rows, separators=(',', ':')), file=output)
+              print('wasm=' + next(row['commit'] for row in rows if row['repo'] == 'noyalib-wasm'), file=output)
+          PY
+
+  native:
+    needs: sources
+    name: ${{ matrix.product.repo }} (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        product: ${{ fromJSON(needs.sources.outputs.products) }}
+    defaults:
+      run:
+        shell: bash
+    env:
+      CARGO_INCREMENTAL: '0'
+      CARGO_PROFILE_DEV_DEBUG: '0'
+      CARGO_PROFILE_TEST_DEBUG: '0'
+      CARGO_TARGET_DIR: ${{ github.workspace }}/target-candidate-stable
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          path: noyalib
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: sebastienrousseau/${{ matrix.product.repo }}
+          ref: ${{ matrix.product.commit }}
+          persist-credentials: false
+          path: product
+          submodules: recursive
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.13'
+      - name: Prepare the exact candidate without changing registry pins
+        env:
+          PRODUCT_REPO: ${{ matrix.product.repo }}
+          PRODUCT_COMMIT: ${{ matrix.product.commit }}
+        run: |
+          python noyalib/scripts/prepare-ecosystem-candidate.py prepare \
+            --core noyalib --satellite product --repo "$PRODUCT_REPO" \
+            --commit "$PRODUCT_COMMIT" --receipt candidate-receipt.json
+      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8
+        with:
+          toolchain: stable
+          components: clippy,rustfmt
+      - name: Check and exercise the native product boundary
+        working-directory: product
+        run: |
+          bash scripts/verify-release-versions.sh
+          cargo fmt --all -- --check
+          cargo clippy --locked --all-features --all-targets -- -D warnings
+          cargo test --locked --all-features --lib --tests
+          cargo test --locked --all-features --doc
+      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8
+        with:
+          toolchain: '1.89.0'
+      - name: Check the declared Rust floor in an isolated target directory
+        working-directory: product
+        env:
+          CARGO_TARGET_DIR: ${{ runner.temp }}/candidate-msrv
+        run: cargo +1.89.0 check --locked --lib --bins
+      - name: Refuse changed sources or locks
+        if: always()
+        run: python noyalib/scripts/prepare-ecosystem-candidate.py verify --receipt candidate-receipt.json
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always()
+        with:
+          name: candidate-${{ matrix.product.repo }}-${{ matrix.os }}
+          path: candidate-receipt.json
+          if-no-files-found: error
+
+  wasm:
+    needs: sources
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      CARGO_TARGET_DIR: ${{ github.workspace }}/target-candidate-wasm
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          path: noyalib
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: sebastienrousseau/noyalib-wasm
+          ref: ${{ needs.sources.outputs.wasm }}
+          persist-credentials: false
+          path: product
+      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8
+        with:
+          toolchain: stable
+          targets: wasm32-unknown-unknown
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - uses: jetli/wasm-pack-action@0d096b08b4e5a7de8c28de67e11e945404e9eefa
+        with:
+          version: 'v0.15.0'
+      - name: Prepare the pinned WASM candidate
+        env:
+          PRODUCT_COMMIT: ${{ needs.sources.outputs.wasm }}
+        run: |
+          python3 noyalib/scripts/prepare-ecosystem-candidate.py prepare \
+            --core noyalib --satellite product --repo noyalib-wasm \
+            --commit "$PRODUCT_COMMIT" --receipt candidate-receipt.json
+      - name: Exercise actual JS exports and the optimized installed package
+        working-directory: product
+        run: |
+          wasm-pack test --node
+          wasm-pack build --release --target bundler --scope sebastienrousseau -- --locked
+          python3 scripts/prepare-npm-package.py pkg
+          scripts/check-npm-package.sh pkg
+          python3 scripts/check-package-size.py pkg/noyalib_wasm_bg.wasm
+          npm ci --ignore-scripts --prefix tests/typescript
+          npm audit --package-lock-only --ignore-scripts --prefix tests/typescript
+          node scripts/check-installed-consumer.mjs pkg "$(command -v google-chrome)"
+      - name: Refuse changed sources or locks
+        if: always()
+        run: python3 noyalib/scripts/prepare-ecosystem-candidate.py verify --receipt candidate-receipt.json
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always()
+        with:
+          name: candidate-wasm-consumer
+          path: candidate-receipt.json
+          if-no-files-found: error
