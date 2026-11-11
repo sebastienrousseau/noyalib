@@ -105,7 +105,9 @@ pub(crate) fn quoted_empty_flow_keys(source: &str) -> Option<String> {
                 // YAML 1.2.2 §7.3.3 permits ':' followed by a plain-safe
                 // character, including in a flow collection.
                 let text = source.get(start..end)?.trim_matches([' ', '\t']);
-                if text.starts_with(':') && !text.contains(['\n', '\r']) {
+                let rest = source.get(end..)?;
+                let compact_empty_value = rest.starts_with(":,") || rest.starts_with(":}");
+                if (text.starts_with(':') || compact_empty_value) && !text.contains(['\n', '\r']) {
                     replacements.push((start, end, serde_json::to_string(text).ok()?));
                 }
             }
@@ -178,6 +180,21 @@ mod tests {
         assert_eq!(normalized, "{\":m\", other: [\":value\"]}");
         assert_eq!(before[":m"], serde_json::Value::Null);
         assert_eq!(before["other"][0], ":value");
+    }
+
+    #[test]
+    fn compact_empty_flow_values_remain_compared() {
+        for (source, expected) in [
+            ("{a:, other: 1}", "{\"a\":, other: 1}"),
+            ("{a:}", "{\"a\":}"),
+        ] {
+            let normalized = quoted_empty_flow_keys(source).expect("compact empty value");
+            assert_eq!(normalized, expected);
+            let before: serde_json::Value = noyalib::from_str(source).unwrap();
+            let after: serde_json::Value = noyalib::from_str(&normalized).unwrap();
+            assert_eq!(before, after);
+            assert_eq!(before["a"], serde_json::Value::Null);
+        }
     }
 
     #[test]
