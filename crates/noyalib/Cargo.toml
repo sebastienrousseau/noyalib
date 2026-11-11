@@ -6,7 +6,6 @@ rust-version = "1.89.0"
 license = "MIT OR Apache-2.0"
 description = "A pure Rust YAML library with zero unsafe code and full serde integration"
 repository = "https://github.com/sebastienrousseau/noyalib"
-homepage = "https://github.com/sebastienrousseau/noyalib"
 documentation = "https://docs.rs/noyalib"
 readme = "README.md"
 keywords = ["yaml", "serde", "serialization", "parser", "safe"]
