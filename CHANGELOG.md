@@ -42,6 +42,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Security
 
+- Require patched rustix 1.1.6 for optional filesystem includes so downstream
+  resolution cannot retain the affected 1.1.4 dependency.
 - Refuse synthetic sibling entries during local CST repair. Root shape
   changes use a full parse, preserving UTF-8 token boundaries and keeping
   MCP edit sessions alive.
