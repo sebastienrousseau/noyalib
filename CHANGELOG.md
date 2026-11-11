@@ -21,6 +21,12 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - Audit all tracked Cargo lockfiles and retain scoped evidence.
 - Add repeatable bounded fuzz campaigns and a shared six-consumer corpus.
 
+### Security
+
+- Bound repeated recursive-descent lookups by tracking visited states.
+  First-result lookup stops at its first match. Queries cache failed
+  states while preserving result order and repeated matches.
+
 ## [v0.0.60] - 2026-11-10
 
 ### Fixed
