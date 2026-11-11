@@ -166,8 +166,9 @@ fn known_reject_divergence(s: &str) -> bool {
     // l-comment line (§6.6), so `\t` alone is a valid empty stream, and
     // a tab before a node is s-separate-in-line, so `\t$0` is the
     // scalar "$0" (yaml-test-suite 6CA3 indents a flow node so).
-    // noyalib follows the spec and rejects tab indentation itself.
-    if s.lines()
+    // noyalib follows the spec and rejects tab indentation itself. Recognize
+    // LF, CRLF and lone CR here, matching the production scanner.
+    if s.split(['\r', '\n'])
         .any(|l| l.trim_start_matches(' ').starts_with('\t'))
     {
         return true;
