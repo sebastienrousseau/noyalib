@@ -21,7 +21,7 @@ use noyalib::*;
 
 #[test]
 fn mapping_deserialize_from_yaml() {
-    // Exercises MappingVisitor (lines 395-405)
+    // Exercises MappingVisitor
     let yaml = "a: 1\nb: 2\n";
     let m: Mapping = from_str(yaml).unwrap();
     assert_eq!(m.len(), 2);
@@ -30,14 +30,14 @@ fn mapping_deserialize_from_yaml() {
 
 #[test]
 fn mapping_any_deserialize_from_yaml() {
-    // Exercises MappingAnyVisitor (lines 850-860)
+    // Exercises MappingAnyVisitor
     let yaml = "a: 1\nb: 2\n";
     let m: MappingAny = from_str(yaml).unwrap();
     assert_eq!(m.len(), 2);
 }
 
 // ============================================================================
-// 1. value.rs — TaggedValue Deserializer (lines 1440-1600)
+// 1. value.rs : TaggedValue Deserializer
 // ============================================================================
 
 #[derive(Debug, serde::Deserialize, PartialEq)]
@@ -117,7 +117,7 @@ fn tagged_value_deserialize_any_as_map() {
 }
 
 // ============================================================================
-// 1. value.rs — apply_merge error paths (lines 2090-2110)
+// 1. value.rs : apply_merge error paths
 // ============================================================================
 
 #[test]
@@ -164,7 +164,7 @@ fn apply_merge_sequence_in_merge_element() {
 
 #[test]
 fn apply_merge_single_mapping_value() {
-    // Non-sequence merge value (single mapping) -> vec![value] path (line 2090)
+    // Non-sequence merge value (single mapping) -> vec![value] path
     let mut v = Value::Mapping({
         let mut m = Mapping::new();
         let mut merge_src = Mapping::new();
@@ -177,12 +177,12 @@ fn apply_merge_single_mapping_value() {
 }
 
 // ============================================================================
-// 1. value.rs — ValueIndex through Tagged (lines 2460-2575)
+// 1. value.rs : ValueIndex through Tagged
 // ============================================================================
 
 #[test]
 fn value_index_usize_on_tagged_sequence() {
-    // index_or_insert for usize through Tagged (line 2468)
+    // index_or_insert for usize through Tagged
     let mut v = Value::Tagged(Box::new(TaggedValue::new(
         Tag::new("!seq"),
         Value::Sequence(vec![Value::from(10), Value::from(20)]),
@@ -193,7 +193,7 @@ fn value_index_usize_on_tagged_sequence() {
 
 #[test]
 fn value_index_str_on_tagged_mapping() {
-    // index_or_insert for &str through Tagged (line 2506)
+    // index_or_insert for &str through Tagged
     let mut v = Value::Tagged(Box::new(TaggedValue::new(
         Tag::new("!map"),
         Value::Mapping(Mapping::new()),
@@ -205,7 +205,7 @@ fn value_index_str_on_tagged_mapping() {
 
 #[test]
 fn value_index_str_on_null_creates_mapping() {
-    // index_or_insert for &str on Null (line 2497-2498)
+    // index_or_insert for &str on Null
     let mut v = Value::Null;
     *"key".index_or_insert(&mut v) = Value::from("value");
     assert_eq!(v["key"].as_str(), Some("value"));
@@ -213,7 +213,7 @@ fn value_index_str_on_null_creates_mapping() {
 
 #[test]
 fn value_index_string_type() {
-    // ValueIndex for String (lines 2516-2528)
+    // ValueIndex for String
     let mut m = Mapping::new();
     m.insert("hello", Value::from(42));
     let mut v = Value::Mapping(m);
@@ -235,7 +235,7 @@ fn value_index_string_type() {
 
 #[test]
 fn value_index_ref_string_type() {
-    // ValueIndex for &String (lines 2530-2542)
+    // ValueIndex for &String
     let mut m = Mapping::new();
     m.insert("hello", Value::from(42));
     let mut v = Value::Mapping(m);
@@ -253,7 +253,7 @@ fn value_index_ref_string_type() {
 
 #[test]
 fn value_index_ref_value_string() {
-    // ValueIndex for &Value with String (line 2547, 2557, 2567)
+    // ValueIndex for &Value with String
     let mut m = Mapping::new();
     m.insert("hello", Value::from(42));
     let mut v = Value::Mapping(m);
@@ -271,8 +271,7 @@ fn value_index_ref_value_string() {
 
 #[test]
 fn value_index_ref_value_integer() {
-    // ValueIndex for &Value with Number::Integer (line 2548-2549, 2558-2559,
-    // 2568-2571)
+    // ValueIndex for &Value with Number::Integer
     let mut v = Value::Sequence(vec![Value::from(10), Value::from(20), Value::from(30)]);
 
     let idx = Value::from(1);
@@ -288,7 +287,7 @@ fn value_index_ref_value_integer() {
 
 #[test]
 fn value_index_ref_value_other_returns_none() {
-    // ValueIndex for &Value with non-string/non-integer (line 2551, 2561)
+    // ValueIndex for &Value with non-string/non-integer
     let mut m = Value::Mapping(Mapping::new());
     let idx = Value::Bool(true);
     assert!((&idx).index_into(&m).is_none());
@@ -298,19 +297,19 @@ fn value_index_ref_value_other_returns_none() {
 #[test]
 #[should_panic(expected = "cannot index")]
 fn value_index_ref_value_bool_panic_on_insert() {
-    // ValueIndex for &Value with non-indexable type (line 2573)
+    // ValueIndex for &Value with non-indexable type
     let mut v = Value::Mapping(Mapping::new());
     let idx = Value::Bool(true);
     let _ = (&idx).index_or_insert(&mut v);
 }
 
 // ============================================================================
-// 1. value.rs — Value Visitor (lines 2575-2630)
+// 1. value.rs : Value Visitor
 // ============================================================================
 
 #[test]
 fn value_deserialize_visit_string() {
-    // visit_string path (line 2627-2628)
+    // visit_string path
     // When deserializing an owned string value
     let yaml = "hello world\n";
     let v: Value = from_str(yaml).unwrap();
@@ -318,7 +317,7 @@ fn value_deserialize_visit_string() {
 }
 
 // ============================================================================
-// 1. value.rs — Deserializer for &Value (lines 2700-2850)
+// 1. value.rs : Deserializer for &Value
 // ============================================================================
 
 #[test]
@@ -376,7 +375,7 @@ fn ref_value_deserialize_any_mapping() {
 
 #[test]
 fn ref_value_deserialize_enum_string() {
-    // deserialize_enum with Value::String (line 2799-2800)
+    // deserialize_enum with Value::String
     #[derive(Debug, serde::Deserialize, PartialEq)]
     enum Simple {
         Hello,
@@ -389,7 +388,7 @@ fn ref_value_deserialize_enum_string() {
 
 #[test]
 fn ref_value_deserialize_seq_passthrough() {
-    // deserialize_seq on non-sequence falls through to deserialize_any (line 2811)
+    // deserialize_seq on non-sequence falls through to deserialize_any
     let v = Value::from("not a sequence");
     let result: Result<Vec<i64>> = from_value(&v);
     assert!(result.is_err());
@@ -397,7 +396,7 @@ fn ref_value_deserialize_seq_passthrough() {
 
 #[test]
 fn ref_value_deserialize_map_passthrough() {
-    // deserialize_map on non-mapping falls through to deserialize_any (line 2824)
+    // deserialize_map on non-mapping falls through to deserialize_any
     let v = Value::from("not a mapping");
     let result: Result<HashMap<String, i64>> = from_value(&v);
     assert!(result.is_err());
@@ -405,7 +404,7 @@ fn ref_value_deserialize_map_passthrough() {
 
 #[test]
 fn ref_value_deserialize_struct_spanned() {
-    // deserialize_struct with spanned type name (lines 2837-2843)
+    // deserialize_struct with spanned type name
     let yaml = "hello\n";
     let v: Spanned<String> = from_str(yaml).unwrap();
     assert_eq!(v.value, "hello");
@@ -417,7 +416,7 @@ fn ref_value_deserialize_struct_spanned() {
 
 #[test]
 fn scanner_bom_at_start() {
-    // BOM handling (lines 473-476)
+    // BOM handling
     let yaml = "\u{FEFF}key: value\n";
     let v: Value = from_str(yaml).unwrap();
     assert_eq!(v["key"].as_str(), Some("value"));
@@ -425,7 +424,7 @@ fn scanner_bom_at_start() {
 
 #[test]
 fn scanner_single_quoted_multiline() {
-    // Single-quoted multiline with line folding (lines 998-1050)
+    // Single-quoted multiline with line folding
     let yaml = "key: 'line1\n  line2'\n";
     let v: Value = from_str(yaml).unwrap();
     assert_eq!(v["key"].as_str(), Some("line1 line2"));
@@ -433,7 +432,7 @@ fn scanner_single_quoted_multiline() {
 
 #[test]
 fn scanner_single_quoted_multiline_breaks() {
-    // Single-quoted with multiple line breaks (lines 1024-1031)
+    // Single-quoted with multiple line breaks
     let yaml = "key: 'line1\n\n  line2'\n";
     let v: Value = from_str(yaml).unwrap();
     assert_eq!(v["key"].as_str(), Some("line1\nline2"));
@@ -441,7 +440,7 @@ fn scanner_single_quoted_multiline_breaks() {
 
 #[test]
 fn scanner_single_quoted_escaped_quote() {
-    // Escaped single quote '' (lines 985-991)
+    // Escaped single quote ''
     let yaml = "key: 'it''s'\n";
     let v: Value = from_str(yaml).unwrap();
     assert_eq!(v["key"].as_str(), Some("it's"));
@@ -449,7 +448,7 @@ fn scanner_single_quoted_escaped_quote() {
 
 #[test]
 fn scanner_double_quoted_escapes() {
-    // All escape sequences (lines 1112-1141)
+    // All escape sequences
     let yaml = r#"key: "\0\a\b\t\n\v\f\r\e \"\/ \\ \N \_ \L \P""#;
     let v: Value = from_str(yaml).unwrap();
     let s = v["key"].as_str().unwrap();
@@ -473,7 +472,7 @@ fn scanner_double_quoted_escapes() {
 
 #[test]
 fn scanner_double_quoted_hex_escapes() {
-    // Hex escapes: \x, \u, \U (lines 1130-1141)
+    // Hex escapes: \x, \u, \U
     let yaml = r#"key: "\x41\u0042\U00000043""#;
     let v: Value = from_str(yaml).unwrap();
     assert_eq!(v["key"].as_str(), Some("ABC"));
@@ -481,7 +480,7 @@ fn scanner_double_quoted_hex_escapes() {
 
 #[test]
 fn scanner_double_quoted_multiline() {
-    // Double-quoted multiline folding (lines 1163-1201)
+    // Double-quoted multiline folding
     let yaml = "key: \"line1\n  line2\"\n";
     let v: Value = from_str(yaml).unwrap();
     assert_eq!(v["key"].as_str(), Some("line1 line2"));
@@ -489,7 +488,7 @@ fn scanner_double_quoted_multiline() {
 
 #[test]
 fn scanner_double_quoted_multiline_multiple_breaks() {
-    // Multiple line breaks in double-quoted (lines 1189-1196)
+    // Multiple line breaks in double-quoted
     let yaml = "key: \"line1\n\n  line2\"\n";
     let v: Value = from_str(yaml).unwrap();
     assert_eq!(v["key"].as_str(), Some("line1\nline2"));
@@ -497,7 +496,7 @@ fn scanner_double_quoted_multiline_multiple_breaks() {
 
 #[test]
 fn scanner_double_quoted_line_escape() {
-    // Line break escape \<newline> (lines 1142-1151)
+    // Line break escape \<newline>
     let yaml = "key: \"line1\\\n  line2\"\n";
     let v: Value = from_str(yaml).unwrap();
     assert_eq!(v["key"].as_str(), Some("line1line2"));
@@ -513,7 +512,7 @@ fn scanner_block_scalar_literal_clip() {
 
 #[test]
 fn scanner_block_scalar_literal_strip() {
-    // Block scalar with strip chomping |- (line 1296)
+    // Block scalar with strip chomping |-
     let yaml = "key: |-\n  line1\n  line2\n";
     let v: Value = from_str(yaml).unwrap();
     assert_eq!(v["key"].as_str(), Some("line1\nline2"));
@@ -521,7 +520,7 @@ fn scanner_block_scalar_literal_strip() {
 
 #[test]
 fn scanner_block_scalar_literal_keep() {
-    // Block scalar with keep chomping |+ (line 1291-1293)
+    // Block scalar with keep chomping |+
     let yaml = "key: |+\n  line1\n  line2\n\n";
     let v: Value = from_str(yaml).unwrap();
     assert_eq!(v["key"].as_str(), Some("line1\nline2\n\n"));
@@ -529,7 +528,7 @@ fn scanner_block_scalar_literal_keep() {
 
 #[test]
 fn scanner_block_scalar_with_indent_indicator() {
-    // Block scalar with explicit indent indicator (line 1299-1301)
+    // Block scalar with explicit indent indicator
     let yaml = "key: |2\n  line1\n  line2\n";
     let v: Value = from_str(yaml).unwrap();
     assert_eq!(v["key"].as_str(), Some("line1\nline2\n"));
@@ -537,7 +536,7 @@ fn scanner_block_scalar_with_indent_indicator() {
 
 #[test]
 fn scanner_block_scalar_folded() {
-    // Folded block scalar > (line 1409-1414)
+    // Folded block scalar >
     let yaml = "key: >\n  line1\n  line2\n";
     let v: Value = from_str(yaml).unwrap();
     assert_eq!(v["key"].as_str(), Some("line1 line2\n"));
@@ -559,7 +558,7 @@ fn scanner_block_scalar_folded_keep() {
 
 #[test]
 fn scanner_block_scalar_folded_with_more_indented() {
-    // More-indented lines in folded scalar (lines 1379-1391)
+    // More-indented lines in folded scalar
     let yaml = "key: >\n  line1\n    indented\n  line2\n";
     let v: Value = from_str(yaml).unwrap();
     let s = v["key"].as_str().unwrap();
@@ -571,7 +570,7 @@ fn scanner_block_scalar_folded_with_more_indented() {
 
 #[test]
 fn scanner_block_scalar_literal_utf8() {
-    // UTF-8 content in block scalar (lines 1427-1433)
+    // UTF-8 content in block scalar
     let yaml = "key: |\n  héllo wörld\n  日本語\n";
     let v: Value = from_str(yaml).unwrap();
     let s = v["key"].as_str().unwrap();
@@ -581,7 +580,7 @@ fn scanner_block_scalar_literal_utf8() {
 
 #[test]
 fn scanner_flow_collections() {
-    // Flow collections (lines 434-437)
+    // Flow collections
     let yaml = "[1, {a: b}, 2]\n";
     let v: Value = from_str(yaml).unwrap();
     assert_eq!(v[0].as_i64(), Some(1));
@@ -608,7 +607,7 @@ fn scanner_crlf_line_endings() {
 
 #[test]
 fn scanner_unterminated_single_quote() {
-    // EOF in single-quoted string (line 980)
+    // EOF in single-quoted string
     let yaml = "key: 'unterminated";
     let result: Result<Value> = from_str(yaml);
     assert!(result.is_err());
@@ -616,7 +615,7 @@ fn scanner_unterminated_single_quote() {
 
 #[test]
 fn scanner_unterminated_double_quote() {
-    // EOF in double-quoted string (line 1073)
+    // EOF in double-quoted string
     let yaml = "key: \"unterminated";
     let result: Result<Value> = from_str(yaml);
     assert!(result.is_err());
@@ -634,7 +633,7 @@ fn scanner_tab_indentation_error() {
 
 #[test]
 fn scanner_unknown_escape() {
-    // Unknown escape character (lines 1152-1160)
+    // Unknown escape character
     let yaml = r#"key: "\z""#;
     let result: Result<Value> = from_str(yaml);
     assert!(result.is_err());
@@ -642,7 +641,7 @@ fn scanner_unknown_escape() {
 
 #[test]
 fn scanner_plain_scalar_multiline() {
-    // Plain scalar line folding (lines 800-931)
+    // Plain scalar line folding
     let yaml = "key:\n  line1\n  line2\n";
     let v: Value = from_str(yaml).unwrap();
     // plain scalar multiline -> folded into single line
@@ -651,7 +650,7 @@ fn scanner_plain_scalar_multiline() {
 
 #[test]
 fn scanner_plain_scalar_with_multiple_breaks() {
-    // Multiple line breaks in plain scalar (lines 911-920)
+    // Multiple line breaks in plain scalar
     let yaml = "key:\n  line1\n\n  line2\n";
     let v: Value = from_str(yaml).unwrap();
     assert_eq!(v["key"].as_str(), Some("line1\nline2"));
@@ -659,7 +658,7 @@ fn scanner_plain_scalar_with_multiple_breaks() {
 
 #[test]
 fn scanner_roll_indent_flow_return() {
-    // roll_indent returns early in flow context (line 326-327)
+    // roll_indent returns early in flow context
     let yaml = "{a: {b: c}}\n";
     let v: Value = from_str(yaml).unwrap();
     assert_eq!(v["a"]["b"].as_str(), Some("c"));
@@ -667,7 +666,7 @@ fn scanner_roll_indent_flow_return() {
 
 #[test]
 fn scanner_fetch_value_block_mapping_init() {
-    // fetch_value block mapping init (lines 624-640)
+    // fetch_value block mapping init
     let yaml = "? key\n: value\n";
     let v: Value = from_str(yaml).unwrap();
     assert_eq!(v["key"].as_str(), Some("value"));
@@ -679,7 +678,7 @@ fn scanner_fetch_value_block_mapping_init() {
 
 #[test]
 fn events_multi_document() {
-    // Multi-document with --- and ... markers (lines 213-224)
+    // Multi-document with --- and ... markers
     let yaml = "---\na: 1\n...\n---\nb: 2\n...\n";
     let docs: Vec<Value> = load_all(yaml).unwrap().filter_map(|r| r.ok()).collect();
     assert_eq!(docs.len(), 2);
@@ -689,7 +688,7 @@ fn events_multi_document() {
 
 #[test]
 fn events_explicit_key_syntax() {
-    // Explicit ? key syntax (lines 438-458)
+    // Explicit ? key syntax
     let yaml = "? explicit_key\n: explicit_value\n";
     let v: Value = from_str(yaml).unwrap();
     assert_eq!(v["explicit_key"].as_str(), Some("explicit_value"));
@@ -697,7 +696,7 @@ fn events_explicit_key_syntax() {
 
 #[test]
 fn events_indentless_sequence() {
-    // Indentless sequences in block mapping context (lines 408-430)
+    // Indentless sequences in block mapping context
     // Indentless sequences appear after a "key:" in block mapping
     let yaml = "key:\n  - item1\n  - item2\n";
     let v: Value = from_str(yaml).unwrap();
@@ -707,7 +706,7 @@ fn events_indentless_sequence() {
 
 #[test]
 fn events_flow_sequence_implicit_mapping() {
-    // Flow sequence with key indicator (lines 507-516)
+    // Flow sequence with key indicator
     let yaml = "[a, b, c]\n";
     let v: Value = from_str(yaml).unwrap();
     assert_eq!(v[0].as_str(), Some("a"));
@@ -717,7 +716,7 @@ fn events_flow_sequence_implicit_mapping() {
 
 #[test]
 fn events_empty_block_seq_entries() {
-    // Empty entries in block sequences (lines 388-391)
+    // Empty entries in block sequences
     let yaml = "- \n- value\n";
     let v: Value = from_str(yaml).unwrap();
     assert!(v[0].is_null());
@@ -726,7 +725,7 @@ fn events_empty_block_seq_entries() {
 
 #[test]
 fn events_flow_mapping_empty_values() {
-    // Flow mapping with empty values (lines 601-602)
+    // Flow mapping with empty values
     let yaml = "{? a, b: c}\n";
     let v: Value = from_str(yaml).unwrap();
     assert!(v["a"].is_null());
@@ -735,7 +734,7 @@ fn events_flow_mapping_empty_values() {
 
 #[test]
 fn events_anchor_tag_combination() {
-    // Anchor + tag combinations (lines 264-287)
+    // Anchor + tag combinations
     // Use load_all to preserve tags
     let yaml = "&anc !!custom value\n";
     let docs: Vec<Value> = load_all(yaml).unwrap().filter_map(|r| r.ok()).collect();
@@ -744,7 +743,7 @@ fn events_anchor_tag_combination() {
 
 #[test]
 fn events_tag_then_anchor() {
-    // Tag followed by anchor (lines 275-286)
+    // Tag followed by anchor
     let yaml = "!!custom &anc value\n";
     let docs: Vec<Value> = load_all(yaml).unwrap().filter_map(|r| r.ok()).collect();
     assert!(docs[0].is_tagged());
@@ -752,7 +751,7 @@ fn events_tag_then_anchor() {
 
 #[test]
 fn events_document_content_empty() {
-    // Document content that's just document markers (lines 226-236)
+    // Document content that's just document markers
     let yaml = "---\n...\n";
     let docs: Vec<Value> = load_all(yaml).unwrap().filter_map(|r| r.ok()).collect();
     assert!(docs[0].is_null());
@@ -760,7 +759,7 @@ fn events_document_content_empty() {
 
 #[test]
 fn events_block_mapping_empty_value() {
-    // Block mapping value that's empty (lines 476-478)
+    // Block mapping value that's empty
     let yaml = "a:\nb: 2\n";
     let v: Value = from_str(yaml).unwrap();
     assert!(v["a"].is_null());
@@ -769,7 +768,7 @@ fn events_block_mapping_empty_value() {
 
 #[test]
 fn events_flow_sequence_entry_mapping_value() {
-    // Flow sequence entry mapping value (lines 540-553)
+    // Flow sequence entry mapping value
     // In flow sequence, key:value pairs create implicit mappings
     let yaml = "[a: b, c]\n";
     let v: Value = from_str(yaml).unwrap();
@@ -779,7 +778,7 @@ fn events_flow_sequence_entry_mapping_value() {
 
 #[test]
 fn events_flow_sequence_entry_mapping_empty_value() {
-    // Flow sequence entry mapping with empty value (lines 544-553)
+    // Flow sequence entry mapping with empty value
     let yaml = "[a:, b]\n";
     let v: Value = from_str(yaml).unwrap();
     assert!(v[0].is_mapping());
@@ -787,7 +786,7 @@ fn events_flow_sequence_entry_mapping_empty_value() {
 
 #[test]
 fn events_flow_mapping_complex_key() {
-    // Flow mapping (lines 588-603)
+    // Flow mapping
     let yaml = "{a: b, c: d}\n";
     let v: Value = from_str(yaml).unwrap();
     assert_eq!(v["a"].as_str(), Some("b"));
@@ -800,7 +799,7 @@ fn events_flow_mapping_complex_key() {
 
 #[test]
 fn loader_multi_document() {
-    // Multi-document parsing (lines 145-158)
+    // Multi-document parsing
     let yaml = "doc1\n---\ndoc2\n";
     let docs = load_all(yaml).unwrap();
     assert!(docs.len() >= 2); // len() is on DocumentIterator
@@ -808,7 +807,7 @@ fn loader_multi_document() {
 
 #[test]
 fn loader_anchored_sequence() {
-    // Anchored sequences (lines 206-248)
+    // Anchored sequences
     let yaml = "a: &seq\n  - 1\n  - 2\nb: *seq\n";
     let v: Value = from_str(yaml).unwrap();
     assert_eq!(v["a"][0].as_i64(), Some(1));
@@ -817,7 +816,7 @@ fn loader_anchored_sequence() {
 
 #[test]
 fn loader_anchored_mapping() {
-    // Anchored mappings (lines 250-327)
+    // Anchored mappings
     let yaml = "a: &map\n  x: 1\n  y: 2\nb: *map\n";
     let v: Value = from_str(yaml).unwrap();
     assert_eq!(v["a"]["x"].as_i64(), Some(1));
@@ -826,7 +825,7 @@ fn loader_anchored_mapping() {
 
 #[test]
 fn loader_merge_keys() {
-    // Merge keys from anchors (lines 274-297)
+    // Merge keys from anchors
     let yaml = "defaults: &defaults\n  x: 1\n  y: 2\nresult:\n  <<: *defaults\n  z: 3\n";
     let v: Value = from_str(yaml).unwrap();
     assert_eq!(v["result"]["x"].as_i64(), Some(1));
@@ -835,7 +834,7 @@ fn loader_merge_keys() {
 
 #[test]
 fn loader_merge_keys_sequence() {
-    // Merge key with sequence of mappings (lines 284-296)
+    // Merge key with sequence of mappings
     let yaml = "a: &a\n  x: 1\nb: &b\n  y: 2\nc:\n  <<: [*a, *b]\n  z: 3\n";
     let v: Value = from_str(yaml).unwrap();
     assert_eq!(v["c"]["x"].as_i64(), Some(1));
@@ -845,7 +844,7 @@ fn loader_merge_keys_sequence() {
 
 #[test]
 fn loader_duplicate_key_first() {
-    // Duplicate key policy: First (lines 417-421)
+    // Duplicate key policy: First
     let config = ParserConfig::new().duplicate_key_policy(DuplicateKeyPolicy::First);
     let yaml = "a: 1\na: 2\n";
     let v: Value = from_str_with_config(yaml, &config).unwrap();
@@ -854,7 +853,7 @@ fn loader_duplicate_key_first() {
 
 #[test]
 fn loader_tagged_scalars() {
-    // Tagged scalar resolution (lines 534-593)
+    // Tagged scalar resolution
     let yaml_int = "!!int 42\n";
     let v: Value = from_str(yaml_int).unwrap();
     assert_eq!(v.as_i64(), Some(42));
@@ -878,7 +877,7 @@ fn loader_tagged_scalars() {
 
 #[test]
 fn loader_custom_tag() {
-    // Custom tag resolution (lines 581-593)
+    // Custom tag resolution
     // Tags with !! prefix resolve via resolve_tagged_scalar
     // load_all preserves tags without serde deserialization
     let yaml = "!!custom hello\n";
@@ -900,7 +899,7 @@ fn loader_hex_octal_integers() {
 
 #[test]
 fn loader_large_integer_overflow_to_float() {
-    // Large integer overflow to float (lines 509-513)
+    // Large integer overflow to float
     let yaml = "99999999999999999999\n";
     let v: Value = from_str(yaml).unwrap();
     assert!(v.as_f64().is_some());
@@ -908,7 +907,7 @@ fn loader_large_integer_overflow_to_float() {
 
 #[test]
 fn loader_value_to_key_types() {
-    // value_to_key for different types (lines 461-469)
+    // value_to_key for different types
     // Bool key
     let yaml = "true: value\n";
     let v: Value = from_str(yaml).unwrap();
@@ -936,7 +935,7 @@ fn loader_value_to_key_types() {
 
 #[test]
 fn de_deserialize_identifier() {
-    // deserialize_identifier (lines 648-652)
+    // deserialize_identifier
     #[derive(Debug, serde::Deserialize, PartialEq)]
     struct Wrapper {
         field: String,
@@ -948,7 +947,7 @@ fn de_deserialize_identifier() {
 
 #[test]
 fn de_spanned_map_access_all_fields() {
-    // SpannedMapAccess states (lines 786-814)
+    // SpannedMapAccess states
     #[derive(Debug, serde::Deserialize)]
     struct Config {
         name: Spanned<String>,
@@ -961,12 +960,12 @@ fn de_spanned_map_access_all_fields() {
 }
 
 // ============================================================================
-// 5. spanned.rs — SpannedVisitor (lines 117-156)
+// 5. spanned.rs : SpannedVisitor
 // ============================================================================
 
 #[test]
 fn spanned_string_from_yaml() {
-    // SpannedVisitor visit_map (lines 129-156)
+    // SpannedVisitor visit_map
     let yaml = "hello\n";
     let v: Spanned<String> = from_str(yaml).unwrap();
     assert_eq!(v.value, "hello");
@@ -980,8 +979,7 @@ fn spanned_integer_from_yaml() {
 }
 
 // ============================================================================
-// 5. ser.rs — String quoting and block scalars (lines 355-420, 490-500,
-//    705-785)
+// 5. ser.rs : String quoting and block scalars
 // ============================================================================
 
 #[test]
@@ -1010,7 +1008,7 @@ fn ser_string_needs_double_quotes() {
 
 #[test]
 fn ser_looks_like_number() {
-    // Float-looking strings (lines 373-419)
+    // Float-looking strings
     let v = Value::from(".5");
     let s = to_string(&v).unwrap();
     assert!(s.contains('\'') || s.contains('"'));
@@ -1030,7 +1028,7 @@ fn ser_looks_like_number() {
 
 #[test]
 fn ser_tagged_value() {
-    // Tagged value serialization (lines 355-364)
+    // Tagged value serialization
     let v = Value::Tagged(Box::new(TaggedValue::new(
         Tag::new("!custom"),
         Value::from("hello"),
@@ -1042,7 +1040,7 @@ fn ser_tagged_value() {
 
 #[test]
 fn ser_literal_block() {
-    // Literal block serialization (lines 707-713, 779-789)
+    // Literal block serialization
     use noyalib::fmt::LitString;
 
     #[derive(serde::Serialize)]
@@ -1058,7 +1056,7 @@ fn ser_literal_block() {
 
 #[test]
 fn ser_folded_block() {
-    // Folded block serialization (lines 714-720)
+    // Folded block serialization
     use noyalib::fmt::FoldString;
 
     #[derive(serde::Serialize)]
@@ -1074,7 +1072,7 @@ fn ser_folded_block() {
 
 #[test]
 fn ser_flow_sequence() {
-    // Flow sequence serialization (lines 749-763)
+    // Flow sequence serialization
     use noyalib::fmt::FlowSeq;
 
     #[derive(serde::Serialize)]
@@ -1091,7 +1089,7 @@ fn ser_flow_sequence() {
 
 #[test]
 fn ser_flow_mapping() {
-    // Flow mapping serialization (lines 765-777)
+    // Flow mapping serialization
     use noyalib::fmt::FlowMap;
 
     #[derive(serde::Serialize)]
@@ -1109,7 +1107,7 @@ fn ser_flow_mapping() {
 
 #[test]
 fn ser_string_trailing_space() {
-    // Trailing space needs quoting (line 494-496)
+    // Trailing space needs quoting
     let v = Value::from("hello ");
     let s = to_string(&v).unwrap();
     assert!(s.contains('\'') || s.contains('"'));
@@ -1117,14 +1115,14 @@ fn ser_string_trailing_space() {
 
 #[test]
 fn ser_string_first_char_quote() {
-    // First char needing quoting (line 489-491)
+    // First char needing quoting
     let v = Value::from("# comment-like");
     let s = to_string(&v).unwrap();
     assert!(s.contains('\'') || s.contains('"'));
 }
 
 // ============================================================================
-// 5. path.rs — Path::parent() and depth() for Alias/Unknown (lines 204, 228)
+// 5. path.rs : Path::parent() and depth() for Alias/Unknown
 // ============================================================================
 
 #[test]
@@ -1155,7 +1153,7 @@ fn path_seq_parent_and_depth() {
 }
 
 // ============================================================================
-// 5. fmt.rs — Commented roundtrip (line 381)
+// 5. fmt.rs : Commented roundtrip
 // ============================================================================
 
 #[test]
@@ -1211,13 +1209,13 @@ fn singleton_map_recursive_tagged_value() {
 }
 
 // ============================================================================
-// 5. with/singleton_map_with.rs — serialize_with and transform_value_keys
-//    (lines 125-143, 214-217)
+// 5. with/singleton_map_with.rs : serialize_with and transform_value_keys
+//
 // ============================================================================
 
 #[test]
 fn singleton_map_with_deserialize_transform() {
-    // Exercise transform_value_keys including Tagged branch (lines 214-217)
+    // Exercise transform_value_keys including Tagged branch
     use noyalib::with::singleton_map_with;
 
     #[derive(Debug, serde::Deserialize, PartialEq)]
@@ -1237,7 +1235,7 @@ fn singleton_map_with_deserialize_transform() {
 
 #[test]
 fn singleton_map_with_serialize_branches() {
-    // Exercise serialize_with String and Mapping branches (lines 125-143)
+    // Exercise serialize_with String and Mapping branches
     use noyalib::with::singleton_map_with;
 
     #[derive(Debug, serde::Serialize, PartialEq)]
@@ -1246,14 +1244,14 @@ fn singleton_map_with_serialize_branches() {
         WithData { count: u32 },
     }
 
-    // Unit variant -> to_value gives String -> String branch (lines 134-139)
+    // Unit variant -> to_value gives String -> String branch
     let unit_val: Value =
         singleton_map_with::serialize_with(&Status::Active, Serializer, |s| s.to_lowercase())
             .unwrap();
     // Should produce a mapping with transformed key
     assert!(unit_val.is_mapping());
 
-    // Struct variant -> to_value gives Mapping -> Mapping branch (lines 125-132)
+    // Struct variant -> to_value gives Mapping -> Mapping branch
     let struct_val: Value =
         singleton_map_with::serialize_with(&Status::WithData { count: 5 }, Serializer, |s| {
             s.to_lowercase()
@@ -1268,7 +1266,7 @@ fn singleton_map_with_serialize_branches() {
 
 #[test]
 fn scanner_tag_secondary_handle() {
-    // Secondary tag handle !! (lines 749-767)
+    // Secondary tag handle !!
     let yaml = "!!str 42\n";
     let v: Value = from_str(yaml).unwrap();
     assert_eq!(v.as_str(), Some("42"));
@@ -1276,7 +1274,7 @@ fn scanner_tag_secondary_handle() {
 
 #[test]
 fn scanner_tag_verbatim() {
-    // Verbatim tag !<...> (lines 735-748)
+    // Verbatim tag !<...>
     let yaml = "!<my-custom-tag> hello\n";
     let docs: Vec<Value> = load_all(yaml).unwrap().filter_map(|r| r.ok()).collect();
     // Verbatim tags are stored as tagged values
@@ -1285,7 +1283,7 @@ fn scanner_tag_verbatim() {
 
 #[test]
 fn scanner_tag_primary() {
-    // Primary tag handle !suffix (lines 768-784)
+    // Primary tag handle !suffix
     // !suffix is treated as custom tag - use load_all to preserve tags
     let yaml = "!custom hello\n";
     let docs: Vec<Value> = load_all(yaml).unwrap().filter_map(|r| r.ok()).collect();
@@ -1295,7 +1293,7 @@ fn scanner_tag_primary() {
 
 #[test]
 fn scanner_anchor_and_alias() {
-    // Anchor/alias (lines 464-465)
+    // Anchor/alias
     let yaml = "a: &anchor value\nb: *anchor\n";
     let v: Value = from_str(yaml).unwrap();
     assert_eq!(v["a"].as_str(), Some("value"));
@@ -1304,7 +1302,7 @@ fn scanner_anchor_and_alias() {
 
 #[test]
 fn scanner_double_quoted_trailing_whitespace_before_break() {
-    // Whitespace before line break in double-quoted (lines 1218-1231)
+    // Whitespace before line break in double-quoted
     let yaml = "key: \"word   \n  next\"\n";
     let v: Value = from_str(yaml).unwrap();
     let s = v["key"].as_str().unwrap();
@@ -1314,7 +1312,7 @@ fn scanner_double_quoted_trailing_whitespace_before_break() {
 
 #[test]
 fn scanner_block_scalar_empty_lines() {
-    // Empty lines in block scalar (lines 1394-1401)
+    // Empty lines in block scalar
     let yaml = "key: |\n  line1\n\n  line2\n";
     let v: Value = from_str(yaml).unwrap();
     assert_eq!(v["key"].as_str(), Some("line1\n\nline2\n"));
@@ -1322,7 +1320,7 @@ fn scanner_block_scalar_empty_lines() {
 
 #[test]
 fn scanner_block_scalar_comment_after_indicator() {
-    // Comment after block scalar indicator (lines 1312-1316)
+    // Comment after block scalar indicator
     let yaml = "key: | # comment\n  content\n";
     let v: Value = from_str(yaml).unwrap();
     assert_eq!(v["key"].as_str(), Some("content\n"));
@@ -1330,7 +1328,7 @@ fn scanner_block_scalar_comment_after_indicator() {
 
 #[test]
 fn scanner_block_scalar_chomping_then_indent() {
-    // Chomping indicator before indent indicator (line 1288-1306)
+    // Chomping indicator before indent indicator
     let yaml = "key: |+2\n  ab\n";
     let v: Value = from_str(yaml).unwrap();
     assert_eq!(v["key"].as_str(), Some("ab\n"));
@@ -1346,7 +1344,7 @@ fn scanner_block_scalar_indent_then_chomping() {
 
 #[test]
 fn scanner_hex_escape_invalid() {
-    // Invalid hex escape (lines 1248-1253)
+    // Invalid hex escape
     let yaml = r#"key: "\xZZ""#;
     let result: Result<Value> = from_str(yaml);
     assert!(result.is_err());
@@ -1354,7 +1352,7 @@ fn scanner_hex_escape_invalid() {
 
 #[test]
 fn loader_special_floats() {
-    // Special float values (lines 492-496)
+    // Special float values
     let yaml = ".inf\n";
     let v: Value = from_str(yaml).unwrap();
     assert_eq!(v.as_f64(), Some(f64::INFINITY));
@@ -1370,7 +1368,7 @@ fn loader_special_floats() {
 
 #[test]
 fn loader_tagged_bool_resolution() {
-    // Tagged bool resolution (lines 554-570)
+    // Tagged bool resolution
     let yaml = "!!bool false\n";
     let v: Value = from_str(yaml).unwrap();
     assert_eq!(v.as_bool(), Some(false));
@@ -1378,7 +1376,7 @@ fn loader_tagged_bool_resolution() {
 
 #[test]
 fn ser_space_after() {
-    // SpaceAfter serialization (lines 737-740)
+    // SpaceAfter serialization
     use noyalib::fmt::SpaceAfter;
 
     #[derive(serde::Serialize)]
@@ -1398,7 +1396,7 @@ fn ser_space_after() {
 
 #[test]
 fn ref_value_deserialize_tagged_any() {
-    // &Value deserialize_any for Tagged (lines 2778-2781)
+    // &Value deserialize_any for Tagged
     let tagged = Value::Tagged(Box::new(TaggedValue::new(
         Tag::new("!mytag"),
         Value::from("inner"),
@@ -1410,7 +1408,7 @@ fn ref_value_deserialize_tagged_any() {
 
 #[test]
 fn ref_value_deserialize_enum_tagged() {
-    // &Value deserialize_enum for Tagged (lines 2795-2798)
+    // &Value deserialize_enum for Tagged
     #[derive(Debug, serde::Deserialize, PartialEq)]
     enum Color {
         Red,
@@ -1424,7 +1422,7 @@ fn ref_value_deserialize_enum_tagged() {
 
 #[test]
 fn ref_value_deserialize_enum_non_tagged_non_string() {
-    // &Value deserialize_enum fallthrough to deserialize_any (line 2801)
+    // &Value deserialize_enum fallthrough to deserialize_any
     #[derive(Debug, serde::Deserialize, PartialEq)]
     enum Thing {
         Value(i64),
@@ -1436,12 +1434,12 @@ fn ref_value_deserialize_enum_non_tagged_non_string() {
 }
 
 // ============================================================================
-// Loader: estimate_value_size (lines 684-703)
+// Loader: estimate_value_size
 // ============================================================================
 
 #[test]
 fn loader_estimate_value_covers_tagged() {
-    // Tagged value size estimation (line 701)
+    // Tagged value size estimation
     // load_all preserves tags; also exercises estimate_value_size for Tagged
     let yaml = "a: &a !!custom val\nb: *a\n";
     let docs: Vec<Value> = load_all(yaml).unwrap().filter_map(|r| r.ok()).collect();
@@ -1464,7 +1462,7 @@ fn events_flow_mapping_value_empty() {
 
 #[test]
 fn events_flow_mapping_implicit_key() {
-    // Flow mapping implicit key (lines 605-607)
+    // Flow mapping implicit key
     let yaml = "{a: 1}\n";
     let v: Value = from_str(yaml).unwrap();
     assert_eq!(v["a"].as_i64(), Some(1));
@@ -1489,7 +1487,7 @@ fn scan_error_display() {
 
 #[test]
 fn loader_duplicate_key_last_policy() {
-    // DuplicateKeyPolicy::Last (lines 423-436) — this is the default
+    // DuplicateKeyPolicy::Last : this is the default
     let yaml = "a: 1\na: 2\n";
     let v: Value = from_str(yaml).unwrap();
     assert_eq!(v["a"].as_i64(), Some(2));
@@ -1501,7 +1499,7 @@ fn loader_duplicate_key_last_policy() {
 
 #[test]
 fn scanner_block_scalar_folded_leading_blank() {
-    // Leading blank in folded (lines 1411-1412)
+    // Leading blank in folded
     // Lines starting with spaces are "more-indented" and preserve breaks
     let yaml = "key: >\n  normal1\n   indented\n  normal2\n";
     let v: Value = from_str(yaml).unwrap();
@@ -1513,7 +1511,7 @@ fn scanner_block_scalar_folded_leading_blank() {
 
 #[test]
 fn scanner_block_scalar_folded_multiple_breaks() {
-    // Multiple trailing breaks in folded (lines 1416-1418)
+    // Multiple trailing breaks in folded
     let yaml = "key: >\n  line1\n\n\n  line2\n";
     let v: Value = from_str(yaml).unwrap();
     let s = v["key"].as_str().unwrap();
@@ -1527,7 +1525,7 @@ fn scanner_block_scalar_folded_multiple_breaks() {
 #[test]
 fn ref_value_deserialize_struct_normal() {
     // deserialize_struct for non-spanned struct -> falls through to deserialize_map
-    // (line 2844)
+    //
     #[derive(Debug, serde::Deserialize, PartialEq)]
     struct Point {
         x: i64,
@@ -1577,7 +1575,7 @@ fn try_load_all_returns_iterator() {
 
 #[test]
 fn scanner_skip_to_next_token_flow() {
-    // In flow context, skip_blank handles tabs differently (lines 293-319)
+    // In flow context, skip_blank handles tabs differently
     // Tabs in flow context are allowed
     let yaml = "[1,\t2, 3]\n";
     let v: Value = from_str(yaml).unwrap();
@@ -1590,7 +1588,7 @@ fn scanner_skip_to_next_token_flow() {
 // ADDITIONAL COVERAGE TESTS
 // ============================================================================
 
-// --- value.rs: MappingVisitor/MappingAnyVisitor `expecting` (lines 399, 855)
+// --- value.rs: MappingVisitor/MappingAnyVisitor `expecting`
 // ---
 
 #[test]
@@ -1609,7 +1607,7 @@ fn mapping_any_visitor_expecting_error() {
     assert!(result.is_err());
 }
 
-// --- value.rs: TaggedValueVisitor expecting (lines 1446-1450, 1526) ---
+// --- value.rs: TaggedValueVisitor expecting ---
 
 #[test]
 fn tagged_value_visitor_expecting_error() {
@@ -1625,7 +1623,7 @@ fn tagged_value_visitor_from_json_map() {
     assert_eq!(result.tag().as_str(), "mytag");
 }
 
-// --- value.rs: usize::index_or_insert through Tagged (line 2468) ---
+// --- value.rs: usize::index_or_insert through Tagged ---
 
 #[test]
 fn usize_index_or_insert_through_tagged() {
@@ -1642,7 +1640,7 @@ fn usize_index_or_insert_through_tagged() {
     }
 }
 
-// --- value.rs: value_type_name arms (lines 2581-2587) ---
+// --- value.rs: value_type_name arms ---
 
 #[test]
 #[should_panic(expected = "null")]
@@ -1672,8 +1670,7 @@ fn value_type_name_string_usize_index() {
     0usize.index_or_insert(&mut v);
 }
 
-// --- value.rs: ValueVisitor expecting + visit_string (lines 2600, 2603-2604,
-// 2627-2628) ---
+// --- value.rs: ValueVisitor expecting + visit_string ---
 
 #[test]
 fn value_deserialize_from_json_string() {
@@ -1698,8 +1695,7 @@ fn value_deserialize_from_json_various() {
     assert!(v["a"].as_i64().is_some());
 }
 
-// --- value.rs: &Value Deserializer paths (lines 2767-2776, 2799-2801, 2811,
-// 2837-2844) ---
+// --- value.rs: &Value Deserializer paths ---
 
 #[test]
 fn ref_value_deserialize_any_all_types() {
@@ -1739,7 +1735,7 @@ fn ref_value_deserialize_any_all_types() {
 
 #[test]
 fn ref_value_deserialize_enum_string_variant() {
-    // Exercise deserialize_enum on string Value (line 2799-2801)
+    // Exercise deserialize_enum on string Value
     use serde_core::Deserialize as _;
 
     #[derive(Debug, serde::Deserialize, PartialEq)]
@@ -1755,7 +1751,7 @@ fn ref_value_deserialize_enum_string_variant() {
 
 #[test]
 fn ref_value_deserialize_seq_fallback() {
-    // Exercise deserialize_seq on non-sequence (line 2811)
+    // Exercise deserialize_seq on non-sequence
     // When the value is not a sequence, it falls through to deserialize_any
     use serde_core::Deserialize as _;
 
@@ -1768,7 +1764,7 @@ fn ref_value_deserialize_seq_fallback() {
 
 #[test]
 fn ref_value_deserialize_struct_spanned_via_ref() {
-    // Exercise deserialize_struct with Spanned name (lines 2837-2844)
+    // Exercise deserialize_struct with Spanned name
     // The &Value deserializer checks for SPANNED_TYPE_NAME
 
     #[derive(Debug, serde::Deserialize)]
@@ -1798,7 +1794,7 @@ fn ref_value_deserialize_struct_spanned_from_value() {
     assert_eq!(*config.port, 8080);
 }
 
-// --- value.rs: ValueSeqAccess/ValueMapAccess (lines 2722, 2755) ---
+// --- value.rs: ValueSeqAccess/ValueMapAccess ---
 
 #[test]
 fn value_seq_access_empty() {
@@ -1836,7 +1832,7 @@ fn scan_error_display_format() {
     assert!(!err_str.is_empty(), "expected a non-empty value");
 }
 
-// --- scanner.rs: peek returning 0 at EOF (lines 170-173) ---
+// --- scanner.rs: peek returning 0 at EOF ---
 
 #[test]
 fn scanner_empty_input() {
@@ -1852,7 +1848,7 @@ fn scanner_whitespace_only() {
     assert_eq!(result.unwrap(), Value::Null);
 }
 
-// --- scanner.rs: BOM handling (lines 473-475) ---
+// --- scanner.rs: BOM handling ---
 
 #[test]
 fn scanner_bom_utf8() {
@@ -1861,17 +1857,17 @@ fn scanner_bom_utf8() {
     assert_eq!(v["key"].as_str(), Some("val"));
 }
 
-// --- scanner.rs: fetch_key in flow (lines 447-450) ---
+// --- scanner.rs: fetch_key in flow ---
 
 #[test]
 fn scanner_explicit_key_in_flow() {
-    // ? followed by blank in flow context (line 448-450)
+    // ? followed by blank in flow context
     let yaml = "? a\n: 1\n";
     let v: Value = from_str(yaml).unwrap();
     assert_eq!(v["a"].as_i64(), Some(1));
 }
 
-// --- scanner.rs: fetch_value colon in flow (lines 457-459) ---
+// --- scanner.rs: fetch_value colon in flow ---
 
 #[test]
 fn scanner_colon_before_flow_indicators() {
@@ -1881,11 +1877,11 @@ fn scanner_colon_before_flow_indicators() {
     assert_eq!(v["a"].as_i64(), Some(1));
 }
 
-// --- scanner.rs: dash in flow context (lines 441-442) ---
+// --- scanner.rs: dash in flow context ---
 
 #[test]
 fn scanner_dash_in_flow_context() {
-    // Dash followed by comma in flow context (line 441)
+    // Dash followed by comma in flow context
     // Exercises: - followed by , ] } inside flow
     let yaml = "[1, -2, 3]\n";
     let v: Value = from_str(yaml).unwrap();
@@ -1893,11 +1889,11 @@ fn scanner_dash_in_flow_context() {
     assert_eq!(v[1].as_i64(), Some(-2));
 }
 
-// --- scanner.rs: fetch_block_entry error (line 583) ---
+// --- scanner.rs: fetch_block_entry error ---
 
 // Already tested via normal block entries
 
-// --- scanner.rs: fetch_key error (line 599) ---
+// --- scanner.rs: fetch_key error ---
 
 #[test]
 fn scanner_fetch_key_error() {
@@ -1907,7 +1903,7 @@ fn scanner_fetch_key_error() {
     let _ = result;
 }
 
-// --- scanner.rs: fetch_value paths (lines 650, 659-666) ---
+// --- scanner.rs: fetch_value paths ---
 
 #[test]
 fn scanner_complex_key_value() {
@@ -1918,7 +1914,7 @@ fn scanner_complex_key_value() {
     assert_eq!(v["key2"].as_str(), Some("val2"));
 }
 
-// --- scanner.rs: anchor name length limit (line 733) ---
+// --- scanner.rs: anchor name length limit ---
 
 #[test]
 fn scanner_anchor_name_limit() {
@@ -1929,7 +1925,7 @@ fn scanner_anchor_name_limit() {
     assert!(result.is_err());
 }
 
-// --- scanner.rs: single-quoted scalar internals (lines 978-1048) ---
+// --- scanner.rs: single-quoted scalar internals ---
 
 #[test]
 fn scanner_single_quoted_unterminated() {
@@ -1955,7 +1951,7 @@ fn scanner_single_quoted_whitespace_between_words() {
     assert_eq!(v.as_str(), Some("word1   word2"));
 }
 
-// --- scanner.rs: double-quoted scalar internals (lines 1071-1100) ---
+// --- scanner.rs: double-quoted scalar internals ---
 
 #[test]
 fn scanner_double_quoted_unterminated() {
@@ -2000,7 +1996,7 @@ fn scanner_double_quoted_whitespace_buffering() {
     assert_eq!(v.as_str(), Some("word1   word2"));
 }
 
-// --- scanner.rs: hex escape errors (lines 1260-1261) ---
+// --- scanner.rs: hex escape errors ---
 
 #[test]
 fn scanner_hex_escape_invalid_char() {
@@ -2015,7 +2011,7 @@ fn scanner_unicode_escape_surrogate() {
     assert!(result.is_err());
 }
 
-// --- scanner.rs: block scalar explicit indent (lines 1324-1335) ---
+// --- scanner.rs: block scalar explicit indent ---
 
 #[test]
 fn scanner_block_scalar_explicit_indent_indicator() {
@@ -2024,7 +2020,7 @@ fn scanner_block_scalar_explicit_indent_indicator() {
     assert_eq!(v.as_str(), Some("text\n"));
 }
 
-// --- scanner.rs: block scalar content end (lines 1324-1335) ---
+// --- scanner.rs: block scalar content end ---
 
 #[test]
 fn scanner_block_scalar_content_end_at_lower_indent() {
@@ -2035,7 +2031,7 @@ fn scanner_block_scalar_content_end_at_lower_indent() {
     assert_eq!(v["not_indented"].as_str(), Some("val"));
 }
 
-// --- scanner.rs: block scalar UTF-8, chomping (lines 1397-1449) ---
+// --- scanner.rs: block scalar UTF-8, chomping ---
 
 #[test]
 fn scanner_block_scalar_utf8_content() {
@@ -2071,7 +2067,7 @@ fn scanner_empty_plain_scalar_error() {
     assert!(result.is_err());
 }
 
-// --- scanner.rs: plain scalar multiline with CRLF (lines 914-916) ---
+// --- scanner.rs: plain scalar multiline with CRLF ---
 
 #[test]
 fn scanner_plain_scalar_crlf_multiline() {
@@ -2090,7 +2086,7 @@ fn scanner_plain_scalar_with_colon_space() {
     assert_eq!(v["key"].as_str(), Some("value"));
 }
 
-// --- events.rs: parse_document_start explicit (line 221) ---
+// --- events.rs: parse_document_start explicit ---
 
 #[test]
 fn events_explicit_document_start() {
@@ -2099,7 +2095,7 @@ fn events_explicit_document_start() {
     assert_eq!(v["a"].as_i64(), Some(1));
 }
 
-// --- events.rs: parse_document_content empty (line 232) ---
+// --- events.rs: parse_document_content empty ---
 
 #[test]
 fn events_document_content_stream_end() {
@@ -2109,7 +2105,7 @@ fn events_document_content_stream_end() {
     assert!(v.is_null());
 }
 
-// --- events.rs: tag after anchor (lines 281-284) ---
+// --- events.rs: tag after anchor ---
 
 #[test]
 fn events_tag_after_anchor() {
@@ -2118,8 +2114,7 @@ fn events_tag_after_anchor() {
     assert_eq!(v.as_str(), Some("val"));
 }
 
-// --- events.rs: FlowSequenceStart/FlowMappingStart in parse_node (lines 321,
-// 330) ---
+// --- events.rs: FlowSequenceStart/FlowMappingStart in parse_node ---
 
 #[test]
 fn events_flow_in_parse_node() {
@@ -2130,7 +2125,7 @@ fn events_flow_in_parse_node() {
     assert_eq!(v["map"]["a"].as_str(), Some("b"));
 }
 
-// --- events.rs: anchor/tag without value (lines 357-369) ---
+// --- events.rs: anchor/tag without value ---
 
 #[test]
 fn events_anchor_without_value() {
@@ -2151,7 +2146,7 @@ fn events_indentless_sequence_fallback() {
     assert_eq!(v["key"][1].as_str(), Some("b"));
 }
 
-// --- events.rs: block mapping key/value (lines 401-428) ---
+// --- events.rs: block mapping key/value ---
 
 #[test]
 fn events_block_mapping_explicit_key_empty_value() {
@@ -2162,7 +2157,7 @@ fn events_block_mapping_explicit_key_empty_value() {
     assert_eq!(v["key2"].as_str(), Some("val2"));
 }
 
-// --- events.rs: block mapping value after skip (lines 443-444) ---
+// --- events.rs: block mapping value after skip ---
 
 #[test]
 fn events_block_mapping_value_skip() {
@@ -2172,7 +2167,7 @@ fn events_block_mapping_value_skip() {
     assert_eq!(v["key"].as_str(), Some("val"));
 }
 
-// --- events.rs: flow sequence mapping (lines 529-553) ---
+// --- events.rs: flow sequence mapping ---
 
 #[test]
 fn events_flow_sequence_with_mapping() {
@@ -2190,7 +2185,7 @@ fn events_flow_sequence_implicit_map_entry() {
     assert_eq!(v[0]["a"].as_str(), Some("b"));
 }
 
-// --- events.rs: flow mapping key (lines 595-602) ---
+// --- events.rs: flow mapping key ---
 
 #[test]
 fn events_flow_mapping_multiple_entries() {
@@ -2212,7 +2207,7 @@ fn events_flow_mapping_key_comma() {
     assert_eq!(v["b"].as_i64(), Some(2));
 }
 
-// --- loader.rs: multi-document (lines 147, 155) ---
+// --- loader.rs: multi-document ---
 
 #[test]
 fn loader_multi_doc_stream() {
@@ -2221,7 +2216,7 @@ fn loader_multi_doc_stream() {
     assert_eq!(docs.len(), 2);
 }
 
-// --- loader.rs: sequence end/mapping end (lines 209, 222, 227, 246, 267, 273)
+// --- loader.rs: sequence end/mapping end
 // ---
 
 #[test]
@@ -2242,7 +2237,7 @@ fn loader_merge_key_with_scalar_in_sequence() {
     assert!(result.is_err());
 }
 
-// --- loader.rs: duplicate key policy Error (line 380-383) ---
+// --- loader.rs: duplicate key policy Error ---
 
 #[test]
 fn loader_duplicate_key_error_policy() {
@@ -2252,7 +2247,7 @@ fn loader_duplicate_key_error_policy() {
     assert!(result.is_err());
 }
 
-// --- loader.rs: push_value paths (lines 319-356) ---
+// --- loader.rs: push_value paths ---
 
 #[test]
 fn loader_complex_nested_yaml() {
@@ -2262,7 +2257,7 @@ fn loader_complex_nested_yaml() {
     assert_eq!(v["root"]["child2"]["key"].as_str(), Some("val"));
 }
 
-// --- loader.rs: merge keys (lines 402, 410) ---
+// --- loader.rs: merge keys ---
 
 #[test]
 fn loader_merge_key_single_mapping() {
@@ -2292,7 +2287,7 @@ fn loader_duplicate_key_first_policy() {
     assert_eq!(v["a"].as_i64(), Some(1));
 }
 
-// --- loader.rs: tagged scalars (lines 528, 545, 549) ---
+// --- loader.rs: tagged scalars ---
 
 #[test]
 fn loader_tagged_int() {
@@ -2337,7 +2332,7 @@ fn loader_custom_tag_with_inner_resolution() {
     assert_eq!(t.value().as_str(), Some("42"));
 }
 
-// --- loader.rs: estimate_value_size with aliases (line 588) ---
+// --- loader.rs: estimate_value_size with aliases ---
 
 #[test]
 fn loader_alias_expansion() {
@@ -2347,7 +2342,7 @@ fn loader_alias_expansion() {
     assert_eq!(v["ref2"]["b"].as_i64(), Some(2));
 }
 
-// --- loader.rs: hex/octal (line 638) ---
+// --- loader.rs: hex/octal ---
 
 #[test]
 fn loader_hex_octal() {
@@ -2357,7 +2352,7 @@ fn loader_hex_octal() {
     assert_eq!(v["oct"].as_i64(), Some(63));
 }
 
-// --- loader.rs: large int (line 688) ---
+// --- loader.rs: large int ---
 
 #[test]
 fn loader_large_int_overflow_float() {
@@ -2367,7 +2362,7 @@ fn loader_large_int_overflow_float() {
     assert!(v.as_f64().is_some());
 }
 
-// --- de.rs: SpannedFieldState transitions (lines 786-814) ---
+// --- de.rs: SpannedFieldState transitions ---
 
 #[test]
 fn de_spanned_all_field_states() {
@@ -2402,7 +2397,7 @@ fn spanned_bool_from_yaml() {
     assert!(*s.flag);
 }
 
-// --- ser.rs: looks_like_number for .5 format (lines 361-363, 414-416) ---
+// --- ser.rs: looks_like_number for .5 format ---
 
 #[test]
 fn ser_looks_like_number_dot_five() {
@@ -2433,7 +2428,7 @@ fn ser_first_char_single_quote() {
     assert!(yaml.contains('"'));
 }
 
-// --- ser.rs: Commented value serialization (line 632) ---
+// --- ser.rs: Commented value serialization ---
 
 #[test]
 fn ser_commented_value_in_sequence() {
@@ -2456,7 +2451,7 @@ fn ser_commented_value_in_sequence() {
     assert!(yaml.contains("b:"));
 }
 
-// --- ser.rs: write_literal_block, write_folded_block (lines 711, 718) ---
+// --- ser.rs: write_literal_block, write_folded_block ---
 
 #[test]
 fn ser_literal_block_non_string_fallback() {
@@ -2479,7 +2474,7 @@ fn ser_folded_block_non_string_fallback() {
     assert!(yaml.contains("42"));
 }
 
-// --- ser.rs: write_commented (line 731, 734) ---
+// --- ser.rs: write_commented ---
 
 #[test]
 fn ser_commented_wrong_length() {
@@ -2502,7 +2497,7 @@ fn ser_commented_non_sequence() {
     assert!(yaml.contains("42"));
 }
 
-// --- ser.rs: unknown internal tag (line 743) ---
+// --- ser.rs: unknown internal tag ---
 
 #[test]
 fn ser_unknown_internal_tag() {
@@ -2514,7 +2509,7 @@ fn ser_unknown_internal_tag() {
     assert!(yaml.contains("42"));
 }
 
-// --- ser.rs: multi-doc (line 782) ---
+// --- ser.rs: multi-doc ---
 
 #[test]
 fn ser_multi_doc() {
@@ -2595,7 +2590,7 @@ fn singleton_map_recursive_with_tagged() {
     assert_eq!(config, roundtrip);
 }
 
-// --- singleton_map_with.rs: non-mapping/non-string fallback (lines 141, 143)
+// --- singleton_map_with.rs: non-mapping/non-string fallback
 // ---
 
 #[test]
@@ -2648,7 +2643,7 @@ fn scanner_block_scalar_empty_only_lines() {
     assert!(s.contains('\n') || s.is_empty());
 }
 
-// --- loader.rs: resolve_quoted_scalar with tag (line 528) ---
+// --- loader.rs: resolve_quoted_scalar with tag ---
 
 #[test]
 fn loader_quoted_scalar_with_tag() {
@@ -2657,7 +2652,7 @@ fn loader_quoted_scalar_with_tag() {
     assert_eq!(v.as_str(), Some("hello"));
 }
 
-// --- loader.rs: resolve_tagged_scalar with non-!! handle (line 549) ---
+// --- loader.rs: resolve_tagged_scalar with non-!! handle ---
 
 #[test]
 fn loader_tag_with_generic_handle() {
@@ -2671,7 +2666,7 @@ fn loader_tag_with_generic_handle() {
     // Ensure it parses without error
 }
 
-// --- scanner.rs: CRLF in single-quoted (line 1017-1018) ---
+// --- scanner.rs: CRLF in single-quoted ---
 
 #[test]
 fn scanner_single_quoted_crlf() {
@@ -2680,7 +2675,7 @@ fn scanner_single_quoted_crlf() {
     assert_eq!(v.as_str(), Some("hello world"));
 }
 
-// --- scanner.rs: CRLF in double-quoted (line 1182-1183) ---
+// --- scanner.rs: CRLF in double-quoted ---
 
 #[test]
 fn scanner_double_quoted_crlf() {
@@ -2689,7 +2684,7 @@ fn scanner_double_quoted_crlf() {
     assert_eq!(v.as_str(), Some("hello world"));
 }
 
-// --- scanner.rs: CRLF skip_line (line 287) ---
+// --- scanner.rs: CRLF skip_line ---
 
 #[test]
 fn scanner_skip_line_crlf() {
@@ -2718,7 +2713,7 @@ fn events_document_end_marker() {
     assert_eq!(v["a"].as_i64(), Some(1));
 }
 
-// --- events.rs: indentless sequence with empty entries (lines 414-421) ---
+// --- events.rs: indentless sequence with empty entries ---
 
 #[test]
 fn events_indentless_sequence_empty_entries() {
@@ -2730,7 +2725,7 @@ fn events_indentless_sequence_empty_entries() {
     assert_eq!(v["key"][2].as_str(), Some("b"));
 }
 
-// --- events.rs: flow sequence entry mapping end (line 556-560) ---
+// --- events.rs: flow sequence entry mapping end ---
 
 #[test]
 fn events_flow_sequence_entry_mapping_end() {
@@ -2740,7 +2735,7 @@ fn events_flow_sequence_entry_mapping_end() {
     assert_eq!(v[0]["a"].as_i64(), Some(1));
 }
 
-// --- loader.rs: MappingValue frame + merge key value push (lines 410-414) ---
+// --- loader.rs: MappingValue frame + merge key value push ---
 
 #[test]
 fn loader_merge_key_value_push() {
@@ -2788,7 +2783,7 @@ fn ser_sequence_with_nested_sequence() {
     assert!(yaml.contains("- 1"));
 }
 
-// --- scanner.rs: fetch_directive (line 471) ---
+// --- scanner.rs: fetch_directive ---
 
 #[test]
 fn scanner_directive() {
@@ -2848,7 +2843,7 @@ fn scanner_double_quoted_special_escapes() {
 
 #[test]
 fn scanner_block_scalar_more_indented_literal() {
-    // Block literal with more-indented lines (line 1379-1391)
+    // Block literal with more-indented lines
     let yaml = "|\n  normal\n    more indented\n  normal again\n";
     let v: Value = from_str(yaml).unwrap();
     let s = v.as_str().unwrap();
@@ -2856,7 +2851,7 @@ fn scanner_block_scalar_more_indented_literal() {
     assert!(s.contains("  more indented"));
 }
 
-// --- loader.rs: tagged bool resolution (line 554-557) ---
+// --- loader.rs: tagged bool resolution ---
 
 #[test]
 fn loader_tagged_null() {
@@ -2888,12 +2883,12 @@ fn loader_tagged_float_nan() {
     assert!(v.as_f64().unwrap().is_nan());
 }
 
-// --- scanner.rs: block scalar folded leading_blank (line 1411-1412) ---
+// --- scanner.rs: block scalar folded leading_blank ---
 
 #[test]
 fn scanner_block_scalar_folded_leading_blank_line() {
     // Folded block where a line starts with a space (leading blank)
-    // This triggers the literal newline instead of space (line 1411)
+    // This triggers the literal newline instead of space
     let yaml = ">\n  normal line\n   leading space\n  another normal\n";
     let v: Value = from_str(yaml).unwrap();
     let s = v.as_str().unwrap();
@@ -2915,7 +2910,7 @@ fn scanner_dash_comma_in_flow() {
 
 #[test]
 fn scanner_question_mark_in_flow() {
-    // ? in flow followed by ] (line 449)
+    // ? in flow followed by ]
     let yaml = "[?]\n";
     let result: Result<Value> = from_str(yaml);
     let _ = result; // Just exercise the path
@@ -2926,7 +2921,7 @@ fn scanner_question_mark_in_flow() {
 #[test]
 fn events_block_mapping_value_after_value() {
     // Exercises parse_block_mapping_value where value token is followed by
-    // key/value/blockend (line 467-471)
+    // key/value/blockend
     let yaml = "? a\n:\n? b\n: val\n";
     let v: Value = from_str(yaml).unwrap();
     assert!(v["a"].is_null());
@@ -2943,7 +2938,7 @@ fn scanner_comment_skipping() {
     assert_eq!(v["b"].as_i64(), Some(2));
 }
 
-// --- scanner.rs: roll_indent in flow (line 327) ---
+// --- scanner.rs: roll_indent in flow ---
 
 #[test]
 fn scanner_roll_indent_returns_in_flow() {
@@ -2953,7 +2948,7 @@ fn scanner_roll_indent_returns_in_flow() {
     assert_eq!(v["a"][0].as_i64(), Some(1));
 }
 
-// --- events.rs: parse_flow_mapping_value empty (line 614-616) ---
+// --- events.rs: parse_flow_mapping_value empty ---
 
 #[test]
 fn events_flow_mapping_empty_value_path() {
@@ -2983,7 +2978,7 @@ fn loader_various_key_types() {
     assert_eq!(v["1.5"].as_str(), Some("float_val"));
 }
 
-// --- scanner.rs: double-quoted line escape \<newline> (line 1142-1145) ---
+// --- scanner.rs: double-quoted line escape \<newline> ---
 
 #[test]
 fn scanner_double_quoted_line_escape_cr_lf() {
@@ -3020,7 +3015,7 @@ fn loader_tagged_float_invalid() {
     assert!(result.is_err());
 }
 
-// --- scanner.rs: single-quoted with CRLF breaks (lines 1026-1027) ---
+// --- scanner.rs: single-quoted with CRLF breaks ---
 
 #[test]
 fn scanner_single_quoted_multi_crlf_breaks() {
@@ -3031,7 +3026,7 @@ fn scanner_single_quoted_multi_crlf_breaks() {
     assert!(s.contains('b'));
 }
 
-// --- scanner.rs: double-quoted with CRLF breaks (lines 1191-1192) ---
+// --- scanner.rs: double-quoted with CRLF breaks ---
 
 #[test]
 fn scanner_double_quoted_multi_crlf_breaks() {
@@ -3042,7 +3037,7 @@ fn scanner_double_quoted_multi_crlf_breaks() {
     assert!(s.contains('b'));
 }
 
-// --- scanner.rs: plain scalar with CRLF (lines 903-905, 914-916) ---
+// --- scanner.rs: plain scalar with CRLF ---
 
 #[test]
 fn scanner_plain_scalar_with_crlf_breaks() {
@@ -3052,7 +3047,7 @@ fn scanner_plain_scalar_with_crlf_breaks() {
     assert_eq!(v["other"].as_str(), Some("thing"));
 }
 
-// --- scanner.rs: block scalar keep/strip/clip chomping (lines 1444-1458) ---
+// --- scanner.rs: block scalar keep/strip/clip chomping ---
 
 #[test]
 fn scanner_block_scalar_keep_trailing() {
@@ -3089,7 +3084,7 @@ fn scanner_eof_token_stream() {
     assert!(v.is_null());
 }
 
-// --- events.rs: parse_block_sequence_entry error (lines 401-403) ---
+// --- events.rs: parse_block_sequence_entry error ---
 
 #[test]
 fn events_block_sequence_bad_token() {
@@ -3111,7 +3106,7 @@ fn ser_string_with_control_chars() {
 
 #[test]
 fn ser_tagged_value_with_string() {
-    // Non-internal tagged value serialization (lines 360-363)
+    // Non-internal tagged value serialization
     let v = Value::Tagged(Box::new(TaggedValue::new(
         Tag::new("!custom"),
         Value::from("hello"),
@@ -3123,7 +3118,7 @@ fn ser_tagged_value_with_string() {
 
 #[test]
 fn scanner_block_scalar_folded_multi_breaks() {
-    // Folded block with multiple trailing breaks (line 1416-1418)
+    // Folded block with multiple trailing breaks
     let yaml = ">\n  line1\n\n\n  line2\n";
     let v: Value = from_str(yaml).unwrap();
     let s = v.as_str().unwrap();
@@ -3131,7 +3126,7 @@ fn scanner_block_scalar_folded_multi_breaks() {
     assert!(s.contains("line2"));
 }
 
-// --- loader.rs: merge with scalar value (line 297) ---
+// --- loader.rs: merge with scalar value ---
 
 #[test]
 fn loader_merge_with_scalar_value() {
@@ -3221,7 +3216,7 @@ fn de_spanned_in_struct_from_str() {
 #[test]
 fn events_indentless_sequence_at_mapping_level() {
     // Indentless sequence: sequence entries at same indent as mapping value
-    // This exercises State::IndentlessSequenceEntry (line 112)
+    // This exercises State::IndentlessSequenceEntry
     // Indentless sequences occur when - is indented relative to the key
     let yaml = "items:\n  - a\n  - b\n  - c\n";
     let v: Value = from_str(yaml).unwrap();
@@ -3288,7 +3283,7 @@ fn events_flow_mapping_start_in_node() {
 
 #[test]
 fn events_tag_only_empty_scalar() {
-    // Tag on a key with empty value -> empty scalar with tag (line 357-366)
+    // Tag on a key with empty value -> empty scalar with tag
     let yaml = "!!str :\n";
     let result: Result<Value> = from_str(yaml);
     // May produce a mapping with an empty-string key, just exercise
@@ -3316,7 +3311,7 @@ fn events_indentless_sequence_empty_entry_followed_by_key() {
 
 #[test]
 fn events_block_mapping_key_followed_by_key() {
-    // ? key1 followed immediately by ? key2 -> empty value for key1 (line 443-444)
+    // ? key1 followed immediately by ? key2 -> empty value for key1
     let yaml = "? a\n? b\n: value\n";
     let v: Value = from_str(yaml).unwrap();
     assert!(v["a"].is_null());
@@ -3339,7 +3334,7 @@ fn events_flow_sequence_entry_mapping_key_empty() {
 
 #[test]
 fn events_flow_mapping_explicit_key() {
-    // Explicit ? key in flow mapping (line 588-602)
+    // Explicit ? key in flow mapping
     // ? in flow mapping needs the key followed by : value
     let yaml = "{? key : val, other: 2}\n";
     let result: Result<Value> = from_str(yaml);
@@ -3351,7 +3346,7 @@ fn events_flow_mapping_explicit_key() {
 
 #[test]
 fn events_flow_mapping_explicit_key_empty_value_after_key() {
-    // ? followed by , or } -> empty key, empty value (line 601-602)
+    // ? followed by , or } -> empty key, empty value
     let yaml = "{? , a: 1}\n";
     let result: Result<Value> = from_str(yaml);
     let _ = result; // Exercise the path
@@ -3364,7 +3359,7 @@ fn events_flow_mapping_explicit_key_empty_value_after_key() {
 
 #[test]
 fn loader_scalar_event_with_quoted_style_and_tag() {
-    // Quoted scalar with tag goes through resolve_quoted_scalar path (line 169)
+    // Quoted scalar with tag goes through resolve_quoted_scalar path
     let yaml = "!!str 'hello'\n";
     let v: Value = from_str(yaml).unwrap();
     assert_eq!(v.as_str(), Some("hello"));
@@ -3385,7 +3380,7 @@ fn loader_max_depth_exceeded() {
 
 #[test]
 fn loader_sequence_end_with_anchor() {
-    // Anchored sequence -> SequenceEnd stores anchor in anchor_map (line 240-242)
+    // Anchored sequence -> SequenceEnd stores anchor in anchor_map
     let yaml = "a: &myseq\n  - 1\n  - 2\nb: *myseq\n";
     let v: Value = from_str(yaml).unwrap();
     assert_eq!(v["b"][0].as_i64(), Some(1));
@@ -3398,7 +3393,7 @@ fn loader_sequence_end_with_anchor() {
 
 #[test]
 fn loader_mapping_end_with_anchor() {
-    // Anchored mapping -> MappingEnd stores anchor (line 313-315)
+    // Anchored mapping -> MappingEnd stores anchor
     let yaml = "template: &tmpl\n  host: localhost\n  port: 80\nsite: *tmpl\n";
     let v: Value = from_str(yaml).unwrap();
     assert_eq!(v["site"]["host"].as_str(), Some("localhost"));
@@ -3421,7 +3416,7 @@ fn loader_mapping_value_frame_merge() {
 
 #[test]
 fn loader_mapping_value_frame_first_policy() {
-    // First policy in MappingValue frame (line 417-421)
+    // First policy in MappingValue frame
     let config = ParserConfig::new().duplicate_key_policy(DuplicateKeyPolicy::First);
     let yaml = "a: 1\nb: 2\na: 3\n";
     let v: Value = from_str_with_config(yaml, &config).unwrap();
@@ -3433,7 +3428,7 @@ fn loader_mapping_value_frame_first_policy() {
 
 #[test]
 fn loader_non_scalar_key_error() {
-    // Sequence or mapping as key -> error (line 468)
+    // Sequence or mapping as key -> error
     // This is hard to trigger from YAML since keys are usually scalars
     // The [key]: value syntax uses flow sequences as keys
     let yaml = "[a, b]: value\n";
@@ -3446,7 +3441,7 @@ fn loader_non_scalar_key_error() {
 
 #[test]
 fn loader_tag_with_custom_handle() {
-    // Tag handle that is not !! or ! (line 549)
+    // Tag handle that is not !! or !
     // The scanner normally only produces ! and !! handles, but exercise the path
     let yaml = "!custom_tag hello\n";
     let v: Value = from_str(yaml).unwrap();
@@ -3502,7 +3497,7 @@ fn scanner_simple_key_tracking() {
 
 #[test]
 fn scanner_colon_followed_by_colon() {
-    // : followed by : (line 460) - triggers value token
+    // : followed by : - triggers value token
     let yaml = "a:: b\n";
     let result: Result<Value> = from_str(yaml);
     let _ = result; // May be valid or error
@@ -3515,7 +3510,7 @@ fn scanner_colon_followed_by_colon() {
 
 #[test]
 fn scanner_block_entry_not_allowed() {
-    // Block entry where not allowed (line 583)
+    // Block entry where not allowed
     let yaml = "a: 1\n- b\n";
     let result: Result<Value> = from_str(yaml);
     // May produce error about block entries not allowed
@@ -3536,7 +3531,7 @@ fn scanner_mapping_key_not_allowed() {
 
 #[test]
 fn scanner_value_after_simple_key_multiline() {
-    // Simple key spanning position -> value found (line 630-633)
+    // Simple key spanning position -> value found
     let yaml = "key: value\nnested:\n  inner_key: inner_value\n";
     let v: Value = from_str(yaml).unwrap();
     assert_eq!(v["nested"]["inner_key"].as_str(), Some("inner_value"));
@@ -3563,7 +3558,7 @@ fn scanner_value_not_allowed_context() {
 
 #[test]
 fn scanner_plain_scalar_stops_at_colon_space() {
-    // Plain scalar: ':' followed by space stops scanning (line 815-816)
+    // Plain scalar: ':' followed by space stops scanning
     let yaml = "key: value with spaces\n";
     let v: Value = from_str(yaml).unwrap();
     assert_eq!(v["key"].as_str(), Some("value with spaces"));
@@ -3571,7 +3566,7 @@ fn scanner_plain_scalar_stops_at_colon_space() {
 
 #[test]
 fn scanner_plain_scalar_stops_at_flow_indicators() {
-    // Plain scalar in flow: stops at , ] } (line 817-820)
+    // Plain scalar in flow: stops at , ] }
     let yaml = "[hello world, second]\n";
     let v: Value = from_str(yaml).unwrap();
     assert_eq!(v[0].as_str(), Some("hello world"));
@@ -3582,7 +3577,7 @@ fn scanner_plain_scalar_stops_at_flow_indicators() {
 
 #[test]
 fn scanner_plain_scalar_multiline_continuation() {
-    // Plain scalar that continues on next line (line 908-926)
+    // Plain scalar that continues on next line
     let yaml = "key: line1\n  line2\n  line3\n";
     let v: Value = from_str(yaml).unwrap();
     assert_eq!(v["key"].as_str(), Some("line1 line2 line3"));
@@ -3601,7 +3596,7 @@ fn scanner_plain_scalar_multiline_continuation() {
 
 #[test]
 fn scanner_single_quoted_trailing_whitespace() {
-    // Whitespace before line break in single-quoted (line 1037)
+    // Whitespace before line break in single-quoted
     let yaml = "'hello   \n  world'\n";
     let v: Value = from_str(yaml).unwrap();
     // Trailing whitespace before break is folded
@@ -3617,7 +3612,7 @@ fn scanner_single_quoted_trailing_whitespace() {
 
 #[test]
 fn scanner_double_quoted_escape_after_line_break() {
-    // Escape sequence immediately after line break (line 1091-1097)
+    // Escape sequence immediately after line break
     let yaml = "\"line1\n\\tline2\"\n";
     let v: Value = from_str(yaml).unwrap();
     let s = v.as_str().unwrap();
@@ -3647,7 +3642,7 @@ fn scanner_double_quoted_escape_after_line_break() {
 
 #[test]
 fn ser_looks_like_number_dot_digit_pattern() {
-    // .5 -> quoted because it looks like a float (line 414)
+    // .5 -> quoted because it looks like a float
     let v = Value::from(".5");
     let yaml = to_string(&v).unwrap();
     assert!(yaml.contains('\'') || yaml.contains('"'));
@@ -3737,7 +3732,7 @@ fn spanned_expecting_message() {
 #[test]
 fn spanned_unknown_field_skipped() {
     // When extra fields appear in the virtual spanned map, they should be skipped
-    // (line 154-156) This is hard to trigger via public API since
+    // This is hard to trigger via public API since
     // SpannedMapAccess only produces known fields But deserializing Spanned<T>
     // via from_value (not from_str) exercises the &Value path
     let v = Value::from("hello");
@@ -3770,7 +3765,7 @@ fn spanned_unknown_field_skipped() {
 
 #[test]
 fn value_map_access_next_value_via_ref_value() {
-    // Deserialize a mapping via &Value to exercise ValueMapAccess (line 2755)
+    // Deserialize a mapping via &Value to exercise ValueMapAccess
     #[derive(Debug, serde::Deserialize, PartialEq)]
     struct Pair {
         key: String,
@@ -3814,7 +3809,7 @@ fn ref_value_deserialize_enum_mapping() {
 #[test]
 fn ref_value_deserialize_struct_via_mapping() {
     // deserialize_struct on &Value with non-spanned name -> falls to
-    // deserialize_map (line 2844)
+    // deserialize_map
     #[derive(Debug, serde::Deserialize, PartialEq)]
     struct Rgb {
         r: u8,
@@ -3841,7 +3836,7 @@ fn ref_value_deserialize_struct_via_mapping() {
 
 #[test]
 fn ref_value_deserialize_struct_spanned_via_value() {
-    // Exercise &Value::deserialize_struct with SPANNED_TYPE_NAME (line 2837-2842)
+    // Exercise &Value::deserialize_struct with SPANNED_TYPE_NAME
     let v = Value::from("spanned_value");
     let result: Spanned<String> = serde_core::Deserialize::deserialize(&v).unwrap();
     assert_eq!(*result, "spanned_value");
@@ -3899,7 +3894,7 @@ fn singleton_map_with_serialize_fallback_non_mapping_non_string() {
     use noyalib::with::singleton_map_with;
 
     // Serialize a raw integer through serialize_with -> to_value gives Number
-    // which is neither Mapping nor String, hitting the fallback (lines 141-143)
+    // which is neither Mapping nor String, hitting the fallback
     let value = 42i32;
     let result: Value =
         singleton_map_with::serialize_with(&value, Serializer, |s| s.to_uppercase()).unwrap();
@@ -3924,7 +3919,7 @@ fn singleton_map_with_deserialize_tagged_transform() {
     use noyalib::with::singleton_map_with;
 
     // Create a tagged value and pass through deserialize_with
-    // which calls transform_value_keys on it (lines 214-217)
+    // which calls transform_value_keys on it
     let inner_map = {
         let mut m = Mapping::new();
         m.insert("key", Value::from("val"));
@@ -3960,7 +3955,7 @@ fn events_flow_mapping_empty_value_state() {
 
 #[test]
 fn events_flow_sequence_explicit_key_mapping() {
-    // ? in flow sequence triggers implicit mapping (lines 507-516)
+    // ? in flow sequence triggers implicit mapping
     let yaml = "[? a: b]\n";
     let result: Result<Value> = from_str(yaml);
     // Exercises State::FlowSequenceEntryMappingKey
@@ -4002,7 +3997,7 @@ fn events_flow_mapping_key_not_first() {
     assert_eq!(v["c"].as_i64(), Some(3));
 }
 
-// --- Exercise loader.rs SpanTree::Sequence/Mapping span ranges (lines 355-356)
+// --- Exercise loader.rs SpanTree::Sequence/Mapping span ranges
 // ---
 
 #[test]
@@ -4019,7 +4014,7 @@ fn loader_span_tree_sequence_and_mapping() {
 
 #[test]
 fn fmt_commented_inner_serialize_roundtrip() {
-    // The Inner struct's Serialize impl (line 381) is exercised when
+    // The Inner struct's Serialize impl is exercised when
     // Commented<T> is serialized to a Value via to_value
     let commented = Commented::new(42i32, "the answer");
     let v = to_value(&commented).unwrap();
@@ -4037,7 +4032,7 @@ fn fmt_commented_inner_serialize_roundtrip() {
 #[test]
 fn events_flow_sequence_entry_mapping_value_with_content() {
     // In a flow sequence, key: value creates an implicit mapping
-    // parse_flow_sequence_entry_mapping_value (line 540)
+    // parse_flow_sequence_entry_mapping_value
     let yaml = "[a: 1]\n";
     let v: Value = from_str(yaml).unwrap();
     assert_eq!(v[0]["a"].as_i64(), Some(1));
@@ -4045,7 +4040,7 @@ fn events_flow_sequence_entry_mapping_value_with_content() {
 
 #[test]
 fn events_flow_sequence_entry_mapping_value_empty() {
-    // key followed by , -> empty value in implicit mapping (line 552)
+    // key followed by , -> empty value in implicit mapping
     let yaml = "[a:, b]\n";
     let v: Value = from_str(yaml).unwrap();
     assert!(v[0]["a"].is_null());
@@ -4071,7 +4066,7 @@ fn loader_alias_expansion_limit() {
     assert!(result.is_err());
 }
 
-// --- Exercise events.rs: indentless with node items (line 422-424) ---
+// --- Exercise events.rs: indentless with node items ---
 
 #[test]
 fn events_indentless_sequence_with_nested_nodes() {
