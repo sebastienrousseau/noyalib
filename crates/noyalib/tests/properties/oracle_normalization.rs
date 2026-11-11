@@ -112,7 +112,9 @@ pub(crate) fn quoted_empty_flow_keys(source: &str) -> Option<String> {
             SyntaxKind::PlainScalar if !flow.is_empty() => {
                 // YAML 1.2.2 §7.3.3 permits ':' followed by a plain-safe
                 // character, including in a flow collection.
-                let text = source.get(start..end)?.trim_matches([' ', '\t']);
+                let text = source
+                    .get(start..end)?
+                    .trim_matches([' ', '\t', '\r', '\n']);
                 let rest = source.get(end..)?;
                 let compact_empty_value = rest.starts_with(":,") || rest.starts_with(":}");
                 if text.contains(['\n', '\r']) {
@@ -247,6 +249,27 @@ mod tests {
         ] {
             assert_eq!(default_radix_value(source), None, "{source}");
         }
+    }
+
+    #[test]
+    fn flow_plain_spelling_retains_internal_separation() {
+        let source = "{:m  `1ab(: [2, 3, {c: 24}],dst: 1\n}\n";
+        let normalized = quoted_empty_flow_keys(source).expect("flow spelling");
+        let before: serde_json::Value = noyalib::from_str(source).unwrap();
+        let after: serde_json::Value = noyalib::from_str(&normalized).unwrap_or_else(|error| {
+            panic!("{error}; {normalized:?}; {:?}", lexical_tokens(source))
+        });
+        assert_eq!(before, after, "{normalized:?}");
+    }
+
+    #[test]
+    fn flow_plain_continuation_can_start_with_quotes() {
+        let source = "{\n4\n,? :e&\n\n''}\n";
+        let normalized = quoted_empty_flow_keys(source)
+            .unwrap_or_else(|| panic!("{:?}", lexical_tokens(source)));
+        let before: serde_json::Value = noyalib::from_str(source).unwrap();
+        let after: serde_json::Value = noyalib::from_str(&normalized).unwrap();
+        assert_eq!(before, after, "{normalized:?}");
     }
 
     #[test]
