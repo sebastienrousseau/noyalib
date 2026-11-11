@@ -1,14 +1,10 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 // Copyright (c) 2026 Noyalib. All rights reserved.
 
-//! Coverage for `value/serde_impl.rs` — the enum-from-string
-//! deserializer and the lossless-u64 visitor arm.
+//! Cover enum-from-string deserialization and the lossless-u64 visitor.
 //!
-//! (An earlier revision also tested a tag-preserving magic-map
-//! deserialize path; that path was genuinely orphaned — `Value::Tagged`
-//! serialises to a foreign serde format as `{tag: value}`, never as the
-//! `$__noyalib_*` magic map, so nothing produces that input — and was
-//! removed as dead code in #172, so the test is gone with it.)
+//! Tagged values serialize as `{tag: value}`. The unused magic-map
+//! deserialization path was removed in #172.
 
 #![allow(missing_docs)]
 #![allow(clippy::unwrap_used)]

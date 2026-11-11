@@ -1,12 +1,5 @@
-//! Coverage for the `lossless-u64` `Number::Unsigned` arms of
-//! `de/deserializer.rs` and the flow-collection / token paths of
-//! `cst/format.rs`.
-//!
-//! These branches existed but were unexercised: the crate's `Unsigned`
-//! variant was only ever deserialized *into* `u64`, so the widening
-//! (`Unsigned` -> `i64`/`f64`) and the overflow rejection were never
-//! driven. Likewise `cst::format` was only tested on block collections,
-//! leaving the verbatim flow-mapping / flow-sequence arms cold.
+//! Cover lossless-u64 widening and overflow rejection in deserialization,
+//! plus verbatim flow collections and tokens in CST formatting.
 
 // SPDX-License-Identifier: MIT OR Apache-2.0
 // Copyright (c) 2026 Noyalib. All rights reserved.

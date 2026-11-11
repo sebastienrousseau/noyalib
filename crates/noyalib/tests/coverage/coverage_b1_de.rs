@@ -1,13 +1,8 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 // Copyright (c) 2026 Noyalib. All rights reserved.
 
-//! Coverage-focused deserialization tests exercising the typed
-//! `Deserializer` (`src/de/deserializer.rs`) and the public entry
-//! points in `src/de.rs`. Concentrates on error / edge branches:
-//! type mismatches, integer over/underflow, borrowed vs owned
-//! deserialisation, `deserialize_any` scalar dispatch, `Spanned`
-//! newtype handling, strict unknown-field detection, and
-//! `from_value` / `from_slice` wrappers.
+//! Test typed deserialization, scalar dispatch, numeric bounds, borrowing,
+//! spanned newtypes, strict fields and public conversion wrappers.
 
 #![allow(
     missing_docs,
