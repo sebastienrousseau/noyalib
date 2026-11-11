@@ -154,7 +154,7 @@ jobs:
         run: |
           set -euo pipefail
           for target in tools http_headers session_lifecycle; do
-            python3 scripts/run-fuzz-campaign.py --target "$target" --seconds 60 \
+            python3 ../noyalib/scripts/run-fuzz-campaign.py --target "$target" --seconds 60 \
               --output "$RUNNER_TEMP/campaign-$target" \
               --target-dir "$CARGO_TARGET_DIR"
           done

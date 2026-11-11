@@ -410,6 +410,44 @@ signed inventory contains 31 targets; every target needs a fresh sustained
 receipt. The pending 88-byte typed-duplicate finding remains a failure,
 with no oracle exception or inferred semantic approval.
 
+## Protocol and held-source follow-up, 2026-11-11
+
+The [follow-up record](ecosystem-protocol-recovery-2026-11-11.json) retains
+raw observations, a signed recovery bundle and exact source identities.
+LSP `39c93fa` accepts ASCII case-insensitive `Content-Length` field names.
+Three actual-server tests receive parse errors before the fix and initialize
+successfully afterward. All 76 native tests and nine doctests pass, along
+with strict clippy, dependency policies and documentation gates. Library
+code, dependency features and Rust floor are unchanged.
+
+A fresh compatibility campaign finds a nine-byte input with lone-CR line
+breaks. The existing tab-separation divergence classifier used `lines()`,
+which recognized LF and CRLF but missed lone CR. Correction `e95be7b`
+recognizes all three physical line endings and retains the original input
+and LF/CRLF counterparts. All eighteen target regression inputs replay
+under AddressSanitizer, and strict clippy checks the actual fuzz binary.
+No production behavior, accepted-value comparison or divergence class
+changes. The failed campaign remains retained; its correction needs a new
+sustained receipt. Typed duplicate identity remains unresolved.
+
+The new candidate sanitizer job initially called the satellite runner with
+an unsupported `--target-dir`. It now uses the checked-out core runner
+from the product directory. Actual local executions pass all three scopes:
+tools records 7,825 executions in 20 seconds, HTTP guards 28,753 in two,
+and session state fifteen in five. These short runs verify the invocation;
+they do not replace the one-hour campaign or a corrected hosted result.
+
+The detached signed MCP recovery is `3561c28`, preserving tag object
+`b28d529f8bae59bbe94bdd91d25ec50173c8702b`. Its clean signed-source crate
+assembles and verifies 138 files against registry core `=0.0.60`. The 134
+native tests, strict Inspector, Rust 1.89 and three refreshed Cargo-lock
+scans pass. Original sanitizer seeds replay. The later seven-byte Unicode
+edit input still panics in registry core v0.0.60; the exact failed replay
+and original input are retained. This is a failed release gate, not an
+exception or publication approval. The v0.0.61 candidate already passes
+that input. Keep v0.0.60 publication held while the source strategy and
+independent review remain unresolved.
+
 ## Implementation and acceptance
 
 The next signed MCP checkpoint fixes session admission in `839e637` and
@@ -455,7 +493,7 @@ remaining evidence. They are not implied by the local results.
 | Task | Local evidence | Remaining acceptance |
 |---|---|---|
 | S1 | Fourteen tracked Cargo locks pass the refreshed RustSec revision `2c684a5d6746d4508eff9e3cb529b3e33f56d438` after correcting both CLI locks to rustix 1.1.6. The initial failure and corrected receipts are retained. All six current root graphs passed cargo-deny and the existing cargo-vet policy. VS Code and WASM test npm scopes reported zero advisories; MCP wrapper declares no dependencies. | Retain the same gates on registry-resolved locks and every supported CI scope. Core differential fuzz uses an unmaintained archive oracle; the warning remains visible. |
-| R0 | Checked the exact held tag's lockfiles and package listing. | Written maintainer decision, exact-source release gates and a closing scan. |
+| R0 | Checked the exact held tag, prepared signed detached recovery `3561c28`, and retained a failing Unicode edit replay in immutable registry core 0.0.60. | Written maintainer decision, exact-source release gates and a closing scan. |
 | MCP1 | Patched fuzz Tokio; scanned all three locks; built both targets. The tools campaign ran 8,903,049 inputs in 3,601 seconds with no finding in the log. | Corrected-ref remote scan and merge. |
 | D1 | Reconciled published package scope, version references, LSP capabilities, WASM entry points and unverified benchmark claims. | Current scorecard and remaining channel claims need their acceptance evidence. |
 | LSP1 | Capability and framed handshake tests agree with the documentation. Neovim and VS Code exercised the advertised methods. | Carry the evidence through CI at the release ref. |
@@ -471,7 +509,7 @@ remaining evidence. They are not implied by the local results.
 | C3 | Complete alloc-only hosted batteries at the continuation checkpoint pass 6,726 baseline and 7,067 portable tests, including seventeen oracle helper tests. Hosted schema composition previously passed 23 tests. Baseline and portable built on three bare-metal targets with stable and Rust 1.89.0. Default, minimal std and alloc float consumers had no active libm. | Rerun the final registry consumer and CI target matrix before release. |
 | CLI1 | All-feature CLI probe passed 123 tests. Generated manpages match; staged install, both binary version checks and uninstall passed with a custom target directory. | Hosted Action and package-manager acceptance on the remaining operating systems. |
 | CLI2 | A refused rename preserved destination contents and removed the temporary file; mode and symlink tests also pass. | Cross-OS interruption and metadata evidence, with independent review. |
-| LSP2 | Tests cover UTF-16 positions, stale changes, initialization, header limits and exit while stdin is open. Final real client checks passed. | Resource and latency budgets for editor workloads. |
+| LSP2 | Tests cover UTF-16 positions, stale changes, initialization, header limits, case-insensitive field names and exit while stdin is open. The corrected binary passes 76 native tests and nine doctests; real client checks passed at their recorded sources. | Resource and latency budgets for editor workloads. |
 | LSP3 | Neovim 0.12.6 and installed VS Code 1.141.0 VSIX passed. The VSIX startup bug was reproduced and fixed. | Installed marketplace artifacts and the rest of the claimed OS matrix. |
 | MCP2 | The current stdio, HTTP/SSE, SDK, limit and guard battery passes 135 tests; three worker-lifetime cases cover timeout, cancellation and panic. Eight session tests cover deterministic cap enforcement, concurrent create/restore, and reuse. Four actual example scenarios pass, including failed-exit refusal. | Complete revision-by-transport acceptance for disconnect, cancellation, remaining concurrency and supported filesystems; independent review. |
 | MCP3 | Published v0.0.59 npm package recovered from the verified native archive offline, refused corrupt cache and ran a real stdio parse. A future npm release gate repeats the drill. | Apply all five channel checks to v0.0.60 after the hold is resolved. |

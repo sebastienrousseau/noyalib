@@ -75,6 +75,9 @@ while independent technical work continues.
 The [MCP lifecycle record](ecosystem-mcp-lifecycle-2026-11-11.json) retains
 job-lifetime, session-state and corrected Windows evidence. The current
 31-target inventory still needs fresh sustained receipts.
+The [protocol/recovery follow-up](ecosystem-protocol-recovery-2026-11-11.json)
+retains the LSP framing and lone-CR oracle corrections, candidate runner
+repair and signed detached recovery, including its failed core edit gate.
 The [review packet](ECOSYSTEM-REVIEW.md) gives the source scopes, review
 boundaries and concrete decisions without implying approval.
 
@@ -147,7 +150,9 @@ recovery checkout is being prepared against registry core 0.0.60. This
 adds runtime findings to R0, including blocking-job ownership after timeout
 or cancellation; the earlier development-only release option is insufficient.
 The detached registry-core candidate passes 134 tests and strict Inspector;
-its final source/ref decision and remaining gates stay open. Neither the immutable tag nor publication has changed.
+its final source/ref decision and remaining gates stay open. The later Unicode edit input still panics in that registry-core recovery;
+its signed candidate is not release-ready. Neither the immutable tag nor
+publication has changed.
 
 ## P1: trustworthy measurements and contracts
 

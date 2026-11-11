@@ -1,0 +1,430 @@
+{
+  "recorded_utc": "2026-11-11T23:22:16.549085+00:00",
+  "sources": {
+    "lsp": "39c93fadad841f0d0809d1234277d3da14f3b335",
+    "oracle_classifier": "e95be7b3e4dab90544f8ee3029c759c7c4f6525a",
+    "mcp": "55ef95bceb54ac29006b5ccc9d17d3f31fefc11b",
+    "recovery_candidate": "3561c28fc5b4eb8dec3a9553b7a0249fcf195b95",
+    "held_tag_object": "b28d529f8bae59bbe94bdd91d25ec50173c8702b",
+    "held_tag_source": "aa3c9db6409c108bc5c1911c076181763a965021",
+    "core_production": "a57b7198669e41fe3034db4e44f2e274baf96388"
+  },
+  "lsp": {
+    "red_wire_tests": 3,
+    "green_framing_tests": 6,
+    "native_tests_passed": 76,
+    "doctests_passed": 9,
+    "failures": 0,
+    "gates": [
+      {
+        "check": "fmt",
+        "exit_code": 0
+      },
+      {
+        "check": "clippy",
+        "exit_code": 0
+      },
+      {
+        "check": "tests",
+        "exit_code": 0
+      },
+      {
+        "check": "deny",
+        "exit_code": 0
+      },
+      {
+        "check": "vet",
+        "exit_code": 0
+      },
+      {
+        "check": "versions",
+        "exit_code": 0
+      },
+      {
+        "check": "reuse",
+        "exit_code": 0
+      },
+      {
+        "check": "spelling",
+        "exit_code": 0
+      },
+      {
+        "check": "links",
+        "exit_code": 0
+      }
+    ],
+    "production_scope": "Private binary framer only; library, features, dependency graph and MSRV unchanged."
+  },
+  "oracle": {
+    "finding": "crash-f552beff6089736c22f4b1d9df75933300312240",
+    "bytes": 9,
+    "change": "Existing tab-separation rejection classifier now sees lone-CR physical line starts. No new divergence class or accepted-value comparison change. Production source and Cargo inputs unchanged.",
+    "regression_inputs_replayed": 18,
+    "gates": [
+      {
+        "check": "clippy",
+        "exit_code": 0
+      },
+      {
+        "check": "reuse",
+        "exit_code": 0
+      },
+      {
+        "check": "spelling",
+        "exit_code": 0
+      }
+    ]
+  },
+  "ci_correction": {
+    "failed_source": "ed706ac97aa06dd2407baed16c51e1a25235087b",
+    "failed_job": "https://github.com/sebastienrousseau/noyalib/actions/runs/43116966972/job/130847395422",
+    "cause": "Satellite campaign runner does not implement --target-dir; use the checked-out core runner from the satellite working directory.",
+    "local_outcomes": {
+      "tools": {
+        "status": "passed",
+        "executions": 7825,
+        "measured_seconds": 20,
+        "lockfile_unchanged": true,
+        "findings": []
+      },
+      "http_headers": {
+        "status": "passed",
+        "executions": 28753,
+        "measured_seconds": 2,
+        "lockfile_unchanged": true,
+        "findings": []
+      },
+      "session_lifecycle": {
+        "status": "passed",
+        "executions": 15,
+        "measured_seconds": 5,
+        "lockfile_unchanged": true,
+        "findings": []
+      }
+    },
+    "corrected_hosted_verified": false
+  },
+  "recovery": {
+    "status": "signed detached candidate; not release-ready; publication held",
+    "registry_core": "=0.0.60",
+    "native_tests_passed": 134,
+    "native_failures": 0,
+    "native_ignores": 0,
+    "strict_inspector": "2.14.0",
+    "rust_floor": "1.89.0",
+    "sdk_for_msrv": "26.5",
+    "clean_signed_source_package_files": 138,
+    "all_three_cargo_locks_scan": "passed",
+    "known_core_edit_replay": "FAILED: original seven-byte input panics at a UTF-8 boundary in registry core 0.0.60; future 0.0.61 passes it",
+    "tag_changed": false,
+    "published": false,
+    "independent_review": "pending"
+  },
+  "campaigns": "31-target controller remains active. Snapshot and failed original receipts retained. No unfinished target receives duration credit. The CR-classifier target needs a fresh sustained run on its correction; typed duplicate identity remains a real failure pending maintainer decision.",
+  "performance": "Repository reports no available self-hosted runners. Existing noisy timings remain exploratory; this does not establish dedicated-hardware acceptance.",
+  "raw_archive": "docs/evidence/protocol-recovery-followup-2026-11-11.tar.gz",
+  "archive_bytes": 421508,
+  "archive_sha256": "522e0feb263380981f9ee3e323ba3bc0c7fb1b46be27c9a2fd3b55e3e99f2363",
+  "members": [
+    {
+      "path": "campaigns/cr-oracle-failure-receipt.json",
+      "bytes": 8477,
+      "sha256": "0375f6cb823b43107cdfee61a5495d79e7e91e3cf8d18c6b86fd8d3b4a5edfd9"
+    },
+    {
+      "path": "campaigns/cr-oracle-failure.log",
+      "bytes": 16028,
+      "sha256": "875c0e35219ac3afb9013771fd060291359c3012a4ea06b822dc7378c993e178"
+    },
+    {
+      "path": "campaigns/status-snapshot.json",
+      "bytes": 6150,
+      "sha256": "31e42eeb880d2f5e06819ab36879d60bae56ffbf1cb13d49cf2c1f2c5df311e1"
+    },
+    {
+      "path": "ci-correction/http_headers/campaign.log",
+      "bytes": 2751,
+      "sha256": "8dc2ae84fc5b27304f0ca5ba1211f0b9ad30129231d3d0461a4518ad68ea9212"
+    },
+    {
+      "path": "ci-correction/http_headers/receipt.json",
+      "bytes": 41845,
+      "sha256": "555e7d8246455ff65224ec49b0337cb977a1ac49b7736beedc61f4f1f662f6bf"
+    },
+    {
+      "path": "ci-correction/session_lifecycle/campaign.log",
+      "bytes": 1880,
+      "sha256": "c0f9c1b12a4a943cb4670db172a2b22ac52e234801675291a1bcacef2a3a4b7b"
+    },
+    {
+      "path": "ci-correction/session_lifecycle/receipt.json",
+      "bytes": 2159,
+      "sha256": "a49d2365ada442eadee7983e44cd40075bd09910e28c4fe3fc5ea4ef9a4459fb"
+    },
+    {
+      "path": "ci-correction/tools/campaign.log",
+      "bytes": 2050,
+      "sha256": "da486b679ce55278f6d802958fadf82c7cd70dca6829d542e4b9238c07c0697c"
+    },
+    {
+      "path": "ci-correction/tools/receipt.json",
+      "bytes": 1393435,
+      "sha256": "aff4b06a413f5cfde29c104d9ae06f9f844e5b113a09b4305cde77aeeb016d35"
+    },
+    {
+      "path": "lsp/clippy.log",
+      "bytes": 161,
+      "sha256": "aa91a44fcfe83d2ec8afda88e0e952eaa7acf399067eb3e81d855d65f2c015ee"
+    },
+    {
+      "path": "lsp/deny.log",
+      "bytes": 4656,
+      "sha256": "36ab689b71098774966723ffd328d6e8dcf0261c4c308a89963c728235fa88f3"
+    },
+    {
+      "path": "lsp/fmt.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "lsp/links.log",
+      "bytes": 24,
+      "sha256": "7fbabcfcae1e18d5baa12022d47675c8ddf3c8ebcaab5f0fa6c66e51adbce19d"
+    },
+    {
+      "path": "lsp/markdown-final.json",
+      "bytes": 101,
+      "sha256": "c0916c88376acf86c55c942d99aadf46eb6b4ef31b468e9b68948190c55cea96"
+    },
+    {
+      "path": "lsp/markdown.json",
+      "bytes": 516,
+      "sha256": "e879f3e5328ed5333fd24782351a189e346fe80cf66f6ed35c02ed0cc7fa9c5c"
+    },
+    {
+      "path": "lsp/reuse.log",
+      "bytes": 404,
+      "sha256": "41fe1901ba6af041443f6b5de99afad6d74bd49b5b0b1d8b398c7efac474d881"
+    },
+    {
+      "path": "lsp/spelling.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "lsp/summary.json",
+      "bytes": 455,
+      "sha256": "5d41a040100683d695fd60fde647d42a75a076aa98ae08df4cbcc4cefa8a204a"
+    },
+    {
+      "path": "lsp/tests.log",
+      "bytes": 7396,
+      "sha256": "7d7863d8248c8d589e532aea442337337e1dcc1cedb864bddb4b82ab49913ca7"
+    },
+    {
+      "path": "lsp/versions.log",
+      "bytes": 2920,
+      "sha256": "eedf27cb419c9a10801b6a638b03a3aa11256fb70535bfb6e5e42b360c03dd64"
+    },
+    {
+      "path": "lsp/vet.log",
+      "bytes": 71,
+      "sha256": "dc88ee8d93181f6c10413b01ab3cf82b122330ab7b53eb1bfc852b41e7bd1e66"
+    },
+    {
+      "path": "observations/cr-oracle-fmt.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "observations/cr-oracle-green.log",
+      "bytes": 1376,
+      "sha256": "3116c8bb921800eedbc85e0507c25efc61295d50a6a5d8c21fb1eac43dd0fb9c"
+    },
+    {
+      "path": "observations/ed706-mcp-fuzz-failure.log",
+      "bytes": 3494,
+      "sha256": "d44c42c720ca386ac54c9639540c22d7c0c75ecf34cac0f81a14e3f4bba66d51"
+    },
+    {
+      "path": "observations/lsp-header-case-green.log",
+      "bytes": 843,
+      "sha256": "59667fab148b6048f51348ee90d7e262f2ecbd9bc7d2661909b84816d1848ee7"
+    },
+    {
+      "path": "observations/lsp-header-case-red.log",
+      "bytes": 1856,
+      "sha256": "e29dae4b1a6784529a9e3d43d9ecd36b1d250e6c1c6fc0e7d488a09f750f3339"
+    },
+    {
+      "path": "oracle-gates/clippy.log",
+      "bytes": 6471,
+      "sha256": "505fba714adace03b917d592b692445b580e634303c324e329f3421186340cb5"
+    },
+    {
+      "path": "oracle-gates/reuse.log",
+      "bytes": 408,
+      "sha256": "bdba8b6b775b145d560e700a4acb20653cda0d5d7b0859be84378bfe9ea3344c"
+    },
+    {
+      "path": "oracle-gates/spelling.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "oracle-gates/summary.json",
+      "bytes": 157,
+      "sha256": "17da1e109ba8bc0ed9debdb4861574815bbc3fbe798b15d9d3092caf95546e03"
+    },
+    {
+      "path": "performance/available-repository-runners.json",
+      "bytes": 31,
+      "sha256": "7a4b58461012c781d3b71d5cba1875eedd2105935140da61c6f5f241c533c21b"
+    },
+    {
+      "path": "recovery/bundle-verify.log",
+      "bytes": 266,
+      "sha256": "6852b46897dd0375d37278fa0d41813ad06284d99c6cfa8387555db4dd163ee6"
+    },
+    {
+      "path": "recovery/corrected-audit/summary.json",
+      "bytes": 4461,
+      "sha256": "43a6dd17d19f346bea7b0a4e1a086f4f3e77003bcfa05190f82d7acf8e128f51"
+    },
+    {
+      "path": "recovery/final-links.log",
+      "bytes": 24,
+      "sha256": "7fbabcfcae1e18d5baa12022d47675c8ddf3c8ebcaab5f0fa6c66e51adbce19d"
+    },
+    {
+      "path": "recovery/final-markdown.json",
+      "bytes": 108,
+      "sha256": "c752d911cecee3a7110b243b9c217f9beea9ecca87708af6e23e4865716baeef"
+    },
+    {
+      "path": "recovery/final-reuse.log",
+      "bytes": 404,
+      "sha256": "cdb2291943ff858d010374397fc8816df7b56b51335bf5db1946e2903b8d6ee3"
+    },
+    {
+      "path": "recovery/final-versions.log",
+      "bytes": 3064,
+      "sha256": "5900c5e95d962b5f1a745b188641d2c497f550c435f60533dbbfe797db7eaa19"
+    },
+    {
+      "path": "recovery/final-vet.log",
+      "bytes": 73,
+      "sha256": "55e1ffec5eaea4b700c7fe55c852c7cb6f229a996ee9b51b04a22d2991a2c525"
+    },
+    {
+      "path": "recovery/fuzz-build.log",
+      "bytes": 5465,
+      "sha256": "d837c30e1be5d881ed5de47fb1d6378b6156c4cbc4b6dc8e78f4b5bd150ff76c"
+    },
+    {
+      "path": "recovery/fuzz-seeds.log",
+      "bytes": 2121,
+      "sha256": "62b31fcc6aff81e33f0898073c615ed2141916eaaf59a4cefe143aa78ea94ed9"
+    },
+    {
+      "path": "recovery/gates/clippy.log",
+      "bytes": 17306,
+      "sha256": "0fee0d0104570d2b0b17ef9dc9006286da83ef5871f358051bcd71058c08b024"
+    },
+    {
+      "path": "recovery/gates/deny.log",
+      "bytes": 12279,
+      "sha256": "48d3ff78a8a207647835f6a4fc9e749c3ecbddbf9ea5a9142c5ada5a1a08492f"
+    },
+    {
+      "path": "recovery/gates/fmt.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "recovery/gates/package.log",
+      "bytes": 473,
+      "sha256": "622ae4068f32879fa1d26d0cf24c7c839014bfbdfb0c177428204a74a366afb1"
+    },
+    {
+      "path": "recovery/gates/reuse.log",
+      "bytes": 404,
+      "sha256": "cbd58f776c81088e99b55c3380c70f5383465af4a0a3d48c2d7ff13af994e3d6"
+    },
+    {
+      "path": "recovery/gates/source.log",
+      "bytes": 1005,
+      "sha256": "97fe4c2cb998a8e899bb13590bfc2b552d9923eae0fd2d28bfe7d566879506e0"
+    },
+    {
+      "path": "recovery/gates/spelling.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "recovery/gates/summary.json",
+      "bytes": 508,
+      "sha256": "d04ef725127d2ede1c2f14939ef16497d754d82455bf848c6e560213b6dc2066"
+    },
+    {
+      "path": "recovery/gates/tests.log",
+      "bytes": 11940,
+      "sha256": "9e826f02c032d9ebedfbe17f3fc0900ef07a49ef58df366293867a866cc6ebb9"
+    },
+    {
+      "path": "recovery/gates/versions.log",
+      "bytes": 2987,
+      "sha256": "cf9af586b6073d73a9226ca94d4bf3938cd1029396bb67e8b9896305033e21a4"
+    },
+    {
+      "path": "recovery/gates/vet.log",
+      "bytes": 73,
+      "sha256": "55e1ffec5eaea4b700c7fe55c852c7cb6f229a996ee9b51b04a22d2991a2c525"
+    },
+    {
+      "path": "recovery/inspector.log",
+      "bytes": 14778,
+      "sha256": "9e863a36d81076b74e77ee167e7b64de7739225437438d3fe227b72139044fda"
+    },
+    {
+      "path": "recovery/known-core61-edit-regression.log",
+      "bytes": 6255,
+      "sha256": "e51c1950e76fe9f9bb43ef3299d07ff5d927dcc72a80acfab2741302f1636e4f"
+    },
+    {
+      "path": "recovery/lock-delta.json",
+      "bytes": 125,
+      "sha256": "431d48f686ab433be8c02d11a260b2ad4908fc324f03c18573a016bbf3dedde2"
+    },
+    {
+      "path": "recovery/msrv-sdk26.log",
+      "bytes": 4674,
+      "sha256": "b79c6852b8ab342c7698d80ecb28993f1815e5ffbb5272ae0ac84aa3489c19de"
+    },
+    {
+      "path": "recovery/original-audit/summary.json",
+      "bytes": 10094,
+      "sha256": "468521ac583a72311af9d7d5395bc8de8f964149e8b002eac7100cd3c585e3a2"
+    },
+    {
+      "path": "recovery/package-signed-source.log",
+      "bytes": 431,
+      "sha256": "2e389b6eaf067db7b8b9ba3e118258d8b1be2967523685c07deb3628a61ccd96"
+    },
+    {
+      "path": "recovery/recovery-candidate.bundle",
+      "bytes": 14776,
+      "sha256": "551042cfea5a151577993fe2ca7c67244a42416c956ac91c715fb12bf7a7ef65"
+    },
+    {
+      "path": "recovery/recovery-candidate.patch",
+      "bytes": 40280,
+      "sha256": "2f883df0e2a64b1f0931d0d326d5659f1b299811df5b78acd0196ea00a56bc59"
+    },
+    {
+      "path": "recovery/registry-core.json",
+      "bytes": 228,
+      "sha256": "f08267572b791011afaff451669f7f2e0a1d2dc0b7fc7401c22d42d2850d53d6"
+    }
+  ]
+}
