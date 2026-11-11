@@ -45,6 +45,32 @@ pub(crate) fn missing_comment_separator_rejection(message: &str) -> bool {
     })
 }
 
+/// YAML 1.2.2 section 6.2 permits inline tab separation after a dash.
+#[allow(dead_code)]
+pub(crate) fn spaced_sequence_tabs(source: &str) -> Option<String> {
+    let tokens = lexical_tokens(source)?;
+    let replacements: Vec<_> = tokens
+        .windows(2)
+        .filter_map(|pair| {
+            let (kind, start, end) = pair[1];
+            if pair[0].0 != SyntaxKind::DashIndicator || kind != SyntaxKind::Whitespace {
+                return None;
+            }
+            let text = source.get(start..end)?;
+            text.contains('\t')
+                .then(|| (start, end, text.replace('\t', " ")))
+        })
+        .collect();
+    (!replacements.is_empty()).then(|| apply_replacements(source, replacements))
+}
+
+/// Compose the proven sequence and flow spelling repairs.
+#[allow(dead_code)]
+pub(crate) fn collection_spelling(source: &str) -> Option<String> {
+    let separated = spaced_sequence_tabs(source);
+    quoted_empty_flow_keys(separated.as_deref().unwrap_or(source)).or(separated)
+}
+
 /// Give each declaration a unique name only when the archive's anchor IDs
 /// collide at an alias. Callers must still compare the entire parsed value.
 pub(crate) fn unique_colliding_anchors(source: &str) -> Option<String> {
@@ -270,6 +296,32 @@ mod tests {
         let before: serde_json::Value = noyalib::from_str(source).unwrap();
         let after: serde_json::Value = noyalib::from_str(&normalized).unwrap();
         assert_eq!(before, after, "{normalized:?}");
+    }
+
+    #[test]
+    fn sequence_separator_tabs_do_not_change_scalar_content() {
+        for source in ["-\t) ", "items:\n  -\t'value\tkept'\n"] {
+            let normalized = spaced_sequence_tabs(source).expect("inline sequence separator");
+            let before: serde_json::Value = noyalib::from_str(source).unwrap();
+            let after: serde_json::Value = noyalib::from_str(&normalized).unwrap();
+            assert_eq!(before, after);
+            if source.starts_with("items:") {
+                assert_eq!(after["items"][0], "value\tkept");
+            }
+        }
+        for source in ["text: '-\tquoted'\n", "text: |\n  -\tblock\n"] {
+            assert!(spaced_sequence_tabs(source).is_none());
+        }
+    }
+
+    #[test]
+    fn sequence_and_flow_repairs_preserve_the_complete_value_together() {
+        let source = "-\t{:m}\n";
+        let normalized = collection_spelling(source).expect("both collection spellings");
+        assert_eq!(normalized, "- {\":m\"}\n");
+        let before: serde_json::Value = noyalib::from_str(source).unwrap();
+        let after: serde_json::Value = noyalib::from_str(&normalized).unwrap();
+        assert_eq!(before, after);
     }
 
     #[test]

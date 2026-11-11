@@ -39,7 +39,7 @@ fuzz_target!(|data: &[u8]| {
             if !equivalent(&a, &b)
                 && !anchor_name_outside_libyaml(s)
                 && !yaml_1_1_line_break(s)
-                && !oracle_agrees(oracle_normalization::quoted_empty_flow_keys(s), &a)
+                && !oracle_agrees(oracle_normalization::collection_spelling(s), &a)
                 && !oracle_agrees(oracle_normalization::unique_colliding_anchors(s), &a)
                 && !oracle_agrees(oracle_normalization::terminated_spaced_block(s), &a)
             {
@@ -54,7 +54,7 @@ fuzz_target!(|data: &[u8]| {
         (Err(_), Err(_)) => {}
         (Ok(a), Err(e)) => {
             if !known_reject_divergence(s)
-                && !oracle_agrees(oracle_normalization::quoted_empty_flow_keys(s), &a)
+                && !oracle_agrees(oracle_normalization::collection_spelling(s), &a)
             {
                 panic!(
                     "shim accepted what serde_yaml rejects (len {}):\n  shim     : {}\n  upstream : {e}",

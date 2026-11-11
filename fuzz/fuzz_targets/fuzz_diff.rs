@@ -31,7 +31,7 @@ fuzz_target!(|data: &[u8]| {
     let syml = match serde_yaml_ng::from_str::<serde_json::Value>(s) {
         Ok(value) => value,
         Err(_) => {
-            let Some(normalized) = oracle_normalization::quoted_empty_flow_keys(s) else {
+            let Some(normalized) = oracle_normalization::collection_spelling(s) else {
                 return;
             };
             let Ok(projected) = noyalib::from_str::<serde_json::Value>(&normalized) else {
@@ -64,7 +64,7 @@ fuzz_target!(|data: &[u8]| {
         && !anchor_name_outside_libyaml(s)
         && !flow_entry_starts_with_indicator(s)
         && !yaml_1_1_line_break(s)
-        && !oracle_normalization::quoted_empty_flow_keys(s)
+        && !oracle_normalization::collection_spelling(s)
             .filter(|source| {
                 noyalib::from_str::<serde_json::Value>(source)
                     .is_ok_and(|value| numeric_equal(&noya, &value))
