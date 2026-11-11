@@ -322,7 +322,14 @@ impl<'a> Formatter<'a> {
                     text
                 };
                 self.separate_from_property();
-                self.write_raw(trimmed);
+                if kind == SyntaxKind::PlainScalar
+                    && trimmed.contains(['\n', '\r'])
+                    && trimmed.contains('\t')
+                {
+                    self.write_plain_with_tabs(trimmed);
+                } else {
+                    self.write_raw(trimmed);
+                }
                 // A scalar token can carry the line break that ends
                 // it (`: a` / `: b` under an empty key); keep it.
                 if trimmed.len() < text.len() && text.trim_end_matches([' ', '\t']).ends_with('\n')
@@ -335,6 +342,21 @@ impl<'a> Formatter<'a> {
         if kind != SyntaxKind::Whitespace {
             self.last_token = Some(kind);
         }
+    }
+
+    /// Reindent continuation prefixes before tabs when their parent moves.
+    fn write_plain_with_tabs(&mut self, text: &str) {
+        let required = self.indent_level * self.config.indent_size + 1;
+        let mut lines = text.split_inclusive(['\r', '\n']);
+        let mut adjusted = String::from(lines.next().unwrap_or_default());
+        for line in lines {
+            let spaces = line.bytes().take_while(|byte| *byte == b' ').count();
+            if line.as_bytes().get(spaces) == Some(&b'\t') {
+                adjusted.extend(core::iter::repeat_n(' ', required.saturating_sub(spaces)));
+            }
+            adjusted.push_str(line);
+        }
+        self.write_raw(&adjusted);
     }
 
     /// Whether the last token was a tag, anchor or alias.

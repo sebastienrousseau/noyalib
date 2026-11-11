@@ -11,6 +11,10 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Changed
 
+- **Breaking:** reject tabs that supply required indentation on plain-scalar
+  continuation lines. Tabs after the required spaces, in content, or on
+  blank and comment lines remain valid. Formatting retains required spaces
+  when reindenting a parent block.
 - **Breaking:** preserve written explicit typed mapping keys across trailing
   separation on AST fallback. Tags elsewhere no longer respell `~` as
   "null" or `0x1F` as "31". Untyped `Value` keys keep canonical spellings.

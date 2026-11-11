@@ -162,3 +162,22 @@ fn format_is_idempotent_on_what_it_accepts() {
         );
     }
 }
+
+#[test]
+fn formatting_preserves_spaces_before_plain_continuation_tabs() {
+    for newline in ["\n", "\r\n", "\r"] {
+        let source = format!("x:{newline} - x{newline}  \tx{newline}");
+        let before: Value = noyalib::from_str(&source).unwrap();
+        for indent_size in [2, 4] {
+            let config = noyalib::cst::FormatConfig { indent_size };
+            let output = noyalib::cst::format_with_config(&source, &config)
+                .unwrap_or_else(|error| panic!("{source:?}, {indent_size}: {error}"));
+            let after: Value = noyalib::from_str(&output).unwrap();
+            assert_eq!(after, before, "{output:?}");
+            assert_eq!(
+                noyalib::cst::format_with_config(&output, &config).unwrap(),
+                output
+            );
+        }
+    }
+}

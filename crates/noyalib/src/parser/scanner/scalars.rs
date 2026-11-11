@@ -237,7 +237,7 @@ impl Scanner<'_> {
 
             // Skip whitespace/newlines between plain scalar content.
             if !Self::is_blank_or_break(self.peek())
-                || self.skip_plain_separation(&mut fold, indent)
+                || self.skip_plain_separation(&mut fold, indent)?
             {
                 break;
             }
@@ -320,7 +320,7 @@ impl Scanner<'_> {
     /// Consume the blanks and breaks after a run of plain content into
     /// `fold`. Returns `true` when a break leaves the next line below the
     /// scalar's indentation, which ends it.
-    fn skip_plain_separation(&mut self, fold: &mut PlainFold, indent: i32) -> bool {
+    fn skip_plain_separation(&mut self, fold: &mut PlainFold, indent: i32) -> ScanResult<bool> {
         fold.whitespace.clear();
 
         // Consume blanks and breaks.
@@ -331,7 +331,7 @@ impl Scanner<'_> {
 
         if !Self::is_break(self.peek()) {
             // else: inline blanks between words — continue scanning.
-            return false;
+            return Ok(false);
         }
         fold.leading_blanks = true;
         fold.whitespace.clear();
@@ -348,15 +348,37 @@ impl Scanner<'_> {
                 fold.whitespace.push('\n');
                 self.advance();
             }
-            while Self::is_blank(self.peek()) {
-                self.advance();
-            }
+            self.skip_plain_line_prefix(indent)?;
             if !Self::is_break(self.peek()) {
                 break;
             }
         }
 
-        self.flow_level == 0 && (self.column() as i32) < indent
+        Ok(self.flow_level == 0 && (self.column() as i32) < indent)
+    }
+
+    /// Tabs separate content only after the required indentation spaces.
+    fn skip_plain_line_prefix(&mut self, indent: i32) -> ScanResult<()> {
+        let mut tab_in_indent = None;
+        while Self::is_blank(self.peek()) {
+            if self.peek() == b'\t' && (self.column() as i32) < indent {
+                let _ = tab_in_indent.get_or_insert(self.pos);
+            }
+            self.advance();
+        }
+        // Blank and comment lines have no content indentation to satisfy.
+        if self.flow_level == 0
+            && !self.is_eof()
+            && !Self::is_break(self.peek())
+            && self.peek() != b'#'
+            && let Some(index) = tab_in_indent
+        {
+            return Err(ScanError {
+                message: Cow::Borrowed("tab characters are not allowed as indentation"),
+                index,
+            });
+        }
+        Ok(())
     }
 
     /// Reject raw control characters in captured scalar content

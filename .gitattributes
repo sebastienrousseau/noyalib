@@ -35,3 +35,4 @@ fuzz-nostd/regressions/** binary
 fuzz-nostd/corpus/** binary
 crates/noyalib/tests/fixtures/nested-anchor-redefinition.yaml binary
 *.bin binary
+crates/noyalib/tests/fixtures/plain-continuation-tab-indent.yaml binary
