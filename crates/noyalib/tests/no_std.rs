@@ -46,6 +46,8 @@ mod max_nodes_budget;
 mod number_float_display;
 #[path = "conformance/official_suite.rs"]
 mod official_suite;
+#[path = "properties/oracle_normalization.rs"]
+mod oracle_normalization;
 #[path = "values/plain_float_specials.rs"]
 mod plain_float_specials;
 #[path = "values/query_recursive.rs"]

@@ -26,6 +26,10 @@ fn nested_anchor_redefinition_uses_declaration_order() {
             "a: &outer {nested: &inner leaf}\nb: *inner\n",
             "a: {nested: leaf}\nb: leaf\n",
         ),
+        (
+            "first: &x old\nsecond: &x {nested: &y leaf}\ncopy: *x\n",
+            "first: old\nsecond: {nested: leaf}\ncopy: {nested: leaf}\n",
+        ),
     ] {
         let want: Value = from_str(expected).unwrap();
         let value: Value = from_str(yaml).unwrap();

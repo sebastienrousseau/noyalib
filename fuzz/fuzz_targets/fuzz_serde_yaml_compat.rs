@@ -20,6 +20,9 @@
 
 use libfuzzer_sys::fuzz_target;
 
+#[path = "../../crates/noyalib/tests/properties/oracle_normalization.rs"]
+mod oracle_normalization;
+
 fuzz_target!(|data: &[u8]| {
     let Ok(s) = std::str::from_utf8(data) else {
         return;
@@ -28,13 +31,16 @@ fuzz_target!(|data: &[u8]| {
         return;
     }
 
-    let shim: Result<serde_json::Value, _> =
-        noyalib::compat::serde_yaml::from_str(s);
+    let shim: Result<serde_json::Value, _> = noyalib::compat::serde_yaml::from_str(s);
     let upstream: Result<serde_json::Value, _> = serde_yaml::from_str(s);
 
     match (shim, upstream) {
         (Ok(a), Ok(b)) => {
-            if !equivalent(&a, &b) && !anchor_name_outside_libyaml(s) && !yaml_1_1_line_break(s) {
+            if !equivalent(&a, &b)
+                && !anchor_name_outside_libyaml(s)
+                && !yaml_1_1_line_break(s)
+                && !oracle_agrees(oracle_normalization::unique_colliding_anchors(s), &a)
+            {
                 panic!(
                     "shim != serde_yaml on accepted input (len {}):\n  shim     : {}\n  upstream : {}",
                     s.len(),
@@ -45,7 +51,9 @@ fuzz_target!(|data: &[u8]| {
         }
         (Err(_), Err(_)) => {}
         (Ok(a), Err(e)) => {
-            if !known_reject_divergence(s) {
+            if !known_reject_divergence(s)
+                && !oracle_agrees(oracle_normalization::quoted_empty_flow_keys(s), &a)
+            {
                 panic!(
                     "shim accepted what serde_yaml rejects (len {}):\n  shim     : {}\n  upstream : {e}",
                     s.len(),
@@ -64,6 +72,18 @@ fuzz_target!(|data: &[u8]| {
         }
     }
 });
+
+// These repairs preserve the JSON projection and still require agreement
+// on the complete value. They do not exclude documents from comparison.
+fn oracle_agrees(normalized: Option<String>, actual: &serde_json::Value) -> bool {
+    normalized
+        .filter(|source| {
+            noyalib::compat::serde_yaml::from_str::<serde_json::Value>(source)
+                .is_ok_and(|value| equivalent(actual, &value))
+        })
+        .and_then(|source| serde_yaml::from_str::<serde_json::Value>(&source).ok())
+        .is_some_and(|expected| equivalent(actual, &expected))
+}
 
 /// Known libyaml quirk (serde_yaml_ng and serde_yaml): it keeps the
 /// YAML 1.1 line breaks, so NEL (U+0085), LS (U+2028) and PS (U+2029)
@@ -100,7 +120,8 @@ fn equivalent(a: &serde_json::Value, b: &serde_json::Value) -> bool {
         }
         (V::Object(x), V::Object(y)) => {
             x.len() == y.len()
-                && x.iter().all(|(k, v)| y.get(k).is_some_and(|w| equivalent(v, w)))
+                && x.iter()
+                    .all(|(k, v)| y.get(k).is_some_and(|w| equivalent(v, w)))
         }
         _ => a == b,
     }
@@ -121,8 +142,7 @@ fn known_reject_divergence(s: &str) -> bool {
     // These are excluded from the accept/reject comparison; their
     // *value* comparison above still runs whenever both sides
     // accept.
-    if s.contains('!') || s.contains('%') || s.contains('?') || s.contains('&') || s.contains('*')
-    {
+    if s.contains('!') || s.contains('%') || s.contains('?') || s.contains('&') || s.contains('*') {
         return true;
     }
     // Empty implicit keys (`: v`) are spec-valid — the official
@@ -139,7 +159,9 @@ fn known_reject_divergence(s: &str) -> bool {
     // a tab before a node is s-separate-in-line, so `\t$0` is the
     // scalar "$0" (yaml-test-suite 6CA3 indents a flow node so).
     // noyalib follows the spec and rejects tab indentation itself.
-    if s.lines().any(|l| l.trim_start_matches(' ').starts_with('\t')) {
+    if s.lines()
+        .any(|l| l.trim_start_matches(' ').starts_with('\t'))
+    {
         return true;
     }
     // A `#` straight after a block scalar header (`|#`, `>-#`) is not a
@@ -172,6 +194,5 @@ fn root_block_scalar_with_column_0_content(s: &str) -> bool {
         return false;
     };
     let header = header.strip_prefix("---").unwrap_or(header).trim_start();
-    header.starts_with(['|', '>'])
-        && lines.any(|l| l.starts_with(|c: char| !c.is_whitespace()))
+    header.starts_with(['|', '>']) && lines.any(|l| l.starts_with(|c: char| !c.is_whitespace()))
 }
