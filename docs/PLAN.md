@@ -66,12 +66,15 @@ this order on the existing future branches:
 5. Reassess all 66 category/repository cells against recorded evidence.
    Keep an unmet criterion open until its observation exists.
 
-Hosted checkpoint `a346c3e` has eighty successful checks and ten conditional
-skips. Subsequent changes require their own CI receipt. The WASM resource
+Hosted checkpoint `68999cd` has eighty successful checks and ten conditional
+skips, including corrected Windows MCP examples and focused Miri. Subsequent changes require their own CI receipt. The WASM resource
 and runtime-contract work now has signed implementation and local
 [assurance evidence](ecosystem-wasm-assurance-2026-11-11.json). The remaining
 human review has no recorded reviewer yet; a reviewer identity is requested
 while independent technical work continues.
+The [MCP lifecycle record](ecosystem-mcp-lifecycle-2026-11-11.json) retains
+job-lifetime, session-state and corrected Windows evidence. The current
+31-target inventory still needs fresh sustained receipts.
 The [review packet](ECOSYSTEM-REVIEW.md) gives the source scopes, review
 boundaries and concrete decisions without implying approval.
 
@@ -141,8 +144,10 @@ source: concurrent creation can exceed its configured limit. The signed
 future fix and tests are retained in the
 [MCP boundary record](ecosystem-mcp-boundaries-2026-11-11.json). A detached
 recovery checkout is being prepared against registry core 0.0.60. This
-adds a runtime finding to R0; the earlier development-only release option
-is insufficient. Neither the immutable tag nor publication has changed.
+adds runtime findings to R0, including blocking-job ownership after timeout
+or cancellation; the earlier development-only release option is insufficient.
+The detached registry-core candidate passes 134 tests and strict Inspector;
+its final source/ref decision and remaining gates stay open. Neither the immutable tag nor publication has changed.
 
 ## P1: trustworthy measurements and contracts
 

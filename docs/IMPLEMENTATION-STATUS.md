@@ -31,11 +31,11 @@ uses patched Tokio 1.54.1. Git source archives still contain the affected
 development lock. The future branch upgrades that lock to 1.54.1 and passes
 a clean scan. The remote alert needs a closing scan on the corrected ref.
 
-The maintainer still needs to record whether the development-only finding
-is acceptable for the immutable tag. If approved, the release gates apply
-to the original signed source. If rejected, agree on a recovery compatible
-with the signed tag and lockstep policy before publishing. No tag moved
-and nothing was published during this work.
+The held source also contains reproduced session-admission and blocking-work
+ownership defects. A development-only finding justification is insufficient.
+A detached recovery candidate is being verified against registry core 0.0.60;
+its source/ref decision, independent review and release gates remain open.
+No tag moved and nothing was published during this work.
 
 ## Fuzz follow-up, 2026-11-11
 
@@ -364,6 +364,52 @@ retains runtime reports and repeats these checks on Linux. The
 log hashes and its archive. Local timing observations do not establish
 a dedicated-host latency baseline, registry acceptance or human review.
 
+## MCP work ownership and candidate checks, 2026-11-11
+
+The [lifecycle evidence](ecosystem-mcp-lifecycle-2026-11-11.json) retains
+source identities and raw failures, corrections and CI observations.
+The signed blocking-work correction `55384dc` reserves one of 64
+process-wide slots until the actual closure ends. Controlled timeout and
+cancellation cases fail before the guard and pass afterward; refused work
+cannot execute, and completion or panic returns capacity. The full battery
+passes 135 tests with no failures or ignores. Strict clippy, dependency
+policies and the unchanged Rust 1.89 floor pass. The MSRV check uses the
+installed SDK 26.5 because the host linker cannot read SDK 27.2's new
+architecture declaration; the initial host-linker failure is retained.
+
+Signed MCP source `55ef95b` adds a bounded fuzzer for the actual private SDK
+session manager. It retains transports and models create, restore, close,
+concurrent admission and reuse. The first sanitizer smoke completes 119,419
+executions in 61 seconds without a finding. All three MCP targets build
+and replay their seeds; the original tool regression also replays. Adding
+three direct fuzz-only edges leaves all 197 resolved packages and their
+features identical. This does not establish wire-framing fuzz coverage.
+
+The Windows example launcher now resolves the Bash executable explicitly.
+The failing hosted run is retained. At core `68999cd`, all 80 checks pass
+with ten conditional skips, including the three-OS native consumer matrix,
+all four real-server MCP examples on Windows, WASM runtimes/resources,
+six-consumer parity and focused Miri. That candidate pins MCP `2834333`;
+the later worker and fuzz commits require their own hosted receipt. The
+new candidate workflow also exercises all three MCP sanitizer targets.
+
+The detached held-release recovery uses registry core `=0.0.60`, with no
+source override. Its 134-test battery, strict Inspector 2.14.0, dependency
+policies, source/version gates and local package assembly pass. The eight
+session and three blocking-work cases pass after observed failures. All
+three locks pass refreshed database `fd6f39814c4d3c359fdbe223d0280dec4933f78f`;
+the original fuzz lock fails the same scan. This is a separate candidate,
+not a changed tag or a published release. It does not repair the core/CST
+findings that need v0.0.61. Independent review and source/ref recovery remain
+open.
+
+The old mixed-source fuzz dispatcher has been superseded, preserving its
+18 passing, two failing, three interrupted and seven unstarted records.
+Interrupted receipts retain lower bounds or unknown durations. The current
+signed inventory contains 31 targets; every target needs a fresh sustained
+receipt. The pending 88-byte typed-duplicate finding remains a failure,
+with no oracle exception or inferred semantic approval.
+
 ## Implementation and acceptance
 
 The next signed MCP checkpoint fixes session admission in `839e637` and
@@ -415,7 +461,7 @@ remaining evidence. They are not implied by the local results.
 | LSP1 | Capability and framed handshake tests agree with the documentation. Neovim and VS Code exercised the advertised methods. | Carry the evidence through CI at the release ref. |
 | SHIM2 | Clarified the standalone std facade and the separate alloc-only core compatibility profile. Both ran in their scoped matrix. | Carry the evidence through CI at the release ref. |
 | Q1 | Contract ledger links product operations and refusals to the tests that exercise them. | Fill the specifically untested product and deployment combinations in the ledger. |
-| Q2 | Thirty targets discovered; scheduled runner records elapsed time, inputs, execution-count scope and findings. Interrupted counts are preserved as lower bounds and missing durations remain unknown; four accounting regressions pass in every repo. MCP tools completed a full campaign; HTTP headers ran 958,775 inputs in 61 seconds. The facade runner smoke completed 102,941 inputs. | One-hour receipts for every remaining target and a successful scheduled run. |
+| Q2 | Thirty-one targets discovered; scheduled runner records elapsed time, inputs, execution-count scope and findings. Interrupted counts are preserved as lower bounds and missing durations remain unknown; four accounting regressions pass in every repo. MCP tools completed a full campaign; HTTP headers ran 958,775 inputs in 61 seconds. The facade runner smoke completed 102,941 inputs. | One-hour receipts for every remaining target and a successful scheduled run. |
 | Q3 | Structured LLVM line totals replace the ambiguous last column. Invalid, timed-out and absent measurements remain N/A. The fresh snapshot measured 139 probes, seven N/A, and scored 92.1%. | Repeat on the final signed release sources and registry graph. |
 | P1 | The [latest observations](ecosystem-performance-2026-11-11.json) retain three repetitions of 70 scenarios and real cold CLI/LSP/MCP cycles, with raw samples, hashes and variance. Substantial host noise is explicit. | Dedicated-host end-to-end latency and remaining resource cases. |
 | P2 | WASM byte and real WASM/JS growth budgets reject padding, retained documents/values and missing observations. MCP admission rejects the deterministic concurrent cap violation. | Measured budgets and injection checks for remaining scenarios and products; no shared-host latency threshold. |
@@ -427,7 +473,7 @@ remaining evidence. They are not implied by the local results.
 | CLI2 | A refused rename preserved destination contents and removed the temporary file; mode and symlink tests also pass. | Cross-OS interruption and metadata evidence, with independent review. |
 | LSP2 | Tests cover UTF-16 positions, stale changes, initialization, header limits and exit while stdin is open. Final real client checks passed. | Resource and latency budgets for editor workloads. |
 | LSP3 | Neovim 0.12.6 and installed VS Code 1.141.0 VSIX passed. The VSIX startup bug was reproduced and fixed. | Installed marketplace artifacts and the rest of the claimed OS matrix. |
-| MCP2 | The current stdio, HTTP/SSE, SDK, limit and guard battery passes 132 tests. Eight session tests cover deterministic cap enforcement, concurrent create/restore, and reuse. Four actual example scenarios pass, including failed-exit refusal. | Complete revision-by-transport acceptance for disconnect, cancellation, remaining concurrency and supported filesystems; independent review. |
+| MCP2 | The current stdio, HTTP/SSE, SDK, limit and guard battery passes 135 tests; three worker-lifetime cases cover timeout, cancellation and panic. Eight session tests cover deterministic cap enforcement, concurrent create/restore, and reuse. Four actual example scenarios pass, including failed-exit refusal. | Complete revision-by-transport acceptance for disconnect, cancellation, remaining concurrency and supported filesystems; independent review. |
 | MCP3 | Published v0.0.59 npm package recovered from the verified native archive offline, refused corrupt cache and ran a real stdio parse. A future npm release gate repeats the drill. | Apply all five channel checks to v0.0.60 after the hold is resolved. |
 | WASM1 | Thirty-one real Node WASM tests and 34 shared runtime-contract checks pass. Classic Chromium passes 55 combined checks. Actual Node/browser memory and cleanup fault regressions pass. | Complete final-source hosted and sustained campaign acceptance; keep per-case coverage explicit. |
 | WASM2 | Optimized module is 614,712 bytes raw and 212,267 bytes gzip within unchanged limits. Eleven signed-source Node/browser resource outcomes match expectations, including three normal repetitions per engine and real WASM/JS retention faults. | Comparable dedicated-host timing and eventual registry-module acceptance. |

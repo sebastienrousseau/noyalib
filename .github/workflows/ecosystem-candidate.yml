@@ -19,6 +19,7 @@ jobs:
     outputs:
       products: ${{ steps.matrix.outputs.products }}
       wasm: ${{ steps.matrix.outputs.wasm }}
+      mcp: ${{ steps.matrix.outputs.mcp }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -37,6 +38,7 @@ jobs:
           with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
               print('products=' + json.dumps(rows, separators=(',', ':')), file=output)
               print('wasm=' + next(row['commit'] for row in rows if row['repo'] == 'noyalib-wasm'), file=output)
+              print('mcp=' + next(row['commit'] for row in rows if row['repo'] == 'noyalib-mcp'), file=output)
           PY
 
   native:
@@ -113,6 +115,59 @@ jobs:
         with:
           name: candidate-${{ matrix.product.repo }}-${{ matrix.os }}
           path: candidate-receipt.json
+          if-no-files-found: error
+
+  mcp-fuzz:
+    needs: sources
+    name: MCP transport and session fuzz smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      CARGO_TARGET_DIR: ${{ github.workspace }}/target-candidate-mcp-asan
+      CARGO_BUILD_JOBS: '2'
+      CARGO_INCREMENTAL: '0'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          path: noyalib
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: sebastienrousseau/noyalib-mcp
+          ref: ${{ needs.sources.outputs.mcp }}
+          persist-credentials: false
+          path: product
+      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8
+        with:
+          toolchain: nightly
+      - name: Prepare the pinned MCP candidate
+        env:
+          PRODUCT_COMMIT: ${{ needs.sources.outputs.mcp }}
+        run: |
+          python3 noyalib/scripts/prepare-ecosystem-candidate.py prepare \
+            --core noyalib --satellite product --repo noyalib-mcp \
+            --commit "$PRODUCT_COMMIT" --receipt candidate-receipt.json
+      - name: Install the pinned fuzz driver
+        run: cargo install --locked cargo-fuzz --version 0.13.2
+      - name: Exercise tools, HTTP guards and session state with sanitizers
+        working-directory: product
+        run: |
+          set -euo pipefail
+          for target in tools http_headers session_lifecycle; do
+            python3 scripts/run-fuzz-campaign.py --target "$target" --seconds 60 \
+              --output "$RUNNER_TEMP/campaign-$target" \
+              --target-dir "$CARGO_TARGET_DIR"
+          done
+      - name: Refuse changed sources or locks
+        if: always()
+        run: python3 noyalib/scripts/prepare-ecosystem-candidate.py verify --receipt candidate-receipt.json
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always()
+        with:
+          name: candidate-mcp-fuzz
+          path: |
+            candidate-receipt.json
+            ${{ runner.temp }}/campaign-*/
           if-no-files-found: error
 
   wasm:

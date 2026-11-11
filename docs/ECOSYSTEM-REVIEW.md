@@ -26,12 +26,14 @@ is explicit in the implementation record.
 | [CI correction record](ecosystem-ci-repair-evidence-2026-11-11.json) | Source identities, reproduced scanner/formatter/typed-key defects, complete std/alloc/portable batteries, bare-metal checks, product tests, consumer parity and raw log hashes |
 | [WASM assurance record](ecosystem-wasm-assurance-2026-11-11.json) | Actual optimized exports, installed bundle, runtime contracts, real memory-fault injection and browser process cleanup |
 | [MCP boundary record](ecosystem-mcp-boundaries-2026-11-11.json) | Deterministic session-cap failure and correction, full 132-test battery and four real-server example scenarios |
+| [MCP lifecycle record](ecosystem-mcp-lifecycle-2026-11-11.json) | Job-owned blocking permits, 135-test battery, Rust 1.89, state fuzzer smoke and Windows CI correction; exact hosted and later source scopes are separate |
 | [Performance observations](ecosystem-performance-2026-11-11.json) | Seventy scenarios repeated three times, raw variance, cold consumers and signed-source resource outcomes; no dedicated-host latency claim |
 | PR #521 checks | Exact hosted core/candidate sources, platform and toolchain results; inspect each conditional skip separately |
 | Candidate artifacts | Per-product source receipts and runtime reports; local paths are retained evidence locations, not public download claims |
 
 The [WASM raw archive](evidence/wasm-assurance-2026-11-11.tar.gz),
-[MCP raw archive](evidence/mcp-boundaries-2026-11-11.tar.gz) and
+[MCP raw archive](evidence/mcp-boundaries-2026-11-11.tar.gz),
+[lifecycle archive](evidence/mcp-lifecycle-2026-11-11.tar.gz) and
 [performance/resource archive](evidence/performance-resources-2026-11-11.tar.gz)
 are retained with this packet. Check their archive and member digests
 against the corresponding JSON record. Installer action source is linked
@@ -80,7 +82,7 @@ Windows, marketplace or registry acceptance.
 | Decision | Concrete choice and evidence needed |
 |---|---|
 | Typed duplicate identity | Accept a choice in [ADR-0019](adr/0019-typed-mapping-duplicate-identity.md) before either semantic change. Retain failing-first policy, loader and alias cases. |
-| Held MCP v0.0.60 | Tag object `b28d529f8bae59bbe94bdd91d25ec50173c8702b` also contains the confirmed runtime session-cap race. A development-only dependency justification is insufficient. A detached backport is being prepared; its source/ref recovery decision, exact-source gates, independent review and closing scan remain required. The existing tag is untouched. |
+| Held MCP v0.0.60 | Tag object `b28d529f8bae59bbe94bdd91d25ec50173c8702b` also contains confirmed runtime session-admission and blocking-work ownership defects. A development-only dependency justification is insufficient. A detached backport is being prepared; its source/ref recovery decision, exact-source gates, independent review and closing scan remain required. The existing tag is untouched. |
 | Independent review | Reviewer identity, exact reviewed commits, findings with disposition and actual approval through the chosen channel. No self-review presented as independence. |
 | Continuity | An accepted owner and privately retained recovery arrangements for signing, registry and organization access. Do not put secrets in this packet. |
 
