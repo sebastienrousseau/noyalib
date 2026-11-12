@@ -3,7 +3,7 @@
 
 # Ecosystem implementation plan
 
-Updated **2026-11-11**. Goal: close the measured gaps in all six repositories
+Updated **2026-11-12**. Goal: close the measured gaps in all six repositories
 so every category can earn a defensible, maintained 10/10 within its declared
 product scope. The [assessment](ROADMAP-TO-10.md) gives the baseline and the
 [evidence snapshot](ecosystem-assessment-2026-11-10.json) pins its sources.
@@ -84,13 +84,14 @@ boundaries and concrete decisions without implying approval.
 ## Full family campaign execution
 
 The current inventory has 31 targets: twenty core, two CLI, two LSP, three
-MCP, two WASM and two facade. A manual full-family run uses the existing
-Security workflow's `run_ecosystem_fuzz` input on this branch. Inventory
+MCP, two WASM and two facade. Add the `full-fuzz` label to the release PR to start a full-family run
+in the pull-request cache scope. This path does not run through a
+privileged manual dispatch. Inventory
 comes from the six pinned checkouts, refuses changed tracked fuzz sources,
 and rejects missing products, wrong commits, unsafe names and empty
 inventories. Six failing-first guard cases pass locally.
 
-The reusable campaign workflow uses separate read-only Linux jobs, no
+The PR-only campaign workflow uses separate read-only Linux jobs, no
 restored build cache, isolated sanitizer directories and at most sixteen
 concurrent jobs. Every target requests 3,600 seconds and retains source,
 input hashes, actual elapsed execution, lock integrity, logs, corpus and
@@ -98,7 +99,8 @@ findings. Satellite overrides are explicit candidate evidence, never
 registry-resolution proof. The duplicate-key input is retained in
 [tracked evidence](evidence/pending-typed-duplicate-identity.bin) and copied
 into its comparison corpus; it remains a failure until the contract is
-resolved. Full dispatch skips the older four-target soak and Miri jobs.
+resolved. The existing Security dispatch and weekly soak jobs retain
+their original behavior.
 
 Done means each required target has a successful full-duration receipt
 on its recorded source, or a clearly open finding. A successful matrix

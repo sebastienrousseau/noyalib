@@ -4,13 +4,20 @@
 name: Full family fuzz campaigns
 
 on:
-  workflow_call:
+  pull_request:
+    branches: [main, "feat/**"]
+    types: [labeled]
 
 permissions:
   contents: read
 
+concurrency:
+  group: family-fuzz-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
 jobs:
   inventory:
+    if: github.event.label.name == 'full-fuzz'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     outputs:
@@ -19,6 +26,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha }}
           path: noyalib
       - name: Test inventory and evidence guards
         run: |
@@ -101,6 +109,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha }}
           path: noyalib
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         if: matrix.repo != 'noyalib'

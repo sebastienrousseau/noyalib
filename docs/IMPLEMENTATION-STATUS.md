@@ -463,6 +463,26 @@ receipts remain pending; the unchanged weekly workflows and local campaign
 records retain their own sources and results. No release or review gate is
 waived by the added execution path.
 
+## Campaign cache isolation correction, 2026-11-12
+
+The first full-family inventory discovered all 31 targets and started its
+matrix. CodeQL then reported high cache-poisoning alerts
+[66](https://github.com/sebastienrousseau/noyalib/security/code-scanning/66),
+[67](https://github.com/sebastienrousseau/noyalib/security/code-scanning/67)
+and [68](https://github.com/sebastienrousseau/noyalib/security/code-scanning/68):
+manual-dispatch context can expose the default branch's cache scope to
+external candidate code even with read-only repository permissions.
+No restored cache is needed for that exposure.
+
+The manual run's findings and source/job records are retained, and that
+execution path is stopped. The family workflow now accepts only the
+`full-fuzz` label event on a PR, checks out its exact head, and keeps all
+untrusted execution in the PR cache scope. The Security workflow's original
+dispatch and scheduled behavior is restored. No alert is dismissed and
+no suppression is added. A closing CodeQL scan is required before claiming
+these alerts are closed. Partial and unstarted campaigns receive no
+one-hour credit; completed local receipts retain their exact sources.
+
 ## Implementation and acceptance
 
 The next signed MCP checkpoint fixes session admission in `839e637` and
