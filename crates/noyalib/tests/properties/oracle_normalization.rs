@@ -300,7 +300,8 @@ pub(crate) fn quoted_empty_flow_keys(source: &str) -> Option<String> {
                     .get(start..end)?
                     .trim_matches([' ', '\t', '\r', '\n']);
                 let rest = source.get(end..)?;
-                let compact_empty_value = rest.starts_with(":,") || rest.starts_with(":}");
+                let compact_empty_value =
+                    rest.starts_with(":,") || rest.starts_with(":}") || rest.starts_with(":]");
                 if text.contains(['\n', '\r']) {
                     // Flow mappings permit multiline YAML keys (production
                     // 145); libyaml applies its single-line key restriction.
@@ -548,6 +549,7 @@ mod tests {
         for (source, expected) in [
             ("{a:, other: 1}", "{\"a\":, other: 1}"),
             ("{a:}", "{\"a\":}"),
+            ("[d:]", "[\"d\":]"),
         ] {
             let normalized = quoted_empty_flow_keys(source).expect("compact empty value");
             assert_eq!(normalized, expected);

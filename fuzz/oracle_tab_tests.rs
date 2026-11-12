@@ -218,3 +218,19 @@ fn omitted_block_keys_after_cr_keep_every_mapping_field() {
         );
     }
 }
+
+#[test]
+fn empty_flow_sequence_pair_values_keep_complete_oracle_comparison() {
+    let original = include_str!(
+        "regressions/fuzz_serde_yaml_compat/crash-b3c8f73587bd0e9a32c8f5ae84ab2a2e1f105cf8"
+    );
+    for source in [original, "[d:]\n", "{items: [d:]}\n"] {
+        let before: serde_json::Value = noyalib::compat::serde_yaml::from_str(source).unwrap();
+        assert!(serde_yaml::from_str::<serde_json::Value>(source).is_err());
+        let normalized = normalization::collection_spelling(source).expect("empty flow pair value");
+        let after: serde_json::Value = noyalib::compat::serde_yaml::from_str(&normalized).unwrap();
+        let oracle: serde_json::Value = serde_yaml::from_str(&normalized).unwrap();
+        assert_eq!(before, after);
+        assert_eq!(before, oracle);
+    }
+}
