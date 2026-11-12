@@ -23,6 +23,9 @@ use libfuzzer_sys::fuzz_target;
 #[path = "../../crates/noyalib/tests/properties/oracle_normalization.rs"]
 mod oracle_normalization;
 
+#[path = "../bom_classification.rs"]
+mod bom_classification;
+
 fuzz_target!(|data: &[u8]| {
     let Ok(s) = std::str::from_utf8(data) else {
         return;
@@ -70,6 +73,7 @@ fuzz_target!(|data: &[u8]| {
             if !known_reject_divergence(s)
                 && !oracle_normalization::quoted_indent_rejection(&e.to_string())
                 && !oracle_normalization::missing_comment_separator_rejection(&e.to_string())
+                && !bom_classification::unquoted_content_bom_rejection(s, e.inner())
             {
                 panic!(
                     "shim rejected what serde_yaml accepts (len {}):\n  shim     : {e}\n  upstream : {}",

@@ -483,6 +483,28 @@ no suppression is added. A closing CodeQL scan is required before claiming
 these alerts are closed. Partial and unstarted campaigns receive no
 one-hour credit; completed local receipts retain their exact sources.
 
+## BOM oracle scope, 2026-11-12
+
+The [oracle receipt](ecosystem-bom-oracle-2026-11-12.json) retains raw
+failures, corrections and code hashes. The full-family compatibility
+campaign retained the six-byte
+`crash-6fc6e95b29a08538c0acc522513024451e5f5092`. The archived parser accepts
+an unquoted content BOM; the core correctly refuses it under YAML 1.2.2
+section 5.2. A private classifier recognizes only that located scanner
+error at an established unquoted content position. It leaves possible
+document prefixes, quoted content, unrelated errors and invalid offsets
+outside the rule. Accepted-value comparisons remain unchanged.
+
+The new guard fails before implementation and passes afterward. Its two
+unit tests pass with std and alloc-only core dependencies in separate
+build directories; strict std/alloc clippy and all nineteen compatibility
+regression inputs pass. The shared classifier and test harnesses live in
+private fuzz crates, keeping the published package and production bytes
+unchanged. Candidate CI runs both unit-test profiles separately.
+This replay repairs an oracle finding; a new sustained campaign remains
+required. The duplicate-key policy and later long-tag round-trip finding
+remain separate open work.
+
 ## Implementation and acceptance
 
 The next signed MCP checkpoint fixes session admission in `839e637` and

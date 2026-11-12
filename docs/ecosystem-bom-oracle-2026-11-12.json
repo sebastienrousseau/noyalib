@@ -1,0 +1,117 @@
+{
+  "recorded_utc": "2026-11-12T00:51:32.307188+00:00",
+  "core_production_source": "a57b7198669e41fe3034db4e44f2e274baf96388",
+  "finding": "crash-6fc6e95b29a08538c0acc522513024451e5f5092",
+  "finding_bytes": 6,
+  "source_inputs": {
+    "fuzz/bom_classification.rs": "777edb94b6b96313ed7345bed5c05b8d5a8833e76333f12207aae9eca7bd53e2",
+    "fuzz/src/lib.rs": "b1525721e834ddde5fa543ac3e09b4a5de7389f2803e4209bb202a2ad29d3578",
+    "fuzz-nostd/src/lib.rs": "749a02072e25dd71e4c551799fd593e540a7d5df476ce2455a4349e85570d6cf",
+    "fuzz/fuzz_targets/fuzz_serde_yaml_compat.rs": "ccbf4a22efc7878cdaf3cc0a6a18394467437ade5ef231a72215022b58814b95"
+  },
+  "observations": {
+    "std_unit_tests_passed": 2,
+    "alloc_unit_tests_passed": 2,
+    "strict_std_clippy_exit": 0,
+    "strict_alloc_clippy_exit": 0,
+    "regression_inputs_replayed": 19,
+    "alloc_core_enabled_features": []
+  },
+  "scope": "Development-only acceptance classification for the specific located BOM error at established unquoted content. Potential document prefixes and quoted content remain outside the classifier. Accepted-value comparison, production source, public API, features, Rust floor and dependency locks are unchanged. Original hosted failure, failing-first unit observations and std/alloc greens are retained. Replay is not sustained campaign acceptance. Typed duplicate identity and long-tag round-trip failure remain open.",
+  "specification": "https://yaml.org/spec/1.2.2/#52-character-encodings",
+  "raw_archive": "docs/evidence/bom-oracle-2026-11-12.tar.gz",
+  "archive_bytes": 17698,
+  "archive_sha256": "c48c009d07aec8a4e559503aabed14f2d88163bed980ca91bc5add780395b5b9",
+  "members": [
+    {
+      "path": "hosted/artifacts/crash-6fc6e95b29a08538c0acc522513024451e5f5092",
+      "bytes": 6,
+      "sha256": "97fb02930aa329773802e2bc240f1a9db4fd29f09c41cc1d70742d4c9271acdc"
+    },
+    {
+      "path": "hosted/campaign.log",
+      "bytes": 37606,
+      "sha256": "8141e2c4d6556717cacdf632a2e65e056eb9e0b068ebd9f5c3850354a1ff9f09"
+    },
+    {
+      "path": "hosted/receipt.json",
+      "bytes": 5198,
+      "sha256": "a053a879b63eb54e2fbe210e74c2c9cd390b9be6c39e3bdbcf8b3d9e0869020f"
+    },
+    {
+      "path": "local/bom-actionlint.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "local/bom-alloc-clippy.log",
+      "bytes": 1469,
+      "sha256": "951e57f354b02fb679d535e6c49f9859f9b7f082ab80a7bdad9910dbad3b85c6"
+    },
+    {
+      "path": "local/bom-alloc-features.log",
+      "bytes": 160,
+      "sha256": "1c1d18c1b3c6d45e10ec88fa3fa9b09df35624cd2856e93dbbdb4443f77d543c"
+    },
+    {
+      "path": "local/bom-clippy.log",
+      "bytes": 385,
+      "sha256": "d605a51631e2682dffb7f9d706608148ca9f5b9eec63807e0ed4a6600023ffb2"
+    },
+    {
+      "path": "local/bom-fmt.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "local/bom-fuzz-fmt.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "local/bom-fuzz-replay.log",
+      "bytes": 1294,
+      "sha256": "87161f92bf46012f970c7da29e978125aa621bd2e226175705e6cee9609fa5e2"
+    },
+    {
+      "path": "local/bom-oracle-red.log",
+      "bytes": 29533,
+      "sha256": "a320d6ed5b88eb91bb15cbee6098d37b294468e04c23ab4775acab516e98841a"
+    },
+    {
+      "path": "local/bom-private-alloc-green.log",
+      "bytes": 3053,
+      "sha256": "db2c89af1fe6a5b0ed8cc515cc97ff4a802a05fa1cabba22720cfd9507e2efa8"
+    },
+    {
+      "path": "local/bom-private-red.log",
+      "bytes": 4389,
+      "sha256": "8fe478cb3b4b0b58ab3aac3811086998d7b97716991033db35f5645190c3621e"
+    },
+    {
+      "path": "local/bom-private-std-green.log",
+      "bytes": 702,
+      "sha256": "0bfdd85e2fc89b33f6f78d00813bc6b2d0d13005f6c538398a7d7385d4707fad"
+    },
+    {
+      "path": "local/bom-reuse.log",
+      "bytes": 408,
+      "sha256": "aa5ba2a99a81d229ea464d73f135bff100f6aeff73fbb9ce1d5992006ac04e1e"
+    },
+    {
+      "path": "local/bom-spelling.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "local/bom-versions.log",
+      "bytes": 6247,
+      "sha256": "788ac9aac967fea2fbdfbeaf12da4672a10bf55531b61da33bfdb168844d1308"
+    },
+    {
+      "path": "local/bom-zizmor.log",
+      "bytes": 160,
+      "sha256": "472fc5e401e3bced232256940d73a65fc3a398159c91f4ab2586c7d6abd3834c"
+    }
+  ]
+}
