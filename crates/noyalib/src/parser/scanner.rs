@@ -9,6 +9,9 @@
 
 use crate::prelude::*;
 
+/// Maximum length of a resolved tag URI, in bytes.
+const MAX_TAG_LEN: usize = 1024;
+
 /// Byte-offset span in the source input.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub(crate) struct Span {
@@ -2263,9 +2266,6 @@ impl<'a> Scanner<'a> {
     }
 
     fn fetch_tag(&mut self) -> ScanResult<()> {
-        /// Maximum length of a tag URI (in bytes).
-        const MAX_TAG_LEN: usize = 1024;
-
         if self.flow_level == 0 {
             self.check_pending_property_indent()?;
         }
@@ -2435,6 +2435,10 @@ impl<'a> Scanner<'a> {
             ));
         }
 
+        self.emit_resolved_tag(handle, suffix)
+    }
+
+    fn emit_resolved_tag(&mut self, handle: Cow<'a, str>, suffix: Cow<'a, str>) -> ScanResult<()> {
         // Apply any active `%TAG handle prefix` directive: replace
         // the handle with the declared URI prefix so the loader sees
         // the resolved tag (P76L spec example 6.19). Default handles

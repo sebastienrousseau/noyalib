@@ -83,7 +83,7 @@ too_many_lines	crates/noyalib/src/parser/loader.rs	push_node	176
 too_many_lines	crates/noyalib/src/parser/loader.rs	push_value	139
 too_many_lines	crates/noyalib/src/parser/loader.rs	value_to_key_string	72
 too_many_lines	crates/noyalib/src/parser/scanner.rs	fetch_next_token	103
-too_many_lines	crates/noyalib/src/parser/scanner.rs	fetch_tag	134
+too_many_lines	crates/noyalib/src/parser/scanner.rs	fetch_tag	120
 too_many_lines	crates/noyalib/src/parser/scanner/scalars.rs	scan_single_quoted_scalar	90
 too_many_lines	crates/noyalib/src/path.rs	parse_query_path_checked	90
 too_many_lines	crates/noyalib/src/value/number.rs	cmp	74
