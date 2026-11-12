@@ -12,7 +12,9 @@ use libfuzzer_sys::fuzz_target;
 use noyalib::{ParserConfig, Value};
 
 fuzz_target!(|data: &[u8]| {
-    let Ok(s) = std::str::from_utf8(data) else { return };
+    let Ok(s) = std::str::from_utf8(data) else {
+        return;
+    };
 
     let config = ParserConfig::new()
         .max_depth(16)

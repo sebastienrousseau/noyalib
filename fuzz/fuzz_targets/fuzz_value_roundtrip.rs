@@ -106,7 +106,11 @@ fuzz_target!(|case: Case| {
         let again = noyalib::to_string(&back).expect("re-parsed Value serialises");
         assert_eq!(again, text, "to_string is not idempotent");
         let doc = noyalib::cst::parse_document(&text).expect("CST parses emitted YAML");
-        assert_eq!(*doc.as_value(), v, "CST and loader disagree on emitted YAML");
+        assert_eq!(
+            *doc.as_value(),
+            v,
+            "CST and loader disagree on emitted YAML"
+        );
     }
 
     let (bomb, expansions) = alias_bomb(case.anchors, case.refs, case.depth);

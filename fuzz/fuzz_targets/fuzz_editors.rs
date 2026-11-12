@@ -53,16 +53,49 @@ struct Case {
 
 #[derive(Arbitrary, Debug)]
 enum Edit {
-    Set { path: String, fragment: String },
-    Remove { path: String },
-    InsertEntry { map: String, key: String, fragment: String },
-    PushBack { path: String, fragment: String },
-    InsertAfter { item: String, fragment: String },
-    RenameKey { path: String, new_key: String },
-    SwapItems { path: String, i: u8, j: u8 },
-    MoveItem { path: String, from: u8, to: u8 },
-    SetComment { path: String, inline: bool, text: String },
-    RemoveComment { path: String, inline: bool },
+    Set {
+        path: String,
+        fragment: String,
+    },
+    Remove {
+        path: String,
+    },
+    InsertEntry {
+        map: String,
+        key: String,
+        fragment: String,
+    },
+    PushBack {
+        path: String,
+        fragment: String,
+    },
+    InsertAfter {
+        item: String,
+        fragment: String,
+    },
+    RenameKey {
+        path: String,
+        new_key: String,
+    },
+    SwapItems {
+        path: String,
+        i: u8,
+        j: u8,
+    },
+    MoveItem {
+        path: String,
+        from: u8,
+        to: u8,
+    },
+    SetComment {
+        path: String,
+        inline: bool,
+        text: String,
+    },
+    RemoveComment {
+        path: String,
+        inline: bool,
+    },
 }
 
 fn position(inline: bool) -> CommentPosition {
@@ -94,21 +127,13 @@ fuzz_target!(|case: Case| {
     let result = match &case.edit {
         Edit::Set { path, fragment } => doc.set(path, fragment),
         Edit::Remove { path } => doc.remove(path),
-        Edit::InsertEntry {
-            map,
-            key,
-            fragment,
-        } => doc.insert_entry(map, key, fragment),
+        Edit::InsertEntry { map, key, fragment } => doc.insert_entry(map, key, fragment),
         Edit::PushBack { path, fragment } => doc.push_back(path, fragment),
         Edit::InsertAfter { item, fragment } => doc.insert_after(item, fragment),
         Edit::RenameKey { path, new_key } => doc.rename_key(path, new_key),
         Edit::SwapItems { path, i, j } => doc.swap_items(path, *i as usize, *j as usize),
         Edit::MoveItem { path, from, to } => doc.move_item(path, *from as usize, *to as usize),
-        Edit::SetComment {
-            path,
-            inline,
-            text,
-        } => doc.set_comment(path, position(*inline), text),
+        Edit::SetComment { path, inline, text } => doc.set_comment(path, position(*inline), text),
         Edit::RemoveComment { path, inline } => doc.remove_comment(path, position(*inline)),
     };
 
