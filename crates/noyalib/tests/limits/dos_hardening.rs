@@ -148,3 +148,66 @@ fn merge_key_amplification_is_bounded() {
         );
     }
 }
+
+fn assert_fixed_name_budget(source: &str, allowed: bool) {
+    let value = from_str::<Value>(source);
+    let typed = from_str::<std::collections::BTreeMap<String, Value>>(source);
+    let cst = noyalib::cst::parse_document(source);
+    assert_eq!(
+        [value.is_ok(), typed.is_ok(), cst.is_ok()],
+        [allowed; 3],
+        "{source:?}"
+    );
+    if allowed {
+        let value = value.unwrap();
+        let output = noyalib::to_string(&value).unwrap();
+        assert_eq!(from_str::<Value>(&output).unwrap(), value);
+    } else {
+        for error in [value.unwrap_err(), typed.unwrap_err()] {
+            assert!(error.location().is_some(), "{error}");
+            assert!(
+                error.to_string().contains("maximum length of 1024 bytes"),
+                "{error}"
+            );
+        }
+    }
+}
+
+#[test]
+fn resolved_tag_budget_is_uniform_across_loaders() {
+    for bytes in [1024, 1025] {
+        let unicode = format!(
+            "{}{}",
+            "é".repeat(512),
+            if bytes == 1024 { "" } else { "a" }
+        );
+        for source in [
+            format!("key: !<{}> value", "t".repeat(bytes)),
+            format!("key: !{} value", "t".repeat(bytes - 1)),
+            format!("key: !!{}!x value", "t".repeat(bytes - 4)),
+            format!(
+                "%TAG !h! tag:example:{}\n---\nkey: !h!v value",
+                "t".repeat(bytes - 13)
+            ),
+            format!("key: !<{unicode}> value"),
+        ] {
+            assert_fixed_name_budget(&source, bytes == 1024);
+        }
+    }
+}
+
+#[test]
+fn anchor_name_budget_also_applies_at_eof() {
+    for bytes in [1024, 1025] {
+        for name in [
+            "a".repeat(bytes),
+            format!(
+                "{}{}",
+                "é".repeat(512),
+                if bytes == 1024 { "" } else { "a" }
+            ),
+        ] {
+            assert_fixed_name_budget(&format!("key: &{name}"), bytes == 1024);
+        }
+    }
+}

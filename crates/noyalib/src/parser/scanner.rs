@@ -2253,6 +2253,9 @@ impl<'a> Scanner<'a> {
             }
             self.advance();
         }
+        if self.pos - start > MAX_ANCHOR_NAME_LEN {
+            return Err(self.error("anchor name exceeds maximum length of 1024 bytes"));
+        }
         if self.pos == start {
             return Err(self.error("expected anchor or alias name"));
         }
@@ -2438,7 +2441,15 @@ impl<'a> Scanner<'a> {
         // `!` and `!!` are always available; *named* handles
         // (`!foo!`) must be declared in a `%TAG` directive for the
         // current document — otherwise reject (QLJ7 spec example 6.21).
-        let resolved_handle = if let Some(prefix) = self.tag_handles.get(handle.as_ref()) {
+        let declared_prefix = self.tag_handles.get(handle.as_ref());
+        if declared_prefix
+            .map_or(handle.len(), String::len)
+            .saturating_add(suffix.len())
+            > MAX_TAG_LEN
+        {
+            return Err(self.error("tag URI exceeds maximum length of 1024 bytes"));
+        }
+        let resolved_handle = if let Some(prefix) = declared_prefix {
             Cow::Owned(prefix.clone())
         } else {
             let h: &str = handle.as_ref();

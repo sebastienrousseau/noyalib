@@ -42,6 +42,7 @@ reference back. Nothing is silently rewritten.
 | [0017](./0017-alloc-capable-tooling.md) | Make allocation-based tooling available without std | accepted |
 | [0018](./0018-portable-float-math.md) | Keep portable float math independent of runtime dependencies | accepted |
 | [0019](./0019-typed-mapping-duplicate-identity.md) | Settle typed mapping duplicate-key identity | proposed |
+| [0020](./0020-enforce-complete-name-bounds.md) | Enforce complete tag and anchor name bounds | proposed |
 
 ## When to add an ADR
 
