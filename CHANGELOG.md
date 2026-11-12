@@ -11,6 +11,10 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Changed
 
+- **Breaking:** retain compatibility float fallback for decimal literals
+  beyond the signed or unsigned 128-bit range. Integer-overflow refusal
+  applies to the archive's 128-bit integer domain outside JSON's 64-bit
+  bounds, with identical behavior across typed and materialized loaders.
 - **Breaking:** honor individual scalar compatibility flags for typed
   targets through materialized parsing. Direct streaming refuses these
   profiles instead of silently ignoring them. Integer-overflow refusal

@@ -1601,7 +1601,9 @@ fn is_inf_spelling(s: &str) -> bool {
     )
 }
 
-/// A plain decimal integer outside the signed or unsigned 64-bit domain.
+/// A plain decimal integer in the archive's 128-bit visitor domain but
+/// outside its JSON target's signed or unsigned 64-bit domain. Larger
+/// literals fall through to float resolution in the archived parser.
 fn overflows_decimal_integer(s: &str, config: &ParseConfig) -> bool {
     if !config.integer_overflow_errors
         || config.no_schema
@@ -1614,9 +1616,9 @@ fn overflows_decimal_integer(s: &str, config: &ParseConfig) -> bool {
         return false;
     }
     if s.starts_with('-') {
-        s.parse::<i64>().is_err()
+        s.parse::<i64>().is_err() && s.parse::<i128>().is_ok()
     } else {
-        digits.parse::<u64>().is_err()
+        digits.parse::<u64>().is_err() && digits.parse::<u128>().is_ok()
     }
 }
 
@@ -1896,7 +1898,22 @@ fn resolve_untagged_scalar(
                 Value::Number(Number::Float(f))
             }
         }
-        crate::streaming::Scalar::Str(s) => Value::String(s.into_owned()),
+        crate::streaming::Scalar::Str(s) => {
+            // The lossless resolver keeps large integers as strings. The
+            // archive's JSON profile instead tries a finite float after
+            // exhausting its 128-bit integer visitors.
+            if config.integer_overflow_errors
+                && s.strip_prefix(['+', '-'])
+                    .unwrap_or(&s)
+                    .bytes()
+                    .all(|b| b.is_ascii_digit())
+                && let Some(f) = s.parse::<f64>().ok().filter(|f| f.is_finite())
+            {
+                Value::Number(Number::Float(f))
+            } else {
+                Value::String(s.into_owned())
+            }
+        }
     }
 }
 

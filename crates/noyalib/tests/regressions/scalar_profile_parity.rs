@@ -109,3 +109,41 @@ fn compatibility_leading_zero_overflow_stays_a_string() {
         );
     }
 }
+
+#[test]
+fn beyond_128_bit_decimal_spellings_use_float_fallback_on_all_paths() {
+    let mut config = ParserConfig::serde_yaml_compat();
+    for number in [
+        "340282366920938463463374607431768211456",
+        "+340282366920938463463374607431768211456",
+        "-170141183460469231731687303715884105729",
+        "-92233720368547784436854778446744073750808",
+    ] {
+        let expected = serde_json::json!({"a": number.parse::<f64>().unwrap()});
+        parity(&format!("a: {number}\n"), &config, expected);
+    }
+    for number in [
+        "340282366920938463463374607431768211455",
+        "-170141183460469231731687303715884105728",
+    ] {
+        let source = format!("a: {number}\n");
+        assert_eq!(
+            from_str_with_config::<Value>(&source, &config)
+                .unwrap_err()
+                .kind(),
+            ErrorKind::IntegerOverflow
+        );
+        assert_eq!(
+            from_str_with_config::<serde_json::Value>(&source, &config)
+                .unwrap_err()
+                .kind(),
+            ErrorKind::IntegerOverflow
+        );
+    }
+    config.no_schema = true;
+    parity(
+        "a: -170141183460469231731687303715884105729\n",
+        &config,
+        serde_json::json!({"a": "-170141183460469231731687303715884105729"}),
+    );
+}

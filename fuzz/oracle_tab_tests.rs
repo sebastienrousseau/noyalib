@@ -131,3 +131,23 @@ fn compact_omitted_keys_preserve_complete_oracle_comparison() {
         );
     }
 }
+
+#[test]
+fn decimal_128_bit_boundaries_match_the_archive() {
+    for number in [
+        "340282366920938463463374607431768211455",
+        "340282366920938463463374607431768211456",
+        "+340282366920938463463374607431768211456",
+        "-170141183460469231731687303715884105728",
+        "-170141183460469231731687303715884105729",
+    ] {
+        let source = format!("a: {number}\n");
+        let expected = serde_yaml::from_str::<serde_json::Value>(&source);
+        let actual = noyalib::compat::serde_yaml::from_str::<serde_json::Value>(&source);
+        match (actual, expected) {
+            (Ok(actual), Ok(expected)) => assert_eq!(actual, expected),
+            (Err(actual), Err(expected)) => assert_eq!(actual.to_string(), expected.to_string()),
+            (actual, expected) => panic!("{number}: {actual:?} != {expected:?}"),
+        }
+    }
+}
