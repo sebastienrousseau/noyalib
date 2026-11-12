@@ -4,7 +4,7 @@
   "products": [
     {
       "repo": "noya-cli",
-      "commit": "43c3fd8b6d0ae11771d1350152e04fee7e0d2c4b"
+      "commit": "955c2d31d0102ac04ed8f9609e75352aeac355c9"
     },
     {
       "repo": "noyalib-lsp",

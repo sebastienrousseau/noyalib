@@ -123,6 +123,13 @@ jobs:
         run: |
           python noyalib/scripts/check-cli-homebrew.py --cli product \
             --output "$RUNNER_TEMP/candidate-cli-homebrew"
+      - name: Install and remove the CLI through Scoop
+        if: matrix.product.repo == 'noya-cli' && matrix.os == 'windows-latest'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python noyalib/scripts/check-cli-scoop.py --cli product \
+            --output "$RUNNER_TEMP/candidate-cli-scoop"
       - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8
         with:
           toolchain: '1.89.0'
@@ -145,6 +152,8 @@ jobs:
             ${{ runner.temp }}/candidate-cli-release/provenance.stderr
             ${{ runner.temp }}/candidate-cli-homebrew/receipt.json
             ${{ runner.temp }}/candidate-cli-homebrew/*.log
+            ${{ runner.temp }}/candidate-cli-scoop/receipt.json
+            ${{ runner.temp }}/candidate-cli-scoop/*.log
           if-no-files-found: error
 
   arch-package:

@@ -139,8 +139,10 @@ archive/binary identity, provenance and clean removal. Existing packages,
 taps and dangling command links are protected by refusal tests; a failed
 partial installation is cleaned without altering another package. The local
 host refuses installation because its Xcode is below Homebrew's minimum.
-The macOS candidate job must supply a successful receipt before this
-channel gains acceptance; public tap publication remains separate.
+The macOS candidate job supplied a successful receipt at run `43331883610`;
+public tap publication remains separate. The
+[package-manager record](ecosystem-package-managers-2026-11-12.json) retains
+the exact source, raw logs and installed artifact identity.
 
 The Arch gate verifies the official build image's signing identity and the
 published archive's provenance before running `makepkg` and `pacman` with
@@ -148,7 +150,17 @@ container networking disabled. It checks both tools, packaged assets and
 licenses, binary identity and removal. Four negative tests cover archive,
 image, recipe and cleanup boundaries. The local Docker daemon reports a
 storage I/O error, so actual package acceptance must come from the hosted
-Linux runner. Public AUR installation and other architectures remain separate.
+Linux runner. The first actual build exposed default stripping and debug
+splitting; signed CLI `955c2d3` disables both and adds a failing-first recipe
+guard. Corrected installation acceptance remains required. Public AUR
+installation and other architectures remain separate.
+
+The Windows candidate also exercises the actual Scoop manifest with a
+pinned manager in a private portable prefix. It verifies the downloaded
+archive and provenance, installed binaries and licenses, generated shims,
+removal and unchanged persistent PATH. The manager is fetched at an exact
+commit without a bootstrap installer. Hosted acceptance remains pending;
+this does not publish a Scoop bucket or candidate registry artifact.
 
 ## Full family campaign execution
 
