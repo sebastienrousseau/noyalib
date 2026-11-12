@@ -1,22 +1,9 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 // Copyright (c) 2026 Noyalib. All rights reserved.
 
-//! Targeted line-coverage push for `de.rs` and `streaming.rs`.
+//! Deserializer mismatch, tag, merge and duplicate-policy branches.
 //!
-//! Both files sit in the high-80s for line coverage even after the
-//! existing `de_branch_coverage.rs` and `coverage_de.rs` suites,
-//! because the dominant uncovered code is in:
-//!   - error paths on `Deserializer::deserialize_*` (type-mismatch
-//!     arms that only fire on shape disagreement)
-//!   - tag-preserving / binary-tag migration paths
-//!   - merge-key edge cases on the streaming deserialiser
-//!     (sequence-of-aliases, late `<<` keys)
-//!   - duplicate-key policies on the streaming path
-//!
-//! Each test below targets a specific named branch identified by
-//! coverage analysis. Test names follow the pattern
-//! `branch_<file>_<short_description>` so that future coverage
-//! drift is traceable to the specific path being exercised.
+//! Exercise typed refusals and migration behavior across deserializer paths.
 
 use std::collections::BTreeMap;
 
