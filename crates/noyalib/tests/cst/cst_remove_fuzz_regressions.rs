@@ -104,7 +104,11 @@ fn removing_a_duplicate_key_can_reveal_a_larger_value() {
 /// A refused removal must leave the document byte-identical.
 #[test]
 fn a_refused_remove_leaves_the_source_untouched() {
-    let mut doc = parse_document(": :\n:").expect("source parses");
+    assert!(
+        parse_document(": :\n:").is_err(),
+        "implicit compact values are invalid"
+    );
+    let mut doc = parse_document(": value\n").expect("valid omitted-key entry");
     let before = doc.source().to_owned();
 
     assert!(doc.remove(":").is_err(), "`:` is not a key here");
