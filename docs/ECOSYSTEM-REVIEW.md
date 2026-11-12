@@ -31,6 +31,7 @@ is explicit in the implementation record.
 | [Name bounds and SDK capacity](ecosystem-name-bounds-2026-11-12.json) | Tag/anchor boundary red/green, exact scanner hashes, std/alloc/portable batteries, reduced complexity and actual SDK shared-budget fault injection |
 | [Verbatim identity follow-up](ecosystem-verbatim-tags-2026-11-12.json) | Primary-handle override red/green, final scanner checks, interrupted obsolete-source campaigns and distinct browser-startup CI evidence |
 | [Directive/tag follow-up](ecosystem-directive-roundtrip-2026-11-12.json) | Two further failed campaigns, complete directive validation, literal tag identity, exact-source battery and sanitizer replay; no sustained acceptance credit |
+| [Scalar, syntax and CST receipt](ecosystem-profile-and-consumers-2026-11-12.json) | Exact runtime hashes, scalar and grammar red/green cases, CST entry/removal boundaries, complete std/alloc/portable checks, original-input sanitizer replay and historical CLI/MCP consumer scopes. |
 | [Completed family campaigns](ecosystem-family-campaign-followup-2026-11-12.json) | All 31 hosted target receipts: 29 pass, two fail; raw logs, findings and corpus digests. Separate completed std/alloc roundtrip hours at `76c5baa`; no final-source family acceptance. |
 | [Performance observations](ecosystem-performance-2026-11-11.json) | Seventy scenarios repeated three times, raw variance, cold consumers and signed-source resource outcomes; no dedicated-host latency claim |
 | PR #521 checks | Exact hosted core/candidate sources, platform and toolchain results; inspect each conditional skip separately |
@@ -79,6 +80,14 @@ URI or charge an unused directive prefix to its length budget.
 Check complete directive-field control validation and exact byte locations,
 non-specific tags under primary-handle overrides, empty resolved URI
 refusal and custom local names that resemble built-in tag spellings.
+
+Review scalar-profile routing and the signed/unsigned 128-bit boundaries,
+including finite-float fallback and disabled-schema precedence. Check the
+explicit mapping-value state across nested keys and node properties;
+implicit values require a break before block collections. Inspect the CST
+entry boundary for omitted keys and removal ranges at LF, CR and CRLF,
+including later empty sequence items and head-comment ownership. Preserve
+the failed-edit rollback and duplicate-key contracts.
 
 Review typed key spelling separately from canonical duplicate identity.
 Trimming trailing separation restores surviving written keys; it cannot

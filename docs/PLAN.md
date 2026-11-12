@@ -115,6 +115,16 @@ four additional boundary tests and observed fault-injection failures.
 Independent review, continuity, held MCP source recovery, remaining channel
 installs and controlled performance criteria remain open.
 
+The [scalar, syntax and CST receipt](ecosystem-profile-and-consumers-2026-11-12.json)
+records current full batteries, twelve bare-metal profiles and sanitizer
+replay of all retained compatibility inputs. It includes failing-first
+scalar-profile routing, 128-bit boundaries, repeated block-header refusal,
+implicit-value grammar and CST sibling-preservation cases. Full-value
+oracle repairs keep additional historical-parser differences comparable.
+All failed campaigns retain their original source scope and receive no
+sustained acceptance credit. Complete the fresh hosted gates and resolve
+ADR-0019 before claiming a final-source family campaign pass.
+
 ## Full family campaign execution
 
 The current inventory has 31 targets: twenty core, two CLI, two LSP, three

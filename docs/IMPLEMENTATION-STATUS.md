@@ -16,6 +16,52 @@ because v0.0.61 is unpublished. All five satellites passed the Rust 1.89.0
 host build; the alloc-only core and WASM binding also built for wasm32. Published artifacts have separate
 [verification receipts](ecosystem-publication-receipts-2026-11-10.json).
 
+## Scalar, syntax and CST follow-up, 2026-11-12
+
+The [source-bound receipt](ecosystem-profile-and-consumers-2026-11-12.json)
+and [raw archive](evidence/profile-and-consumers-2026-11-12.tar.gz) retain
+failing-first inputs, current gate logs, runtime hashes and historical
+consumer scopes. Signed runtime `5ffcea0` includes the scalar-profile,
+block-header and CST corrections described below. Full batteries pass
+6,776 std, 6,771 alloc-only and 7,112 portable tests. All 590 doctests pass,
+with eight existing ignores. The twelve stable/MSRV bare-metal checks,
+strict clippy and unchanged 81-entry complexity baseline pass. Package size
+is 1,319,700 bytes against the unchanged 1,320,000-byte ceiling.
+
+The scalar compatibility flags now reach typed and materialized paths.
+Decimal refusal follows the archive's signed/unsigned 128-bit visitors;
+larger literals retain finite-float fallback. Quoted, schema-disabled and
+leading-zero string values retain their contracts. Repeated block-header
+indicators and compact block collections in implicit mapping values are
+refused. Explicit compact entries, inline flow nodes and newline-separated
+collections remain supported. These parse changes are recorded as breaking.
+
+CST omitted keys now own distinct entry nodes. Removing `d` from
+`d: before\r: after\r` retains the omitted-key sibling. Shared removal
+boundaries recognize LF, lone CR and atomic CRLF; later empty sequence
+items own their indicator line. The new matrix preserves neighboring data,
+comment ownership and line-break spelling. All 1,090 alloc-only CST cases
+pass. Concise test headers replace stale claims while retaining test bodies
+and contribution references; the archive records their body hashes.
+
+Development-oracle repairs keep complete JSON values and require a fresh
+archive comparison. Integer comparisons remain exact across the 2^53 and
+64-bit boundaries. Prefix whitespace, leading suffixes, omitted keys,
+zero-indented root blocks and empty flow-pair values retain all data.
+The displaced-BOM classifier requires the actual located rejection and
+keeps real document prefixes and quoted content outside its rule.
+All 38 private tests, 156 std properties and 21 oracle cases in each alloc
+profile pass. Sanitizer replay passes 32 compatibility, fifteen std
+roundtrip and seven alloc-only roundtrip inputs.
+
+The eleven failed local campaigns retain their actual source, lower-bound
+execution counts and unknown completion times. None receives sustained
+acceptance credit. Original-input replay establishes the scoped fixes;
+final-source full-duration family acceptance remains open, including the
+pending typed-duplicate decision in ADR-0019. Hosted checks for this batch,
+independent review, continuity, held MCP recovery, remaining distribution
+channels and controlled performance criteria are still required.
+
 ## Family campaigns and consumer follow-up, 2026-11-12
 
 The [family campaign receipt](ecosystem-family-campaign-followup-2026-11-12.json)

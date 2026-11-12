@@ -1,0 +1,212 @@
+{
+  "recorded_utc": "2026-11-12T22:54:07.452823+00:00",
+  "source_capture_commit": "d42489a3c724fba183e2a1e1c6bf82bb23ec62e5",
+  "runtime_source_commit": "5ffcea04d9ebd5bc339d86f0a419d973476bec2a",
+  "runtime_manifest_sha256": "01d214d0f29348ea405aa1467bdec6680b549679e861adc6fb1af6177dc22460",
+  "scope": "Scalar profiles, integer boundaries, block-header and implicit-value grammar, CST omitted-key ownership, CR removal boundaries, complete-value oracle repairs, MCP HTTP lifecycle and published CLI native recovery. No final-source full-family acceptance or perfect score claimed.",
+  "suites": {
+    "full-std": {
+      "groups": 20,
+      "passed": 6776,
+      "failed": 0,
+      "ignored": 0
+    },
+    "full-alloc": {
+      "groups": 20,
+      "passed": 6771,
+      "failed": 0,
+      "ignored": 0
+    },
+    "full-portable": {
+      "groups": 20,
+      "passed": 7112,
+      "failed": 0,
+      "ignored": 0
+    },
+    "doctests": {
+      "groups": 2,
+      "passed": 590,
+      "failed": 0,
+      "ignored": 8
+    }
+  },
+  "baremetal_checks_passed": 12,
+  "latest_oracle_tests": {
+    "private": 38,
+    "std_properties": 156,
+    "baseline_alloc": 21,
+    "portable_alloc": 21
+  },
+  "asan_regression_inputs": {
+    "fuzz_serde_yaml_compat": 32,
+    "fuzz_roundtrip": 15,
+    "fuzz_roundtrip_alloc_only": 7
+  },
+  "failed_campaigns": [
+    {
+      "source_commit": "516a8adcbd16eba17988b45a1887878e947e17cd",
+      "scope": "fuzz",
+      "target": "fuzz_serde_yaml_compat",
+      "status": "failed",
+      "executions": 8890,
+      "execution_count_kind": "lower_bound",
+      "measured_seconds": null,
+      "findings": [
+        "crash-dcc56af7fc4663e1a4c9dfa553293fa6aefbba6a"
+      ]
+    },
+    {
+      "source_commit": "14b2f4a8893ae87182c4a01979ee72b9a29375b3",
+      "scope": "fuzz",
+      "target": "fuzz_serde_yaml_compat",
+      "status": "failed",
+      "executions": 765,
+      "execution_count_kind": "lower_bound",
+      "measured_seconds": null,
+      "findings": [
+        "crash-1419090b1dcc9e68fe8e9bb9aa8582e0944d41a9"
+      ]
+    },
+    {
+      "source_commit": "7e35ad79268c20c1b14675f98957187297ef7fc5",
+      "scope": "fuzz",
+      "target": "fuzz_serde_yaml_compat",
+      "status": "failed",
+      "executions": 10577,
+      "execution_count_kind": "lower_bound",
+      "measured_seconds": null,
+      "findings": [
+        "crash-6bb1d2add6b27122557d5af09e854cd7d9577116"
+      ]
+    },
+    {
+      "source_commit": "d8aa2d06c6dbfec431d7fab1ad1974aa6ebe260b",
+      "scope": "fuzz",
+      "target": "fuzz_serde_yaml_compat",
+      "status": "failed",
+      "executions": 3760,
+      "execution_count_kind": "lower_bound",
+      "measured_seconds": null,
+      "findings": [
+        "crash-f94cebc2e9762f93687dbdf4a2d44c09bc7c0542"
+      ]
+    },
+    {
+      "source_commit": "662d0fe5525c4cb7e0aa6c807f5145629b050e5d",
+      "scope": "fuzz",
+      "target": "fuzz_serde_yaml_compat",
+      "status": "failed",
+      "executions": 10938,
+      "execution_count_kind": "lower_bound",
+      "measured_seconds": null,
+      "findings": [
+        "crash-97392889069613b4a6c6cae98cb3c3861e5710b6"
+      ]
+    },
+    {
+      "source_commit": "b8b9dfa6fbfbccbbb6ef0662ebc7011bc6392abe",
+      "scope": "fuzz",
+      "target": "fuzz_serde_yaml_compat",
+      "status": "failed",
+      "executions": 9715,
+      "execution_count_kind": "lower_bound",
+      "measured_seconds": null,
+      "findings": [
+        "crash-7079f6520c2ccc466aba88f4b105c07d6228a0f6"
+      ]
+    },
+    {
+      "source_commit": "573b9151b60876cb9c4fb0fbd30b5cf0d03017bf",
+      "scope": "fuzz",
+      "target": "fuzz_serde_yaml_compat",
+      "status": "failed",
+      "executions": 16941,
+      "execution_count_kind": "lower_bound",
+      "measured_seconds": null,
+      "findings": [
+        "crash-750641fe77224e5442dbf2c949d6a41be9be16d4"
+      ]
+    },
+    {
+      "source_commit": "7c1e69913f5e4b54f178460b8c9c4842e050c82a",
+      "scope": "fuzz",
+      "target": "fuzz_serde_yaml_compat",
+      "status": "failed",
+      "executions": 29933,
+      "execution_count_kind": "lower_bound",
+      "measured_seconds": null,
+      "findings": [
+        "crash-cc5a12551f3f61926ab1f7851d19b8f177792f50"
+      ]
+    },
+    {
+      "source_commit": "84d01a3dedcd4d63bfd30a9d6bfd7bacd4c4820f",
+      "scope": "fuzz",
+      "target": "fuzz_serde_yaml_compat",
+      "status": "failed",
+      "executions": 5172,
+      "execution_count_kind": "lower_bound",
+      "measured_seconds": null,
+      "findings": [
+        "crash-4af2fc3de66ad46023b657234c525fd13e8cd490"
+      ]
+    },
+    {
+      "source_commit": "21dfc46210240359c1ff831ad8d235051d70eda5",
+      "scope": "fuzz",
+      "target": "fuzz_serde_yaml_compat",
+      "status": "failed",
+      "executions": 10044,
+      "execution_count_kind": "lower_bound",
+      "measured_seconds": null,
+      "findings": [
+        "crash-516bf4d646fa789367b1899b05393b344ff3a7cb"
+      ]
+    },
+    {
+      "source_commit": "5ffcea04d9ebd5bc339d86f0a419d973476bec2a",
+      "scope": "fuzz",
+      "target": "fuzz_serde_yaml_compat",
+      "status": "failed",
+      "executions": 61489,
+      "execution_count_kind": "lower_bound",
+      "measured_seconds": null,
+      "findings": [
+        "crash-b3c8f73587bd0e9a32c8f5ae84ab2a2e1f105cf8"
+      ]
+    }
+  ],
+  "historical_consumer_scopes": {
+    "mcp": {
+      "source": "cfab8508fa459db13479b93c201d39827d771af1",
+      "native_tests": 140,
+      "injected_faults": 2,
+      "current_core_acceptance": false
+    },
+    "cli": {
+      "source": "43c3fd8b6d0ae11771d1350152e04fee7e0d2c4b",
+      "verified_native_archives": 6,
+      "executed_host": "aarch64-apple-darwin",
+      "published_version": "0.0.60"
+    },
+    "six_consumers": {
+      "core_runtime_source": "14b2f4a8893ae87182c4a01979ee72b9a29375b3",
+      "cases": 23,
+      "registry_resolution": false
+    }
+  },
+  "remaining": [
+    "ADR-0019 maintainer contract selection and verified implementation",
+    "Final-source full-duration 31-target family receipts",
+    "Fresh hosted native and consumer receipts at the pushed source",
+    "Held MCP v0.0.60 source/ref recovery decision",
+    "Remaining distribution-channel installations and controlled performance evidence",
+    "Independent human review and accepted continuity owner",
+    "Actual v0.0.61 registry resolution after authorized publication"
+  ],
+  "archive": {
+    "path": "docs/evidence/profile-and-consumers-2026-11-12.tar.gz",
+    "bytes": 814029,
+    "sha256": "5173276c2c95e26eecac74afca4af714f45971c122cccfc95fc05b818bb60115"
+  }
+}
