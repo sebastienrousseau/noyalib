@@ -106,6 +106,65 @@
       "id": "plain-continuation-tab-indentation",
       "yaml": "- a\n\tb\n",
       "reject": true
+    },
+    {
+      "id": "bom-tab-only-document",
+      "yaml": "﻿\t",
+      "expected": null,
+      "mcp_expected_documents": [],
+      "difference": "MCP parses a document stream: trivia alone has zero documents. Single-value entry points project the empty input to null."
+    },
+    {
+      "id": "directive-name-raw-control",
+      "yaml": "%TA\u0001G ! tag:example:\n---\na: 1\n",
+      "reject": true
+    },
+    {
+      "id": "directive-version-raw-control",
+      "yaml": "%YAML 1.\u00010\n---\na: 1\n",
+      "reject": true
+    },
+    {
+      "id": "directive-handle-raw-control",
+      "yaml": "%TAG !\u0001! tag:example:\n---\na: 1\n",
+      "reject": true
+    },
+    {
+      "id": "directive-prefix-raw-control",
+      "yaml": "%TAG ! tag:exam\u0001ple:\n---\na: 1\n",
+      "reject": true
+    },
+    {
+      "id": "resolved-tag-closing-delimiter",
+      "yaml": "%TAG !e! tag:example:bad>\n---\n!e!item x\n",
+      "reject": true
+    },
+    {
+      "id": "standard-tag-directive",
+      "yaml": "%TAG !! tag:yaml.org,2002:\n---\na: !!str 12\nb: !!int 12\nc: !!bool true\n",
+      "expected": {
+        "a": "12",
+        "b": 12,
+        "c": true
+      }
+    },
+    {
+      "id": "unicode-crlf-diagnostics",
+      "yaml": "name: café 🚀\r\nbroken: [1,\r\n",
+      "reject": true
+    },
+    {
+      "id": "empty-line-tabs-between-nodes",
+      "yaml": "a: 1\n\t\r\nb: 2\n",
+      "expected": {
+        "a": 1,
+        "b": 2
+      }
+    },
+    {
+      "id": "explicit-null-document",
+      "yaml": "---\nnull\n",
+      "expected": null
     }
   ]
 }

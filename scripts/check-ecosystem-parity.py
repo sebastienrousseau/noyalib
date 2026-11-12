@@ -146,7 +146,7 @@ def mcp(binary, text, root):
             send(rpc('notifications/initialized'))
             send(rpc('tools/call', {'name': 'noyalib_parse', 'arguments': {'yaml': text}}, 2))
             result = receive(2)
-            return None if result.get('isError') else result['structuredContent']['documents'][0], bool(result.get('isError'))
+            return None if result.get('isError') else result['structuredContent']['documents'], bool(result.get('isError'))
         finally:
             child.stdin.close()
             try:
@@ -194,7 +194,7 @@ console.log(JSON.stringify(parseJson(readFileSync(0, 'utf8'))));'''
         facade = invoke([projection, 'facade'], yaml)
         cli = invoke([a.cli.resolve(), '--stdin'], yaml)
         lsp_text, diagnostics = lsp(a.lsp.resolve(), yaml)
-        mcp_value, mcp_error = mcp(a.mcp.resolve(), yaml, output)
+        mcp_documents, mcp_error = mcp(a.mcp.resolve(), yaml, output)
         wasm = invoke(['node', '--input-type=module', '-e', js, str(a.wasm.resolve())], yaml)
         if case.get('reject'):
             if not (core.returncode and facade.returncode and cli.returncode and diagnostics and mcp_error and wasm.returncode):
@@ -207,10 +207,12 @@ console.log(JSON.stringify(parseJson(readFileSync(0, 'utf8'))));'''
             cli_value = invoke([projection, 'core'], cli.stdout)
             lsp_value = invoke([projection, 'core'], lsp_text)
             values = {'core': json.loads(core.stdout), 'CLI': json.loads(cli_value.stdout),
-                      'LSP': json.loads(lsp_value.stdout), 'MCP': mcp_value, 'WASM': json.loads(wasm.stdout),
+                      'LSP': json.loads(lsp_value.stdout), 'MCP': mcp_documents, 'WASM': json.loads(wasm.stdout),
                       'facade': json.loads(facade.stdout)}
             for name, actual in values.items():
                 want = case.get('facade_expected', expected) if name == 'facade' else expected
+                if name == 'MCP':
+                    want = case.get('mcp_expected_documents', [expected])
                 if actual != want:
                     raise ValueError(f'{case["id"]} / {name}: expected {want!r}, got {actual!r}')
             if 'preserve' in case and not (case['preserve'] in cli.stdout and case['preserve'] in lsp_text):
