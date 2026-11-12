@@ -11,6 +11,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Changed
 
+- **Breaking:** reject compact block collections in implicit mapping
+  values, including `- : : `. Explicit compact entries, inline flow nodes
+  and collections separated by a line break remain supported.
 - **Breaking:** reject repeated indentation or chomping indicators in
   block scalar headers, including `>74`, `|++` and `|-+`. A header may
   contain one indentation digit and one chomping indicator in either order.

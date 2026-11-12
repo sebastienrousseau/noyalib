@@ -524,3 +524,45 @@ fn distinct_block_scalar_indicators_keep_both_orders() {
         }
     }
 }
+
+#[test]
+fn implicit_mapping_values_reject_inline_block_collections() {
+    for source in [
+        "- : : ",
+        ": : value\n",
+        "key: : value\n",
+        "key: - item\n",
+        "key: ? nested\n",
+    ] {
+        assert!(from_str::<Value>(source).is_err(), "{source:?}");
+        assert!(from_str::<serde_json::Value>(source).is_err(), "{source:?}");
+        let mut config = noyalib::ParserConfig::default();
+        config.merge_key_policy = noyalib::MergeKeyPolicy::AsOrdinary;
+        assert!(
+            noyalib::from_str_with_config::<serde_json::Value>(source, &config).is_err(),
+            "{source:?}"
+        );
+        assert!(noyalib::cst::parse_document(source).is_err(), "{source:?}");
+    }
+}
+
+#[test]
+fn explicit_compact_and_separated_mapping_values_remain_valid() {
+    for source in [
+        "? key\n: nested: value\n",
+        "? key\n: - item\n",
+        "- ? earth: blue\n  : moon: white\n",
+        "key:\n  nested: value\n",
+        "key:\n- item\n",
+        "key: &a\n  nested: value\n",
+        "key: {nested: value}\n",
+        "key: 'nested: value'\n",
+        "key: |\n  value\n",
+    ] {
+        assert!(from_str::<Value>(source).is_ok(), "{source:?}");
+        assert_eq!(
+            noyalib::cst::parse_document(source).unwrap().to_string(),
+            source
+        );
+    }
+}
