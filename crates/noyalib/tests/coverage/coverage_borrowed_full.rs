@@ -1,12 +1,7 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 // Copyright (c) 2026 Noyalib. All rights reserved.
 
-//! Complete coverage sweep for `src/borrowed.rs`.
-//!
-//! Exercises the Hash, Serialize, PartialOrd/Ord impls, the indexed /
-//! wildcard / recursive branches of path queries, `into_owned` for every
-//! variant, document-length enforcement, special float resolution, and
-//! alias rejection on the borrowed path.
+//! Borrowed-value traits, path queries, owned conversion and parsing limits.
 
 use noyalib::ParserConfig;
 use noyalib::borrowed::{BorrowedValue, from_str_borrowed};
