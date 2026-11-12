@@ -1610,15 +1610,19 @@ impl<'a> Scanner<'a> {
         self.finish_directive_line(directive_start)
     }
 
-    /// Skip to end of line — directive contents past validation are
-    /// not interpreted further (consumers don't need the version) — and
-    /// record the directive's trivia. The skipped text, a trailing
-    /// comment included, is held to §5.1 c-printable like any other.
+    /// Validate the entire directive line, including parsed fields and
+    /// trailing comments, against §5.1 c-printable, then record its trivia.
     fn finish_directive_line(&mut self, directive_start: usize) -> ScanResult<()> {
         let rest = &self.input[self.pos..];
         let len = memchr::memchr2(b'\n', b'\r', rest).unwrap_or(rest.len());
-        if rest[..len].iter().any(|&b| Self::is_raw_control(b)) {
-            return Err(self.error("directive line contains a raw control character"));
+        if let Some(offset) = self.input[directive_start..self.pos + len]
+            .iter()
+            .position(|&b| Self::is_raw_control(b))
+        {
+            return Err(ScanError {
+                message: Cow::Borrowed("directive line contains a raw control character"),
+                index: directive_start + offset,
+            });
         }
         if len < rest.len() {
             self.advance_by(len);
@@ -2450,18 +2454,23 @@ impl<'a> Scanner<'a> {
         // `!` and `!!` are always available; *named* handles
         // (`!foo!`) must be declared in a `%TAG` directive for the
         // current document — otherwise reject (QLJ7 spec example 6.21).
-        // A verbatim URI retains its identity under handle redefinitions.
-        let declared_prefix = if is_verbatim {
+        // Verbatim and non-specific tags ignore handle redefinitions.
+        let declared_prefix = if is_verbatim || (handle == "!" && suffix.is_empty()) {
             None
         } else {
             self.tag_handles.get(handle.as_ref())
         };
-        if declared_prefix
+        let uri_len = declared_prefix
             .map_or(handle.len(), String::len)
-            .saturating_add(suffix.len())
-            > MAX_TAG_LEN
-        {
+            .saturating_add(suffix.len());
+        if uri_len == 0 {
+            return Err(self.error("tag URI must not be empty"));
+        }
+        if uri_len > MAX_TAG_LEN {
             return Err(self.error("tag URI exceeds maximum length of 1024 bytes"));
+        }
+        if declared_prefix.is_some_and(|prefix| prefix.contains('>')) {
+            return Err(self.error("expanded tag URI contains forbidden character `>`"));
         }
         let resolved_handle = if let Some(prefix) = declared_prefix {
             Cow::Owned(prefix.clone())
@@ -2514,8 +2523,6 @@ fn split_verbatim_tag(uri: &str) -> (Cow<'_, str>, Cow<'_, str>) {
     const CORE: &str = "tag:yaml.org,2002:";
     let (handle, rest) = if let Some(rest) = uri.strip_prefix(CORE) {
         (CORE, rest)
-    } else if let Some(rest) = uri.strip_prefix('!') {
-        ("!", rest)
     } else {
         ("", uri)
     };

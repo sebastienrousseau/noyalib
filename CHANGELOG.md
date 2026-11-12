@@ -11,6 +11,12 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Changed
 
+- **Breaking:** preserve non-specific `!` tags under primary-handle
+  redefinitions and keep verbatim local names such as `!<!str>` custom.
+  Serialization retains literal names that resemble built-in tags.
+- **Breaking:** reject raw controls in parsed directive fields and reject
+  empty or unrepresentable expanded tag URIs. Control-character diagnostics
+  identify the offending byte.
 - **Breaking:** keep verbatim local tag URIs unchanged when a `%TAG !`
   directive redefines the primary handle. Unused directive prefixes no
   longer consume a verbatim tag's URI budget.

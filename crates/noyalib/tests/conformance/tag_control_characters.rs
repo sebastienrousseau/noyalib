@@ -1,13 +1,6 @@
-//! Tags may not carry control characters.
-//!
-//! Found by `fuzz_roundtrip`: the scanner accepted a verbatim tag
-//! whose bracketed content held DEL, NULs and a tab
-//! (`!<\x7f\0\0\0\0\0\0\t>` …), and the emitter reproduced those
-//! bytes raw — producing YAML that no longer parses ("stray content
-//! after document"). The spec's `c-verbatim-tag` is
-//! `"!" "<" ns-uri-char+ ">"`: URI characters only, one or more.
-//! The scanner now rejects control characters in verbatim tags and
-//! shorthand suffixes, and refuses the empty `!<>`.
+//! Reject raw controls in directive fields and unrepresentable tag URIs.
+//! Preserve accepted custom tags through serialization, including names
+//! resembling built-ins.
 
 // SPDX-License-Identifier: MIT OR Apache-2.0
 // Copyright (c) 2026 Noyalib. All rights reserved.
@@ -18,6 +11,7 @@ use noyalib::Value;
 fn refused(input: &str) {
     let r: Result<Value, _> = noyalib::from_str(input);
     assert!(r.is_err(), "{input:?} must be rejected, got {r:?}");
+    assert!(noyalib::cst::parse_document(input).is_err(), "{input:?}");
 }
 
 #[test]
@@ -44,6 +38,42 @@ fn shorthand_tag_with_control_characters_is_rejected() {
 }
 
 #[test]
+fn tag_directive_prefixes_must_be_representable() {
+    refused("%TAG ! tag:example:>\n---\n!x v\n");
+    refused("%TAG !e! tag:example:>\n---\n!e!x v\n");
+}
+
+#[test]
+fn empty_resolved_tag_uris_are_rejected() {
+    refused("%TAG !! \n---\n!! x\n");
+    refused("%TAG !e! \n---\n!e! x\n");
+}
+
+#[test]
+fn directive_fields_reject_raw_controls() {
+    for byte in (0u8..32).filter(|b| !matches!(b, 9 | 10 | 13)).chain([127]) {
+        let c = char::from(byte);
+        for line in [
+            format!("%X{c}"),
+            format!("%YAML 1.{c}"),
+            format!("%TAG !h{c}! tag:example:"),
+            format!("%TAG ! tag:exa{c}mple:"),
+        ] {
+            let source = format!("{line}\n---\nkey: value\n");
+            refused(&source);
+            let error = noyalib::from_str::<Value>(&source).unwrap_err();
+            assert_eq!(error.location().unwrap().index(), source.find(c).unwrap());
+        }
+    }
+    let source = "%TAG\t!h!\ttag:example:\t# ok\n---\nkey: !h!foo v\n";
+    assert!(noyalib::from_str::<Value>(source).is_ok());
+    assert_eq!(
+        noyalib::cst::parse_document(source).unwrap().to_string(),
+        source
+    );
+}
+
+#[test]
 fn ordinary_tags_still_parse() {
     let v: Value = noyalib::from_str("!<tag:example.com,2026:x> v").unwrap();
     assert!(matches!(v, Value::Tagged(_)));
@@ -55,13 +85,35 @@ fn ordinary_tags_still_parse() {
 
 #[test]
 fn accepted_tags_round_trip_through_emit() {
-    for src in ["!<tag:example.com,2026:x> v\n", "!custom v\n", "!!str 42\n"] {
+    for src in [
+        "!<tag:example.com,2026:x> v\n",
+        "!custom v\n",
+        "!!str 42\n",
+        "!<!!str> 7\n",
+        "!<!!int> x\n",
+        "!<!!bool> x\n",
+        "!<!!float> x\n",
+        "!<!!null> x\n",
+        "!<!!seq> [1]\n",
+        "!<!!map> {a: 1}\n",
+        "%TAG !e! tag:example:%3E\n---\n!e!x v\n",
+    ] {
         let v: Value = noyalib::from_str(src).unwrap();
         let emitted = noyalib::to_string(&v).unwrap();
         let back: Value = noyalib::from_str(&emitted)
             .unwrap_or_else(|e| panic!("emit of {src:?} must re-parse: {e} ({emitted:?})"));
         assert_eq!(v, back, "{src:?}");
     }
+}
+
+#[test]
+fn empty_secondary_looking_uri_keeps_verbatim_spelling() {
+    let value: Value = noyalib::from_str("!<!!> x\n").unwrap();
+    let emitted = noyalib::to_string(&value).unwrap();
+    assert!(
+        emitted.contains("!<!!>"),
+        "a secondary shorthand needs a suffix: {emitted:?}"
+    );
 }
 
 #[test]

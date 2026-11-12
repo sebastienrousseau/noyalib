@@ -861,12 +861,21 @@ fn write_tag_spelling(output: &mut String, tag_str: &str) {
         .or_else(|| tag_str.strip_prefix('!'));
     // A body starting with `<` would turn the shorthand into the
     // verbatim opener `!<` itself.
-    let needs_verbatim = shorthand_body.is_some_and(|body| {
-        body.starts_with('<')
-            || body
-                .bytes()
-                .any(|b| matches!(b, b',' | b'[' | b']' | b'{' | b'}' | b'!' | b' ' | b'\t'))
+    // A custom URI such as `!!str` must not become a built-in tag.
+    let core_looking_uri = shorthand_body.is_some_and(|body| {
+        matches!(
+            body,
+            "str" | "int" | "float" | "bool" | "null" | "seq" | "map"
+        )
     });
+    let needs_verbatim = core_looking_uri
+        || tag_str == "!!"
+        || shorthand_body.is_some_and(|body| {
+            body.starts_with('<')
+                || body
+                    .bytes()
+                    .any(|b| matches!(b, b',' | b'[' | b']' | b'{' | b'}' | b'!' | b' ' | b'\t'))
+        });
     match shorthand_body {
         // A tag a `%TAG` directive resolved is held as a bare URI with
         // no `!`. Written as it stands it is not a tag at all, and the

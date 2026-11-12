@@ -96,3 +96,25 @@ fn verbatim_local_tags_ignore_primary_handle_overrides() {
         "tag:example:foo"
     );
 }
+
+#[test]
+fn nonspecific_tags_ignore_primary_handle_overrides() {
+    for prefix in ["tag:example:", ""] {
+        for body in ["12", "en<afoo=:=:>", ""] {
+            let source = format!("%TAG ! {prefix}\n---\n! {body}\n");
+            assert_eq!(tag_of(&source), "!");
+            let (before, after) = round_trip(&source);
+            assert_eq!(before, after);
+        }
+    }
+}
+
+#[test]
+fn verbatim_local_builtin_names_remain_custom_tags() {
+    for name in ["str", "int", "float", "bool", "null", "seq", "map"] {
+        let source = format!("!<!{name}> x\n");
+        assert_eq!(tag_of(&source), format!("!{name}"));
+        let (before, after) = round_trip(&source);
+        assert_eq!(before, after);
+    }
+}

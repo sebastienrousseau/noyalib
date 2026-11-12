@@ -31,6 +31,14 @@ length after scanning, including EOF. Alias names share the same helper.
 Resolve directives only for shorthand tags. A verbatim URI retains its
 written identity even when `%TAG !` redefines the primary handle; an
 unused directive prefix consumes none of that verbatim URI's budget.
+The non-specific `!` tag also ignores primary-handle redefinitions.
+Reject empty expanded URIs and active prefixes containing an unspellable
+`>` character. Validate control bytes across the whole directive line,
+including fields consumed before trailing trivia is processed.
+
+Keep local verbatim URIs outside the legacy scalar shorthand aliases.
+Serialization must retain their identity when a local URI resembles a
+built-in name, such as `!str` or `!!str`.
 
 Keep the current tag character grammar, diagnostics, public configuration,
 MSRV and feature declarations. Record the smaller acceptance set as a
