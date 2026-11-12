@@ -104,3 +104,30 @@ fn stream_suffix_repair_preserves_content_and_real_document_boundaries() {
         );
     }
 }
+
+#[test]
+fn compact_omitted_keys_preserve_complete_oracle_comparison() {
+    for (source, expected) in [
+        ("- :", "- \"\":"),
+        ("- : value\n", "- \"\": value\n"),
+        ("- - : value\n", "- - \"\": value\n"),
+        ("- # keep\n  : value\n", "- # keep\n  \"\": value\n"),
+        ("- :\n- normal\n", "- \"\":\n- normal\n"),
+    ] {
+        let before: serde_json::Value = noyalib::compat::serde_yaml::from_str(source).unwrap();
+        assert!(serde_yaml::from_str::<serde_json::Value>(source).is_err());
+        let normalized =
+            normalization::collection_spelling(source).expect("compact empty key spelling");
+        assert_eq!(normalized, expected);
+        let after: serde_json::Value = noyalib::compat::serde_yaml::from_str(&normalized).unwrap();
+        let oracle: serde_json::Value = serde_yaml::from_str(&normalized).unwrap();
+        assert_eq!(before, after);
+        assert_eq!(before, oracle);
+    }
+    for source in ["- key: value\n", "- ':'\n", "- \":\"\n", "|\n  - :\n"] {
+        assert!(
+            normalization::collection_spelling(source).is_none(),
+            "{source:?}"
+        );
+    }
+}
