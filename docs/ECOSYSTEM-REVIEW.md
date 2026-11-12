@@ -28,6 +28,7 @@ is explicit in the implementation record.
 | [MCP boundary record](ecosystem-mcp-boundaries-2026-11-11.json) | Deterministic session-cap failure and correction, full 132-test battery and four real-server example scenarios |
 | [MCP lifecycle record](ecosystem-mcp-lifecycle-2026-11-11.json) | Job-owned blocking permits, 135-test battery, Rust 1.89, state fuzzer smoke and Windows CI correction; exact hosted and later source scopes are separate |
 | [Protocol/recovery follow-up](ecosystem-protocol-recovery-2026-11-11.json) | LSP framing red/green, lone-CR oracle regression, candidate runner correction and signed detached recovery with its failed immutable-core edit replay |
+| [Name bounds and SDK capacity](ecosystem-name-bounds-2026-11-12.json) | Tag/anchor boundary red/green, exact scanner hashes, std/alloc/portable batteries, reduced complexity and actual SDK shared-budget fault injection |
 | [Performance observations](ecosystem-performance-2026-11-11.json) | Seventy scenarios repeated three times, raw variance, cold consumers and signed-source resource outcomes; no dedicated-host latency claim |
 | PR #521 checks | Exact hosted core/candidate sources, platform and toolchain results; inspect each conditional skip separately |
 | Candidate artifacts | Per-product source receipts and runtime reports; local paths are retained evidence locations, not public download claims |
@@ -41,11 +42,15 @@ are retained with this packet. Check their archive and member digests
 against the corresponding JSON record. Installer action source is linked
 by immutable upstream refs rather than copied into the evidence archive.
 
-The latest production core is `a57b7198669e41fe3034db4e44f2e274baf96388`.
-Later oracle-only repairs preserve its production source and Cargo inputs.
-Full batteries at that production checkpoint pass 6,748 std, 6,726 baseline
+The earlier production checkpoint is
+`a57b7198669e41fe3034db4e44f2e274baf96388`. The BOM and line-break oracle
+repairs preserve its production source and Cargo inputs. The later name-bound
+correction changes the shared scanner; review its evidence separately.
+Full batteries at the earlier production checkpoint pass 6,748 std, 6,726 baseline
 alloc and 7,067 portable tests. All twelve isolated stable/MSRV bare-metal
-checks pass. The exact later test-source scope is recorded separately.
+checks pass. The final name-bound scanner passes 6,751 std, 6,732 alloc
+and 7,073 portable tests, twelve bare-metal checks and both sanitizer replay
+profiles. The exact source and later test scope are recorded in the new receipt.
 
 ## Review boundaries
 
@@ -53,6 +58,12 @@ Review the scanner continuation prefix and formatter repair together:
 tabs before required spaces are refused on content lines; blank/comment
 lines and tabs after required indentation retain their behavior. Check
 LF, CRLF and lone CR and formatter idempotence without expanding refusals.
+
+Review [complete name bounds](adr/0020-enforce-complete-name-bounds.md):
+tag accounting includes directive expansion, the stored default handle
+and suffix; anchor accounting includes EOF. Exactly 1,024 bytes remain
+accepted across Value, typed and CST consumers. Keep the tag character
+grammar and unknown-handle rejection intact.
 
 Review typed key spelling separately from canonical duplicate identity.
 Trimming trailing separation restores surviving written keys; it cannot

@@ -78,6 +78,12 @@ job-lifetime, session-state and corrected Windows evidence. The current
 The [protocol/recovery follow-up](ecosystem-protocol-recovery-2026-11-11.json)
 retains the LSP framing and lone-CR oracle corrections, candidate runner
 repair and signed detached recovery, including its failed core edit gate.
+The [name-bound and SDK receipt](ecosystem-name-bounds-2026-11-12.json)
+records the resolved-tag/EOF-anchor correction, reduced scanner complexity
+and a real SDK shared-budget fault injection. Final std, alloc, portable,
+bare-metal and sanitizer replay gates pass; sustained campaigns still need
+the corrected source. MCP's added integration test passes with its full
+136-test battery and leaves production dependencies unchanged.
 The [review packet](ECOSYSTEM-REVIEW.md) gives the source scopes, review
 boundaries and concrete decisions without implying approval.
 

@@ -479,8 +479,10 @@ execution path is stopped. The family workflow now accepts only the
 `full-fuzz` label event on a PR, checks out its exact head, and keeps all
 untrusted execution in the PR cache scope. The Security workflow's original
 dispatch and scheduled behavior is restored. No alert is dismissed and
-no suppression is added. A closing CodeQL scan is required before claiming
-these alerts are closed. Partial and unstarted campaigns receive no
+no suppression is added. The closing branch CodeQL run
+[43129554384](https://github.com/sebastienrousseau/noyalib/actions/runs/43129554384)
+completed successfully on `17d064f`; the branch's open-alert query returned
+an empty list on 2026-11-12. Partial and unstarted campaigns receive no
 one-hour credit; completed local receipts retain their exact sources.
 
 ## BOM oracle scope, 2026-11-12
@@ -502,8 +504,51 @@ regression inputs pass. The shared classifier and test harnesses live in
 private fuzz crates, keeping the published package and production bytes
 unchanged. Candidate CI runs both unit-test profiles separately.
 This replay repairs an oracle finding; a new sustained campaign remains
-required. The duplicate-key policy and later long-tag round-trip finding
-remain separate open work.
+required. The duplicate-key policy remains separate open work.
+
+## Complete name bounds, 2026-11-12
+
+The 1,056-byte roundtrip finding
+`crash-3eee8e14d8486eecc2c0280af136869ea275d727` exposed inconsistent
+tag accounting. A secondary tag parsed with a 1,027-byte stored URI,
+but its emitted verbatim spelling failed to reparse. The scanner now
+checks the resolved handle and suffix before cloning a declared prefix.
+A sibling anchor-name check covers the final byte at EOF.
+
+Both new boundary tests failed before the correction because all three
+consumers accepted 1,025 bytes. The focused std run now passes 35 tests,
+including exact-limit and oversized ASCII/UTF-8 names, primary, secondary,
+verbatim and declared-prefix tags, and accepted-value roundtrips.
+The original input is retained in both fuzz regression corpora. The
+[proposed ADR](adr/0020-enforce-complete-name-bounds.md) records the smaller
+acceptance set. A separate extraction moves the resolution body unchanged
+into a private helper and reduces its recorded function size from 134 to
+120 lines, with no ceiling increase.
+
+The final scanner passes 6,751 std, 6,732 baseline alloc and 7,073 portable
+tests, with no failures or ignored tests in those batteries. All twelve
+stable/MSRV bare-metal combinations pass. AddressSanitizer replays pass
+all ten std and two alloc-only roundtrip regression inputs. The authoritative
+package gate passes at 1,319,928 bytes against the unchanged 1,320,000-byte
+ceiling. These are local checks, not sustained-campaign or release approval.
+The [receipt and raw archive](ecosystem-name-bounds-2026-11-12.json) retain
+the exact sources, failures and final verification scopes.
+
+## MCP shared blocking capacity, 2026-11-12
+
+Signed MCP `26af763` adds a real SDK integration test without changing
+production code or dependencies. It holds the runtime's blocking pool,
+queues 64 timed-out calls across two independent handlers and requires
+the next call to report the shared busy limit. After the pool drains,
+a fresh handler must return the expected parsed document.
+
+A temporary per-call semaphore fault made that shared-capacity assertion
+fail. The production file was restored byte-for-byte; all 136 native tests,
+strict clippy, deny, vet and hygiene gates pass. Hosted
+[Inspector run 43134279149](https://github.com/sebastienrousseau/noyalib-mcp/actions/runs/43134279149)
+also passes. The candidate manifest pins the signed test commit. The same
+[receipt](ecosystem-name-bounds-2026-11-12.json) separates this SDK evidence
+from the later core scanner verification.
 
 ## Implementation and acceptance
 
