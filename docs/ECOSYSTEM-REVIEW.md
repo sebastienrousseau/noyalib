@@ -30,6 +30,7 @@ is explicit in the implementation record.
 | [Protocol/recovery follow-up](ecosystem-protocol-recovery-2026-11-11.json) | LSP framing red/green, lone-CR oracle regression, candidate runner correction and signed detached recovery with its failed immutable-core edit replay |
 | [Name bounds and SDK capacity](ecosystem-name-bounds-2026-11-12.json) | Tag/anchor boundary red/green, exact scanner hashes, std/alloc/portable batteries, reduced complexity and actual SDK shared-budget fault injection |
 | [Verbatim identity follow-up](ecosystem-verbatim-tags-2026-11-12.json) | Primary-handle override red/green, final scanner checks, interrupted obsolete-source campaigns and distinct browser-startup CI evidence |
+| [Directive/tag follow-up](ecosystem-directive-roundtrip-2026-11-12.json) | Two further failed campaigns, complete directive validation, literal tag identity, exact-source battery and sanitizer replay; no sustained acceptance credit |
 | [Performance observations](ecosystem-performance-2026-11-11.json) | Seventy scenarios repeated three times, raw variance, cold consumers and signed-source resource outcomes; no dedicated-host latency claim |
 | PR #521 checks | Exact hosted core/candidate sources, platform and toolchain results; inspect each conditional skip separately |
 | Candidate artifacts | Per-product source receipts and runtime reports; local paths are retained evidence locations, not public download claims |
@@ -54,6 +55,10 @@ and 7,073 portable tests, twelve bare-metal checks and both sanitizer replay
 profiles. The subsequent literal-tag correction in `2455c64` passes 6,752
 std, 6,733 alloc and 7,074 portable tests, twelve bare-metal checks and
 eleven std plus three alloc sanitizer inputs. Each receipt identifies its source.
+The subsequent `76c5baa` checkpoint passes 6,758 std, 6,739 alloc-only and
+7,080 portable tests, all twelve bare-metal profiles and fifteen std plus
+seven alloc-only sanitizer inputs. Its two replacement campaigns remain
+pending and cover only the affected roundtrip targets.
 
 ## Review boundaries
 
@@ -69,6 +74,9 @@ accepted across Value, typed and CST consumers. Keep the tag character
 grammar and unknown-handle rejection intact.
 Verify that an overridden primary handle cannot rewrite a verbatim local
 URI or charge an unused directive prefix to its length budget.
+Check complete directive-field control validation and exact byte locations,
+non-specific tags under primary-handle overrides, empty resolved URI
+refusal and custom local names that resemble built-in tag spellings.
 
 Review typed key spelling separately from canonical duplicate identity.
 Trimming trailing separation restores surviving written keys; it cannot

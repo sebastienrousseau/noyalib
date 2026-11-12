@@ -16,6 +16,36 @@ because v0.0.61 is unpublished. All five satellites passed the Rust 1.89.0
 host build; the alloc-only core and WASM binding also built for wasm32. Published artifacts have separate
 [verification receipts](ecosystem-publication-receipts-2026-11-10.json).
 
+## Directive and tag follow-up, 2026-11-12
+
+Signed core `76c5baa` fixes two further sustained-fuzz findings from
+`2455c64`: non-specific tags consulted an overridden primary handle, and
+raw controls in consumed directive fields escaped validation. Complete
+directive validation now reports the offending byte. Empty resolved URIs
+and active prefixes containing an unrepresentable closing delimiter are
+rejected. Verbatim local names, including built-in-looking spellings and
+the literal URI `!!`, retain their identity through serialization.
+
+The [directive receipt](ecosystem-directive-roundtrip-2026-11-12.json)
+retains both original inputs, failing-first tests and the
+[raw archive](evidence/directive-roundtrip-2026-11-12.tar.gz). Current-source
+checks pass 6,758 std, 6,739 alloc-only and 7,080 portable tests, plus 590
+doctests with eight existing ignores. Strict clippy, the unchanged
+81-entry complexity budget and all twelve stable/MSRV bare-metal profiles
+pass. Sanitizer replay passes fifteen std and seven alloc-only inputs.
+The signed-source package is 1,319,930 bytes against the unchanged
+1,320,000-byte ceiling. Features, public APIs, dependencies and MSRV are
+unchanged.
+
+The two failed campaigns receive no sustained acceptance credit. New
+one-hour runs cover the two affected targets on `76c5baa`; their completion
+is still pending at this checkpoint. They do not replace final-source
+acceptance for the full 31-target family. Hosted checkpoint `e1245d4`
+passed 82 checks with ten conditional skips; these newer changes need
+their own hosted receipt. Duplicate-key policy, independent review,
+continuity, held MCP recovery and remaining platform, packaging and
+performance criteria remain open.
+
 ## Release hold
 
 MCP v0.0.60 remains signed and unpublished. The tag object is

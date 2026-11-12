@@ -93,6 +93,15 @@ are recorded separately, without claiming an established root cause.
 The [review packet](ECOSYSTEM-REVIEW.md) gives the source scopes, review
 boundaries and concrete decisions without implying approval.
 
+The [directive/tag follow-up](ecosystem-directive-roundtrip-2026-11-12.json)
+records two further failed campaigns and signed corrections in `76c5baa`.
+Full std, alloc-only and portable batteries pass 6,758, 6,739 and 7,080
+tests; twelve bare-metal profiles and both sanitizer replay profiles pass.
+The replacements cover two affected targets only and have no hour credit
+yet. Complete final-source 31-target acceptance remains required. Hosted
+checkpoint `e1245d4` passed 82 checks with ten conditional skips; the new
+corrections need their own CI results before branch promotion.
+
 ## Full family campaign execution
 
 The current inventory has 31 targets: twenty core, two CLI, two LSP, three
