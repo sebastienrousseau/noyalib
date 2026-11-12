@@ -18,6 +18,21 @@ host build; the alloc-only core and WASM binding also built for wasm32. Publishe
 
 ## Rust 1.100 and hosted consumers, 2026-11-12
 
+The next Homebrew acceptance step is implemented in the
+[package consumer](../scripts/check-cli-homebrew.py) and macOS candidate
+job. Four refusal/cleanup tests pass; removing the dangling-link guard or
+partial-install cleanup each causes the intended assertion failure.
+The real local invocation correctly retains a failed receipt and removes
+its temporary tap when Homebrew refuses the outdated Xcode installation.
+No installer guard is bypassed. Hosted installation acceptance is pending.
+
+The [Arch consumer](../scripts/check-cli-arch.py) adds a verified immutable
+build image and an offline `makepkg`/`pacman` lifecycle. Four refusal and
+cleanup tests pass; removing the archive or image-signature guard makes
+their controls fail. Local Docker storage refuses the image pull, so no
+local package-install pass is claimed. The hosted job must retain its own
+successful result before this candidate recipe gains acceptance.
+
 The [hosted follow-up](ecosystem-rust100-hosted-consumers-2026-11-12.json)
 retains the three-OS CLI recovery receipts and the 23-case six-consumer
 receipt from candidate run `43324466443`. All declared projections pass,

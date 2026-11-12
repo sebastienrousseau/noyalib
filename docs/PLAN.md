@@ -133,6 +133,23 @@ locally verified and the LSP pin is updated. Replacement hosted checks stay
 required before candidate promotion. Manager-specific installs, registry
 resolution and the other release/acceptance decisions remain open.
 
+The Homebrew consumer gate now checks the actual candidate formula through
+the package manager, both installed tools, manpages and completions, exact
+archive/binary identity, provenance and clean removal. Existing packages,
+taps and dangling command links are protected by refusal tests; a failed
+partial installation is cleaned without altering another package. The local
+host refuses installation because its Xcode is below Homebrew's minimum.
+The macOS candidate job must supply a successful receipt before this
+channel gains acceptance; public tap publication remains separate.
+
+The Arch gate verifies the official build image's signing identity and the
+published archive's provenance before running `makepkg` and `pacman` with
+container networking disabled. It checks both tools, packaged assets and
+licenses, binary identity and removal. Four negative tests cover archive,
+image, recipe and cleanup boundaries. The local Docker daemon reports a
+storage I/O error, so actual package acceptance must come from the hosted
+Linux runner. Public AUR installation and other architectures remain separate.
+
 ## Full family campaign execution
 
 The current inventory has 31 targets: twenty core, two CLI, two LSP, three
