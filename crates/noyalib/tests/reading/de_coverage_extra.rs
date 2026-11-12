@@ -1,24 +1,7 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 // Copyright (c) 2026 Noyalib. All rights reserved.
 
-//! Targeted line/region coverage for `crates/noyalib/src/de.rs`.
-//!
-//! Each test here exercises a specific uncovered branch identified
-//! by `cargo llvm-cov`:
-//!
-//! - `from_str_strict` / `from_slice_strict` / `from_reader_strict`
-//!   error paths (L903-L921).
-//! - The `Value`-fast-path inside `from_str_with_config` and
-//!   `from_value` when a policy rejects the document (L1132).
-//! - `from_reader_with_config` (L1280).
-//! - `wrap_err` span-attached error path (L1456-L1464).
-//! - `Deserializer::deserialize_*` arms that surface
-//!   `Error::TypeMismatch` (L1480, L1482, L1484, L1493-L1495, L1659,
-//!   L1692, L1694, L1748, L1864).
-//! - `ValueMapAccess::next_value_seed` missing-value error (L1983).
-//! - `VariantAccess::tuple_variant` / `struct_variant` (L2003,
-//!   L2021-L2022).
-//! - `is_binary_tag` exhaustive matching (L2136).
+//! Deserializer policy refusals, typed errors, byte payloads and enum variants.
 
 #[cfg(feature = "std")]
 use std::io::Cursor;
@@ -104,7 +87,7 @@ fn from_reader_strict_clean_succeeds() {
 }
 
 // ============================================================================
-// from_reader_with_config (L1280)
+// from_reader_with_config
 // ============================================================================
 
 #[test]
@@ -118,7 +101,7 @@ fn from_reader_with_config_typed() {
 }
 
 // ============================================================================
-// Deserializer typed methods — TypeMismatch error paths (L1480-L1484, L1493+)
+// Deserializer typed methods — TypeMismatch error paths
 // ============================================================================
 
 #[test]
@@ -178,7 +161,7 @@ fn deserializer_str_mismatch_errors() {
 }
 
 // ============================================================================
-// Deserializer for bytes / byte_buf — !!binary path & errors (L1692, L1694)
+// Deserializer for bytes / byte_buf — !!binary path & errors
 // ============================================================================
 
 #[derive(Debug, serde::Deserialize)]
@@ -247,7 +230,7 @@ fn deserialize_str_with_ignore_binary_tag_for_string_succeeds() {
 }
 
 // ============================================================================
-// deserialize_seq / deserialize_map — Tagged transparent path (L1748, L1805)
+// deserialize_seq / deserialize_map — Tagged transparent path
 // ============================================================================
 
 #[test]
@@ -287,7 +270,7 @@ fn deserialize_map_mismatch_errors() {
 }
 
 // ============================================================================
-// deserialize_enum — fall-through / errors (L1851-L1854, L1864)
+// deserialize_enum — fall-through / errors
 // ============================================================================
 
 #[derive(Debug, serde::Deserialize, PartialEq)]
@@ -376,7 +359,7 @@ fn preserve_tags_value_target_round_trip() {
 }
 
 // ============================================================================
-// VariantAccess — tuple/struct/newtype variants (L2003, L2021-L2022)
+// VariantAccess — tuple/struct/newtype variants
 // ============================================================================
 
 #[derive(Debug, serde::Deserialize, PartialEq)]
@@ -416,7 +399,7 @@ fn variant_access_struct() {
 }
 
 // ============================================================================
-// is_binary_tag — exhaustive form coverage (L2136)
+// is_binary_tag — exhaustive form coverage
 // ============================================================================
 
 #[test]
@@ -443,7 +426,7 @@ fn binary_tag_all_forms_decode() {
 
 // ============================================================================
 // wrap_err — TypeMismatch flowing through from_str_with_config (with span ctx)
-// triggers the deserialize_at branch when location is known (L1456-L1464).
+// triggers the deserialize_at branch when location is known.
 // ============================================================================
 
 #[test]
