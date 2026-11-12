@@ -507,6 +507,28 @@ impl TreeBuilder {
         Ok(())
     }
 
+    /// Omitted keys have no synthetic-key event. Their colon must open
+    /// an entry, closing any sibling that already has a value indicator.
+    fn push_value_indicator(&mut self, leaf: GreenChild) -> Result<()> {
+        let completed_entry = self.stack.last().is_some_and(|frame| {
+            frame.kind == SyntaxKind::MappingEntry
+                && frame.children.iter().any(|child| {
+                    matches!(
+                        child,
+                        GreenChild::Token {
+                            kind: SyntaxKind::ColonIndicator,
+                            ..
+                        }
+                    )
+                })
+        });
+        if self.top_kind() == SyntaxKind::BlockMapping || completed_entry {
+            self.open_entry_in(SyntaxKind::BlockMapping, SyntaxKind::MappingEntry)?;
+        }
+        self.push_leaf(leaf);
+        Ok(())
+    }
+
     fn handle_token(&mut self, tok: &RecordedToken) -> Result<()> {
         use RecordedTokenKind as R;
         use SyntaxKind as S;
@@ -523,6 +545,7 @@ impl TreeBuilder {
                 Ok(())
             }
             R::SyntheticKey => self.open_entry_in(S::BlockMapping, S::MappingEntry),
+            R::ColonIndicator => self.push_value_indicator(leaf()?),
             R::QuestionIndicator => {
                 self.open_entry_in(S::BlockMapping, S::MappingEntry)?;
                 self.push_leaf(leaf()?);

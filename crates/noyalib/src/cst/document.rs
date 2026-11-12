@@ -4635,7 +4635,10 @@ fn owned_entry_range(
     // — unless `value_end` already sits on a line boundary, which happens
     // only for a keep-chomped scalar whose kept blank lines end there.
     // Extending then would swallow the following entry's first line.
-    let end = if value_end > 0 && bytes[value_end - 1] == b'\n' {
+    let end = if value_end > entry_start
+        && (bytes[value_end - 1] == b'\n'
+            || (bytes[value_end - 1] == b'\r' && bytes.get(value_end) != Some(&b'\n')))
+    {
         value_end
     } else {
         end_of_line(source, value_end)
@@ -4649,8 +4652,8 @@ fn owned_entry_range(
     // range that really is one line: an absorbed head comment or a kept
     // blank line makes the splice multi-line and sends it through the
     // re-parse guard.
-    let body = &source[start..end];
-    let multiline = body.strip_suffix('\n').unwrap_or(body).contains('\n');
+    let (body, _) = split_line_terminator(&source[start..end]);
+    let multiline = body.contains(['\r', '\n']);
     (start, end, multiline)
 }
 
@@ -4701,6 +4704,8 @@ fn split_line_terminator(text: &str) -> (&str, &str) {
         (body, "\r\n")
     } else if let Some(body) = text.strip_suffix('\n') {
         (body, "\n")
+    } else if let Some(body) = text.strip_suffix('\r') {
+        (body, "\r")
     } else {
         (text, "")
     }
@@ -6103,14 +6108,14 @@ fn respell_breaks(fragment: &str, nl: &str) -> String {
 
 /// The line break a splice at `pos` must supply for itself, if any.
 ///
-/// [`end_of_line`] returns the byte after the line's `\n`, or the end
+/// [`end_of_line`] returns the byte after the line's break, or the end
 /// of the source when the last line has no terminator. Splicing a new
 /// entry at that second position would land it on the tail of the last
 /// line (`a: 1  b: 2`), so the new text has to open with a break of its
 /// own — in the document's own spelling ([`document_break`]).
 /// Everywhere else this is empty.
 fn leading_break_for_splice(source: &str, pos: usize) -> &'static str {
-    if pos == 0 || source.as_bytes()[pos - 1] == b'\n' {
+    if pos == 0 || matches!(source.as_bytes()[pos - 1], b'\r' | b'\n') {
         ""
     } else {
         document_break(source)
@@ -6118,11 +6123,15 @@ fn leading_break_for_splice(source: &str, pos: usize) -> &'static str {
 }
 
 /// Position of the first byte of the line containing `pos`: `0`, or the
-/// byte just past the preceding `\n`. The mirror of [`end_of_line`].
+/// byte just past the preceding YAML break. CRLF stays one break.
+/// The mirror of [`end_of_line`].
 fn start_of_line(source: &str, pos: usize) -> usize {
     let bytes = source.as_bytes();
     let mut i = pos.min(bytes.len());
-    while i > 0 && bytes[i - 1] != b'\n' {
+    if bytes.get(i) == Some(&b'\n') && i > 0 && bytes[i - 1] == b'\r' {
+        i -= 1;
+    }
+    while i > 0 && !matches!(bytes[i - 1], b'\r' | b'\n') {
         i -= 1;
     }
     i
@@ -6181,11 +6190,17 @@ fn span_holds_keep_chomped_header(source: &str, start: usize, end: usize) -> boo
 
 fn end_of_line(source: &str, pos: usize) -> usize {
     let bytes = source.as_bytes();
-    let mut i = pos;
-    while i < bytes.len() && bytes[i] != b'\n' {
+    let mut i = pos.min(bytes.len());
+    while i < bytes.len() && !matches!(bytes[i], b'\r' | b'\n') {
         i += 1;
     }
-    if i < bytes.len() { i + 1 } else { i }
+    if bytes.get(i) == Some(&b'\r') && bytes.get(i + 1) == Some(&b'\n') {
+        i + 2
+    } else if i < bytes.len() {
+        i + 1
+    } else {
+        i
+    }
 }
 
 /// [`locate_preceding_dash`] for an implicit-null item, which owns no
@@ -6204,6 +6219,8 @@ fn locate_dash_at_or_across_break(source: &str, value_start: usize) -> Option<us
         if i > 0 && bytes[i - 1] == b'\r' {
             i -= 1;
         }
+    } else if i > 0 && bytes[i - 1] == b'\r' {
+        i -= 1;
     }
     locate_preceding_dash(source, i)
 }
@@ -6677,10 +6694,7 @@ fn key_column(source: &str, line_start: usize) -> usize {
 /// returns 2.
 fn entry_indent_column(source: &str, pos: usize) -> usize {
     let bytes = source.as_bytes();
-    let mut line_start = pos.min(bytes.len());
-    while line_start > 0 && bytes[line_start - 1] != b'\n' {
-        line_start -= 1;
-    }
+    let line_start = start_of_line(source, pos);
     let mut col = line_start;
     while col < bytes.len() && (bytes[col] == b' ' || bytes[col] == b'\t') {
         col += 1;
@@ -7042,6 +7056,24 @@ mod absorb_emptied_line_tests {
         let (s, e) = span(src, "a: 1");
         let (rs, re) = flow_member_range(src, s, e);
         assert_eq!(&src[rs..re], "a: 1, ", "member plus one separator, no line");
+    }
+
+    #[test]
+    fn line_helpers_keep_every_yaml_break_atomic() {
+        for ending in ["\n", "\r", "\r\n"] {
+            let source = format!("one{ending}two{ending}");
+            let boundary = 3 + ending.len();
+            for position in 0..boundary {
+                assert_eq!(start_of_line(&source, position), 0);
+                assert_eq!(end_of_line(&source, position), boundary);
+            }
+            for position in boundary..source.len() {
+                assert_eq!(start_of_line(&source, position), boundary);
+                assert_eq!(end_of_line(&source, position), source.len());
+            }
+            assert_eq!(start_of_line(&source, source.len()), source.len());
+            assert_eq!(end_of_line(&source, source.len()), source.len());
+        }
     }
 
     #[test]

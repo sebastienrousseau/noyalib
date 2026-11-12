@@ -59,6 +59,12 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Fixed
 
+- Preserve omitted-key mapping entries as distinct CST nodes. Removing
+  the preceding key now retains the omitted-key sibling across LF, CRLF
+  and lone-CR documents.
+- Respect all YAML line breaks when calculating CST removal ranges. Keep
+  CRLF atomic and retain neighboring entries when removing a later empty
+  sequence item.
 - Preserve a terminal block scalar's missing line break during formatting,
   including literal and folded scalars with comments and explicit indentation.
 - Run the complete hosted test battery with std disabled. Use the alloc map

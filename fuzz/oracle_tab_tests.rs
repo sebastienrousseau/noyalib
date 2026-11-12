@@ -196,3 +196,25 @@ fn zero_indented_root_blocks_keep_complete_oracle_values() {
         assert_eq!(before, oracle);
     }
 }
+
+#[test]
+fn omitted_block_keys_after_cr_keep_every_mapping_field() {
+    let original = include_str!(
+        "regressions/fuzz_serde_yaml_compat/crash-cc5a12551f3f61926ab1f7851d19b8f177792f50"
+    );
+    for source in [original, "a: 1\r: value\n", ": value\n"] {
+        let before: serde_json::Value = noyalib::compat::serde_yaml::from_str(source).unwrap();
+        assert!(serde_yaml::from_str::<serde_json::Value>(source).is_err());
+        let normalized = normalization::collection_spelling(source).expect("omitted block key");
+        let after: serde_json::Value = noyalib::compat::serde_yaml::from_str(&normalized).unwrap();
+        let oracle: serde_json::Value = serde_yaml::from_str(&normalized).unwrap();
+        assert_eq!(before, after);
+        assert_eq!(before, oracle);
+    }
+    for source in ["? key\n: value\n", "{key: value}\n", "|\n  : content\n"] {
+        assert!(
+            normalization::collection_spelling(source).is_none(),
+            "{source:?}"
+        );
+    }
+}

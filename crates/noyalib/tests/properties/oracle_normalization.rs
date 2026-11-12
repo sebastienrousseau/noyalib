@@ -120,25 +120,51 @@ fn spaced_stream_prefix(source: &str) -> Option<String> {
     (!replacements.is_empty()).then(|| apply_replacements(source, replacements))
 }
 
-/// Quote omitted compact block keys that the archived parser refuses.
-/// Token roles keep quoted and block-scalar content unchanged. Callers must
-/// prove the entire candidate value unchanged before comparing the oracle.
-fn quoted_compact_empty_keys(source: &str) -> Option<String> {
-    let mut previous = None;
-    let mut replacements = Vec::new();
-    for (kind, start, _) in lexical_tokens(source)? {
-        match kind {
-            SyntaxKind::Whitespace
-            | SyntaxKind::Newline
-            | SyntaxKind::Comment
-            | SyntaxKind::Bom => continue,
-            SyntaxKind::ColonIndicator if previous == Some(SyntaxKind::DashIndicator) => {
-                replacements.push((start, start, "\"\"".to_owned()));
+/// Quote omitted block keys identified by their CST entry roles. Callers
+/// must preserve the complete candidate value and compare a fresh oracle.
+fn quoted_empty_block_keys(source: &str) -> Option<String> {
+    fn walk(node: &GreenNode, offset: usize, replacements: &mut Vec<Replacement>) {
+        if node.kind() == SyntaxKind::MappingEntry {
+            let mut position = offset;
+            for child in node.children() {
+                if child.text_len() == 0
+                    || matches!(
+                        child,
+                        GreenChild::Token {
+                            kind: SyntaxKind::Whitespace
+                                | SyntaxKind::Newline
+                                | SyntaxKind::Comment
+                                | SyntaxKind::Bom,
+                            ..
+                        }
+                    )
+                {
+                    position += child.text_len();
+                    continue;
+                }
+                if matches!(
+                    child,
+                    GreenChild::Token {
+                        kind: SyntaxKind::ColonIndicator,
+                        ..
+                    }
+                ) {
+                    replacements.push((position, position, "\"\"".to_owned()));
+                }
+                break;
             }
-            _ => {}
         }
-        previous = Some(kind);
+        let mut position = offset;
+        for child in node.children() {
+            if let GreenChild::Node(node) = child {
+                walk(node, position, replacements);
+            }
+            position += child.text_len();
+        }
     }
+    let document = noyalib::cst::parse_document(source).ok()?;
+    let mut replacements = Vec::new();
+    walk(document.syntax(), 0, &mut replacements);
     (!replacements.is_empty()).then(|| apply_replacements(source, replacements))
 }
 
@@ -198,7 +224,7 @@ pub(crate) fn collection_spelling(source: &str) -> Option<String> {
     let prefix = spaced_stream_prefix(source);
     let separated = spaced_sequence_tabs(prefix.as_deref().unwrap_or(source)).or(prefix);
     let separated = spaced_empty_line_tabs(separated.as_deref().unwrap_or(source)).or(separated);
-    let quoted = quoted_compact_empty_keys(separated.as_deref().unwrap_or(source)).or(separated);
+    let quoted = quoted_empty_block_keys(separated.as_deref().unwrap_or(source)).or(separated);
     let quoted = quoted_empty_flow_keys(quoted.as_deref().unwrap_or(source)).or(quoted);
     indented_root_block(quoted.as_deref().unwrap_or(source)).or(quoted)
 }
@@ -358,7 +384,14 @@ mod tests {
 
     #[test]
     fn compact_omitted_key_repair_preserves_alloc_values() {
-        for source in ["- :", "- : value\n", "- - : value\n", "- :\n- normal\n"] {
+        for source in [
+            "- :",
+            "- : value\n",
+            "- - : value\n",
+            "- :\n- normal\n",
+            "a: 1\r: value\n",
+            ": value\n",
+        ] {
             let normalized = collection_spelling(source).expect("compact omitted key");
             let before: serde_json::Value = noyalib::from_str(source).unwrap();
             let after: serde_json::Value = noyalib::from_str(&normalized).unwrap();
