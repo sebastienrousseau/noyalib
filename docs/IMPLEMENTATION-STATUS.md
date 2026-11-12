@@ -16,6 +16,30 @@ because v0.0.61 is unpublished. All five satellites passed the Rust 1.89.0
 host build; the alloc-only core and WASM binding also built for wasm32. Published artifacts have separate
 [verification receipts](ecosystem-publication-receipts-2026-11-10.json).
 
+## Rust 1.100 and hosted consumers, 2026-11-12
+
+The [hosted follow-up](ecosystem-rust100-hosted-consumers-2026-11-12.json)
+retains the three-OS CLI recovery receipts and the 23-case six-consumer
+receipt from candidate run `43324466443`. All declared projections pass,
+including the facade's legacy profile and MCP's empty-stream distinction.
+The actual checkout is the recorded PR merge source, separate from PR head
+`ecde475`. CLI staging verifies published v0.0.60 bytes and provenance,
+refuses missing/corrupt caches, restores offline and uninstalls privately
+on Linux, macOS and Windows. Package-manager and v0.0.61 registry evidence
+remain separate.
+
+That candidate run also exposed Rust 1.100 lint changes: final benchmark
+inputs were cloned unnecessarily and an LSP test discarded a must-use
+`ExitCode`. Cargo-machete found an unused direct edge in the private fuzz
+manifest after its stale trait import was removed. The corrections pass
+strict clippy on Rust 1.100, all 76 LSP native tests, 38 private oracle tests
+and the dependency gates. No package versions, public feature declarations
+or MSRV changed. The candidate now pins signed LSP `31e2628`.
+
+Failed LSP jobs prevent acceptance of the original candidate run. Successful
+consumer jobs are scoped evidence; replacement hosted gates must pass on the corrected
+candidate. The raw archive retains the failure logs and local corrections.
+
 ## Scalar, syntax and CST follow-up, 2026-11-12
 
 The [source-bound receipt](ecosystem-profile-and-consumers-2026-11-12.json)

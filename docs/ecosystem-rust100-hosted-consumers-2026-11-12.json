@@ -1,0 +1,123 @@
+{
+  "recorded_utc": "2026-11-12T23:21:18.668450+00:00",
+  "observed_pr_head": "ecde475ee15c22c94a05ec907b4fb12a2cf53251",
+  "candidate_run": "https://github.com/sebastienrousseau/noyalib/actions/runs/43324466443",
+  "checked_out_core_merge_source": {
+    "head_sha": "0aa2aa226f6a1bd95105533e8ae15e7f09eda527",
+    "dirty": false,
+    "lockfile_sha256": "0ebb308224e3ea0cba9bcd653e7818d23122174fcac7738874754091ada9325c"
+  },
+  "lsp_correction_commit": "31e26283ecc31c39ba5a7641f74271084ca52f50",
+  "corrections": [
+    "Consume final benchmark inputs without redundant clones under Rust 1.100.",
+    "Assert the LSP transport ExitCode instead of discarding its must-use return.",
+    "Remove the unused private fuzz serde_core edge; no package versions changed.",
+    "Pin the signed LSP correction without staging local registry overrides."
+  ],
+  "local_validation": {
+    "rustc": "rustc 1.100.0 (0ef1bc386 2026-11-09)\nbinary: rustc\ncommit-hash: 0ef1bc386059596dada8fb65b50425aab2ea637a\ncommit-date: 2026-11-09\nhost: aarch64-apple-darwin\nrelease: 1.100.0\nLLVM version: 23.1.5",
+    "root_strict_clippy_exit": 0,
+    "lsp_strict_clippy_exit": 0,
+    "cargo_machete_exit": 0,
+    "fuzz_bins_check_exit": 0,
+    "private_oracle_tests_passed": 38,
+    "lsp_native_tests_passed": 76,
+    "lsp_vet_exit": 0,
+    "lsp_deny_exit": 0
+  },
+  "hosted_published_cli_native_recovery": [
+    {
+      "status": "passed",
+      "target": "aarch64-apple-darwin",
+      "version": "0.0.60",
+      "release_source": "9fdd09a177b6bf29084f0897db0d3e6823a27e96",
+      "archive_sha256": "9f3729fdf112a05569f512b980a73a1e2ad5fb4e3e7ede7c992213a31614eb89",
+      "provenance_verified": true,
+      "cache_refusals": [
+        "missing",
+        "corrupt"
+      ],
+      "private_uninstall_passed": true
+    },
+    {
+      "status": "passed",
+      "target": "x86_64-unknown-linux-musl",
+      "version": "0.0.60",
+      "release_source": "9fdd09a177b6bf29084f0897db0d3e6823a27e96",
+      "archive_sha256": "67c38e35f12d5e2512b1dab886c8db8da65e52963f80c5f6fc19000398d9e96f",
+      "provenance_verified": true,
+      "cache_refusals": [
+        "missing",
+        "corrupt"
+      ],
+      "private_uninstall_passed": true
+    },
+    {
+      "status": "passed",
+      "target": "x86_64-pc-windows-msvc",
+      "version": "0.0.60",
+      "release_source": "9fdd09a177b6bf29084f0897db0d3e6823a27e96",
+      "archive_sha256": "0883562cda108841f5bc9780d7686d9b5c18f7f944e3a7e6e280ebd746a8d0f0",
+      "provenance_verified": true,
+      "cache_refusals": [
+        "missing",
+        "corrupt"
+      ],
+      "private_uninstall_passed": true
+    }
+  ],
+  "hosted_parity": {
+    "cases": 23,
+    "unexpected_mismatches": 0,
+    "declared_contract_differences": [
+      "legacy-compatibility-profile",
+      "bom-tab-only-document"
+    ],
+    "corpus_sha256": "e52190cf5a861153331a270f1a41669786f3522e5bb27ebbd9e1ee1174e62199",
+    "sources": {
+      "noyalib": {
+        "head_sha": "0aa2aa226f6a1bd95105533e8ae15e7f09eda527",
+        "dirty": false,
+        "lockfile_sha256": "0ebb308224e3ea0cba9bcd653e7818d23122174fcac7738874754091ada9325c"
+      },
+      "noya-cli": {
+        "head_sha": "43c3fd8b6d0ae11771d1350152e04fee7e0d2c4b",
+        "dirty": true,
+        "lockfile_sha256": "ea3c6cffb17588bf2f79e5b44074bd217266ad5b1f58e580fc96b6b652f30fa6"
+      },
+      "noyalib-lsp": {
+        "head_sha": "39c93fadad841f0d0809d1234277d3da14f3b335",
+        "dirty": true,
+        "lockfile_sha256": "d3cd661f1bc9a9c9eebdf1693b7a0af8526939cb6cf254420405fd358a671e09"
+      },
+      "noyalib-mcp": {
+        "head_sha": "cfab8508fa459db13479b93c201d39827d771af1",
+        "dirty": true,
+        "lockfile_sha256": "4caf8bc7bd2d4cf6b6b1af519f2e6946eda6cc9fb1fbbbbee69fa5164a3b9f6a"
+      },
+      "noyalib-wasm": {
+        "head_sha": "a3d690d98eac9b0ac15aa7b73d1dc05c0a420759",
+        "dirty": true,
+        "lockfile_sha256": "66a310afb61e80a5e4e15db570af760b46c7b0fda6749b576fde43dd0fb477ad"
+      },
+      "noyalib-serde-yaml": {
+        "head_sha": "120f6b251e08359d431587717a4f8d0313486afb",
+        "dirty": true,
+        "lockfile_sha256": "921ffbc75daaa46f35c19c3fa4030db83188e33dc118d4897570efe1249cedfd"
+      }
+    },
+    "registry_resolution": false
+  },
+  "limits": [
+    "The observed candidate run contains failed LSP jobs; successful jobs are separate scoped receipts.",
+    "Replacement hosted checks remain required for the corrected candidate.",
+    "Native staging of published CLI v0.0.60 is separate from package-manager installation and v0.0.61 registry proof.",
+    "Full-duration final-source fuzzing, ADR-0019, independent review, continuity, held MCP recovery, other channels and controlled performance criteria remain open."
+  ],
+  "cargo100_manifest_observation": "Cargo emits a non-fatal unused-dependency warning for optional serde-saphyr; it is referenced by the feature-gated comparison benches. Its public feature and the gates remain unchanged.",
+  "archive": {
+    "path": "docs/evidence/rust100-and-hosted-consumers-2026-11-12.tar.gz",
+    "bytes": 150740,
+    "sha256": "aab68e190f69a60465c319d7a25e741ff47e4f21b4ae3376407187809422afff"
+  }
+}

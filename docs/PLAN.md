@@ -125,6 +125,14 @@ All failed campaigns retain their original source scope and receive no
 sustained acceptance credit. Complete the fresh hosted gates and resolve
 ADR-0019 before claiming a final-source family campaign pass.
 
+The [Rust 1.100/hosted follow-up](ecosystem-rust100-hosted-consumers-2026-11-12.json)
+closes the native CLI recovery OS gap and records the passing 23-case hosted
+consumer corpus, including deliberate profile/stream projections. The
+original run failed separate lint/dependency gates; their corrections are
+locally verified and the LSP pin is updated. Replacement hosted checks stay
+required before candidate promotion. Manager-specific installs, registry
+resolution and the other release/acceptance decisions remain open.
+
 ## Full family campaign execution
 
 The current inventory has 31 targets: twenty core, two CLI, two LSP, three
