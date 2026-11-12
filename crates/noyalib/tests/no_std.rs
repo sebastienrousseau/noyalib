@@ -54,6 +54,8 @@ mod plain_float_specials;
 mod query_recursive;
 #[path = "limits/require_indent.rs"]
 mod require_indent;
+#[path = "regressions/scalar_profile_parity.rs"]
+mod scalar_profile_parity;
 #[path = "values/scalar_resolution_toggles.rs"]
 mod scalar_resolution_toggles;
 #[path = "reading/scanner_panic_regressions.rs"]

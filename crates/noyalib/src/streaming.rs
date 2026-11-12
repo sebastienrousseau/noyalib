@@ -227,6 +227,9 @@ impl<'a> StreamingDeserializer<'a> {
     /// most callers pass a `&crate::ParserConfig`. Use this to tighten
     /// security limits (`max_depth`, `max_document_length`, alias
     /// expansion caps) for untrusted input.
+    /// Compatibility scalar flags require materialization and return a
+    /// fallback error here. Use [`crate::from_str_with_config`] to select
+    /// that loader automatically.
     pub fn with_config<C>(input: &'a str, config: C) -> Self
     where
         C: Into<ParseConfig>,
@@ -324,6 +327,13 @@ impl<'a> StreamingDeserializer<'a> {
     /// were loader-only, and typed targets never saw them.
     fn pull_parser_event(&mut self) -> Result<Event<'a>> {
         if !self.started {
+            if self.config.leading_zero_integer_strings
+                || self.config.legacy_binary_numbers
+                || self.config.float_overflow_strings
+                || self.config.integer_overflow_errors
+            {
+                return Err(self.fallback());
+            }
             self.started = true;
             if self.input.len() > self.config.max_document_length {
                 return Err(document_too_long(self.config.max_document_length));

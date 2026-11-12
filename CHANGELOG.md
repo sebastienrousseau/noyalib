@@ -11,6 +11,11 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Changed
 
+- **Breaking:** honor individual scalar compatibility flags for typed
+  targets through materialized parsing. Direct streaming refuses these
+  profiles instead of silently ignoring them. Integer-overflow refusal
+  also covers values below `i64::MIN`; quoted, schema-disabled and
+  compatibility leading-zero string spellings remain strings.
 - **Breaking:** preserve non-specific `!` tags under primary-handle
   redefinitions and keep verbatim local names such as `!<!str>` custom.
   Serialization retains literal names that resemble built-in tags.

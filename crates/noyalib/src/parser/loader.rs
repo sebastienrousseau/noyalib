@@ -528,13 +528,10 @@ impl<'a> Loader<'a> {
                 // is still in hand — `resolve_untagged_scalar` returns a
                 // `Value::String("<<")` for a plain and a quoted `<<` alike.
                 let is_plain_merge_candidate = matches!(style, crate::parser::ScalarStyle::Plain);
-                // serde_yaml-profile: a plain decimal integer past
-                // `u64::MAX` is refused instead of degrading to an
-                // approximate f64.
-                if self.config.integer_overflow_errors
-                    && is_plain_merge_candidate
+                // The profile refuses decimal integers outside its exact domain.
+                if is_plain_merge_candidate
                     && tag.is_none()
-                    && overflows_u64_decimal(&value)
+                    && overflows_decimal_integer(&value, self.config)
                 {
                     return Err(Error::IntegerOverflow {
                         location: Some(crate::error::Location::from_index(input, span.start)),
@@ -1249,13 +1246,10 @@ impl<'a> NoSpanLoader<'a> {
                 tag,
                 span,
             } => {
-                // serde_yaml-profile: a plain decimal integer past
-                // `u64::MAX` is refused instead of degrading to an
-                // approximate f64.
-                if self.config.integer_overflow_errors
-                    && matches!(style, crate::parser::ScalarStyle::Plain)
+                // The profile refuses decimal integers outside its exact domain.
+                if matches!(style, crate::parser::ScalarStyle::Plain)
                     && tag.is_none()
-                    && overflows_u64_decimal(&value)
+                    && overflows_decimal_integer(&value, self.config)
                 {
                     return Err(Error::IntegerOverflow {
                         location: Some(crate::error::Location::from_index(input, span.start)),
@@ -1607,10 +1601,23 @@ fn is_inf_spelling(s: &str) -> bool {
     )
 }
 
-/// A plain decimal integer (optional `+`) that does not fit `u64`.
-fn overflows_u64_decimal(s: &str) -> bool {
-    let d = s.strip_prefix('+').unwrap_or(s);
-    !d.is_empty() && d.bytes().all(|b| b.is_ascii_digit()) && d.parse::<u64>().is_err()
+/// A plain decimal integer outside the signed or unsigned 64-bit domain.
+fn overflows_decimal_integer(s: &str, config: &ParseConfig) -> bool {
+    if !config.integer_overflow_errors
+        || config.no_schema
+        || (config.leading_zero_integer_strings && is_leading_zero_decimal(s))
+    {
+        return false;
+    }
+    let digits = s.strip_prefix(['+', '-']).unwrap_or(s);
+    if digits.is_empty() || !digits.bytes().all(|b| b.is_ascii_digit()) {
+        return false;
+    }
+    if s.starts_with('-') {
+        s.parse::<i64>().is_err()
+    } else {
+        digits.parse::<u64>().is_err()
+    }
 }
 
 /// Byte offset where a span tree's node begins.
@@ -1849,7 +1856,7 @@ fn resolve_untagged_scalar(
     style: crate::parser::ScalarStyle,
     config: &ParseConfig,
 ) -> Value {
-    if style != crate::parser::ScalarStyle::Plain {
+    if style != crate::parser::ScalarStyle::Plain || config.no_schema {
         // Quoted/literal/folded scalars always resolve as strings — YAML
         // schema resolution only applies to plain scalars.
         return Value::String(value.into_owned());

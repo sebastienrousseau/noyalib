@@ -337,7 +337,7 @@ pub enum ErrorKind {
     /// Two distinct-typed YAML keys collapsed to the same string
     /// key — see [`Error::KeyCollision`].
     KeyCollision,
-    /// A plain decimal integer beyond `u64::MAX` was refused under
+    /// A plain decimal integer outside the signed or unsigned 64-bit domain was refused under
     /// [`crate::ParserConfig::integer_overflow_errors`] — see
     /// [`Error::IntegerOverflow`].
     IntegerOverflow,
@@ -635,7 +635,7 @@ pub enum Error {
     /// ```
     RepetitionLimitExceeded,
 
-    /// A plain decimal integer beyond `u64::MAX` was refused under
+    /// A plain decimal integer outside the signed or unsigned 64-bit domain was refused under
     /// [`crate::ParserConfig::integer_overflow_errors`].
     ///
     /// # Examples

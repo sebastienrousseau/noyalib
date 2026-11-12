@@ -405,7 +405,12 @@ fn render_upstream_style(
                 .as_deref()
                 .map(|p| format!("{p}: "))
                 .unwrap_or_default();
-            format!("{prefix}JSON number out of range{}", at(location))
+            let suffix = if path.is_some() {
+                at(location)
+            } else {
+                String::new()
+            };
+            format!("{prefix}JSON number out of range{suffix}")
         }
         E::ParseWithLocation { message, .. } => {
             if message.starts_with("expected a node but found Flow") {
@@ -545,7 +550,8 @@ pub mod with {
 /// `<<` merge keys stay literal entries (alias values resolved),
 /// leading-zero integers stay strings and `0b11` is 3, a literal
 /// float overflow stays a string, `u64`-range integers keep full
-/// precision and one past `u64::MAX` errors, non-scalar keys error,
+/// precision and decimal integers outside the signed/unsigned 64-bit domain
+/// error, non-scalar keys error,
 /// transitive alias expansion is budgeted exactly as upstream
 /// ("repetition limit exceeded"), and a duplicate mapping key is
 /// refused when the target is [`Value`] (`duplicate entry with key
@@ -591,6 +597,12 @@ where
     }
     let mut walk = config.clone();
     walk.merge_key_policy = crate::MergeKeyPolicy::Auto;
+    // The main parse already checked scalar semantics; this walk only
+    // asks Serde whether a struct field was repeated.
+    walk.leading_zero_integer_strings = false;
+    walk.legacy_binary_numbers = false;
+    walk.float_overflow_strings = false;
+    walk.integer_overflow_errors = false;
     match crate::streaming::from_str_streaming::<T>(s, &walk) {
         Some(Err(e)) if e.to_string().contains("duplicate field `") => Some(e),
         _ => None,

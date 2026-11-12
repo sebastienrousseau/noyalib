@@ -41,3 +41,22 @@ fn bom_tab_repair_preserves_scalar_content_and_nonempty_lines() {
         );
     }
 }
+
+#[test]
+fn decimal_underflow_json_errors_match_the_archive() {
+    for source in [
+        "-9223372036854775809\n",
+        "a: -9223372036854778508\n",
+        "outer:\n  a: -9223372036854778508\n",
+    ] {
+        let actual =
+            noyalib::compat::serde_yaml::from_str::<serde_json::Value>(source).unwrap_err();
+        let expected = serde_yaml::from_str::<serde_json::Value>(source).unwrap_err();
+        assert_eq!(actual.to_string(), expected.to_string());
+        let actual = actual.location().map(|p| (p.line(), p.column(), p.index()));
+        let expected = expected
+            .location()
+            .map(|p| (p.line(), p.column(), p.index()));
+        assert_eq!(actual, expected);
+    }
+}
