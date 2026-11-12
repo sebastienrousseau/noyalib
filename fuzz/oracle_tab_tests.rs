@@ -162,3 +162,17 @@ fn repeated_block_scalar_indicators_match_archive_rejection() {
         );
     }
 }
+
+#[test]
+fn bom_prefix_tab_separation_keeps_complete_oracle_values() {
+    for source in ["\u{feff}\tC", "\u{feff}\t'quoted'\n", "\u{feff}\t{a: b}\n"] {
+        let before: serde_json::Value = noyalib::compat::serde_yaml::from_str(source).unwrap();
+        assert!(serde_yaml::from_str::<serde_json::Value>(source).is_err());
+        let normalized = normalization::collection_spelling(source).expect("prefix tab separation");
+        assert_eq!(normalized, source.replace('\t', " "));
+        let after: serde_json::Value = noyalib::compat::serde_yaml::from_str(&normalized).unwrap();
+        let oracle: serde_json::Value = serde_yaml::from_str(&normalized).unwrap();
+        assert_eq!(before, after);
+        assert_eq!(before, oracle);
+    }
+}

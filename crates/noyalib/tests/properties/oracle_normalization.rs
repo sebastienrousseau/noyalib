@@ -99,17 +99,20 @@ fn spaced_empty_line_tabs(source: &str) -> Option<String> {
     (!replacements.is_empty()).then(|| apply_replacements(source, replacements))
 }
 
-/// YAML 1.2.2 section 9.2 permits stream suffixes before any document.
-/// Libyaml refuses them. Replace only those prefix tokens with whitespace;
+/// YAML 1.2.2 sections 6.2 and 9.2 permit prefix tab separation and suffixes.
+/// Libyaml refuses some such prefixes. Repair only those leading tokens;
 /// callers still require full candidate-value preservation and oracle agreement.
-fn spaced_leading_stream_suffixes(source: &str) -> Option<String> {
+fn spaced_stream_prefix(source: &str) -> Option<String> {
     let mut replacements = Vec::new();
     for (kind, start, end) in lexical_tokens(source)? {
         match kind {
-            SyntaxKind::Whitespace
-            | SyntaxKind::Newline
-            | SyntaxKind::Comment
-            | SyntaxKind::Bom => {}
+            SyntaxKind::Whitespace => {
+                let text = source.get(start..end)?;
+                if text.contains('\t') {
+                    replacements.push((start, end, text.replace('\t', " ")));
+                }
+            }
+            SyntaxKind::Newline | SyntaxKind::Comment | SyntaxKind::Bom => {}
             SyntaxKind::DocEnd => replacements.push((start, end, " ".repeat(end - start))),
             _ => break,
         }
@@ -142,8 +145,8 @@ fn quoted_compact_empty_keys(source: &str) -> Option<String> {
 /// Compose the proven stream-prefix, separation and collection spelling repairs.
 #[allow(dead_code)]
 pub(crate) fn collection_spelling(source: &str) -> Option<String> {
-    let suffixes = spaced_leading_stream_suffixes(source);
-    let separated = spaced_sequence_tabs(suffixes.as_deref().unwrap_or(source)).or(suffixes);
+    let prefix = spaced_stream_prefix(source);
+    let separated = spaced_sequence_tabs(prefix.as_deref().unwrap_or(source)).or(prefix);
     let separated = spaced_empty_line_tabs(separated.as_deref().unwrap_or(source)).or(separated);
     let quoted = quoted_compact_empty_keys(separated.as_deref().unwrap_or(source)).or(separated);
     quoted_empty_flow_keys(quoted.as_deref().unwrap_or(source)).or(quoted)
@@ -423,8 +426,11 @@ mod tests {
     }
 
     #[test]
-    fn empty_line_tab_separation_preserves_the_complete_value() {
+    fn prefix_and_empty_line_tabs_preserve_the_complete_value() {
         for source in [
+            "\u{feff}\tC",
+            "\u{feff}\t'quoted'\n",
+            "\u{feff}\t{a: b}\n",
             "- /\r\t\t",
             "- /\n\t\t",
             "- /\r\n\t\t",
