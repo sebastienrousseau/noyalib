@@ -99,6 +99,19 @@ jobs:
         if: matrix.product.repo == 'noyalib-mcp'
         working-directory: product
         run: python scripts/tests/test_example_clients.py
+      - name: Check CLI distribution recipe sources
+        if: matrix.product.repo == 'noya-cli'
+        working-directory: product
+        run: |
+          python scripts/check-distribution-recipes.py
+          python scripts/tests/test_distribution_recipes.py
+          python scripts/tests/test_distribution_consumer.py
+      - name: Exercise the published CLI native installation and recovery
+        if: matrix.product.repo == 'noya-cli'
+        working-directory: product
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python scripts/check-distribution-consumer.py --provenance --output "$RUNNER_TEMP/candidate-cli-release"
       - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8
         with:
           toolchain: '1.89.0'
@@ -114,7 +127,11 @@ jobs:
         if: always()
         with:
           name: candidate-${{ matrix.product.repo }}-${{ matrix.os }}
-          path: candidate-receipt.json
+          path: |
+            candidate-receipt.json
+            ${{ runner.temp }}/candidate-cli-release/receipt.json
+            ${{ runner.temp }}/candidate-cli-release/provenance.json
+            ${{ runner.temp }}/candidate-cli-release/provenance.stderr
           if-no-files-found: error
 
   oracle-tests:
