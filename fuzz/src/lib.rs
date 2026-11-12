@@ -8,3 +8,7 @@
 #[cfg(test)]
 #[path = "../bom_classification.rs"]
 mod bom_classification;
+
+#[cfg(test)]
+#[path = "../oracle_tab_tests.rs"]
+mod oracle_tab_tests;

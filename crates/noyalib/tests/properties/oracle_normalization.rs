@@ -78,6 +78,11 @@ fn spaced_empty_line_tabs(source: &str) -> Option<String> {
             let body = line.trim_end_matches(['\n', '\r']);
             let end = offset + body.len();
             let line_start = source[..offset].rfind(['\n', '\r']).map_or(0, |i| i + 1);
+            let line_start = if line_start == 0 && source.starts_with('\u{feff}') {
+                '\u{feff}'.len_utf8()
+            } else {
+                line_start
+            };
             let line_end = source[end..]
                 .find(['\n', '\r'])
                 .map_or(source.len(), |i| end + i);
