@@ -1,10 +1,7 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 // Copyright (c) 2026 Noyalib. All rights reserved.
 
-//! Final coverage sweep — targets the last clusters of uncovered lines
-//! across `de.rs`, `ser.rs`, `streaming.rs`, `value.rs`, and the `with`
-//! helpers. Many paths can only be reached via `Spanned<T>` (forces the
-//! AST) or through less-common type combinations.
+//! Spanned, typed and dynamic value conversion and serialization regressions.
 
 #![allow(clippy::approx_constant, clippy::bool_assert_comparison)]
 

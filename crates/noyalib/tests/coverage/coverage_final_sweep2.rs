@@ -1,9 +1,7 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 // Copyright (c) 2026 Noyalib. All rights reserved.
 
-//! Second coverage sweep — targets the last residual clusters of
-//! uncovered lines in `streaming.rs`, `de.rs`, `error.rs`, and a few
-//! `with/*` modules.
+//! Streaming aliases, typed deserialization errors and serialization wrappers.
 
 #![allow(
     clippy::approx_constant,
