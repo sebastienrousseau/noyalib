@@ -1,9 +1,7 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 // Copyright (c) 2026 Noyalib. All rights reserved.
 
-//! Coverage for the lenient-recovery branch arms in `recovery.rs`:
-//! the zero-budget short-circuit, the Pass-2 (duplicate-key) error
-//! collection, and the line-truncation whitespace-candidate skip.
+//! Recovery budgets, duplicate errors and blank-line candidates.
 
 #![cfg(feature = "recovery")]
 #![allow(missing_docs)]

@@ -1,9 +1,7 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 // Copyright (c) 2026 Noyalib. All rights reserved.
 
-//! Third coverage sweep — targets the StreamingTagEnumAccess /
-//! TagVariantAccess / deserialize_enum routes that only fire for
-//! custom-tagged values going through serde's enum deserialization.
+//! Custom-tag enum deserialization through streaming and AST fallback.
 
 #![allow(
     clippy::approx_constant,
