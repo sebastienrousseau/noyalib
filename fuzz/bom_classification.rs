@@ -24,9 +24,11 @@ pub(crate) fn unquoted_content_bom_rejection(source: &str, error: &noyalib::Erro
     }
     let prefix = &source[..offset];
     let line = prefix.rsplit(['\r', '\n']).next().unwrap_or_default();
-    // A possible document prefix is not an established content position.
-    // Parsing the prefix also keeps unclosed quoted content outside the rule.
-    line.chars().any(|c| !matches!(c, ' ' | '\t' | '\u{feff}'))
+    // A stream-leading BOM must precede horizontal separation (section 9.1.1).
+    // A later document prefix remains outside this rule. Parsing the prefix
+    // also keeps unclosed quoted content outside the classifier.
+    let displaced_start = !prefix.is_empty() && prefix.bytes().all(|b| matches!(b, b' ' | b'\t'));
+    (displaced_start || line.chars().any(|c| !matches!(c, ' ' | '\t' | '\u{feff}')))
         && noyalib::cst::parse_document(prefix).is_ok()
 }
 
@@ -36,7 +38,13 @@ mod tests {
 
     #[test]
     fn unquoted_bom_oracle_difference_requires_an_actual_located_rejection() {
-        for source in ["- \u{feff}\t", "key: \u{feff}value", "- - \u{feff}leaf"] {
+        for source in [
+            "- \u{feff}\t",
+            "key: \u{feff}value",
+            "- - \u{feff}leaf",
+            " \u{feff}\tUo\t)/ ",
+            "\t\u{feff}value",
+        ] {
             let error = noyalib::from_str::<noyalib::Value>(source).unwrap_err();
             assert!(
                 unquoted_content_bom_rejection(source, &error),
