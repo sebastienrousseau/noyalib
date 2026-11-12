@@ -142,6 +142,56 @@ fn quoted_compact_empty_keys(source: &str) -> Option<String> {
     (!replacements.is_empty()).then(|| apply_replacements(source, replacements))
 }
 
+/// YAML suite FP8R permits zero-indented root block content. Give every
+/// content line one additional space for the archive, retaining relative
+/// indentation and all line breaks. Callers still compare complete values.
+fn indented_root_block(source: &str) -> Option<String> {
+    let tokens = lexical_tokens(source)?;
+    let (kind, start, end) = tokens.into_iter().find(|(kind, _, _)| {
+        !matches!(
+            kind,
+            SyntaxKind::Whitespace | SyntaxKind::Newline | SyntaxKind::Comment | SyntaxKind::Bom
+        )
+    })?;
+    if !matches!(kind, SyntaxKind::LiteralScalar | SyntaxKind::FoldedScalar) {
+        return None;
+    }
+    let text = source.get(start..end)?;
+    let header_end = text.find(['\r', '\n'])?;
+    if text[..header_end]
+        .split_whitespace()
+        .next()?
+        .bytes()
+        .any(|b| b.is_ascii_digit())
+    {
+        return None;
+    }
+    let break_len = if text[header_end..].starts_with("\r\n") {
+        2
+    } else {
+        1
+    };
+    let body_start = start + header_end + break_len;
+    let body = source.get(body_start..end)?;
+    if !body.split(['\r', '\n']).any(|line| {
+        line.as_bytes()
+            .first()
+            .is_some_and(|b| !matches!(b, b' ' | b'\t'))
+    }) {
+        return None;
+    }
+    let mut replacements = vec![(body_start, body_start, " ".to_owned())];
+    for (offset, byte) in body.bytes().enumerate() {
+        if (byte == b'\n' || (byte == b'\r' && body.as_bytes().get(offset + 1) != Some(&b'\n')))
+            && offset + 1 < body.len()
+        {
+            let position = body_start + offset + 1;
+            replacements.push((position, position, " ".to_owned()));
+        }
+    }
+    Some(apply_replacements(source, replacements))
+}
+
 /// Compose the proven stream-prefix, separation and collection spelling repairs.
 #[allow(dead_code)]
 pub(crate) fn collection_spelling(source: &str) -> Option<String> {
@@ -149,7 +199,8 @@ pub(crate) fn collection_spelling(source: &str) -> Option<String> {
     let separated = spaced_sequence_tabs(prefix.as_deref().unwrap_or(source)).or(prefix);
     let separated = spaced_empty_line_tabs(separated.as_deref().unwrap_or(source)).or(separated);
     let quoted = quoted_compact_empty_keys(separated.as_deref().unwrap_or(source)).or(separated);
-    quoted_empty_flow_keys(quoted.as_deref().unwrap_or(source)).or(quoted)
+    let quoted = quoted_empty_flow_keys(quoted.as_deref().unwrap_or(source)).or(quoted);
+    indented_root_block(quoted.as_deref().unwrap_or(source)).or(quoted)
 }
 
 /// Give each declaration a unique name only when the archive's anchor IDs
@@ -294,6 +345,16 @@ fn apply_replacements(source: &str, replacements: Vec<Replacement>) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn root_block_indentation_repair_preserves_alloc_values() {
+        for source in [">\r- 74 \t", "|\ncontent\n", ">\r\nfirst\r\nsecond\r\n"] {
+            let normalized = collection_spelling(source).expect("root block indentation");
+            let before: serde_json::Value = noyalib::from_str(source).unwrap();
+            let after: serde_json::Value = noyalib::from_str(&normalized).unwrap();
+            assert_eq!(before, after);
+        }
+    }
 
     #[test]
     fn compact_omitted_key_repair_preserves_alloc_values() {

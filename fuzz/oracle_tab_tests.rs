@@ -176,3 +176,23 @@ fn bom_prefix_tab_separation_keeps_complete_oracle_values() {
         assert_eq!(before, oracle);
     }
 }
+
+#[test]
+fn zero_indented_root_blocks_keep_complete_oracle_values() {
+    for (source, expected) in [
+        (">\r- 74 \t", ">\r - 74 \t"),
+        ("|\ncontent\n", "|\n content\n"),
+        (">\rfirst\rsecond\r", ">\r first\r second\r"),
+        (">\r\nfirst\r\nsecond\r\n", ">\r\n first\r\n second\r\n"),
+    ] {
+        let before: serde_json::Value = noyalib::compat::serde_yaml::from_str(source).unwrap();
+        assert!(serde_yaml::from_str::<serde_json::Value>(source).is_err());
+        let normalized =
+            normalization::collection_spelling(source).expect("root block indentation");
+        assert_eq!(normalized, expected);
+        let after: serde_json::Value = noyalib::compat::serde_yaml::from_str(&normalized).unwrap();
+        let oracle: serde_json::Value = serde_yaml::from_str(&normalized).unwrap();
+        assert_eq!(before, after);
+        assert_eq!(before, oracle);
+    }
+}
