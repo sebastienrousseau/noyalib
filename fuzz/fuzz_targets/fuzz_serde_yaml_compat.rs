@@ -26,6 +26,9 @@ mod oracle_normalization;
 #[path = "../bom_classification.rs"]
 mod bom_classification;
 
+#[path = "../json_numbers.rs"]
+mod json_numbers;
+
 fuzz_target!(|data: &[u8]| {
     let Ok(s) = std::str::from_utf8(data) else {
         return;
@@ -126,7 +129,7 @@ fn anchor_name_outside_libyaml(s: &str) -> bool {
 fn equivalent(a: &serde_json::Value, b: &serde_json::Value) -> bool {
     use serde_json::Value as V;
     match (a, b) {
-        (V::Number(x), V::Number(y)) => x.as_f64() == y.as_f64(),
+        (V::Number(x), V::Number(y)) => json_numbers::equal(x, y),
         (V::Array(x), V::Array(y)) => {
             x.len() == y.len() && x.iter().zip(y).all(|(p, q)| equivalent(p, q))
         }

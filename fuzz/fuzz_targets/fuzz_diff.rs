@@ -15,6 +15,12 @@ use libfuzzer_sys::fuzz_target;
 #[path = "../../crates/noyalib/tests/properties/oracle_normalization.rs"]
 mod oracle_normalization;
 
+#[path = "../json_numbers.rs"]
+mod json_numbers;
+
+#[path = "../decimal_integer.rs"]
+mod decimal_integer;
+
 fuzz_target!(|data: &[u8]| {
     let Ok(s) = std::str::from_utf8(data) else {
         return;
@@ -25,7 +31,11 @@ fuzz_target!(|data: &[u8]| {
         return;
     }
 
-    let Ok(noya) = noyalib::from_str::<serde_json::Value>(s) else {
+    // Compare the archive's complete unsigned-integer domain.
+    let mut config = noyalib::ParserConfig::default();
+    config.lossless_u64_integers = true;
+    let parse = |source: &str| noyalib::from_str_with_config::<serde_json::Value>(source, &config);
+    let Ok(noya) = parse(s) else {
         return;
     };
     let syml = match serde_yaml_ng::from_str::<serde_json::Value>(s) {
@@ -34,7 +44,7 @@ fuzz_target!(|data: &[u8]| {
             let Some(normalized) = oracle_normalization::collection_spelling(s) else {
                 return;
             };
-            let Ok(projected) = noyalib::from_str::<serde_json::Value>(&normalized) else {
+            let Ok(projected) = parse(&normalized) else {
                 return;
             };
             if !numeric_equal(&noya, &projected) {
@@ -49,10 +59,8 @@ fuzz_target!(|data: &[u8]| {
     // saphyr returns its own value type; compare via JSON to put all
     // three on the same axis.
     let Ok(Some(saph_str)) = std::panic::catch_unwind(|| {
-        match {
-            use saphyr::LoadableYamlNode as _;
-            saphyr::Yaml::load_from_str(s)
-        } {
+        use saphyr::LoadableYamlNode as _;
+        match saphyr::Yaml::load_from_str(s) {
             Ok(docs) => Some(format!("{:?}", docs)),
             Err(_) => None,
         }
@@ -65,24 +73,15 @@ fuzz_target!(|data: &[u8]| {
         && !flow_entry_starts_with_indicator(s)
         && !yaml_1_1_line_break(s)
         && !oracle_normalization::collection_spelling(s)
-            .filter(|source| {
-                noyalib::from_str::<serde_json::Value>(source)
-                    .is_ok_and(|value| numeric_equal(&noya, &value))
-            })
+            .filter(|source| parse(source).is_ok_and(|value| numeric_equal(&noya, &value)))
             .and_then(|source| serde_yaml_ng::from_str::<serde_json::Value>(&source).ok())
             .is_some_and(|expected| numeric_equal(&noya, &expected))
         && !oracle_normalization::terminated_spaced_block(s)
-            .filter(|source| {
-                noyalib::from_str::<serde_json::Value>(source)
-                    .is_ok_and(|value| numeric_equal(&noya, &value))
-            })
+            .filter(|source| parse(source).is_ok_and(|value| numeric_equal(&noya, &value)))
             .and_then(|source| serde_yaml_ng::from_str::<serde_json::Value>(&source).ok())
             .is_some_and(|expected| numeric_equal(&noya, &expected))
         && !oracle_normalization::unique_colliding_anchors(s)
-            .filter(|source| {
-                noyalib::from_str::<serde_json::Value>(source)
-                    .is_ok_and(|value| numeric_equal(&noya, &value))
-            })
+            .filter(|source| parse(source).is_ok_and(|value| numeric_equal(&noya, &value)))
             .and_then(|source| serde_yaml_ng::from_str::<serde_json::Value>(&source).ok())
             .is_some_and(|expected| numeric_equal(&noya, &expected))
     {
@@ -110,7 +109,7 @@ fuzz_target!(|data: &[u8]| {
 fn numeric_equal(a: &serde_json::Value, b: &serde_json::Value) -> bool {
     use serde_json::Value as V;
     match (a, b) {
-        (V::Number(an), V::Number(bn)) => an.as_f64() == bn.as_f64(),
+        (V::Number(an), V::Number(bn)) => json_numbers::equal(an, bn),
         (V::Array(av), V::Array(bv)) => {
             av.len() == bv.len() && av.iter().zip(bv.iter()).all(|(x, y)| numeric_equal(x, y))
         }
@@ -132,8 +131,8 @@ fn numeric_equal(a: &serde_json::Value, b: &serde_json::Value) -> bool {
         (V::Number(n), V::String(s)) | (V::String(s), V::Number(n)) if is_leading_zero_int(s) => {
             // Same digits, two readings: allowed only when the string
             // spelling parses to exactly the number the other side
-            // resolved (f64 parsing accepts the leading zeros).
-            s.parse::<f64>().ok() == n.as_f64()
+            // resolved, retaining exact integers throughout the u64 domain.
+            decimal_integer::equivalent(s, n)
         }
         // ADR-0004 keeps large radix integers as strings by default;
         // the archive always resolves the u64 range. Require exact digits.
