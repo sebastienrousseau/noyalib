@@ -97,10 +97,23 @@ The [directive/tag follow-up](ecosystem-directive-roundtrip-2026-11-12.json)
 records two further failed campaigns and signed corrections in `76c5baa`.
 Full std, alloc-only and portable batteries pass 6,758, 6,739 and 7,080
 tests; twelve bare-metal profiles and both sanitizer replay profiles pass.
-The replacements cover two affected targets only and have no hour credit
-yet. Complete final-source 31-target acceptance remains required. Hosted
+The two replacements completed 3,601 seconds each on clean signed
+`76c5baa`, with 29,784,747 std and 35,102,052 alloc-only executions. They
+cover two affected targets only. Complete final-source 31-target acceptance remains required. Hosted
 checkpoint `e1245d4` passed 82 checks with ten conditional skips; the new
 corrections need their own CI results before branch promotion.
+
+The [completed campaign record](ecosystem-family-campaign-followup-2026-11-12.json)
+retains 29 passing and two failing target receipts at checkpoint `f7e6d5c`.
+The BOM/tab comparison finding is corrected; typed canonical duplicate
+identity remains a pending decision in ADR-0019. Further compatibility
+smokes exposed scalar-profile and archive-spelling boundaries; their fixes
+and source-specific verification must precede final-source acceptance.
+CLI recipes and actual native recovery now have local macOS evidence and
+three-platform candidate jobs. MCP HTTP session deletion/disconnect has
+four additional boundary tests and observed fault-injection failures.
+Independent review, continuity, held MCP source recovery, remaining channel
+installs and controlled performance criteria remain open.
 
 ## Full family campaign execution
 

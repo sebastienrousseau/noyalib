@@ -31,6 +31,7 @@ is explicit in the implementation record.
 | [Name bounds and SDK capacity](ecosystem-name-bounds-2026-11-12.json) | Tag/anchor boundary red/green, exact scanner hashes, std/alloc/portable batteries, reduced complexity and actual SDK shared-budget fault injection |
 | [Verbatim identity follow-up](ecosystem-verbatim-tags-2026-11-12.json) | Primary-handle override red/green, final scanner checks, interrupted obsolete-source campaigns and distinct browser-startup CI evidence |
 | [Directive/tag follow-up](ecosystem-directive-roundtrip-2026-11-12.json) | Two further failed campaigns, complete directive validation, literal tag identity, exact-source battery and sanitizer replay; no sustained acceptance credit |
+| [Completed family campaigns](ecosystem-family-campaign-followup-2026-11-12.json) | All 31 hosted target receipts: 29 pass, two fail; raw logs, findings and corpus digests. Separate completed std/alloc roundtrip hours at `76c5baa`; no final-source family acceptance. |
 | [Performance observations](ecosystem-performance-2026-11-11.json) | Seventy scenarios repeated three times, raw variance, cold consumers and signed-source resource outcomes; no dedicated-host latency claim |
 | PR #521 checks | Exact hosted core/candidate sources, platform and toolchain results; inspect each conditional skip separately |
 | Candidate artifacts | Per-product source receipts and runtime reports; local paths are retained evidence locations, not public download claims |
@@ -57,8 +58,9 @@ std, 6,733 alloc and 7,074 portable tests, twelve bare-metal checks and
 eleven std plus three alloc sanitizer inputs. Each receipt identifies its source.
 The subsequent `76c5baa` checkpoint passes 6,758 std, 6,739 alloc-only and
 7,080 portable tests, all twelve bare-metal profiles and fifteen std plus
-seven alloc-only sanitizer inputs. Its two replacement campaigns remain
-pending and cover only the affected roundtrip targets.
+seven alloc-only sanitizer inputs. Its two replacement campaigns completed 3,601 seconds each, with
+29,784,747 std and 35,102,052 alloc-only executions. They cover only the two
+affected roundtrip targets and retain the original source scope.
 
 ## Review boundaries
 

@@ -16,6 +16,33 @@ because v0.0.61 is unpublished. All five satellites passed the Rust 1.89.0
 host build; the alloc-only core and WASM binding also built for wasm32. Published artifacts have separate
 [verification receipts](ecosystem-publication-receipts-2026-11-10.json).
 
+## Family campaigns and consumer follow-up, 2026-11-12
+
+The [family campaign receipt](ecosystem-family-campaign-followup-2026-11-12.json)
+retains all 32 hosted artifacts from core checkpoint `f7e6d5c`, including
+31 target receipts, raw logs, findings and per-file corpus digests in the
+[raw archive](evidence/family-campaign-followup-2026-11-12.tar.gz). Twenty-nine
+targets passed; compatibility comparison and typed duplicate identity
+failed. Full corpora remain in the recorded local directories and hosted
+artifacts with finite retention. This is historical evidence, not a
+final-source family pass.
+
+The two roundtrip replacement campaigns on clean signed `76c5baa` completed:
+29,784,747 std executions and 35,102,052 alloc-only executions, each over
+3,601 seconds. Their logs and receipts are in the same archive. They cover
+two targets on that source and do not replace all 31 final-source receipts.
+
+The candidate manifest now pins CLI `43c3fd8` and MCP `cfab8508`. MCP adds
+four actual HTTP lifecycle cases covering DELETE under three protocol
+revisions and legacy SSE disconnect. Its 140 native tests pass; injected
+session-removal faults fail the new cases. CLI recipes now reference the
+published v0.0.60 artifacts and their verified hashes. Local macOS execution
+checks authentic bytes, both binary versions, missing/corrupt-cache refusal,
+offline recovery and private uninstall. The candidate workflow adds the
+same native drill on Linux, macOS and Windows. Hosted receipts remain
+required for these newer changes. Local staging does not establish an
+actual Homebrew, Scoop, AUR or v0.0.61 registry installation.
+
 ## Directive and tag follow-up, 2026-11-12
 
 Signed core `76c5baa` fixes two further sustained-fuzz findings from
