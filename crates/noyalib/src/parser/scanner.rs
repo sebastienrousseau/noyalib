@@ -2275,10 +2275,10 @@ impl<'a> Scanner<'a> {
         self.mark = self.pos;
         self.advance(); // skip '!'
 
-        let handle: Cow<'a, str>;
-        let suffix: Cow<'a, str>;
+        let (handle, suffix): (Cow<'a, str>, Cow<'a, str>);
+        let is_verbatim = self.peek() == b'<';
 
-        if self.peek() == b'<' {
+        if is_verbatim {
             // Verbatim tag: !<...>. The spec allows `ns-uri-char+`
             // between the brackets; enforcing the character class down
             // to the URI grammar would reject benign real-world tags,
@@ -2435,17 +2435,27 @@ impl<'a> Scanner<'a> {
             ));
         }
 
-        self.emit_resolved_tag(handle, suffix)
+        self.emit_resolved_tag(handle, suffix, is_verbatim)
     }
 
-    fn emit_resolved_tag(&mut self, handle: Cow<'a, str>, suffix: Cow<'a, str>) -> ScanResult<()> {
+    fn emit_resolved_tag(
+        &mut self,
+        handle: Cow<'a, str>,
+        suffix: Cow<'a, str>,
+        is_verbatim: bool,
+    ) -> ScanResult<()> {
         // Apply any active `%TAG handle prefix` directive: replace
         // the handle with the declared URI prefix so the loader sees
         // the resolved tag (P76L spec example 6.19). Default handles
         // `!` and `!!` are always available; *named* handles
         // (`!foo!`) must be declared in a `%TAG` directive for the
         // current document — otherwise reject (QLJ7 spec example 6.21).
-        let declared_prefix = self.tag_handles.get(handle.as_ref());
+        // A verbatim URI retains its identity under handle redefinitions.
+        let declared_prefix = if is_verbatim {
+            None
+        } else {
+            self.tag_handles.get(handle.as_ref())
+        };
         if declared_prefix
             .map_or(handle.len(), String::len)
             .saturating_add(suffix.len())

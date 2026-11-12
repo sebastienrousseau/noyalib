@@ -28,6 +28,10 @@ cloning a declared prefix. Keep early scanning bounds and check the
 combined byte length with saturating addition. Check the anchor name
 length after scanning, including EOF. Alias names share the same helper.
 
+Resolve directives only for shorthand tags. A verbatim URI retains its
+written identity even when `%TAG !` redefines the primary handle; an
+unused directive prefix consumes none of that verbatim URI's budget.
+
 Keep the current tag character grammar, diagnostics, public configuration,
 MSRV and feature declarations. Record the smaller acceptance set as a
 breaking parse change in v0.0.61. Include exact-boundary ASCII and UTF-8
@@ -54,3 +58,5 @@ contract without addressing the resource-bound defect.
 - [Boundary tests](../../crates/noyalib/tests/limits/dos_hardening.rs)
 - [Std regression input](../../fuzz/regressions/fuzz_roundtrip/crash-3eee8e14d8486eecc2c0280af136869ea275d727)
 - [Alloc-only regression input](../../fuzz-nostd/regressions/fuzz_roundtrip_alloc_only/crash-3eee8e14d8486eecc2c0280af136869ea275d727)
+- [Verbatim tag regressions](../../crates/noyalib/tests/regressions/verbatim_tags.rs)
+- [YAML 1.2.2 node tags](https://yaml.org/spec/1.2.2/#691-node-tags)

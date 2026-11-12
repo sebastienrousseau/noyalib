@@ -11,6 +11,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Changed
 
+- **Breaking:** keep verbatim local tag URIs unchanged when a `%TAG !`
+  directive redefines the primary handle. Unused directive prefixes no
+  longer consume a verbatim tag's URI budget.
 - **Breaking:** enforce the existing 1,024-byte limit on the complete
   resolved tag URI and on anchor names ending at EOF. Oversized tags can
   no longer parse successfully and fail after serialization.
