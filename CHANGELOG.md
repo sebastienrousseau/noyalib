@@ -11,6 +11,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Changed
 
+- **Breaking:** reject repeated indentation or chomping indicators in
+  block scalar headers, including `>74`, `|++` and `|-+`. A header may
+  contain one indentation digit and one chomping indicator in either order.
 - **Breaking:** retain compatibility float fallback for decimal literals
   beyond the signed or unsigned 128-bit range. Integer-overflow refusal
   applies to the archive's 128-bit integer domain outside JSON's 64-bit

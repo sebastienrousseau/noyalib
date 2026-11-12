@@ -151,3 +151,14 @@ fn decimal_128_bit_boundaries_match_the_archive() {
         }
     }
 }
+
+#[test]
+fn repeated_block_scalar_indicators_match_archive_rejection() {
+    for source in [">74", "|22", "|++", ">-+", "|+-"] {
+        assert!(serde_yaml::from_str::<serde_json::Value>(source).is_err());
+        assert!(
+            noyalib::compat::serde_yaml::from_str::<serde_json::Value>(source).is_err(),
+            "{source:?}"
+        );
+    }
+}

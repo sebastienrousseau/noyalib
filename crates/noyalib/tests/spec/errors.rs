@@ -458,3 +458,69 @@ fn from_str_drains_trailing_events_to_surface_errors() {
     let r: Result<Value, _> = from_str("--- &anchor a: b\n");
     assert!(r.is_err());
 }
+
+// YAML 1.2.2 productions 162 and 163 allow at most one indentation
+// digit and one chomping indicator, in either order.
+#[test]
+fn repeated_block_scalar_indicators_are_rejected_across_paths() {
+    let mut duplicates = vec![
+        "++".to_owned(),
+        "--".to_owned(),
+        "+-".to_owned(),
+        "-+".to_owned(),
+    ];
+    for first in '1'..='9' {
+        for second in '1'..='9' {
+            duplicates.push(format!("{first}{second}"));
+        }
+    }
+    for style in ['|', '>'] {
+        for duplicate in &duplicates {
+            for prefix in ["", "a: ", "- "] {
+                for ending in ["", "\n", "\r", "\r\n"] {
+                    let source = format!("{prefix}{style}{duplicate}{ending}");
+                    let error = from_str::<Value>(&source).expect_err(&source);
+                    assert_eq!(
+                        error.location().unwrap().index(),
+                        prefix.len() + 2,
+                        "{source:?}"
+                    );
+                    assert!(
+                        from_str::<serde_json::Value>(&source).is_err(),
+                        "{source:?}"
+                    );
+                    let mut config = noyalib::ParserConfig::default();
+                    config.merge_key_policy = noyalib::MergeKeyPolicy::AsOrdinary;
+                    assert!(
+                        noyalib::from_str_with_config::<serde_json::Value>(&source, &config)
+                            .is_err(),
+                        "{source:?}"
+                    );
+                    assert!(noyalib::cst::parse_document(&source).is_err(), "{source:?}");
+                }
+            }
+        }
+    }
+}
+
+#[test]
+fn distinct_block_scalar_indicators_keep_both_orders() {
+    for style in ['|', '>'] {
+        for digit in 1..=9 {
+            for chomp in ['+', '-'] {
+                for flags in [format!("{digit}{chomp}"), format!("{chomp}{digit}")] {
+                    let source = format!("{style}{flags} # header\n{}text\n", " ".repeat(digit));
+                    let expected = if chomp == '-' { "text" } else { "text\n" };
+                    assert_eq!(from_str::<String>(&source).unwrap(), expected, "{source:?}");
+                    assert_eq!(
+                        from_str::<Value>(&source).unwrap().as_str(),
+                        Some(expected),
+                        "{source:?}"
+                    );
+                    let document = noyalib::cst::parse_document(&source).unwrap();
+                    assert_eq!(document.to_string(), source);
+                }
+            }
+        }
+    }
+}

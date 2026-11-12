@@ -135,9 +135,11 @@ impl Scanner<'_> {
                 break;
             }
             match self.peek() {
-                b'+' => chomping = 1,
-                b'-' => chomping = -1,
-                c if c.is_ascii_digit() && c != b'0' => increment = (c - b'0') as usize,
+                b'+' if chomping == 0 => chomping = 1,
+                b'-' if chomping == 0 => chomping = -1,
+                c if c.is_ascii_digit() && c != b'0' && increment == 0 => {
+                    increment = (c - b'0') as usize;
+                }
                 _ => break,
             }
             self.advance();
