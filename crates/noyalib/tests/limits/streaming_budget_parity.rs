@@ -1,23 +1,12 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 // Copyright (c) 2026 Noyalib. All rights reserved.
 
-//! Cross-path parity for every budget and policy, on every entry point.
+//! Budget and policy parity across typed, Value and public parse paths.
 //!
-//! A typed target with the default configuration is served by the
-//! streaming deserializer; a `Value` target is served by the loaders.
-//! Until v0.0.53 the streaming path never charged `max_events`,
-//! `max_nodes`, `max_total_scalar_bytes`, `max_merge_keys` or the
-//! alias ratio, so tightening any of them had no effect on the common
-//! case. The first tests here drive the same input through both paths
-//! and assert the same `BudgetBreach`.
-//!
-//! The table below generalises that: every public entry point that
-//! reads YAML text, crossed with every limit and policy, each on a
-//! hostile input built to break exactly that limit. Every cell must
-//! refuse, for the right reason. `every_public_entry_point_has_a_row`
-//! scans the crate's source for public parse functions, so an entry
-//! point added without a row (or an explicit, reasoned exemption) fails
-//! CI instead of shipping without enforcement.
+//! Before v0.0.53, streaming omitted event, node, scalar-byte, merge-key
+//! and alias-ratio charges. Inputs now pin the same `BudgetBreach`.
+//! A source inventory requires every public text parse entry point to
+//! have a tested row or an explicit exemption.
 
 #![allow(missing_docs)]
 

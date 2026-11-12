@@ -1,22 +1,10 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 // Copyright (c) 2026 Noyalib. All rights reserved.
 
-//! The serializer's outer surface, and the formatting wrappers.
+//! Serializer entry points, configuration forwarding and format wrappers.
 //!
-//! Two things go untested when a suite standardises on `to_string`.
-//!
-//! First, the entry-point family: `to_writer`, `to_fmt_writer`,
-//! `to_*_value`, `to_*_multi`, `to_*_tracking_shared`, each with and
-//! without a config. They are thin, which is exactly why a mistake in
-//! one — a dropped config, a writer never flushed — survives a suite
-//! that only ever calls the shortest one.
-//!
-//! Second, the `fmt` wrappers (`FlowSeq`, `LitStr`, `Commented`, …)
-//! serialize as private newtype tags the serializer intercepts. Each
-//! interception has a fallback for when the wrapper does not hold the
-//! shape it names — `FlowSeq` around an integer, say. Those fallbacks
-//! exist so a wrapper can never make output invalid, and nothing
-//! reached them.
+//! Exercise writer, value, stream and shared-tracking variants. Private
+//! wrapper tags retain valid fallback behavior for mismatched shapes.
 
 #![allow(missing_docs, clippy::unwrap_used, clippy::expect_used)]
 

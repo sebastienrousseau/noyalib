@@ -1,21 +1,7 @@
-//! Regression: `remove` silently deleted more than it was asked to.
+//! Flow removal preserves the parent, siblings and unrelated entries.
 //!
-//! `remove` had an unguarded fast path for single-line entries — the
-//! typed oracle only ran for multi-line ones. A flow collection puts an
-//! entry, its siblings and its parent on the same line, so "delete the
-//! line" removed the whole parent while returning `Ok`:
-//!
-//!     a: {x: 1, y: 2}   remove("a.x")   ->   ""      (whole document)
-//!
-//! v0.0.21 made the oracle run on every path, turning that silent
-//! destruction into a refusal. #221 sub-ask 4 then implemented the edit
-//! properly, so these now *succeed* — narrowly.
-//!
-//! The mechanism changed; the property under test did not. Each case
-//! still asserts that the parent, the siblings and the rest of the
-//! document survive. If the original bug ever returns, the document
-//! collapses to `""` and every one of these fails just as loudly as
-//! when they asserted a refusal.
+//! The former whole-line fast path could erase a complete flow parent.
+//! v0.0.21 refused that edit; #221 added guarded successful removal.
 
 // SPDX-License-Identifier: MIT OR Apache-2.0
 // Copyright (c) 2026 Noyalib. All rights reserved.
