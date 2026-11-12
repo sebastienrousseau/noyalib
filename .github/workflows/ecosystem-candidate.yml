@@ -240,6 +240,7 @@ jobs:
       - name: Exercise actual JS exports and the optimized installed package
         working-directory: product
         run: |
+          google-chrome --version
           node --test scripts/tests/test-browser-shutdown.mjs
           wasm-pack test --node
           wasm-pack build --release --target nodejs --out-dir pkg-node -- --locked
