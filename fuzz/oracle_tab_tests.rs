@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Noyalib
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
-//! Preserve complete comparisons when libyaml rejects BOM-prefixed trivia.
+//! Preserve complete development-oracle values and diagnostic comparisons.
 
 #[path = "../crates/noyalib/tests/properties/oracle_normalization.rs"]
 #[expect(unexpected_cfgs, reason = "shared core tests name core-only features")]
@@ -58,5 +58,49 @@ fn decimal_underflow_json_errors_match_the_archive() {
             .location()
             .map(|p| (p.line(), p.column(), p.index()));
         assert_eq!(actual, expected);
+    }
+}
+
+#[test]
+fn leading_stream_suffixes_preserve_complete_oracle_comparison() {
+    for (source, expected) in [
+        ("\n...\n---- a\n\n- b\n- c\n", "\n   \n---- a\n\n- b\n- c\n"),
+        ("...\n", "   \n"),
+        ("...\n...\nvalue\n", "   \n   \nvalue\n"),
+        ("...\n'...'\n", "   \n'...'\n"),
+        (
+            "\u{feff}# prefix\r\n...\r\nvalue\r\n",
+            "\u{feff}# prefix\r\n   \r\nvalue\r\n",
+        ),
+        ("...\rvalue\r", "   \rvalue\r"),
+    ] {
+        let before: serde_json::Value = noyalib::compat::serde_yaml::from_str(source).unwrap();
+        assert!(serde_yaml::from_str::<serde_json::Value>(source).is_err());
+        let normalized =
+            normalization::collection_spelling(source).expect("leading suffix spelling");
+        assert_eq!(normalized, expected);
+        let after: serde_json::Value = noyalib::compat::serde_yaml::from_str(&normalized).unwrap();
+        let oracle: serde_json::Value = serde_yaml::from_str(&normalized).unwrap();
+        assert_eq!(before, after);
+        assert_eq!(before, oracle);
+    }
+}
+
+#[test]
+fn stream_suffix_repair_preserves_content_and_real_document_boundaries() {
+    for source in [
+        "'...'\n",
+        "\"...\"\n",
+        "|\n  ...\n",
+        ">\n  ...\n",
+        "value\n...\n",
+        "---\n...\n",
+        "# ...\n",
+        "...content\n",
+    ] {
+        assert!(
+            normalization::collection_spelling(source).is_none(),
+            "{source:?}"
+        );
     }
 }

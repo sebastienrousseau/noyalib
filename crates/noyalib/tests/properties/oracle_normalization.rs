@@ -99,10 +99,29 @@ fn spaced_empty_line_tabs(source: &str) -> Option<String> {
     (!replacements.is_empty()).then(|| apply_replacements(source, replacements))
 }
 
-/// Compose the proven separation and flow spelling repairs.
+/// YAML 1.2.2 section 9.2 permits stream suffixes before any document.
+/// Libyaml refuses them. Replace only those prefix tokens with whitespace;
+/// callers still require full candidate-value preservation and oracle agreement.
+fn spaced_leading_stream_suffixes(source: &str) -> Option<String> {
+    let mut replacements = Vec::new();
+    for (kind, start, end) in lexical_tokens(source)? {
+        match kind {
+            SyntaxKind::Whitespace
+            | SyntaxKind::Newline
+            | SyntaxKind::Comment
+            | SyntaxKind::Bom => {}
+            SyntaxKind::DocEnd => replacements.push((start, end, " ".repeat(end - start))),
+            _ => break,
+        }
+    }
+    (!replacements.is_empty()).then(|| apply_replacements(source, replacements))
+}
+
+/// Compose the proven stream-prefix, separation and flow spelling repairs.
 #[allow(dead_code)]
 pub(crate) fn collection_spelling(source: &str) -> Option<String> {
-    let separated = spaced_sequence_tabs(source);
+    let suffixes = spaced_leading_stream_suffixes(source);
+    let separated = spaced_sequence_tabs(suffixes.as_deref().unwrap_or(source)).or(suffixes);
     let separated = spaced_empty_line_tabs(separated.as_deref().unwrap_or(source)).or(separated);
     quoted_empty_flow_keys(separated.as_deref().unwrap_or(source)).or(separated)
 }
@@ -249,6 +268,16 @@ fn apply_replacements(source: &str, replacements: Vec<Replacement>) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn leading_stream_suffix_repair_preserves_alloc_values() {
+        for source in ["...\nvalue\n", "...\n'...'\n", "...\n"] {
+            let normalized = collection_spelling(source).expect("leading stream suffix");
+            let before: noyalib::Value = noyalib::from_str(source).unwrap();
+            let after: noyalib::Value = noyalib::from_str(&normalized).unwrap();
+            assert_eq!(before, after);
+        }
+    }
 
     #[test]
     fn terminal_spaced_block_normalization_preserves_l24t_values() {
