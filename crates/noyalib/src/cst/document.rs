@@ -7061,7 +7061,7 @@ mod absorb_emptied_line_tests {
     #[test]
     fn line_helpers_keep_every_yaml_break_atomic() {
         for ending in ["\n", "\r", "\r\n"] {
-            let source = format!("one{ending}two{ending}");
+            let source = crate::prelude::format!("one{ending}two{ending}");
             let boundary = 3 + ending.len();
             for position in 0..boundary {
                 assert_eq!(start_of_line(&source, position), 0);
