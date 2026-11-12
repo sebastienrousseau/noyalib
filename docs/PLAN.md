@@ -84,6 +84,12 @@ and a real SDK shared-budget fault injection. Final std, alloc, portable,
 bare-metal and sanitizer replay gates pass; sustained campaigns still need
 the corrected source. MCP's added integration test passes with its full
 136-test battery and leaves production dependencies unchanged.
+The later [verbatim-tag receipt](ecosystem-verbatim-tags-2026-11-12.json)
+records literal URI preservation under primary-handle redefinitions and
+the complete checks on signed core `2455c64`. Earlier interrupted campaigns
+retain their partial evidence; replacement runs must establish acceptance
+on the corrected scanner. Browser startup failures and diagnostic success
+are recorded separately, without claiming an established root cause.
 The [review packet](ECOSYSTEM-REVIEW.md) gives the source scopes, review
 boundaries and concrete decisions without implying approval.
 

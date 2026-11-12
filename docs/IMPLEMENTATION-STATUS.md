@@ -525,7 +525,7 @@ acceptance set. A separate extraction moves the resolution body unchanged
 into a private helper and reduces its recorded function size from 134 to
 120 lines, with no ceiling increase.
 
-The final scanner passes 6,751 std, 6,732 baseline alloc and 7,073 portable
+The name-bound checkpoint passes 6,751 std, 6,732 baseline alloc and 7,073 portable
 tests, with no failures or ignored tests in those batteries. All twelve
 stable/MSRV bare-metal combinations pass. AddressSanitizer replays pass
 all ten std and two alloc-only roundtrip regression inputs. The authoritative
@@ -549,6 +549,34 @@ strict clippy, deny, vet and hygiene gates pass. Hosted
 also passes. The candidate manifest pins the signed test commit. The same
 [receipt](ecosystem-name-bounds-2026-11-12.json) separates this SDK evidence
 from the later core scanner verification.
+
+## Verbatim tag identity, 2026-11-12
+
+Final review reproduced a separate tag-resolution defect. With
+`%TAG ! tag:example:`, the verbatim URI in `!<!foo> x` became
+`tag:example:foo`. The new test fails on that valid input before the fix.
+Signed core `2455c64` applies directives only to shorthand tags. Verbatim
+tags keep their literal URI, including under a 1,024-byte unused prefix.
+Value and typed parsing assert exact tag strings; CST parsing retains the
+source. Ordinary shorthand expansion remains active.
+
+The [follow-up receipt](ecosystem-verbatim-tags-2026-11-12.json) retains
+the red/green proof, 6,752 std, 6,733 baseline alloc and 7,074 portable
+passing tests, 590 passing doctests with eight existing ignores, strict
+clippy, all twelve bare-metal checks and eleven std plus three alloc-only
+sanitizer regression inputs. The complexity baseline remains unchanged.
+The authoritative package gate passes at 1,319,883 of 1,320,000 bytes.
+The earlier two sustained campaigns were interrupted when this later
+scanner correction superseded their source. Their partial receipts remain
+unchanged and receive no hour credit. Two replacement campaigns use the
+signed correction; full-family acceptance still needs all 31 targets.
+
+The same archive separates two Linux browser-startup failures on `291d05b`
+from a successful diagnostic WASM run on `d9bbd6f`. The latter records
+Chrome 156.0.8078.79 and uses signed WASM `a3d690d`, with bounded process
+output and exit-status diagnostics. Startup deadlines and product
+assertions remain unchanged. The earlier launch failure's cause is still
+undetermined; the passing diagnostic run is not evidence of its correction.
 
 ## Implementation and acceptance
 
