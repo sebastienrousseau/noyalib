@@ -10,6 +10,7 @@ import hashlib
 import importlib.util
 import json
 from pathlib import Path
+import re
 import shutil
 import subprocess
 import urllib.request
@@ -22,6 +23,11 @@ IDENTITY = (r'https://gitlab\.archlinux\.org/archlinux/archlinux-docker/'
 WORKLOAD = r'''#!/bin/bash
 set -euo pipefail
 expected_version="$1"
+# The minimal image excludes manuals. Exercise the complete package instead,
+# preserving every other resolved pacman setting, including signature policy.
+pacman-conf > /assurance/pacman-original.conf
+sed -E '/^[[:space:]]*NoExtract[[:space:]]*=/d' /assurance/pacman-original.conf > /assurance/pacman-complete.conf
+pacman_command=(pacman --config /assurance/pacman-complete.conf)
 useradd --create-home --uid 1000 builder
 chown -R builder:builder /assurance/work
 cd /assurance/work
@@ -29,8 +35,8 @@ runuser -u builder -- makepkg --noconfirm
 packages=(noyalib-bin-*.pkg.tar.*)
 test "${#packages[@]}" -eq 1
 sha256sum "${packages[0]}" > /assurance/package.sha256
-pacman --noconfirm -U "${packages[0]}"
-pacman -Qkk noyalib-bin
+"${pacman_command[@]}" --noconfirm -U "${packages[0]}"
+"${pacman_command[@]}" -Qkk noyalib-bin
 test "$(noyafmt --version)" = "noyafmt $expected_version"
 test "$(noyavalidate --version)" = "noyavalidate $expected_version"
 printf 'a:   1\n' | noyafmt --stdin > /assurance/formatted.yaml
@@ -52,12 +58,12 @@ assets=(/usr/bin/noyafmt /usr/bin/noyavalidate
   /usr/share/licenses/noyalib-bin/LICENSE-MIT
   /usr/share/licenses/noyalib-bin/LICENSE-APACHE)
 sha256sum "${assets[@]}" > /assurance/installed.sha256
-pacman --noconfirm -R noyalib-bin
+"${pacman_command[@]}" --noconfirm -R noyalib-bin
 for asset in "${assets[@]}"; do
   test ! -e "$asset"
   test ! -L "$asset"
 done
-if pacman -Q noyalib-bin; then exit 1; fi
+if "${pacman_command[@]}" -Q noyalib-bin; then exit 1; fi
 printf 'passed\n' > /assurance/package-manager-passed
 '''
 
@@ -135,6 +141,12 @@ def main():
         started = False  # --rm removed the completed container.
         if (output / 'package-manager-passed').read_text() != 'passed\n':
             raise RuntimeError('Missing successful package-manager result')
+        original_config = (output / 'pacman-original.conf').read_text()
+        complete_config = (output / 'pacman-complete.conf').read_text()
+        expected_config = ''.join(line for line in original_config.splitlines(keepends=True)
+                                  if not re.match(r'^\s*NoExtract\s*=', line))
+        if complete_config != expected_config:
+            raise RuntimeError('Container configuration changed beyond file-exclusion directives')
         installed = {}
         for line in (output / 'installed.sha256').read_text().splitlines():
             sha, path = line.split(None, 1)
@@ -153,7 +165,8 @@ def main():
         report.update(status='passed', installed_assets=installed,
                       package_sha256=(output / 'package.sha256').read_text().split()[0],
                       provenance_verified=True, image_signature_verified=True,
-                      package_build_network='none', uninstall_passed=True)
+                      package_build_network='none', uninstall_passed=True,
+                      pacman_configuration_delta='NoExtract directives only; all other settings preserved')
     finally:
         if started:
             report['container_cleanup_exit'] = run(

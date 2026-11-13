@@ -14,6 +14,20 @@ from pathlib import Path
 import subprocess
 
 SCOOP_SOURCE = 'e6aa3b366bdee8ed138c1e0f7b85192ebdd35d0f'
+RESTORE_PATH = r'''param([string]$ReceiptPath, [string]$ShimDirectory)
+$ErrorActionPreference = 'Stop'
+$before = Get-Content -Raw -LiteralPath $ReceiptPath | ConvertFrom-Json
+$machine = [Environment]::GetEnvironmentVariable('Path', 'Machine')
+if ($machine -cne $before.machine) { throw 'Machine PATH changed unexpectedly; refusing to overwrite it.' }
+$current = [Environment]::GetEnvironmentVariable('Path', 'User')
+if ($current -ceq $before.user) { exit 0 }
+$remaining = @($current -split ';' | Where-Object { $_ -and ($_ -ine $ShimDirectory) })
+$expected = @($before.user -split ';' | Where-Object { $_ })
+if (($remaining -join ';') -cne ($expected -join ';')) {
+    throw 'User PATH changed beyond the test shim directory; refusing to overwrite it.'
+}
+[Environment]::SetEnvironmentVariable('Path', $before.user, 'User')
+'''
 
 
 def digest(path):
@@ -34,6 +48,8 @@ def main():
     prefix = output / 'scoop'
     manager = prefix / 'apps/scoop/current'
     manager.parent.mkdir(parents=True)
+    for directory in ['buckets', 'shims', 'persist']:
+        (prefix / directory).mkdir()
     env = os.environ.copy()
     env.update(SCOOP=str(prefix), SCOOP_GLOBAL=str(output / 'global'),
                SCOOP_CACHE=str(output / 'cache'), XDG_CONFIG_HOME=str(output / 'config'))
@@ -69,9 +85,15 @@ def main():
     scoop = ['pwsh', '-NoLogo', '-NoProfile', '-NonInteractive',
              '-File', str(manager / 'bin/scoop.ps1')]
     path_command = ['pwsh', '-NoLogo', '-NoProfile', '-NonInteractive', '-Command',
-                    "[Environment]::GetEnvironmentVariable('Path','User'); "
-                    "[Environment]::GetEnvironmentVariable('Path','Machine')"]
+                    "[ordered]@{user=[Environment]::GetEnvironmentVariable('Path','User'); "
+                    "machine=[Environment]::GetEnvironmentVariable('Path','Machine')} | ConvertTo-Json"]
+    restore_script = output / 'restore-path.ps1'
+    restore_script.write_text(RESTORE_PATH)
+    restore_command = ['pwsh', '-NoLogo', '-NoProfile', '-NonInteractive',
+                       '-File', str(restore_script), str(output / 'path-before.log'),
+                       str(prefix / 'shims')]
     installing = False
+    path_restored = False
     try:
         run('recipe-check', ['python', str(cli / 'scripts/check-distribution-recipes.py')])
         run('path-before', path_command)
@@ -123,16 +145,26 @@ def main():
                 (prefix / 'shims').glob('noya*')):
             raise RuntimeError('Scoop uninstall left package files or command shims')
         run('manager-clean-source', ['git', '-C', str(manager), 'diff', '--exit-code'])
+        run('restore-persistent-path', restore_command)
+        path_restored = True
         run('path-after', path_command)
-        if (output / 'path-before.log').read_bytes() != (output / 'path-after.log').read_bytes():
-            raise RuntimeError('Scoop consumer changed the user or machine PATH')
+        before_path = json.loads((output / 'path-before.log').read_text())
+        after_path = json.loads((output / 'path-after.log').read_text())
+        if before_path != after_path:
+            raise RuntimeError('Scoop consumer did not restore the user and machine PATH')
         report.update(status='passed', provenance_verified=True,
-                      uninstall_passed=True, persistent_path_unchanged=True)
+                      uninstall_passed=True, persistent_path_restored=True)
     finally:
-        if installing:
-            report['cleanup_uninstall_exit'] = run(
-                'cleanup-uninstall', [*scoop, 'uninstall', 'noya-cli', '--purge'], check=False)
-        (output / 'receipt.json').write_text(json.dumps(report, indent=2) + '\n')
+        try:
+            if installing:
+                report['cleanup_uninstall_exit'] = run(
+                    'cleanup-uninstall', [*scoop, 'uninstall', 'noya-cli', '--purge'], check=False)
+        finally:
+            try:
+                if not path_restored and (output / 'path-before.log').exists():
+                    report['path_cleanup_exit'] = run('cleanup-persistent-path', restore_command, check=False)
+            finally:
+                (output / 'receipt.json').write_text(json.dumps(report, indent=2) + '\n')
     print(json.dumps(report, indent=2))
 
 

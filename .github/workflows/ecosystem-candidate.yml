@@ -190,6 +190,7 @@ jobs:
             ${{ runner.temp }}/candidate-cli-arch/receipt.json
             ${{ runner.temp }}/candidate-cli-arch/*.log
             ${{ runner.temp }}/candidate-cli-arch/*.sha256
+            ${{ runner.temp }}/candidate-cli-arch/*.conf
           if-no-files-found: error
 
   oracle-tests:
