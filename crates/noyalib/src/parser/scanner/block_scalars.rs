@@ -90,7 +90,7 @@ impl Scanner<'_> {
         // breaks are already folded to `\n` and tab is legal, so the
         // shared printable check fits exactly (found by the
         // serde_yaml parity fuzzer on `>-\x07`).
-        self.check_scalar_printable(&string)?;
+        self.check_unquoted_printable(&string)?;
         let style = if literal {
             ScalarStyle::Literal
         } else {
@@ -177,7 +177,9 @@ impl Scanner<'_> {
                 return Err(self.error("comment indicator '#' must be preceded by a space or tab"));
             }
             while !self.is_eof() && !Self::is_break(self.peek()) {
-                if Self::is_raw_control(self.peek()) {
+                if Self::is_raw_control(self.peek())
+                    || Self::is_non_printable_unicode_prefix(&self.input[self.pos..])
+                {
                     return Err(self.error("comment contains a raw control character"));
                 }
                 self.advance();

@@ -11,6 +11,11 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Changed
 
+- **Breaking:** reject raw C1 controls other than NEL (U+0080 to U+009F)
+  and the non-characters U+FFFE and U+FFFF outside quoted scalars:
+  plain and block scalars, comments, anchors, tags and directives.
+  Quoted scalars keep them. YAML 1.2.2 §5.1 limits unquoted content to
+  `c-printable`.
 - **Breaking:** apply canonical duplicate-key identity before typed map
   visitors, including aliases, registered tags and ignored fields. `Last`
   keeps the first position, last value and last scalar spelling; `First`

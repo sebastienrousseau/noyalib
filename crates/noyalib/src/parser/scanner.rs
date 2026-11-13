@@ -1015,7 +1015,7 @@ impl<'a> Scanner<'a> {
         // §5.1 c-printable holds for comment text as for scalar content:
         // a raw control character is an error wherever it appears (found
         // by the serde_yaml compat fuzzer on `#]\0`).
-        if remaining[..end].iter().any(|&b| Self::is_raw_control(b)) {
+        if Self::first_non_printable(&remaining[..end]).is_some() {
             return Err(self.error(
                 "comment contains a raw control character — YAML content is limited to \
                  printable characters",
@@ -1615,9 +1615,8 @@ impl<'a> Scanner<'a> {
     fn finish_directive_line(&mut self, directive_start: usize) -> ScanResult<()> {
         let rest = &self.input[self.pos..];
         let len = memchr::memchr2(b'\n', b'\r', rest).unwrap_or(rest.len());
-        if let Some(offset) = self.input[directive_start..self.pos + len]
-            .iter()
-            .position(|&b| Self::is_raw_control(b))
+        if let Some(offset) =
+            Self::first_non_printable(&self.input[directive_start..self.pos + len])
         {
             return Err(ScanError {
                 message: Cow::Borrowed("directive line contains a raw control character"),
@@ -2258,6 +2257,11 @@ impl<'a> Scanner<'a> {
             {
                 break;
             }
+            if Self::is_raw_control(c)
+                || Self::is_non_printable_unicode_prefix(&self.input[self.pos..])
+            {
+                return Err(self.error("anchor or alias name contains a non-printable character"));
+            }
             self.advance();
         }
         if self.pos - start > MAX_ANCHOR_NAME_LEN {
@@ -2267,6 +2271,13 @@ impl<'a> Scanner<'a> {
             return Err(self.error("expected anchor or alias name"));
         }
         Ok(Cow::Borrowed(self.slice_str(start, self.pos)))
+    }
+
+    /// A C0 control (tab and line breaks included), DEL, or a raw
+    /// non-printable Unicode character at the cursor: never valid in a tag.
+    fn at_tag_control(&self) -> bool {
+        let b = self.peek();
+        b < 0x20 || b == 0x7f || Self::is_non_printable_unicode_prefix(&self.input[self.pos..])
     }
 
     fn fetch_tag(&mut self) -> ScanResult<()> {
@@ -2295,8 +2306,7 @@ impl<'a> Scanner<'a> {
                 if self.pos - start > MAX_TAG_LEN {
                     return Err(self.error("tag URI exceeds maximum length of 1024 bytes"));
                 }
-                let b = self.peek();
-                if b < 0x20 || b == 0x7f {
+                if self.at_tag_control() {
                     return Err(self.error(
                         "verbatim tag contains a control character — tag URIs are \
                          limited to printable characters",
@@ -2335,14 +2345,13 @@ impl<'a> Scanner<'a> {
                 if self.pos - start > MAX_TAG_LEN {
                     return Err(self.error("tag suffix exceeds maximum length of 1024 bytes"));
                 }
-                let b = self.peek();
-                if b < 0x20 || b == 0x7f {
+                if self.at_tag_control() {
                     return Err(self.error(
                         "tag suffix contains a control character — tags are limited \
                          to printable characters",
                     ));
                 }
-                if b == b'>' {
+                if self.peek() == b'>' {
                     // Not a `ns-uri-char`, and unrepresentable in the
                     // verbatim `!<...>` spelling the serializer falls
                     // back to for shorthand-unsafe tags (found by
@@ -2384,14 +2393,13 @@ impl<'a> Scanner<'a> {
                 if self.pos - start > MAX_TAG_LEN {
                     return Err(self.error("tag suffix exceeds maximum length of 1024 bytes"));
                 }
-                let b = self.peek();
-                if b < 0x20 || b == 0x7f {
+                if self.at_tag_control() {
                     return Err(self.error(
                         "tag suffix contains a control character — tags are limited \
                          to printable characters",
                     ));
                 }
-                if b == b'>' {
+                if self.peek() == b'>' {
                     // Not a `ns-uri-char`, and unrepresentable in the
                     // verbatim `!<...>` spelling the serializer falls
                     // back to for shorthand-unsafe tags (found by

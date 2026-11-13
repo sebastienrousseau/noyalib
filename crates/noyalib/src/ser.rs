@@ -1045,10 +1045,8 @@ static FIRST_CHAR_QUOTE: [bool; 128] = {
 /// is stream-skipped on re-parse, reinterpreting the rest of the
 /// scalar as markup (found by fuzz_roundtrip).
 ///
-/// The C1 block (U+0080 to U+009F, NEL included) and the non-characters
-/// U+FFFE and U+FFFF sit outside `c-printable` (§5.1): this crate's
-/// reader takes them raw, but libyaml-based tools reject the document,
-/// so they force the same style with a hex escape (#379).
+/// Escape C1 and BMP non-characters for libyaml compatibility (#379).
+/// NEL is printable in YAML 1.2 but a line break for YAML 1.1 readers.
 fn needs_double_quoted_escape(s: &str) -> bool {
     s.chars().any(|c| {
         matches!(

@@ -121,7 +121,7 @@ impl Scanner<'_> {
             return Ok(false);
         }
         let s = Cow::Borrowed(self.slice_str(self.pos, self.pos + content_len));
-        self.check_scalar_printable(&s)?;
+        self.check_unquoted_printable(&s)?;
         self.advance_by(len);
         self.emit(TokenKind::Scalar(ScalarStyle::Plain, s));
         self.last_token_opens_block = false;
@@ -263,7 +263,7 @@ impl Scanner<'_> {
         } else {
             Cow::Owned(fold.string)
         };
-        self.check_scalar_printable(&value)?;
+        self.check_unquoted_printable(&value)?;
         self.emit(TokenKind::Scalar(ScalarStyle::Plain, value));
         self.last_token_opens_block = false;
         Ok(())
@@ -403,6 +403,35 @@ impl Scanner<'_> {
             ));
         }
         Ok(())
+    }
+
+    /// Unquoted YAML content uses c-printable, unlike JSON-compatible quotes.
+    pub(super) fn check_unquoted_printable(&self, s: &str) -> ScanResult<()> {
+        self.check_scalar_printable(s)?;
+        if Self::first_non_printable_unicode(s.as_bytes()).is_some() {
+            return Err(self.error("scalar contains a non-printable Unicode character"));
+        }
+        Ok(())
+    }
+
+    pub(super) fn is_non_printable_unicode_prefix(bytes: &[u8]) -> bool {
+        matches!(bytes,
+            [0xc2, 0x80..=0x84 | 0x86..=0x9f, ..]
+            | [0xef, 0xbf, 0xbe | 0xbf, ..])
+    }
+
+    fn first_non_printable_unicode(bytes: &[u8]) -> Option<usize> {
+        memchr::memchr2_iter(0xc2, 0xef, bytes)
+            .find(|&offset| Self::is_non_printable_unicode_prefix(&bytes[offset..]))
+    }
+
+    pub(super) fn first_non_printable(bytes: &[u8]) -> Option<usize> {
+        bytes
+            .iter()
+            .position(|&b| Self::is_raw_control(b))
+            .into_iter()
+            .chain(Self::first_non_printable_unicode(bytes))
+            .min()
     }
 
     /// A C0 control character other than tab and line feed, or DEL:
