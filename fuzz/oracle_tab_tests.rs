@@ -3,9 +3,7 @@
 
 //! Preserve complete development-oracle values and diagnostic comparisons.
 
-#[path = "../crates/noyalib/tests/properties/oracle_normalization.rs"]
-#[expect(unexpected_cfgs, reason = "shared core tests name core-only features")]
-mod normalization;
+use crate::oracle_normalization as normalization;
 
 #[test]
 fn bom_prefixed_empty_line_tabs_still_compare_the_complete_value() {

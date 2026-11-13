@@ -20,3 +20,12 @@ mod json_numbers;
 #[cfg(test)]
 #[path = "../decimal_integer.rs"]
 mod decimal_integer;
+
+#[cfg(test)]
+#[path = "../canonical_duplicates.rs"]
+mod canonical_duplicates;
+
+#[cfg(test)]
+#[path = "../../crates/noyalib/tests/properties/oracle_normalization.rs"]
+#[expect(unexpected_cfgs, reason = "shared core tests name core-only features")]
+mod oracle_normalization;

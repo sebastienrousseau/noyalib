@@ -578,8 +578,9 @@ mod table {
     }
 
     /// The hostile inputs are hostile only through their limit: under
-    /// the default configuration every cell accepts them, so a refusal
-    /// above is the limit at work and not something else.
+    /// the default configuration materializing APIs accept them. Direct
+    /// streaming APIs require fallback for duplicates under `Last`, while
+    /// the strict policy must still report the duplicate itself above.
     #[test]
     fn the_hostile_inputs_parse_without_their_limit() {
         let mut probes = single_document();
@@ -587,7 +588,16 @@ mod table {
         let mut wrong = Vec::new();
         for l in per_document_limits() {
             for (ep, probe) in &probes {
-                if let Err(e) = probe(&l.hostile, &ParserConfig::default()) {
+                let result = probe(&l.hostile, &ParserConfig::default());
+                if l.name == "DuplicateKeyPolicy::Error"
+                    && matches!(
+                        *ep,
+                        "from_str_borrowing_with_config<BTreeMap<&str, Value>>"
+                            | "StreamingDeserializer::with_config + end"
+                    )
+                {
+                    assert_eq!(result.unwrap_err(), "$__noyalib_streaming_fallback");
+                } else if let Err(e) = result {
                     wrong.push(format!("{ep} × {}: {e}", l.name));
                 }
             }

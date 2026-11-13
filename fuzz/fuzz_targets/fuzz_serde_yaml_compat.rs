@@ -23,6 +23,9 @@ use libfuzzer_sys::fuzz_target;
 #[path = "../../crates/noyalib/tests/properties/oracle_normalization.rs"]
 mod oracle_normalization;
 
+#[path = "../canonical_duplicates.rs"]
+mod canonical_duplicates;
+
 #[path = "../bom_classification.rs"]
 mod bom_classification;
 
@@ -45,6 +48,10 @@ fuzz_target!(|data: &[u8]| {
             if !equivalent(&a, &b)
                 && !anchor_name_outside_libyaml(s)
                 && !yaml_1_1_line_break(s)
+                && !oracle_agrees(
+                    canonical_duplicates::spelling(s, &noyalib::ParserConfig::serde_yaml_compat()),
+                    &a,
+                )
                 && !oracle_agrees(oracle_normalization::collection_spelling(s), &a)
                 && !oracle_agrees(oracle_normalization::unique_colliding_anchors(s), &a)
                 && !oracle_agrees(oracle_normalization::terminated_spaced_block(s), &a)
@@ -60,6 +67,10 @@ fuzz_target!(|data: &[u8]| {
         (Err(_), Err(_)) => {}
         (Ok(a), Err(e)) => {
             if !known_reject_divergence(s)
+                && !oracle_agrees(
+                    canonical_duplicates::spelling(s, &noyalib::ParserConfig::serde_yaml_compat()),
+                    &a,
+                )
                 && !oracle_agrees(oracle_normalization::collection_spelling(s), &a)
             {
                 panic!(

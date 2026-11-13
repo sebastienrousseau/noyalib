@@ -3,7 +3,7 @@
 
 # 0019. Settle typed mapping duplicate-key identity
 
-- **Status:** proposed; maintainer decision pending
+- **Status:** accepted; local implementation verified; sustained acceptance pending
 - **Date:** 2026-11-11
 - **Authors:** Noyalib contributors
 
@@ -33,19 +33,33 @@ null spellings represent the same scalar key, while the configured
 contracts. The fuzz run remains failed; this finding is not excluded or
 normalized away.
 
-## Proposed decision
+## Decision
 
 Apply the existing canonical duplicate policy consistently before typed
 coercion. Preserve the written spelling of the surviving typed key;
 keep untyped `Value` canonicalization and distinct-typed collision checks.
-This is the recommended option presented to the maintainer, not an
-accepted change.
+The maintainer accepted this decision on 2026-11-13. Under `Last`, retain
+the first insertion position, last value and last scalar spelling. Under
+`First`, retain the first position, value and spelling. `Error` refuses a
+repeated canonical identity. Alias keys keep the loader's existing resolved
+representation; an alias reference is not a new scalar spelling.
+
+This affects equivalent null, boolean and numeric spellings, and visitors
+that previously received repeated entries. It is not limited to `null` and
+`~` in string maps. Distinct typed identities that stringify alike remain
+collisions under every policy.
 
 Streaming cannot retract an entry already delivered to a Serde visitor.
 An implementation therefore needs to detect repeated canonical key
 identities and select AST fallback, with measured memory and throughput
 costs. It must handle aliases, resolved numeric and boolean spellings,
 merge precedence, all duplicate policies and existing key budgets.
+Apply the identity checks to skipped mappings too. Registered strip-through
+tags use their resolved scalar identity; other tagged keys take the loader
+path. The compatibility facade retains its repeated-struct-field refusal through
+a private post-validation probe whose values are discarded.
+Direct streaming and borrowing APIs retain their documented subset
+and report their existing fallback error when materialization is required.
 
 ## Alternative
 
@@ -57,15 +71,25 @@ into a raw string would violate the established collision invariant.
 
 ## Acceptance
 
-Record the maintainer's choice before implementing either semantic change.
+The maintainer's choice is recorded above.
 Keep Rust 1.89, feature declarations and public signatures unchanged.
 Require failing-first cases across streaming and fallback, std and alloc,
 all duplicate policies, aliases and tagged keys. Re-run complete batteries,
 the actual consumer corpus and sustained differential fuzzing. Document
 any resulting parse behavior change as breaking under the patch policy.
 
-
 The original 88-byte finding is retained as
 [tracked evidence](../evidence/pending-typed-duplicate-identity.bin).
-The full-family campaign includes it in the comparison corpus. Its failure
-remains visible until the maintainer selects and verifies the contract.
+The full-family campaign includes it in the comparison corpus. The accepted
+contract has observed failing-first policy, skipped-content and tag regressions.
+The development oracle may adapt only repeated scalar-key spellings, after
+proving the entire candidate JSON projection unchanged and comparing a fresh
+archive parse. Unique keys, quoted identities and separate mappings remain
+untouched. No input is removed from the campaign. Full-duration and independent
+review acceptance remain required.
+
+The [implementation receipt](../ecosystem-duplicate-identity-2026-11-13.json)
+retains red/green evidence, full feature batteries, sanitizer inputs and local
+throughput/RSS observations. Repeated-key workloads pay for loader fallback;
+ignored maps also pay for canonical identity validation. Controlled performance
+acceptance and independent review remain open.

@@ -16,6 +16,28 @@ The dated assessment remains the baseline. The
 tests, and the [implementation record](IMPLEMENTATION-STATUS.md) tracks
 observed results and open criteria. Publishing remains held.
 
+## Accepted review follow-up, 2026-11-13
+
+The maintainer accepted ADR-0019's canonical duplicate identity and the
+retirement of unpublished MCP v0.0.60 with its signed tag preserved.
+
+1. Pin first-position/last-value/last-spelling behavior, skipped content,
+   tags, aliases, policies and budgets in observed failing std/alloc tests.
+2. Correct streaming admission and skipped-map validation. Full typed
+   parsing must agree with loader fallback; direct streaming reports its
+   existing fallback error when it cannot retract an emitted entry.
+3. Verify the existing seven-byte Unicode edit regression against its
+   original failing source and the current core; record MCP retirement in
+   both changelogs and the review packet without moving the signed tag.
+4. Run the complete batteries, isolated no_std/MSRV checks, consumer corpus
+   and local hygiene gates. Commit and push the fix with its regressions.
+5. Start the 31-target hourly campaign on the corrected source, retain
+   every receipt and fix each finding before accepting its target.
+
+Product boundary work and controlled performance evidence continue on the
+future branches. Independent human review and accepted continuity ownership
+remain external acceptance requirements; publication remains held.
+
 Daybreak access is outside this plan and is not an acceptance prerequisite.
 Continue the local and GitHub gates; retain G1 as an actual independent
 human review requirement through an available channel.
@@ -39,8 +61,8 @@ portable batteries pass 6,745, 6,723 and 7,064 tests; all twelve bare-metal
 checks pass. Later campaigns expose plain-scalar tab indentation and a
 canonical-duplicate typed-key mismatch. The signed continuation correction and formatter repair pass 6,748 std,
 6,726 baseline alloc and 7,067 portable tests. The
-[duplicate-key decision](adr/0019-typed-mapping-duplicate-identity.md) remains
-proposed; its finding is retained and its contract choice is pending. A
+[duplicate-key decision](adr/0019-typed-mapping-duplicate-identity.md) was
+accepted on November 13; its finding remains retained pending validation. A
 further development-only empty-line tab repair passes all 153 properties,
 eighteen alloc oracle tests and original-input replay. Production source
 and Cargo declarations remain unchanged. Campaign accounting now
@@ -106,7 +128,7 @@ corrections need their own CI results before branch promotion.
 The [completed campaign record](ecosystem-family-campaign-followup-2026-11-12.json)
 retains 29 passing and two failing target receipts at checkpoint `f7e6d5c`.
 The BOM/tab comparison finding is corrected; typed canonical duplicate
-identity remains a pending decision in ADR-0019. Further compatibility
+identity is now accepted in ADR-0019; implementation gates remain open. Further compatibility
 smokes exposed scalar-profile and archive-spelling boundaries; their fixes
 and source-specific verification must precede final-source acceptance.
 CLI recipes and actual native recovery now have local macOS evidence and
@@ -182,11 +204,11 @@ manifest architecture from the native Python process. Public channels,
 remaining manager/architecture combinations and v0.0.61 registry graphs
 retain separate acceptance criteria.
 
-The [held MCP choices](ECOSYSTEM-REVIEW.md#held-mcp-release-choices) retain
-the current hold and present an explicit alternative for the maintainer:
-preserve the signed tag, retire the unpublished v0.0.60 attempt and prepare
-the fixed v0.0.61 family. This would leave a gap in MCP's registry history;
-no exception, retirement or publication is accepted by this proposal.
+The [MCP retirement decision](ECOSYSTEM-REVIEW.md#held-mcp-release-choices)
+was accepted on November 13: preserve the signed tag, retire the unpublished
+v0.0.60 attempt and prepare the fixed v0.0.61 family after gates. The MCP
+registry-history gap is approved; publication and independent review remain
+held until their acceptance criteria pass.
 
 ## Full family campaign execution
 

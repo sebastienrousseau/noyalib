@@ -603,10 +603,7 @@ where
     walk.legacy_binary_numbers = false;
     walk.float_overflow_strings = false;
     walk.integer_overflow_errors = false;
-    match crate::streaming::from_str_streaming::<T>(s, &walk) {
-        Some(Err(e)) if e.to_string().contains("duplicate field `") => Some(e),
-        _ => None,
-    }
+    crate::streaming::duplicate_struct_field::<T>(s, &walk)
 }
 
 /// The configuration the shim parses under for target `T`:

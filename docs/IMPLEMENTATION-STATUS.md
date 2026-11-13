@@ -16,6 +16,38 @@ because v0.0.61 is unpublished. All five satellites passed the Rust 1.89.0
 host build; the alloc-only core and WASM binding also built for wasm32. Published artifacts have separate
 [verification receipts](ecosystem-publication-receipts-2026-11-10.json).
 
+## Accepted duplicate identity and MCP retirement, 2026-11-13
+
+The maintainer accepted [ADR-0019](adr/0019-typed-mapping-duplicate-identity.md)
+and retirement of unpublished MCP v0.0.60. Canonical duplicate identity now
+selects the loader for repeated typed keys. `Last` retains the first position,
+last value and last scalar spelling; `First` retains the first entry. Ignored
+mappings and registered strip-through tags receive the same identity and
+collision checks. The facade's repeated-struct-field probe remains separate.
+Direct streaming and borrowing explicitly refuse inputs requiring fallback.
+
+The [duplicate-identity receipt](ecosystem-duplicate-identity-2026-11-13.json)
+retains five failing-before std cases and six alloc cases; the same
+eight-case suite now passes in both harnesses. Complete default std, alloc,
+portable and all-feature batteries pass, with twelve stable/MSRV bare-metal checks. The
+original seven-byte Unicode edit input panics on the source before `620b4f9`
+and passes on the current core. All 140 MCP native tests pass using the local
+candidate override. These checks do not establish registry resolution.
+
+Signed MCP `0b1ee6b` records retirement and preserves signed tag object
+`b28d529f8bae59bbe94bdd91d25ec50173c8702b`. The candidate manifest pins that
+commit. MCP intentionally skips registry v0.0.60; fixed family v0.0.61 remains
+held for release gates and independent review. Historical recovery and failed
+campaign receipts below remain unchanged.
+
+The original 88-byte finding remains in the corpus. Its contract adaptation
+changes repeated scalar-key spellings only, requires complete candidate-value
+preservation and compares a fresh archive parse. All 41 private oracle tests
+pass. Final-source sustained campaigns, controlled performance acceptance,
+independent human review, continuity ownership and registry/channel evidence
+remain open. Earlier pending-decision statements below describe their dated
+checkpoints, not the accepted November 13 decisions.
+
 ## Package-manager acceptance, 2026-11-13
 
 The [architecture receipt](ecosystem-native-architecture-acceptance-2026-11-13.json)
@@ -41,8 +73,8 @@ unrelated changes, and its final user/machine snapshot equals the original.
 No public tap, bucket, AUR or candidate registry artifact was published.
 Remaining architectures and channels stay separate acceptance work.
 
-The production runtime remains identical to `5ffcea0`; the later fixes
-change packaging, development harnesses and evidence. Full exact-source CI
+At that package-manager checkpoint, the production runtime remained identical
+to `5ffcea0`; subsequent ADR-0019 work changes streaming admission. Full exact-source CI
 is still required on the final feature head.
 
 ## Rust 1.100 and hosted consumers, 2026-11-12

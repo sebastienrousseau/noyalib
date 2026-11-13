@@ -165,6 +165,46 @@
       "id": "explicit-null-document",
       "yaml": "---\nnull\n",
       "expected": null
+    },
+    {
+      "id": "canonical-null-duplicate-last",
+      "yaml": "~: 1\nnull: 2\nsibling: [3, 4]\n",
+      "expected": {
+        "null": 2,
+        "sibling": [
+          3,
+          4
+        ]
+      }
+    },
+    {
+      "id": "canonical-bool-duplicate-last",
+      "yaml": "True: 1\ntrue: 2\n",
+      "expected": {
+        "true": 2
+      }
+    },
+    {
+      "id": "canonical-integer-duplicate-last",
+      "yaml": "0x1F: 1\n31: 2\n",
+      "expected": {
+        "31": 2
+      }
+    },
+    {
+      "id": "canonical-alias-duplicate-last",
+      "yaml": "anchor: &n ~\nmap: {*n : 1, null: 2}\n",
+      "expected": {
+        "anchor": null,
+        "map": {
+          "null": 2
+        }
+      }
+    },
+    {
+      "id": "canonical-key-type-collision",
+      "yaml": "null: 1\n'null': 2\n",
+      "reject": true
     }
   ]
 }

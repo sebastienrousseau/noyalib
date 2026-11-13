@@ -11,6 +11,16 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Changed
 
+- **Breaking:** apply canonical duplicate-key identity before typed map
+  visitors, including aliases, registered tags and ignored fields. `Last`
+  keeps the first position, last value and last scalar spelling; `First`
+  keeps the first entry and `Error` refuses canonical duplicates. Distinct
+  typed keys that stringify alike remain collisions under every policy.
+  Direct streaming and borrowing return the existing fallback error when
+  duplicate resolution requires materialization (ADR-0019).
+- Retire the unpublished MCP v0.0.60 attempt with its signed tag unchanged.
+  The approved registry-history exception permits the fixed v0.0.61 family
+  after release gates and independent review.
 - **Breaking:** reject compact block collections in implicit mapping
   values, including `- : : `. Explicit compact entries, inline flow nodes
   and collections separated by a line break remain supported.

@@ -1,52 +1,15 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 // Copyright (c) 2026 Noyalib. All rights reserved.
 
-//! Streaming YAML deserializer that operates directly on parser events.
+//! Stream typed values directly from parser events; materialize only on fallback.
 //!
-//! Bypasses the intermediate `Value` AST for typed deserialization,
-//! eliminating all intermediate allocations. Anchors and aliases are
-//! handled natively via event buffering and replay. The common
-//! `<<: *anchor` merge-key pattern is expanded natively.
+//! Anchors, aliases and common merge keys use buffered replay. Both parser and
+//! replay events pass through `process_event` exactly once (#301, @mathstuf).
+//! `Lookahead` distinguishes raw merge events from processed events to prevent
+//! unresolved aliases and double recording. See docs/STREAMING-INTERNALS.md.
 //!
-//! # Where events come from
-//!
-//! Every event reaches the deserializer through one of two sources, and
-//! the distinction is the source of this module's sharpest edges:
-//!
-//! * **the parser**, for text not yet read; and
-//! * **the replay stack**, for buffered events being re-emitted — the
-//!   contents of an anchored node standing in for an alias, or a mapping
-//!   injected by a `<<:` merge.
-//!
-//! Anything that reads an event must handle *both*. Alias resolution once
-//! ran on the parser branch only, so an alias arriving through replay was
-//! stored as though it were fully processed while still being an
-//! `Event::Alias`, and deserialised as the literal anchor name. The replay
-//! stack only exists after a merge injects something, which is why the bug
-//! reproduced solely when an alias-valued entry followed a `<<:` key and
-//! vanished when the same entry was written above it (#301).
-//!
-//! [`StreamingDeserializer::process_event`] is now the single place that
-//! resolves an alias, and [`StreamingDeserializer::anchor_and_record`] the
-//! single place that does anchor bookkeeping, so a future branch cannot
-//! quietly acquire a partial copy.
-//!
-//! # The lookahead slot
-//!
-//! One event of lookahead is parked in `current`, and it may hold either a
-//! **raw** parser event or a **processed** one — see [`Lookahead`]. The two
-//! are not interchangeable:
-//!
-//! * the merge-key path fills the slot deliberately raw, because it must
-//!   see `<<: *base` as an unresolved `Event::Alias` in order to treat it
-//!   as a merge instruction rather than a value; while
-//! * a processed event must never be put through processing again, because
-//!   recording is append-only — a second pass puts the event into an
-//!   in-flight anchor buffer twice, and every alias to that anchor then
-//!   replays a duplicated stream.
-//!
-//! Both consumers used to infer which kind they held, in opposite
-//! directions. The state now travels with the event.
+//! Repeated canonical keys require AST fallback to preserve position and spelling.
+//! Direct use returns a fallback error; [`crate::from_str`] retries the loader.
 
 use crate::prelude::*;
 use crate::prelude::{f64_fract, f64_mul_add};
@@ -134,6 +97,9 @@ pub struct StreamingDeserializer<'a> {
     /// check runs then, so a deserializer built directly with
     /// [`Self::with_config`] enforces `max_document_length` too.
     started: bool,
+    // Only the compatibility facade's post-validation struct-field probe
+    // replays repeated entries. Its result is never returned as parsed data.
+    struct_field_probe: bool,
 }
 
 impl fmt::Debug for StreamingDeserializer<'_> {
@@ -150,29 +116,8 @@ impl fmt::Debug for StreamingDeserializer<'_> {
     }
 }
 
-/// What state the one-event lookahead slot is in.
-///
-/// The slot is written by three different paths and read by two, and the
-/// two kinds of event are not interchangeable:
-///
-/// * `Raw` is straight off the parser. An `Event::Alias` is still visible
-///   *as an alias*, which the merge-key path depends on — it needs to see
-///   `<<: *base` before anything resolves it.
-/// * `Processed` has been through alias resolution, [`handle_anchor`] and
-///   [`maybe_record`]. Putting it through those again is not idempotent:
-///   a second `maybe_record` pushes the event into the in-flight anchor
-///   buffer twice, so every alias to that anchor replays a corrupted
-///   stream.
-///
-/// Before this existed both kinds shared one `Option<Event>` field, and
-/// each consumer guessed. `next_event` assumed processed and returned raw
-/// events unresolved — which is why an alias used as a merge-key override
-/// value (`y: *other` beside `<<: *b`) came back unresolved (#301, found
-/// by @mathstuf). `next_parser_event` assumed the opposite and would
-/// double-record an already-processed one.
-///
-/// Making the state travel with the event turns both of those from a
-/// guess into a match arm.
+/// Raw merge events remain unresolved; processed events must not be recorded
+/// twice (#301). Carry that distinction through both accessors.
 #[derive(Debug)]
 enum Lookahead<'a> {
     /// Straight from the parser: aliases unresolved, not yet recorded.
@@ -194,18 +139,8 @@ impl<'a> Lookahead<'a> {
         }
     }
 
-    /// Take the event out, whichever state the slot was in.
-    ///
-    /// `next_event` hands a parked event back unchanged in both states,
-    /// though for different reasons: a `Processed` one has already been
-    /// resolved, anchored and recorded, and doing that again would
-    /// double-record it; a `Raw` one is parked deliberately by the
-    /// merge-key path via `peek_parser_event` and then dropped with
-    /// `skip_event`, so resolving it on the way out would expand a
-    /// `<<: *base` that is meant to be consumed whole.
-    ///
-    /// Same action, different justifications — so this is one method
-    /// rather than two match arms that look like a distinction.
+    /// Extract without reprocessing: processed events are complete; raw merge
+    /// aliases must stay unresolved until consumed by the merge path.
     fn into_inner(self) -> Event<'a> {
         match self {
             Self::Raw(ev) | Self::Processed(ev) => ev,
@@ -251,6 +186,7 @@ impl<'a> StreamingDeserializer<'a> {
             anchor_costs: FxHashMap::default(),
             meter,
             started: false,
+            struct_field_probe: false,
         }
     }
 
@@ -413,16 +349,8 @@ impl<'a> StreamingDeserializer<'a> {
         Ok(self.current.as_ref().unwrap().event())
     }
 
-    /// Anchor bookkeeping + recording, without alias resolution.
-    ///
-    /// Split out because `next_parser_event` needs exactly this pair and must
-    /// *not* resolve: it is the raw accessor the merge-key path relies on to
-    /// see an `Event::Alias` as an alias. Three call sites carried their own
-    /// copy before, which is the same duplication that let alias resolution
-    /// go missing from one branch and produce #301.
-    ///
-    /// Not idempotent: `maybe_record` appends, so calling it twice on one
-    /// event puts that event into the in-flight anchor buffer twice.
+    /// Record once without resolving aliases: the raw merge accessor must see
+    /// `Event::Alias` (#301). Repeated recording corrupts anchor buffers.
     fn anchor_and_record(&mut self, ev: &mut Event<'a>) -> Result<()> {
         self.handle_anchor(ev)?;
         self.maybe_record(ev);
@@ -754,8 +682,13 @@ impl<'a> StreamingDeserializer<'a> {
         loop {
             let ev = self.next_event()?;
             let opens = match &ev {
-                Event::Scalar { value, style, .. } => {
-                    self.skip_note_node(levels.last_mut(), Some((value, *style)))?;
+                Event::Scalar {
+                    value, style, tag, ..
+                } => {
+                    self.skip_note_node(
+                        levels.last_mut(),
+                        Some((value.as_ref(), *style, tag.as_ref())),
+                    )?;
                     None
                 }
                 Event::SequenceStart { .. } => Some(false),
@@ -787,7 +720,7 @@ impl<'a> StreamingDeserializer<'a> {
     fn skip_note_node(
         &mut self,
         level: Option<&mut SkipLevel>,
-        scalar: Option<(&Cow<'_, str>, ScalarStyle)>,
+        scalar: Option<ScalarKey<'_>>,
     ) -> Result<()> {
         let Some(level) = level else {
             return Ok(());
@@ -814,17 +747,49 @@ impl<'a> StreamingDeserializer<'a> {
                 observed: level.entries,
             }));
         }
-        let Some((key, style)) = scalar else {
-            return Ok(());
+        let Some((key, style, tag)) = scalar else {
+            return Err(self.fallback());
         };
-        if style == ScalarStyle::Plain && key == "<<" {
+        if tag.is_none() && style == ScalarStyle::Plain && key == "<<" {
             self.meter.charge_merge_key(&self.config)?;
         }
-        if self.config.duplicate_key_policy == crate::parser::InternalDuplicateKeyPolicy::Error
-            && !level.keys.insert(key.to_string())
-        {
-            return Err(Error::DuplicateKey(key.to_string()));
+        self.admit_mapping_key(&mut level.keys, key, style, tag)
+    }
+
+    /// Share canonical identity checks between visited and ignored mappings.
+    /// Duplicate entries need the loader: a visitor cannot retract a key or
+    /// preserve the first position with the last spelling after emission.
+    fn admit_mapping_key(
+        &self,
+        seen: &mut FxHashMap<String, Value>,
+        raw: &str,
+        style: ScalarStyle,
+        tag: Option<&(String, String)>,
+    ) -> Result<()> {
+        if tag.is_some_and(|tag| !self.tag_in_registry(tag)) {
+            return Err(self.fallback());
         }
+        let typed = scalar_to_value(self.resolve_scalar(raw, style));
+        let canon =
+            crate::parser::value_to_key_string(typed.clone()).ok_or_else(|| self.fallback())?;
+        if let Some(previous) = seen.get(&canon) {
+            if *previous != typed {
+                return Err(Error::KeyCollision(canon));
+            }
+            if self.struct_field_probe {
+                return Ok(());
+            }
+            return Err(
+                if self.config.duplicate_key_policy
+                    == crate::parser::InternalDuplicateKeyPolicy::Error
+                {
+                    Error::DuplicateKey(raw.to_string())
+                } else {
+                    self.fallback()
+                },
+            );
+        }
+        let _ = seen.insert(canon, typed);
         Ok(())
     }
 
@@ -960,7 +925,6 @@ impl<'de> serde_core::Deserializer<'de> for &mut StreamingDeserializer<'de> {
                     finished: false,
                     has_emitted_key: false,
                     key_count: 0,
-                    seen_keys: FxHashSet::default(),
                     seen_typed: FxHashMap::default(),
                 });
                 // Decrement on both Ok and Err so a failed inner
@@ -1298,7 +1262,6 @@ impl<'de> serde_core::Deserializer<'de> for &mut StreamingDeserializer<'de> {
                     finished: false,
                     has_emitted_key: false,
                     key_count: 0,
-                    seen_keys: FxHashSet::default(),
                     seen_typed: FxHashMap::default(),
                 });
                 // Decrement on Ok and Err (issue #46).
@@ -1571,10 +1534,6 @@ struct StreamingMapAccess<'a, 'de> {
     finished: bool,
     has_emitted_key: bool,
     key_count: usize,
-    /// Track keys seen at this mapping's top level to enforce
-    /// `DuplicateKeyPolicy`. Populated lazily; bypassed when the policy
-    /// is `First` (the visitor's own insertion order already matches).
-    seen_keys: FxHashSet<String>,
     /// Canonical key string → the typed key `Value` first seen for it, to
     /// detect distinct-typed key collisions (`1` vs `"1"`, `~` vs `"null"`)
     /// in parity with the AST loader. Separate from `DuplicateKeyPolicy`:
@@ -1619,58 +1578,6 @@ impl StreamingMapAccess<'_, '_> {
         }
         Ok(())
     }
-
-    /// Apply the key-collision guard and `DuplicateKeyPolicy` to the
-    /// next key. Returns `false` when the policy skipped the entry.
-    fn admit_key(&mut self, key_info: Option<(String, ScalarStyle, bool)>) -> Result<bool> {
-        let Some((raw, style, untagged)) = key_info else {
-            return Ok(true);
-        };
-        // Distinct-typed key-collision guard (parity with the AST loader):
-        // two keys whose canonical map-key string matches but whose typed
-        // Value differs (`1` vs `"1"`, `~` vs `"null"`, `true` vs `"true"`)
-        // are a `KeyCollision`, independent of `DuplicateKeyPolicy`. This is
-        // the guard the streaming path lacked, so `from_str::<map/struct>`
-        // and `from_str_borrowing::<Value>` silently collapsed such keys.
-        // Untagged scalar keys only; tagged keys keep their prior behaviour.
-        // Duplicates are judged on the same canonical form, so `~` and
-        // `null` are one key, as the AST loader judges them; the key
-        // string the visitor receives is still the text as written.
-        let mut identity = None;
-        if untagged {
-            let typed = scalar_to_value(self.de.resolve_scalar(&raw, style));
-            if let Some(canon) = crate::parser::value_to_key_string(typed.clone()) {
-                match self.seen_typed.get(&canon) {
-                    Some(prev) if *prev != typed => {
-                        return Err(Error::KeyCollision(canon));
-                    }
-                    Some(_) => {}
-                    None => {
-                        let _ = self.seen_typed.insert(canon.clone(), typed);
-                    }
-                }
-                identity = Some(canon);
-            }
-        }
-        let policy = self.de.config.duplicate_key_policy;
-        if policy == crate::parser::InternalDuplicateKeyPolicy::Last {
-            return Ok(true);
-        }
-        let identity = identity.unwrap_or_else(|| raw.clone());
-        if self.seen_keys.insert(identity) {
-            return Ok(true);
-        }
-        match policy {
-            crate::parser::InternalDuplicateKeyPolicy::Error => Err(Error::DuplicateKey(raw)),
-            crate::parser::InternalDuplicateKeyPolicy::First => {
-                // Skip duplicate key + value.
-                self.de.skip_value()?;
-                self.de.skip_value()?;
-                Ok(false)
-            }
-            _ => Ok(true),
-        }
-    }
 }
 
 impl<'de> serde_core::de::MapAccess<'de> for StreamingMapAccess<'_, 'de> {
@@ -1701,7 +1608,7 @@ impl<'de> serde_core::de::MapAccess<'de> for StreamingMapAccess<'_, 'de> {
                 self.finished = true;
                 return Ok(None);
             }
-            if matches!(ev, Event::Scalar { value, style: ScalarStyle::Plain, .. } if value == "<<")
+            if matches!(ev, Event::Scalar { value, style: ScalarStyle::Plain, tag: None, .. } if value == "<<")
             {
                 if self.has_emitted_key {
                     return Err(self.de.fallback());
@@ -1709,25 +1616,18 @@ impl<'de> serde_core::de::MapAccess<'de> for StreamingMapAccess<'_, 'de> {
                 self.expand_merge_key()?;
                 continue;
             }
-            // Enforce duplicate-key policy when not `Last` (the serde
-            // default). The key is peeked as a raw scalar string so policy
-            // is applied before the visitor sees it. Extract the key
-            // eagerly so the `ev` borrow is released before we touch
-            // `self.de` again.
-            let key_info = if let Event::Scalar {
-                value: key_val,
-                style,
-                tag,
-                ..
+            // Copy the scalar before releasing the peeked-event borrow.
+            // Non-scalar keys require the AST loader's key validation.
+            let (raw, style, tag) = if let Event::Scalar {
+                value, style, tag, ..
             } = ev
             {
-                Some((key_val.to_string(), *style, tag.is_none()))
+                (value.to_string(), *style, tag.clone())
             } else {
-                None
+                return Err(self.de.fallback());
             };
-            if !self.admit_key(key_info)? {
-                continue;
-            }
+            self.de
+                .admit_mapping_key(&mut self.seen_typed, &raw, style, tag.as_ref())?;
             self.key_count += 1;
             if self.key_count > self.de.config.max_mapping_keys {
                 return Err(Error::Budget(BudgetBreach::MaxMappingKeys {
@@ -1936,6 +1836,20 @@ impl<'de> serde_core::de::VariantAccess<'de> for StreamingTagVariantAccess<'_, '
     }
 }
 
+/// Preserve the facade's repeated-struct-field refusal after its complete
+/// materialized parse has validated the input. Never return probe values.
+#[cfg(feature = "compat-serde-yaml")]
+pub(crate) fn duplicate_struct_field<T>(s: &str, config: &crate::de::ParserConfig) -> Option<Error>
+where
+    T: for<'de> serde_core::Deserialize<'de>,
+{
+    let mut de = StreamingDeserializer::with_config(s, ParseConfig::from(config));
+    de.struct_field_probe = true;
+    T::deserialize(&mut de)
+        .err()
+        .filter(|error| error.to_string().contains("duplicate field `"))
+}
+
 pub(crate) fn from_str_streaming<T>(s: &str, config: &crate::de::ParserConfig) -> Option<Result<T>>
 where
     T: for<'de> serde_core::Deserialize<'de>,
@@ -1951,21 +1865,8 @@ where
     let res = T::deserialize(&mut de);
     match res {
         Ok(val) => {
-            // Drain remaining events to surface any errors lurking past
-            // the point at which `T::deserialize` was satisfied. Without
-            // this, lenient inputs like `--- key1: value1\n    key2: value2`
-            // would lazily yield `Value::String("key1")` because the
-            // serde visitor stops at the first complete node — the
-            // subsequent tokens that violate the spec (e.g. "mapping
-            // values are not allowed in this context") would never be
-            // fetched. Stop *at* `StreamEnd` (querying past it would
-            // return a benign "parser has already finished" error);
-            // propagate any error encountered before that.
-            //
-            // A second `DocumentStart` here means the stream carries more
-            // than one document — `from_str`/`from_str_with_config` only
-            // support exactly one (`from_str_multi` is the multi-document
-            // entry point). See #351.
+            // Drain through StreamEnd to catch trailing syntax errors and reject a
+            // second document (#351), even if the visitor stopped after one node.
             Some(de.end().map(|()| val))
         }
         Err(ref e) => {
@@ -1978,21 +1879,8 @@ where
     }
 }
 
-/// Parse a plain scalar as a float, rejecting the bare special forms.
-///
-/// Rust's `f64::from_str` accepts `nan`, `inf` and `infinity` in any
-/// case, with an optional sign. YAML 1.2 spells those `.nan`, `.inf`
-/// and `-.inf` — with a leading dot — and the dotted forms are matched
-/// explicitly by the resolver before this is reached.
-///
-/// Accepting the bare spellings here resolved a plain scalar like
-/// `nAn` to a float, which threw away its original text. Used as a
-/// mapping key it came back as `nan`, so `nAn: null` did not
-/// round-trip; the `roundtrip_value` proptest found it. Bare forms are
-/// left as strings, which is what the spec asks for.
-///
-/// An explicit `!!float nan` is unaffected: tagged scalars resolve in
-/// `parser/loader.rs`, where the tag makes the intent unambiguous.
+/// Keep bare nan/inf/infinity as strings: YAML 1.2 requires dotted forms.
+/// This preserves mapping-key round trips. Explicit !!float uses the loader.
 fn parse_plain_float(s: &str) -> Option<f64> {
     let unsigned = s.strip_prefix(['+', '-']).unwrap_or(s);
     if unsigned.eq_ignore_ascii_case("nan")
@@ -2004,6 +1892,9 @@ fn parse_plain_float(s: &str) -> Option<f64> {
     s.parse::<f64>().ok()
 }
 
+/// Scalar key text, style and optional tag before visitor coercion.
+type ScalarKey<'a> = (&'a str, ScalarStyle, Option<&'a (String, String)>);
+
 /// What `skip_value` tracks for each collection it is inside.
 #[derive(Debug)]
 struct SkipLevel {
@@ -2012,8 +1903,8 @@ struct SkipLevel {
     entries: usize,
     /// For a mapping: whether the next node is a key.
     expecting_key: bool,
-    /// Scalar keys seen, kept only under `DuplicateKeyPolicy::Error`.
-    keys: FxHashSet<String>,
+    /// Canonical scalar identities, including distinct-typed collision checks.
+    keys: FxHashMap<String, Value>,
 }
 
 impl SkipLevel {
@@ -2022,7 +1913,7 @@ impl SkipLevel {
             is_map,
             entries: 0,
             expecting_key: true,
-            keys: FxHashSet::default(),
+            keys: FxHashMap::default(),
         }
     }
 }
@@ -2079,24 +1970,8 @@ pub(crate) fn tag_is_registry_stripped(
     registry.contains(&format!("{handle}{suffix}"))
 }
 
-/// Resolve a plain scalar according to YAML 1.2's implicit-typing
-/// rules, with three `ParserConfig` toggles exposed:
-///
-/// - `no_schema` — when `true`, keep every plain scalar as a
-///   string. Useful for schema-strict pipelines where YAML's
-///   implicit resolution of `yes` → `true` or `null` → `Null`
-///   produces unwanted ambiguity.
-/// - `legacy_octal` — when `true`, accept YAML 1.1-style bare
-///   `0`-prefix octal literals (e.g. `0644`) in addition to the
-///   YAML 1.2 `0o644` form. Off by default to honour YAML 1.2's
-///   stricter integer schema.
-/// - `legacy_sexagesimal` — when `true`, accept YAML 1.1-style
-///   colon-separated base-60 numbers (`60:00` → 3 600,
-///   `1:30:00` → 5 400). Off by default; YAML 1.2 dropped the
-///   sexagesimal schema.
-/// - `lossless_u64` — when `true` and the `lossless-u64` feature is
-///   enabled, resolve unsigned integer scalars up to `u64::MAX`
-///   before considering a float fallback.
+/// Resolve YAML 1.2 plain scalars with schema, legacy radix/sexagesimal and
+/// optional lossless-u64 settings. Compatibility profiles use the AST loader.
 pub(crate) fn resolve_plain_ext(
     s: &str,
     strict: bool,
@@ -2175,16 +2050,8 @@ enum ParsedInteger {
     Unsigned(u64),
 }
 
-/// Parse a YAML 1.1 sexagesimal integer like `60:00` or
-/// `-1:30:00` — colon-separated base-60 components evaluated
-/// left-to-right. Returns `None` if the shape doesn't fit:
-///
-/// - At least one `:` is required (otherwise this overlaps with
-///   plain integer parsing).
-/// - Each component must be one or more decimal digits.
-/// - Components other than the first must be `00..=59` to avoid
-///   accepting nonsense like `1:99`.
-/// - The leading sign (`-` or `+`) applies to the whole value.
+/// Parse signed YAML 1.1 base-60 integers. Require a colon, decimal digits
+/// in every component, and 0..=59 after the first component.
 fn parse_sexagesimal_int(s: &str) -> Option<i64> {
     let (sign, rest) = match s.as_bytes().first() {
         Some(b'-') => (-1i64, &s[1..]),
@@ -2451,14 +2318,7 @@ fn filter_merge_entries(
 
 #[cfg(test)]
 mod lookahead_tests {
-    //! Unit coverage for the lookahead slot's two states.
-    //!
-    //! The integration tests in `tests/streaming_alias_lookahead.rs` drive
-    //! this through real documents, which is the behaviour that matters.
-    //! These pin the type itself, because the whole point of [`Lookahead`]
-    //! is that a consumer can no longer confuse a raw parser event with a
-    //! processed one — and a silent change to the accessors would put that
-    //! confusion straight back.
+    //! Pin raw/processed accessor behavior alongside real-document alias tests.
 
     use super::{Event, Lookahead, ScalarStyle};
     use crate::parser::scanner_span_default;

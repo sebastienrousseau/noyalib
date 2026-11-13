@@ -38,6 +38,7 @@ is explicit in the implementation record.
 | [Scalar, syntax and CST receipt](ecosystem-profile-and-consumers-2026-11-12.json) | Exact runtime hashes, scalar and grammar red/green cases, CST entry/removal boundaries, complete std/alloc/portable checks, original-input sanitizer replay and historical CLI/MCP consumer scopes. |
 | [Completed family campaigns](ecosystem-family-campaign-followup-2026-11-12.json) | All 31 hosted target receipts: 29 pass, two fail; raw logs, findings and corpus digests. Separate completed std/alloc roundtrip hours at `76c5baa`; no final-source family acceptance. |
 | [Performance observations](ecosystem-performance-2026-11-11.json) | Seventy scenarios repeated three times, raw variance, cold consumers and signed-source resource outcomes; no dedicated-host latency claim |
+| [Canonical duplicate identity](ecosystem-duplicate-identity-2026-11-13.json) | Accepted ADR-0019, std/alloc failing-first cases, complete feature batteries, Unicode pre-fix panic, 1,340 sanitizer input replays, MCP retirement and local performance costs; final-source hosted and sustained acceptance remain separate. |
 | PR #521 checks | Exact hosted core/candidate sources, platform and toolchain results; inspect each conditional skip separately |
 | Candidate artifacts | Per-product source receipts and runtime reports; local paths are retained evidence locations, not public download claims |
 
@@ -118,12 +119,12 @@ Review each installer action by its pinned source, downloaded artifact and
 credential/cache behavior. Local macOS execution does not establish Linux,
 Windows, marketplace or registry acceptance.
 
-## Decisions still required
+## Decisions and remaining acceptance
 
 | Decision | Concrete choice and evidence needed |
 |---|---|
-| Typed duplicate identity | Accept a choice in [ADR-0019](adr/0019-typed-mapping-duplicate-identity.md) before either semantic change. Retain failing-first policy, loader and alias cases. |
-| Held MCP v0.0.60 | Tag object `b28d529f8bae59bbe94bdd91d25ec50173c8702b` also contains confirmed runtime session-admission and blocking-work ownership defects. A development-only dependency justification is insufficient. Signed detached recovery `3561c28` passes 134 native tests but still fails the later Unicode edit input in immutable registry core 0.0.60; its source/ref recovery decision, exact-source gates, independent review and closing scan remain required. The existing tag is untouched. |
+| Typed duplicate identity | Canonical identity accepted on 2026-11-13 in [ADR-0019](adr/0019-typed-mapping-duplicate-identity.md). First position, last value and last scalar spelling under `Last`. Implementation and final-source validation remain required. |
+| Held MCP v0.0.60 | The maintainer retired this unpublished attempt on 2026-11-13, approving the registry-history gap. Preserve signed tag object `b28d529f8bae59bbe94bdd91d25ec50173c8702b`. Prepare fixed v0.0.61 with the family after exact-source gates, independent review and closing scan; no v0.0.60 publication or recovery adapter. |
 | Independent review | Reviewer identity, exact reviewed commits, findings with disposition and actual approval through the chosen channel. No self-review presented as independence. |
 | Continuity | An accepted owner and privately retained recovery arrangements for signing, registry and organization access. Do not put secrets in this packet. |
 
@@ -136,13 +137,13 @@ depends on immutable registry core v0.0.60, which retains the confirmed
 Unicode edit failure. A change to the tag or an unreviewed edit adapter
 cannot establish the missing release evidence.
 
-The current policy keeps that release held. A second option requires an
-explicit maintainer decision: leave the signed tag untouched, retire the
-unpublished MCP v0.0.60 attempt, and prepare all six fixed v0.0.61 crates
-together after their gates pass. The family version advances by +0.0.1,
-but MCP's registry history would have no v0.0.60 publication. That gap is
-a release-policy exception to approve, not an action taken by this packet.
-Neither option authorizes publication or closes independent review.
+The maintainer accepted retirement on 2026-11-13: leave the signed tag
+untouched, retire the unpublished MCP v0.0.60 attempt, and prepare all six
+fixed v0.0.61 crates together after their gates pass. The family version
+advances by +0.0.1; MCP's registry history intentionally has no v0.0.60
+publication. This approved release-policy exception does not authorize
+publication before gates or close independent review. The MCP changelog
+records the same retirement.
 
 ## Acceptance record
 

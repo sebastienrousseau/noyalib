@@ -30,6 +30,8 @@ mod de_error_field_location;
 mod de_error_field_path;
 #[path = "limits/dos_hardening.rs"]
 mod dos_hardening;
+#[path = "regressions/duplicate_key_identity.rs"]
+mod duplicate_key_identity;
 #[path = "values/flatten_value.rs"]
 mod flatten_value;
 #[path = "limits/flow_key_budget.rs"]

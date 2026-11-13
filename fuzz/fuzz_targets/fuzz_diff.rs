@@ -15,6 +15,9 @@ use libfuzzer_sys::fuzz_target;
 #[path = "../../crates/noyalib/tests/properties/oracle_normalization.rs"]
 mod oracle_normalization;
 
+#[path = "../canonical_duplicates.rs"]
+mod canonical_duplicates;
+
 #[path = "../json_numbers.rs"]
 mod json_numbers;
 
@@ -72,6 +75,10 @@ fuzz_target!(|data: &[u8]| {
         && !anchor_name_outside_libyaml(s)
         && !flow_entry_starts_with_indicator(s)
         && !yaml_1_1_line_break(s)
+        && !canonical_duplicates::spelling(s, &config)
+            .filter(|source| parse(source).is_ok_and(|value| numeric_equal(&noya, &value)))
+            .and_then(|source| serde_yaml_ng::from_str::<serde_json::Value>(&source).ok())
+            .is_some_and(|expected| numeric_equal(&noya, &expected))
         && !oracle_normalization::collection_spelling(s)
             .filter(|source| parse(source).is_ok_and(|value| numeric_equal(&noya, &value)))
             .and_then(|source| serde_yaml_ng::from_str::<serde_json::Value>(&source).ok())
