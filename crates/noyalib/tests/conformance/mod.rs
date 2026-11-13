@@ -12,6 +12,7 @@ mod block_scalar_explicit_indent_leading_spaces;
 mod bom_in_stream;
 mod comment_mutation;
 mod comments;
+mod document_end_tab;
 mod edge_audit;
 mod edge_cases;
 mod empty_document_targets;

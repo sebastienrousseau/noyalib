@@ -1680,9 +1680,9 @@ impl<'a> Scanner<'a> {
             self.yaml_directive_seen = false;
             self.in_document_body = false;
             self.tag_handles.clear();
-            // Per YAML 1.2.2 §6.8: a `...` document-end marker may be
-            // followed by inline whitespace and an optional comment,
-            // then a line break. Validate that here via *lookahead* —
+            // Per YAML 1.2.2 §9.1.2: a `...` document-end marker may be
+            // followed by inline whitespace (`s-separate-in-line`, tabs
+            // included) and an optional comment, then a line break. Validate that here via *lookahead* —
             // we must not advance `self.pos`, because every byte
             // between this token and the next must be visible to the
             // CST trivia recorder (`skip_to_next_token` runs before
@@ -1693,9 +1693,6 @@ impl<'a> Scanner<'a> {
             let mut look = self.pos;
             while look < self.input.len() && Self::is_blank(self.input[look]) {
                 look += 1;
-            }
-            if self.input[self.pos..look].contains(&b'\t') {
-                return Err(self.error("tabs are not allowed as separation after document marker"));
             }
             if look < self.input.len()
                 && !Self::is_break(self.input[look])
