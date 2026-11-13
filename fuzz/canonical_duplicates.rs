@@ -14,6 +14,9 @@ struct Key {
     start: usize,
     end: usize,
     spelling: String,
+    /// An empty key gains a separating space so it cannot fuse with
+    /// a preceding anchor (`&d,` must become `&d "~",`).
+    empty: bool,
 }
 
 /// Change only scalar keys in a repeated canonical group to the last
@@ -22,9 +25,15 @@ struct Key {
 pub(crate) fn spelling(source: &str, config: &noyalib::ParserConfig) -> Option<String> {
     let prepared = crate::oracle_normalization::collection_spelling(source);
     let source = prepared.as_deref().unwrap_or(source);
-    let document = noyalib::cst::parse_document(source).ok()?;
+    let document = noyalib::cst::parse_document_with_config(source, config).ok()?;
     let mut edits = Vec::new();
-    walk(document.syntax(), 0, source, config, &mut edits);
+    walk(document.syntax(), 0, &mut |entries| {
+        let keys = entries
+            .iter()
+            .filter_map(|(tokens, boundary)| key(tokens, *boundary, source, config))
+            .collect();
+        group(keys, &mut edits);
+    });
     if edits.is_empty() {
         return None;
     }
@@ -34,6 +43,62 @@ pub(crate) fn spelling(source: &str, config: &noyalib::ParserConfig) -> Option<S
         normalized.replace_range(start..end, &replacement);
     }
     Some(normalized)
+}
+
+/// True when two distinct keys of one mapping share a JSON-key spelling
+/// (`{? , !}`: a null key and the empty string both become ""). The JSON
+/// projection then depends on insertion order after ADR-0019 resolution,
+/// not on parsing, so no archive comparison applies.
+pub(crate) fn spelling_collision(source: &str, config: &noyalib::ParserConfig) -> bool {
+    let Ok(document) = noyalib::cst::parse_document_with_config(source, config) else {
+        return false;
+    };
+    let mut collision = false;
+    walk(document.syntax(), 0, &mut |entries| {
+        let keys: Vec<_> = entries
+            .iter()
+            .filter_map(|(tokens, boundary)| written_key(tokens, *boundary, source, config))
+            .collect();
+        collision |= keys.iter().enumerate().any(|(i, (canonical, spelling))| {
+            keys[i + 1..]
+                .iter()
+                .any(|(other, spelled)| spelled == spelling && other != canonical)
+        });
+    });
+    collision
+}
+
+/// The canonical `Value` key and JSON-key spelling of an entry's whole
+/// key text, properties included.
+fn written_key(
+    tokens: &[Token],
+    boundary: usize,
+    source: &str,
+    config: &noyalib::ParserConfig,
+) -> Option<(noyalib::Value, String)> {
+    let significant = |t: &&Token| {
+        !matches!(
+            t.0,
+            SyntaxKind::Whitespace
+                | SyntaxKind::Newline
+                | SyntaxKind::Comment
+                | SyntaxKind::QuestionIndicator
+        )
+    };
+    let colon = tokens.iter().find(|t| t.0 == SyntaxKind::ColonIndicator);
+    let first = tokens.iter().find(significant)?;
+    if colon.is_none() && first.0 == SyntaxKind::Document {
+        return None;
+    }
+    let end = colon.map_or(boundary, |t| t.1);
+    let start = if Some(first) == colon { end } else { first.1 };
+    let raw = source.get(start..end)?.trim();
+    let wrapped = format!("{{{raw} : 0}}");
+    let resolved: noyalib::Value = noyalib::from_str_with_config(&wrapped, config).ok()?;
+    let (canonical, _) = resolved.as_mapping()?.iter().next()?;
+    let map: serde_json::Value = noyalib::from_str_with_config(&wrapped, config).ok()?;
+    let spelling = map.as_object()?.keys().next()?.clone();
+    Some((noyalib::Value::from(canonical.clone()), spelling))
 }
 
 fn key(
@@ -54,10 +119,13 @@ fn key(
     for &(kind, start, end) in tokens {
         match kind {
             SyntaxKind::ColonIndicator => break,
+            // An anchor names the node without changing its identity;
+            // the caller's re-parse rejects a rewrite an alias observes.
             SyntaxKind::Whitespace
             | SyntaxKind::Newline
             | SyntaxKind::Comment
-            | SyntaxKind::QuestionIndicator => {}
+            | SyntaxKind::QuestionIndicator
+            | SyntaxKind::AnchorMark => {}
             SyntaxKind::PlainScalar
             | SyntaxKind::SingleQuotedScalar
             | SyntaxKind::DoubleQuotedScalar
@@ -68,12 +136,23 @@ fn key(
             _ => return None,
         }
     }
-    let empty_at = tokens
+    // An empty key sits right after its `?` or anchor, else before its
+    // colon: a colon or block boundary may lie past a line break.
+    let colon = tokens
         .iter()
-        .find(|t| t.0 == SyntaxKind::ColonIndicator)
-        .map_or(boundary, |token| token.1);
+        .position(|t| t.0 == SyntaxKind::ColonIndicator);
+    let empty_at = tokens[..colon.unwrap_or(tokens.len())]
+        .iter()
+        .rev()
+        .find(|t| matches!(t.0, SyntaxKind::QuestionIndicator | SyntaxKind::AnchorMark))
+        .map(|token| token.2)
+        .or_else(|| colon.map(|at| tokens[at].1))
+        .unwrap_or(boundary);
     let (start, end) = scalar.unwrap_or((empty_at, empty_at));
-    let raw = source.get(start..end)?;
+    // A plain token can span its trailing break; keep that separator
+    // so a following comment stays preceded by whitespace.
+    let raw = source.get(start..end)?.trim_end();
+    let end = start + raw.len();
     if raw.trim() == "<<" {
         return None;
     }
@@ -89,6 +168,7 @@ fn key(
         start,
         end,
         spelling,
+        empty: scalar.is_none(),
     })
 }
 
@@ -108,25 +188,23 @@ fn group(keys: Vec<Key>, edits: &mut Vec<Edit>) {
             .collect();
         if duplicates.len() > 1 {
             let replacement = serde_json::to_string(&key.spelling).expect("string serialization");
-            edits.extend(
-                duplicates
-                    .into_iter()
-                    .map(|previous| (previous.start, previous.end, replacement.clone())),
-            );
+            edits.extend(duplicates.into_iter().map(|previous| {
+                let space = if previous.empty { " " } else { "" };
+                (
+                    previous.start,
+                    previous.end,
+                    format!("{space}{replacement}"),
+                )
+            }));
         }
     }
 }
 
-fn walk(
-    node: &GreenNode,
-    offset: usize,
-    source: &str,
-    config: &noyalib::ParserConfig,
-    edits: &mut Vec<Edit>,
-) {
+/// Hand each mapping's entries (tokens, end boundary) to `visit`.
+fn walk(node: &GreenNode, offset: usize, visit: &mut dyn FnMut(&[(Vec<Token>, usize)])) {
     let mut position = offset;
     let mut tokens = Vec::new();
-    let mut keys = Vec::new();
+    let mut entries = Vec::new();
     for child in node.children() {
         let end = position + child.text_len();
         match child {
@@ -134,31 +212,16 @@ fn walk(
                 if node.kind() == SyntaxKind::BlockMapping
                     && child.kind() == SyntaxKind::MappingEntry
                 {
-                    let mut at = position;
-                    let entry: Vec<_> = child
-                        .children()
-                        .map(|part| {
-                            let end = at + part.text_len();
-                            let kind = match part {
-                                GreenChild::Token { kind, .. } => *kind,
-                                _ => SyntaxKind::Document,
-                            };
-                            let token = (kind, at, end);
-                            at = end;
-                            token
-                        })
-                        .collect();
-                    keys.extend(key(&entry, end, source, config));
+                    entries.push((entry_tokens(child, position), end));
                 }
                 tokens.push((SyntaxKind::Document, position, end));
-                walk(child, position, source, config, edits);
+                walk(child, position, visit);
             }
             GreenChild::Token { kind, .. } if node.kind() == SyntaxKind::FlowMapping => {
                 match kind {
                     SyntaxKind::OpenBrace => {}
                     SyntaxKind::Comma | SyntaxKind::CloseBrace => {
-                        keys.extend(key(&tokens, position, source, config));
-                        tokens.clear();
+                        entries.push((core::mem::take(&mut tokens), position));
                     }
                     _ => tokens.push((*kind, position, end)),
                 }
@@ -167,7 +230,23 @@ fn walk(
         }
         position = end;
     }
-    group(keys, edits);
+    visit(&entries);
+}
+
+fn entry_tokens(entry: &GreenNode, mut at: usize) -> Vec<Token> {
+    entry
+        .children()
+        .map(|part| {
+            let end = at + part.text_len();
+            let kind = match part {
+                GreenChild::Token { kind, .. } => *kind,
+                _ => SyntaxKind::Document,
+            };
+            let token = (kind, at, end);
+            at = end;
+            token
+        })
+        .collect()
 }
 
 #[cfg(test)]
@@ -197,6 +276,57 @@ mod tests {
         ));
         check("{~: 1, ? }");
         check("null: 1\n~: 2\nsibling: [7, {other: 9}]\n");
+    }
+
+    #[test]
+    fn anchored_null_duplicates_keep_their_anchor() {
+        check(include_str!(
+            "regressions/fuzz_diff/crash-b1e46c04a8525d9cba6b58a02c5b12a9a5fdfabf"
+        ));
+        check("{&d,~}");
+        check("{&d : 1, ~: 2}");
+        check("&d null: 1\n~: 2\n");
+        check("{&d,~\n#\n}");
+        check("{&d,~:\n2\n~\n#\n}");
+        check("? ~\n?\n? ");
+        check("{? &y,~}");
+        check("? &a\n? ~\n");
+        check("? ~\r?\r:");
+    }
+
+    #[test]
+    fn distinct_keys_sharing_a_json_spelling_are_reported() {
+        let config = ParserConfig::default();
+        for source in [
+            "{? ,!,?\n:\n2}",
+            "{!1:,&d : 0,!1:,}",
+            "{!, : 1}",
+            "! : 1\n: 2\n",
+        ] {
+            assert!(super::spelling_collision(source, &config), "{source:?}");
+        }
+        for source in [
+            "{~: 1, null: 2}",
+            "{a: 1, b: 2}",
+            "{&d,~}",
+            "{!,~}",
+            "{'': 1, b: 2}",
+        ] {
+            assert!(!super::spelling_collision(source, &config), "{source:?}");
+        }
+    }
+
+    #[test]
+    fn compat_float_duplicates_beside_a_tagged_key() {
+        let config = ParserConfig::serde_yaml_compat();
+        let source = "{04,.0,+.0,!\t4}";
+        let normalized = spelling(source, &config);
+        let normalized = normalized.expect("canonical duplicates");
+        let before: serde_json::Value = noyalib::compat::serde_yaml::from_str(source).unwrap();
+        let after: serde_json::Value = noyalib::compat::serde_yaml::from_str(&normalized).unwrap();
+        assert_eq!(before, after);
+        let oracle: serde_json::Value = serde_yaml::from_str(&normalized).unwrap();
+        assert_eq!(before, oracle, "{normalized:?}");
     }
 
     #[test]

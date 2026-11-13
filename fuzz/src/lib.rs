@@ -22,8 +22,16 @@ mod json_numbers;
 mod decimal_integer;
 
 #[cfg(test)]
+#[path = "../signed_radix.rs"]
+mod signed_radix;
+
+#[cfg(test)]
 #[path = "../canonical_duplicates.rs"]
 mod canonical_duplicates;
+
+#[cfg(test)]
+#[path = "../question_key.rs"]
+mod question_key;
 
 #[cfg(test)]
 #[path = "../../crates/noyalib/tests/properties/oracle_normalization.rs"]

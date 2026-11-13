@@ -1,0 +1,14 @@
+$efaults: &defaults
+  aeaptarZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZ: postgres
+  host: localhost
+  pool: 5
+
+development:
+  <<: {&m :.m :......43:m :u.fae$
+h....>$.>`!,	.2222252ef.u
+h..- ?-   - - - -` ..>$!,	.04444444,}
+
+production:
+  <<: *defaults
+  database: prod_
+dbo [ pol: 50

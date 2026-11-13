@@ -304,16 +304,27 @@ pub(crate) fn quoted_empty_flow_keys(source: &str) -> Option<String> {
             SyntaxKind::PlainScalar if !flow.is_empty() => {
                 // YAML 1.2.2 §7.3.3 permits ':' followed by a plain-safe
                 // character, including in a flow collection.
-                let text = source
-                    .get(start..end)?
-                    .trim_matches([' ', '\t', '\r', '\n']);
+                // A plain token can span its trailing break; replace only
+                // the scalar so a following comment keeps its separation.
+                let raw = source.get(start..end)?;
+                let text = raw.trim_matches([' ', '\t', '\r', '\n']);
+                let start =
+                    start + (raw.len() - raw.trim_start_matches([' ', '\t', '\r', '\n']).len());
+                let end = start + text.len();
                 let rest = source.get(end..)?;
                 let compact_empty_value =
                     rest.starts_with(":,") || rest.starts_with(":}") || rest.starts_with(":]");
                 if text.contains(['\n', '\r']) {
                     // Flow mappings permit multiline YAML keys (production
                     // 145); libyaml applies its single-line key restriction.
-                    let noyalib::Value::String(value) = noyalib::from_str(text).ok()? else {
+                    // Read the text in flow context, where a `...` line is
+                    // content rather than a document end marker.
+                    let noyalib::Value::Sequence(items) =
+                        noyalib::from_str(&format!("[{text}]")).ok()?
+                    else {
+                        return None;
+                    };
+                    let [noyalib::Value::String(value)] = items.as_slice() else {
                         return None;
                     };
                     replacements.push((start, end, serde_json::to_string(&value).ok()?));
@@ -363,7 +374,10 @@ fn lexical_tokens(source: &str) -> Option<Vec<Lexeme>> {
             }
         }
     }
-    let document = noyalib::cst::parse_document(source).ok()?;
+    // Tokens are lexical: merge semantics must not refuse a source the
+    // compatibility profile reads with `<<` as an ordinary key.
+    let config = noyalib::ParserConfig::new().merge_key_policy(noyalib::MergeKeyPolicy::AsOrdinary);
+    let document = noyalib::cst::parse_document_with_config(source, &config).ok()?;
     let mut tokens = Vec::new();
     walk(document.syntax(), &mut 0, &mut tokens);
     Some(tokens)
@@ -380,6 +394,36 @@ fn apply_replacements(source: &str, replacements: Vec<Replacement>) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn anchor_repair_reads_tokens_under_a_scalar_merge_value() {
+        // Found by fuzz_serde_yaml_compat: `<<: *a` naming a scalar is an
+        // ordinary entry in the compatibility profile.
+        let source = "t: &defaults \nd: &defaults\n b\no:\n  <<: *defaults\n  p: &d";
+        let normalized = unique_colliding_anchors(source).expect("anchor ID collision");
+        assert_eq!(
+            normalized,
+            "t: &noya_oracle_0 \nd: &noya_oracle_1\n b\no:\n  <<: *noya_oracle_1\n  p: &noya_oracle_2"
+        );
+    }
+
+    #[test]
+    fn quoted_multiline_flow_value_keeps_comment_separation() {
+        // Found by fuzz_diff on `{&d,~:\n2\n~\n#\n}`.
+        let source = "{&d,~:\n2\n~\n#\n}";
+        let normalized = quoted_empty_flow_keys(source).unwrap();
+        assert_eq!(normalized, "{&d,~:\n\"2 ~\"\n#\n}");
+        let before: serde_json::Value = noyalib::from_str(source).unwrap();
+        let after: serde_json::Value = noyalib::from_str(&normalized).unwrap();
+        assert_eq!(before, after);
+        // Found by fuzz_diff: a `...` continuation line is flow content.
+        let source = "{? :e\n...}";
+        let normalized = quoted_empty_flow_keys(source).unwrap();
+        assert_eq!(normalized, "{? \":e ...\"}");
+        let before: serde_json::Value = noyalib::from_str(source).unwrap();
+        let after: serde_json::Value = noyalib::from_str(&normalized).unwrap();
+        assert_eq!(before, after);
+    }
 
     #[test]
     fn stream_bom_repair_preserves_content_and_composes_block_repairs() {

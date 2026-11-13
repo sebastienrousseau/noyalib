@@ -24,6 +24,9 @@ mod json_numbers;
 #[path = "../decimal_integer.rs"]
 mod decimal_integer;
 
+#[path = "../question_key.rs"]
+mod question_key;
+
 fuzz_target!(|data: &[u8]| {
     let Ok(s) = std::str::from_utf8(data) else {
         return;
@@ -49,6 +52,9 @@ fuzz_target!(|data: &[u8]| {
             else {
                 return;
             };
+            // A spelling repair can expose the archive's anchor-ID reuse.
+            let normalized =
+                oracle_normalization::unique_colliding_anchors(&normalized).unwrap_or(normalized);
             let Ok(projected) = parse(&normalized) else {
                 return;
             };
@@ -75,8 +81,9 @@ fuzz_target!(|data: &[u8]| {
 
     if !numeric_equal(&noya, &syml)
         && !anchor_name_outside_libyaml(s)
-        && !flow_entry_starts_with_indicator(s)
+        && !question_key::flow_entry_starts_with_indicator(s)
         && !yaml_1_1_line_break(s)
+        && !canonical_duplicates::spelling_collision(s, &config)
         && !canonical_duplicates::spelling(s, &config)
             .filter(|source| parse(source).is_ok_and(|value| numeric_equal(&noya, &value)))
             .and_then(|source| serde_yaml_ng::from_str::<serde_json::Value>(&source).ok())
@@ -155,6 +162,13 @@ fn numeric_equal(a: &serde_json::Value, b: &serde_json::Value) -> bool {
         {
             true
         }
+        // ADR-0004: lossless mode keeps a decimal integer beyond both
+        // 64-bit domains as its digits; the archive rounds it to a float.
+        (V::Number(n), V::String(s)) | (V::String(s), V::Number(n))
+            if decimal_integer::beyond_64_bits(s, n) =>
+        {
+            true
+        }
         // Known divergence: a core-schema float literal that overflows
         // f64 (`3e999`) is infinity in noyalib, which JSON can only hold
         // as null; serde_yaml_ng keeps the text as a string.
@@ -188,20 +202,7 @@ fn object_equal(
     am.len() == bm.len()
         && am
             .iter()
-            .all(|(k, v)| lookup_key(bm, k).is_some_and(|w| numeric_equal(v, w)))
-}
-
-/// Look `k` up in `m`, tolerating two known serde_yaml_ng quirks on
-/// keys: it reads `?foo` as an explicit-key indicator and drops the
-/// `?`, where YAML 1.2 (ns-plain-first; yaml-test-suite 652Z) reads
-/// the plain key "?foo". The regression is in competitor_bugs.rs.
-fn lookup_key<'m>(
-    m: &'m serde_json::Map<String, serde_json::Value>,
-    k: &str,
-) -> Option<&'m serde_json::Value> {
-    m.get(k)
-        .or_else(|| k.strip_prefix('?').and_then(|s| m.get(s)))
-        .or_else(|| m.get(&format!("?{k}")))
+            .all(|(k, v)| question_key::lookup(bm, k).is_some_and(|w| numeric_equal(v, w)))
 }
 
 /// Known libyaml quirk (serde_yaml_ng and serde_yaml): it keeps the
@@ -231,59 +232,6 @@ fn anchor_name_outside_libyaml(s: &str) -> bool {
     })
 }
 
-/// Known serde_yaml_ng quirks at the start of a flow entry: it reads
-/// a `?` followed by a non-space as the explicit-key indicator, so
-/// `[?x]` becomes `[{"x": null}]` where YAML 1.2 (ns-plain-first;
-/// yaml-test-suite 652Z) reads the plain scalar "?x"; and it cannot
-/// read an entry whose key is empty (`[: x]`, `[?, :]`), which the
-/// spec allows (yaml-test-suite CFD4). A flow mapping key with a `?`
-/// is tolerated by `lookup_key`; any other such entry changes the
-/// shape, so those inputs are dropped.
-fn flow_entry_starts_with_indicator(s: &str) -> bool {
-    // Look back past comments as well as white space.
-    let stripped = without_comments(s);
-    let b = stripped.as_bytes();
-    b.iter().enumerate().any(|(i, &c)| {
-        let question = c == b'?' && b.get(i + 1).is_some_and(|n| !n.is_ascii_whitespace());
-        (question || c == b':')
-            && b[..i]
-                .iter()
-                .rev()
-                .find(|p| !p.is_ascii_whitespace())
-                .is_some_and(|p| matches!(p, b'[' | b'{' | b','))
-    })
-}
-
-/// An integer spelling YAML 1.2's core schema leaves a string and
-/// serde_yaml_ng's 1.1-flavoured resolver reads as a number: a signed
-/// radix integer (`+0x1F`, `-0o17`; the core hex and octal patterns
-/// carry no sign) or any binary literal (`0b11`, `-0b0`; the core
-/// schema has no binary form). noyalib's reading of the binary form is
-/// pinned in tests/regressions/competitor_bugs.rs.
-fn is_yaml_11_int(s: &str) -> bool {
-    let unsigned = s.strip_prefix(['-', '+']);
-    unsigned.is_some_and(|r| r.starts_with("0x") || r.starts_with("0o"))
-        || unsigned.unwrap_or(s).starts_with("0b")
-}
-
-/// `s` with every comment (`#` at a line start or after white space,
-/// to the end of the line) blanked to spaces, offsets unchanged.
-fn without_comments(s: &str) -> String {
-    let mut out = String::with_capacity(s.len());
-    let mut in_comment = false;
-    let mut prev_blank = true;
-    for c in s.chars() {
-        if c == '\n' || c == '\r' {
-            in_comment = false;
-        } else if c == '#' && prev_blank {
-            in_comment = true;
-        }
-        prev_blank = c.is_whitespace();
-        out.push(if in_comment { ' ' } else { c });
-    }
-    out
-}
-
 /// `cut` is `full` up to the start of a line that begins with `#`,
 /// less any line breaks just before that line: the shape serde_yaml_ng
 /// leaves when it reads that line of a block scalar as a comment and
@@ -302,4 +250,16 @@ fn cut_at_comment_line(full: &str, cut: &str) -> bool {
 fn is_leading_zero_int(s: &str) -> bool {
     let digits = s.strip_prefix(['-', '+']).unwrap_or(s);
     digits.len() >= 2 && digits.starts_with('0') && digits.bytes().all(|b| b.is_ascii_digit())
+}
+
+/// An integer spelling YAML 1.2's core schema leaves a string and
+/// serde_yaml_ng's 1.1-flavoured resolver reads as a number: a signed
+/// radix integer (`+0x1F`, `-0o17`; the core hex and octal patterns
+/// carry no sign) or any binary literal (`0b11`, `-0b0`; the core
+/// schema has no binary form). noyalib's reading of the binary form is
+/// pinned in tests/regressions/competitor_bugs.rs.
+fn is_yaml_11_int(s: &str) -> bool {
+    let unsigned = s.strip_prefix(['-', '+']);
+    unsigned.is_some_and(|r| r.starts_with("0x") || r.starts_with("0o"))
+        || unsigned.unwrap_or(s).starts_with("0b")
 }

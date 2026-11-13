@@ -32,6 +32,12 @@ mod bom_classification;
 #[path = "../json_numbers.rs"]
 mod json_numbers;
 
+#[path = "../signed_radix.rs"]
+mod signed_radix;
+
+#[path = "../question_key.rs"]
+mod question_key;
+
 fuzz_target!(|data: &[u8]| {
     let Ok(s) = std::str::from_utf8(data) else {
         return;
@@ -47,7 +53,12 @@ fuzz_target!(|data: &[u8]| {
         (Ok(a), Ok(b)) => {
             if !equivalent(&a, &b)
                 && !anchor_name_outside_libyaml(s)
+                && !question_key::flow_entry_starts_with_indicator(s)
                 && !yaml_1_1_line_break(s)
+                && !canonical_duplicates::spelling_collision(
+                    s,
+                    &noyalib::ParserConfig::serde_yaml_compat(),
+                )
                 && !oracle_agrees(
                     canonical_duplicates::spelling(s, &noyalib::ParserConfig::serde_yaml_compat()),
                     &a,
@@ -74,6 +85,11 @@ fuzz_target!(|data: &[u8]| {
                 )
                 && !oracle_agrees(oracle_normalization::stream_bom_prefix(s), &a)
                 && !oracle_agrees(oracle_normalization::collection_spelling(s), &a)
+                && !oracle_agrees(
+                    oracle_normalization::collection_spelling(s)
+                        .and_then(|n| oracle_normalization::unique_colliding_anchors(&n)),
+                    &a,
+                )
             {
                 panic!(
                     "shim accepted what serde_yaml rejects (len {}):\n  shim     : {}\n  upstream : {e}",
@@ -90,6 +106,7 @@ fuzz_target!(|data: &[u8]| {
                 && !oracle_normalization::quoted_indent_rejection(&e.to_string())
                 && !oracle_normalization::missing_comment_separator_rejection(&e.to_string())
                 && !bom_classification::unquoted_content_bom_rejection(s, e.inner())
+                && !flow_indent_rejection(&e.to_string())
             {
                 panic!(
                     "shim rejected what serde_yaml accepts (len {}):\n  shim     : {e}\n  upstream : {}",
@@ -143,13 +160,18 @@ fn equivalent(a: &serde_json::Value, b: &serde_json::Value) -> bool {
     use serde_json::Value as V;
     match (a, b) {
         (V::Number(x), V::Number(y)) => json_numbers::equal(x, y),
+        (V::Number(n), V::String(s)) | (V::String(s), V::Number(n))
+            if signed_radix::equal(s, n) =>
+        {
+            true
+        }
         (V::Array(x), V::Array(y)) => {
             x.len() == y.len() && x.iter().zip(y).all(|(p, q)| equivalent(p, q))
         }
         (V::Object(x), V::Object(y)) => {
             x.len() == y.len()
                 && x.iter()
-                    .all(|(k, v)| y.get(k).is_some_and(|w| equivalent(v, w)))
+                    .all(|(k, v)| question_key::lookup(y, k).is_some_and(|w| equivalent(v, w)))
         }
         _ => a == b,
     }
@@ -177,7 +199,9 @@ fn known_reject_divergence(s: &str) -> bool {
     // yaml-test-suite blesses them and noyalib passes it 406/406 —
     // but libyaml wants a key before the `:` in block context
     // ("did not find expected key").
-    if s.lines().any(|l| l.trim_start().starts_with(':')) {
+    if s.split(['\r', '\n'])
+        .any(|l| l.trim_start().starts_with(':'))
+    {
         return true;
     }
     // libyaml rejects a tab that starts a line ("cannot start any
@@ -191,6 +215,31 @@ fn known_reject_divergence(s: &str) -> bool {
     if s.split(['\r', '\n'])
         .any(|l| l.trim_start_matches(' ').starts_with('\t'))
     {
+        return true;
+    }
+    // A tab after a block sequence's `-` is s-separate-in-line (§6.2);
+    // libyaml rejects it the same way.
+    if s.split(['\r', '\n'])
+        .any(|l| l.trim_start_matches(' ').starts_with("-\t"))
+    {
+        return true;
+    }
+    // A flow entry that opens with `?` or `:` (yaml-test-suite 652Z,
+    // CFD4); see `question_key`.
+    if question_key::flow_entry_starts_with_indicator(s) {
+        return true;
+    }
+    // In flow context a `:` may follow its key across white space or a
+    // line break (yaml-test-suite 4MUZ, NJ66) and may sit directly before
+    // `:` or a flow indicator (`{m :}`, `{m\nl::}`). libyaml rejects
+    // those ("found unexpected ':'"); the spec reads them as written.
+    if s.contains(['{', '[']) && flow_colon_libyaml_rejects(s) {
+        return true;
+    }
+    // `-` directly before a flow indicator cannot start a plain scalar:
+    // ns-plain-first needs a ns-plain-safe character after it, so `{-}`
+    // is an error. libyaml reads the scalar "-".
+    if lone_dash_before_flow_indicator(s) {
         return true;
     }
     // A `#` straight after a block scalar header (`|#`, `>-#`) is not a
@@ -218,10 +267,45 @@ fn block_header_touches_comment(s: &str) -> bool {
 /// The document is a root block scalar (`|` or `>`, after an optional
 /// `---`) with a non-blank line at column 0 below its header.
 fn root_block_scalar_with_column_0_content(s: &str) -> bool {
-    let mut lines = s.lines().skip_while(|l| l.trim().is_empty());
-    let Some(header) = lines.next() else {
+    // LF, CRLF and lone CR, matching the production scanner.
+    let mut lines = s.split(['\r', '\n']).skip_while(|l| l.trim().is_empty());
+    let Some(mut header) = lines.next() else {
         return false;
     };
+    // The header may follow a bare `---` line.
+    if header.trim_end() == "---" {
+        let Some(next) = lines.next() else {
+            return false;
+        };
+        header = next;
+    }
     let header = header.strip_prefix("---").unwrap_or(header).trim_start();
     header.starts_with(['|', '>']) && lines.any(|l| l.starts_with(|c: char| !c.is_whitespace()))
+}
+
+/// See `known_reject_divergence`.
+fn flow_colon_libyaml_rejects(s: &str) -> bool {
+    let b = s.as_bytes();
+    b.iter().enumerate().any(|(i, &c)| {
+        c == b':'
+            && (i > 0 && matches!(b[i - 1], b' ' | b'\t' | b'\n' | b'\r')
+                || b.get(i + 1)
+                    .is_some_and(|n| matches!(n, b':' | b',' | b']' | b'}')))
+    })
+}
+
+/// See `known_reject_divergence`.
+fn lone_dash_before_flow_indicator(s: &str) -> bool {
+    let b = s.as_bytes();
+    b.windows(2).enumerate().any(|(i, w)| {
+        w[0] == b'-'
+            && matches!(w[1], b',' | b']' | b'}')
+            && (i == 0 || matches!(b[i - 1], b' ' | b'\t' | b'\n' | b'\r' | b'[' | b'{' | b','))
+    })
+}
+
+/// A flow continuation line must be indented past the parent block
+/// (yaml-test-suite 9C9N is the error case); libyaml accepts `- {\na}`.
+fn flow_indent_rejection(message: &str) -> bool {
+    message.starts_with("flow content must be indented more than the surrounding block")
 }

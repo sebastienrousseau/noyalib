@@ -259,3 +259,15 @@ fn a_stream_bom_must_not_prevent_complete_archive_comparison() {
     assert_eq!(before, after);
     assert_eq!(before, oracle);
 }
+
+#[test]
+fn multiline_flow_keys_compare_the_complete_value_with_the_archive() {
+    for source in ["{? :e\n...}", "{? :e\n#\n}"] {
+        let before: serde_json::Value = noyalib::from_str(source).unwrap();
+        let normalized = normalization::collection_spelling(source).expect("flow key spelling");
+        let after: serde_json::Value = noyalib::from_str(&normalized).unwrap();
+        assert_eq!(before, after, "{normalized:?}");
+        let oracle: serde_json::Value = serde_yaml_ng::from_str(&normalized).unwrap();
+        assert_eq!(before, oracle, "{normalized:?}");
+    }
+}
