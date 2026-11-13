@@ -3,7 +3,7 @@
 
 # Ecosystem implementation plan
 
-Updated **2026-11-12**. Goal: close the measured gaps in all six repositories
+Updated **2026-11-13**. Goal: close the measured gaps in all six repositories
 so every category can earn a defensible, maintained 10/10 within its declared
 product scope. The [assessment](ROADMAP-TO-10.md) gives the baseline and the
 [evidence snapshot](ecosystem-assessment-2026-11-10.json) pins its sources.
@@ -161,6 +161,17 @@ archive and provenance, installed binaries and licenses, generated shims,
 removal and unchanged persistent PATH. The manager is fetched at an exact
 commit without a bootstrap installer. Hosted acceptance remains pending;
 this does not publish a Scoop bucket or candidate registry artifact.
+
+The [November 13 acceptance record](ecosystem-package-manager-acceptance-2026-11-13.json)
+retains passing Homebrew, Arch and Scoop receipts from run `43334241731`
+at signed CLI `955c2d3`. The corrected Arch harness installs manuals that
+the minimal container normally excludes, preserves every other resolved
+pacman setting and checks all twelve assets. Scoop's normal manager shim
+PATH addition is removed only after checking for unrelated changes; the
+original user/machine snapshot is restored and compared. Native and shim
+execution, artifact identity, provenance and removal pass. These candidate
+recipe checks close those measured installation gaps; public channels,
+other architectures and final registry graphs retain their own criteria.
 
 ## Full family campaign execution
 

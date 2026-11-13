@@ -16,6 +16,26 @@ because v0.0.61 is unpublished. All five satellites passed the Rust 1.89.0
 host build; the alloc-only core and WASM binding also built for wasm32. Published artifacts have separate
 [verification receipts](ecosystem-publication-receipts-2026-11-10.json).
 
+## Package-manager acceptance, 2026-11-13
+
+The [acceptance record](ecosystem-package-manager-acceptance-2026-11-13.json)
+retains three passing actual package-manager lifecycles and both preceding
+harness failures. Homebrew runs on macOS; Arch builds and installs offline
+on x86_64 Linux; Scoop executes native binaries and generated shims on
+x86_64 Windows. Each verifies authentic published v0.0.60 bytes, provenance
+and removal using the candidate recipe at signed CLI `955c2d3`.
+
+Arch's full-file installation preserves every resolved pacman setting
+except `NoExtract`; all twelve assets and licenses pass integrity checks.
+Scoop restores its normal manager shim PATH addition after refusing
+unrelated changes, and its final user/machine snapshot equals the original.
+No public tap, bucket, AUR or candidate registry artifact was published.
+Remaining architectures and channels stay separate acceptance work.
+
+The production runtime remains identical to `5ffcea0`; the later fixes
+change packaging, development harnesses and evidence. Full exact-source CI
+is still required on the final feature head.
+
 ## Rust 1.100 and hosted consumers, 2026-11-12
 
 The next Homebrew acceptance step is implemented in the
@@ -785,10 +805,10 @@ remaining evidence. They are not implied by the local results.
 | P1 | The [latest observations](ecosystem-performance-2026-11-11.json) retain three repetitions of 70 scenarios and real cold CLI/LSP/MCP cycles, with raw samples, hashes and variance. Substantial host noise is explicit. | Dedicated-host end-to-end latency and remaining resource cases. |
 | P2 | WASM byte and real WASM/JS growth budgets reject padding, retained documents/values and missing observations. MCP admission rejects the deterministic concurrent cap violation. | Measured budgets and injection checks for remaining scenarios and products; no shared-host latency threshold. |
 | X1 | Staged CLI install/uninstall, installed VSIX, Node and browser WASM, renamed Rust consumer and MCP offline drill passed. | Fresh-clone, failure and recovery transcripts across the rest of the support matrix. |
-| C1 | At the continuation checkpoint, all-feature test binaries pass 6,748 tests with no failures or ignores, including 152 properties. Shared fixtures check semantics and refusals. | Complete the case-level parity and diagnostics ledger; keep intentional loader differences explicit. |
+| C1 | The [runtime receipt](ecosystem-profile-and-consumers-2026-11-12.json) records 6,776 std tests, 156 properties and original-input sanitizer replay at source `5ffcea0`. Later commits change harnesses, packaging and evidence. | Resolve ADR-0019 and complete final-source campaign and independent review acceptance; keep intentional loader differences explicit. |
 | C2 | Documented loader responsibilities and fixed the recorded runtime defects. The collection-anchor extraction retains behavior under std and alloc characterization suites and reduces the measured complexity baseline. | Independent architecture review of the resulting boundaries. |
-| C3 | Complete alloc-only hosted batteries at the continuation checkpoint pass 6,726 baseline and 7,067 portable tests, including seventeen oracle helper tests. Hosted schema composition previously passed 23 tests. Baseline and portable built on three bare-metal targets with stable and Rust 1.89.0. Default, minimal std and alloc float consumers had no active libm. | Rerun the final registry consumer and CI target matrix before release. |
-| CLI1 | All-feature CLI probe passed 123 tests. Generated manpages match; staged install, both binary version checks and uninstall passed with a custom target directory. | Hosted Action and package-manager acceptance on the remaining operating systems. |
+| C3 | The runtime receipt records 6,771 baseline alloc-only and 7,112 portable tests, 21 oracle tests per profile and twelve stable/MSRV bare-metal checks at `5ffcea0`. Hosted schema composition previously passed 23 tests. Default, minimal std and alloc float consumers had no active libm. | Retain exact-source CI and rerun final registry consumers before release; local overrides are candidate evidence. |
+| CLI1 | Signed CLI `955c2d3` passes 123 native tests. Three-OS archive recovery and actual Homebrew, Arch and Scoop candidate recipes pass their recorded install/identity/removal checks. | Hosted Action, remaining architecture/channel combinations and eventual registry acceptance. |
 | CLI2 | A refused rename preserved destination contents and removed the temporary file; mode and symlink tests also pass. | Cross-OS interruption and metadata evidence, with independent review. |
 | LSP2 | Tests cover UTF-16 positions, stale changes, initialization, header limits, case-insensitive field names and exit while stdin is open. The corrected binary passes 76 native tests and nine doctests; real client checks passed at their recorded sources. | Resource and latency budgets for editor workloads. |
 | LSP3 | Neovim 0.12.6 and installed VS Code 1.141.0 VSIX passed. The VSIX startup bug was reproduced and fixed. | Installed marketplace artifacts and the rest of the claimed OS matrix. |
@@ -798,10 +818,10 @@ remaining evidence. They are not implied by the local results.
 | WASM2 | Optimized module is 614,712 bytes raw and 212,267 bytes gzip within unchanged limits. Eleven signed-source Node/browser resource outcomes match expectations, including three normal repetitions per engine and real WASM/JS retention faults. | Comparable dedicated-host timing and eventual registry-module acceptance. |
 | WASM3 | Installed optimized tarball includes both licenses; TypeScript, Node and webpack/Chromium pass. Optimized Node, Bun 1.4.4, Deno 2.9.8 and classic Chromium execute the shared contract. | Eventual registry artifact and final-source hosted runtime receipts. |
 | SHIM1 | The standalone captured contract and extended tag, number and location cases passed. Equivalent compatibility entry points now have a separate benchmark from resolver-profile costs. | Complete extended location, tag and number cases and measure equivalent core overhead. |
-| I1 | Eleven shared cases pass in the earlier hosted job; the expanded thirteen-case corpus passes locally through the corrected products. Receipts record Node, Rust and SDK versions and source identities. The workflow builds each checkout from its lock. | Scheduled execution, additional contract cases and final registry-source parity. |
+| I1 | All 23 declared projections pass through six hosted consumers in the [Rust 1.100 follow-up](ecosystem-rust100-hosted-consumers-2026-11-12.json), including two deliberate contract differences. Receipts record runtime versions, exact sources and lock hashes. | Retain corrected-source CI and final registry-source parity. |
 | S2 | Reviewed changed source and trust boundaries, retained existing vet criteria, and recorded the source and advisory identities. | Independent security review, registry locks and closing scans. |
 | R1 | Reverified six public registry crates against signed GitHub assets, exact tags, GPG, Sigstore and GitHub source provenance. | Install and recovery evidence for all claimed secondary channels and held MCP v0.0.60. |
-| R2 | Published MCP offline/corruption/restore drill passed. CLI staged uninstall left no files. | Remaining supported channels, missing services, corruption and privately recorded recovery ownership. |
+| R2 | Published MCP offline/corruption/restore and three-OS CLI archive drills pass. Candidate Homebrew, Arch and Scoop uninstall checks pass; Scoop's original persistent PATH is restored. | Remaining supported channels, manager-specific recovery cases and privately recorded recovery ownership. |
 | G1 | Review scope and evidence are ready for a real independent reviewer. | Accepted reviewer and continuity owner, then real review evidence. |
 | G2 | Dated baseline and implemented-source evidence are separate. | Reassess all 66 cells once the remaining acceptance checks and independent review pass. |
 
