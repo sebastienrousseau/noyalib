@@ -211,3 +211,70 @@ fn overflowing_decimal_keys_stay_as_written() {
         .unwrap_err();
     assert_eq!(error.kind(), ErrorKind::IntegerOverflow);
 }
+
+#[test]
+fn radix_overflow_refusal_matches_the_archive() {
+    // Found by fuzz_serde_yaml_compat on `{m: 0xFF992547400000000}`. The
+    // archive refuses a radix literal inside 128 bits but outside 64 and
+    // keeps a larger one as a string; keys stay strings throughout.
+    let config = ParserConfig::serde_yaml_compat();
+    let mut fallback = config.clone();
+    fallback.merge_key_policy = MergeKeyPolicy::AsOrdinary;
+    let max128 = format!("0x{}", "F".repeat(32));
+    let bin65 = format!("0b1{}", "0".repeat(64));
+    for literal in [
+        "0x10000000000000000",
+        max128.as_str(),
+        "0o2000000000000000000000",
+        "-0x8000000000000001",
+        "+0x10000000000000000",
+        "-0o1000000000000000000001",
+        bin65.as_str(),
+    ] {
+        let source = format!("k: {literal}\n");
+        for cfg in [&config, &fallback] {
+            let error = from_str_with_config::<serde_json::Value>(&source, cfg).expect_err(&source);
+            assert_eq!(error.kind(), ErrorKind::IntegerOverflow, "{source:?}");
+            assert_eq!(error.location().unwrap().index(), 3, "{source:?}");
+            let error = from_str_with_config::<Value>(&source, cfg).expect_err(&source);
+            assert_eq!(error.kind(), ErrorKind::IntegerOverflow, "{source:?}");
+        }
+        let keyed: serde_json::Value =
+            from_str_with_config(&format!("{literal}: 1\n"), &config).unwrap();
+        assert_eq!(keyed, serde_json::json!({ literal: 1 }), "{literal}");
+    }
+    let over128 = format!("0x1{}", "0".repeat(32));
+    #[cfg(feature = "lossless-u64")]
+    parity(
+        "k: 0xFFFFFFFFFFFFFFFF\n",
+        &config,
+        serde_json::json!({ "k": u64::MAX }),
+    );
+    for (literal, expected) in [
+        ("0o777", serde_json::json!(511)),
+        (
+            "-0x8000000000000000",
+            serde_json::json!("-0x8000000000000000"),
+        ),
+        ("-0xF", serde_json::json!("-0xF")),
+        (over128.as_str(), serde_json::json!(over128)),
+    ] {
+        parity(
+            &format!("k: {literal}\n"),
+            &config,
+            serde_json::json!({ "k": expected }),
+        );
+    }
+    #[cfg(feature = "lossless-u64")]
+    {
+        let mut default = ParserConfig::default();
+        default.lossless_u64_integers = true;
+        let value: serde_json::Value =
+            from_str_with_config("k: 0x10000000000000000\n", &default).unwrap();
+        assert_eq!(
+            value,
+            serde_json::json!({"k": "0x10000000000000000"}),
+            "ADR-0004 default"
+        );
+    }
+}

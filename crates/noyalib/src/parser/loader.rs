@@ -495,7 +495,7 @@ impl<'a> Loader<'a> {
         input: &str,
     ) -> Result<Value> {
         let plain_untagged = matches!(style, crate::parser::ScalarStyle::Plain) && tag.is_none();
-        match plain_untagged.then(|| decimal_overflow(&value, self.config)) {
+        match plain_untagged.then(|| integer_overflow(&value, self.config)) {
             Some(Some(_)) if matches!(self.stack.last(), Some(Frame::MappingKey { .. })) => {
                 return Ok(Value::String(value.into_owned()));
             }
@@ -1229,7 +1229,7 @@ impl<'a> NoSpanLoader<'a> {
         input: &str,
     ) -> Result<Value> {
         let plain_untagged = matches!(style, crate::parser::ScalarStyle::Plain) && tag.is_none();
-        match plain_untagged.then(|| decimal_overflow(&value, self.config)) {
+        match plain_untagged.then(|| integer_overflow(&value, self.config)) {
             Some(Some(_)) if matches!(self.stack.last(), Some(NoSpanFrame::MappingKey { .. })) => {
                 return Ok(Value::String(value.into_owned()));
             }
@@ -1604,29 +1604,45 @@ fn scalar_key_span(span: &SpanTree) -> (usize, usize) {
     }
 }
 
-/// Classify a plain decimal integer outside its JSON target's signed or
-/// unsigned 64-bit domain: `Some(true)` inside the archive's 128-bit
-/// visitor domain, `Some(false)` beyond it, where the archived parser
-/// falls through to float resolution. `None` for anything else.
-fn decimal_overflow(s: &str, config: &ParseConfig) -> Option<bool> {
+/// Classify a plain integer outside its JSON target's signed or unsigned
+/// 64-bit domain: `Some(true)` inside the archive's 128-bit visitor
+/// domain, `Some(false)` beyond it, where the archived parser falls
+/// through to a float (decimal) or a string (radix). `None` otherwise.
+/// The archive reads hex and octal with an optional sign, and binary
+/// when the profile does.
+fn integer_overflow(s: &str, config: &ParseConfig) -> Option<bool> {
     if !config.integer_overflow_errors
         || config.no_schema
         || (config.leading_zero_integer_strings && is_leading_zero_decimal(s))
     {
         return None;
     }
-    let digits = s.strip_prefix(['+', '-']).unwrap_or(s);
-    if digits.is_empty() || !digits.bytes().all(|b| b.is_ascii_digit()) {
+    let unsigned = s.strip_prefix(['+', '-']).unwrap_or(s);
+    let (radix, digits) = match unsigned.get(..2) {
+        Some("0x") => (16, &unsigned[2..]),
+        Some("0o") => (8, &unsigned[2..]),
+        Some("0b") if config.legacy_binary_numbers => (2, &unsigned[2..]),
+        _ => (10, unsigned),
+    };
+    if digits.is_empty() || !digits.bytes().all(|b| (b as char).is_digit(radix)) {
         return None;
     }
-    if s.starts_with('-') {
-        s.parse::<i64>().is_err().then(|| s.parse::<i128>().is_ok())
+    let magnitude = u128::from_str_radix(digits, radix).ok();
+    let limit = if s.starts_with('-') {
+        1_u128 << 63
     } else {
-        digits
-            .parse::<u64>()
-            .is_err()
-            .then(|| digits.parse::<u128>().is_ok())
+        u128::from(u64::MAX)
+    };
+    if magnitude.is_some_and(|m| m <= limit) {
+        return None;
     }
+    // The negative 128-bit domain ends at 2^127 in magnitude.
+    let within = if s.starts_with('-') {
+        1_u128 << 127
+    } else {
+        u128::MAX
+    };
+    Some(magnitude.is_some_and(|m| m <= within))
 }
 
 /// Resolve a scalar event's value through its tag, as the streaming

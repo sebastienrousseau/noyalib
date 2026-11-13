@@ -11,6 +11,11 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Changed
 
+- **Breaking:** the compatibility profile refuses a hex, octal or
+  (legacy) binary literal inside the 128-bit range but outside 64 bits,
+  signed or not, as the archived parser does; a larger one stays a
+  string. Keys keep their spelling, and the default profile still keeps
+  large radix integers as strings (ADR-0004).
 - **Breaking:** an alias used as a mapping key takes its anchored
   node's written spelling for typed targets (`{&a .3, *a}` keys ".3",
   not "0.3"), and key errors on it point at that node.
