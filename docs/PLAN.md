@@ -34,10 +34,14 @@ retirement of unpublished MCP v0.0.60 with its signed tag preserved.
 5. Start the 31-target hourly campaign on the corrected source, retain
    every receipt and fix each finding before accepting its target.
 
-The first renewed run finds two archive-comparison gaps and a consumer-profile
-expectation error. The [follow-up receipt](ecosystem-duplicate-campaign-followup-2026-11-13.json)
+The first renewed run completes with 28 passing targets and three failures:
+two archive-comparison gaps and a new CST panic through MCP tools. The
+consumer job also exposes a profile expectation error. The [follow-up receipt](ecosystem-duplicate-campaign-followup-2026-11-13.json)
 retains their failures, corrections and fixed-input replay. Complete-duration
-acceptance remains open; renew the affected source gates after the corrections.
+acceptance remains open. The [CST fragment repair](ecosystem-cst-fragment-bounds-2026-11-13.json)
+retains the third finding, failing-first core/real-session tests and complete
+local batteries. Renew all final-source gates and the full 31-target campaign
+after the corrections.
 
 Product boundary work and controlled performance evidence continue on the
 future branches. Independent human review and accepted continuity ownership

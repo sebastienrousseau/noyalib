@@ -40,6 +40,7 @@ is explicit in the implementation record.
 | [Performance observations](ecosystem-performance-2026-11-11.json) | Seventy scenarios repeated three times, raw variance, cold consumers and signed-source resource outcomes; no dedicated-host latency claim |
 | [Canonical duplicate identity](ecosystem-duplicate-identity-2026-11-13.json) | Accepted ADR-0019, std/alloc failing-first cases, complete feature batteries, Unicode pre-fix panic, 1,340 sanitizer input replays, MCP retirement and local performance costs; final-source hosted and sustained acceptance remain separate. |
 | [Renewed campaign follow-up](ecosystem-duplicate-campaign-followup-2026-11-13.json) | Two fresh archive failures, original inputs, composition/BOM repairs, 1,728 fixed-input sanitizer replays and explicit MCP profile/exit checks. No completed-hour credit. |
+| [CST fragment containment](ecosystem-cst-fragment-bounds-2026-11-13.json) | Original 22-byte MCP finding, direct/stdio red-green tests, extraction-origin and containment repair, complete feature batteries, twelve bare-metal checks and saved-corpus sanitizer replay. Fresh hosted and sustained acceptance remain open. |
 | PR #521 checks | Exact hosted core/candidate sources, platform and toolchain results; inspect each conditional skip separately |
 | Candidate artifacts | Per-product source receipts and runtime reports; local paths are retained evidence locations, not public download claims |
 

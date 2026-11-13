@@ -48,11 +48,35 @@ independent human review, continuity ownership and registry/channel evidence
 remain open. Earlier pending-decision statements below describe their dated
 checkpoints, not the accepted November 13 decisions.
 
+## CST fragment extraction repair, 2026-11-13
+
+The [CST repair receipt](ecosystem-cst-fragment-bounds-2026-11-13.json)
+retains the third failed target from run `43462879476` and its original
+22-byte input. Both a direct CST edit and a real MCP request fail before the
+repair. A leading CR shifts the extracted entry; its lost byte and the
+wrapper's added newline cancel in `text_len`. Extraction now requires the
+correct fragment origin and complete containment, escalating to document
+repair when either fails. It preserves syntax as well as source bytes.
+
+The complete batteries pass 6,248 default std, 6,784 all-feature std, 6,788
+alloc and 7,129 portable tests. All 590 doctests pass with eight existing
+ignores, and twelve stable/MSRV bare-metal checks pass. MCP passes 141 native
+tests. The original input and 7,676 saved corpus files replay under
+AddressSanitizer; corpus initialization reports 7,679 executions in six
+seconds. This is replay evidence, not a completed-hour campaign.
+
+Signed MCP `6696c29` retains the input and verifies that the edit returns its
+exact source and the same session answers the next parse. The candidate
+manifest pins that source. Signed v0.0.60 tag object
+`b28d529f8bae59bbe94bdd91d25ec50173c8702b` remains unchanged. Fresh hosted and
+complete-duration final-source acceptance remain open; no registry publish
+or perfect rating follows from these local checks.
+
 ## Fresh campaign follow-up, 2026-11-13
 
-The completed run has 28 passing and three failing targets. An additional
-22-byte MCP tools finding panics in CST green-tree slicing and remains a
-release blocker pending its own regression and repair. The
+The completed run has 28 passing and three failing targets. Its additional
+22-byte MCP tools finding panics in CST green-tree slicing; the current repair
+and local evidence are recorded above. The
 [follow-up receipt](ecosystem-duplicate-campaign-followup-2026-11-13.json)
 retains the two failed comparison jobs in run `43462879476`, their original
 8-byte and 29-byte inputs, saved corpora, red/green tests and replay logs.

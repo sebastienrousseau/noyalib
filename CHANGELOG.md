@@ -72,6 +72,10 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Fixed
 
+- Keep locally repaired CST entries within the original fragment. Leading
+  line breaks and supplementary Unicode keys can no longer shift token
+  boundaries or panic during root edits. Retain the original 22-byte MCP
+  input and compare repaired syntax with a complete reparse.
 - Preserve omitted-key mapping entries as distinct CST nodes. Removing
   the preceding key now retains the omitted-key sibling across LF, CRLF
   and lone-CR documents.

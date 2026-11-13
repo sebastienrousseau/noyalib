@@ -191,3 +191,23 @@ fn original_mcp_unicode_root_edit_keeps_valid_token_boundaries() {
     assert_eq!(doc.to_string(), replacement);
     assert_equivalent_to_full_reparse(&doc);
 }
+
+#[test]
+fn root_edit_keeps_leading_trivia_outside_the_repaired_mapping() {
+    let input = include_str!("../fixtures/cst-leading-cr-root-edit.bin");
+    let mut parts = input.splitn(4, '\0');
+    let source = parts.next().unwrap();
+    let path = parts.next().unwrap();
+    let original = parts.next().unwrap();
+    for replacement in [original, "\rname:", "\n🌊:", "\r\né:"] {
+        let mut doc = parse_document(source).unwrap();
+        doc.set(path, replacement).unwrap();
+        assert_eq!(doc.to_string(), replacement);
+        assert_equivalent_to_full_reparse(&doc);
+        let full = parse_document(replacement).unwrap();
+        assert_eq!(
+            format!("{:?}", doc.syntax()),
+            format!("{:?}", full.syntax())
+        );
+    }
+}

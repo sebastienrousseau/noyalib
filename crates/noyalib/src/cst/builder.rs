@@ -152,6 +152,7 @@ fn parse_block_entry(
         ));
     }
     let mut wrapped = prepend_first_line_indent(fragment, ctx.indent);
+    let fragment_start = wrapped.len() - fragment.len();
     let fragment_end = wrapped.len();
     if !wrapped.ends_with('\n') {
         wrapped.push('\n');
@@ -174,7 +175,7 @@ fn parse_block_entry(
     // A shape-changing fragment can leave the sentinel as the only node
     // of the requested kind. Its token lengths belong to the wrapper,
     // not the fragment, and must never be spliced into the real source.
-    first_entry_before(&parsed, parent_kind, expected, fragment_end)
+    first_entry_before(&parsed, parent_kind, expected, fragment_start, fragment_end)
         .ok_or_else(|| Error::Parse(format!("parse_subtree: extraction failed for {expected:?}")))
 }
 
@@ -182,6 +183,7 @@ fn first_entry_before(
     root: &GreenNode,
     parent_kind: SyntaxKind,
     entry_kind: SyntaxKind,
+    fragment_start: usize,
     fragment_end: usize,
 ) -> Option<GreenNode> {
     let mut offset = 0;
@@ -200,7 +202,11 @@ fn first_entry_before(
                 if let GreenChild::Node(entry) = child
                     && entry.kind() == entry_kind
                 {
-                    return Some(entry.clone());
+                    // Leading trivia and an appended wrapper newline can
+                    // cancel in text_len while shifting every token boundary.
+                    return (entry_offset == fragment_start
+                        && entry_offset.checked_add(entry.text_len())? <= fragment_end)
+                        .then(|| entry.clone());
                 }
                 entry_offset += child.text_len();
             }
