@@ -11,6 +11,7 @@ import importlib.util
 import json
 import os
 from pathlib import Path
+import platform
 import subprocess
 
 SCOOP_SOURCE = 'e6aa3b366bdee8ed138c1e0f7b85192ebdd35d0f'
@@ -44,7 +45,11 @@ def main():
     cli, output = args.cli.resolve(), args.output.resolve()
     output.mkdir(parents=True, exist_ok=False)
     record = json.loads((cli / 'pkg/release-artifacts.json').read_text())
-    artifact = record['artifacts']['x86_64-pc-windows-msvc']
+    machine = platform.machine().lower()
+    architecture = {'amd64': '64bit', 'x86_64': '64bit',
+                    'arm64': 'arm64', 'aarch64': 'arm64'}[machine]
+    target = ('aarch64' if architecture == 'arm64' else 'x86_64') + '-pc-windows-msvc'
+    artifact = record['artifacts'][target]
     prefix = output / 'scoop'
     manager = prefix / 'apps/scoop/current'
     manager.parent.mkdir(parents=True)
@@ -65,7 +70,7 @@ def main():
         'manifest_sha256': digest(cli / 'pkg/scoop/noya-cli.json'),
         'release_version': record['version'], 'release_source': record['source'],
         'manager_repo': 'https://github.com/ScoopInstaller/Scoop',
-        'manager_commit': SCOOP_SOURCE, 'target': 'x86_64-pc-windows-msvc',
+        'manager_commit': SCOOP_SOURCE, 'target': target,
         'scope': 'Actual candidate manifest through pinned Scoop in a private prefix. '
                  'Published native bytes, not public bucket or candidate registry acceptance.',
         'steps': [],
@@ -112,7 +117,7 @@ def main():
         }))
         run('manager-version', [*scoop, '--version'])
         installing = True
-        run('install', [*scoop, 'install', '--no-update-scoop', '--arch', '64bit',
+        run('install', [*scoop, 'install', '--no-update-scoop', '--arch', architecture,
                         str(cli / 'pkg/scoop/noya-cli.json')])
         archives = [path for path in (output / 'cache').rglob('*.zip')
                     if digest(path) == artifact['sha256']]

@@ -173,6 +173,12 @@ execution, artifact identity, provenance and removal pass. These candidate
 recipe checks close those measured installation gaps; public channels,
 other architectures and final registry graphs retain their own criteria.
 
+The architecture follow-up adds native published-artifact recovery on Intel
+macOS, Linux Arm64 and Windows Arm64, with actual Intel Homebrew and Arm64
+Scoop checks. Scoop selects the matching manifest architecture from the
+native Python process. These jobs require their own successful receipts;
+the earlier single-architecture records do not establish their outcomes.
+
 ## Full family campaign execution
 
 The current inventory has 31 targets: twenty core, two CLI, two LSP, three

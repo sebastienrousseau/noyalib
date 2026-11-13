@@ -156,6 +156,73 @@ jobs:
             ${{ runner.temp }}/candidate-cli-scoop/*.log
           if-no-files-found: error
 
+  native-architectures:
+    name: CLI published consumer (${{ matrix.os }})
+    needs: sources
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-15-intel
+            python-architecture: x64
+          - os: ubuntu-24.04-arm
+            python-architecture: arm64
+          - os: windows-11-arm
+            python-architecture: arm64
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          path: noyalib
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: sebastienrousseau/noya-cli
+          ref: ${{ needs.sources.outputs.cli }}
+          persist-credentials: false
+          path: product
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.13'
+          architecture: ${{ matrix.python-architecture }}
+      - name: Install and recover authentic native release bytes
+        working-directory: product
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python scripts/check-distribution-recipes.py
+          python scripts/check-distribution-consumer.py --provenance \
+            --output "$RUNNER_TEMP/candidate-cli-native"
+      - name: Exercise the Intel Homebrew formula
+        if: runner.os == 'macOS'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python noyalib/scripts/check-cli-homebrew.py --cli product \
+            --output "$RUNNER_TEMP/candidate-cli-manager"
+      - name: Exercise the Arm64 Scoop manifest
+        if: runner.os == 'Windows'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python noyalib/scripts/check-cli-scoop.py --cli product \
+            --output "$RUNNER_TEMP/candidate-cli-manager"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always()
+        with:
+          name: candidate-cli-architecture-${{ matrix.os }}
+          path: |
+            ${{ runner.temp }}/candidate-cli-native/receipt.json
+            ${{ runner.temp }}/candidate-cli-native/provenance.json
+            ${{ runner.temp }}/candidate-cli-native/provenance.stderr
+            ${{ runner.temp }}/candidate-cli-manager/receipt.json
+            ${{ runner.temp }}/candidate-cli-manager/*.log
+          if-no-files-found: error
+
   arch-package:
     name: CLI Arch package installation
     needs: sources
