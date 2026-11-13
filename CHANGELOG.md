@@ -19,6 +19,10 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - **Breaking:** keep the written spelling of an anchored typed key
   (`&a 0x1F`, `&a ~`) when a tag elsewhere selects the AST path, as
   unanchored keys already did.
+- **Breaking:** apply the compatibility profile's integer-overflow
+  refusal to values only. A decimal mapping key beyond 64 bits stays
+  its written string, as the archived parser reads JSON keys as
+  strings, so distinct spellings remain distinct keys.
 - **Breaking:** apply canonical duplicate-key identity before typed map
   visitors, including aliases, registered tags and ignored fields. `Last`
   keeps the first position, last value and last scalar spelling; `First`

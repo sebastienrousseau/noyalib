@@ -147,3 +147,67 @@ fn beyond_128_bit_decimal_spellings_use_float_fallback_on_all_paths() {
         serde_json::json!({"a": "-170141183460469231731687303715884105729"}),
     );
 }
+
+#[test]
+fn overflowing_decimal_keys_stay_as_written() {
+    // Found by fuzz_serde_yaml_compat on `88888888888888888888:`. The
+    // archive reads a JSON map key as a string, so only values refuse.
+    let config = ParserConfig::serde_yaml_compat();
+    let mut fallback = config.clone();
+    fallback.merge_key_policy = MergeKeyPolicy::AsOrdinary;
+    for number in [
+        "88888888888888888888",
+        "-9223372036854775809",
+        "340282366920938463463374607431768211455",
+        "340282366920938463463374607431768211456",
+    ] {
+        for source in [format!("{number}: 1\n"), format!("{{{number}}}")] {
+            let expected = serde_json::json!({ number: if source.starts_with('{') {
+                serde_json::Value::Null
+            } else {
+                serde_json::json!(1)
+            }});
+            for cfg in [&config, &fallback] {
+                let typed: serde_json::Value = from_str_with_config(&source, cfg)
+                    .unwrap_or_else(|e| panic!("{source:?}: {e}"));
+                assert_eq!(typed, expected, "{source:?}");
+            }
+            #[cfg(feature = "compat-serde-yaml")]
+            {
+                let shim: serde_json::Value = noyalib::compat::serde_yaml::from_str(&source)
+                    .unwrap_or_else(|e| panic!("shim {source:?}: {e}"));
+                assert_eq!(shim, expected, "shim {source:?}");
+            }
+            let value = from_str_with_config::<Value>(&source, &config);
+            assert!(value.is_ok(), "Value {source:?}: {value:?}");
+        }
+    }
+    // Distinct spellings stay distinct keys, as JSON keys are strings:
+    // a float key would merge integers that round alike.
+    for (source, keys) in [
+        (
+            "9990000003181795956718829566:\n9990000003181795456718829566: 8\n",
+            [
+                "9990000003181795456718829566",
+                "9990000003181795956718829566",
+            ],
+        ),
+        (
+            "+9990000003181795956718829566:\n9990000003181795956718829566:\n",
+            [
+                "+9990000003181795956718829566",
+                "9990000003181795956718829566",
+            ],
+        ),
+    ] {
+        for cfg in [&config, &fallback] {
+            let typed: serde_json::Value = from_str_with_config(source, cfg).unwrap();
+            let mut found: Vec<_> = typed.as_object().unwrap().keys().cloned().collect();
+            found.sort();
+            assert_eq!(found, keys, "{source:?}");
+        }
+    }
+    let error = from_str_with_config::<serde_json::Value>("k: 88888888888888888888\n", &config)
+        .unwrap_err();
+    assert_eq!(error.kind(), ErrorKind::IntegerOverflow);
+}

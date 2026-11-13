@@ -482,6 +482,36 @@ impl<'a> Loader<'a> {
         self.docs
     }
 
+    /// Resolve a scalar event. The profile refuses a decimal integer
+    /// value outside its exact domain. A JSON map key is read as a
+    /// string, so such a key keeps its spelling: a float would merge
+    /// distinct keys that round alike.
+    fn scalar_value(
+        &self,
+        value: Cow<'_, str>,
+        style: crate::parser::ScalarStyle,
+        tag: Option<(String, String)>,
+        at: usize,
+        input: &str,
+    ) -> Result<Value> {
+        let plain_untagged = matches!(style, crate::parser::ScalarStyle::Plain) && tag.is_none();
+        match plain_untagged.then(|| decimal_overflow(&value, self.config)) {
+            Some(Some(_)) if matches!(self.stack.last(), Some(Frame::MappingKey { .. })) => {
+                return Ok(Value::String(value.into_owned()));
+            }
+            Some(Some(true)) => {}
+            _ => return resolve_event_scalar(value, style, tag, self.config),
+        }
+        Err(Error::IntegerOverflow {
+            location: Some(crate::error::Location::from_index(input, at)),
+            path: frames_path(self.stack.iter().map(|f| match f {
+                Frame::MappingValue { key, .. } => Some(key.clone()),
+                Frame::Sequence { items, .. } => Some(items.len().to_string()),
+                _ => None,
+            })),
+        })
+    }
+
     fn process_event(&mut self, event: Event<'_>, input: &str) -> Result<()> {
         self.meter.charge_event(&event, self.config)?;
         match event {
@@ -528,39 +558,7 @@ impl<'a> Loader<'a> {
                 // is still in hand — `resolve_untagged_scalar` returns a
                 // `Value::String("<<")` for a plain and a quoted `<<` alike.
                 let is_plain_merge_candidate = matches!(style, crate::parser::ScalarStyle::Plain);
-                // The profile refuses decimal integers outside its exact domain.
-                if is_plain_merge_candidate
-                    && tag.is_none()
-                    && overflows_decimal_integer(&value, self.config)
-                {
-                    return Err(Error::IntegerOverflow {
-                        location: Some(crate::error::Location::from_index(input, span.start)),
-                        path: frames_path(self.stack.iter().map(|f| match f {
-                            Frame::MappingValue { key, .. } => Some(key.clone()),
-                            Frame::Sequence { items, .. } => Some(items.len().to_string()),
-                            _ => None,
-                        })),
-                    });
-                }
-                let v =
-                    if let Some(t) = tag {
-                        if self.config.tag_registry.as_ref().is_some_and(|r| {
-                            crate::streaming::tag_is_registry_stripped(&t.0, &t.1, r)
-                        }) {
-                            // Registered tag: strip through and resolve as if
-                            // untagged, exactly as the streaming path does.
-                            resolve_untagged_scalar(value, style, self.config)
-                        } else {
-                            resolve_tagged_scalar(
-                                &t.0,
-                                &t.1,
-                                &value,
-                                self.config.lossless_u64_integers(),
-                            )?
-                        }
-                    } else {
-                        resolve_untagged_scalar(value, style, self.config)
-                    };
+                let v = self.scalar_value(value, style, tag, span.start, input)?;
 
                 let st = if is_implicit_empty {
                     SpanTree::Leaf(span.start, span.start)
@@ -1222,6 +1220,36 @@ impl<'a> NoSpanLoader<'a> {
         self.docs
     }
 
+    /// Resolve a scalar event. The profile refuses a decimal integer
+    /// value outside its exact domain. A JSON map key is read as a
+    /// string, so such a key keeps its spelling: a float would merge
+    /// distinct keys that round alike.
+    fn scalar_value(
+        &self,
+        value: Cow<'_, str>,
+        style: crate::parser::ScalarStyle,
+        tag: Option<(String, String)>,
+        at: usize,
+        input: &str,
+    ) -> Result<Value> {
+        let plain_untagged = matches!(style, crate::parser::ScalarStyle::Plain) && tag.is_none();
+        match plain_untagged.then(|| decimal_overflow(&value, self.config)) {
+            Some(Some(_)) if matches!(self.stack.last(), Some(NoSpanFrame::MappingKey { .. })) => {
+                return Ok(Value::String(value.into_owned()));
+            }
+            Some(Some(true)) => {}
+            _ => return resolve_event_scalar(value, style, tag, self.config),
+        }
+        Err(Error::IntegerOverflow {
+            location: Some(crate::error::Location::from_index(input, at)),
+            path: frames_path(self.stack.iter().map(|f| match f {
+                NoSpanFrame::MappingValue { key, .. } => Some(key.clone()),
+                NoSpanFrame::Sequence { items, .. } => Some(items.len().to_string()),
+                _ => None,
+            })),
+        })
+    }
+
     fn process_event(&mut self, event: Event<'_>, input: &str) -> Result<()> {
         self.meter.charge_event(&event, self.config)?;
         match event {
@@ -1246,39 +1274,7 @@ impl<'a> NoSpanLoader<'a> {
                 tag,
                 span,
             } => {
-                // The profile refuses decimal integers outside its exact domain.
-                if matches!(style, crate::parser::ScalarStyle::Plain)
-                    && tag.is_none()
-                    && overflows_decimal_integer(&value, self.config)
-                {
-                    return Err(Error::IntegerOverflow {
-                        location: Some(crate::error::Location::from_index(input, span.start)),
-                        path: frames_path(self.stack.iter().map(|f| match f {
-                            NoSpanFrame::MappingValue { key, .. } => Some(key.clone()),
-                            NoSpanFrame::Sequence { items, .. } => Some(items.len().to_string()),
-                            _ => None,
-                        })),
-                    });
-                }
-                let v =
-                    if let Some(t) = tag {
-                        if self.config.tag_registry.as_ref().is_some_and(|r| {
-                            crate::streaming::tag_is_registry_stripped(&t.0, &t.1, r)
-                        }) {
-                            // Registered tag: strip through and resolve as if
-                            // untagged, exactly as the streaming path does.
-                            resolve_untagged_scalar(value, style, self.config)
-                        } else {
-                            resolve_tagged_scalar(
-                                &t.0,
-                                &t.1,
-                                &value,
-                                self.config.lossless_u64_integers(),
-                            )?
-                        }
-                    } else {
-                        resolve_untagged_scalar(value, style, self.config)
-                    };
+                let v = self.scalar_value(value, style, tag, span.start, input)?;
                 // Merge-key eligibility is decided here, while the scalar's
                 // presentation is still known — `resolve_untagged_scalar`
                 // yields `Value::String("<<")` for a plain and a quoted `<<`
@@ -1601,25 +1597,50 @@ fn is_inf_spelling(s: &str) -> bool {
     )
 }
 
-/// A plain decimal integer in the archive's 128-bit visitor domain but
-/// outside its JSON target's signed or unsigned 64-bit domain. Larger
-/// literals fall through to float resolution in the archived parser.
-fn overflows_decimal_integer(s: &str, config: &ParseConfig) -> bool {
+/// Classify a plain decimal integer outside its JSON target's signed or
+/// unsigned 64-bit domain: `Some(true)` inside the archive's 128-bit
+/// visitor domain, `Some(false)` beyond it, where the archived parser
+/// falls through to float resolution. `None` for anything else.
+fn decimal_overflow(s: &str, config: &ParseConfig) -> Option<bool> {
     if !config.integer_overflow_errors
         || config.no_schema
         || (config.leading_zero_integer_strings && is_leading_zero_decimal(s))
     {
-        return false;
+        return None;
     }
     let digits = s.strip_prefix(['+', '-']).unwrap_or(s);
     if digits.is_empty() || !digits.bytes().all(|b| b.is_ascii_digit()) {
-        return false;
+        return None;
     }
     if s.starts_with('-') {
-        s.parse::<i64>().is_err() && s.parse::<i128>().is_ok()
+        s.parse::<i64>().is_err().then(|| s.parse::<i128>().is_ok())
     } else {
-        digits.parse::<u64>().is_err() && digits.parse::<u128>().is_ok()
+        digits
+            .parse::<u64>()
+            .is_err()
+            .then(|| digits.parse::<u128>().is_ok())
     }
+}
+
+/// Resolve a scalar event's value through its tag, as the streaming
+/// path does: a registry-stripped tag resolves as if untagged.
+fn resolve_event_scalar(
+    value: Cow<'_, str>,
+    style: crate::parser::ScalarStyle,
+    tag: Option<(String, String)>,
+    config: &ParseConfig,
+) -> Result<Value> {
+    let Some(t) = tag else {
+        return Ok(resolve_untagged_scalar(value, style, config));
+    };
+    if config
+        .tag_registry
+        .as_ref()
+        .is_some_and(|r| crate::streaming::tag_is_registry_stripped(&t.0, &t.1, r))
+    {
+        return Ok(resolve_untagged_scalar(value, style, config));
+    }
+    resolve_tagged_scalar(&t.0, &t.1, &value, config.lossless_u64_integers())
 }
 
 /// Byte offset where a span tree's node begins.
