@@ -28,6 +28,7 @@ jobs:
       - name: Test candidate guards and campaign accounting
         run: |
           python3 scripts/tests/test_ecosystem_candidate.py
+          python3 scripts/tests/test_ecosystem_parity.py
           python3 scripts/tests/test_cli_homebrew.py
           python3 scripts/tests/test_cli_arch.py
           python3 scripts/tests/test_fuzz_campaign.py

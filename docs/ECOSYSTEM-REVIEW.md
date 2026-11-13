@@ -39,6 +39,7 @@ is explicit in the implementation record.
 | [Completed family campaigns](ecosystem-family-campaign-followup-2026-11-12.json) | All 31 hosted target receipts: 29 pass, two fail; raw logs, findings and corpus digests. Separate completed std/alloc roundtrip hours at `76c5baa`; no final-source family acceptance. |
 | [Performance observations](ecosystem-performance-2026-11-11.json) | Seventy scenarios repeated three times, raw variance, cold consumers and signed-source resource outcomes; no dedicated-host latency claim |
 | [Canonical duplicate identity](ecosystem-duplicate-identity-2026-11-13.json) | Accepted ADR-0019, std/alloc failing-first cases, complete feature batteries, Unicode pre-fix panic, 1,340 sanitizer input replays, MCP retirement and local performance costs; final-source hosted and sustained acceptance remain separate. |
+| [Renewed campaign follow-up](ecosystem-duplicate-campaign-followup-2026-11-13.json) | Two fresh archive failures, original inputs, composition/BOM repairs, 1,728 fixed-input sanitizer replays and explicit MCP profile/exit checks. No completed-hour credit. |
 | PR #521 checks | Exact hosted core/candidate sources, platform and toolchain results; inspect each conditional skip separately |
 | Candidate artifacts | Per-product source receipts and runtime reports; local paths are retained evidence locations, not public download claims |
 

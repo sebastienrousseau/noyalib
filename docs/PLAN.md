@@ -34,6 +34,11 @@ retirement of unpublished MCP v0.0.60 with its signed tag preserved.
 5. Start the 31-target hourly campaign on the corrected source, retain
    every receipt and fix each finding before accepting its target.
 
+The first renewed run finds two archive-comparison gaps and a consumer-profile
+expectation error. The [follow-up receipt](ecosystem-duplicate-campaign-followup-2026-11-13.json)
+retains their failures, corrections and fixed-input replay. Complete-duration
+acceptance remains open; renew the affected source gates after the corrections.
+
 Product boundary work and controlled performance evidence continue on the
 future branches. Independent human review and accepted continuity ownership
 remain external acceptance requirements; publication remains held.

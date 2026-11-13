@@ -9,6 +9,13 @@ use std::collections::BTreeMap;
 type Lexeme = (SyntaxKind, usize, usize);
 type Replacement = (usize, usize, String);
 
+/// Remove a stream-prefix BOM only, then apply existing source repairs.
+/// Callers still require complete candidate preservation and archive agreement.
+pub(crate) fn stream_bom_prefix(source: &str) -> Option<String> {
+    let source = source.strip_prefix('\u{feff}')?;
+    Some(collection_spelling(source).unwrap_or_else(|| source.to_owned()))
+}
+
 /// YAML suite L24T retains a final break after surplus spaces at EOF.
 /// Terminate that source line for archived parsers. Callers must first
 /// prove the candidate value unchanged, then compare the entire oracle value.
@@ -226,7 +233,8 @@ pub(crate) fn collection_spelling(source: &str) -> Option<String> {
     let separated = spaced_empty_line_tabs(separated.as_deref().unwrap_or(source)).or(separated);
     let quoted = quoted_empty_block_keys(separated.as_deref().unwrap_or(source)).or(separated);
     let quoted = quoted_empty_flow_keys(quoted.as_deref().unwrap_or(source)).or(quoted);
-    indented_root_block(quoted.as_deref().unwrap_or(source)).or(quoted)
+    let indented = indented_root_block(quoted.as_deref().unwrap_or(source)).or(quoted);
+    terminated_spaced_block(indented.as_deref().unwrap_or(source)).or(indented)
 }
 
 /// Give each declaration a unique name only when the archive's anchor IDs
@@ -372,6 +380,19 @@ fn apply_replacements(source: &str, replacements: Vec<Replacement>) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn stream_bom_repair_preserves_content_and_composes_block_repairs() {
+        for source in ["\u{feff}name: test\n", "\u{feff}>\n>\n >\n "] {
+            let normalized = stream_bom_prefix(source).unwrap();
+            let before: serde_json::Value = noyalib::from_str(source).unwrap();
+            let after: serde_json::Value = noyalib::from_str(&normalized).unwrap();
+            assert_eq!(before, after);
+        }
+        for source in ["name: '\u{feff}'\n", "'\u{feff}'", "name: test\n"] {
+            assert!(stream_bom_prefix(source).is_none(), "{source:?}");
+        }
+    }
 
     #[test]
     fn root_block_indentation_repair_preserves_alloc_values() {

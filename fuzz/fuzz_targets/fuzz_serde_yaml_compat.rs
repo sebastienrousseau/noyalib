@@ -52,6 +52,7 @@ fuzz_target!(|data: &[u8]| {
                     canonical_duplicates::spelling(s, &noyalib::ParserConfig::serde_yaml_compat()),
                     &a,
                 )
+                && !oracle_agrees(oracle_normalization::stream_bom_prefix(s), &a)
                 && !oracle_agrees(oracle_normalization::collection_spelling(s), &a)
                 && !oracle_agrees(oracle_normalization::unique_colliding_anchors(s), &a)
                 && !oracle_agrees(oracle_normalization::terminated_spaced_block(s), &a)
@@ -71,6 +72,7 @@ fuzz_target!(|data: &[u8]| {
                     canonical_duplicates::spelling(s, &noyalib::ParserConfig::serde_yaml_compat()),
                     &a,
                 )
+                && !oracle_agrees(oracle_normalization::stream_bom_prefix(s), &a)
                 && !oracle_agrees(oracle_normalization::collection_spelling(s), &a)
             {
                 panic!(

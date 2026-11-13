@@ -175,6 +175,11 @@
           3,
           4
         ]
+      },
+      "mcp_profile": "standard",
+      "difference": "MCP standard uses Last; its strict default has separately verified scalar and duplicate rules.",
+      "mcp_default_expected": {
+        "error_contains": "duplicate"
       }
     },
     {
@@ -182,6 +187,16 @@
       "yaml": "True: 1\ntrue: 2\n",
       "expected": {
         "true": 2
+      },
+      "mcp_profile": "standard",
+      "difference": "MCP standard uses Last; its strict default has separately verified scalar and duplicate rules.",
+      "mcp_default_expected": {
+        "documents": [
+          {
+            "True": 1,
+            "true": 2
+          }
+        ]
       }
     },
     {
@@ -189,6 +204,11 @@
       "yaml": "0x1F: 1\n31: 2\n",
       "expected": {
         "31": 2
+      },
+      "mcp_profile": "standard",
+      "difference": "MCP standard uses Last; its strict default has separately verified scalar and duplicate rules.",
+      "mcp_default_expected": {
+        "error_contains": "duplicate"
       }
     },
     {
@@ -199,6 +219,11 @@
         "map": {
           "null": 2
         }
+      },
+      "mcp_profile": "standard",
+      "difference": "MCP standard uses Last; its strict default has separately verified scalar and duplicate rules.",
+      "mcp_default_expected": {
+        "error_contains": "duplicate"
       }
     },
     {

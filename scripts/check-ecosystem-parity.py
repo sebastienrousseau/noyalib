@@ -111,8 +111,11 @@ def lsp(binary, text):
     return edits[0]['newText'] if edits else text, []
 
 
-def mcp(binary, text, root):
-    with subprocess.Popen([binary, '--root', str(root)], stdin=subprocess.PIPE,
+def mcp(binary, text, root, profile=None):
+    command = [binary, '--root', str(root)]
+    if profile is not None:
+        command.extend(['--profile', profile])
+    with subprocess.Popen(command, stdin=subprocess.PIPE,
                           stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
                           text=True, encoding='utf-8') as child:
         queue = Queue()
@@ -146,7 +149,7 @@ def mcp(binary, text, root):
             send(rpc('notifications/initialized'))
             send(rpc('tools/call', {'name': 'noyalib_parse', 'arguments': {'yaml': text}}, 2))
             result = receive(2)
-            return None if result.get('isError') else result['structuredContent']['documents'], bool(result.get('isError'))
+            return (None, result) if result.get('isError') else (result['structuredContent']['documents'], None)
         finally:
             child.stdin.close()
             try:
@@ -155,6 +158,22 @@ def mcp(binary, text, root):
                 child.kill()
                 child.wait()
             reader.join(timeout=1)
+            if child.returncode != 0:
+                raise ValueError(f'MCP server exited with status {child.returncode}')
+
+
+def mcp_default(binary, text, root, expected, case_id):
+    if expected is None:
+        return None
+    documents, error = mcp(binary, text, root)
+    observation = {'error': error} if error else {'documents': documents}
+    if 'error_contains' in expected:
+        matches = error and expected['error_contains'].lower() in json.dumps(error).lower()
+    else:
+        matches = not error and documents == expected['documents']
+    if not matches:
+        raise ValueError(f'{case_id}: unexpected default MCP response: {observation!r}')
+    return observation
 
 
 def main():
@@ -194,7 +213,9 @@ console.log(JSON.stringify(parseJson(readFileSync(0, 'utf8'))));'''
         facade = invoke([projection, 'facade'], yaml)
         cli = invoke([a.cli.resolve(), '--stdin'], yaml)
         lsp_text, diagnostics = lsp(a.lsp.resolve(), yaml)
-        mcp_documents, mcp_error = mcp(a.mcp.resolve(), yaml, output)
+        mcp_documents, mcp_error = mcp(a.mcp.resolve(), yaml, output, case.get('mcp_profile'))
+        default_observation = mcp_default(
+            a.mcp.resolve(), yaml, output, case.get('mcp_default_expected'), case['id'])
         wasm = invoke(['node', '--input-type=module', '-e', js, str(a.wasm.resolve())], yaml)
         if case.get('reject'):
             if not (core.returncode and facade.returncode and cli.returncode and diagnostics and mcp_error and wasm.returncode):
@@ -203,7 +224,7 @@ console.log(JSON.stringify(parseJson(readFileSync(0, 'utf8'))));'''
         else:
             expected = case['expected']
             if core.returncode or facade.returncode or cli.returncode or diagnostics or mcp_error or wasm.returncode:
-                raise ValueError(f'{case["id"]}: boundary failed: {core.stderr} {facade.stderr} {cli.stderr} {diagnostics} {wasm.stderr}')
+                raise ValueError(f'{case["id"]}: boundary failed: {core.stderr} {facade.stderr} {cli.stderr} {diagnostics} {wasm.stderr} MCP={mcp_error!r}')
             cli_value = invoke([projection, 'core'], cli.stdout)
             lsp_value = invoke([projection, 'core'], lsp_text)
             values = {'core': json.loads(core.stdout), 'CLI': json.loads(cli_value.stdout),
@@ -217,7 +238,9 @@ console.log(JSON.stringify(parseJson(readFileSync(0, 'utf8'))));'''
                     raise ValueError(f'{case["id"]} / {name}: expected {want!r}, got {actual!r}')
             if 'preserve' in case and not (case['preserve'] in cli.stdout and case['preserve'] in lsp_text):
                 raise ValueError(f'{case["id"]}: formatter lost source comments')
-            result = {'id': case['id'], 'projections': values, 'difference': case.get('difference')}
+            result = {'id': case['id'], 'projections': values, 'difference': case.get('difference'),
+                      'mcp_profile': case.get('mcp_profile', 'strict'),
+                      'mcp_default': default_observation}
         report['cases'].append(result)
         print(case['id'] + ': passed', flush=True)
     (output / 'receipt.json').write_text(json.dumps(report, indent=2, ensure_ascii=False) + '\n')

@@ -44,7 +44,9 @@ fuzz_target!(|data: &[u8]| {
     let syml = match serde_yaml_ng::from_str::<serde_json::Value>(s) {
         Ok(value) => value,
         Err(_) => {
-            let Some(normalized) = oracle_normalization::collection_spelling(s) else {
+            let Some(normalized) = oracle_normalization::collection_spelling(s)
+                .or_else(|| oracle_normalization::stream_bom_prefix(s))
+            else {
                 return;
             };
             let Ok(projected) = parse(&normalized) else {
@@ -76,6 +78,10 @@ fuzz_target!(|data: &[u8]| {
         && !flow_entry_starts_with_indicator(s)
         && !yaml_1_1_line_break(s)
         && !canonical_duplicates::spelling(s, &config)
+            .filter(|source| parse(source).is_ok_and(|value| numeric_equal(&noya, &value)))
+            .and_then(|source| serde_yaml_ng::from_str::<serde_json::Value>(&source).ok())
+            .is_some_and(|expected| numeric_equal(&noya, &expected))
+        && !oracle_normalization::stream_bom_prefix(s)
             .filter(|source| parse(source).is_ok_and(|value| numeric_equal(&noya, &value)))
             .and_then(|source| serde_yaml_ng::from_str::<serde_json::Value>(&source).ok())
             .is_some_and(|expected| numeric_equal(&noya, &expected))

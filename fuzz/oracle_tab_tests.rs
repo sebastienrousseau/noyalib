@@ -232,3 +232,30 @@ fn empty_flow_sequence_pair_values_keep_complete_oracle_comparison() {
         assert_eq!(before, oracle);
     }
 }
+
+#[test]
+fn root_block_and_terminal_space_repairs_compose_without_changing_values() {
+    let source =
+        include_str!("regressions/fuzz_diff/crash-4194776199b94122209061cf575a667dd59acf5e");
+    let before: serde_json::Value = noyalib::from_str(source).unwrap();
+    assert_eq!(before, serde_json::json!(">\n >\n \n"));
+    let normalized = normalization::collection_spelling(source).expect("root block repair");
+    let after: serde_json::Value = noyalib::from_str(&normalized).unwrap();
+    assert_eq!(before, after);
+    let oracle: serde_json::Value = serde_yaml_ng::from_str(&normalized).unwrap();
+    assert_eq!(before, oracle, "{normalized:?}");
+}
+
+#[test]
+fn a_stream_bom_must_not_prevent_complete_archive_comparison() {
+    let source = include_str!(
+        "regressions/fuzz_serde_yaml_compat/crash-b8b931f2e504c6b55b5928c529a29ca7dbe4f83e"
+    );
+    let before: serde_json::Value = noyalib::compat::serde_yaml::from_str(source).unwrap();
+    assert!(serde_yaml::from_str::<serde_json::Value>(source).is_err());
+    let normalized = normalization::stream_bom_prefix(source).expect("stream BOM repair");
+    let after: serde_json::Value = noyalib::compat::serde_yaml::from_str(&normalized).unwrap();
+    let oracle: serde_json::Value = serde_yaml::from_str(&normalized).unwrap();
+    assert_eq!(before, after);
+    assert_eq!(before, oracle);
+}
