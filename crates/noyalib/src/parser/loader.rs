@@ -800,11 +800,7 @@ impl<'a> Loader<'a> {
                         ));
                     }
                 };
-                let key_span = if let SpanTree::Leaf(s, e) = span {
-                    (s, e)
-                } else {
-                    (0, 0)
-                };
+                let key_span = scalar_key_span(&span);
                 let old_map = core::mem::take(map);
                 let old_span_entries = core::mem::take(span_entries);
                 let old_typed_keys = core::mem::take(typed_keys);
@@ -1595,6 +1591,17 @@ fn is_inf_spelling(s: &str) -> bool {
         s,
         ".inf" | ".Inf" | ".INF" | "+.inf" | "+.Inf" | "+.INF" | "-.inf" | "-.Inf" | "-.INF"
     )
+}
+
+/// A scalar key's own bytes. An alias key reads its anchored node's
+/// span, so the typed key keeps that node's written spelling (found by
+/// fuzz_diff on `{&d\n.3,*d}`) and a key error points at real source.
+fn scalar_key_span(span: &SpanTree) -> (usize, usize) {
+    match span {
+        SpanTree::Leaf(start, end) => (*start, *end),
+        SpanTree::Alias { target, .. } => scalar_key_span(target),
+        _ => (0, 0),
+    }
 }
 
 /// Classify a plain decimal integer outside its JSON target's signed or

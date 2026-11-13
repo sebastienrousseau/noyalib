@@ -9,7 +9,7 @@
 # entries: 81
 lint	file	function	value
 cognitive_complexity	crates/noyalib/examples/cst_surgical_edit.rs	main	24
-cognitive_complexity	crates/noyalib/src/parser/loader.rs	push_node	17
+cognitive_complexity	crates/noyalib/src/parser/loader.rs	push_node	16
 cognitive_complexity	crates/noyalib/src/parser/loader.rs	push_value	17
 cognitive_complexity	crates/noyalib/src/parser/scanner/scalars.rs	scan_single_quoted_scalar	19
 cognitive_complexity	crates/noyalib/src/streaming.rs	resolve_plain_ext	16
@@ -79,7 +79,7 @@ too_many_lines	crates/noyalib/src/cst/document.rs	swap_items	77
 too_many_lines	crates/noyalib/src/error.rs	diagnostic	64
 too_many_lines	crates/noyalib/src/error.rs	fmt	80
 too_many_lines	crates/noyalib/src/parser/loader.rs	process_event	143
-too_many_lines	crates/noyalib/src/parser/loader.rs	push_node	176
+too_many_lines	crates/noyalib/src/parser/loader.rs	push_node	172
 too_many_lines	crates/noyalib/src/parser/loader.rs	push_value	139
 too_many_lines	crates/noyalib/src/parser/loader.rs	value_to_key_string	72
 too_many_lines	crates/noyalib/src/parser/scanner.rs	fetch_next_token	103

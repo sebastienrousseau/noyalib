@@ -95,6 +95,31 @@ fn an_anchor_does_not_respell_typed_keys() {
 }
 
 #[test]
+fn an_alias_key_takes_its_anchored_spelling() {
+    // Found by fuzz_diff on `{&d\n.3,*d}`: a duplicate reached through an
+    // alias kept no written text, so the key became "0.3".
+    let cfg = ParserConfig::new();
+    for key in KEYS {
+        for doc in [
+            format!("{{&d {key}, *d}}\n"),
+            format!("{{&d\n{key},*d}}\n"),
+            format!("&d {key}: 1\n*d : 2\n"),
+            format!("a: &d {key}\n? *d\n: 2\nz: !t 3\n"),
+        ] {
+            let m: BTreeMap<String, Value> =
+                from_str_with_config(&doc, &cfg).unwrap_or_else(|e| panic!("{doc:?}: {e}"));
+            assert!(
+                m.contains_key(*key),
+                "{doc:?}: {:?}",
+                m.keys().collect::<Vec<_>>()
+            );
+        }
+    }
+    let value: Value = from_str("{&d .3, *d}").unwrap();
+    assert!(value.get("0.3").is_some(), "Value keeps canonical keys");
+}
+
+#[test]
 fn original_anchored_empty_key_projection() {
     let doc = include_str!("../fixtures/anchored-empty-key.yaml");
     let actual: serde_json::Value = from_str(doc).unwrap();

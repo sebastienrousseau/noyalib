@@ -11,6 +11,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Changed
 
+- **Breaking:** an alias used as a mapping key takes its anchored
+  node's written spelling for typed targets (`{&a .3, *a}` keys ".3",
+  not "0.3"), and key errors on it point at that node.
 - **Breaking:** accept tab separation after a `...` document-end
   marker, as YAML 1.2.2 §9.1.2 allows.
 - **Breaking:** reject raw C1 controls other than NEL (U+0080 to U+009F)
