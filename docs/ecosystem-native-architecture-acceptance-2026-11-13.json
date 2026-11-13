@@ -1,0 +1,1018 @@
+{
+  "recorded_utc": "2026-11-13T00:30:07.091813+00:00",
+  "observed_pr_head": "cf8a56adb9a31d9a8ac84d200d1625768e30abf3",
+  "candidate_run": "https://github.com/sebastienrousseau/noyalib/actions/runs/43335956900",
+  "native_targets": [
+    {
+      "status": "passed",
+      "target": "aarch64-apple-darwin",
+      "version": "0.0.60",
+      "release_source": "9fdd09a177b6bf29084f0897db0d3e6823a27e96",
+      "recipe_record_sha256": "71aad2aef1f521731e77efe73bd58e4598d8a57f6003c1b9a052c9d5d3a16d20",
+      "consumer_sha256": "bf6e146f381a1f0b08a5b0749d501f40e67ba2a64b0acd5078c3ef4f5974d9d6",
+      "scope": "Actual published native archive in private staging; no package-manager or candidate-registry installation claim.",
+      "archive_sha256": "9f3729fdf112a05569f512b980a73a1e2ad5fb4e3e7ede7c992213a31614eb89",
+      "provenance_verified": true,
+      "installed_versions": {
+        "noyafmt": "noyafmt 0.0.60",
+        "noyavalidate": "noyavalidate 0.0.60"
+      },
+      "cache_refusals": [
+        "missing",
+        "corrupt"
+      ],
+      "offline_restored_versions": {
+        "noyafmt": "noyafmt 0.0.60",
+        "noyavalidate": "noyavalidate 0.0.60"
+      },
+      "private_uninstall_passed": true
+    },
+    {
+      "status": "passed",
+      "target": "aarch64-pc-windows-msvc",
+      "version": "0.0.60",
+      "release_source": "9fdd09a177b6bf29084f0897db0d3e6823a27e96",
+      "recipe_record_sha256": "71aad2aef1f521731e77efe73bd58e4598d8a57f6003c1b9a052c9d5d3a16d20",
+      "consumer_sha256": "bf6e146f381a1f0b08a5b0749d501f40e67ba2a64b0acd5078c3ef4f5974d9d6",
+      "scope": "Actual published native archive in private staging; no package-manager or candidate-registry installation claim.",
+      "archive_sha256": "341eb94f58c122ab539c3b8bacbf0ecc60c33f5f263d70cdfeab0ab423fac9c4",
+      "provenance_verified": true,
+      "installed_versions": {
+        "noyafmt": "noyafmt 0.0.60",
+        "noyavalidate": "noyavalidate 0.0.60"
+      },
+      "cache_refusals": [
+        "missing",
+        "corrupt"
+      ],
+      "offline_restored_versions": {
+        "noyafmt": "noyafmt 0.0.60",
+        "noyavalidate": "noyavalidate 0.0.60"
+      },
+      "private_uninstall_passed": true
+    },
+    {
+      "status": "passed",
+      "target": "aarch64-unknown-linux-musl",
+      "version": "0.0.60",
+      "release_source": "9fdd09a177b6bf29084f0897db0d3e6823a27e96",
+      "recipe_record_sha256": "71aad2aef1f521731e77efe73bd58e4598d8a57f6003c1b9a052c9d5d3a16d20",
+      "consumer_sha256": "bf6e146f381a1f0b08a5b0749d501f40e67ba2a64b0acd5078c3ef4f5974d9d6",
+      "scope": "Actual published native archive in private staging; no package-manager or candidate-registry installation claim.",
+      "archive_sha256": "e271d9ade16db1712c6c0e994b20431da032fc20e81857e97ce484203d381a68",
+      "provenance_verified": true,
+      "installed_versions": {
+        "noyafmt": "noyafmt 0.0.60",
+        "noyavalidate": "noyavalidate 0.0.60"
+      },
+      "cache_refusals": [
+        "missing",
+        "corrupt"
+      ],
+      "offline_restored_versions": {
+        "noyafmt": "noyafmt 0.0.60",
+        "noyavalidate": "noyavalidate 0.0.60"
+      },
+      "private_uninstall_passed": true
+    },
+    {
+      "status": "passed",
+      "target": "x86_64-apple-darwin",
+      "version": "0.0.60",
+      "release_source": "9fdd09a177b6bf29084f0897db0d3e6823a27e96",
+      "recipe_record_sha256": "71aad2aef1f521731e77efe73bd58e4598d8a57f6003c1b9a052c9d5d3a16d20",
+      "consumer_sha256": "bf6e146f381a1f0b08a5b0749d501f40e67ba2a64b0acd5078c3ef4f5974d9d6",
+      "scope": "Actual published native archive in private staging; no package-manager or candidate-registry installation claim.",
+      "archive_sha256": "c04801ce82e044bb9bc04a3fb55bbb250d18634ae53ea44ae3190e35d98b5388",
+      "provenance_verified": true,
+      "installed_versions": {
+        "noyafmt": "noyafmt 0.0.60",
+        "noyavalidate": "noyavalidate 0.0.60"
+      },
+      "cache_refusals": [
+        "missing",
+        "corrupt"
+      ],
+      "offline_restored_versions": {
+        "noyafmt": "noyafmt 0.0.60",
+        "noyavalidate": "noyavalidate 0.0.60"
+      },
+      "private_uninstall_passed": true
+    },
+    {
+      "status": "passed",
+      "target": "x86_64-pc-windows-msvc",
+      "version": "0.0.60",
+      "release_source": "9fdd09a177b6bf29084f0897db0d3e6823a27e96",
+      "recipe_record_sha256": "71aad2aef1f521731e77efe73bd58e4598d8a57f6003c1b9a052c9d5d3a16d20",
+      "consumer_sha256": "bf6e146f381a1f0b08a5b0749d501f40e67ba2a64b0acd5078c3ef4f5974d9d6",
+      "scope": "Actual published native archive in private staging; no package-manager or candidate-registry installation claim.",
+      "archive_sha256": "0883562cda108841f5bc9780d7686d9b5c18f7f944e3a7e6e280ebd746a8d0f0",
+      "provenance_verified": true,
+      "installed_versions": {
+        "noyafmt": "noyafmt 0.0.60",
+        "noyavalidate": "noyavalidate 0.0.60"
+      },
+      "cache_refusals": [
+        "missing",
+        "corrupt"
+      ],
+      "offline_restored_versions": {
+        "noyafmt": "noyafmt 0.0.60",
+        "noyavalidate": "noyavalidate 0.0.60"
+      },
+      "private_uninstall_passed": true
+    },
+    {
+      "status": "passed",
+      "target": "x86_64-unknown-linux-musl",
+      "version": "0.0.60",
+      "release_source": "9fdd09a177b6bf29084f0897db0d3e6823a27e96",
+      "recipe_record_sha256": "71aad2aef1f521731e77efe73bd58e4598d8a57f6003c1b9a052c9d5d3a16d20",
+      "consumer_sha256": "bf6e146f381a1f0b08a5b0749d501f40e67ba2a64b0acd5078c3ef4f5974d9d6",
+      "scope": "Actual published native archive in private staging; no package-manager or candidate-registry installation claim.",
+      "archive_sha256": "67c38e35f12d5e2512b1dab886c8db8da65e52963f80c5f6fc19000398d9e96f",
+      "provenance_verified": true,
+      "installed_versions": {
+        "noyafmt": "noyafmt 0.0.60",
+        "noyavalidate": "noyavalidate 0.0.60"
+      },
+      "cache_refusals": [
+        "missing",
+        "corrupt"
+      ],
+      "offline_restored_versions": {
+        "noyafmt": "noyafmt 0.0.60",
+        "noyavalidate": "noyavalidate 0.0.60"
+      },
+      "private_uninstall_passed": true
+    }
+  ],
+  "manager_receipts": [
+    {
+      "artifact_path": "candidate-cli-arch-package/receipt.json",
+      "receipt": {
+        "status": "passed",
+        "recorded_utc": "2026-11-13T00:20:12.577860+00:00",
+        "cli_source": "955c2d31d0102ac04ed8f9609e75352aeac355c9",
+        "consumer_sha256": "4d3248b8b2a99e58a160c2176c78fec5d864f2ee5731581bbac8ca41336a7245",
+        "recipe_sha256": "0d612b88fd841f95b27d2a1fcbaf4faaea740c40692936a1c9a102afc3c45071",
+        "release_version": "0.0.60",
+        "release_source": "9fdd09a177b6bf29084f0897db0d3e6823a27e96",
+        "image": "ghcr.io/archlinux/archlinux@sha256:19bc4b6c53d9089ea6aa506ecabc1ddc5aee1024a2ceb9a195b6c8a04fdf2418",
+        "target": "x86_64-unknown-linux-musl",
+        "scope": "Actual candidate PKGBUILD and makepkg/pacman in an isolated container. Published native bytes, not public AUR or candidate registry acceptance.",
+        "steps": [
+          {
+            "name": "recipe-check",
+            "command": [
+              "python3",
+              "/home/runner/work/noyalib/noyalib/product/scripts/check-distribution-recipes.py"
+            ],
+            "exit_code": 0
+          },
+          {
+            "name": "archive-provenance",
+            "command": [
+              "gh",
+              "attestation",
+              "verify",
+              "/home/runner/work/_temp/candidate-cli-arch/work/noya-cli-0.0.60-x86_64-unknown-linux-musl.tar.gz",
+              "--repo",
+              "sebastienrousseau/noya-cli",
+              "--signer-workflow",
+              "sebastienrousseau/noya-cli/.github/workflows/release.yml",
+              "--source-ref",
+              "refs/tags/v0.0.60",
+              "--format",
+              "json"
+            ],
+            "exit_code": 0
+          },
+          {
+            "name": "image-signature",
+            "command": [
+              "cosign",
+              "verify",
+              "ghcr.io/archlinux/archlinux@sha256:19bc4b6c53d9089ea6aa506ecabc1ddc5aee1024a2ceb9a195b6c8a04fdf2418",
+              "--certificate-identity-regexp",
+              "https://gitlab\\.archlinux\\.org/archlinux/archlinux-docker//\\.gitlab-ci\\.yml@refs/tags/v[0-9]+\\.0\\.[0-9]+",
+              "--certificate-oidc-issuer",
+              "https://gitlab.archlinux.org",
+              "--output",
+              "json"
+            ],
+            "exit_code": 0
+          },
+          {
+            "name": "image-pull",
+            "command": [
+              "docker",
+              "pull",
+              "--platform",
+              "linux/amd64",
+              "ghcr.io/archlinux/archlinux@sha256:19bc4b6c53d9089ea6aa506ecabc1ddc5aee1024a2ceb9a195b6c8a04fdf2418"
+            ],
+            "exit_code": 0
+          },
+          {
+            "name": "package-manager",
+            "command": [
+              "docker",
+              "run",
+              "--rm",
+              "--name",
+              "noyalib-arch-assurance-cf4f1f390f364422853830061338b44b",
+              "--network",
+              "none",
+              "--platform",
+              "linux/amd64",
+              "--mount",
+              "type=bind,source=/home/runner/work/_temp/candidate-cli-arch,target=/assurance",
+              "ghcr.io/archlinux/archlinux@sha256:19bc4b6c53d9089ea6aa506ecabc1ddc5aee1024a2ceb9a195b6c8a04fdf2418",
+              "bash",
+              "/assurance/consumer.sh",
+              "0.0.60"
+            ],
+            "exit_code": 0
+          }
+        ],
+        "archive_sha256": "67c38e35f12d5e2512b1dab886c8db8da65e52963f80c5f6fc19000398d9e96f",
+        "installed_assets": {
+          "/usr/bin/noyafmt": "d21e7faf25b6b38449080df5ceefed577298cd79c8d8d6b12fad4f129f5d1003",
+          "/usr/bin/noyavalidate": "8fa985d36b6048d2500eeb80c36d09f9174a8c98221d8ccb0c2e76a224d2a50b",
+          "/usr/share/man/man1/noyafmt.1.gz": "935e549b2ab89ddb0850e010fc2374d84ff3c926f2d235c390af33c739bcf4bb",
+          "/usr/share/man/man1/noyavalidate.1.gz": "aeef4754c2eff3315c7106a8e43cc89fd10165062cc94058e7c9f768e3b9566c",
+          "/usr/share/bash-completion/completions/noyafmt": "d1edae718b7259fa65a91404c6026f3251d028fdac1b078eca9e954b87c488b3",
+          "/usr/share/bash-completion/completions/noyavalidate": "1e17652f1a7eddcffc1268edfee3ccb75bd05412fb1d2b3fc622e70c60d07ac4",
+          "/usr/share/zsh/site-functions/_noyafmt": "e5d436ce9df55888d39a5dc934e1a91e16176306283a366105e9ea1f76b0ddc5",
+          "/usr/share/zsh/site-functions/_noyavalidate": "35897f965177297505c9f72fc799ffb0e360327ca25198c008e0e42130fdd7bf",
+          "/usr/share/fish/vendor_completions.d/noyafmt.fish": "27cd47c560f0cbbf39023e658c45a6025344a3368ceaca8a9534d41f9631e689",
+          "/usr/share/fish/vendor_completions.d/noyavalidate.fish": "1a6b5f0fee7785c7a66537a5ba5424466d3e5d420244669011412a8080c49c49",
+          "/usr/share/licenses/noyalib-bin/LICENSE-MIT": "0bbbd45c3890a3dbdc4614f1dac05de29053165039aedf71ffc7adb85e2ad810",
+          "/usr/share/licenses/noyalib-bin/LICENSE-APACHE": "96bd8666cb191d86e4108d674120391148d050afaaed373dbcca29d41af310e4"
+        },
+        "package_sha256": "191562f686cb85bd073729b77107267b81e02f5702813413c2c4902eefc085f2",
+        "provenance_verified": true,
+        "image_signature_verified": true,
+        "package_build_network": "none",
+        "uninstall_passed": true,
+        "pacman_configuration_delta": "NoExtract directives only; all other settings preserved"
+      }
+    },
+    {
+      "artifact_path": "candidate-cli-architecture-macos-15-intel/candidate-cli-manager/receipt.json",
+      "receipt": {
+        "status": "passed",
+        "recorded_utc": "2026-11-13T00:19:24.756950+00:00",
+        "platform": "macOS-15.7.9-x86_64-i386-64bit-Mach-O",
+        "architecture": "x86_64",
+        "cli_source": "955c2d31d0102ac04ed8f9609e75352aeac355c9",
+        "consumer_sha256": "7d35c4884eaf8fbbf40509a07834edc5cc20eba1fdbafef00315a5f4fad8bc59",
+        "formula_sha256": "1a24bdccb0451c04af2942f72cdde58f7a92416d8d7164034df93c4985af04d9",
+        "release_version": "0.0.60",
+        "release_source": "9fdd09a177b6bf29084f0897db0d3e6823a27e96",
+        "scope": "Actual candidate formula in a temporary local tap. Published native bytes, not public tap or candidate registry acceptance.",
+        "steps": [
+          {
+            "name": "prefix",
+            "command": [
+              "brew",
+              "--prefix"
+            ],
+            "exit_code": 0
+          },
+          {
+            "name": "repository",
+            "command": [
+              "brew",
+              "--repository"
+            ],
+            "exit_code": 0
+          },
+          {
+            "name": "cellar",
+            "command": [
+              "brew",
+              "--cellar"
+            ],
+            "exit_code": 0
+          },
+          {
+            "name": "brew-version",
+            "command": [
+              "brew",
+              "--version"
+            ],
+            "exit_code": 0
+          },
+          {
+            "name": "tap-create",
+            "command": [
+              "brew",
+              "tap-new",
+              "--no-git",
+              "noyalib/assurance"
+            ],
+            "exit_code": 0
+          },
+          {
+            "name": "formula-info",
+            "command": [
+              "brew",
+              "info",
+              "--json=v2",
+              "noyalib/assurance/noya-cli"
+            ],
+            "exit_code": 0
+          },
+          {
+            "name": "install",
+            "command": [
+              "brew",
+              "install",
+              "noyalib/assurance/noya-cli"
+            ],
+            "exit_code": 0
+          },
+          {
+            "name": "formula-test",
+            "command": [
+              "brew",
+              "test",
+              "noyalib/assurance/noya-cli"
+            ],
+            "exit_code": 0
+          },
+          {
+            "name": "archive-cache",
+            "command": [
+              "brew",
+              "--cache",
+              "noyalib/assurance/noya-cli"
+            ],
+            "exit_code": 0
+          },
+          {
+            "name": "archive-provenance",
+            "command": [
+              "gh",
+              "attestation",
+              "verify",
+              "/Users/runner/work/_temp/candidate-cli-manager/cache/downloads/c226be8ed2cf825f59d51a44f0455e529cca1881b6b4d73a73add83851b71bd3--noya-cli-0.0.60-x86_64-apple-darwin.tar.gz",
+              "--repo",
+              "sebastienrousseau/noya-cli",
+              "--signer-workflow",
+              "sebastienrousseau/noya-cli/.github/workflows/release.yml",
+              "--source-ref",
+              "refs/tags/v0.0.60",
+              "--format",
+              "json"
+            ],
+            "exit_code": 0
+          },
+          {
+            "name": "uninstall",
+            "command": [
+              "brew",
+              "uninstall",
+              "noyalib/assurance/noya-cli"
+            ],
+            "exit_code": 0
+          },
+          {
+            "name": "tap-remove",
+            "command": [
+              "brew",
+              "untap",
+              "noyalib/assurance"
+            ],
+            "exit_code": 0
+          }
+        ],
+        "prefix": "/usr/local",
+        "brew_version": "Homebrew 6.0.18\nHomebrew/homebrew-core (git revision a18de1aa60a; last commit 2026-08-24)\nHomebrew/homebrew-cask (git revision 012c48f6314; last commit 2026-08-24)",
+        "installed_versions": {
+          "noyafmt": "noyafmt 0.0.60",
+          "noyavalidate": "noyavalidate 0.0.60"
+        },
+        "installed_assets": {
+          "bin/noyafmt": "95ebd5ff465c8c2d1c9aa707b90ad0692965375ac3419de839a1ec00530c9e75",
+          "bin/noyavalidate": "0cd0e4cf4610928d92f690234448ba5d9415f649652127499ac066df39c17d8e",
+          "share/man/man1/noyafmt.1": "1705bcbef2e55c7d86075fd4cbed7ca698b4981b134cff1e0e4a36f01d51f05a",
+          "share/man/man1/noyavalidate.1": "b455e6a70fe167d006bdd512ca3f2753d2488a8a6a814b75300b406e76e3b926",
+          "etc/bash_completion.d/noyafmt": "d1edae718b7259fa65a91404c6026f3251d028fdac1b078eca9e954b87c488b3",
+          "etc/bash_completion.d/noyavalidate": "1e17652f1a7eddcffc1268edfee3ccb75bd05412fb1d2b3fc622e70c60d07ac4",
+          "share/zsh/site-functions/_noyafmt": "e5d436ce9df55888d39a5dc934e1a91e16176306283a366105e9ea1f76b0ddc5",
+          "share/zsh/site-functions/_noyavalidate": "35897f965177297505c9f72fc799ffb0e360327ca25198c008e0e42130fdd7bf",
+          "share/fish/vendor_completions.d/noyafmt.fish": "27cd47c560f0cbbf39023e658c45a6025344a3368ceaca8a9534d41f9631e689",
+          "share/fish/vendor_completions.d/noyavalidate.fish": "1a6b5f0fee7785c7a66537a5ba5424466d3e5d420244669011412a8080c49c49"
+        },
+        "archive_sha256": "c04801ce82e044bb9bc04a3fb55bbb250d18634ae53ea44ae3190e35d98b5388",
+        "provenance_verified": true,
+        "uninstall_passed": true,
+        "temporary_tap_removed": true
+      }
+    },
+    {
+      "artifact_path": "candidate-cli-architecture-windows-11-arm/candidate-cli-manager/receipt.json",
+      "receipt": {
+        "status": "passed",
+        "recorded_utc": "2026-11-13T00:19:28.829313+00:00",
+        "cli_source": "955c2d31d0102ac04ed8f9609e75352aeac355c9",
+        "consumer_sha256": "16e8db4714b4b17e2d5e8ebf462e6640be76c31ba7f37c5690f353cc0aa6535e",
+        "manifest_sha256": "806130dcd7659e012ebb73adcdbe08b91faf1fc41413d1aebe2a39d51cca4a21",
+        "release_version": "0.0.60",
+        "release_source": "9fdd09a177b6bf29084f0897db0d3e6823a27e96",
+        "manager_repo": "https://github.com/ScoopInstaller/Scoop",
+        "manager_commit": "e6aa3b366bdee8ed138c1e0f7b85192ebdd35d0f",
+        "target": "aarch64-pc-windows-msvc",
+        "scope": "Actual candidate manifest through pinned Scoop in a private prefix. Published native bytes, not public bucket or candidate registry acceptance.",
+        "steps": [
+          {
+            "name": "recipe-check",
+            "command": [
+              "python",
+              "C:\\a\\noyalib\\noyalib\\product\\scripts\\check-distribution-recipes.py"
+            ],
+            "exit_code": 0
+          },
+          {
+            "name": "path-before",
+            "command": [
+              "pwsh",
+              "-NoLogo",
+              "-NoProfile",
+              "-NonInteractive",
+              "-Command",
+              "[ordered]@{user=[Environment]::GetEnvironmentVariable('Path','User'); machine=[Environment]::GetEnvironmentVariable('Path','Machine')} | ConvertTo-Json"
+            ],
+            "exit_code": 0
+          },
+          {
+            "name": "manager-init",
+            "command": [
+              "git",
+              "init",
+              "C:\\a\\_temp\\candidate-cli-manager\\scoop\\apps\\scoop\\current"
+            ],
+            "exit_code": 0
+          },
+          {
+            "name": "manager-remote",
+            "command": [
+              "git",
+              "-C",
+              "C:\\a\\_temp\\candidate-cli-manager\\scoop\\apps\\scoop\\current",
+              "remote",
+              "add",
+              "origin",
+              "https://github.com/ScoopInstaller/Scoop"
+            ],
+            "exit_code": 0
+          },
+          {
+            "name": "manager-fetch",
+            "command": [
+              "git",
+              "-C",
+              "C:\\a\\_temp\\candidate-cli-manager\\scoop\\apps\\scoop\\current",
+              "fetch",
+              "--depth",
+              "1",
+              "origin",
+              "e6aa3b366bdee8ed138c1e0f7b85192ebdd35d0f"
+            ],
+            "exit_code": 0
+          },
+          {
+            "name": "manager-checkout",
+            "command": [
+              "git",
+              "-C",
+              "C:\\a\\_temp\\candidate-cli-manager\\scoop\\apps\\scoop\\current",
+              "checkout",
+              "--detach",
+              "e6aa3b366bdee8ed138c1e0f7b85192ebdd35d0f"
+            ],
+            "exit_code": 0
+          },
+          {
+            "name": "manager-version",
+            "command": [
+              "pwsh",
+              "-NoLogo",
+              "-NoProfile",
+              "-NonInteractive",
+              "-File",
+              "C:\\a\\_temp\\candidate-cli-manager\\scoop\\apps\\scoop\\current\\bin\\scoop.ps1",
+              "--version"
+            ],
+            "exit_code": 0
+          },
+          {
+            "name": "install",
+            "command": [
+              "pwsh",
+              "-NoLogo",
+              "-NoProfile",
+              "-NonInteractive",
+              "-File",
+              "C:\\a\\_temp\\candidate-cli-manager\\scoop\\apps\\scoop\\current\\bin\\scoop.ps1",
+              "install",
+              "--no-update-scoop",
+              "--arch",
+              "arm64",
+              "C:\\a\\noyalib\\noyalib\\product\\pkg\\scoop\\noya-cli.json"
+            ],
+            "exit_code": 0
+          },
+          {
+            "name": "archive-provenance",
+            "command": [
+              "gh",
+              "attestation",
+              "verify",
+              "C:\\a\\_temp\\candidate-cli-manager\\cache\\noya-cli#0.0.60#6889752.zip",
+              "--repo",
+              "sebastienrousseau/noya-cli",
+              "--signer-workflow",
+              "sebastienrousseau/noya-cli/.github/workflows/release.yml",
+              "--source-ref",
+              "refs/tags/v0.0.60",
+              "--format",
+              "json"
+            ],
+            "exit_code": 0
+          },
+          {
+            "name": "uninstall",
+            "command": [
+              "pwsh",
+              "-NoLogo",
+              "-NoProfile",
+              "-NonInteractive",
+              "-File",
+              "C:\\a\\_temp\\candidate-cli-manager\\scoop\\apps\\scoop\\current\\bin\\scoop.ps1",
+              "uninstall",
+              "noya-cli",
+              "--purge"
+            ],
+            "exit_code": 0
+          },
+          {
+            "name": "manager-clean-source",
+            "command": [
+              "git",
+              "-C",
+              "C:\\a\\_temp\\candidate-cli-manager\\scoop\\apps\\scoop\\current",
+              "diff",
+              "--exit-code"
+            ],
+            "exit_code": 0
+          },
+          {
+            "name": "restore-persistent-path",
+            "command": [
+              "pwsh",
+              "-NoLogo",
+              "-NoProfile",
+              "-NonInteractive",
+              "-File",
+              "C:\\a\\_temp\\candidate-cli-manager\\restore-path.ps1",
+              "C:\\a\\_temp\\candidate-cli-manager\\path-before.log",
+              "C:\\a\\_temp\\candidate-cli-manager\\scoop\\shims"
+            ],
+            "exit_code": 0
+          },
+          {
+            "name": "path-after",
+            "command": [
+              "pwsh",
+              "-NoLogo",
+              "-NoProfile",
+              "-NonInteractive",
+              "-Command",
+              "[ordered]@{user=[Environment]::GetEnvironmentVariable('Path','User'); machine=[Environment]::GetEnvironmentVariable('Path','Machine')} | ConvertTo-Json"
+            ],
+            "exit_code": 0
+          }
+        ],
+        "archive_sha256": "341eb94f58c122ab539c3b8bacbf0ecc60c33f5f263d70cdfeab0ab423fac9c4",
+        "installed_versions": {
+          "noyafmt": "noyafmt 0.0.60",
+          "noyavalidate": "noyavalidate 0.0.60"
+        },
+        "shim_versions": {
+          "noyafmt": "noyafmt 0.0.60",
+          "noyavalidate": "noyavalidate 0.0.60"
+        },
+        "installed_assets": {
+          "noyafmt.exe": "00fdd94b1db7a97d326c98065c30bab7e8d307503d65d385ceb70a1810a799d6",
+          "noyavalidate.exe": "b0bb7bec5f1f113a454b990d6d3256d01b70082b6b2ffef079f970c511386050",
+          "LICENSE-MIT": "0bbbd45c3890a3dbdc4614f1dac05de29053165039aedf71ffc7adb85e2ad810",
+          "LICENSE-APACHE": "96bd8666cb191d86e4108d674120391148d050afaaed373dbcca29d41af310e4"
+        },
+        "provenance_verified": true,
+        "uninstall_passed": true,
+        "persistent_path_restored": true
+      }
+    },
+    {
+      "artifact_path": "candidate-noya-cli-macos-latest/_temp/candidate-cli-homebrew/receipt.json",
+      "receipt": {
+        "status": "passed",
+        "recorded_utc": "2026-11-13T00:20:56.529106+00:00",
+        "platform": "macOS-26.7.2-arm64-arm-64bit-Mach-O",
+        "architecture": "arm64",
+        "cli_source": "955c2d31d0102ac04ed8f9609e75352aeac355c9",
+        "consumer_sha256": "7d35c4884eaf8fbbf40509a07834edc5cc20eba1fdbafef00315a5f4fad8bc59",
+        "formula_sha256": "1a24bdccb0451c04af2942f72cdde58f7a92416d8d7164034df93c4985af04d9",
+        "release_version": "0.0.60",
+        "release_source": "9fdd09a177b6bf29084f0897db0d3e6823a27e96",
+        "scope": "Actual candidate formula in a temporary local tap. Published native bytes, not public tap or candidate registry acceptance.",
+        "steps": [
+          {
+            "name": "prefix",
+            "command": [
+              "brew",
+              "--prefix"
+            ],
+            "exit_code": 0
+          },
+          {
+            "name": "repository",
+            "command": [
+              "brew",
+              "--repository"
+            ],
+            "exit_code": 0
+          },
+          {
+            "name": "cellar",
+            "command": [
+              "brew",
+              "--cellar"
+            ],
+            "exit_code": 0
+          },
+          {
+            "name": "brew-version",
+            "command": [
+              "brew",
+              "--version"
+            ],
+            "exit_code": 0
+          },
+          {
+            "name": "tap-create",
+            "command": [
+              "brew",
+              "tap-new",
+              "--no-git",
+              "noyalib/assurance"
+            ],
+            "exit_code": 0
+          },
+          {
+            "name": "trust-reviewed-formula",
+            "command": [
+              "brew",
+              "trust",
+              "--formula",
+              "noyalib/assurance/noya-cli"
+            ],
+            "exit_code": 0
+          },
+          {
+            "name": "formula-info",
+            "command": [
+              "brew",
+              "info",
+              "--json=v2",
+              "noyalib/assurance/noya-cli"
+            ],
+            "exit_code": 0
+          },
+          {
+            "name": "install",
+            "command": [
+              "brew",
+              "install",
+              "noyalib/assurance/noya-cli"
+            ],
+            "exit_code": 0
+          },
+          {
+            "name": "formula-test",
+            "command": [
+              "brew",
+              "test",
+              "noyalib/assurance/noya-cli"
+            ],
+            "exit_code": 0
+          },
+          {
+            "name": "archive-cache",
+            "command": [
+              "brew",
+              "--cache",
+              "noyalib/assurance/noya-cli"
+            ],
+            "exit_code": 0
+          },
+          {
+            "name": "archive-provenance",
+            "command": [
+              "gh",
+              "attestation",
+              "verify",
+              "/Users/runner/work/_temp/candidate-cli-homebrew/cache/downloads/777ae32469bf5857172466fd73f323fa378b19666de2e39be55d70e169ce8978--noya-cli-0.0.60-aarch64-apple-darwin.tar.gz",
+              "--repo",
+              "sebastienrousseau/noya-cli",
+              "--signer-workflow",
+              "sebastienrousseau/noya-cli/.github/workflows/release.yml",
+              "--source-ref",
+              "refs/tags/v0.0.60",
+              "--format",
+              "json"
+            ],
+            "exit_code": 0
+          },
+          {
+            "name": "uninstall",
+            "command": [
+              "brew",
+              "uninstall",
+              "noyalib/assurance/noya-cli"
+            ],
+            "exit_code": 0
+          },
+          {
+            "name": "untrust-reviewed-formula",
+            "command": [
+              "brew",
+              "untrust",
+              "--formula",
+              "noyalib/assurance/noya-cli"
+            ],
+            "exit_code": 0
+          },
+          {
+            "name": "tap-remove",
+            "command": [
+              "brew",
+              "untap",
+              "noyalib/assurance"
+            ],
+            "exit_code": 0
+          }
+        ],
+        "prefix": "/opt/homebrew",
+        "brew_version": "Homebrew 7.0.11",
+        "installed_versions": {
+          "noyafmt": "noyafmt 0.0.60",
+          "noyavalidate": "noyavalidate 0.0.60"
+        },
+        "installed_assets": {
+          "bin/noyafmt": "aa7717dfd34f5a2649a3e8fdf268122343e82b966e95a2619a624d2206ba02ca",
+          "bin/noyavalidate": "2b18c7d451b0ea69dc97b4fe5d9649c297ece01ad3891340e44ac612a976e615",
+          "share/man/man1/noyafmt.1": "1705bcbef2e55c7d86075fd4cbed7ca698b4981b134cff1e0e4a36f01d51f05a",
+          "share/man/man1/noyavalidate.1": "b455e6a70fe167d006bdd512ca3f2753d2488a8a6a814b75300b406e76e3b926",
+          "etc/bash_completion.d/noyafmt": "d1edae718b7259fa65a91404c6026f3251d028fdac1b078eca9e954b87c488b3",
+          "etc/bash_completion.d/noyavalidate": "1e17652f1a7eddcffc1268edfee3ccb75bd05412fb1d2b3fc622e70c60d07ac4",
+          "share/zsh/site-functions/_noyafmt": "e5d436ce9df55888d39a5dc934e1a91e16176306283a366105e9ea1f76b0ddc5",
+          "share/zsh/site-functions/_noyavalidate": "35897f965177297505c9f72fc799ffb0e360327ca25198c008e0e42130fdd7bf",
+          "share/fish/vendor_completions.d/noyafmt.fish": "27cd47c560f0cbbf39023e658c45a6025344a3368ceaca8a9534d41f9631e689",
+          "share/fish/vendor_completions.d/noyavalidate.fish": "1a6b5f0fee7785c7a66537a5ba5424466d3e5d420244669011412a8080c49c49"
+        },
+        "archive_sha256": "9f3729fdf112a05569f512b980a73a1e2ad5fb4e3e7ede7c992213a31614eb89",
+        "provenance_verified": true,
+        "uninstall_passed": true,
+        "temporary_tap_removed": true
+      }
+    },
+    {
+      "artifact_path": "candidate-noya-cli-windows-latest/_temp/candidate-cli-scoop/receipt.json",
+      "receipt": {
+        "status": "passed",
+        "recorded_utc": "2026-11-13T00:21:34.934800+00:00",
+        "cli_source": "955c2d31d0102ac04ed8f9609e75352aeac355c9",
+        "consumer_sha256": "16e8db4714b4b17e2d5e8ebf462e6640be76c31ba7f37c5690f353cc0aa6535e",
+        "manifest_sha256": "806130dcd7659e012ebb73adcdbe08b91faf1fc41413d1aebe2a39d51cca4a21",
+        "release_version": "0.0.60",
+        "release_source": "9fdd09a177b6bf29084f0897db0d3e6823a27e96",
+        "manager_repo": "https://github.com/ScoopInstaller/Scoop",
+        "manager_commit": "e6aa3b366bdee8ed138c1e0f7b85192ebdd35d0f",
+        "target": "x86_64-pc-windows-msvc",
+        "scope": "Actual candidate manifest through pinned Scoop in a private prefix. Published native bytes, not public bucket or candidate registry acceptance.",
+        "steps": [
+          {
+            "name": "recipe-check",
+            "command": [
+              "python",
+              "D:\\a\\noyalib\\noyalib\\product\\scripts\\check-distribution-recipes.py"
+            ],
+            "exit_code": 0
+          },
+          {
+            "name": "path-before",
+            "command": [
+              "pwsh",
+              "-NoLogo",
+              "-NoProfile",
+              "-NonInteractive",
+              "-Command",
+              "[ordered]@{user=[Environment]::GetEnvironmentVariable('Path','User'); machine=[Environment]::GetEnvironmentVariable('Path','Machine')} | ConvertTo-Json"
+            ],
+            "exit_code": 0
+          },
+          {
+            "name": "manager-init",
+            "command": [
+              "git",
+              "init",
+              "D:\\a\\_temp\\candidate-cli-scoop\\scoop\\apps\\scoop\\current"
+            ],
+            "exit_code": 0
+          },
+          {
+            "name": "manager-remote",
+            "command": [
+              "git",
+              "-C",
+              "D:\\a\\_temp\\candidate-cli-scoop\\scoop\\apps\\scoop\\current",
+              "remote",
+              "add",
+              "origin",
+              "https://github.com/ScoopInstaller/Scoop"
+            ],
+            "exit_code": 0
+          },
+          {
+            "name": "manager-fetch",
+            "command": [
+              "git",
+              "-C",
+              "D:\\a\\_temp\\candidate-cli-scoop\\scoop\\apps\\scoop\\current",
+              "fetch",
+              "--depth",
+              "1",
+              "origin",
+              "e6aa3b366bdee8ed138c1e0f7b85192ebdd35d0f"
+            ],
+            "exit_code": 0
+          },
+          {
+            "name": "manager-checkout",
+            "command": [
+              "git",
+              "-C",
+              "D:\\a\\_temp\\candidate-cli-scoop\\scoop\\apps\\scoop\\current",
+              "checkout",
+              "--detach",
+              "e6aa3b366bdee8ed138c1e0f7b85192ebdd35d0f"
+            ],
+            "exit_code": 0
+          },
+          {
+            "name": "manager-version",
+            "command": [
+              "pwsh",
+              "-NoLogo",
+              "-NoProfile",
+              "-NonInteractive",
+              "-File",
+              "D:\\a\\_temp\\candidate-cli-scoop\\scoop\\apps\\scoop\\current\\bin\\scoop.ps1",
+              "--version"
+            ],
+            "exit_code": 0
+          },
+          {
+            "name": "install",
+            "command": [
+              "pwsh",
+              "-NoLogo",
+              "-NoProfile",
+              "-NonInteractive",
+              "-File",
+              "D:\\a\\_temp\\candidate-cli-scoop\\scoop\\apps\\scoop\\current\\bin\\scoop.ps1",
+              "install",
+              "--no-update-scoop",
+              "--arch",
+              "64bit",
+              "D:\\a\\noyalib\\noyalib\\product\\pkg\\scoop\\noya-cli.json"
+            ],
+            "exit_code": 0
+          },
+          {
+            "name": "archive-provenance",
+            "command": [
+              "gh",
+              "attestation",
+              "verify",
+              "D:\\a\\_temp\\candidate-cli-scoop\\cache\\noya-cli#0.0.60#4a20bb2.zip",
+              "--repo",
+              "sebastienrousseau/noya-cli",
+              "--signer-workflow",
+              "sebastienrousseau/noya-cli/.github/workflows/release.yml",
+              "--source-ref",
+              "refs/tags/v0.0.60",
+              "--format",
+              "json"
+            ],
+            "exit_code": 0
+          },
+          {
+            "name": "uninstall",
+            "command": [
+              "pwsh",
+              "-NoLogo",
+              "-NoProfile",
+              "-NonInteractive",
+              "-File",
+              "D:\\a\\_temp\\candidate-cli-scoop\\scoop\\apps\\scoop\\current\\bin\\scoop.ps1",
+              "uninstall",
+              "noya-cli",
+              "--purge"
+            ],
+            "exit_code": 0
+          },
+          {
+            "name": "manager-clean-source",
+            "command": [
+              "git",
+              "-C",
+              "D:\\a\\_temp\\candidate-cli-scoop\\scoop\\apps\\scoop\\current",
+              "diff",
+              "--exit-code"
+            ],
+            "exit_code": 0
+          },
+          {
+            "name": "restore-persistent-path",
+            "command": [
+              "pwsh",
+              "-NoLogo",
+              "-NoProfile",
+              "-NonInteractive",
+              "-File",
+              "D:\\a\\_temp\\candidate-cli-scoop\\restore-path.ps1",
+              "D:\\a\\_temp\\candidate-cli-scoop\\path-before.log",
+              "D:\\a\\_temp\\candidate-cli-scoop\\scoop\\shims"
+            ],
+            "exit_code": 0
+          },
+          {
+            "name": "path-after",
+            "command": [
+              "pwsh",
+              "-NoLogo",
+              "-NoProfile",
+              "-NonInteractive",
+              "-Command",
+              "[ordered]@{user=[Environment]::GetEnvironmentVariable('Path','User'); machine=[Environment]::GetEnvironmentVariable('Path','Machine')} | ConvertTo-Json"
+            ],
+            "exit_code": 0
+          }
+        ],
+        "archive_sha256": "0883562cda108841f5bc9780d7686d9b5c18f7f944e3a7e6e280ebd746a8d0f0",
+        "installed_versions": {
+          "noyafmt": "noyafmt 0.0.60",
+          "noyavalidate": "noyavalidate 0.0.60"
+        },
+        "shim_versions": {
+          "noyafmt": "noyafmt 0.0.60",
+          "noyavalidate": "noyavalidate 0.0.60"
+        },
+        "installed_assets": {
+          "noyafmt.exe": "fa1523a6a9dd725838a48c571075df186ce7c5e6ba772b0da0f2aef9cd1ba762",
+          "noyavalidate.exe": "483d4624c46c99813a13384d1114e2461b388f9de4af77847666613719c4cc60",
+          "LICENSE-MIT": "0bbbd45c3890a3dbdc4614f1dac05de29053165039aedf71ffc7adb85e2ad810",
+          "LICENSE-APACHE": "96bd8666cb191d86e4108d674120391148d050afaaed373dbcca29d41af310e4"
+        },
+        "provenance_verified": true,
+        "uninstall_passed": true,
+        "persistent_path_restored": true
+      }
+    }
+  ],
+  "mcp_release_observation": {
+    "registry_url": "https://crates.io/api/v1/crates/noyalib-mcp",
+    "max_published_version": "0.0.59",
+    "v0_0_60_published": false,
+    "preserved_signed_tag_object": "b28d529f8bae59bbe94bdd91d25ec50173c8702b",
+    "source_ref_decision": "pending; no retirement or publication performed"
+  },
+  "limits": [
+    "All six native archive receipts verify published v0.0.60 bytes from source 9fdd09a177b6bf29084f0897db0d3e6823a27e96; candidate-registry v0.0.61 installation is separate.",
+    "Manager receipts cover both macOS architectures through Homebrew, both Windows architectures through Scoop and x86_64 through Arch makepkg/pacman. Public tap/bucket/AUR and other manager/architecture combinations remain separate.",
+    "The Miri job is still running at capture; these successful jobs do not establish completion of every CI check.",
+    "ADR-0019, final-source sustained campaigns, independent review, continuity, held MCP source recovery and remaining resource/performance acceptance stay open."
+  ],
+  "archive": {
+    "path": "docs/evidence/native-architecture-acceptance-2026-11-13.tar.gz",
+    "bytes": 86687,
+    "sha256": "dcd53f62eb08e03a42261efa42a8c58e7f8f3b2dc3e758993ed5c8c5699a8a16"
+  }
+}

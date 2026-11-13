@@ -18,6 +18,15 @@ host build; the alloc-only core and WASM binding also built for wasm32. Publishe
 
 ## Package-manager acceptance, 2026-11-13
 
+The [architecture receipt](ecosystem-native-architecture-acceptance-2026-11-13.json)
+extends actual native installation, provenance, missing/corrupt cache
+refusal, offline recovery and removal to all six released CLI targets.
+Homebrew passes on both macOS architectures, Scoop on both Windows
+architectures, and Arch packaging on x86_64 Linux. These five manager
+lifecycles use signed candidate CLI `955c2d3` and authentic published
+v0.0.60 bytes. Public hosting channels and candidate-registry v0.0.61
+acceptance remain separate.
+
 The [acceptance record](ecosystem-package-manager-acceptance-2026-11-13.json)
 retains three passing actual package-manager lifecycles and both preceding
 harness failures. Homebrew runs on macOS; Arch builds and installs offline
@@ -808,7 +817,7 @@ remaining evidence. They are not implied by the local results.
 | C1 | The [runtime receipt](ecosystem-profile-and-consumers-2026-11-12.json) records 6,776 std tests, 156 properties and original-input sanitizer replay at source `5ffcea0`. Later commits change harnesses, packaging and evidence. | Resolve ADR-0019 and complete final-source campaign and independent review acceptance; keep intentional loader differences explicit. |
 | C2 | Documented loader responsibilities and fixed the recorded runtime defects. The collection-anchor extraction retains behavior under std and alloc characterization suites and reduces the measured complexity baseline. | Independent architecture review of the resulting boundaries. |
 | C3 | The runtime receipt records 6,771 baseline alloc-only and 7,112 portable tests, 21 oracle tests per profile and twelve stable/MSRV bare-metal checks at `5ffcea0`. Hosted schema composition previously passed 23 tests. Default, minimal std and alloc float consumers had no active libm. | Retain exact-source CI and rerun final registry consumers before release; local overrides are candidate evidence. |
-| CLI1 | Signed CLI `955c2d3` passes 123 native tests. Three-OS archive recovery and actual Homebrew, Arch and Scoop candidate recipes pass their recorded install/identity/removal checks. | Hosted Action, remaining architecture/channel combinations and eventual registry acceptance. |
+| CLI1 | Signed CLI `955c2d3` passes 123 native tests. All six released native targets pass archive recovery. Five actual Homebrew, Arch and Scoop manager lifecycles pass their recorded install/identity/removal checks. | Hosted Action, remaining manager/channel combinations and eventual registry acceptance. |
 | CLI2 | A refused rename preserved destination contents and removed the temporary file; mode and symlink tests also pass. | Cross-OS interruption and metadata evidence, with independent review. |
 | LSP2 | Tests cover UTF-16 positions, stale changes, initialization, header limits, case-insensitive field names and exit while stdin is open. The corrected binary passes 76 native tests and nine doctests; real client checks passed at their recorded sources. | Resource and latency budgets for editor workloads. |
 | LSP3 | Neovim 0.12.6 and installed VS Code 1.141.0 VSIX passed. The VSIX startup bug was reproduced and fixed. | Installed marketplace artifacts and the rest of the claimed OS matrix. |

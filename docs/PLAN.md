@@ -175,9 +175,18 @@ other architectures and final registry graphs retain their own criteria.
 
 The architecture follow-up adds native published-artifact recovery on Intel
 macOS, Linux Arm64 and Windows Arm64, with actual Intel Homebrew and Arm64
-Scoop checks. Scoop selects the matching manifest architecture from the
-native Python process. These jobs require their own successful receipts;
-the earlier single-architecture records do not establish their outcomes.
+Scoop checks. Its [acceptance record](ecosystem-native-architecture-acceptance-2026-11-13.json)
+now retains successful receipts for all six released native CLI targets and
+five manager lifecycles at run `43335956900`. Scoop selects the matching
+manifest architecture from the native Python process. Public channels,
+remaining manager/architecture combinations and v0.0.61 registry graphs
+retain separate acceptance criteria.
+
+The [held MCP choices](ECOSYSTEM-REVIEW.md#held-mcp-release-choices) retain
+the current hold and present an explicit alternative for the maintainer:
+preserve the signed tag, retire the unpublished v0.0.60 attempt and prepare
+the fixed v0.0.61 family. This would leave a gap in MCP's registry history;
+no exception, retirement or publication is accepted by this proposal.
 
 ## Full family campaign execution
 

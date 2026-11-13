@@ -34,6 +34,7 @@ is explicit in the implementation record.
 | [Rust 1.100 and hosted consumers](ecosystem-rust100-hosted-consumers-2026-11-12.json) | Three OSes execute authentic published CLI recovery; all 23 declared consumer projections pass. Separate failed lint/dependency jobs, corrected local checks and immutable LSP pin. |
 | [Package-manager follow-up](ecosystem-package-managers-2026-11-12.json) | Actual Homebrew installation and removal, failed Arch build and signed recipe correction, guard fault injections and explicit pending Arch/Scoop acceptance. |
 | [Package-manager acceptance](ecosystem-package-manager-acceptance-2026-11-13.json) | Homebrew, Arch and Scoop pass at signed CLI `955c2d3`; retain full-file integrity, exact binary/license checks, provenance, removal, PATH restoration and the preceding harness failures. |
+| [Native architecture acceptance](ecosystem-native-architecture-acceptance-2026-11-13.json) | All six released native targets pass authentic installation and recovery. Five actual manager lifecycles cover both Homebrew/Scoop architectures and x86_64 Arch packaging; MCP registry and immutable-tag observations remain distinct from a release-policy decision. |
 | [Scalar, syntax and CST receipt](ecosystem-profile-and-consumers-2026-11-12.json) | Exact runtime hashes, scalar and grammar red/green cases, CST entry/removal boundaries, complete std/alloc/portable checks, original-input sanitizer replay and historical CLI/MCP consumer scopes. |
 | [Completed family campaigns](ecosystem-family-campaign-followup-2026-11-12.json) | All 31 hosted target receipts: 29 pass, two fail; raw logs, findings and corpus digests. Separate completed std/alloc roundtrip hours at `76c5baa`; no final-source family acceptance. |
 | [Performance observations](ecosystem-performance-2026-11-11.json) | Seventy scenarios repeated three times, raw variance, cold consumers and signed-source resource outcomes; no dedicated-host latency claim |
@@ -125,6 +126,23 @@ Windows, marketplace or registry acceptance.
 | Held MCP v0.0.60 | Tag object `b28d529f8bae59bbe94bdd91d25ec50173c8702b` also contains confirmed runtime session-admission and blocking-work ownership defects. A development-only dependency justification is insufficient. Signed detached recovery `3561c28` passes 134 native tests but still fails the later Unicode edit input in immutable registry core 0.0.60; its source/ref recovery decision, exact-source gates, independent review and closing scan remain required. The existing tag is untouched. |
 | Independent review | Reviewer identity, exact reviewed commits, findings with disposition and actual approval through the chosen channel. No self-review presented as independence. |
 | Continuity | An accepted owner and privately retained recovery arrangements for signing, registry and organization access. Do not put secrets in this packet. |
+
+### Held MCP release choices
+
+The November 13 registry check still finds MCP v0.0.59 as the latest
+published version and no v0.0.60 package. The signed v0.0.60 tag remains
+`b28d529f8bae59bbe94bdd91d25ec50173c8702b`. Its detached recovery still
+depends on immutable registry core v0.0.60, which retains the confirmed
+Unicode edit failure. A change to the tag or an unreviewed edit adapter
+cannot establish the missing release evidence.
+
+The current policy keeps that release held. A second option requires an
+explicit maintainer decision: leave the signed tag untouched, retire the
+unpublished MCP v0.0.60 attempt, and prepare all six fixed v0.0.61 crates
+together after their gates pass. The family version advances by +0.0.1,
+but MCP's registry history would have no v0.0.60 publication. That gap is
+a release-policy exception to approve, not an action taken by this packet.
+Neither option authorizes publication or closes independent review.
 
 ## Acceptance record
 
