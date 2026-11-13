@@ -384,12 +384,12 @@ fn walk_keys(
                     });
                 if anchored_empty {
                     let _ = out.insert(core::ptr::from_ref(k) as usize, (end, end));
-                } else if let Some(written) =
-                    written.map(|text| text.trim_end_matches([' ', '\t', '\n', '\r']))
+                } else if let Some((offset, written)) = written.map(written_key_text)
                     && is_canonicalised_plain_key(k, written)
                 {
-                    // Plain spans may include consumed separation. Keep it
-                    // out of typed key text without changing diagnostic spans.
+                    // Keep consumed separation and an anchor property out
+                    // of typed key text without changing diagnostic spans.
+                    let start = start + offset;
                     let _ = out.insert(
                         core::ptr::from_ref(k) as usize,
                         (start, start + written.len()),
@@ -402,6 +402,20 @@ fn walk_keys(
         (_, SpanTree::Alias { target, .. }) => walk_keys(value, target, source, out),
         _ => {}
     }
+}
+
+/// The scalar text of a key span and its offset in that span. Plain
+/// spans may include consumed trailing separation, and an anchored
+/// key's span starts at its `&name` property (found by fuzz_diff on
+/// `{!,&d\n~}`). An anchor names the node without changing its text.
+fn written_key_text(text: &str) -> (usize, &str) {
+    const SEPARATION: [char; 4] = [' ', '\t', '\n', '\r'];
+    let text = text.trim_end_matches(SEPARATION);
+    let scalar = text
+        .strip_prefix('&')
+        .and_then(|name| name.find(SEPARATION).map(|at| &name[at..]))
+        .map_or(text, |rest| rest.trim_start_matches(SEPARATION));
+    (text.len() - scalar.len(), scalar)
 }
 
 /// True when `written` is a bare plain scalar the loader stored as the

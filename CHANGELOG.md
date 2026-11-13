@@ -16,6 +16,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   plain and block scalars, comments, anchors, tags and directives.
   Quoted scalars keep them. YAML 1.2.2 §5.1 limits unquoted content to
   `c-printable`.
+- **Breaking:** keep the written spelling of an anchored typed key
+  (`&a 0x1F`, `&a ~`) when a tag elsewhere selects the AST path, as
+  unanchored keys already did.
 - **Breaking:** apply canonical duplicate-key identity before typed map
   visitors, including aliases, registered tags and ignored fields. `Last`
   keeps the first position, last value and last scalar spelling; `First`

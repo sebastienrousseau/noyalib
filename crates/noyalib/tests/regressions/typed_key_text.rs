@@ -74,6 +74,27 @@ fn an_anchored_empty_key_stays_empty_on_the_ast_path() {
 }
 
 #[test]
+fn an_anchor_does_not_respell_typed_keys() {
+    // Found by fuzz_diff on `{!,&d\n~}`: the anchored key's span
+    // includes `&d`, so the AST path lost its written spelling.
+    let cfg = ParserConfig::new();
+    for key in KEYS {
+        for sep in [" ", "\n", "\t"] {
+            let plain = format!("&d{sep}{key}: 1\n");
+            let tagged = format!("&d{sep}{key}: 1\nz: !t 2\n");
+            let flow = format!("{{z: !t 2, &d{sep}{key}: 1}}\n");
+            assert_eq!(keys(&plain, &cfg), [*key], "streaming {plain:?}");
+            assert_eq!(keys(&tagged, &cfg), [*key], "fallback {tagged:?}");
+            assert_eq!(keys(&flow, &cfg), [*key], "fallback {flow:?}");
+        }
+    }
+    let projected: serde_json::Value = from_str("{!,&d\n~}").unwrap();
+    assert_eq!(projected, serde_json::json!({"": null, "~": null}));
+    let value: Value = from_str("&d ~: 1\nz: !t 2\n").unwrap();
+    assert!(value.get("null").is_some(), "Value keeps canonical keys");
+}
+
+#[test]
 fn original_anchored_empty_key_projection() {
     let doc = include_str!("../fixtures/anchored-empty-key.yaml");
     let actual: serde_json::Value = from_str(doc).unwrap();
