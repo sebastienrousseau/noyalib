@@ -11,6 +11,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Changed
 
+- The serializer no longer counts a tag as a nesting level of its own,
+  so every tagged collection the parser accepts within `max_depth`
+  serializes; a tag wrapping another tag still counts.
 - **Breaking:** with `legacy_binary_numbers` and lossless `u64`
   integers, a binary literal above `i64::MAX` resolves as the `u64` it
   spells instead of staying a string, as hex already did; serializers

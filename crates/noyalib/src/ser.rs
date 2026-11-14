@@ -838,7 +838,15 @@ fn write_user_tag(
     if indicator_takes_a_space(inner, config) {
         output.push(' ');
     }
-    write_value(output, inner, indent, false, config, depth + 1)?;
+    // A tag decorates its node without nesting it, as the parser counts
+    // depth (found by fuzz_roundtrip_alloc_only). Only a tag wrapping
+    // another tag adds a level, which keeps hand-built chains bounded.
+    let inner_depth = if matches!(inner, Value::Tagged(_)) {
+        depth + 1
+    } else {
+        depth
+    };
+    write_value(output, inner, indent, false, config, inner_depth)?;
     if braced {
         output.push('}');
     }

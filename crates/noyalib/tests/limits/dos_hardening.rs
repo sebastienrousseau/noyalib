@@ -211,3 +211,24 @@ fn anchor_name_budget_also_applies_at_eof() {
         }
     }
 }
+
+#[test]
+fn every_parsed_depth_serialises_with_tags() {
+    // Found by fuzz_roundtrip_alloc_only: the serialiser counted a tag
+    // as a nesting level of its own, so a tagged collection the parser
+    // accepted at its depth limit failed with RecursionLimitExceeded.
+    let mut accepted = 0;
+    for depth in 100..=140 {
+        for (open, close) in [("!t [", "]"), ("!t\n- ", "")] {
+            let source = format!("{}x{}", open.repeat(depth), close.repeat(depth));
+            if let Ok(value) = from_str::<Value>(&source) {
+                accepted += 1;
+                let text = noyalib::to_string(&value)
+                    .unwrap_or_else(|e| panic!("depth {depth} {open:?}: {e}"));
+                let back: Value = from_str(&text).unwrap();
+                assert_eq!(back, value, "depth {depth} {open:?}");
+            }
+        }
+    }
+    assert!(accepted > 0, "the parser accepted no tagged nesting at all");
+}
