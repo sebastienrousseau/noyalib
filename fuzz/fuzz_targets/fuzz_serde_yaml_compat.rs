@@ -132,6 +132,7 @@ fuzz_target!(|data: &[u8]| {
                 && !leading_space_line_rejection(&e.to_string())
                 && !key_collision_rejection(&e.to_string())
                 && !bom_column_shift(s)
+                && !prefix_bom_rejection_agrees(s)
             {
                 panic!(
                     "shim rejected what serde_yaml accepts (len {}):\n  shim     : {e}\n  upstream : {}",
@@ -469,6 +470,16 @@ fn key_collision_rejection(message: &str) -> bool {
 /// sit one column right of where the spec puts them (section 9.1.1,
 /// `\u{feff}I: _\n /:`). When the archive refuses the same text without
 /// that BOM, the disagreement is the shift, not the document.
+/// libyaml reads a line-start BOM after a plain scalar as part of it,
+/// where noyalib opens a document prefix (section 9.2). The refusal is
+/// excused only when libyaml refuses the same text without those BOMs.
+fn prefix_bom_rejection_agrees(s: &str) -> bool {
+    bom_classification::without_prefix_boms(s).is_some_and(|source| {
+        noyalib::compat::serde_yaml::from_str::<serde_json::Value>(&source).is_err()
+            && serde_yaml::from_str::<serde_json::Value>(&source).is_err()
+    })
+}
+
 fn bom_column_shift(s: &str) -> bool {
     s.strip_prefix('\u{feff}')
         .is_some_and(|rest| serde_yaml::from_str::<serde_json::Value>(rest).is_err())

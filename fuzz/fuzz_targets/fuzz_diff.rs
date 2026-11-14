@@ -27,6 +27,9 @@ mod decimal_integer;
 #[path = "../question_key.rs"]
 mod question_key;
 
+#[path = "../bom_classification.rs"]
+mod bom_classification;
+
 
 fuzz_target!(|data: &[u8]| {
     let Ok(s) = std::str::from_utf8(data) else {
@@ -118,6 +121,12 @@ fuzz_target!(|data: &[u8]| {
         .and_then(|source| serde_yaml_ng::from_str::<serde_json::Value>(&source).ok())
         .is_some_and(|expected| numeric_equal(&noya, &expected))
         && !oracle_normalization::unique_colliding_anchors(&base)
+            .filter(|source| parse(source).is_ok_and(|value| numeric_equal(&noya, &value)))
+            .and_then(|source| serde_yaml_ng::from_str::<serde_json::Value>(&source).ok())
+            .is_some_and(|expected| numeric_equal(&noya, &expected))
+        // A line-start BOM opens a document prefix (section 9.2); libyaml
+        // reads one after a plain scalar as part of it.
+        && !bom_classification::without_prefix_boms(&base)
             .filter(|source| parse(source).is_ok_and(|value| numeric_equal(&noya, &value)))
             .and_then(|source| serde_yaml_ng::from_str::<serde_json::Value>(&source).ok())
             .is_some_and(|expected| numeric_equal(&noya, &expected))
