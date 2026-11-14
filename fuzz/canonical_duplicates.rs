@@ -36,7 +36,13 @@ struct Key {
 /// unchanged, then compare it with a fresh independent archive parse.
 pub(crate) fn spelling(source: &str, config: &noyalib::ParserConfig) -> Option<String> {
     let prepared = crate::oracle_normalization::collection_spelling(source);
-    let source = prepared.as_deref().unwrap_or(source);
+    respell(prepared.as_deref().unwrap_or(source), config)
+}
+
+/// The duplicate repair alone, without the spelling repairs that
+/// `spelling` applies first: one of those may change noyalib's own value
+/// (`|+\n ` gains a break), which `composed` then refuses as a whole.
+fn respell(source: &str, config: &noyalib::ParserConfig) -> Option<String> {
     let document = noyalib::cst::parse_document_with_config(source, config).ok()?;
     // A real alias token, not a `*` inside a plain scalar (`e*`).
     let aliased = has_alias(document.syntax());
@@ -93,12 +99,13 @@ pub(crate) fn composed(
     keeps: &dyn Fn(&str) -> bool,
 ) -> Option<String> {
     use crate::oracle_normalization as repair;
-    let steps: [&dyn Fn(&str) -> Option<String>; 5] = [
+    let steps: [&dyn Fn(&str) -> Option<String>; 6] = [
         &repair::stream_bom_prefix,
         &repair::collection_spelling,
         &repair::terminated_spaced_block,
         &repair::unique_colliding_anchors,
         &|current| spelling(current, config),
+        &|current| respell(current, config),
     ];
     let mut current = source.to_owned();
     let mut changed = false;
@@ -565,6 +572,20 @@ mod tests {
         assert!(super::tagged_key("!t k: 1\n", &config));
         assert!(!super::tagged_key("k: !t 1\n", &config));
         assert!(!super::tagged_key("{a: !!float 0}", &config));
+    }
+
+    #[test]
+    fn composition_respells_without_value_changing_repairs() {
+        let config = ParserConfig::default();
+        let source = "? ~\n?\r: |+\n ";
+        let before: serde_json::Value = noyalib::from_str_with_config(source, &config).unwrap();
+        let keeps = |candidate: &str| {
+            noyalib::from_str_with_config::<serde_json::Value>(candidate, &config)
+                .is_ok_and(|after| after == before)
+        };
+        let normalized = super::composed(source, &config, &keeps).expect("composed repair");
+        let oracle: serde_json::Value = serde_yaml_ng::from_str(&normalized).unwrap();
+        assert_eq!(before, oracle, "{normalized:?}");
     }
 
     #[test]
