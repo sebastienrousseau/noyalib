@@ -71,6 +71,7 @@ fuzz_target!(|data: &[u8]| {
                     &a,
                 )
                 && !oracle_agrees(oracle_normalization::stream_bom_prefix(s), &a)
+                && !oracle_agrees(bom_classification::without_prefix_boms(s), &a)
                 && !oracle_agrees(oracle_normalization::collection_spelling(s), &a)
                 && !oracle_agrees(oracle_normalization::unique_colliding_anchors(s), &a)
                 && !oracle_agrees(oracle_normalization::terminated_spaced_block(s), &a)
@@ -102,6 +103,7 @@ fuzz_target!(|data: &[u8]| {
                     &a,
                 )
                 && !oracle_agrees(oracle_normalization::stream_bom_prefix(s), &a)
+                && !oracle_agrees(bom_classification::without_prefix_boms(s), &a)
                 && !oracle_agrees(oracle_normalization::collection_spelling(s), &a)
                 && !oracle_agrees(
                     oracle_normalization::collection_spelling(s)
@@ -124,7 +126,9 @@ fuzz_target!(|data: &[u8]| {
                 && !oracle_normalization::quoted_indent_rejection(&e.to_string())
                 && !oracle_normalization::missing_comment_separator_rejection(&e.to_string())
                 && !bom_classification::unquoted_content_bom_rejection(s, e.inner())
-                && !flow_indent_rejection(&e.to_string())
+                // The shim words this refusal as libyaml's unclosed-flow
+                // error when the collection is left open; match noyalib's.
+                && !flow_indent_rejection(e.inner())
                 && !leading_space_line_rejection(&e.to_string())
                 && !key_collision_rejection(&e.to_string())
                 && !bom_column_shift(s)
@@ -364,8 +368,9 @@ fn lone_dash_before_flow_indicator(s: &str) -> bool {
 
 /// A flow continuation line must be indented past the parent block
 /// (yaml-test-suite 9C9N is the error case); libyaml accepts `- {\na}`.
-fn flow_indent_rejection(message: &str) -> bool {
-    message.starts_with("flow content must be indented more than the surrounding block")
+fn flow_indent_rejection(error: &noyalib::Error) -> bool {
+    matches!(error, noyalib::Error::ParseWithLocation { message, .. }
+        if message.starts_with("flow content must be indented more than the surrounding block"))
 }
 
 /// See `known_reject_divergence`: a `:` value indicator in a flow

@@ -54,6 +54,26 @@ pub(crate) fn unquoted_content_bom_rejection(source: &str, error: &noyalib::Erro
         && raised_here(source, offset)
 }
 
+/// The source without its line-start BOMs, when it has any past the first
+/// byte. Where noyalib accepts the document, each opens a document prefix
+/// (section 9.2) and is no text, while libyaml reads one after content as
+/// part of the scalar (`.\n\u{feff}` loads ". \u{feff}"). The repair only
+/// lets the archive read the same text; the values must still agree.
+#[allow(dead_code)]
+pub(crate) fn without_prefix_boms(source: &str) -> Option<String> {
+    let mut out = String::with_capacity(source.len());
+    let mut changed = false;
+    for (at, c) in source.char_indices() {
+        let line_start = source[..at].ends_with(['\n', '\r']);
+        if c == '\u{feff}' && line_start {
+            changed = true;
+        } else {
+            out.push(c);
+        }
+    }
+    changed.then_some(out)
+}
+
 /// `text` opens with the document marker `mark` (`---` or `...`), which
 /// must end at white space or a line end: `....` is a plain scalar.
 fn marker(text: &str, mark: &str) -> bool {
@@ -106,6 +126,7 @@ mod tests {
             "\u{feff} \u{feff}",
             "a:\r \u{feff}---",
             "{4e740,\rinf,\u{feff}}",
+            "s\r\u{feff}\u{feff}",
         ] {
             // The compatibility target classifies the shim's error.
             let config = noyalib::ParserConfig::serde_yaml_compat();
@@ -116,6 +137,17 @@ mod tests {
                 "{source:?}: {error}"
             );
         }
+    }
+
+    #[test]
+    fn prefix_bom_repair_drops_only_line_start_boms() {
+        assert_eq!(without_prefix_boms(".\n\u{feff}").as_deref(), Some(".\n"));
+        assert_eq!(
+            without_prefix_boms("a\r\u{feff}\r\u{feff}---").as_deref(),
+            Some("a\r\r---")
+        );
+        assert_eq!(without_prefix_boms("\u{feff}a: \u{feff}b"), None);
+        assert_eq!(without_prefix_boms("a\n \u{feff}"), None);
     }
 
     #[test]
