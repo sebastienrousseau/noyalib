@@ -180,7 +180,8 @@ fn quoted_empty_block_keys(source: &str) -> Option<String> {
 /// indentation and all line breaks. Callers still compare complete values.
 fn indented_root_block(source: &str) -> Option<String> {
     let tokens = lexical_tokens(source)?;
-    // Node properties (`&a`, `!t`) may precede the block scalar header.
+    // A `---` marker and node properties (`&a`, `!t`) may precede the
+    // block scalar header.
     let (kind, start, end) = tokens.into_iter().find(|(kind, _, _)| {
         !matches!(
             kind,
@@ -190,6 +191,7 @@ fn indented_root_block(source: &str) -> Option<String> {
                 | SyntaxKind::Bom
                 | SyntaxKind::AnchorMark
                 | SyntaxKind::TagMark
+                | SyntaxKind::DocStart
         )
     })?;
     if !matches!(kind, SyntaxKind::LiteralScalar | SyntaxKind::FoldedScalar) {
@@ -412,6 +414,12 @@ mod tests {
     #[test]
     fn root_block_repair_reaches_past_node_properties() {
         // Found by fuzz_serde_yaml_compat on `&8\t>\r#`.
+        for source in ["---\n>\n#", "--- &a >\n#"] {
+            let normalized = indented_root_block(source).expect("root block repair");
+            let before: serde_json::Value = noyalib::from_str(source).unwrap();
+            let after: serde_json::Value = noyalib::from_str(&normalized).unwrap();
+            assert_eq!(before, after, "{normalized:?}");
+        }
         let source = "&8\t>\r#";
         let normalized = indented_root_block(source).expect("root block repair");
         let before: serde_json::Value = noyalib::from_str(source).unwrap();

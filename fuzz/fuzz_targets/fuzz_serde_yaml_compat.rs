@@ -286,6 +286,14 @@ fn known_reject_divergence(s: &str) -> bool {
     if leading_document_end(s) {
         return true;
     }
+    // libyaml misses a `---` or `...` marker straight after the stream
+    // BOM and reads it as plain text (`\u{feff}---\n>f` loads "--- >f");
+    // the BOM is transparent to the document markers (section 9.1.1).
+    if s.strip_prefix('\u{feff}')
+        .is_some_and(|rest| rest.starts_with("---") || rest.starts_with("..."))
+    {
+        return true;
+    }
     // A `#` straight after a block scalar header (`|#`, `>-#`) is not a
     // comment: §6.6 wants white space before it, and yaml-test-suite
     // X4QW is the error case. libyaml reads it as one.
