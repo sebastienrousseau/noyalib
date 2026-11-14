@@ -48,10 +48,16 @@ pub(crate) fn unquoted_content_bom_rejection(source: &str, error: &noyalib::Erro
     // The same policy covers a line-start BOM before a document marker,
     // where it would open the next document's prefix (`-\r\u{feff}---`).
     let rest = &source[offset + '\u{feff}'.len_utf8()..];
-    // After a `...` the next prefix is spec-valid and stays visible.
-    let ended = prefix.split(['\r', '\n']).any(|l| marker(l, "..."));
-    let before_marker = line.is_empty() && !ended && (marker(rest, "---") || marker(rest, "..."));
-    if later_prefix || before_marker && raised_here(source, offset) {
+    let before_marker = line.is_empty() && (marker(rest, "---") || marker(rest, "..."));
+    // The same policy covers a column-0 BOM after a `...` marker, where the
+    // next document's prefix starts (`.\n...\n\u{feff}`).
+    let after_end = line.is_empty()
+        && prefix
+            .split(['\r', '\n'])
+            .rev()
+            .find(|l| !l.trim().is_empty() && !l.trim_start().starts_with('#'))
+            .is_some_and(|l| marker(l, "..."));
+    if later_prefix || (before_marker || after_end) && raised_here(source, offset) {
         return true;
     }
     // Inside a document (after content or a `---` line, before any `...`),
@@ -130,6 +136,9 @@ mod tests {
             "a:\r \u{feff}---",
             "{4e740,\rinf,\u{feff}}",
             "....\n#\n\u{feff}",
+            // Documented policy rather than spec: see `after_end`.
+            ".\n...\n\u{feff}",
+            "a: 1\n...\n\u{feff}---\nb: 2",
         ] {
             // The compatibility target classifies the shim's error.
             let config = noyalib::ParserConfig::serde_yaml_compat();
@@ -148,7 +157,6 @@ mod tests {
             "byte order mark inside the stream \u{2014} a BOM is only allowed at the very start";
         for (source, offset) in [
             ("\u{feff}key: value", 0),
-            ("a: 1\n...\n\u{feff}---\nb: 2", 9),
             ("key: '\u{feff}value'", 6),
             ("key: \"\u{feff}value\"", 6),
             ("- \u{feff}", 3),
