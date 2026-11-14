@@ -16,7 +16,7 @@ mod scanner;
 pub(crate) use events::{Event, Parser};
 pub(crate) use loader::{
     DuplicateKeyPolicy as InternalDuplicateKeyPolicy, MergeKeyPolicy as InternalMergeKeyPolicy,
-    ParseConfig, parse_legacy_binary, value_to_key_string,
+    ParseConfig, parse_legacy_binary, parse_legacy_binary_u64, value_to_key_string,
 };
 pub(crate) use scanner::{ScalarStyle, Scanner, TokenKind};
 // CST builder is the only consumer; gate the re-exports to match.

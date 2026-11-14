@@ -11,6 +11,10 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Changed
 
+- **Breaking:** with `legacy_binary_numbers` and lossless `u64`
+  integers, a binary literal above `i64::MAX` resolves as the `u64` it
+  spells instead of staying a string, as hex already did; serializers
+  quote strings of that shape.
 - **Breaking:** the compatibility profile refuses a hex, octal or
   (legacy) binary literal inside the 128-bit range but outside 64 bits,
   signed or not, as the archived parser does; a larger one stays a

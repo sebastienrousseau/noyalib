@@ -955,6 +955,7 @@ fn looks_like_number(s: &str) -> bool {
 /// turn it into something else.
 fn resolves_as_non_string(s: &str) -> bool {
     crate::parser::parse_legacy_binary(s).is_some()
+        || crate::parser::parse_legacy_binary_u64(s).is_some()
         || [false, true].into_iter().any(|lossless_u64| {
             !matches!(
                 crate::streaming::resolve_plain_ext(

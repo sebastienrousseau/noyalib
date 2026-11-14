@@ -278,3 +278,28 @@ fn radix_overflow_refusal_matches_the_archive() {
         );
     }
 }
+
+#[cfg(feature = "lossless-u64")]
+#[test]
+fn legacy_binary_reaches_the_unsigned_range() {
+    // Found by fuzz_serde_yaml_compat: a 64-digit binary literal above
+    // i64::MAX stayed a string where the archive reads the u64.
+    let config = ParserConfig::serde_yaml_compat();
+    let literal = format!("0b{}", "1".repeat(64));
+    parity(
+        &format!("m: {literal}\n"),
+        &config,
+        serde_json::json!({ "m": u64::MAX }),
+    );
+    parity(
+        "m: 0b1111011111111111111111111111111111111111111111111111111111111111\n",
+        &config,
+        serde_json::json!({ "m": 17_870_283_321_406_128_127_u64 }),
+    );
+    let text = noyalib::to_string(&literal).unwrap();
+    let back: String = from_str_with_config(&text, &config).unwrap();
+    assert_eq!(
+        back, literal,
+        "a binary-shaped string stays quoted: {text:?}"
+    );
+}

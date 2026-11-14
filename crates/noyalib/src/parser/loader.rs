@@ -1585,6 +1585,24 @@ pub(crate) fn parse_legacy_binary(s: &str) -> Option<i64> {
     Some(if negative { -n } else { n })
 }
 
+/// The unsigned YAML 1.1 binary form: `+?0b[0-1_]+` up to `u64::MAX`,
+/// for lossless configurations past `i64::MAX` (found by
+/// fuzz_serde_yaml_compat; the archive reads these as `u64`).
+pub(crate) fn parse_legacy_binary_u64(s: &str) -> Option<u64> {
+    let rest = s.strip_prefix('+').unwrap_or(s);
+    let digits = rest
+        .strip_prefix("0b")
+        .or_else(|| rest.strip_prefix("0B"))?;
+    if digits.starts_with(['+', '-']) {
+        return None;
+    }
+    let digits: String = digits.chars().filter(|&c| c != '_').collect();
+    if digits.is_empty() {
+        return None;
+    }
+    u64::from_str_radix(&digits, 2).ok()
+}
+
 /// One of the explicit infinity spellings the resolver accepts.
 fn is_inf_spelling(s: &str) -> bool {
     matches!(
@@ -1917,6 +1935,13 @@ fn resolve_untagged_scalar(
         && let Some(n) = parse_legacy_binary(&value)
     {
         return Value::Number(Number::Integer(n));
+    }
+    #[cfg(feature = "lossless-u64")]
+    if config.legacy_binary_numbers
+        && config.lossless_u64_integers
+        && let Some(n) = parse_legacy_binary_u64(&value)
+    {
+        return Value::Number(Number::Unsigned(n));
     }
     match crate::streaming::resolve_plain_ext(
         &value,
