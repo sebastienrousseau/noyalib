@@ -11,6 +11,12 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Changed
 
+- **Breaking:** reject an under-indented continuation line of a plain
+  or quoted scalar inside a flow collection nested in a block, as
+  YAML 1.2.2 §7.3 `s-flow-line-prefix` requires (yaml-test-suite 9C9N);
+  root-level flow collections are unaffected. The serde_yaml shim
+  still reports an unclosed flow sequence at end of input, as upstream
+  does.
 - **Breaking:** reject a `---` or `...` document marker at the start of
   a line inside a double-quoted scalar after an escaped line break, as
   after an unescaped one (yaml-test-suite 5TRB, RXY3).

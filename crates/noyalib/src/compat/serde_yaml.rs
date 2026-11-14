@@ -276,6 +276,12 @@ impl Error {
     #[must_use]
     pub fn from_noyalib_with_input(inner: crate::error::Error, input: &str) -> Self {
         let mut location = inner.location();
+        // libyaml does not check flow indentation (§7.3), so a flow
+        // sequence left open runs to end-of-input there. Report it at
+        // EOF, the way upstream does.
+        if flow_indent_error(&inner) && unmatched_open_bracket(input, input.len()).is_some() {
+            location = Some(Location::from_index(input, input.len()));
+        }
         // libyaml reports an error at end-of-input on the line after
         // the last one, column 1; noyalib says end-of-last-line.
         if let Some(loc) = location {
@@ -374,6 +380,13 @@ fn parse_shaped(e: &crate::error::Error) -> bool {
     )
 }
 
+/// Is this noyalib's §7.3 flow-indentation refusal, which libyaml
+/// never raises?
+fn flow_indent_error(e: &crate::error::Error) -> bool {
+    matches!(e, crate::error::Error::ParseWithLocation { message, .. }
+        if message.starts_with("flow content must be indented more than the surrounding block"))
+}
+
 /// Render a noyalib error the way `serde_yaml` 0.9 would have worded
 /// it. Classes without an upstream analogue keep noyalib's wording.
 fn render_upstream_style(
@@ -418,7 +431,10 @@ fn render_upstream_style(
                     "did not find expected node content{}, while parsing a flow node",
                     at(location)
                 )
-            } else if message == "expected ',' or ']' in flow sequence" {
+            } else if message == "expected ',' or ']' in flow sequence"
+                || flow_indent_error(e)
+                    && input.is_some_and(|i| unmatched_open_bracket(i, i.len()).is_some())
+            {
                 let ctx = input
                     .and_then(|inp| location.and_then(|l| unmatched_open_bracket(inp, l.index())))
                     .map(|open| {

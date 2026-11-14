@@ -17,6 +17,7 @@ mod edge_audit;
 mod edge_cases;
 mod empty_document_targets;
 mod flow_block_scalar_indicator;
+mod flow_continuation_indent;
 mod implicit_key_length;
 mod implicit_null_at_eof;
 mod legacy_sexagesimal;

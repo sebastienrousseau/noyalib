@@ -348,6 +348,7 @@ impl Scanner<'_> {
                 fold.whitespace.push('\n');
                 self.advance();
             }
+            self.check_flow_continuation_indent(self.pos, false)?;
             self.skip_plain_line_prefix(indent)?;
             if !Self::is_break(self.peek()) {
                 break;

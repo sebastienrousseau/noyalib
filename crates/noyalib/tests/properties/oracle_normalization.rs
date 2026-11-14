@@ -448,10 +448,11 @@ mod tests {
         let before: serde_json::Value = noyalib::from_str(source).unwrap();
         let after: serde_json::Value = noyalib::from_str(&normalized).unwrap();
         assert_eq!(before, after);
-        // Found by fuzz_serde_yaml_compat: the trailing break folds away.
-        let source = "- {6400.0,0\r!\n,}";
+        // Found by fuzz_serde_yaml_compat on `- {6400.0,0\r!\n,}` (now
+        // refused by §7.3): the trailing break folds away.
+        let source = "{6400.0,0\r!\n,}";
         let normalized = quoted_empty_flow_keys(source).unwrap();
-        assert_eq!(normalized, "- {6400.0,\"0 !\" ,}");
+        assert_eq!(normalized, "{6400.0,\"0 !\" ,}");
         let before: serde_json::Value = noyalib::from_str(source).unwrap();
         let after: serde_json::Value = noyalib::from_str(&normalized).unwrap();
         assert_eq!(before, after);

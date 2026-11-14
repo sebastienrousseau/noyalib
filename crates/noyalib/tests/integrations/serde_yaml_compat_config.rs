@@ -279,9 +279,10 @@ mod shim_errors {
     #[test]
     fn eof_remap_applies_only_at_end_of_input() {
         // Mid-document parse errors keep their position untouched.
-        let err = syml::from_str::<serde_json::Value>("a: [1,\nb: 2\n").unwrap_err();
+        // serde_yaml 0.9.34 reports this one at line 1 column 8.
+        let err = syml::from_str::<serde_json::Value>("a: [1, }\nb: 2\n").unwrap_err();
         let loc = err.location().unwrap();
-        assert!(loc.index() < "a: [1,\nb: 2\n".len());
+        assert_eq!((loc.line(), loc.column(), loc.index()), (1, 8, 7));
     }
 
     #[test]

@@ -1799,6 +1799,41 @@ impl<'a> Scanner<'a> {
         Ok(())
     }
 
+    /// YAML 1.2.2 §7.3 `s-flow-line-prefix(n)`: a flow scalar's
+    /// continuation line is indented past the surrounding block, like
+    /// any flow line (9C9N). The token-level check only sees lines a
+    /// token starts on, so scalar scanners call this for the lines they
+    /// consume. `line_start` is the first byte after the line break. A
+    /// blank line needs no prefix; for a plain scalar, a comment or a
+    /// closing indicator ends the scalar instead of continuing it.
+    pub(super) fn check_flow_continuation_indent(
+        &self,
+        line_start: usize,
+        quoted: bool,
+    ) -> ScanResult<()> {
+        if self.flow_level == 0 || self.indent < 0 {
+            return Ok(());
+        }
+        let line = &self.input[line_start..];
+        let spaces = line.iter().take_while(|&&b| b == b' ').count();
+        let Some(&first) = line.iter().find(|&&b| !Self::is_blank(b)) else {
+            return Ok(());
+        };
+        let ends_plain = !quoted && matches!(first, b'#' | b']' | b'}');
+        if Self::is_break(first) || ends_plain || spaces as i32 > self.indent {
+            return Ok(());
+        }
+        Err(ScanError {
+            message: Cow::Borrowed("flow content must be indented more than the surrounding block"),
+            index: line_start + spaces,
+        })
+    }
+
+    /// The first byte of the line holding the cursor.
+    fn line_start(&self) -> usize {
+        memchr::memrchr2(b'\n', b'\r', &self.input[..self.pos]).map_or(0, |at| at + 1)
+    }
+
     /// Per YAML 1.2.2 §7.3.2 / §7.3.3, continuation lines of a
     /// multi-line quoted scalar in *block* context must be indented
     /// strictly more than the parent block's indent — otherwise the
@@ -1806,12 +1841,12 @@ impl<'a> Scanner<'a> {
     /// parent level. Called by each quoted-scalar break handler
     /// after the trailing line break and any leading blanks have
     /// been consumed; `pos` therefore sits at the first content
-    /// byte of the new line. Skipped in flow context, where the
-    /// indent rule is governed by `s-flow-line-prefix(n)` and
-    /// already enforced by the surrounding flow scaffolding.
+    /// byte of the new line. In flow context the rule is
+    /// `s-flow-line-prefix(n)`, checked by
+    /// [`Self::check_flow_continuation_indent`].
     fn require_quoted_continuation_indent(&self, style: &'static str) -> ScanResult<()> {
         if self.flow_level != 0 {
-            return Ok(());
+            return self.check_flow_continuation_indent(self.line_start(), true);
         }
         if self.is_eof() || Self::is_break(self.peek()) {
             // Trailing whitespace / blank line — the closing quote
@@ -1843,7 +1878,7 @@ impl<'a> Scanner<'a> {
         space_indent: i32,
     ) -> ScanResult<()> {
         if self.flow_level != 0 {
-            return Ok(());
+            return self.check_flow_continuation_indent(self.line_start(), true);
         }
         if self.is_eof() || Self::is_break(self.peek()) {
             return Ok(());

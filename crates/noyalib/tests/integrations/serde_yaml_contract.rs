@@ -258,6 +258,30 @@ fn eof_reports_one_line_past_the_flow_sequence() {
 }
 
 #[test]
+fn under_indented_unclosed_flow_reports_at_eof_like_upstream() {
+    // libyaml never checks §7.3 flow indentation, so an unclosed flow
+    // sequence with an under-indented line still runs to end-of-input
+    // there. Live serde_yaml 0.9.34 output.
+    for (input, display, loc) in [
+        (
+            "title: [a,\nother: ok\n",
+            "did not find expected ',' or ']' at line 3 column 1, while parsing a flow sequence at line 1 column 8",
+            (3, 1, 21),
+        ),
+        (
+            "k: [a\nb",
+            "did not find expected ',' or ']' at line 3 column 1, while parsing a flow sequence at line 1 column 4",
+            (3, 1, 7),
+        ),
+    ] {
+        let err = syml::from_str::<syml::Value>(input).expect_err(input);
+        assert_eq!(err.to_string(), display, "{input:?}");
+        let at = err.location().map(|l| (l.line(), l.column(), l.index()));
+        assert_eq!(at, Some(loc), "{input:?}");
+    }
+}
+
+#[test]
 fn columns_count_characters_and_index_counts_bytes() {
     // zfb's md-wasm layer converts noyalib columns to UTF-16 columns
     // against the original source; that conversion is only correct
