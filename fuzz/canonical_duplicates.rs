@@ -117,7 +117,18 @@ fn written_key(
     };
     let colon = tokens.iter().find(|t| t.0 == SyntaxKind::ColonIndicator);
     let explicit = tokens.iter().any(|t| t.0 == SyntaxKind::QuestionIndicator);
-    let end = colon.map_or(boundary, |t| t.1);
+    // Without a colon the key ends with its last significant token, so a
+    // trailing comment (`{!\n#\n}`) stays out of the key text.
+    let end = colon.map_or_else(
+        || {
+            tokens
+                .iter()
+                .rev()
+                .find(significant)
+                .map_or(boundary, |t| t.2)
+        },
+        |t| t.1,
+    );
     // An empty explicit key (`? `) has no significant token at all.
     let start = match tokens.iter().find(significant) {
         Some(first) if colon.is_none() && first.0 == SyntaxKind::Document => return None,
@@ -364,6 +375,7 @@ mod tests {
             "{!, : 1}",
             "! : 1\n: 2\n",
             "{!,~,? }",
+            "{~,&d,!\n#\n}",
         ] {
             assert!(super::spelling_collision(source, &config), "{source:?}");
         }
