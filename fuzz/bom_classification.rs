@@ -78,6 +78,29 @@ pub(crate) fn without_prefix_boms(source: &str) -> Option<String> {
     changed.then_some(out)
 }
 
+/// [`without_prefix_boms`] with each line of only white space that holds
+/// a tab emptied. libyaml refuses a line-start tab even on a blank line
+/// (`$\n#\n\t`), which it otherwise read inside the scalar the BOM
+/// extended. The values must still agree.
+#[allow(dead_code)]
+pub(crate) fn without_prefix_boms_or_tab_lines(source: &str) -> Option<String> {
+    let stripped = without_prefix_boms(source)?;
+    let mut out = String::with_capacity(stripped.len());
+    let mut rest = stripped.as_str();
+    while !rest.is_empty() {
+        let end = rest.find(['\n', '\r']).map_or(rest.len(), |at| at + 1);
+        let (line, tail) = rest.split_at(end);
+        let body = line.trim_end_matches(['\n', '\r']);
+        if body.contains('\t') && body.chars().all(|c| matches!(c, ' ' | '\t')) {
+            out.push_str(&line[body.len()..]);
+        } else {
+            out.push_str(line);
+        }
+        rest = tail;
+    }
+    Some(out)
+}
+
 /// `text` opens with the document marker `mark` (`---` or `...`), which
 /// must end at white space or a line end: `....` is a plain scalar.
 fn marker(text: &str, mark: &str) -> bool {
@@ -153,6 +176,15 @@ mod tests {
         );
         assert_eq!(without_prefix_boms("\u{feff}a: \u{feff}b"), None);
         assert_eq!(without_prefix_boms("a\n \u{feff}"), None);
+    }
+
+    #[test]
+    fn tab_line_repair_empties_only_white_lines_with_a_tab() {
+        assert_eq!(
+            without_prefix_boms_or_tab_lines("\n$\n\u{feff}#\n\n \t\r\n\t a\n").as_deref(),
+            Some("\n$\n#\n\n\r\n\t a\n")
+        );
+        assert_eq!(without_prefix_boms_or_tab_lines("a\n\t\n"), None);
     }
 
     #[test]

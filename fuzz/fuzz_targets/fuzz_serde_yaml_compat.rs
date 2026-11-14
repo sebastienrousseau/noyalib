@@ -72,6 +72,7 @@ fuzz_target!(|data: &[u8]| {
                 )
                 && !oracle_agrees(oracle_normalization::stream_bom_prefix(s), &a)
                 && !oracle_agrees(bom_classification::without_prefix_boms(s), &a)
+                && !oracle_agrees(bom_classification::without_prefix_boms_or_tab_lines(s), &a)
                 && !oracle_agrees(oracle_normalization::collection_spelling(s), &a)
                 && !oracle_agrees(oracle_normalization::unique_colliding_anchors(s), &a)
                 && !oracle_agrees(oracle_normalization::terminated_spaced_block(s), &a)
