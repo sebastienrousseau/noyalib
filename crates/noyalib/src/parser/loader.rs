@@ -43,6 +43,8 @@ pub struct ParseConfig {
     pub legacy_sexagesimal: bool,
     pub leading_zero_integer_strings: bool,
     pub legacy_binary_numbers: bool,
+    /// See [`crate::ParserConfig::signed_radix_integers`].
+    pub signed_radix_integers: bool,
     pub float_overflow_strings: bool,
     pub integer_overflow_errors: bool,
     pub non_scalar_key_policy: crate::de::NonScalarKeyPolicy,
@@ -87,6 +89,7 @@ impl Default for ParseConfig {
             legacy_sexagesimal: false,
             leading_zero_integer_strings: false,
             legacy_binary_numbers: false,
+            signed_radix_integers: false,
             float_overflow_strings: false,
             integer_overflow_errors: false,
             non_scalar_key_policy: crate::de::NonScalarKeyPolicy::Stringify,
@@ -146,6 +149,7 @@ impl From<&crate::de::ParserConfig> for ParseConfig {
             legacy_sexagesimal: c.legacy_sexagesimal,
             leading_zero_integer_strings: c.leading_zero_integer_strings,
             legacy_binary_numbers: c.legacy_binary_numbers,
+            signed_radix_integers: c.signed_radix_integers,
             float_overflow_strings: c.float_overflow_strings,
             integer_overflow_errors: c.integer_overflow_errors,
             non_scalar_key_policy: c.non_scalar_key_policy,
@@ -1603,6 +1607,38 @@ pub(crate) fn parse_legacy_binary_u64(s: &str) -> Option<u64> {
     u64::from_str_radix(&digits, 2).ok()
 }
 
+/// A signed hex or octal integer (`-0xF`, `+0o17`) within 64 bits, as
+/// serde_yaml 0.9 reads it: a lower-case prefix and plain digits. A
+/// positive value past `i64::MAX` needs the lossless `u64` form.
+pub(crate) fn parse_signed_radix(s: &str, lossless_u64: bool) -> Option<Number> {
+    let negative = match s.as_bytes().first() {
+        Some(b'-') => true,
+        Some(b'+') => false,
+        _ => return None,
+    };
+    let (radix, digits) = match s.get(1..3) {
+        Some("0x") => (16, &s[3..]),
+        Some("0o") => (8, &s[3..]),
+        _ => return None,
+    };
+    if digits.is_empty() || !digits.bytes().all(|b| (b as char).is_digit(radix)) {
+        return None;
+    }
+    let magnitude = u64::from_str_radix(digits, radix).ok()?;
+    if negative {
+        return 0_i64.checked_sub_unsigned(magnitude).map(Number::Integer);
+    }
+    match i64::try_from(magnitude) {
+        Ok(n) => Some(Number::Integer(n)),
+        #[cfg(feature = "lossless-u64")]
+        Err(_) if lossless_u64 => Some(Number::Unsigned(magnitude)),
+        Err(_) => {
+            let _ = lossless_u64;
+            None
+        }
+    }
+}
+
 /// One of the explicit infinity spellings the resolver accepts.
 fn is_inf_spelling(s: &str) -> bool {
     matches!(
@@ -1680,6 +1716,14 @@ fn resolve_event_scalar(
         .is_some_and(|r| crate::streaming::tag_is_registry_stripped(&t.0, &t.1, r))
     {
         return Ok(resolve_untagged_scalar(value, style, config));
+    }
+    // serde_yaml 0.9 reads `!!int -0xF` like the plain form.
+    let core_int = t.1 == "int" && matches!(t.0.as_str(), "!!" | "tag:yaml.org,2002:");
+    if core_int
+        && config.signed_radix_integers
+        && let Some(n) = parse_signed_radix(value.trim(), config.lossless_u64_integers())
+    {
+        return Ok(Value::Number(n));
     }
     resolve_tagged_scalar(&t.0, &t.1, &value, config.lossless_u64_integers())
 }
@@ -1942,6 +1986,11 @@ fn resolve_untagged_scalar(
         && let Some(n) = parse_legacy_binary_u64(&value)
     {
         return Value::Number(Number::Unsigned(n));
+    }
+    if config.signed_radix_integers
+        && let Some(n) = parse_signed_radix(&value, config.lossless_u64_integers())
+    {
+        return Value::Number(n);
     }
     match crate::streaming::resolve_plain_ext(
         &value,

@@ -252,11 +252,9 @@ fn radix_overflow_refusal_matches_the_archive() {
     );
     for (literal, expected) in [
         ("0o777", serde_json::json!(511)),
-        (
-            "-0x8000000000000000",
-            serde_json::json!("-0x8000000000000000"),
-        ),
-        ("-0xF", serde_json::json!("-0xF")),
+        // serde_yaml 0.9 reads a signed hex or octal integer.
+        ("-0x8000000000000000", serde_json::json!(i64::MIN)),
+        ("-0xF", serde_json::json!(-15)),
         (over128.as_str(), serde_json::json!(over128)),
     ] {
         parity(

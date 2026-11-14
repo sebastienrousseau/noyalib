@@ -265,6 +265,7 @@ impl<'a> StreamingDeserializer<'a> {
         if !self.started {
             if self.config.leading_zero_integer_strings
                 || self.config.legacy_binary_numbers
+                || self.config.signed_radix_integers
                 || self.config.float_overflow_strings
                 || self.config.integer_overflow_errors
             {

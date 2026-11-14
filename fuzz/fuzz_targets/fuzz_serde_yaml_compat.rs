@@ -189,7 +189,7 @@ fn equivalent(a: &serde_json::Value, b: &serde_json::Value) -> bool {
     match (a, b) {
         (V::Number(x), V::Number(y)) => json_numbers::equal(x, y),
         (V::Number(n), V::String(s)) | (V::String(s), V::Number(n))
-            if signed_radix::equal(s, n) || signed_radix::legacy_binary(s, n) =>
+            if signed_radix::legacy_binary(s, n) =>
         {
             true
         }

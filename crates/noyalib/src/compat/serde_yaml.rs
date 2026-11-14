@@ -617,6 +617,7 @@ where
     // asks Serde whether a struct field was repeated.
     walk.leading_zero_integer_strings = false;
     walk.legacy_binary_numbers = false;
+    walk.signed_radix_integers = false;
     walk.float_overflow_strings = false;
     walk.integer_overflow_errors = false;
     crate::streaming::duplicate_struct_field::<T>(s, &walk)

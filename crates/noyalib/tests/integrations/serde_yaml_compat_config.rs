@@ -51,6 +51,49 @@ fn leading_zero_integers_stay_numbers_by_default() {
     assert_eq!(doc["a"].as_i64(), Some(123));
 }
 
+// ── signed_radix_integers ──────────────────────────────────────────
+
+#[test]
+fn signed_radix_literals_resolve_when_enabled() {
+    let mut cfg = ParserConfig::new();
+    cfg.signed_radix_integers = true;
+    let doc = v(
+        "a: -0xF\nb: +0o17\nc: -0x8000000000000000\nd: !!int -0xF\n",
+        &cfg,
+    );
+    assert_eq!(doc["a"].as_i64(), Some(-15));
+    assert_eq!(doc["b"].as_i64(), Some(15));
+    assert_eq!(doc["c"].as_i64(), Some(i64::MIN));
+    assert_eq!(doc["d"].as_i64(), Some(-15));
+    // Spellings serde_yaml 0.9 keeps as strings.
+    let doc = v(
+        "a: -0x\nb: -0x-5\nc: -0x_F\nd: -0XF\ne: -0o8\nf: !!str -0xF\n",
+        &cfg,
+    );
+    for key in ["a", "b", "c", "d", "e", "f"] {
+        assert!(doc[key].as_str().is_some(), "{key}: {:?}", doc[key]);
+    }
+}
+
+#[test]
+fn signed_radix_literals_are_strings_by_default() {
+    let doc = v("a: -0xF\nb: +0o17\n", &ParserConfig::new());
+    assert_eq!(doc["a"].as_str(), Some("-0xF"));
+    assert_eq!(doc["b"].as_str(), Some("+0o17"));
+}
+
+#[test]
+fn the_shim_reads_signed_radix_like_upstream() {
+    // Live serde_yaml 0.9.34 output.
+    let value: serde_json::Value =
+        noyalib::compat::serde_yaml::from_str("a: -0xF\nb: +0o17\nc: [-0xF]\n").unwrap();
+    assert_eq!(value.to_string(), r#"{"a":-15,"b":15,"c":[-15]}"#);
+    // The serializer quotes the string spelling, so it reads back as one.
+    let emitted = noyalib::compat::serde_yaml::to_string(&"-0xF").unwrap();
+    let back: String = noyalib::compat::serde_yaml::from_str(&emitted).unwrap();
+    assert_eq!(back, "-0xF", "{emitted:?}");
+}
+
 // ── legacy_binary_numbers ──────────────────────────────────────────
 
 #[test]

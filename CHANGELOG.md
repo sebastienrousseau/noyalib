@@ -11,6 +11,12 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Changed
 
+- **Breaking:** the compatibility profile reads a signed hex or octal
+  integer (`-0xF`, `+0o17`, `!!int -0xF`) as a number, as serde_yaml
+  0.9 does, through the new `ParserConfig::signed_radix_integers`
+  flag. The default profile keeps these spellings as strings (YAML
+  1.2 core schema).
+
 - **Breaking:** accept a byte order mark that opens a later document
   prefix, as YAML 1.2.2 §9.2 allows: at the start of a line after
   `...`, after leading comment or blank lines, or before comment lines
