@@ -88,7 +88,12 @@ def main():
     lock_hash = digest(lock)
     command = ['cargo', '+nightly', 'fuzz', 'run', '--fuzz-dir', args.scope, args.target,
                str(corpus), *map(str, inputs), '--', f'-max_total_time={args.seconds}',
-               '-timeout=10', '-rss_limit_mb=1024', f'-artifact_prefix={artifacts}{os.sep}']
+               # A single allocation above 1 GiB is still a finding. The process
+               # limit is libFuzzer's default: its own corpus and coverage state
+               # grows over an hour (fuzz_value_roundtrip reached 1 GiB while a
+               # loop of the target's own work held at 3 MiB).
+               '-timeout=10', '-rss_limit_mb=2048', '-malloc_limit_mb=1024',
+               f'-artifact_prefix={artifacts}{os.sep}']
     report = {'started_utc': datetime.now(timezone.utc).isoformat(),
               'source_commit': subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=root, text=True).strip(),
               'worktree_dirty': bool(subprocess.check_output(['git', 'status', '--porcelain'], cwd=root)),
