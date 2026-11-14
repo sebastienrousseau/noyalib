@@ -118,38 +118,6 @@ pub(crate) fn composed(
     changed.then_some(current)
 }
 
-/// True when an anchored mapping key is a decimal beyond 64 bits
-/// (`&a 88888888888888888888`). The compatibility profile keeps such a
-/// key as a string, which an alias in value position then reuses; the
-/// archive replays the scalar there and refuses it as out of range.
-pub(crate) fn anchored_overflow_key(source: &str, config: &noyalib::ParserConfig) -> bool {
-    let Ok(document) = noyalib::cst::parse_document_with_config(source, config) else {
-        return false;
-    };
-    let mut found = false;
-    walk(document.syntax(), 0, &mut |entries| {
-        found |= entries.iter().any(|(tokens, _, _)| {
-            let key: Vec<_> = tokens
-                .iter()
-                .take_while(|t| t.0 != SyntaxKind::ColonIndicator)
-                .collect();
-            key.iter().any(|t| t.0 == SyntaxKind::AnchorMark)
-                && key.iter().any(|t| {
-                    t.0 == SyntaxKind::PlainScalar
-                        && source.get(t.1..t.2).is_some_and(|text| {
-                            let text = text.trim();
-                            let digits = text.strip_prefix(['+', '-']).unwrap_or(text);
-                            !digits.is_empty()
-                                && digits.bytes().all(|b| b.is_ascii_digit())
-                                && text.parse::<i64>().is_err()
-                                && digits.parse::<u64>().is_err()
-                        })
-                })
-        });
-    });
-    found
-}
-
 /// True when a document with canonical duplicate keys has a tagged
 /// mapping key (`{!!float 0, !!float 0.0}`). Typed targets keep a tagged
 /// key's written text, as the archive does, but the duplicate repairs
@@ -561,20 +529,6 @@ mod tests {
             r#""a\Nb\L\x9f\u001b""#
         );
         check("{0, +0, \"x\\Ny\", \"x\\Ny\"}");
-    }
-
-    #[test]
-    fn anchored_overflow_keys_are_reported() {
-        let config = ParserConfig::serde_yaml_compat();
-        assert!(super::anchored_overflow_key(
-            "d:\n &defaults {&defaults\n +33333333333333333300}\n<: *defaults\n",
-            &config
-        ));
-        assert!(!super::anchored_overflow_key("{&a 1: 2}", &config));
-        assert!(!super::anchored_overflow_key(
-            "{88888888888888888888: 2}",
-            &config
-        ));
     }
 
     #[test]

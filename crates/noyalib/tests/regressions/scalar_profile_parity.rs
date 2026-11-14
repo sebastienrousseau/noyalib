@@ -309,3 +309,75 @@ fn legacy_binary_reaches_the_unsigned_range() {
         "a binary-shaped string stays quoted: {text:?}"
     );
 }
+
+#[test]
+fn an_aliased_overflow_key_reads_as_a_value() {
+    // serde_yaml 0.9.34 reads an anchored key past 64 bits as its
+    // string, but an alias to it in a value position as a number: out
+    // of range inside 128 bits (located at the anchored key, with the
+    // alias's path), a float beyond. An alias key keeps the string.
+    let config = ParserConfig::serde_yaml_compat();
+    let mut fallback = config.clone();
+    fallback.merge_key_policy = MergeKeyPolicy::AsOrdinary;
+    for (source, index, shim) in [
+        (
+            "{&a 33333333333333333333: 1, b: *a}",
+            1,
+            "b: JSON number out of range at line 1 column 2",
+        ),
+        (
+            "- &a 33333333333333333333: 1\n- *a",
+            2,
+            // serde_yaml writes the path as `.[1]`.
+            "1: JSON number out of range at line 1 column 3",
+        ),
+        (
+            "{&a 0x1FFFFFFFFFFFFFFFF: 1, b: *a}",
+            1,
+            "b: JSON number out of range at line 1 column 2",
+        ),
+        (
+            "- {&a 33333333333333333333: 1}\n- [*a]",
+            3,
+            // serde_yaml writes the path as `.[1][0]`.
+            "1.0: JSON number out of range at line 1 column 4",
+        ),
+    ] {
+        for cfg in [&config, &fallback] {
+            let error = from_str_with_config::<serde_json::Value>(source, cfg).expect_err(source);
+            assert_eq!(error.kind(), ErrorKind::IntegerOverflow, "{source:?}");
+            assert_eq!(error.location().unwrap().index(), index, "{source:?}");
+            let error = from_str_with_config::<Value>(source, cfg).expect_err(source);
+            assert_eq!(error.kind(), ErrorKind::IntegerOverflow, "{source:?}");
+        }
+        #[cfg(feature = "compat-serde-yaml")]
+        {
+            let error =
+                noyalib::compat::serde_yaml::from_str::<serde_json::Value>(source).unwrap_err();
+            assert_eq!(error.to_string(), shim, "{source:?}");
+        }
+        let _ = shim;
+    }
+    let wide = "3".repeat(42);
+    parity(
+        &format!("{{&a {wide}: 1, b: *a}}"),
+        &config,
+        serde_json::json!({ wide.as_str(): 1, "b": 3.333_333_333_333_333_2e41 }),
+    );
+    parity(
+        "{&a 33333333333333333333: 1, *a : 2}",
+        &config,
+        serde_json::json!({ "33333333333333333333": 2 }),
+    );
+    // The latest definition is the nested overflow key (found by
+    // fuzz_serde_yaml_compat), so the merge-free `<` value refuses it.
+    let source = "d:\n &defaults {&defaults\n +33333333333333333300}\n<: *defaults\n";
+    let error = from_str_with_config::<serde_json::Value>(source, &config).unwrap_err();
+    assert_eq!(error.kind(), ErrorKind::IntegerOverflow, "{source:?}");
+    // A redefinition replaces the anchored key.
+    parity(
+        "{&a 33333333333333333333: 1, &a b: 2, c: *a}",
+        &config,
+        serde_json::json!({ "33333333333333333333": 1, "b": 2, "c": "b" }),
+    );
+}

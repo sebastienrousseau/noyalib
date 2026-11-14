@@ -11,6 +11,12 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Changed
 
+- **Breaking:** under `integer_overflow_errors`, an alias used as a
+  value reads an anchored mapping key past 64 bits as a value, as
+  serde_yaml 0.9 does: refused as out of range inside 128 bits
+  (located at the anchored key), a float beyond. The key itself and an
+  alias used as a key keep the written string.
+
 - **Breaking:** a typed target reads a tagged plain mapping key as
   written (`{!!float 0: 1}` gives the key "0", not "0.0"), as it
   already did for untagged and anchored keys and as serde_yaml 0.9

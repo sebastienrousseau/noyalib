@@ -379,6 +379,12 @@ struct Loader<'a> {
     /// (YAML 1.2.2 §3.2.2.2); when an alias names one of these the
     /// error says so instead of only "unknown anchor".
     earlier_anchor_defs: IndexMap<String, usize>,
+    /// Anchored mapping keys past 64 bits under the compatibility
+    /// profile, by anchor name: the key's definition offset and what the
+    /// scalar reads as in a value position (`None`: an overflow refusal).
+    /// The key itself keeps its spelling; an alias used as a value reads
+    /// it as a value, as the archive does.
+    overflow_keys: IndexMap<String, (usize, Option<Value>)>,
     /// Every budget counter, charged in the order all loaders share.
     meter: Meter,
     config: &'a ParseConfig,
@@ -475,6 +481,7 @@ impl<'a> Loader<'a> {
             anchor_map: IndexMap::with_capacity_and_hasher(4, Default::default()),
             anchor_def_spans: IndexMap::with_capacity_and_hasher(4, Default::default()),
             earlier_anchor_defs: IndexMap::default(),
+            overflow_keys: IndexMap::default(),
             meter: Meter::new(config),
             config,
             depth: 0,
@@ -491,29 +498,65 @@ impl<'a> Loader<'a> {
     /// string, so such a key keeps its spelling: a float would merge
     /// distinct keys that round alike.
     fn scalar_value(
-        &self,
+        &mut self,
         value: Cow<'_, str>,
         style: crate::parser::ScalarStyle,
         tag: Option<(String, String)>,
+        anchor: Option<&str>,
         at: usize,
         input: &str,
     ) -> Result<Value> {
         let plain_untagged = matches!(style, crate::parser::ScalarStyle::Plain) && tag.is_none();
         match plain_untagged.then(|| integer_overflow(&value, self.config)) {
-            Some(Some(_)) if matches!(self.stack.last(), Some(Frame::MappingKey { .. })) => {
+            Some(Some(within)) if self.in_key_position() => {
+                if let Some(name) = anchor {
+                    let as_value = if within {
+                        None
+                    } else {
+                        Some(resolve_event_scalar(
+                            Cow::Borrowed(&*value),
+                            style,
+                            None,
+                            self.config,
+                        )?)
+                    };
+                    let _ = self.overflow_keys.insert(name.to_owned(), (at, as_value));
+                }
                 return Ok(Value::String(value.into_owned()));
             }
             Some(Some(true)) => {}
             _ => return resolve_event_scalar(value, style, tag, self.config),
         }
-        Err(Error::IntegerOverflow {
+        Err(self.overflow_at(at, input))
+    }
+
+    /// The next node fills a mapping key.
+    fn in_key_position(&self) -> bool {
+        matches!(self.stack.last(), Some(Frame::MappingKey { .. }))
+    }
+
+    /// The profile's refusal of an integer outside its exact domain,
+    /// with the path of the node being filled.
+    fn overflow_at(&self, at: usize, input: &str) -> Error {
+        Error::IntegerOverflow {
             location: Some(crate::error::Location::from_index(input, at)),
             path: frames_path(self.stack.iter().map(|f| match f {
                 Frame::MappingValue { key, .. } => Some(key.clone()),
                 Frame::Sequence { items, .. } => Some(items.len().to_string()),
                 _ => None,
             })),
-        })
+        }
+    }
+
+    /// An alias's value: an anchored overflow key (see `overflow_keys`)
+    /// reads as a value outside a key position, refused or resolved.
+    fn aliased_value(&self, anchor: &str, value: Value, input: &str) -> Result<Value> {
+        match self.overflow_keys.get(anchor) {
+            Some((at, as_value)) if !self.in_key_position() => {
+                as_value.clone().ok_or_else(|| self.overflow_at(*at, input))
+            }
+            _ => Ok(value),
+        }
     }
 
     fn process_event(&mut self, event: Event<'_>, input: &str) -> Result<()> {
@@ -523,6 +566,7 @@ impl<'a> Loader<'a> {
             Event::DocumentStart => {
                 self.in_document = true;
                 self.anchor_map.clear();
+                self.overflow_keys.clear();
                 self.earlier_anchor_defs
                     .extend(self.anchor_def_spans.drain(..));
             }
@@ -537,6 +581,7 @@ impl<'a> Loader<'a> {
                 // `*x` happens to resolve to the string `\"<<\"` is an
                 // ordinary key whose value is that string.
                 let (value, span_tree) = self.resolve_alias(&anchor, span, input)?;
+                let value = self.aliased_value(&anchor, value, input)?;
                 self.push_node(value, span_tree, input, false)?;
             }
             Event::Scalar {
@@ -562,7 +607,12 @@ impl<'a> Loader<'a> {
                 // is still in hand — `resolve_untagged_scalar` returns a
                 // `Value::String("<<")` for a plain and a quoted `<<` alike.
                 let is_plain_merge_candidate = matches!(style, crate::parser::ScalarStyle::Plain);
-                let v = self.scalar_value(value, style, tag, span.start, input)?;
+                if let Some(name) = anchor.as_deref() {
+                    // A redefinition replaces an anchored overflow key.
+                    let _ = self.overflow_keys.shift_remove(name);
+                }
+                let v =
+                    self.scalar_value(value, style, tag, anchor.as_deref(), span.start, input)?;
 
                 let st = if is_implicit_empty {
                     SpanTree::Leaf(span.start, span.start)
@@ -588,6 +638,7 @@ impl<'a> Loader<'a> {
                     // A redefinition shadows its previous value immediately,
                     // including while the new collection is still open.
                     let _ = self.anchor_map.shift_remove(name);
+                    let _ = self.overflow_keys.shift_remove(name);
                 }
                 self.stack.push(Frame::Sequence {
                     items: Vec::new(),
@@ -649,6 +700,7 @@ impl<'a> Loader<'a> {
                     // A redefinition shadows its previous value immediately,
                     // including while the new collection is still open.
                     let _ = self.anchor_map.shift_remove(name);
+                    let _ = self.overflow_keys.shift_remove(name);
                 }
                 self.stack.push(Frame::MappingKey {
                     map: Mapping::new(),
@@ -1148,6 +1200,12 @@ struct NoSpanLoader<'a> {
     /// (YAML 1.2.2 §3.2.2.2); when an alias names one of these the
     /// error says so instead of only "unknown anchor".
     earlier_anchor_defs: IndexMap<String, usize>,
+    /// Anchored mapping keys past 64 bits under the compatibility
+    /// profile, by anchor name: the key's definition offset and what the
+    /// scalar reads as in a value position (`None`: an overflow refusal).
+    /// The key itself keeps its spelling; an alias used as a value reads
+    /// it as a value, as the archive does.
+    overflow_keys: IndexMap<String, (usize, Option<Value>)>,
     /// Every budget counter, shared with the span-full loader's order.
     meter: Meter,
     config: &'a ParseConfig,
@@ -1185,6 +1243,7 @@ impl<'a> NoSpanLoader<'a> {
             anchor_map: IndexMap::default(),
             anchor_def_spans: IndexMap::default(),
             earlier_anchor_defs: IndexMap::default(),
+            overflow_keys: IndexMap::default(),
             meter: Meter::new(config),
             config,
             depth: 0,
@@ -1225,29 +1284,65 @@ impl<'a> NoSpanLoader<'a> {
     /// string, so such a key keeps its spelling: a float would merge
     /// distinct keys that round alike.
     fn scalar_value(
-        &self,
+        &mut self,
         value: Cow<'_, str>,
         style: crate::parser::ScalarStyle,
         tag: Option<(String, String)>,
+        anchor: Option<&str>,
         at: usize,
         input: &str,
     ) -> Result<Value> {
         let plain_untagged = matches!(style, crate::parser::ScalarStyle::Plain) && tag.is_none();
         match plain_untagged.then(|| integer_overflow(&value, self.config)) {
-            Some(Some(_)) if matches!(self.stack.last(), Some(NoSpanFrame::MappingKey { .. })) => {
+            Some(Some(within)) if self.in_key_position() => {
+                if let Some(name) = anchor {
+                    let as_value = if within {
+                        None
+                    } else {
+                        Some(resolve_event_scalar(
+                            Cow::Borrowed(&*value),
+                            style,
+                            None,
+                            self.config,
+                        )?)
+                    };
+                    let _ = self.overflow_keys.insert(name.to_owned(), (at, as_value));
+                }
                 return Ok(Value::String(value.into_owned()));
             }
             Some(Some(true)) => {}
             _ => return resolve_event_scalar(value, style, tag, self.config),
         }
-        Err(Error::IntegerOverflow {
+        Err(self.overflow_at(at, input))
+    }
+
+    /// The next node fills a mapping key.
+    fn in_key_position(&self) -> bool {
+        matches!(self.stack.last(), Some(NoSpanFrame::MappingKey { .. }))
+    }
+
+    /// The profile's refusal of an integer outside its exact domain,
+    /// with the path of the node being filled.
+    fn overflow_at(&self, at: usize, input: &str) -> Error {
+        Error::IntegerOverflow {
             location: Some(crate::error::Location::from_index(input, at)),
             path: frames_path(self.stack.iter().map(|f| match f {
                 NoSpanFrame::MappingValue { key, .. } => Some(key.clone()),
                 NoSpanFrame::Sequence { items, .. } => Some(items.len().to_string()),
                 _ => None,
             })),
-        })
+        }
+    }
+
+    /// An alias's value: an anchored overflow key (see `overflow_keys`)
+    /// reads as a value outside a key position, refused or resolved.
+    fn aliased_value(&self, anchor: &str, value: Value, input: &str) -> Result<Value> {
+        match self.overflow_keys.get(anchor) {
+            Some((at, as_value)) if !self.in_key_position() => {
+                as_value.clone().ok_or_else(|| self.overflow_at(*at, input))
+            }
+            _ => Ok(value),
+        }
     }
 
     fn process_event(&mut self, event: Event<'_>, input: &str) -> Result<()> {
@@ -1257,6 +1352,7 @@ impl<'a> NoSpanLoader<'a> {
             Event::DocumentStart => {
                 self.in_document = true;
                 self.anchor_map.clear();
+                self.overflow_keys.clear();
                 self.earlier_anchor_defs
                     .extend(self.anchor_def_spans.drain(..));
             }
@@ -1265,6 +1361,7 @@ impl<'a> NoSpanLoader<'a> {
             }
             Event::Alias { anchor, span } => {
                 let value = self.resolve_alias(&anchor, span.start, input)?;
+                let value = self.aliased_value(&anchor, value, input)?;
                 self.push_value(value, false, span.start, input)?;
             }
             Event::Scalar {
@@ -1274,7 +1371,12 @@ impl<'a> NoSpanLoader<'a> {
                 tag,
                 span,
             } => {
-                let v = self.scalar_value(value, style, tag, span.start, input)?;
+                if let Some(name) = anchor.as_deref() {
+                    // A redefinition replaces an anchored overflow key.
+                    let _ = self.overflow_keys.shift_remove(name);
+                }
+                let v =
+                    self.scalar_value(value, style, tag, anchor.as_deref(), span.start, input)?;
                 // Merge-key eligibility is decided here, while the scalar's
                 // presentation is still known — `resolve_untagged_scalar`
                 // yields `Value::String("<<")` for a plain and a quoted `<<`
@@ -1297,6 +1399,7 @@ impl<'a> NoSpanLoader<'a> {
                     // A redefinition shadows its previous value immediately,
                     // including while the new collection is still open.
                     let _ = self.anchor_map.shift_remove(name);
+                    let _ = self.overflow_keys.shift_remove(name);
                 }
                 self.stack.push(NoSpanFrame::Sequence {
                     items: Vec::new(),
@@ -1330,6 +1433,7 @@ impl<'a> NoSpanLoader<'a> {
                     // A redefinition shadows its previous value immediately,
                     // including while the new collection is still open.
                     let _ = self.anchor_map.shift_remove(name);
+                    let _ = self.overflow_keys.shift_remove(name);
                 }
                 self.stack.push(NoSpanFrame::MappingKey {
                     map: Mapping::new(),
