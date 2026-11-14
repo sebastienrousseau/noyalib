@@ -374,12 +374,18 @@ fn multiline_flow_key(s: &str) -> bool {
         return false;
     }
     let b = s.as_bytes();
-    let (mut entry, mut quote, mut after_quote) = (0, None, false);
+    let (mut entry, mut quote, mut after_quote, mut skip) = (0, None, false, false);
     for (i, &c) in b.iter().enumerate() {
+        if skip {
+            skip = false;
+            continue;
+        }
         if let Some(q) = quote {
-            // `''` inside single quotes and `\"` inside double quotes escape.
-            let escaped = q == b'"' && i > 0 && b[i - 1] == b'\\';
-            if c == q && !escaped {
+            // `''` inside single quotes and `\x` inside double quotes
+            // escape the next byte (found on `{'''\n':0}`).
+            if q == b'"' && c == b'\\' || q == b'\'' && c == q && b.get(i + 1) == Some(&q) {
+                skip = true;
+            } else if c == q {
                 quote = None;
                 after_quote = true;
             }
