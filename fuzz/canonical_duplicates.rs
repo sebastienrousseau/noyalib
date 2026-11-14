@@ -150,11 +150,16 @@ pub(crate) fn anchored_overflow_key(source: &str, config: &noyalib::ParserConfig
     found
 }
 
-/// True when a mapping key carries a tag (`{!!float 0}`). Typed targets
-/// restore the written spelling only for bare plain keys
-/// (`is_canonicalised_plain_key`); a tagged key keeps its canonical
-/// spelling ("0.0"), where the archive keeps the written text ("0").
+/// True when a document with canonical duplicate keys has a tagged
+/// mapping key (`{!!float 0, !!float 0.0}`). Typed targets keep a tagged
+/// key's written text, as the archive does, but the duplicate repairs
+/// cannot respell a tagged key.
 pub(crate) fn tagged_key(source: &str, config: &noyalib::ParserConfig) -> bool {
+    let mut strict = config.clone();
+    strict.duplicate_key_policy = noyalib::DuplicateKeyPolicy::Error;
+    if noyalib::from_str_with_config::<noyalib::Value>(source, &strict).is_ok() {
+        return false;
+    }
     let Ok(document) = noyalib::cst::parse_document_with_config(source, config) else {
         return false;
     };
@@ -575,8 +580,10 @@ mod tests {
     #[test]
     fn tagged_keys_are_reported() {
         let config = ParserConfig::default();
-        assert!(super::tagged_key("{!!float 0}", &config));
-        assert!(super::tagged_key("!t k: 1\n", &config));
+        assert!(super::tagged_key("{!!float 0, !!float 0.0}", &config));
+        assert!(super::tagged_key("!!str k: 1\nk: 2\n", &config));
+        assert!(!super::tagged_key("{!!float 0}", &config));
+        assert!(!super::tagged_key("!t k: 1\n", &config));
         assert!(!super::tagged_key("k: !t 1\n", &config));
         assert!(!super::tagged_key("{a: !!float 0}", &config));
     }

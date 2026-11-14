@@ -405,31 +405,35 @@ fn walk_keys(
 }
 
 /// The scalar text of a key span and its offset in that span. Plain
-/// spans may include consumed trailing separation, and an anchored
-/// key's span starts at its `&name` property (found by fuzz_diff on
-/// `{!,&d\n~}`), possibly followed by a comment line. An anchor names
-/// the node without changing its text.
+/// spans may include consumed trailing separation, and a key's span
+/// starts at its properties: an `&name` anchor (found by fuzz_diff on
+/// `{!,&d\n~}`) or a tag (`{!!float 0}`), in either order, each
+/// possibly followed by a comment line. Properties name or type the
+/// node without changing its text.
 fn written_key_text(text: &str) -> (usize, &str) {
     const SEPARATION: [char; 4] = [' ', '\t', '\n', '\r'];
     let text = text.trim_end_matches(SEPARATION);
-    let mut scalar = text
-        .strip_prefix('&')
-        .and_then(|name| name.find(SEPARATION).map(|at| &name[at..]))
-        .map_or(text, |rest| rest.trim_start_matches(SEPARATION));
-    // A comment may follow the anchor (`&a # note` then the key).
-    while scalar.len() < text.len() && scalar.starts_with('#') {
-        let Some(at) = scalar.find(['\n', '\r']) else {
-            break;
+    let mut scalar = text;
+    loop {
+        let rest = match scalar.as_bytes().first() {
+            Some(b'&' | b'!') => scalar.find(SEPARATION).map_or("", |at| &scalar[at..]),
+            // A comment may follow a property (`&a # note` then the key).
+            Some(b'#') if scalar.len() < text.len() => match scalar.find(['\n', '\r']) {
+                Some(at) => &scalar[at..],
+                None => break,
+            },
+            _ => break,
         };
-        scalar = scalar[at..].trim_start_matches(SEPARATION);
+        scalar = rest.trim_start_matches(SEPARATION);
     }
     (text.len() - scalar.len(), scalar)
 }
 
 /// True when `written` is a bare plain scalar the loader stored as the
-/// canonical spelling `key` of a null, bool or number. Quoted, tagged,
-/// anchored, aliased and multi-line keys never qualify, and a key whose
-/// text was kept as written has nothing to restore.
+/// canonical spelling `key` of a null, bool or number, once its
+/// properties are skipped. Quoted, aliased and multi-line keys never
+/// qualify, and a key whose text was kept as written has nothing to
+/// restore.
 fn is_canonicalised_plain_key(key: &str, written: &str) -> bool {
     let canonical_scalar = matches!(key, "null" | "true" | "false" | "nan" | "inf" | "-inf")
         || key.parse::<i64>().is_ok()

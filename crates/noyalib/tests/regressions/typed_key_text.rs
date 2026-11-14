@@ -168,3 +168,28 @@ fn quoted_and_value_keys_are_unchanged() {
     let ks: Vec<_> = v.as_mapping().unwrap().keys().cloned().collect();
     assert_eq!(ks, ["31", "null"]);
 }
+
+#[test]
+fn a_tagged_typed_key_keeps_its_written_text() {
+    // serde_yaml 0.9.34 and serde_yaml_ng 0.10 both read
+    // `{!!float 0: 1}` into a JSON map as {"0": 1}; noyalib used to
+    // write the canonical "0.0" for a tagged key.
+    for (source, key) in [
+        ("{!!float 0: 1}", "0"),
+        ("{!!int 0x1F: 1}", "0x1F"),
+        ("!!float 1: 1\n", "1"),
+        ("&a !!float 1: 1\n", "1"),
+        ("!!float &a 1: 1\n", "1"),
+        ("? !!bool True\n: 1\n", "True"),
+        ("{!!str 5: 1}", "5"),
+    ] {
+        for cfg in [ParserConfig::new(), ParserConfig::serde_yaml_compat()] {
+            let typed: serde_json::Value =
+                from_str_with_config(source, &cfg).unwrap_or_else(|e| panic!("{source:?}: {e}"));
+            assert_eq!(typed, serde_json::json!({ key: 1 }), "{source:?}");
+        }
+    }
+    // A `Value` keeps the canonical spelling.
+    let value: Value = from_str("{!!float 0: 1}").unwrap();
+    assert_eq!(value.get("0.0"), Some(&Value::from(1)));
+}

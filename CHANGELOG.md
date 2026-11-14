@@ -11,6 +11,11 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Changed
 
+- **Breaking:** a typed target reads a tagged plain mapping key as
+  written (`{!!float 0: 1}` gives the key "0", not "0.0"), as it
+  already did for untagged and anchored keys and as serde_yaml 0.9
+  does. A `Value` keeps the canonical spelling.
+
 - **Breaking:** a local tag named like a core type (`!int`, `!float`,
   `!bool`, `!null`, `!str`) is an ordinary application tag, as YAML
   1.2.2 §6.8.2.2 and serde_yaml 0.9 read it: `!int 5` loads as a
