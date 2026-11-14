@@ -272,8 +272,15 @@ pub(crate) fn document_boundaries(input: &str) -> Result<Vec<(usize, usize)>> {
         match t.kind {
             RecordedTokenKind::DocStart => {
                 if has_content && !saw_explicit_end {
-                    out.push((cur_start, t.start));
-                    cur_start = t.start;
+                    // A BOM right before the marker opens this
+                    // document's prefix (§9.2), so it belongs here.
+                    let start = if input[..t.start].ends_with('\u{feff}') {
+                        t.start - 3
+                    } else {
+                        t.start
+                    };
+                    out.push((cur_start, start));
+                    cur_start = start;
                 }
                 has_content = true;
                 saw_explicit_end = false;

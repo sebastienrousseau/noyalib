@@ -11,6 +11,16 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Changed
 
+- **Breaking:** accept a byte order mark that opens a later document
+  prefix, as YAML 1.2.2 §9.2 allows: at the start of a line after
+  `...`, after leading comment or blank lines, or before comment lines
+  that run to a document marker or the end of input
+  (`a: 1\n...\n\u{feff}---\nb: 2`). This replaces the v0.0.29 policy
+  of refusing every BOM after the stream start. A line-start BOM no
+  longer continues a plain scalar, so `a\n\u{feff}b` is now refused
+  instead of loading as one string, and the error reads "byte order
+  mark inside a document".
+
 - **Breaking:** reject an under-indented continuation line of a plain
   or quoted scalar inside a flow collection nested in a block, as
   YAML 1.2.2 §7.3 `s-flow-line-prefix` requires (yaml-test-suite 9C9N);

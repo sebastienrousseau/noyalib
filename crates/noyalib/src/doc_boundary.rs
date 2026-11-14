@@ -42,7 +42,8 @@ pub(crate) fn strip_bom(bytes: &[u8]) -> usize {
 
 /// `true` if the byte at `i` opens a column-0 `---` directive-end
 /// marker — i.e. the run `bytes[i..i+3]` is exactly `b"---"`
-/// **and** the preceding byte (if any) is `\n` or `\r`
+/// **and** the preceding byte (if any) is `\n` or `\r`, or a
+/// document-prefix BOM that itself follows one,
 /// **and** the following byte (if any) is whitespace or end of
 /// input.
 ///
@@ -57,7 +58,11 @@ pub(crate) fn is_doc_marker_at(bytes: &[u8], i: usize) -> bool {
     if &bytes[i..i + 3] != b"---" {
         return false;
     }
-    let preceded_by_break = i == 0 || matches!(bytes[i - 1], b'\n' | b'\r');
+    // A line-start BOM before the marker opens the document's prefix
+    // (§9.2), so the marker still starts its line.
+    let preceded_by_break = i == 0
+        || matches!(bytes[i - 1], b'\n' | b'\r')
+        || (i >= 4 && bytes[i - 3..i] == BOM && matches!(bytes[i - 4], b'\n' | b'\r'));
     if !preceded_by_break {
         return false;
     }

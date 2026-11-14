@@ -300,7 +300,12 @@ impl Scanner<'_> {
             }
 
             // Check for document indicators at start of line.
-            if length == 0 && self.column() == 0 && self.at_plain_document_marker(c) {
+            // A line-start BOM never continues the scalar: it either
+            // opens the next document's prefix or is refused (§5.2).
+            if length == 0
+                && self.column() == 0
+                && (self.at_plain_document_marker(c) || remaining.starts_with(&[0xEF, 0xBB, 0xBF]))
+            {
                 break;
             }
 

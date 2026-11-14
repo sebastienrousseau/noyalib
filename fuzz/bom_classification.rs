@@ -11,7 +11,7 @@ pub(crate) fn unquoted_content_bom_rejection(source: &str, error: &noyalib::Erro
         return false;
     };
     if message
-        != "byte order mark inside the stream \u{2014} a BOM is only allowed at the very start"
+        != "byte order mark inside a document: a BOM may only open a document prefix"
     {
         return false;
     }
@@ -25,7 +25,7 @@ pub(crate) fn unquoted_content_bom_rejection(source: &str, error: &noyalib::Erro
     let prefix = &source[..offset];
     let line = prefix.rsplit(['\r', '\n']).next().unwrap_or_default();
     // A stream-leading BOM must precede horizontal separation (section 9.1.1).
-    // A later document prefix is handled by the documented policy below.
+    // A BOM opening a later document prefix (section 9.2) loads.
     // Blank lines may come first: the BOM then follows indentation on
     // what would be the first content line (`\n \u{feff}`).
     let displaced_start = !prefix.is_empty()
@@ -35,31 +35,7 @@ pub(crate) fn unquoted_content_bom_rejection(source: &str, error: &noyalib::Erro
             .all(|c| matches!(c, ' ' | '\t' | '\r' | '\n' | '\u{feff}'));
     // A BOM straight after the stream BOM is document content (section 5.2).
     let repeated_start = !prefix.is_empty() && prefix.chars().all(|c| c == '\u{feff}');
-    // Documented policy (v0.0.29, 612fc07): the scanner rejects
-    // every BOM after the stream start, including one opening a later
-    // document prefix after blank or comment lines, which section 5.2 and
-    // l-yaml-stream would allow. libyaml skips it.
-    let later_prefix = line.is_empty()
-        && !prefix.is_empty()
-        && prefix.split(['\r', '\n']).all(|l| {
-            let l = l.trim_start_matches('\u{feff}').trim();
-            l.is_empty() || l.starts_with('#')
-        });
-    // The same policy covers a line-start BOM before a document marker,
-    // where it would open the next document's prefix (`-\r\u{feff}---`).
     let rest = &source[offset + '\u{feff}'.len_utf8()..];
-    let before_marker = line.is_empty() && (marker(rest, "---") || marker(rest, "..."));
-    // The same policy covers a column-0 BOM after a `...` marker, where the
-    // next document's prefix starts (`.\n...\n\u{feff}`).
-    let after_end = line.is_empty()
-        && prefix
-            .split(['\r', '\n'])
-            .rev()
-            .find(|l| !l.trim().is_empty() && !l.trim_start().starts_with('#'))
-            .is_some_and(|l| marker(l, "..."));
-    if later_prefix || (before_marker || after_end) && raised_here(source, offset) {
-        return true;
-    }
     // Inside a document (after content or a `---` line, before any `...`),
     // a BOM at a line start or after indentation is content too: only a
     // document prefix may hold one.
@@ -102,7 +78,7 @@ fn raised_here(source: &str, offset: usize) -> bool {
             noyalib::from_str_with_config::<noyalib::Value>(source, config),
             Err(noyalib::Error::ParseWithLocation { ref message, ref location })
                 if location.index() == offset
-                    && message.starts_with("byte order mark inside the stream")
+                    && message.starts_with("byte order mark inside a document")
         )
     })
 }
@@ -121,24 +97,15 @@ mod tests {
             "\t\u{feff}value",
             "{\u{feff}}",
             "\u{feff}\u{feff}",
-            "\n\u{feff}",
-            "# c\n\u{feff}a: 1\n",
             "{a: \u{feff}b, c: \u{feff}d}",
             "[\u{feff},]",
             "{\u{feff}'}",
-            "n:\n\u{feff}",
             "\n \u{feff}",
             "-\r \u{feff}",
-            "---\r\u{feff}",
             "-\r\u{feff}-",
             "\u{feff} \u{feff}",
-            "-\r\u{feff}---",
             "a:\r \u{feff}---",
             "{4e740,\rinf,\u{feff}}",
-            "....\n#\n\u{feff}",
-            // Documented policy rather than spec: see `after_end`.
-            ".\n...\n\u{feff}",
-            "a: 1\n...\n\u{feff}---\nb: 2",
         ] {
             // The compatibility target classifies the shim's error.
             let config = noyalib::ParserConfig::serde_yaml_compat();
@@ -154,7 +121,7 @@ mod tests {
     #[test]
     fn bom_classifier_does_not_hide_prefix_quote_or_other_error_failures() {
         let message =
-            "byte order mark inside the stream \u{2014} a BOM is only allowed at the very start";
+            "byte order mark inside a document: a BOM may only open a document prefix";
         for (source, offset) in [
             ("\u{feff}key: value", 0),
             ("key: '\u{feff}value'", 6),

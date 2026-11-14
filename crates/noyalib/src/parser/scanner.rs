@@ -299,6 +299,9 @@ pub(crate) enum LastEmitted {
     Other,
     Anchor,
     Tag,
+    /// `StreamStart` or `DocumentEnd`: the next bytes are a document
+    /// prefix (§9.1.1), which may open with a byte order mark.
+    Boundary,
 }
 
 /// Internal comment record captured by the scanner.
@@ -759,6 +762,7 @@ impl<'a> Scanner<'a> {
         self.last_emitted_kind = match &kind {
             TokenKind::Anchor(_) => LastEmitted::Anchor,
             TokenKind::Tag(_, _) => LastEmitted::Tag,
+            TokenKind::StreamStart | TokenKind::DocumentEnd => LastEmitted::Boundary,
             _ => LastEmitted::Other,
         };
         // Track unsatisfied node-property column (Anchor/Tag awaiting
@@ -994,10 +998,12 @@ impl<'a> Scanner<'a> {
         // `"value"# bad`) and is not a valid comment indicator.
         if self.pos > 0 {
             let prev = self.input[self.pos - 1];
-            // A leading BOM is a zero-width stream prefix, so a `#`
-            // immediately after it is at the start of the input (a valid
-            // comment start), not an inline `#` adjacent to content.
-            let after_leading_bom = self.pos == 3 && self.input.starts_with(&[0xEF, 0xBB, 0xBF]);
+            // A document-prefix BOM is zero-width (the scanner resets the
+            // column after it), so a `#` immediately after it starts a
+            // line (a valid comment start), not an inline `#` adjacent to
+            // content.
+            let after_leading_bom =
+                self.col == 0 && self.input[..self.pos].ends_with(&[0xEF, 0xBB, 0xBF]);
             if !after_leading_bom && !Self::is_blank_or_break(prev) {
                 return Err(self.error(
                     "comment indicator '#' must be preceded by a space, tab, or line break",
@@ -1448,9 +1454,15 @@ impl<'a> Scanner<'a> {
             // leading BOM was stream-skipped and the rest of the
             // scalar reinterpreted as markup (found by fuzz_roundtrip
             // on `\u{feff}\n\u{feff}*'`).
-            0xEF if self.peek_at(1) == 0xBB && self.peek_at(2) == 0xBF => Err(self.error(
-                "byte order mark inside the stream — a BOM is only allowed at the very start",
-            )),
+            0xEF if self.peek_at(1) == 0xBB
+                && self.peek_at(2) == 0xBF
+                && self.opens_document_prefix() =>
+            {
+                self.skip_prefix_bom();
+                Ok(())
+            }
+            0xEF if self.peek_at(1) == 0xBB && self.peek_at(2) == 0xBF => Err(self
+                .error("byte order mark inside a document: a BOM may only open a document prefix")),
             // §5.10: `@` and `` ` `` are reserved indicators — "must
             // not be used to start a plain scalar" (found by the
             // serde_yaml parity fuzzer; libyaml rejects them too).
@@ -1502,6 +1514,65 @@ impl<'a> Scanner<'a> {
         self.mark = self.pos;
         self.emit(TokenKind::StreamStart);
         Ok(())
+    }
+
+    /// YAML 1.2.2 §9.2 `l-yaml-stream`: every `l-document-prefix`
+    /// may open with a byte order mark, not only the stream's first.
+    /// The cursor sits on a BOM; it opens a prefix when it starts a
+    /// line outside any flow collection and either nothing but
+    /// prefixes came since the stream start or a `...` marker, or only
+    /// prefix lines follow it up to the end of input, a document
+    /// marker, or the next prefix BOM (`a\n\u{feff}# c\n---`).
+    fn opens_document_prefix(&self) -> bool {
+        if self.flow_level != 0
+            || self.pending_directive_needs_doc_start
+            || !matches!(
+                self.input.get(self.pos.wrapping_sub(1)),
+                Some(b'\n' | b'\r')
+            )
+        {
+            return false;
+        }
+        self.last_emitted_kind == LastEmitted::Boundary
+            || Self::prefix_follows(&self.input[self.pos + 3..])
+    }
+
+    /// `rest`, the bytes after a line-start BOM, holds only comment or
+    /// blank lines before the end of input, a column-0 document marker
+    /// or another line-start BOM (checked when the scanner reaches it).
+    fn prefix_follows(rest: &[u8]) -> bool {
+        let mut start = 0;
+        while start < rest.len() {
+            let end =
+                memchr::memchr2(b'\n', b'\r', &rest[start..]).map_or(rest.len(), |i| start + i);
+            let line = &rest[start..end];
+            let body = line
+                .iter()
+                .position(|&b| !Self::is_blank(b))
+                .map_or(&[][..], |i| &line[i..]);
+            if !body.is_empty() && body[0] != b'#' {
+                return line.starts_with(&[0xEF, 0xBB, 0xBF])
+                    || ((line.starts_with(b"---") || line.starts_with(b"..."))
+                        && line.get(3).is_none_or(|&b| Self::is_blank(b)));
+            }
+            start = end + 1;
+        }
+        true
+    }
+
+    /// Skip a document-prefix BOM like the stream's leading one: a
+    /// zero-width marker, so the content after it starts at column 0.
+    fn skip_prefix_bom(&mut self) {
+        let start = self.pos;
+        self.advance_by(3);
+        self.col = 0;
+        if self.recording {
+            self.trivia.push(Trivia {
+                start,
+                end: self.pos,
+                kind: TriviaKind::Bom,
+            });
+        }
     }
 
     fn fetch_stream_end(&mut self) -> ScanResult<()> {

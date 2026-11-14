@@ -13,6 +13,7 @@ mod bom_in_stream;
 mod comment_mutation;
 mod comments;
 mod document_end_tab;
+mod document_prefix_bom;
 mod edge_audit;
 mod edge_cases;
 mod empty_document_targets;
