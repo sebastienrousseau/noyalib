@@ -15,5 +15,9 @@
 # v0.0.61 measured 1,322,388 bytes: its fuzz-found parser fixes ship
 # with their conformance and regression tests (non-printable Unicode,
 # anchored typed keys, compat overflow keys). Allow 10,000 more bytes.
+# It then measured 1,332,854 bytes after the seven spec and parity
+# changes (flow continuation indent, document-prefix BOMs, signed radix,
+# radix prefixes, local tags, tagged and aliased overflow keys) and
+# their tests. Allow 10,000 more bytes.
 [crate-package]
-max_bytes = 1330000
+max_bytes = 1340000
