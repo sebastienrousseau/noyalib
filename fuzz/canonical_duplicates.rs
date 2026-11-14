@@ -38,13 +38,15 @@ pub(crate) fn spelling(source: &str, config: &noyalib::ParserConfig) -> Option<S
     let prepared = crate::oracle_normalization::collection_spelling(source);
     let source = prepared.as_deref().unwrap_or(source);
     let document = noyalib::cst::parse_document_with_config(source, config).ok()?;
+    // A real alias token, not a `*` inside a plain scalar (`e*`).
+    let aliased = has_alias(document.syntax());
     let mut edits = Vec::new();
     walk(document.syntax(), 0, &mut |entries| {
         let keys = entries
             .iter()
             .filter_map(|(tokens, boundary, flow)| key(tokens, *boundary, *flow, source, config))
             .collect();
-        group(keys, source.contains('*'), &mut edits);
+        group(keys, aliased, &mut edits);
     });
     if edits.is_empty() {
         return None;
@@ -402,6 +404,13 @@ fn group(keys: Vec<Key>, aliased: bool, edits: &mut Vec<Edit>) {
     }
 }
 
+fn has_alias(node: &GreenNode) -> bool {
+    node.children().any(|child| match child {
+        GreenChild::Node(child) => has_alias(child),
+        GreenChild::Token { kind, .. } => *kind == SyntaxKind::AliasMark,
+    })
+}
+
 /// Hand each mapping's entries to `visit`.
 fn walk(node: &GreenNode, offset: usize, visit: &mut dyn FnMut(&[Entry])) {
     let mut position = offset;
@@ -496,6 +505,7 @@ mod tests {
         check("n: {0,&defaults +0}\ne: *defaults");
         check("d: {&defaults +0,0}\ne: *defaults");
         check("{4e1006,&e d:,d,4e1013}");
+        check("{&e d:,e*,d,00,0}");
         check("{~,d:,&e,d}");
         // A duplicate only where `06` resolves as the integer 6.
         let config = ParserConfig::default();
