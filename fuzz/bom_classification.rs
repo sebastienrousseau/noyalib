@@ -49,8 +49,10 @@ pub(crate) fn unquoted_content_bom_rejection(source: &str, error: &noyalib::Erro
         return true;
     }
     // Inside a document, after content on an earlier line, a BOM at a
-    // line start is content too: only a document prefix may hold one.
-    let in_document = line.is_empty()
+    // line start or after indentation is content too: only a document
+    // prefix may hold one.
+    let in_document = line.bytes().all(|b| matches!(b, b' ' | b'\t'))
+        && prefix.contains(|c: char| !c.is_whitespace() && c != '\u{feff}')
         && !prefix.split(['\r', '\n']).any(|l| {
             let l = l.trim_start_matches('\u{feff}');
             l.starts_with("...") || l.starts_with("---")
@@ -97,6 +99,7 @@ mod tests {
             "{\u{feff}'}",
             "n:\n\u{feff}",
             "\n \u{feff}",
+            "-\r \u{feff}",
         ] {
             let error = noyalib::from_str::<noyalib::Value>(source).unwrap_err();
             assert!(
