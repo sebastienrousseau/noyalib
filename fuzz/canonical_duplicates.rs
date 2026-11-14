@@ -227,9 +227,14 @@ fn written_key(
     };
     let raw = source.get(start..end)?.trim();
     // A block scalar key cannot sit in a flow wrapper; its value is a
-    // string, spelled as itself.
-    if raw.starts_with(['|', '>']) {
-        let value: noyalib::Value = noyalib::from_str_with_config(raw, config).ok()?;
+    // string, spelled as itself. Read that token alone: a following
+    // comment line (`? >\r#\r: B`) is not part of it.
+    if let Some(block) = tokens
+        .iter()
+        .find(|t| matches!(t.0, SyntaxKind::LiteralScalar | SyntaxKind::FoldedScalar))
+    {
+        let text = source.get(block.1..block.2)?;
+        let value: noyalib::Value = noyalib::from_str_with_config(text, config).ok()?;
         let spelling = value.as_str()?.to_owned();
         return Some((value, spelling));
     }
@@ -572,6 +577,7 @@ mod tests {
             "{!,~,? }",
             "{~,&d,!\n#\n}",
             "?\r? >\r?\r: 4",
+            "?\r? >\r#\r: B\r?\n",
         ] {
             assert!(super::spelling_collision(source, &config), "{source:?}");
         }

@@ -78,12 +78,21 @@ pub(crate) fn unquoted_content_bom_rejection(source: &str, error: &noyalib::Erro
 /// keeps quoted and synthetic locations outside the classifier, and also
 /// covers prefixes that are not documents on their own (`[\u{feff},]`).
 fn raised_here(source: &str, offset: usize) -> bool {
-    matches!(
-        noyalib::from_str::<noyalib::Value>(source),
-        Err(noyalib::Error::ParseWithLocation { ref message, ref location })
-            if location.index() == offset
-                && message.starts_with("byte order mark inside the stream")
-    )
+    // Either profile may reach the BOM: in the default one `4e740` is an
+    // infinity that collides with an `inf` key before it (`{4e740,\rinf,\u{feff}}`).
+    [
+        noyalib::ParserConfig::default(),
+        noyalib::ParserConfig::serde_yaml_compat(),
+    ]
+    .iter()
+    .any(|config| {
+        matches!(
+            noyalib::from_str_with_config::<noyalib::Value>(source, config),
+            Err(noyalib::Error::ParseWithLocation { ref message, ref location })
+                if location.index() == offset
+                    && message.starts_with("byte order mark inside the stream")
+        )
+    })
 }
 
 #[cfg(test)]
@@ -113,8 +122,12 @@ mod tests {
             "\u{feff} \u{feff}",
             "-\r\u{feff}---",
             "a:\r \u{feff}---",
+            "{4e740,\rinf,\u{feff}}",
         ] {
-            let error = noyalib::from_str::<noyalib::Value>(source).unwrap_err();
+            // The compatibility target classifies the shim's error.
+            let config = noyalib::ParserConfig::serde_yaml_compat();
+            let error =
+                noyalib::from_str_with_config::<noyalib::Value>(source, &config).unwrap_err();
             assert!(
                 unquoted_content_bom_rejection(source, &error),
                 "{source:?}: {error}"
