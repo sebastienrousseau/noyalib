@@ -23,11 +23,12 @@ struct Key {
     /// separation folded to one space, so the next token cannot start an
     /// under-indented line after the quoted spelling.
     tail: &'static str,
-    /// An anchored key's plain one-line text. Quoting keeps the archive
-    /// reading flow keys (`{d:,}`), but an alias elsewhere observes an
-    /// anchored key's type; duplicates share a canonical value, so the
-    /// others take this text and the anchored key stays as written.
+    /// The key's plain one-line text. Quoting keeps the archive reading
+    /// flow keys (`{d:,}`), but an alias elsewhere observes an anchored
+    /// key's type; duplicates share a canonical value, so in a group with
+    /// an anchored key the others take the last key's plain text instead.
     plain: Option<String>,
+    anchored: bool,
 }
 
 /// Change only scalar keys in a repeated canonical group to the last
@@ -297,8 +298,9 @@ fn key(
         spelling,
         empty: scalar.is_none(),
         tail,
-        plain: (anchored && plain_token && !raw.is_empty() && !raw.contains(['\n', '\r']))
+        plain: (plain_token && !raw.is_empty() && !raw.contains(['\n', '\r']))
             .then(|| raw.to_owned()),
+        anchored,
     })
 }
 
@@ -335,10 +337,15 @@ fn group(keys: Vec<Key>, edits: &mut Vec<Edit>) {
             })
             .collect();
         if duplicates.len() > 1 {
-            // Reuse an anchored last key's plain text; it keeps the type an
-            // alias of that key observes.
-            let replacement = key.plain.clone().unwrap_or_else(|| quoted(&key.spelling));
-            let keep_last = key.plain.is_some();
+            // With an anchored key in the group, reuse the last key's plain
+            // text; it keeps the type an alias of the anchored key observes.
+            let reuse = duplicates.iter().any(|d| d.anchored) && key.plain.is_some();
+            let replacement = if reuse {
+                key.plain.clone().unwrap_or_default()
+            } else {
+                quoted(&key.spelling)
+            };
+            let keep_last = reuse;
             edits.extend(
                 duplicates
                     .into_iter()
@@ -448,6 +455,7 @@ mod tests {
         check("{? &y,~}");
         check("{~\n,&d}");
         check("n: {0,&defaults +0}\ne: *defaults");
+        check("d: {&defaults +0,0}\ne: *defaults");
         check("{~,d:,&e,d}");
         // A duplicate only where `06` resolves as the integer 6.
         let config = ParserConfig::default();
