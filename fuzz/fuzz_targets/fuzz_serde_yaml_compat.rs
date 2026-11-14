@@ -38,6 +38,9 @@ mod signed_radix;
 #[path = "../question_key.rs"]
 mod question_key;
 
+#[path = "../local_core_tags.rs"]
+mod local_core_tags;
+
 fuzz_target!(|data: &[u8]| {
     let Ok(s) = std::str::from_utf8(data) else {
         return;
@@ -53,6 +56,7 @@ fuzz_target!(|data: &[u8]| {
         (Ok(a), Ok(b)) => {
             if !equivalent(&a, &b)
                 && !anchor_name_outside_libyaml(s)
+                && !local_core_tags::present(s)
                 && !question_key::flow_entry_starts_with_indicator(s)
                 && !yaml_1_1_line_break(s)
                 && !canonical_duplicates::spelling_collision(

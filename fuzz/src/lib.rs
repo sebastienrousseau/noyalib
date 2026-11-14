@@ -37,3 +37,7 @@ mod question_key;
 #[path = "../../crates/noyalib/tests/properties/oracle_normalization.rs"]
 #[expect(unexpected_cfgs, reason = "shared core tests name core-only features")]
 mod oracle_normalization;
+
+#[cfg(test)]
+#[path = "../local_core_tags.rs"]
+mod local_core_tags;
