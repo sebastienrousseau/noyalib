@@ -414,9 +414,12 @@ fn multiline_flow_key(s: &str) -> bool {
             comment = true;
             continue;
         }
+        // A `:` inside a plain scalar (`\\:"`) is content, not an indicator.
+        let indicator =
+            c == b':' && (after_quote || b.get(i + 1).is_none_or(|n| n.is_ascii_whitespace()));
         match c {
             b'{' | b'[' | b',' => key = None,
-            b':' if after_quote || b.get(i + 1).is_none_or(|n| n.is_ascii_whitespace()) => {
+            b':' if indicator => {
                 if key.is_some_and(|k| b[k..i].iter().any(|p| matches!(p, b'\n' | b'\r'))) {
                     return true;
                 }
@@ -432,7 +435,7 @@ fn multiline_flow_key(s: &str) -> bool {
             }
         }
         after_quote = false;
-        last = Some(c);
+        last = Some(if c == b':' && !indicator { b'x' } else { c });
     }
     false
 }
