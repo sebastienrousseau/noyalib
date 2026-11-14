@@ -246,7 +246,8 @@ fn known_reject_divergence(s: &str) -> bool {
     // noyalib follows the spec and rejects tab indentation itself. Recognize
     // LF, CRLF and lone CR here, matching the production scanner.
     if s.split(['\r', '\n'])
-        .any(|l| l.trim_start_matches(' ').starts_with('\t'))
+        // The stream BOM may precede the first line's tab.
+        .any(|l| l.trim_start_matches([' ', '\u{feff}']).starts_with('\t'))
     {
         return true;
     }
