@@ -378,10 +378,17 @@ fn multiline_flow_key(s: &str) -> bool {
         return false;
     }
     let b = s.as_bytes();
-    let (mut entry, mut quote, mut after_quote, mut skip) = (0, None, false, false);
+    // `key` is where the current entry's first significant byte sits;
+    // `last` is the last significant byte outside quotes and comments.
+    let (mut key, mut last, mut quote) = (None::<usize>, None::<u8>, None::<u8>);
+    let (mut after_quote, mut skip, mut comment) = (false, false, false);
     for (i, &c) in b.iter().enumerate() {
         if skip {
             skip = false;
+            continue;
+        }
+        if comment {
+            comment = !matches!(c, b'\n' | b'\r');
             continue;
         }
         if let Some(q) = quote {
@@ -392,32 +399,36 @@ fn multiline_flow_key(s: &str) -> bool {
             } else if c == q {
                 quote = None;
                 after_quote = true;
+                last = Some(c);
             }
             continue;
         }
+        if c.is_ascii_whitespace() {
+            continue;
+        }
+        if c == b'#' && (i == 0 || b[i - 1].is_ascii_whitespace()) {
+            comment = true;
+            continue;
+        }
         match c {
-            // A quote opens a scalar only at a node's start, not inside
-            // a plain scalar (`\\"`).
-            b'\'' | b'"'
-                if b[..i]
-                    .iter()
-                    .rev()
-                    .find(|p| !p.is_ascii_whitespace())
-                    .is_none_or(|p| matches!(p, b'{' | b'[' | b',' | b':' | b'?')) =>
-            {
-                quote = Some(c);
-            }
-            b'{' | b'[' | b',' => entry = i + 1,
+            b'{' | b'[' | b',' => key = None,
             b':' if after_quote || b.get(i + 1).is_none_or(|n| n.is_ascii_whitespace()) => {
-                let key = &b[entry..i];
-                let first = key.iter().position(|p| !p.is_ascii_whitespace());
-                if first.is_some_and(|f| key[f..].iter().any(|p| matches!(p, b'\n' | b'\r'))) {
+                if key.is_some_and(|k| b[k..i].iter().any(|p| matches!(p, b'\n' | b'\r'))) {
                     return true;
                 }
             }
-            _ => {}
+            _ => {
+                // A quote opens a scalar only at a node's start, not
+                // inside a plain scalar (`\\"`).
+                let node_start = last.is_none_or(|p| matches!(p, b'{' | b'[' | b',' | b':' | b'?'));
+                if matches!(c, b'\'' | b'"') && node_start {
+                    quote = Some(c);
+                }
+                key.get_or_insert(i);
+            }
         }
-        after_quote = after_quote && c.is_ascii_whitespace();
+        after_quote = false;
+        last = Some(c);
     }
     false
 }
