@@ -273,6 +273,13 @@ fn known_reject_divergence(s: &str) -> bool {
     if lone_dash_before_flow_indicator(s) {
         return true;
     }
+    // A stream may open with a document suffix before its document
+    // (l-yaml-stream: `l-document-suffix+ l-document-prefix*
+    // l-any-document?`), so `...\nx` is the document "x". libyaml finds
+    // no node content after the leading `...`.
+    if leading_document_end(s) {
+        return true;
+    }
     // A `#` straight after a block scalar header (`|#`, `>-#`) is not a
     // comment: §6.6 wants white space before it, and yaml-test-suite
     // X4QW is the error case. libyaml reads it as one.
@@ -303,9 +310,10 @@ fn root_block_scalar_with_column_0_content(s: &str) -> bool {
     let Some(mut header) = lines.next() else {
         return false;
     };
-    // The header may follow a bare `---` line and blank lines.
+    // The header may follow a bare `---` line, blank and comment lines.
     if header.trim_end() == "---" {
-        let Some(next) = lines.find(|l| !l.trim().is_empty()) else {
+        let Some(next) = lines.find(|l| !l.trim().is_empty() && !l.trim_start().starts_with('#'))
+        else {
             return false;
         };
         header = next;
@@ -367,4 +375,16 @@ fn multiline_flow_key(s: &str) -> bool {
 /// indentation. libyaml accepts them.
 fn leading_space_line_rejection(message: &str) -> bool {
     message.starts_with("a leading all-space line must not have too many spaces")
+}
+
+/// See `known_reject_divergence`.
+fn leading_document_end(s: &str) -> bool {
+    s.trim_start_matches('\u{feff}')
+        .split(['\r', '\n'])
+        .find(|l| !l.trim().is_empty() && !l.trim_start().starts_with('#'))
+        .and_then(|l| l.strip_prefix("..."))
+        .is_some_and(|rest| {
+            let rest = rest.trim_start();
+            rest.is_empty() || rest.starts_with('#')
+        })
 }
