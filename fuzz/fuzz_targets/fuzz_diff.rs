@@ -93,6 +93,7 @@ fuzz_target!(|data: &[u8]| {
         && !question_key::flow_entry_starts_with_indicator(s)
         && !yaml_1_1_line_break(s)
         && !canonical_duplicates::spelling_collision(&base, &config)
+        && !canonical_duplicates::aliased_duplicate(&base, &config)
         && !canonical_duplicates::spelling(&base, &config)
             .filter(|source| parse(source).is_ok_and(|value| numeric_equal(&noya, &value)))
             .and_then(|source| serde_yaml_ng::from_str::<serde_json::Value>(&source).ok())

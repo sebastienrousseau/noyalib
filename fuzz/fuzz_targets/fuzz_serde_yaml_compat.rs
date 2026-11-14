@@ -59,6 +59,10 @@ fuzz_target!(|data: &[u8]| {
                     s,
                     &noyalib::ParserConfig::serde_yaml_compat(),
                 )
+                && !canonical_duplicates::aliased_duplicate(
+                    s,
+                    &noyalib::ParserConfig::serde_yaml_compat(),
+                )
                 && !oracle_agrees(
                     canonical_duplicates::spelling(s, &noyalib::ParserConfig::serde_yaml_compat()),
                     &a,
@@ -162,7 +166,7 @@ fn equivalent(a: &serde_json::Value, b: &serde_json::Value) -> bool {
     match (a, b) {
         (V::Number(x), V::Number(y)) => json_numbers::equal(x, y),
         (V::Number(n), V::String(s)) | (V::String(s), V::Number(n))
-            if signed_radix::equal(s, n) =>
+            if signed_radix::equal(s, n) || signed_radix::underscored_binary(s, n) =>
         {
             true
         }

@@ -307,6 +307,7 @@ pub(crate) fn quoted_empty_flow_keys(source: &str) -> Option<String> {
                 // A plain token can span its trailing break; replace only
                 // the scalar so a following comment keeps its separation.
                 let raw = source.get(start..end)?;
+                let token_end = end;
                 let text = raw.trim_matches([' ', '\t', '\r', '\n']);
                 let start =
                     start + (raw.len() - raw.trim_start_matches([' ', '\t', '\r', '\n']).len());
@@ -327,7 +328,14 @@ pub(crate) fn quoted_empty_flow_keys(source: &str) -> Option<String> {
                     let [noyalib::Value::String(value)] = items.as_slice() else {
                         return None;
                     };
-                    replacements.push((start, end, serde_json::to_string(&value).ok()?));
+                    // A trailing break folds into one space, so the next
+                    // token is not left on an under-indented line.
+                    let quoted = serde_json::to_string(&value).ok()?;
+                    if source[end..token_end].contains(['\n', '\r']) {
+                        replacements.push((start, token_end, format!("{quoted} ")));
+                    } else {
+                        replacements.push((start, end, quoted));
+                    }
                 } else if text.starts_with(':') || compact_empty_value {
                     replacements.push((start, end, serde_json::to_string(text).ok()?));
                 }
@@ -412,7 +420,14 @@ mod tests {
         // Found by fuzz_diff on `{&d,~:\n2\n~\n#\n}`.
         let source = "{&d,~:\n2\n~\n#\n}";
         let normalized = quoted_empty_flow_keys(source).unwrap();
-        assert_eq!(normalized, "{&d,~:\n\"2 ~\"\n#\n}");
+        assert_eq!(normalized, "{&d,~:\n\"2 ~\" #\n}");
+        let before: serde_json::Value = noyalib::from_str(source).unwrap();
+        let after: serde_json::Value = noyalib::from_str(&normalized).unwrap();
+        assert_eq!(before, after);
+        // Found by fuzz_serde_yaml_compat: the trailing break folds away.
+        let source = "- {6400.0,0\r!\n,}";
+        let normalized = quoted_empty_flow_keys(source).unwrap();
+        assert_eq!(normalized, "- {6400.0,\"0 !\" ,}");
         let before: serde_json::Value = noyalib::from_str(source).unwrap();
         let after: serde_json::Value = noyalib::from_str(&normalized).unwrap();
         assert_eq!(before, after);

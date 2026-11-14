@@ -25,8 +25,7 @@ pub(crate) fn unquoted_content_bom_rejection(source: &str, error: &noyalib::Erro
     let prefix = &source[..offset];
     let line = prefix.rsplit(['\r', '\n']).next().unwrap_or_default();
     // A stream-leading BOM must precede horizontal separation (section 9.1.1).
-    // A later document prefix remains outside this rule. Parsing the prefix
-    // also keeps unclosed quoted content outside the classifier.
+    // A later document prefix is handled by the documented policy below.
     let displaced_start = !prefix.is_empty() && prefix.bytes().all(|b| matches!(b, b' ' | b'\t'));
     // A BOM straight after the stream BOM is document content (section 5.2).
     let repeated_start = !prefix.is_empty() && prefix.chars().all(|c| c == '\u{feff}');
@@ -43,43 +42,32 @@ pub(crate) fn unquoted_content_bom_rejection(source: &str, error: &noyalib::Erro
     if later_prefix {
         return true;
     }
+    // Inside a document, after content on an earlier line, a BOM at a
+    // line start is content too: only a document prefix may hold one.
+    let in_document = line.is_empty()
+        && !prefix.split(['\r', '\n']).any(|l| {
+            let l = l.trim_start_matches('\u{feff}');
+            l.starts_with("...") || l.starts_with("---")
+        })
+        && !source[offset + '\u{feff}'.len_utf8()..].starts_with(['-', '.']);
     (displaced_start
         || repeated_start
+        || in_document
         || line.chars().any(|c| !matches!(c, ' ' | '\t' | '\u{feff}')))
-        && (noyalib::cst::parse_document(prefix).is_ok() || unquoted_once_removed(source, offset))
+        && raised_here(source, offset)
 }
 
-/// An open flow collection's prefix never parses (`{\u{feff}}`), so
-/// also accept a source that parses once this and every later BOM is
-/// removed, with the offset outside every quoted scalar of the result.
-fn unquoted_once_removed(source: &str, offset: usize) -> bool {
-    // Later BOMs are rejected the same way; drop them too.
-    let without = [&source[..offset], &source[offset..].replace('\u{feff}', "")].concat();
-    let Ok(document) = noyalib::cst::parse_document(&without) else {
-        return false;
-    };
-    let mut position = 0;
-    let mut stack = vec![document.syntax()];
-    while let Some(node) = stack.pop() {
-        for child in node.children() {
-            match child {
-                noyalib::cst::GreenChild::Node(child) => stack.push(child),
-                noyalib::cst::GreenChild::Token { kind, .. } => {
-                    let end = position + child.text_len();
-                    let quoted = matches!(
-                        kind,
-                        noyalib::cst::SyntaxKind::SingleQuotedScalar
-                            | noyalib::cst::SyntaxKind::DoubleQuotedScalar
-                    );
-                    if quoted && position < offset && offset < end {
-                        return false;
-                    }
-                    position = end;
-                }
-            }
-        }
-    }
-    true
+/// noyalib itself refuses this BOM at this offset. The scanner raises
+/// that error only in unquoted content (a quoted BOM is text), which
+/// keeps quoted and synthetic locations outside the classifier, and also
+/// covers prefixes that are not documents on their own (`[\u{feff},]`).
+fn raised_here(source: &str, offset: usize) -> bool {
+    matches!(
+        noyalib::from_str::<noyalib::Value>(source),
+        Err(noyalib::Error::ParseWithLocation { ref message, ref location })
+            if location.index() == offset
+                && message.starts_with("byte order mark inside the stream")
+    )
 }
 
 #[cfg(test)]
@@ -99,6 +87,9 @@ mod tests {
             "\n\u{feff}",
             "# c\n\u{feff}a: 1\n",
             "{a: \u{feff}b, c: \u{feff}d}",
+            "[\u{feff},]",
+            "{\u{feff}'}",
+            "n:\n\u{feff}",
         ] {
             let error = noyalib::from_str::<noyalib::Value>(source).unwrap_err();
             assert!(

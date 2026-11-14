@@ -74,6 +74,30 @@ pub(crate) fn spelling_collision(source: &str, config: &noyalib::ParserConfig) -
     collision
 }
 
+/// True when a mapping has duplicate keys and one of its keys is an
+/// alias (`{&a x, *a}`): the repair cannot respell an alias, so no
+/// archive comparison applies.
+pub(crate) fn aliased_duplicate(source: &str, config: &noyalib::ParserConfig) -> bool {
+    let mut strict = config.clone();
+    strict.duplicate_key_policy = noyalib::DuplicateKeyPolicy::Error;
+    if noyalib::from_str_with_config::<noyalib::Value>(source, &strict).is_ok() {
+        return false;
+    }
+    let Ok(document) = noyalib::cst::parse_document_with_config(source, config) else {
+        return false;
+    };
+    let mut aliased = false;
+    walk(document.syntax(), 0, &mut |entries| {
+        aliased |= entries.iter().any(|(tokens, _, _)| {
+            tokens
+                .iter()
+                .take_while(|t| t.0 != SyntaxKind::ColonIndicator)
+                .any(|t| t.0 == SyntaxKind::AliasMark)
+        });
+    });
+    aliased
+}
+
 /// The canonical `Value` key and JSON-key spelling of an entry's whole
 /// key text, properties included.
 fn written_key(
@@ -92,12 +116,16 @@ fn written_key(
         )
     };
     let colon = tokens.iter().find(|t| t.0 == SyntaxKind::ColonIndicator);
-    let first = tokens.iter().find(significant)?;
-    if colon.is_none() && first.0 == SyntaxKind::Document {
-        return None;
-    }
+    let explicit = tokens.iter().any(|t| t.0 == SyntaxKind::QuestionIndicator);
     let end = colon.map_or(boundary, |t| t.1);
-    let start = if Some(first) == colon { end } else { first.1 };
+    // An empty explicit key (`? `) has no significant token at all.
+    let start = match tokens.iter().find(significant) {
+        Some(first) if colon.is_none() && first.0 == SyntaxKind::Document => return None,
+        Some(first) if Some(first) != colon => first.1,
+        Some(_) => end,
+        None if explicit => end,
+        None => return None,
+    };
     let raw = source.get(start..end)?.trim();
     let wrapped = format!("{{{raw} : 0}}");
     let resolved: noyalib::Value = noyalib::from_str_with_config(&wrapped, config).ok()?;
@@ -316,6 +344,18 @@ mod tests {
     }
 
     #[test]
+    fn duplicate_groups_with_an_alias_key_are_reported() {
+        let config = ParserConfig::default();
+        assert!(super::aliased_duplicate(
+            "{&d,&d,? *d\n:\n2,&2 02,2}",
+            &config
+        ));
+        assert!(super::aliased_duplicate("{&a x: 1, *a : 2}", &config));
+        assert!(!super::aliased_duplicate("{&a x: 1, y: *a}", &config));
+        assert!(!super::aliased_duplicate("{~: 1, null: 2}", &config));
+    }
+
+    #[test]
     fn distinct_keys_sharing_a_json_spelling_are_reported() {
         let config = ParserConfig::default();
         for source in [
@@ -323,6 +363,7 @@ mod tests {
             "{!1:,&d : 0,!1:,}",
             "{!, : 1}",
             "! : 1\n: 2\n",
+            "{!,~,? }",
         ] {
             assert!(super::spelling_collision(source, &config), "{source:?}");
         }
