@@ -16,7 +16,7 @@
     },
     {
       "repo": "noyalib-wasm",
-      "commit": "a3d690d98eac9b0ac15aa7b73d1dc05c0a420759"
+      "commit": "6829782002d89fadcade812686a9346cc90c06b8"
     },
     {
       "repo": "noyalib-serde-yaml",
