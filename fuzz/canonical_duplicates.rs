@@ -272,6 +272,24 @@ fn key(
     })
 }
 
+/// A YAML double-quoted spelling. JSON escapes cover C0 controls but
+/// leave NEL, LS, PS and the rest of C1 raw, which libyaml reads as
+/// line breaks or refuses; escape those the YAML way.
+fn quoted(spelling: &str) -> String {
+    let json = serde_json::to_string(spelling).expect("string serialization");
+    let mut out = String::with_capacity(json.len());
+    for c in json.chars() {
+        match c {
+            '\u{85}' => out.push_str("\\N"),
+            '\u{2028}' => out.push_str("\\L"),
+            '\u{2029}' => out.push_str("\\P"),
+            '\u{80}'..='\u{9f}' => out.push_str(&format!("\\x{:02x}", c as u32)),
+            _ => out.push(c),
+        }
+    }
+    out
+}
+
 fn group(keys: Vec<Key>, edits: &mut Vec<Edit>) {
     for (last, key) in keys.iter().enumerate() {
         if keys[last + 1..]
@@ -287,7 +305,7 @@ fn group(keys: Vec<Key>, edits: &mut Vec<Edit>) {
             })
             .collect();
         if duplicates.len() > 1 {
-            let replacement = serde_json::to_string(&key.spelling).expect("string serialization");
+            let replacement = quoted(&key.spelling);
             edits.extend(duplicates.into_iter().map(|previous| {
                 let space = if previous.empty { " " } else { "" };
                 (
@@ -417,6 +435,15 @@ mod tests {
         let before: serde_json::Value =
             noyalib::from_str_with_config("? ~\n?\n9,~0 ,ault:\n9,~0 ,ault:", &config).unwrap();
         assert_eq!(before, oracle, "{normalized:?}");
+    }
+
+    #[test]
+    fn respelled_keys_escape_yaml_line_breaks() {
+        assert_eq!(
+            super::quoted("a\u{85}b\u{2028}\u{9f}\u{1b}"),
+            r#""a\Nb\L\x9f\u001b""#
+        );
+        check("{0, +0, \"x\\Ny\", \"x\\Ny\"}");
     }
 
     #[test]

@@ -43,15 +43,17 @@ pub(crate) fn legacy_binary(source: &str, number: &serde_json::Number) -> bool {
     {
         return false;
     }
-    let Ok(magnitude) = i64::from_str_radix(&digits.replace('_', ""), 2) else {
+    let Ok(magnitude) = u64::from_str_radix(&digits.replace('_', ""), 2) else {
         return false;
     };
     let value = if source.starts_with('-') {
-        -magnitude
+        0_i64
+            .checked_sub_unsigned(magnitude)
+            .map(serde_json::Number::from)
     } else {
-        magnitude
+        Some(serde_json::Number::from(magnitude))
     };
-    super::json_numbers::equal(&serde_json::Number::from(value), number)
+    value.is_some_and(|value| super::json_numbers::equal(&value, number))
 }
 
 #[cfg(test)]
@@ -66,6 +68,8 @@ mod tests {
         assert!(!super::legacy_binary("0b1_0", &Number::from(3)));
         assert!(super::legacy_binary("0B0", &Number::from(0)));
         assert!(super::legacy_binary("-0B1_1", &Number::from(-3)));
+        let wide = format!("0b{}_1", "1".repeat(63));
+        assert!(super::legacy_binary(&wide, &Number::from(u64::MAX)));
     }
 
     #[test]

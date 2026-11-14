@@ -306,7 +306,9 @@ fn block_header_touches_comment(s: &str) -> bool {
 /// `---`) with a non-blank line at column 0 below its header.
 fn root_block_scalar_with_column_0_content(s: &str) -> bool {
     // LF, CRLF and lone CR, matching the production scanner.
-    let mut lines = s.split(['\r', '\n']).skip_while(|l| l.trim().is_empty());
+    let mut lines = s
+        .split(['\r', '\n'])
+        .skip_while(|l| l.trim().is_empty() || l.trim_start().starts_with('#'));
     let Some(mut header) = lines.next() else {
         return false;
     };
@@ -351,23 +353,38 @@ fn flow_indent_rejection(message: &str) -> bool {
 
 /// See `known_reject_divergence`: a `:` value indicator in a flow
 /// collection whose key text, since the entry opened, crosses a break.
+/// Quoted scalars are skipped whole, so their `,` and `:` do not count.
 fn multiline_flow_key(s: &str) -> bool {
     if !s.contains(['{', '[']) {
         return false;
     }
     let b = s.as_bytes();
-    b.iter().enumerate().any(|(i, &c)| {
-        c == b':'
-            && b.get(i + 1).is_none_or(|n| n.is_ascii_whitespace())
-            && b[..i]
-                .iter()
-                .rposition(|p| matches!(p, b'{' | b'[' | b','))
-                .is_some_and(|open| {
-                    let key = &b[open + 1..i];
-                    let first = key.iter().position(|p| !p.is_ascii_whitespace());
-                    first.is_some_and(|f| key[f..].iter().any(|p| matches!(p, b'\n' | b'\r')))
-                })
-    })
+    let (mut entry, mut quote, mut after_quote) = (0, None, false);
+    for (i, &c) in b.iter().enumerate() {
+        if let Some(q) = quote {
+            // `''` inside single quotes and `\"` inside double quotes escape.
+            let escaped = q == b'"' && i > 0 && b[i - 1] == b'\\';
+            if c == q && !escaped {
+                quote = None;
+                after_quote = true;
+            }
+            continue;
+        }
+        match c {
+            b'\'' | b'"' => quote = Some(c),
+            b'{' | b'[' | b',' => entry = i + 1,
+            b':' if after_quote || b.get(i + 1).is_none_or(|n| n.is_ascii_whitespace()) => {
+                let key = &b[entry..i];
+                let first = key.iter().position(|p| !p.is_ascii_whitespace());
+                if first.is_some_and(|f| key[f..].iter().any(|p| matches!(p, b'\n' | b'\r'))) {
+                    return true;
+                }
+            }
+            _ => {}
+        }
+        after_quote = after_quote && c.is_ascii_whitespace();
+    }
+    false
 }
 
 /// YAML 1.2.2 section 8.1.1.1 (yaml-test-suite 5LLU): leading empty lines
