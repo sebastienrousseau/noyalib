@@ -63,6 +63,10 @@ fuzz_target!(|data: &[u8]| {
                     s,
                     &noyalib::ParserConfig::serde_yaml_compat(),
                 )
+                && !canonical_duplicates::anchored_overflow_key(
+                    s,
+                    &noyalib::ParserConfig::serde_yaml_compat(),
+                )
                 && !canonical_duplicates::tagged_key(s, &noyalib::ParserConfig::serde_yaml_compat())
                 && !canonical_duplicates::aliased_duplicate(
                     s,
