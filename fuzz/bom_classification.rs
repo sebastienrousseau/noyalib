@@ -45,7 +45,14 @@ pub(crate) fn unquoted_content_bom_rejection(source: &str, error: &noyalib::Erro
             let l = l.trim_start_matches('\u{feff}').trim();
             l.is_empty() || l.starts_with('#')
         });
-    if later_prefix {
+    // The same policy covers a line-start BOM before a document marker,
+    // where it would open the next document's prefix (`-\r\u{feff}---`).
+    let rest = &source[offset + '\u{feff}'.len_utf8()..];
+    // After a `...` the next prefix is spec-valid and stays visible.
+    let ended = prefix.split(['\r', '\n']).any(|l| l.starts_with("..."));
+    let before_marker =
+        line.is_empty() && !ended && (rest.starts_with("---") || rest.starts_with("..."));
+    if later_prefix || before_marker && raised_here(source, offset) {
         return true;
     }
     // Inside a document (after content or a `---` line, before any `...`),
@@ -57,8 +64,8 @@ pub(crate) fn unquoted_content_bom_rejection(source: &str, error: &noyalib::Erro
             let l = l.trim_start_matches('\u{feff}');
             l.starts_with("...")
         })
-        && !source[offset + '\u{feff}'.len_utf8()..].starts_with("---")
-        && !source[offset + '\u{feff}'.len_utf8()..].starts_with("...");
+        // Only a column-0 BOM could open the next document's prefix.
+        && !(line.is_empty() && (rest.starts_with("---") || rest.starts_with("...")));
     (displaced_start
         || repeated_start
         || in_document
@@ -104,6 +111,8 @@ mod tests {
             "---\r\u{feff}",
             "-\r\u{feff}-",
             "\u{feff} \u{feff}",
+            "-\r\u{feff}---",
+            "a:\r \u{feff}---",
         ] {
             let error = noyalib::from_str::<noyalib::Value>(source).unwrap_err();
             assert!(
