@@ -44,8 +44,17 @@ fuzz_target!(|data: &[u8]| {
     let Ok(noya) = parse(s) else {
         return;
     };
-    let syml = match serde_yaml_ng::from_str::<serde_json::Value>(s) {
-        Ok(value) => value,
+    // A collection key (`? *a` naming a mapping) has no JSON key form on
+    // the archive side; noyalib stringifies it.
+    let mut scalar_keys = config.clone();
+    scalar_keys.non_scalar_key_policy = noyalib::NonScalarKeyPolicy::Error;
+    if noyalib::from_str_with_config::<serde_json::Value>(s, &scalar_keys).is_err() {
+        return;
+    }
+    // `base` is the source the archive accepted: the input, or its
+    // spelling repair. Later repairs build on it.
+    let (syml, base) = match serde_yaml_ng::from_str::<serde_json::Value>(s) {
+        Ok(value) => (value, s.to_owned()),
         Err(_) => {
             let Some(normalized) = oracle_normalization::collection_spelling(s)
                 .or_else(|| oracle_normalization::stream_bom_prefix(s))
@@ -64,7 +73,7 @@ fuzz_target!(|data: &[u8]| {
             let Ok(value) = serde_yaml_ng::from_str::<serde_json::Value>(&normalized) else {
                 return;
             };
-            value
+            (value, normalized)
         }
     };
     // saphyr returns its own value type; compare via JSON to put all
@@ -83,24 +92,24 @@ fuzz_target!(|data: &[u8]| {
         && !anchor_name_outside_libyaml(s)
         && !question_key::flow_entry_starts_with_indicator(s)
         && !yaml_1_1_line_break(s)
-        && !canonical_duplicates::spelling_collision(s, &config)
-        && !canonical_duplicates::spelling(s, &config)
+        && !canonical_duplicates::spelling_collision(&base, &config)
+        && !canonical_duplicates::spelling(&base, &config)
             .filter(|source| parse(source).is_ok_and(|value| numeric_equal(&noya, &value)))
             .and_then(|source| serde_yaml_ng::from_str::<serde_json::Value>(&source).ok())
             .is_some_and(|expected| numeric_equal(&noya, &expected))
-        && !oracle_normalization::stream_bom_prefix(s)
+        && !oracle_normalization::stream_bom_prefix(&base)
             .filter(|source| parse(source).is_ok_and(|value| numeric_equal(&noya, &value)))
             .and_then(|source| serde_yaml_ng::from_str::<serde_json::Value>(&source).ok())
             .is_some_and(|expected| numeric_equal(&noya, &expected))
-        && !oracle_normalization::collection_spelling(s)
+        && !oracle_normalization::collection_spelling(&base)
             .filter(|source| parse(source).is_ok_and(|value| numeric_equal(&noya, &value)))
             .and_then(|source| serde_yaml_ng::from_str::<serde_json::Value>(&source).ok())
             .is_some_and(|expected| numeric_equal(&noya, &expected))
-        && !oracle_normalization::terminated_spaced_block(s)
+        && !oracle_normalization::terminated_spaced_block(&base)
             .filter(|source| parse(source).is_ok_and(|value| numeric_equal(&noya, &value)))
             .and_then(|source| serde_yaml_ng::from_str::<serde_json::Value>(&source).ok())
             .is_some_and(|expected| numeric_equal(&noya, &expected))
-        && !oracle_normalization::unique_colliding_anchors(s)
+        && !oracle_normalization::unique_colliding_anchors(&base)
             .filter(|source| parse(source).is_ok_and(|value| numeric_equal(&noya, &value)))
             .and_then(|source| serde_yaml_ng::from_str::<serde_json::Value>(&source).ok())
             .is_some_and(|expected| numeric_equal(&noya, &expected))

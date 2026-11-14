@@ -7,6 +7,8 @@ use noyalib::cst::{GreenChild, GreenNode, SyntaxKind};
 
 type Token = (SyntaxKind, usize, usize);
 type Edit = (usize, usize, String);
+/// An entry's tokens, its end boundary, and whether it is a flow entry.
+type Entry = (Vec<Token>, usize, bool);
 
 struct Key {
     canonical: String,
@@ -17,6 +19,10 @@ struct Key {
     /// An empty key gains a separating space so it cannot fuse with
     /// a preceding anchor (`&d,` must become `&d "~",`).
     empty: bool,
+    /// A flow key whose token spans a line break is replaced with that
+    /// separation folded to one space, so the next token cannot start an
+    /// under-indented line after the quoted spelling.
+    tail: &'static str,
 }
 
 /// Change only scalar keys in a repeated canonical group to the last
@@ -30,7 +36,7 @@ pub(crate) fn spelling(source: &str, config: &noyalib::ParserConfig) -> Option<S
     walk(document.syntax(), 0, &mut |entries| {
         let keys = entries
             .iter()
-            .filter_map(|(tokens, boundary)| key(tokens, *boundary, source, config))
+            .filter_map(|(tokens, boundary, flow)| key(tokens, *boundary, *flow, source, config))
             .collect();
         group(keys, &mut edits);
     });
@@ -57,7 +63,7 @@ pub(crate) fn spelling_collision(source: &str, config: &noyalib::ParserConfig) -
     walk(document.syntax(), 0, &mut |entries| {
         let keys: Vec<_> = entries
             .iter()
-            .filter_map(|(tokens, boundary)| written_key(tokens, *boundary, source, config))
+            .filter_map(|(tokens, boundary, _)| written_key(tokens, *boundary, source, config))
             .collect();
         collision |= keys.iter().enumerate().any(|(i, (canonical, spelling))| {
             keys[i + 1..]
@@ -104,6 +110,7 @@ fn written_key(
 fn key(
     tokens: &[Token],
     boundary: usize,
+    flow: bool,
     source: &str,
     config: &noyalib::ParserConfig,
 ) -> Option<Key> {
@@ -151,8 +158,14 @@ fn key(
     let (start, end) = scalar.unwrap_or((empty_at, empty_at));
     // A plain token can span its trailing break; keep that separator
     // so a following comment stays preceded by whitespace.
-    let raw = source.get(start..end)?.trim_end();
-    let end = start + raw.len();
+    let full = source.get(start..end)?;
+    let raw = full.trim_end();
+    let folds = flow && scalar.is_some() && full[raw.len()..].contains(['\n', '\r']);
+    let (end, tail) = if folds {
+        (end, " ")
+    } else {
+        (start + raw.len(), "")
+    };
     if raw.trim() == "<<" {
         return None;
     }
@@ -169,6 +182,7 @@ fn key(
         end,
         spelling,
         empty: scalar.is_none(),
+        tail,
     })
 }
 
@@ -193,15 +207,15 @@ fn group(keys: Vec<Key>, edits: &mut Vec<Edit>) {
                 (
                     previous.start,
                     previous.end,
-                    format!("{space}{replacement}"),
+                    format!("{space}{replacement}{}", previous.tail),
                 )
             }));
         }
     }
 }
 
-/// Hand each mapping's entries (tokens, end boundary) to `visit`.
-fn walk(node: &GreenNode, offset: usize, visit: &mut dyn FnMut(&[(Vec<Token>, usize)])) {
+/// Hand each mapping's entries to `visit`.
+fn walk(node: &GreenNode, offset: usize, visit: &mut dyn FnMut(&[Entry])) {
     let mut position = offset;
     let mut tokens = Vec::new();
     let mut entries = Vec::new();
@@ -212,7 +226,7 @@ fn walk(node: &GreenNode, offset: usize, visit: &mut dyn FnMut(&[(Vec<Token>, us
                 if node.kind() == SyntaxKind::BlockMapping
                     && child.kind() == SyntaxKind::MappingEntry
                 {
-                    entries.push((entry_tokens(child, position), end));
+                    entries.push((entry_tokens(child, position), end, false));
                 }
                 tokens.push((SyntaxKind::Document, position, end));
                 walk(child, position, visit);
@@ -221,7 +235,7 @@ fn walk(node: &GreenNode, offset: usize, visit: &mut dyn FnMut(&[(Vec<Token>, us
                 match kind {
                     SyntaxKind::OpenBrace => {}
                     SyntaxKind::Comma | SyntaxKind::CloseBrace => {
-                        entries.push((core::mem::take(&mut tokens), position));
+                        entries.push((core::mem::take(&mut tokens), position, true));
                     }
                     _ => tokens.push((*kind, position, end)),
                 }
@@ -290,6 +304,13 @@ mod tests {
         check("{&d,~:\n2\n~\n#\n}");
         check("? ~\n?\n? ");
         check("{? &y,~}");
+        check("{~\n,&d}");
+        // A duplicate only where `06` resolves as the integer 6.
+        let config = ParserConfig::default();
+        let normalized = spelling("{6\n,06}", &config).expect("default duplicates");
+        assert_eq!(normalized, "{\"06\" ,\"06\"}");
+        let oracle: serde_json::Value = serde_yaml_ng::from_str(&normalized).unwrap();
+        assert_eq!(oracle, serde_json::json!({"06": null}));
         check("? &a\n? ~\n");
         check("? ~\r?\r:");
     }

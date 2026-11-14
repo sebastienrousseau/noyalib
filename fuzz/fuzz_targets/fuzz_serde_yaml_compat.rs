@@ -107,6 +107,7 @@ fuzz_target!(|data: &[u8]| {
                 && !oracle_normalization::missing_comment_separator_rejection(&e.to_string())
                 && !bom_classification::unquoted_content_bom_rejection(s, e.inner())
                 && !flow_indent_rejection(&e.to_string())
+                && !leading_space_line_rejection(&e.to_string())
             {
                 panic!(
                     "shim rejected what serde_yaml accepts (len {}):\n  shim     : {e}\n  upstream : {}",
@@ -229,6 +230,16 @@ fn known_reject_divergence(s: &str) -> bool {
     if question_key::flow_entry_starts_with_indicator(s) {
         return true;
     }
+    // NEL, LS and PS end a line for libyaml (YAML 1.1); see
+    // `yaml_1_1_line_break`.
+    if yaml_1_1_line_break(s) {
+        return true;
+    }
+    // A flow mapping key may span lines (production 145, yaml-test-suite
+    // NJ66); libyaml applies its single-line implicit-key rule.
+    if multiline_flow_key(s) {
+        return true;
+    }
     // In flow context a `:` may follow its key across white space or a
     // line break (yaml-test-suite 4MUZ, NJ66) and may sit directly before
     // `:` or a flow indicator (`{m :}`, `{m\nl::}`). libyaml rejects
@@ -308,4 +319,32 @@ fn lone_dash_before_flow_indicator(s: &str) -> bool {
 /// (yaml-test-suite 9C9N is the error case); libyaml accepts `- {\na}`.
 fn flow_indent_rejection(message: &str) -> bool {
     message.starts_with("flow content must be indented more than the surrounding block")
+}
+
+/// See `known_reject_divergence`: a `:` value indicator in a flow
+/// collection whose key text, since the entry opened, crosses a break.
+fn multiline_flow_key(s: &str) -> bool {
+    if !s.contains(['{', '[']) {
+        return false;
+    }
+    let b = s.as_bytes();
+    b.iter().enumerate().any(|(i, &c)| {
+        c == b':'
+            && b.get(i + 1).is_none_or(|n| n.is_ascii_whitespace())
+            && b[..i]
+                .iter()
+                .rposition(|p| matches!(p, b'{' | b'[' | b','))
+                .is_some_and(|open| {
+                    let key = &b[open + 1..i];
+                    let first = key.iter().position(|p| !p.is_ascii_whitespace());
+                    first.is_some_and(|f| key[f..].iter().any(|p| matches!(p, b'\n' | b'\r')))
+                })
+    })
+}
+
+/// YAML 1.2.2 section 8.1.1.1 (yaml-test-suite 5LLU): leading empty lines
+/// of a block scalar may not hold more spaces than its content
+/// indentation. libyaml accepts them.
+fn leading_space_line_rejection(message: &str) -> bool {
+    message.starts_with("a leading all-space line must not have too many spaces")
 }
