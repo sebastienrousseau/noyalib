@@ -209,6 +209,25 @@ fn doc_marker_inside_quoted_scalar_rejected() {
     assert!(r2.is_err(), "double-quoted scalar containing `---`");
 }
 
+// The same holds after an escaped line break (`\` then a break, section
+// 7.3.1): the marker still starts a line. Found by fuzz_serde_yaml_compat
+// on `{"\\\n...\n"}`.
+#[test]
+fn doc_marker_after_escaped_break_rejected() {
+    for source in [
+        "\"a\\\n...\n\"",
+        "{\"\\\n...\n\"}",
+        "\"a\\\n---\n\"",
+        "\"a\\\r\n...\n\"",
+    ] {
+        let r: Result<Value, _> = from_str(source);
+        assert!(r.is_err(), "{source:?}");
+    }
+    // Indented, the dots are content.
+    let v: Value = from_str("\"a\\\n ...\n\"").unwrap();
+    assert_eq!(v.as_str(), Some("a... "));
+}
+
 // yaml-test-suite 2G84 — block scalar indent indicator must be a single
 // digit 1..9; `0` and multi-digit forms are rejected.
 #[test]

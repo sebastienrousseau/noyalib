@@ -676,6 +676,9 @@ impl Scanner<'_> {
                 if escaped == b'\r' && self.peek() == b'\n' {
                     self.advance();
                 }
+                // A document marker still starts the next line, as after
+                // an unescaped break (found by fuzz_serde_yaml_compat).
+                self.reject_doc_marker_in_quoted("double-quoted")?;
                 // Skip leading whitespace on next line.
                 while Self::is_blank(self.peek()) {
                     self.advance();

@@ -11,6 +11,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Changed
 
+- **Breaking:** reject a `---` or `...` document marker at the start of
+  a line inside a double-quoted scalar after an escaped line break, as
+  after an unescaped one (yaml-test-suite 5TRB, RXY3).
 - The serializer no longer counts a tag as a nesting level of its own,
   so every tagged collection the parser accepts within `max_depth`
   serializes; a tag wrapping another tag still counts.
