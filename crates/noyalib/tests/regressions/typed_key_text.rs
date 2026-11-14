@@ -88,6 +88,12 @@ fn an_anchor_does_not_respell_typed_keys() {
             assert_eq!(keys(&flow, &cfg), [*key], "fallback {flow:?}");
         }
     }
+    // A comment may separate the anchor from its key (found by
+    // fuzz_serde_yaml_compat on `{&m #\n.5}`).
+    for key in KEYS {
+        let doc = format!("{{z: !t 2, &d # note\n {key}: 1}}\n");
+        assert_eq!(keys(&doc, &cfg), [*key], "fallback {doc:?}");
+    }
     let projected: serde_json::Value = from_str("{!,&d\n~}").unwrap();
     assert_eq!(projected, serde_json::json!({"": null, "~": null}));
     let value: Value = from_str("&d ~: 1\nz: !t 2\n").unwrap();

@@ -27,8 +27,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   Quoted scalars keep them. YAML 1.2.2 §5.1 limits unquoted content to
   `c-printable`.
 - **Breaking:** keep the written spelling of an anchored typed key
-  (`&a 0x1F`, `&a ~`) when a tag elsewhere selects the AST path, as
-  unanchored keys already did.
+  (`&a 0x1F`, `&a ~`, also with a comment after the anchor) when a tag
+  elsewhere selects the AST path, as unanchored keys already did.
 - **Breaking:** apply the compatibility profile's integer-overflow
   refusal to values only. A decimal mapping key beyond 64 bits stays
   its written string, as the archived parser reads JSON keys as

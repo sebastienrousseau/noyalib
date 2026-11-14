@@ -407,14 +407,22 @@ fn walk_keys(
 /// The scalar text of a key span and its offset in that span. Plain
 /// spans may include consumed trailing separation, and an anchored
 /// key's span starts at its `&name` property (found by fuzz_diff on
-/// `{!,&d\n~}`). An anchor names the node without changing its text.
+/// `{!,&d\n~}`), possibly followed by a comment line. An anchor names
+/// the node without changing its text.
 fn written_key_text(text: &str) -> (usize, &str) {
     const SEPARATION: [char; 4] = [' ', '\t', '\n', '\r'];
     let text = text.trim_end_matches(SEPARATION);
-    let scalar = text
+    let mut scalar = text
         .strip_prefix('&')
         .and_then(|name| name.find(SEPARATION).map(|at| &name[at..]))
         .map_or(text, |rest| rest.trim_start_matches(SEPARATION));
+    // A comment may follow the anchor (`&a # note` then the key).
+    while scalar.len() < text.len() && scalar.starts_with('#') {
+        let Some(at) = scalar.find(['\n', '\r']) else {
+            break;
+        };
+        scalar = scalar[at..].trim_start_matches(SEPARATION);
+    }
     (text.len() - scalar.len(), scalar)
 }
 
