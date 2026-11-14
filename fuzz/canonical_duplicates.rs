@@ -44,7 +44,7 @@ pub(crate) fn spelling(source: &str, config: &noyalib::ParserConfig) -> Option<S
             .iter()
             .filter_map(|(tokens, boundary, flow)| key(tokens, *boundary, *flow, source, config))
             .collect();
-        group(keys, &mut edits);
+        group(keys, source.contains('*'), &mut edits);
     });
     if edits.is_empty() {
         return None;
@@ -359,7 +359,7 @@ fn quoted(spelling: &str) -> String {
     out
 }
 
-fn group(keys: Vec<Key>, edits: &mut Vec<Edit>) {
+fn group(keys: Vec<Key>, aliased: bool, edits: &mut Vec<Edit>) {
     for (last, key) in keys.iter().enumerate() {
         if keys[last + 1..]
             .iter()
@@ -376,7 +376,9 @@ fn group(keys: Vec<Key>, edits: &mut Vec<Edit>) {
         if duplicates.len() > 1 {
             // With an anchored key in the group, reuse the last key's plain
             // text; it keeps the type an alias of the anchored key observes.
-            let reuse = duplicates.iter().any(|d| d.anchored) && key.plain.is_some();
+            // Only an alias observes an anchored key's type; otherwise
+            // quoting stays, which the archive reads in more flow forms.
+            let reuse = aliased && duplicates.iter().any(|d| d.anchored) && key.plain.is_some();
             let replacement = if reuse {
                 key.plain.clone().unwrap_or_default()
             } else {
@@ -493,6 +495,7 @@ mod tests {
         check("{~\n,&d}");
         check("n: {0,&defaults +0}\ne: *defaults");
         check("d: {&defaults +0,0}\ne: *defaults");
+        check("{4e1006,&e d:,d,4e1013}");
         check("{~,d:,&e,d}");
         // A duplicate only where `06` resolves as the integer 6.
         let config = ParserConfig::default();

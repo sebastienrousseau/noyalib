@@ -49,9 +49,8 @@ pub(crate) fn unquoted_content_bom_rejection(source: &str, error: &noyalib::Erro
     // where it would open the next document's prefix (`-\r\u{feff}---`).
     let rest = &source[offset + '\u{feff}'.len_utf8()..];
     // After a `...` the next prefix is spec-valid and stays visible.
-    let ended = prefix.split(['\r', '\n']).any(|l| l.starts_with("..."));
-    let before_marker =
-        line.is_empty() && !ended && (rest.starts_with("---") || rest.starts_with("..."));
+    let ended = prefix.split(['\r', '\n']).any(|l| marker(l, "..."));
+    let before_marker = line.is_empty() && !ended && (marker(rest, "---") || marker(rest, "..."));
     if later_prefix || before_marker && raised_here(source, offset) {
         return true;
     }
@@ -62,15 +61,22 @@ pub(crate) fn unquoted_content_bom_rejection(source: &str, error: &noyalib::Erro
         && prefix.contains(|c: char| !c.is_whitespace() && c != '\u{feff}')
         && !prefix.split(['\r', '\n']).any(|l| {
             let l = l.trim_start_matches('\u{feff}');
-            l.starts_with("...")
+            marker(l, "...")
         })
         // Only a column-0 BOM could open the next document's prefix.
-        && !(line.is_empty() && (rest.starts_with("---") || rest.starts_with("...")));
+        && !(line.is_empty() && (marker(rest, "---") || marker(rest, "...")));
     (displaced_start
         || repeated_start
         || in_document
         || line.chars().any(|c| !matches!(c, ' ' | '\t' | '\u{feff}')))
         && raised_here(source, offset)
+}
+
+/// `text` opens with the document marker `mark` (`---` or `...`), which
+/// must end at white space or a line end: `....` is a plain scalar.
+fn marker(text: &str, mark: &str) -> bool {
+    text.strip_prefix(mark)
+        .is_some_and(|rest| rest.is_empty() || rest.starts_with([' ', '\t', '\r', '\n']))
 }
 
 /// noyalib itself refuses this BOM at this offset. The scanner raises
@@ -123,6 +129,7 @@ mod tests {
             "-\r\u{feff}---",
             "a:\r \u{feff}---",
             "{4e740,\rinf,\u{feff}}",
+            "....\n#\n\u{feff}",
         ] {
             // The compatibility target classifies the shim's error.
             let config = noyalib::ParserConfig::serde_yaml_compat();

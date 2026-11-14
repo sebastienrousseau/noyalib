@@ -291,6 +291,14 @@ fn known_reject_divergence(s: &str) -> bool {
     if leading_document_end(s) {
         return true;
     }
+    // Quoted scalars admit C1 controls and U+FFFE/U+FFFF (nb-json,
+    // section 7.3.1); libyaml refuses them anywhere. noyalib refuses them
+    // unquoted, so an accepted document only holds them in quotes.
+    if s.chars()
+        .any(|c| matches!(c, '\u{80}'..='\u{84}' | '\u{86}'..='\u{9f}' | '\u{fffe}' | '\u{ffff}'))
+    {
+        return true;
+    }
     // libyaml misses a `---` or `...` marker straight after the stream
     // BOM and reads it as plain text (`\u{feff}---\n>f` loads "--- >f");
     // the BOM is transparent to the document markers (section 9.1.1).
