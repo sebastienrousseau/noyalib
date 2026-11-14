@@ -23,6 +23,10 @@ struct Key {
     /// separation folded to one space, so the next token cannot start an
     /// under-indented line after the quoted spelling.
     tail: &'static str,
+    /// The key's plain one-line text, reusable verbatim: duplicates share
+    /// a canonical value, so respelling the others with it keeps every
+    /// type, even when an alias elsewhere observes an anchored key.
+    plain: Option<String>,
 }
 
 /// Change only scalar keys in a repeated canonical group to the last
@@ -223,6 +227,7 @@ fn key(
         return None;
     }
     let mut scalar = None;
+    let mut plain_token = false;
     for &(kind, start, end) in tokens {
         match kind {
             SyntaxKind::ColonIndicator => break,
@@ -238,7 +243,8 @@ fn key(
             | SyntaxKind::DoubleQuotedScalar
                 if scalar.is_none() =>
             {
-                scalar = Some((start, end))
+                scalar = Some((start, end));
+                plain_token = kind == SyntaxKind::PlainScalar;
             }
             _ => return None,
         }
@@ -289,6 +295,8 @@ fn key(
         spelling,
         empty: scalar.is_none(),
         tail,
+        plain: (plain_token && !raw.is_empty() && !raw.contains(['\n', '\r']))
+            .then(|| raw.to_owned()),
     })
 }
 
@@ -325,15 +333,23 @@ fn group(keys: Vec<Key>, edits: &mut Vec<Edit>) {
             })
             .collect();
         if duplicates.len() > 1 {
-            let replacement = quoted(&key.spelling);
-            edits.extend(duplicates.into_iter().map(|previous| {
-                let space = if previous.empty { " " } else { "" };
-                (
-                    previous.start,
-                    previous.end,
-                    format!("{space}{replacement}{}", previous.tail),
-                )
-            }));
+            // Reuse the last key's plain text where it has one; it keeps
+            // the type an alias of that key observes.
+            let replacement = key.plain.clone().unwrap_or_else(|| quoted(&key.spelling));
+            let keep_last = key.plain.is_some();
+            edits.extend(
+                duplicates
+                    .into_iter()
+                    .filter(|previous| !(keep_last && core::ptr::eq(*previous, key)))
+                    .map(|previous| {
+                        let space = if previous.empty { " " } else { "" };
+                        (
+                            previous.start,
+                            previous.end,
+                            format!("{space}{replacement}{}", previous.tail),
+                        )
+                    }),
+            );
         }
     }
 }
@@ -429,10 +445,11 @@ mod tests {
         check("? ~\n?\n? ");
         check("{? &y,~}");
         check("{~\n,&d}");
+        check("n: {0,&defaults +0}\ne: *defaults");
         // A duplicate only where `06` resolves as the integer 6.
         let config = ParserConfig::default();
         let normalized = spelling("{6\n,06}", &config).expect("default duplicates");
-        assert_eq!(normalized, "{\"06\" ,\"06\"}");
+        assert_eq!(normalized, "{06 ,06}");
         let oracle: serde_json::Value = serde_yaml_ng::from_str(&normalized).unwrap();
         assert_eq!(oracle, serde_json::json!({"06": null}));
         check("? &a\n? ~\n");
