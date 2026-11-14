@@ -9,7 +9,6 @@
 
 use libfuzzer_sys::fuzz_target;
 use noyalib::Value;
-use serde_core::Deserialize as _;
 use std::collections::HashMap;
 
 #[derive(serde::Deserialize)]
@@ -22,8 +21,12 @@ struct Config {
 }
 
 fuzz_target!(|data: &[u8]| {
-    let Ok(s) = std::str::from_utf8(data) else { return };
-    let Ok(value) = noyalib::from_str::<Value>(s) else { return };
+    let Ok(s) = std::str::from_utf8(data) else {
+        return;
+    };
+    let Ok(value) = noyalib::from_str::<Value>(s) else {
+        return;
+    };
 
     // Try various typed deserializations — none should panic.
     let _ = noyalib::from_value::<Config>(&value);

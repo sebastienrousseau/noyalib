@@ -3,7 +3,7 @@
 
 //! Anchors, aliases and merge keys.
 //!
-//! 8 files, compiled into one test binary.
+//! 9 files, compiled into one test binary.
 
 #![allow(missing_docs)]
 
@@ -15,3 +15,4 @@ mod merge_key_plain_only;
 mod merge_key_policy;
 mod merge_keys_streaming;
 mod recursive_anchors;
+mod redefinition;

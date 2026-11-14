@@ -1,14 +1,7 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 // Copyright (c) 2026 Noyalib. All rights reserved.
 
-//! The coverage suites, compiled into one test binary.
-//!
-//! These 37 files were written one per gap-closing round. As separate
-//! `tests/*.rs` files, Cargo built and linked 37 executables for them;
-//! as modules of one binary it links once. The files themselves are
-//! unchanged — including the four that carry a crate-level
-//! `#![cfg(feature = "...")]`, which gates the module just as it gated
-//! the binary.
+//! Coverage suites compiled as modules of one binary, retaining module feature gates.
 
 #![allow(missing_docs)]
 

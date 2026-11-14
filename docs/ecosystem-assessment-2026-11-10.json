@@ -1,0 +1,807 @@
+{
+  "assessed_on": "2026-11-10",
+  "scope": "Six lockstep crate repositories; distribution support repos are covered only through consumer-channel checks.",
+  "method": "Evidence-informed ordinal maturity judgement, not a mathematical safety or completeness guarantee. Missing evidence records an open gap, not a demonstrated defect.",
+  "scale": {
+    "6": "Implemented with material evidence or assurance gaps",
+    "7": "CI exercised, with consumer or contract gaps",
+    "8": "Strong automation and exercised boundaries, remaining acceptance work",
+    "9": "Broad evidence and verified consumers; final acceptance work remains",
+    "10": "All scoped category acceptance criteria closed, independently reviewed and maintained by regression checks"
+  },
+  "categories": [
+    "functionality",
+    "correctness",
+    "architecture",
+    "performance",
+    "security",
+    "documentation",
+    "portability",
+    "developer_experience",
+    "interoperability",
+    "distribution",
+    "governance"
+  ],
+  "target": 10,
+  "release_hold": {
+    "repo": "noyalib-mcp",
+    "version": "0.0.60",
+    "workflow_run": 42897537938,
+    "conclusion": "cancelled",
+    "published": false,
+    "tag_object": "b28d529f8bae59bbe94bdd91d25ec50173c8702b",
+    "source_commit": "aa3c9db6409c108bc5c1911c076181763a965021",
+    "policy": "Preserve existing signed tag. Do not rerun publication while assessment hold is active."
+  },
+  "repositories": [
+    {
+      "name": "noyalib",
+      "source_commit": "2b3966235352c44b70071390faf6f06ec8b4d65d",
+      "source_url": "https://github.com/sebastienrousseau/noyalib/tree/2b3966235352c44b70071390faf6f06ec8b4d65d",
+      "source_clean": true,
+      "checked_at": "2026-11-10T20:51:20.813951+00:00",
+      "manifest": {
+        "name": "noyalib",
+        "version": "0.0.60",
+        "rust-version": "1.89.0",
+        "edition": "2024",
+        "license": "MIT OR Apache-2.0"
+      },
+      "published_crate_version": "0.0.60",
+      "github_release": "https://github.com/sebastienrousseau/noyalib/releases/tag/v0.0.60",
+      "ci": {
+        "run_url": "https://github.com/sebastienrousseau/noyalib/actions/runs/42787265272",
+        "run_id": 42787265272,
+        "head_sha": "2b3966235352c44b70071390faf6f06ec8b4d65d",
+        "successful_jobs": 54,
+        "skipped_jobs": 6,
+        "other_jobs": []
+      },
+      "coverage": {
+        "regions_percent": 94.08,
+        "functions_percent": 96.93,
+        "lines_percent": 95.25,
+        "branches_percent": null,
+        "total_row": "TOTAL 26695 1581 94.08% 2732 84 96.93% 23516 1116 95.25% 0 0 -",
+        "job_url": "https://github.com/sebastienrousseau/noyalib/actions/runs/42787265272/job/129731521106"
+      },
+      "coverage_limit": "Workflow denominator includes cfg(test) source; native coverage is not full protocol, browser or target assurance. Branch coverage is not reported.",
+      "inventory": {
+        "runtime_rust_files": 77,
+        "integration_test_files": 331,
+        "fuzz_targets": [
+          "fuzz_borrowed_alias",
+          "fuzz_borrowing",
+          "fuzz_cst_format_roundtrip",
+          "fuzz_cst_set",
+          "fuzz_diff",
+          "fuzz_double_quoted",
+          "fuzz_editors",
+          "fuzz_from_value",
+          "fuzz_multi_doc",
+          "fuzz_no_span_loader",
+          "fuzz_parse",
+          "fuzz_query_path",
+          "fuzz_reader_and_slice",
+          "fuzz_roundtrip",
+          "fuzz_serde_yaml_compat",
+          "fuzz_strict",
+          "fuzz_value_roundtrip",
+          "fuzz_yaml_v1_1"
+        ],
+        "bench_files": [
+          "crates/noyalib/benches/architecture.rs",
+          "crates/noyalib/benches/benchmarks.rs",
+          "crates/noyalib/benches/borrowed_vs_value.rs",
+          "crates/noyalib/benches/comparison.rs",
+          "crates/noyalib/benches/incremental_repair.rs",
+          "crates/noyalib/benches/interner.rs",
+          "crates/noyalib/benches/large_doc_soak.rs",
+          "crates/noyalib/benches/lossless_u64.rs",
+          "crates/noyalib/benches/mapping_key_clone.rs",
+          "crates/noyalib/benches/numeric_parse.rs",
+          "crates/noyalib/benches/parallel.rs",
+          "crates/noyalib/benches/simd.rs",
+          "crates/noyalib/benches/streaming_vs_value.rs",
+          "crates/noyalib/benches/structural_bitmask.rs",
+          "crates/noyalib/benches/v006_features.rs",
+          "crates/noyalib/benches/validation_overhead.rs"
+        ],
+        "largest_runtime_files": [
+          {
+            "path": "crates/noyalib/src/cst/document.rs",
+            "lines": 7367
+          },
+          {
+            "path": "crates/noyalib/src/parser/scanner.rs",
+            "lines": 2761
+          },
+          {
+            "path": "crates/noyalib/src/streaming.rs",
+            "lines": 2540
+          },
+          {
+            "path": "crates/noyalib/src/ser.rs",
+            "lines": 2516
+          },
+          {
+            "path": "crates/noyalib/src/error.rs",
+            "lines": 2277
+          },
+          {
+            "path": "crates/noyalib/src/parser/loader.rs",
+            "lines": 2234
+          }
+        ],
+        "alloc_only_fuzz_targets": [
+          "fuzz_parse_alloc_only",
+          "fuzz_roundtrip_alloc_only"
+        ],
+        "alloc_only_fuzz_manifest_url": "https://github.com/sebastienrousseau/noyalib/blob/2b3966235352c44b70071390faf6f06ec8b4d65d/fuzz-nostd/Cargo.toml"
+      },
+      "workflow_threshold_evidence": [
+        {
+          "path": ".github/workflows/ci.yml",
+          "line": 547,
+          "text": "fail-under-functions: 96"
+        },
+        {
+          "path": ".github/workflows/ci.yml",
+          "line": 548,
+          "text": "fail-under-lines: 94"
+        },
+        {
+          "path": ".github/workflows/ci.yml",
+          "line": 549,
+          "text": "fail-under-regions: 93"
+        },
+        {
+          "path": ".github/workflows/shared-coverage.yml",
+          "line": 41,
+          "text": "fail-under-functions:"
+        },
+        {
+          "path": ".github/workflows/shared-coverage.yml",
+          "line": 46,
+          "text": "fail-under-lines:"
+        },
+        {
+          "path": ".github/workflows/shared-coverage.yml",
+          "line": 51,
+          "text": "fail-under-regions:"
+        },
+        {
+          "path": ".github/workflows/shared-coverage.yml",
+          "line": 86,
+          "text": "FAIL_UNDER_FUNCTIONS: ${{ inputs.fail-under-functions }}"
+        },
+        {
+          "path": ".github/workflows/shared-coverage.yml",
+          "line": 87,
+          "text": "FAIL_UNDER_LINES: ${{ inputs.fail-under-lines }}"
+        },
+        {
+          "path": ".github/workflows/shared-coverage.yml",
+          "line": 88,
+          "text": "FAIL_UNDER_REGIONS: ${{ inputs.fail-under-regions }}"
+        },
+        {
+          "path": ".github/workflows/shared-coverage.yml",
+          "line": 106,
+          "text": "--fail-under-functions \"$FAIL_UNDER_FUNCTIONS\" \\"
+        },
+        {
+          "path": ".github/workflows/shared-coverage.yml",
+          "line": 107,
+          "text": "--fail-under-lines \"$FAIL_UNDER_LINES\" \\"
+        },
+        {
+          "path": ".github/workflows/shared-coverage.yml",
+          "line": 108,
+          "text": "--fail-under-regions \"$FAIL_UNDER_REGIONS\""
+        }
+      ],
+      "dependabot_open_alerts": 0,
+      "code_scanning_open_alerts": [],
+      "branch_protection": {
+        "strict": true,
+        "required_approving_reviews": 0,
+        "source_url": "https://github.com/sebastienrousseau/noyalib/settings/branches"
+      },
+      "direct_human_collaborators_observed": 1,
+      "governance_limit": "Only direct collaborators were enumerated. This does not prove who can recover all registry or signing accounts.",
+      "openssf_external_api": {
+        "status": "unavailable",
+        "detail": "<urlopen error [Errno 65] No route to host>"
+      },
+      "tokio_lockfiles": [
+        {
+          "path": "Cargo.lock",
+          "version": "1.54.1",
+          "source_url": "https://github.com/sebastienrousseau/noyalib/blob/2b3966235352c44b70071390faf6f06ec8b4d65d/Cargo.lock"
+        }
+      ],
+      "ratings": {
+        "functionality": 9,
+        "correctness": 9,
+        "architecture": 8,
+        "performance": 8,
+        "security": 9,
+        "documentation": 8,
+        "portability": 9,
+        "developer_experience": 8,
+        "interoperability": 9,
+        "distribution": 9,
+        "governance": 6
+      },
+      "effective_coverage_floors": {
+        "lines_percent": 94,
+        "functions_percent": 96,
+        "regions_percent": 93
+      },
+      "effective_coverage_floors_source": "https://github.com/sebastienrousseau/noyalib/blob/2b3966235352c44b70071390faf6f06ec8b4d65d/.github/workflows/ci.yml"
+    },
+    {
+      "name": "noya-cli",
+      "source_commit": "9fdd09a177b6bf29084f0897db0d3e6823a27e96",
+      "source_url": "https://github.com/sebastienrousseau/noya-cli/tree/9fdd09a177b6bf29084f0897db0d3e6823a27e96",
+      "source_clean": true,
+      "checked_at": "2026-11-10T20:51:20.814220+00:00",
+      "manifest": {
+        "name": "noya-cli",
+        "version": "0.0.60",
+        "rust-version": "1.89.0",
+        "edition": "2024",
+        "license": "MIT OR Apache-2.0"
+      },
+      "published_crate_version": "0.0.60",
+      "github_release": "https://github.com/sebastienrousseau/noya-cli/releases/tag/v0.0.60",
+      "ci": {
+        "run_url": "https://github.com/sebastienrousseau/noya-cli/actions/runs/42799812146",
+        "run_id": 42799812146,
+        "head_sha": "9fdd09a177b6bf29084f0897db0d3e6823a27e96",
+        "successful_jobs": 25,
+        "skipped_jobs": 1,
+        "other_jobs": []
+      },
+      "coverage": {
+        "regions_percent": 95.91,
+        "functions_percent": 96.91,
+        "lines_percent": 97.09,
+        "branches_percent": null,
+        "total_row": "TOTAL 832 34 95.91% 97 3 96.91% 619 18 97.09% 0 0 -",
+        "job_url": "https://github.com/sebastienrousseau/noya-cli/actions/runs/42799812146/job/129774130528"
+      },
+      "coverage_limit": "Workflow denominator includes cfg(test) source; native coverage is not full protocol, browser or target assurance. Branch coverage is not reported.",
+      "inventory": {
+        "runtime_rust_files": 6,
+        "integration_test_files": 8,
+        "fuzz_targets": [
+          "fuzz_argv",
+          "fuzz_derive_parse"
+        ],
+        "bench_files": [
+          "benches/cli_dispatch.rs"
+        ],
+        "largest_runtime_files": [
+          {
+            "path": "src/bin/noyavalidate.rs",
+            "lines": 445
+          },
+          {
+            "path": "src/lib.rs",
+            "lines": 421
+          },
+          {
+            "path": "src/atomic.rs",
+            "lines": 187
+          },
+          {
+            "path": "src/text.rs",
+            "lines": 133
+          },
+          {
+            "path": "src/bin/noyafmt.rs",
+            "lines": 120
+          },
+          {
+            "path": "src/bin/noyavalidate/report.rs",
+            "lines": 115
+          }
+        ]
+      },
+      "workflow_threshold_evidence": [
+        {
+          "path": ".github/workflows/ci.yml",
+          "line": 94,
+          "text": "fail-under-functions: 96"
+        },
+        {
+          "path": ".github/workflows/ci.yml",
+          "line": 95,
+          "text": "fail-under-lines: 88"
+        },
+        {
+          "path": ".github/workflows/ci.yml",
+          "line": 96,
+          "text": "fail-under-regions: 90"
+        }
+      ],
+      "dependabot_open_alerts": 0,
+      "code_scanning_open_alerts": [],
+      "branch_protection": {
+        "strict": true,
+        "required_approving_reviews": 0,
+        "source_url": "https://github.com/sebastienrousseau/noya-cli/settings/branches"
+      },
+      "direct_human_collaborators_observed": 1,
+      "governance_limit": "Only direct collaborators were enumerated. This does not prove who can recover all registry or signing accounts.",
+      "openssf_external_api": {
+        "status": "unavailable",
+        "detail": "<urlopen error [Errno 65] No route to host>"
+      },
+      "tokio_lockfiles": [],
+      "ratings": {
+        "functionality": 8,
+        "correctness": 8,
+        "architecture": 8,
+        "performance": 6,
+        "security": 8,
+        "documentation": 7,
+        "portability": 8,
+        "developer_experience": 8,
+        "interoperability": 8,
+        "distribution": 9,
+        "governance": 6
+      },
+      "effective_coverage_floors": {
+        "lines_percent": 88,
+        "functions_percent": 96,
+        "regions_percent": 90
+      },
+      "effective_coverage_floors_source": "https://github.com/sebastienrousseau/noya-cli/blob/9fdd09a177b6bf29084f0897db0d3e6823a27e96/.github/workflows/ci.yml"
+    },
+    {
+      "name": "noyalib-lsp",
+      "source_commit": "3fccfbe5782e5b43f6ac6c8bb04595063e024e8d",
+      "source_url": "https://github.com/sebastienrousseau/noyalib-lsp/tree/3fccfbe5782e5b43f6ac6c8bb04595063e024e8d",
+      "source_clean": true,
+      "checked_at": "2026-11-10T20:51:25.616390+00:00",
+      "manifest": {
+        "name": "noyalib-lsp",
+        "version": "0.0.60",
+        "rust-version": "1.89.0",
+        "edition": "2024",
+        "license": "MIT OR Apache-2.0"
+      },
+      "published_crate_version": "0.0.60",
+      "github_release": "https://github.com/sebastienrousseau/noyalib-lsp/releases/tag/v0.0.60",
+      "ci": {
+        "run_url": "https://github.com/sebastienrousseau/noyalib-lsp/actions/runs/42792082961",
+        "run_id": 42792082961,
+        "head_sha": "3fccfbe5782e5b43f6ac6c8bb04595063e024e8d",
+        "successful_jobs": 24,
+        "skipped_jobs": 1,
+        "other_jobs": []
+      },
+      "coverage": {
+        "regions_percent": 95.3,
+        "functions_percent": 98.17,
+        "lines_percent": 95.57,
+        "branches_percent": null,
+        "total_row": "TOTAL 1255 59 95.30% 109 2 98.17% 880 39 95.57% 0 0 -",
+        "job_url": "https://github.com/sebastienrousseau/noyalib-lsp/actions/runs/42792082961/job/129747778124"
+      },
+      "coverage_limit": "Workflow denominator includes cfg(test) source; native coverage is not full protocol, browser or target assurance. Branch coverage is not reported.",
+      "inventory": {
+        "runtime_rust_files": 5,
+        "integration_test_files": 4,
+        "fuzz_targets": [
+          "fuzz_did_change",
+          "fuzz_handle_message"
+        ],
+        "bench_files": [
+          "benches/lsp_handlers.rs"
+        ],
+        "largest_runtime_files": [
+          {
+            "path": "src/lib.rs",
+            "lines": 751
+          },
+          {
+            "path": "src/main.rs",
+            "lines": 330
+          },
+          {
+            "path": "src/diagnostics.rs",
+            "lines": 210
+          },
+          {
+            "path": "src/format.rs",
+            "lines": 179
+          },
+          {
+            "path": "src/hover.rs",
+            "lines": 154
+          }
+        ]
+      },
+      "workflow_threshold_evidence": [
+        {
+          "path": ".github/workflows/ci.yml",
+          "line": 52,
+          "text": "fail-under-functions: 96"
+        },
+        {
+          "path": ".github/workflows/ci.yml",
+          "line": 53,
+          "text": "fail-under-lines: 94"
+        },
+        {
+          "path": ".github/workflows/ci.yml",
+          "line": 54,
+          "text": "fail-under-regions: 93"
+        }
+      ],
+      "dependabot_open_alerts": 0,
+      "code_scanning_open_alerts": [],
+      "branch_protection": {
+        "strict": true,
+        "required_approving_reviews": 0,
+        "source_url": "https://github.com/sebastienrousseau/noyalib-lsp/settings/branches"
+      },
+      "direct_human_collaborators_observed": 1,
+      "governance_limit": "Only direct collaborators were enumerated. This does not prove who can recover all registry or signing accounts.",
+      "openssf_external_api": {
+        "status": "unavailable",
+        "detail": "<urlopen error [Errno 65] No route to host>"
+      },
+      "tokio_lockfiles": [],
+      "ratings": {
+        "functionality": 7,
+        "correctness": 8,
+        "architecture": 8,
+        "performance": 6,
+        "security": 8,
+        "documentation": 6,
+        "portability": 8,
+        "developer_experience": 7,
+        "interoperability": 7,
+        "distribution": 8,
+        "governance": 6
+      },
+      "effective_coverage_floors": {
+        "lines_percent": 94,
+        "functions_percent": 96,
+        "regions_percent": 93
+      },
+      "effective_coverage_floors_source": "https://github.com/sebastienrousseau/noyalib-lsp/blob/3fccfbe5782e5b43f6ac6c8bb04595063e024e8d/.github/workflows/ci.yml"
+    },
+    {
+      "name": "noyalib-mcp",
+      "source_commit": "aa3c9db6409c108bc5c1911c076181763a965021",
+      "source_url": "https://github.com/sebastienrousseau/noyalib-mcp/tree/aa3c9db6409c108bc5c1911c076181763a965021",
+      "source_clean": true,
+      "checked_at": "2026-11-10T20:51:25.681014+00:00",
+      "manifest": {
+        "name": "noyalib-mcp",
+        "version": "0.0.60",
+        "rust-version": "1.89.0",
+        "edition": "2024",
+        "license": "Apache-2.0 OR MIT"
+      },
+      "published_crate_version": "0.0.59",
+      "github_release": "https://github.com/sebastienrousseau/noyalib-mcp/releases/tag/v0.0.59",
+      "ci": {
+        "run_url": "https://github.com/sebastienrousseau/noyalib-mcp/actions/runs/42896967498",
+        "run_id": 42896967498,
+        "head_sha": "aa3c9db6409c108bc5c1911c076181763a965021",
+        "successful_jobs": 25,
+        "skipped_jobs": 1,
+        "other_jobs": []
+      },
+      "coverage": {
+        "regions_percent": 96.36,
+        "functions_percent": 97.52,
+        "lines_percent": 98.26,
+        "branches_percent": null,
+        "total_row": "TOTAL 1925 70 96.36% 282 7 97.52% 1666 29 98.26% 0 0 -",
+        "job_url": "https://github.com/sebastienrousseau/noyalib-mcp/actions/runs/42896967498/job/130112510852"
+      },
+      "coverage_limit": "Workflow denominator includes cfg(test) source; native coverage is not full protocol, browser or target assurance. Branch coverage is not reported.",
+      "inventory": {
+        "runtime_rust_files": 12,
+        "integration_test_files": 7,
+        "fuzz_targets": [
+          "tools"
+        ],
+        "bench_files": [
+          "benches/mcp_tools.rs"
+        ],
+        "largest_runtime_files": [
+          {
+            "path": "src/tools.rs",
+            "lines": 931
+          },
+          {
+            "path": "src/transport.rs",
+            "lines": 506
+          },
+          {
+            "path": "src/fsio.rs",
+            "lines": 391
+          },
+          {
+            "path": "src/lib.rs",
+            "lines": 373
+          },
+          {
+            "path": "src/transport/sse.rs",
+            "lines": 254
+          },
+          {
+            "path": "src/transport/guard.rs",
+            "lines": 212
+          }
+        ]
+      },
+      "workflow_threshold_evidence": [
+        {
+          "path": ".github/workflows/ci.yml",
+          "line": 109,
+          "text": "fail-under-functions: 96"
+        },
+        {
+          "path": ".github/workflows/ci.yml",
+          "line": 110,
+          "text": "fail-under-lines: 94"
+        },
+        {
+          "path": ".github/workflows/ci.yml",
+          "line": 111,
+          "text": "fail-under-regions: 93"
+        }
+      ],
+      "dependabot_open_alerts": 0,
+      "code_scanning_open_alerts": [
+        {
+          "number": 25,
+          "url": "https://github.com/sebastienrousseau/noyalib-mcp/security/code-scanning/25",
+          "tool": "Scorecard",
+          "rule": "VulnerabilitiesID",
+          "severity": "high",
+          "message": "score is 9: 1 existing vulnerabilities detected:\nWarn: Project is vulnerable to: https://osv.dev/RUSTSEC-2026-0386\nClick Remediation section below to solve this issue",
+          "commit": "aa3c9db6409c108bc5c1911c076181763a965021",
+          "ref": "refs/heads/main"
+        }
+      ],
+      "branch_protection": {
+        "strict": true,
+        "required_approving_reviews": 0,
+        "source_url": "https://github.com/sebastienrousseau/noyalib-mcp/settings/branches"
+      },
+      "direct_human_collaborators_observed": 1,
+      "governance_limit": "Only direct collaborators were enumerated. This does not prove who can recover all registry or signing accounts.",
+      "openssf_external_api": {
+        "status": "unavailable",
+        "detail": "<urlopen error [Errno 22] Invalid argument>"
+      },
+      "tokio_lockfiles": [
+        {
+          "path": "Cargo.lock",
+          "version": "1.54.1",
+          "source_url": "https://github.com/sebastienrousseau/noyalib-mcp/blob/aa3c9db6409c108bc5c1911c076181763a965021/Cargo.lock"
+        },
+        {
+          "path": "fuzz/Cargo.lock",
+          "version": "1.53.1",
+          "source_url": "https://github.com/sebastienrousseau/noyalib-mcp/blob/aa3c9db6409c108bc5c1911c076181763a965021/fuzz/Cargo.lock"
+        }
+      ],
+      "ratings": {
+        "functionality": 9,
+        "correctness": 8,
+        "architecture": 8,
+        "performance": 6,
+        "security": 6,
+        "documentation": 7,
+        "portability": 8,
+        "developer_experience": 8,
+        "interoperability": 8,
+        "distribution": 7,
+        "governance": 6
+      },
+      "effective_coverage_floors": {
+        "lines_percent": 94,
+        "functions_percent": 96,
+        "regions_percent": 93
+      },
+      "effective_coverage_floors_source": "https://github.com/sebastienrousseau/noyalib-mcp/blob/aa3c9db6409c108bc5c1911c076181763a965021/.github/workflows/ci.yml"
+    },
+    {
+      "name": "noyalib-wasm",
+      "source_commit": "b00e5ece6281c1d0e137445464734037f6531e53",
+      "source_url": "https://github.com/sebastienrousseau/noyalib-wasm/tree/b00e5ece6281c1d0e137445464734037f6531e53",
+      "source_clean": true,
+      "checked_at": "2026-11-10T20:51:28.741102+00:00",
+      "manifest": {
+        "name": "noyalib-wasm",
+        "version": "0.0.60",
+        "rust-version": "1.89.0",
+        "edition": "2024",
+        "license": "MIT OR Apache-2.0"
+      },
+      "published_crate_version": "0.0.60",
+      "github_release": "https://github.com/sebastienrousseau/noyalib-wasm/releases/tag/v0.0.60",
+      "ci": {
+        "run_url": "https://github.com/sebastienrousseau/noyalib-wasm/actions/runs/42792100355",
+        "run_id": 42792100355,
+        "head_sha": "b00e5ece6281c1d0e137445464734037f6531e53",
+        "successful_jobs": 17,
+        "skipped_jobs": 1,
+        "other_jobs": []
+      },
+      "coverage": {
+        "regions_percent": 99.1,
+        "functions_percent": 100.0,
+        "lines_percent": 99.0,
+        "branches_percent": null,
+        "total_row": "TOTAL 442 4 99.10% 65 0 100.00% 300 3 99.00% 0 0 -",
+        "job_url": "https://github.com/sebastienrousseau/noyalib-wasm/actions/runs/42792100355/job/129747835846"
+      },
+      "coverage_limit": "Workflow denominator includes cfg(test) source; native coverage is not full protocol, browser or target assurance. Branch coverage is not reported.",
+      "inventory": {
+        "runtime_rust_files": 3,
+        "integration_test_files": 3,
+        "fuzz_targets": [
+          "fuzz_core",
+          "fuzz_document_path"
+        ],
+        "bench_files": [],
+        "largest_runtime_files": [
+          {
+            "path": "src/lib.rs",
+            "lines": 404
+          },
+          {
+            "path": "src/core.rs",
+            "lines": 335
+          },
+          {
+            "path": "src/guard.rs",
+            "lines": 300
+          }
+        ]
+      },
+      "workflow_threshold_evidence": [
+        {
+          "path": ".github/workflows/ci.yml",
+          "line": 106,
+          "text": "fail-under-functions: 96"
+        },
+        {
+          "path": ".github/workflows/ci.yml",
+          "line": 107,
+          "text": "fail-under-lines: 94"
+        },
+        {
+          "path": ".github/workflows/ci.yml",
+          "line": 108,
+          "text": "fail-under-regions: 93"
+        }
+      ],
+      "dependabot_open_alerts": 0,
+      "code_scanning_open_alerts": [],
+      "branch_protection": {
+        "strict": true,
+        "required_approving_reviews": 0,
+        "source_url": "https://github.com/sebastienrousseau/noyalib-wasm/settings/branches"
+      },
+      "direct_human_collaborators_observed": 1,
+      "governance_limit": "Only direct collaborators were enumerated. This does not prove who can recover all registry or signing accounts.",
+      "openssf_external_api": {
+        "status": "unavailable",
+        "detail": "<urlopen error [Errno 65] No route to host>"
+      },
+      "tokio_lockfiles": [
+        {
+          "path": "Cargo.lock",
+          "version": "1.53.3",
+          "source_url": "https://github.com/sebastienrousseau/noyalib-wasm/blob/b00e5ece6281c1d0e137445464734037f6531e53/Cargo.lock"
+        }
+      ],
+      "ratings": {
+        "functionality": 8,
+        "correctness": 8,
+        "architecture": 8,
+        "performance": 6,
+        "security": 8,
+        "documentation": 6,
+        "portability": 7,
+        "developer_experience": 7,
+        "interoperability": 7,
+        "distribution": 8,
+        "governance": 6
+      },
+      "effective_coverage_floors": {
+        "lines_percent": 94,
+        "functions_percent": 96,
+        "regions_percent": 93
+      },
+      "effective_coverage_floors_source": "https://github.com/sebastienrousseau/noyalib-wasm/blob/b00e5ece6281c1d0e137445464734037f6531e53/.github/workflows/ci.yml"
+    },
+    {
+      "name": "noyalib-serde-yaml",
+      "source_commit": "91e2b3cbdf04549893c983704c81f6d4cdf61865",
+      "source_url": "https://github.com/sebastienrousseau/noyalib-serde-yaml/tree/91e2b3cbdf04549893c983704c81f6d4cdf61865",
+      "source_clean": true,
+      "checked_at": "2026-11-10T20:51:28.965610+00:00",
+      "manifest": {
+        "name": "noyalib-serde-yaml",
+        "version": "0.0.60",
+        "rust-version": "1.89.0",
+        "edition": "2024",
+        "license": "MIT OR Apache-2.0"
+      },
+      "published_crate_version": "0.0.60",
+      "github_release": "https://github.com/sebastienrousseau/noyalib-serde-yaml/releases/tag/v0.0.60",
+      "ci": {
+        "run_url": "https://github.com/sebastienrousseau/noyalib-serde-yaml/actions/runs/42792116009",
+        "run_id": 42792116009,
+        "head_sha": "91e2b3cbdf04549893c983704c81f6d4cdf61865",
+        "successful_jobs": 22,
+        "skipped_jobs": 1,
+        "other_jobs": []
+      },
+      "coverage": null,
+      "coverage_limit": "Workflow scope only; no branch measurement. Facade has no independent coverable runtime functions.",
+      "inventory": {
+        "runtime_rust_files": 1,
+        "integration_test_files": 3,
+        "fuzz_targets": [
+          "fuzz_from_str",
+          "fuzz_roundtrip"
+        ],
+        "bench_files": [
+          "benches/shim_overhead.rs"
+        ],
+        "largest_runtime_files": [
+          {
+            "path": "src/lib.rs",
+            "lines": 62
+          }
+        ]
+      },
+      "workflow_threshold_evidence": [],
+      "dependabot_open_alerts": 0,
+      "code_scanning_open_alerts": [],
+      "branch_protection": {
+        "strict": true,
+        "required_approving_reviews": 0,
+        "source_url": "https://github.com/sebastienrousseau/noyalib-serde-yaml/settings/branches"
+      },
+      "direct_human_collaborators_observed": 1,
+      "governance_limit": "Only direct collaborators were enumerated. This does not prove who can recover all registry or signing accounts.",
+      "openssf_external_api": {
+        "status": "unavailable",
+        "detail": "<urlopen error [Errno 65] No route to host>"
+      },
+      "tokio_lockfiles": [],
+      "ratings": {
+        "functionality": 8,
+        "correctness": 8,
+        "architecture": 9,
+        "performance": 6,
+        "security": 8,
+        "documentation": 6,
+        "portability": 7,
+        "developer_experience": 8,
+        "interoperability": 8,
+        "distribution": 9,
+        "governance": 6
+      },
+      "effective_coverage_floors": null,
+      "effective_coverage_floors_source": "https://github.com/sebastienrousseau/noyalib-serde-yaml/blob/91e2b3cbdf04549893c983704c81f6d4cdf61865/.github/workflows/ci.yml"
+    }
+  ]
+}

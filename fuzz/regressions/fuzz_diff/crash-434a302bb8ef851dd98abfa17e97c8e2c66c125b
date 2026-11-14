@@ -1,0 +1,4 @@
+&defaults
+: &defaults
+ : &ds
+s: *defaults

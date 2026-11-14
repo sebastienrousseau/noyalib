@@ -1,34 +1,8 @@
-//! Alias resolution across the streaming deserializer's lookahead slot.
+//! Alias lookahead preserves raw versus processed event ownership.
 //!
-//! The slot (`StreamingDeserializer::current`) holds one event of
-//! lookahead, and it is written by three paths with two different
-//! invariants — a *raw* parser event, whose `Event::Alias` the merge-key
-//! handling needs to see unresolved, and a *processed* one that has been
-//! alias-resolved, anchored and recorded.
-//!
-//! Two defects lived in that ambiguity:
-//!
-//! 1. `peek_event` and `next_event` each read from either the replay stack
-//!    (injected merge content) or the parser, and resolved aliases on the
-//!    **parser branch only** — then labelled both results processed. An
-//!    alias arriving via replay was therefore stored as "processed" while
-//!    still being an unresolved `Event::Alias`, and deserialised as the
-//!    literal anchor name. That is #301, found by @mathstuf: `y: *other`
-//!    sitting beside `<<: *b`.
-//! 2. `next_parser_event` unconditionally re-ran `handle_anchor` and
-//!    `maybe_record` on whatever it took from the slot. `maybe_record` is
-//!    not idempotent — a second call pushes the event into an in-flight
-//!    anchor buffer twice, so every alias to that anchor replays a
-//!    corrupted stream.
-//!
-//! The replay stack only exists once a merge has injected something, which
-//! is why every failing shape here has an alias *after* a `<<:` key and
-//! every passing one does not. Most of this file is therefore ordering:
-//! the same document with the alias before and after the merge must agree.
-//!
-//! The strongest check is [`agrees_with_ast`]: the streaming path and the
-//! AST loader must produce the same `Value` for the same input. They share
-//! no lookahead code, so a regression in one is visible as disagreement.
+//! Merge replay, anchor recording and alias ordering must retain the same
+//! values through single-value, whole-stream and typed-map entry points.
+//! Includes #301, reported by @mathstuf.
 
 // SPDX-License-Identifier: MIT OR Apache-2.0
 // Copyright (c) 2026 Noyalib. All rights reserved.
@@ -36,12 +10,8 @@
 use noyalib::{Value, from_str, load_all};
 use std::collections::BTreeMap;
 
-/// The streaming deserializer and the AST loader must agree.
-///
-/// `from_str::<Value>` drives the streaming path; `load_all` is the
-/// separate document loader and shares none of the lookahead code. A
-/// regression in either therefore shows up as disagreement, without the
-/// test having to spell out the expected shape by hand.
+/// Compare the single-value entry point with the whole-stream loader.
+/// Typed-map assertions below exercise streaming separately.
 #[track_caller]
 fn agrees_with_ast(yaml: &str) -> Value {
     let streamed: Value = from_str(yaml).unwrap_or_else(|e| panic!("streaming: {e}\n{yaml}"));

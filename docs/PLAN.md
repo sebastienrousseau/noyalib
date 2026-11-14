@@ -1,834 +1,473 @@
 <!-- SPDX-FileCopyrightText: 2026 Noyalib -->
 <!-- SPDX-License-Identifier: MIT OR Apache-2.0 -->
 
-# noyalib production-readiness plan
+# Ecosystem implementation plan
 
-This document is the long-form roadmap for shipping noyalib as a
-distro-grade Rust library and CLI tool: ≥ 98 % unit-test, doc,
-example, and benchmark coverage on every package; a `ripgrep`-shaped
-repo layout; and a multi-platform release pipeline that produces
-signed artefacts ready for crates.io, npm, the VS Code Marketplace,
-Linux distros (deb / rpm / Arch / Nix), Homebrew, AUR, Scoop, and a
-container registry.
+Updated **2026-11-13**. Goal: close the measured gaps in all six repositories
+so every category can earn a defensible, maintained 10/10 within its declared
+product scope. The [assessment](ROADMAP-TO-10.md) gives the baseline and the
+[evidence snapshot](ecosystem-assessment-2026-11-10.json) pins its sources.
+This plan replaces the historical monorepo/`xtask` production-readiness plan;
+its history remains in Git.
 
-> **Superseded in part.** Phase 2.2 below proposes a `crates/xtask/`
-> runner (`cargo xtask completions`, `cargo xtask manpages`, …). That
-> crate was built, then retired with the workspace split (#134, closed):
-> man pages and shell completions now belong to `noya-cli` and are
-> generated in its repository, and what remains here runs from
-> `Makefile` targets and `scripts/`. `cargo xtask` is not a command in
-> this repo. The rest of the plan stands.
+Implementation is in progress on the single future `feat/v0.0.61` branch.
+The dated assessment remains the baseline. The
+[contract ledger](ECOSYSTEM-CONTRACTS.md) maps supported behavior to its
+tests, and the [implementation record](IMPLEMENTATION-STATUS.md) tracks
+observed results and open criteria. Publishing remains held.
 
-The plan is written so any maintainer can pick up where the last
-commit left off. Each phase is sized for a single self-contained
-PR; the order respects dependencies (gates first, restructure
-early, distro outreach last).
+## Accepted review follow-up, 2026-11-13
 
-## Working invariants
+The maintainer accepted ADR-0019's canonical duplicate identity and the
+retirement of unpublished MCP v0.0.60 with its signed tag preserved.
 
-These rules apply to every change inside this plan. They are
-binding even when not restated in a section.
+1. Pin first-position/last-value/last-spelling behavior, skipped content,
+   tags, aliases, policies and budgets in observed failing std/alloc tests.
+2. Correct streaming admission and skipped-map validation. Full typed
+   parsing must agree with loader fallback; direct streaming reports its
+   existing fallback error when it cannot retract an emitted entry.
+3. Verify the existing seven-byte Unicode edit regression against its
+   original failing source and the current core; record MCP retirement in
+   both changelogs and the review packet without moving the signed tag.
+4. Run the complete batteries, isolated no_std/MSRV checks, consumer corpus
+   and local hygiene gates. Commit and push the fix with its regressions.
+5. Start the 31-target hourly campaign on the corrected source, retain
+   every receipt and fix each finding before accepting its target.
 
-- **CI must always be green.** Every push verifies the workflow
-  status; any red job is fixed in the same session before
-  declaring done. Never bypass with `--no-verify`, `[skip ci]`,
-  or `if: false`.
-- **Conventional Commits** with signed (`-S`) commits.
-  `Assisted-by:` trailer is appended automatically by the
-  `commit-msg` hook; the branding signature is appended manually
-  per `~/.claude/CLAUDE.md`.
-- **`#![forbid(unsafe_code)]`** at every crate root in the
-  workspace. No exceptions.
-- **No fabrication.** API names, flag names, paths, version
-  numbers, and CI matrix entries are checked against the source
-  before committing.
-- **Single zero-logic commit for the restructure (Phase 1).** The
-  Big Move changes only file paths and `Cargo.toml` `members =`
-  entries. No comment edits, no formatting changes, no
-  refactoring inside the moved files. This preserves
-  `git blame --follow` accuracy for every line.
+The first renewed run completes with 28 passing targets and three failures:
+two archive-comparison gaps and a new CST panic through MCP tools. The
+consumer job also exposes a profile expectation error. The [follow-up receipt](ecosystem-duplicate-campaign-followup-2026-11-13.json)
+retains their failures, corrections and fixed-input replay. Complete-duration
+acceptance remains open. The [CST fragment repair](ecosystem-cst-fragment-bounds-2026-11-13.json)
+retains the third finding, failing-first core/real-session tests and complete
+local batteries. Renew all final-source gates and the full 31-target campaign
+after the corrections.
 
-## Locked decisions
+Product boundary work and controlled performance evidence continue on the
+future branches. Independent human review and accepted continuity ownership
+remain external acceptance requirements; publication remains held.
 
-| Decision | Choice | Rationale |
-|---|---|---|
-| **Naming (E1)** | `crates/noya-cli/` package, binaries stay `noyafmt` + `noyavalidate` | Two distinct tools (formatter vs. CI-gate validator) following Unix philosophy; binary names already shipped in v0.0.1 examples and integrations, so no breaking change for downstream consumers. |
-| **Asset generation (B)** | Hybrid `build.rs` + `xtask` | `NOYA_GEN_ASSETS=1 cargo build --release` produces man pages and completions for distro packagers; `cargo xtask` paths reuse the same generation code so docs and binaries never drift. |
-| **Restructure cadence (Phase 1)** | One zero-logic commit, file-moves only | Preserves `git blame --follow`; surface area is large, code semantics are unchanged. |
-| **Universal macOS bottle (R1)** | Yes — `lipo` job after the two macos legs | Homebrew bottle complexity drops; Intel-Rosetta users get the same artefact. |
-| **Debug-symbol packaging (R2)** | Yes — `llvm-objcopy --only-keep-debug` per Linux gnu leg, ship `noyalib-<v>-<target>-debuginfo.tar.gz` and `-debuginfo` sub-packages | Enterprise Linux deployments need separate symbol packages for telemetry / crash unwinders. |
-| **Vendoring (C)** | Yes — `make vendor` target, `vendor-build` CI job, documented in `pkg/VERIFY.md` | Air-gapped, FIPS-bound, and RHEL build chains require offline-buildable source trees. |
-| **CodeQL (D)** | Yes — new job in `security.yml` | CWE coverage complements `cargo-deny` (license/advisory) and `cargo-vet` (audit chain). |
+Daybreak access is outside this plan and is not an acceptance prerequisite.
+Continue the local and GitHub gates; retain G1 as an actual independent
+human review requirement through an available channel.
 
-## Status snapshot (`cf2d877`)
+The November 11 follow-up closes the complete hosted alloc test-harness gap,
+fixes terminal-block-scalar formatting and typed anchored empty keys, and expands actual
+six-consumer parity to eleven cases. The three integrated dependency PRs
+are closed with credit, and the hosted strict MCP Inspector check passes.
+The [implementation record](IMPLEMENTATION-STATUS.md) retains test scopes,
+new oracle findings and the remaining acceptance work. Daybreak remains
+outside the acceptance criteria.
 
-| Axis | Current | Target | Gap |
-|---|---|---|---|
-| Workspace `unsafe_code` | `forbid` | `forbid` | — |
-| YAML 1.2 conformance | 406 / 406 | 406 / 406 | — |
-| Lib unit tests | 146 pass | ≥ 98 % line every package | needs gap fill |
-| Integration tests | 213+ pass | — | — |
-| Doc-tests | 337 pass | — | — |
-| `cargo audit` / `deny` / `vet` | clean | clean | — |
-| Workspace coverage gate | 95 % fn / 92 % region / 93 % line | 98 % everywhere | +3–6 pp |
-| `noyalib-wasm` coverage | excluded | dedicated 90 % gate | needs first run |
-| `noyalib-mcp` coverage | partial exclusion | dedicated 90 % gate | needs first run |
-| `noyalib-lsp` coverage | partial exclusion | dedicated 90 % gate | needs first run |
-| Rustdoc coverage | `missing_docs = warn` | `deny`, ≥ 98 % items | needs audit |
-| Examples surface coverage | 56 examples | every public module | 5 modules uncovered |
-| Benchmark coverage | 10 benches | every hot path | 4 paths uncovered |
-| Release pipeline | crates.io + sigstore | crates.io + npm + VS Code + 14 binary targets + .deb + .rpm + .msi + Homebrew + AUR + container | major rewrite |
-| Repo layout | flat | `crates/` + `pkg/` + `docs/` + `ci/` + `complete/` | restructure |
+The CI correction checkpoint passes the unchanged package and complexity
+budgets, the installed WASM browser consumer, CodeQL and all six actual
+consumer boundaries in GitHub. The latest scanner correction rejects unindented mapping values through
+all three loader paths, and twelve shared cases pass through all six products.
+The follow-up also corrects explicit typed-key spelling on AST fallback.
+At the explicit-key checkpoint, nine new fuzz inputs have failing-first
+tests and scoped sanitizer replay evidence. Complete std, baseline alloc and
+portable batteries pass 6,745, 6,723 and 7,064 tests; all twelve bare-metal
+checks pass. Later campaigns expose plain-scalar tab indentation and a
+canonical-duplicate typed-key mismatch. The signed continuation correction and formatter repair pass 6,748 std,
+6,726 baseline alloc and 7,067 portable tests. The
+[duplicate-key decision](adr/0019-typed-mapping-duplicate-identity.md) was
+accepted on November 13; its finding remains retained pending validation. A
+further development-only empty-line tab repair passes all 153 properties,
+eighteen alloc oracle tests and original-input replay. Production source
+and Cargo declarations remain unchanged. Campaign accounting now
+separates completed totals from lower bounds and unknown measurements. The
+[CI correction evidence](ecosystem-ci-repair-evidence-2026-11-11.json)
+records the exact source scopes and raw log hashes. Sustained campaigns
+and independent review remain acceptance work.
 
-## Phase 0 — Pre-flight
+## Completion campaign
 
-| Gate | Status |
-|---|---|
-| CI fully green on `feat/v0.0.1` | ✓ at `cf2d877` |
-| All 56 examples runnable | ✓ |
-| Coverage gate passing | ✓ (95/93/92) |
-| Miri focused suite | ✓ |
-| `cargo-vet`, `cargo-deny`, REUSE | ✓ |
-| Branch protection on `main` | verify before Phase 1 — required reviews + status checks |
+The renewed request is to finish every acceptance row. Work proceeds in
+this order on the existing future branches:
 
-**Effort: 5 min.** Branch protection check only.
+1. Close reproduced parser/oracle findings and retain full-value checks.
+   Run the exact-source fuzz inventory and fix failures before crediting it.
+2. Add resource gates using actual product boundaries, beginning with WASM
+   parse/edit/free memory growth. A real retained-document leak must fail
+   the same gate that passes repeated normal runs.
+3. Complete remaining protocol, filesystem, diagnostics and consumer cases;
+   obtain fresh target/OS, package, recovery and performance receipts.
+4. Consolidate the review packet and resolve the duplicate-key contract,
+   held MCP source decision, independent reviewer and continuity owner.
+5. Reassess all 66 category/repository cells against recorded evidence.
+   Keep an unmet criterion open until its observation exists.
 
-## Phase 1 — Repo restructure (one zero-logic commit)
+Hosted checkpoint `68999cd` has eighty successful checks and ten conditional
+skips, including corrected Windows MCP examples and focused Miri. Subsequent changes require their own CI receipt. The WASM resource
+and runtime-contract work now has signed implementation and local
+[assurance evidence](ecosystem-wasm-assurance-2026-11-11.json). The remaining
+human review has no recorded reviewer yet; a reviewer identity is requested
+while independent technical work continues.
+The [MCP lifecycle record](ecosystem-mcp-lifecycle-2026-11-11.json) retains
+job-lifetime, session-state and corrected Windows evidence. The current
+31-target inventory still needs fresh sustained receipts.
+The [protocol/recovery follow-up](ecosystem-protocol-recovery-2026-11-11.json)
+retains the LSP framing and lone-CR oracle corrections, candidate runner
+repair and signed detached recovery, including its failed core edit gate.
+The [name-bound and SDK receipt](ecosystem-name-bounds-2026-11-12.json)
+records the resolved-tag/EOF-anchor correction, reduced scanner complexity
+and a real SDK shared-budget fault injection. Final std, alloc, portable,
+bare-metal and sanitizer replay gates pass; sustained campaigns still need
+the corrected source. MCP's added integration test passes with its full
+136-test battery and leaves production dependencies unchanged.
+The later [verbatim-tag receipt](ecosystem-verbatim-tags-2026-11-12.json)
+records literal URI preservation under primary-handle redefinitions and
+the complete checks on signed core `2455c64`. Earlier interrupted campaigns
+retain their partial evidence; replacement runs must establish acceptance
+on the corrected scanner. Browser startup failures and diagnostic success
+are recorded separately, without claiming an established root cause.
+The [review packet](ECOSYSTEM-REVIEW.md) gives the source scopes, review
+boundaries and concrete decisions without implying approval.
 
-The structural change. No semantic edits — only path moves and
-`Cargo.toml` members/path adjustments. Verified locally before
-push; CI is the post-push sanity check.
+The [directive/tag follow-up](ecosystem-directive-roundtrip-2026-11-12.json)
+records two further failed campaigns and signed corrections in `76c5baa`.
+Full std, alloc-only and portable batteries pass 6,758, 6,739 and 7,080
+tests; twelve bare-metal profiles and both sanitizer replay profiles pass.
+The two replacements completed 3,601 seconds each on clean signed
+`76c5baa`, with 29,784,747 std and 35,102,052 alloc-only executions. They
+cover two affected targets only. Complete final-source 31-target acceptance remains required. Hosted
+checkpoint `e1245d4` passed 82 checks with ten conditional skips; the new
+corrections need their own CI results before branch promotion.
 
-### 1.1 Target tree (final shape, including all later-phase additions)
+The [completed campaign record](ecosystem-family-campaign-followup-2026-11-12.json)
+retains 29 passing and two failing target receipts at checkpoint `f7e6d5c`.
+The BOM/tab comparison finding is corrected; typed canonical duplicate
+identity is now accepted in ADR-0019; implementation gates remain open. Further compatibility
+smokes exposed scalar-profile and archive-spelling boundaries; their fixes
+and source-specific verification must precede final-source acceptance.
+CLI recipes and actual native recovery now have local macOS evidence and
+three-platform candidate jobs. MCP HTTP session deletion/disconnect has
+four additional boundary tests and observed fault-injection failures.
+Independent review, continuity, held MCP source recovery, remaining channel
+installs and controlled performance criteria remain open.
 
-```
-noyalib/
-├── Cargo.toml                # workspace manifest only
-├── Cargo.lock
-├── README.md, CHANGELOG.md, PLAN.md, CONTRIBUTING.md, SECURITY.md, FAQ.md (new)
-├── LICENSE-MIT, LICENSE-APACHE, COPYING (new), NOTICE (generated)
-├── REUSE.toml
-├── ci/                       # CI helper scripts (new)
-│   ├── docker/
-│   ├── build-deb
-│   ├── install-cross
-│   ├── ubuntu-install-packages
-│   └── macos-install-packages
-├── complete/                 # source shell completions (new)
-├── crates/
-│   ├── noyalib/              # library — moved from root
-│   ├── noya-cli/             # noyafmt + noyavalidate binaries (extracted from src/bin)
-│   ├── noyalib-lsp/          # already exists, moved under crates/
-│   ├── noyalib-mcp/          # already exists, moved under crates/
-│   ├── noyalib-wasm/         # already exists, moved under crates/
-│   └── xtask/                # cargo xtask runner (new)
-├── docs/                      # documentation (new)
-│   ├── noyafmt.1, noyafmt.1.adoc
-│   ├── noyavalidate.1, noyavalidate.1.adoc
-│   ├── USER-GUIDE.md, MIGRATION-FROM-SERDE-YAML.md, ARCHITECTURE.md
-│   └── design/               # docs/design/ moves here
-├── pkg/                      # distribution metadata (new)
-│   ├── README.md, VERIFY.md
-│   ├── debian/, rpm/, arch/, nix/, windows/, snap/, flatpak/, docker/
-│   ├── homebrew/noyalib.rb.template
-│   ├── vscode/               # VS Code extension source
-│   ├── npm-mcp-wrapper/      # npx wrapper for noyalib-mcp
-│   └── completions/          # generated completions (gitignored except .gitkeep)
-├── benches/                  # workspace-level Criterion benches
-├── examples/                 # workspace-level examples
-├── fuzz/                     # cargo-fuzz harnesses (kept at root)
-├── scripts/
-│   ├── miri.sh
-│   ├── coverage-gap-report.sh
-│   ├── release-checklist.sh
-│   └── msrv-per-crate.sh     # Phase 7.5 dynamic MSRV check
-├── supply-chain/             # cargo-vet, unchanged
-└── .github/workflows/
-    ├── ci.yml, release.yml, docs.yml, security.yml, scorecard.yml, codspeed.yml
-    ├── release-binaries.yml  # multi-platform binary release (new)
-    ├── nightly.yml           # daily snapshot builds (new)
-    └── promotional.yml       # Homebrew/AUR/Scoop bumps after release (new)
-```
+The [scalar, syntax and CST receipt](ecosystem-profile-and-consumers-2026-11-12.json)
+records current full batteries, twelve bare-metal profiles and sanitizer
+replay of all retained compatibility inputs. It includes failing-first
+scalar-profile routing, 128-bit boundaries, repeated block-header refusal,
+implicit-value grammar and CST sibling-preservation cases. Full-value
+oracle repairs keep additional historical-parser differences comparable.
+All failed campaigns retain their original source scope and receive no
+sustained acceptance credit. Complete the fresh hosted gates and resolve
+ADR-0019 before claiming a final-source family campaign pass.
 
-### 1.2 Migration sequence (to be executed inside the zero-logic commit)
+The [Rust 1.100/hosted follow-up](ecosystem-rust100-hosted-consumers-2026-11-12.json)
+closes the native CLI recovery OS gap and records the passing 23-case hosted
+consumer corpus, including deliberate profile/stream projections. The
+original run failed separate lint/dependency gates; their corrections are
+locally verified and the LSP pin is updated. Replacement hosted checks stay
+required before candidate promotion. Manager-specific installs, registry
+resolution and the other release/acceptance decisions remain open.
 
-```bash
-# 1. Move library to crates/noyalib/
-mkdir -p crates/noyalib
-git mv src tests examples benches crates/noyalib/
+The Homebrew consumer gate now checks the actual candidate formula through
+the package manager, both installed tools, manpages and completions, exact
+archive/binary identity, provenance and clean removal. Existing packages,
+taps and dangling command links are protected by refusal tests; a failed
+partial installation is cleaned without altering another package. The local
+host refuses installation because its Xcode is below Homebrew's minimum.
+The macOS candidate job supplied a successful receipt at run `43331883610`;
+public tap publication remains separate. The
+[package-manager record](ecosystem-package-managers-2026-11-12.json) retains
+the exact source, raw logs and installed artifact identity.
 
-# 2. Move satellite crates
-git mv noyalib-wasm noyalib-mcp noyalib-lsp crates/
+The Arch gate verifies the official build image's signing identity and the
+published archive's provenance before running `makepkg` and `pacman` with
+container networking disabled. It checks both tools, packaged assets and
+licenses, binary identity and removal. Four negative tests cover archive,
+image, recipe and cleanup boundaries. The local Docker daemon reports a
+storage I/O error, so actual package acceptance must come from the hosted
+Linux runner. The first actual build exposed default stripping and debug
+splitting; signed CLI `955c2d3` disables both and adds a failing-first recipe
+guard. Corrected installation acceptance remains required. Public AUR
+installation and other architectures remain separate.
 
-# 3. Extract CLI binaries (src/bin moved with the library above; now relocate)
-mkdir -p crates/noya-cli/src/bin
-git mv crates/noyalib/src/bin/*.rs crates/noya-cli/src/bin/
-rmdir crates/noyalib/src/bin
+The Windows candidate also exercises the actual Scoop manifest with a
+pinned manager in a private portable prefix. It verifies the downloaded
+archive and provenance, installed binaries and licenses, generated shims,
+removal and unchanged persistent PATH. The manager is fetched at an exact
+commit without a bootstrap installer. Hosted acceptance remains pending;
+this does not publish a Scoop bucket or candidate registry artifact.
 
-# 4. Move design docs
-git mv docs/design docs/design
+The [November 13 acceptance record](ecosystem-package-manager-acceptance-2026-11-13.json)
+retains passing Homebrew, Arch and Scoop receipts from run `43334241731`
+at signed CLI `955c2d3`. The corrected Arch harness installs manuals that
+the minimal container normally excludes, preserves every other resolved
+pacman setting and checks all twelve assets. Scoop's normal manager shim
+PATH addition is removed only after checking for unrelated changes; the
+original user/machine snapshot is restored and compared. Native and shim
+execution, artifact identity, provenance and removal pass. These candidate
+recipe checks close those measured installation gaps; public channels,
+other architectures and final registry graphs retain their own criteria.
 
-# 5. Edit workspace Cargo.toml + crate manifests (members, paths, [[example]] paths,
-#    workspace inheritance via [workspace.package]/[workspace.dependencies])
+The architecture follow-up adds native published-artifact recovery on Intel
+macOS, Linux Arm64 and Windows Arm64, with actual Intel Homebrew and Arm64
+Scoop checks. Its [acceptance record](ecosystem-native-architecture-acceptance-2026-11-13.json)
+now retains successful receipts for all six released native CLI targets and
+five manager lifecycles at run `43335956900`. Scoop selects the matching
+manifest architecture from the native Python process. Public channels,
+remaining manager/architecture combinations and v0.0.61 registry graphs
+retain separate acceptance criteria.
 
-# 6. Edit REUSE.toml (every noyalib-{wasm,mcp,lsp}/Cargo.toml → crates/noyalib-{...}/)
+The [MCP retirement decision](ECOSYSTEM-REVIEW.md#held-mcp-release-choices)
+was accepted on November 13: preserve the signed tag, retire the unpublished
+v0.0.60 attempt and prepare the fixed v0.0.61 family after gates. The MCP
+registry-history gap is approved; publication and independent review remain
+held until their acceptance criteria pass.
 
-# 7. Edit every `working-directory:` in .github/workflows/
+## Full family campaign execution
 
-# 8. Verify
-cargo build --workspace --all-features
-cargo test  --workspace --all-features
-cargo clippy --workspace --all-targets --all-features -- -D warnings
-reuse lint
-cargo vet
+The current inventory has 31 targets: twenty core, two CLI, two LSP, three
+MCP, two WASM and two facade. Add the `full-fuzz` label to the release PR to start a full-family run
+in the pull-request cache scope. This path does not run through a
+privileged manual dispatch. Inventory
+comes from the six pinned checkouts, refuses changed tracked fuzz sources,
+and rejects missing products, wrong commits, unsafe names and empty
+inventories. Six failing-first guard cases pass locally.
+
+The PR-only campaign workflow uses separate read-only Linux jobs, no
+restored build cache, isolated sanitizer directories and at most sixteen
+concurrent jobs. Every target requests 3,600 seconds and retains source,
+input hashes, actual elapsed execution, lock integrity, logs, corpus and
+findings. Satellite overrides are explicit candidate evidence, never
+registry-resolution proof. The duplicate-key input is retained in
+[tracked evidence](evidence/pending-typed-duplicate-identity.bin) and copied
+into its comparison corpus; it remains a failure until the contract is
+resolved. The existing Security dispatch and weekly soak jobs retain
+their original behavior.
+
+Done means each required target has a successful full-duration receipt
+on its recorded source, or a clearly open finding. A successful matrix
+inventory or smoke run is not a completed campaign. Preserve existing
+local campaigns until equivalent source-bound replacement evidence exists.
+No unfinished target receives time or execution credit.
+
+## Constraints and work order
+
+The live values are edition 2024, `rust-version = "1.89.0"`.
+
+- Six crates move by exactly +0.0.1, with identical versions and exact core
+  pins, under [ADR-0005](adr/0005-workspace-split.md).
+- At most two version branches exist. Finish or explicitly resolve the
+  current release, check merged stale branch refs, then use the single
+  future branch for sequenced commits. Do not create parallel task branches.
+- Preserve signed commits and tags. Never move the existing MCP v0.0.60 tag
+  to include a later correction. Commit or stash all files before switching.
+- Preserve Rust 1.89.0, public APIs, feature semantics and the core's complete
+  documented alloc-only/no_std behavior. Applications and JS bindings may
+  require std; represent this accurately in their support matrices.
+- Retain unconditional `forbid(unsafe_code)`. Keep loader parity, bounded
+  resource behavior and unchanged-on-failed-edit guarantees.
+- Every behavior fix includes the reproducer and observed red/green evidence
+  in its signed commit. Characterise behavior before structural refactoring.
+- Keep CI green in the session that changed it. Do not lower floors, weaken
+  audit criteria, add blanket exemptions, omit targets or inflate trivial
+  assertions to improve a score. Coverage work targets meaningful reachable
+  production paths, not a universal 100% floor.
+- API, feature, MSRV or access-policy changes remain maintainer decisions.
+  New query/lint binaries, extra crates, bindings and protocol capabilities
+  are optional product proposals outside this assurance programme.
+
+Tasks are sized as independently reviewable changes. **S** means roughly
+half to one focused engineering day, **M** one to three, **L** three to five.
+These are planning estimates, excluding CI queues, review and external
+service delays; they are not release dates. Split an L task if its acceptance
+cannot be demonstrated in one review. Owner names below are roles, not
+claims that another maintainer has already agreed to work.
+
+Dependency order:
+
+1. P0: complete the security/source decision and reconcile critical claims.
+2. P1: repair measurement gaps and establish contracts and baselines.
+3. P2: implement boundary regressions, portability and interoperability checks.
+4. P3: retain consumer/recovery receipts and establish independent review.
+5. Reassess each category at the resulting commits; close only verified work.
+
+Independent tasks may be sequenced in either order on the same future branch.
+A failed acceptance check leaves its task open and blocks dependent work.
+
+## P0: release hold and factual blockers
+
+| ID | Repository / owner | Action and observable done-condition | Verification / artifact | Depends; effort; risk |
+|---|---|---|---|---|
+| S1 | All / security maintainer | Enumerate every Cargo manifest and lockfile, fuzz and standalone test crates, Node lockfiles and generated wrapper inputs. Scan each scope; classify every finding by package, version, source and affected use. | Commit-bound inventory plus `cargo audit`, `cargo deny check`, `cargo vet` for each supported Cargo workspace; wrapper audit reports. Unsupported checks state why and retain the alternative evidence. No scope silently omitted. | None; M; medium |
+| R0 | MCP / release maintainer | Resolve alert 25 and the immutable held tag before publication. Record whether the original tagged source can be released with a justified development-only finding, or requires a separately authorized recovery. Any changed-source proposal must satisfy signing, version and tag rules before execution. | Written source/ref decision referencing `b28d529f8bae59bbe94bdd91d25ec50173c8702b`, scan scope and production reachability evidence. Run 42897537938 remains cancelled until this decision and release gates are satisfied. | S1; S; high |
+| MCP1 | MCP / security maintainer | Update affected Tokio 1.53.1 in `fuzz/Cargo.lock` through Cargo to a patched compatible release; review its dependency delta and audit evidence. Preserve production SDK 3.9.0 and registry const-oid 0.10.3 unless evidence requires another change. | Fresh advisory scan of both root and fuzz locks, `cargo +nightly fuzz build`, replay existing corpus, relevant tests and source verification. New scan of corrected ref resolves alert 25; no manual false-positive dismissal. | S1; S; medium |
+| D1 | All / documentation maintainer | Reconcile public claims against source and actual package contents. Remove unsupported speed/size and channel assertions or attach reproducible evidence. Correct stale monorepo paths and distinguish historical reports from current evidence. | Claim ledger with source/test/consumer link per retained claim; docs examples, links, spelling, Markdown and version gates pass. | None; M; low |
+| LSP1 | LSP / editor maintainer | Align README capability claims and protocol coverage with actual dispatch and initialize response. Replace raw unframed echo guidance with an executable framed client example. Missing completion/symbol features remain explicitly unsupported pending a separate product decision. | Capability table derived from tested `initialize` and method responses; documented framed handshake runs against installed server. No unapproved new API. | D1; S; low |
+| SHIM2 | Facade / compatibility maintainer | Correct `docs/CONTRACT.md` no_std claim and old workspace paths. Clearly distinguish the std-requiring facade from core alloc-only `compat-serde-yaml`. | Manifest dependency graph and executed consumer examples agree with docs; core compatibility bare-metal checks remain green. | D1; S; low |
+
+The current MCP high alert matches an affected development lockfile; the
+production lock uses patched Tokio 1.54.1. This is not an established
+production exploit. S1/R0 must retain that distinction while resolving the
+finding. The existing signed source cannot be silently replaced to make a
+scan green.
+
+The later session-cap reproducer also applies to the held MCP v0.0.60
+source: concurrent creation can exceed its configured limit. The signed
+future fix and tests are retained in the
+[MCP boundary record](ecosystem-mcp-boundaries-2026-11-11.json). A detached
+recovery checkout is being prepared against registry core 0.0.60. This
+adds runtime findings to R0, including blocking-job ownership after timeout
+or cancellation; the earlier development-only release option is insufficient.
+The detached registry-core candidate passes 134 tests and strict Inspector;
+its final source/ref decision and remaining gates stay open. The later Unicode edit input still panics in that registry-core recovery;
+its signed candidate is not release-ready. Neither the immutable tag nor
+publication has changed.
+
+## P1: trustworthy measurements and contracts
+
+| ID | Repository / owner | Action and observable done-condition | Verification / artifact | Depends; effort; risk |
+|---|---|---|---|---|
+| Q1 | All / QA maintainer | Create capability-to-test ledgers: each advertised operation, limit and refusal links to a test at the product boundary. Record unsupported combinations and error contracts. | Source/API inventory compared with test names and actual execution; every advertised row has positive, negative and boundary evidence or an open task. | D1, LSP1, SHIM2; M; low |
+| Q2 | All / QA maintainer | Add sustained, bounded fuzz campaigns beyond seed replay, appropriate properties and minimized regression inputs. MCP adds transport/framing/state coverage instead of duplicate tool targets. Retain production-path coverage gap reports. | Per-target elapsed time, executed cases, corpus digest, crash triage and replay links for an initial campaign of at least one hour per target; repeatable scheduled campaign thereafter. Existing floors remain intact; justified exclusions listed. | Q1, S1, MCP1 for MCP; L per repo; medium |
+| Q3 | Core harness / tooling maintainer | Parse line coverage from structured llvm-cov data or verified headers. Current `$(NF)` parsing can read branch coverage. Fix stale report provenance and keep N/A visible. | Regression fixtures cover modern headers, branch columns, empty facade totals, missing tools, timeout and dirty/mixed-SHA checkouts. Expected line/function/region values differ deliberately; test fails on old parser. Generated report records exact sources and executed rubric fraction. | None; M; medium |
+| P1 | All / performance maintainer | Capture baselines on controlled hardware: corpus hashes, source and dependency commits, features, CPU/OS/toolchains, repetitions and variance. Measure throughput, p50/p95 latency where relevant, peak memory and artifact sizes. | Raw machine-readable results plus reproducible commands and summaries; same-machine repeat establishes noise. Core historical tables stay dated until replaced by new results. | Q1; M per repo; low |
+| P2 | All / performance maintainer | Set justified scenario budgets from measured baselines and user needs; make meaningful regressions detectable without a noisy shared-runner timing gate. | A controlled injected regression breaches the gate; unchanged-source repeats remain within measured noise. Use stable instruction/allocation/size checks where appropriate and dedicated timing hardware for latency gates. Document variance and review process for budget changes. | P1; M per repo; medium |
+| X1 | All / developer experience maintainer | Exercise fresh clone, documented setup, local gates, install, intentional failure, recovery and uninstall. Audit diagnostic actions and exit/error contracts instead of adding convenience API just for a score. | Clean-environment transcripts on declared OSes; each documentation command resolves; error matrix includes malformed input, unavailable files, budget exhaustion and failed edits with unchanged data. | Q1; M per repo; low |
+
+A target count, benchmark file or nominal coverage floor cannot close Q2 or
+P1. Do not create an independent facade coverage denominator by introducing
+runtime code solely for measurement. For WASM, native llvm-cov results and
+actual browser/JS boundary evidence remain separate.
+
+## P2: repository implementation work
+
+### Core
+
+| ID | Owner | Change and done-condition | Verification / artifact | Depends; effort; risk |
+|---|---|---|---|---|
+| C1 | Core QA maintainer | Complete parser, typed/Value, borrowed, no-span, streaming and CST contract ledgers. Add missing parity, diagnostic and failed-edit refusal cases without changing intentional loader roles. | New counterexamples fail on the prior source and pass after any fix; cross-loader properties, conformance and mutator oracles agree within their documented domains. | Q1; L; high |
+| C2 | Core architecture maintainer | Review loader invariants, CST/scanner coupling, cache and failure ownership, using current architecture and complexity evidence. Refactor only demonstrated maintenance problems, in separate commits from behavior fixes. | Reviewed boundary map and decisions; characterisation suites and complexity gate before/after each extraction; no loader unification based only on file length. | C1; M; medium |
+| C3 | Core portability maintainer | Maintain feature/target/toolchain ledger for default, minimal std, alloc-only, optional no_std-compatible features and required-std features. Pin std/libm graph expectations and float/diagnostic parity. | Isolated actual registry consumers on Rust 1.89.0 and stable; supported bare-metal checks; behavior tests on alloc-only host; negative tests reject accidental std/libm edges. Each supported feature composition has evidence. | Q1; M; high |
+
+The current core contract includes Serde, values, CST editing and supported
+feature compositions in alloc-only builds, including required floating-point
+behavior. It is not satisfied by a bare `cargo check` alone. Async, filesystem
+and other deliberately std-requiring integrations remain documented as such.
+Unsupported combinations receive a clear support statement, not a promise
+that operating-system functionality exists on bare metal.
+
+### CLI
+
+| ID | Owner | Change and done-condition | Verification / artifact | Depends; effort; risk |
+|---|---|---|---|---|
+| CLI1 | CLI QA maintainer | Complete process-level tests for both shipped binaries: flags, stdin/stdout, stable exit codes, multi-file handling, check/write/repair, JSON/SARIF only where actually supported, hooks, Action and generated assets. | Installed binary transcripts and regression inputs, Action self-test, hook run, manpage/completion drift check, permissions and read-only/error cases on declared OSes. | Q1; M; medium |
+| CLI2 | CLI I/O maintainer | Review atomic replacement and path/permission handling; add interruption, failed-write and platform-specific replacement cases. Preserve original bytes on failure. | Filesystem boundary tests demonstrate original data and metadata behavior; injected failures produce actionable diagnostics and no partial write. Independent review retained. | CLI1, S1; M; high |
+
+### LSP
+
+| ID | Owner | Change and done-condition | Verification / artifact | Depends; effort; risk |
+|---|---|---|---|---|
+| LSP2 | LSP protocol maintainer | Exercise lifecycle, UTF-16 positions, CRLF, malformed/oversized framing, duplicate/stale changes, shutdown and cache invalidation at real stdio boundary. Fix only demonstrated mismatches to declared LSP scope. | Framed subprocess transcripts and minimized inputs; capability response matches actual dispatch; diagnostics target the intended Unicode ranges. Resource and latency budgets measured. | LSP1, Q1; L; high |
+| LSP3 | Editor integration maintainer | Test the installed VS Code extension and one documented independent LSP client; verify startup binary selection, diagnostics, formatting and hover. Reconcile every claimed marketplace separately. | Extension-host smoke tests plus versioned client/OS matrix and registry-installed package checks. A built VSIX alone does not close this task. | LSP2, X1; M; medium |
+
+### MCP
+
+| ID | Owner | Change and done-condition | Verification / artifact | Depends; effort; risk |
+|---|---|---|---|---|
+| MCP2 | MCP protocol/security maintainer | Build revision-by-transport capability/security matrix for existing stdio, streamable HTTP and legacy SSE. Test malformed framing, cancellation, disconnect, session isolation, token/origin handling where applicable, root/symlink confinement, bounded concurrent work and failed edits. | Pinned SDK and real client/Inspector versions with transcripts; stateless and legacy requests, negative authorization cases, supported-OS filesystem tests and transport fuzz regressions. Unsupported methods/extensions explicit. Independent security review of guards and writes. | MCP1, Q1; L; high |
+| MCP3 | MCP packaging maintainer | Test installed npm bootstrap cold/cache/offline/error paths and Cargo/container/MCP Registry consumers. Include license files and artifact identity for the held v0.0.60 only after R0 clears it. | npm package bytes, signature/provenance verification, exact downloaded binary checksum, stdio parse/edit smoke and registry/container identity receipts. Reject unsupported hosts and corrupted cache/downloads predictably. | R0, MCP2, X1; M; medium |
+
+OAuth, new extension support, Tasks or a larger tool API are not assumed
+necessary for every existing transport. Adopt capabilities only through
+explicit product scope and threat-model decisions; test the advertised
+supported revision and transport combinations.
+
+### WASM
+
+| ID | Owner | Change and done-condition | Verification / artifact | Depends; effort; risk |
+|---|---|---|---|---|
+| WASM1 | WASM boundary maintainer | Complete exported API/value/error contract tests: numeric boundaries, tags/non-string keys, cycles/shared references, depth/element limits, byte vs JS positions and document lifetime/failure behavior. | Run actual wasm-bindgen exports under Node and a headless browser; compile generated TypeScript; failed mutations preserve source and resources can be released. Native coverage is supplementary. | Q1; L; high |
+| WASM2 | WASM performance maintainer | Measure generated raw/compressed package and module bytes, cold initialization, warmed calls and memory growth across representative workloads. | Actual package measurements with tool versions, corpus and reproducible JS harness; justified byte/memory budgets and regression signal. Remove unverified 180 KB/70 KB claims until backed by those results. | WASM1, P1; M; medium |
+| WASM3 | JS packaging maintainer | Correct unscoped npm examples to the actual published scope; reconcile `exports`/files/declarations with docs and claimed ESM/CJS/web/bundler/runtime support. Test each retained claim from the installed npm tarball; document unavailable subpaths. | Node, headless browser and declared bundler builds execute parse, stringify and lossless editing. Pin tested runtime versions; add Bun/Deno only if claimed, otherwise mark unverified. | WASM1, D1; M; medium |
+
+### Compatibility facade
+
+| ID | Owner | Change and done-condition | Verification / artifact | Depends; effort; risk |
+|---|---|---|---|---|
+| SHIM1 | Compatibility maintainer | Extend the 18-case captured contract into a documented supported API/type/error matrix, realistic Cargo-rename consumers, tags/numbers/merge keys and intentional differences. Guard re-export drift and measure overhead on equivalent semantics. | Downstream compile/run suites, location/error snapshots, differential minimized inputs with justified differences, no archived crate in runtime graph and a matching direct-core baseline. Core owns implementation fixes; facade stays thin. | SHIM2, Q1; L; high |
+
+## P3: shared integration, supply chain and sustainability
+
+| ID | Repository / owner | Change and observable done-condition | Verification / artifact | Depends; effort; risk |
+|---|---|---|---|---|
+| I1 | All / integration maintainer | Run one versioned semantic corpus through core, CLI, LSP, MCP, real WASM and facade consumers. Compare only like operations/profiles; encode deliberate legacy/JSON differences. | Cross-repo CI artifact identifies six exact commits, expected projections, real client versions, failures and documented exceptions. A packaging/transport failure cannot count as semantic agreement. | C1, CLI1, LSP2, MCP2, WASM1, SHIM1; L; high |
+| S2 | All / security maintainer plus reviewer | Review trust boundaries, dependency/audit provenance, parser and wrapper budgets, workflow permissions, release signatures and source-to-artifact identity. | Reviewed threat-model delta and current full/delta audit evidence; no unbounded trust or blanket advisory ignores. Findings have reproducers, accountable decisions and linked closing scans. | S1, repository boundary tasks; L; high |
+| R1 | All / release maintainer | Retain machine-readable consumer verification receipts for every claimed channel, bound to signed tag/source, digest, workflow identity and publication version. Automate checks beyond asset presence. | Crates.io clean consumer and artifact bytes verified; GPG, cosign and GitHub provenance identity verified where issued; npm attestations, VSIX, container and MCP Registry checked where claimed. Unknown or failed channels remain visible. | R0, S2, repository packaging tasks; L; high |
+| R2 | All / release maintainer | Rehearse offline installation and recovery/rollback on supported channels without publishing test artifacts to production registries. Exercise missing/corrupt artifacts and unavailable services. | Sandbox recovery transcript tied to real release artifacts, documented account recovery owners and failure behavior; no tag rewrites or live destructive rollback. | R1, X1; M; medium |
+| G1 | All / maintainer | Establish an actual independent review path and continuity ownership for GitHub, signing and publication. Ask an eligible human reviewer to assess the implementation and ratings; decide protection policy only after sustainable reviewer availability exists. | Accepted maintainer responsibilities, access/recovery inventory kept privately, public policy describing roles, and real reviewed PR evidence. Required-review configuration changes need maintainer direction; no fake contributors or self-approvals. | S2; external dependency; high |
+| G2 | All / release maintainer and reviewer | Close the plan at the implemented commits, recalculate every category against its acceptance rows and publish dated evidence and remaining limitations. | All 66 category/repo cells link to passing acceptance artifacts and independent review; reopen any stale or contradicted claim. Schedule evidence renewal on releases and relevant changes. | All applicable tasks; M; low |
+
+Each repo's security and governance targets require G1. If no independent
+reviewer is available, those criteria remain open and ratings stay below 10.
+That is a real sustainability dependency, not something to bypass in CI.
+
+## Verification commands and evidence policy
+
+Run commands from the repository owning the change, using its current
+workflow configuration. These are the starting commands, not a substitute
+for caller-specific feature sets, regression inputs or boundary checks.
+
+```sh
+cargo fmt --all -- --check
+cargo clippy --workspace --all-targets --locked -- -D warnings
+cargo test --workspace --locked
+cargo test --workspace --all-features --locked
+cargo audit
 cargo deny check
+cargo vet
+reuse lint
+codespell
+scripts/check-docs-links.sh
+scripts/verify-release-versions.sh
 ```
 
-### 1.3 Workspace `Cargo.toml` shape
-
-> **Historical.** This is the multi-crate shape as originally planned.
-> It is **not** the current layout: ADR-0005 split the satellites
-> into their own repositories (`noyalib-wasm` v0.0.12; `noyalib-mcp`,
-> `noyalib-lsp`, `noya-cli` v0.0.13), leaving a single-member
-> workspace. The edition, floor and member list below are the v0.0.1-era
-> values; the live values are edition 2024, `rust-version = "1.89.0"`,
-> `members = ["crates/noyalib"]`. See the root `Cargo.toml` and
-> [`docs/POLICIES.md`](POLICIES.md) §1, which is the source of truth
-> for the MSRV.
-
-```toml
-[workspace]
-resolver = "2"
-members = [
-    "crates/noyalib",
-    "crates/noya-cli",
-    "crates/noyalib-lsp",
-    "crates/noyalib-mcp",
-    "crates/noyalib-wasm",
-    "crates/xtask",
-]
-exclude = ["fuzz", "examples/wasm"]
-
-[workspace.package]
-edition      = "2021"   # historical — now 2024
-rust-version = "1.75.0" # historical, now 1.89.0
-authors      = ["Sebastien Rousseau <sebastian.rousseau@gmail.com>"]
-license      = "MIT OR Apache-2.0"
-repository   = "https://github.com/sebastienrousseau/noyalib"
-homepage     = "https://github.com/sebastienrousseau/noyalib"
-
-[workspace.dependencies]
-# (every shared dep declared once, used via `<dep>.workspace = true` per crate)
-
-[workspace.lints.rust]
-unsafe_code     = "forbid"
-unreachable_pub = "forbid"
-missing_docs    = "deny"   # ratchet-up — see Phase 1.5
-
-[profile.release]
-codegen-units    = 1
-lto              = true
-opt-level        = "s"
-panic            = "abort"
-strip            = "symbols"
-
-[profile.dist]
-inherits = "release"
-debug    = "limited"
-strip    = false
-```
-
-### 1.4 Naming locked-in
-
-- Library crate: `noyalib` (unchanged, public API surface preserved).
-- CLI crate: `noya-cli` (new package name; binaries `noyafmt` and `noyavalidate` keep their names so `apt install noyalib && noyafmt …` continues to work).
-- Satellites: `noyalib-lsp`, `noyalib-mcp`, `noyalib-wasm`.
-
-### 1.5 Workspace-wide `missing_docs = "deny"`
-
-All crates inherit via:
-
-```toml
-[lints]
-workspace = true
-```
-
-Audit pass: ~30 public items currently lack doc comments; each gets a one-line `///`. CI's `cargo doc` step uses `RUSTDOCFLAGS="-D missing_docs"` so undocumented items fail the build.
-
-**Phase 1 deliverables:** 1 commit, ~250 file moves, ~12 manifest edits, no behavioural change. **Effort: 1 day code + 1 review.**
-
-**Risks & mitigations:**
-- *`git blame --follow` confusion.* Single move-only commit preserves rename detection. `BLAME-MOVES.md` records the SHA for archaeologists.
-- *External users bookmarking `src/...` URLs.* README links updated; redirects added in any old-path docs.
-
-## Phase 2 — Tooling (build.rs + xtask hybrid)
-
-**Goal:** Every distro packaging artefact (man pages, shell completions) produced reproducibly from source via either `cargo build` (for distros) or `cargo xtask` (for developers iterating).
-
-### 2.1 `build.rs` in `crates/noya-cli/`
-
-```rust,ignore
-// A sketch of `noya-cli`'s build.rs — that crate is not a dependency
-// of noyalib, so this block is not compiled here.
-//! Generates man pages and shell completions during `cargo build` so
-//! distro packagers (rpmbuild / dpkg-buildpackage) get the artefacts
-//! without needing a separate `cargo xtask` invocation.
-//!
-//! Off by default — enabled by `NOYA_GEN_ASSETS=1`. Generation is
-//! deterministic (no clock reads, no env reads beyond the trigger
-//! var), so output is bit-reproducible.
-
-fn main() {
-    println!("cargo:rerun-if-env-changed=NOYA_GEN_ASSETS");
-    if std::env::var("NOYA_GEN_ASSETS").as_deref() != Ok("1") {
-        return;
-    }
-    let out_dir: PathBuf = std::env::var_os("OUT_DIR").unwrap().into();
-    noya_cli::codegen::generate_completions(&out_dir);
-    noya_cli::codegen::generate_manpages(&out_dir);
-}
-```
-
-Distro packagers run:
-
-```bash
-NOYA_GEN_ASSETS=1 cargo build --release --locked
-# Artefacts at target/release/build/noya-cli-<hash>/out/{noyafmt.1, noyafmt.bash, …}
-```
-
-A short shim `ci/extract-assets.sh` finds and copies them to a stable location.
-
-### 2.2 `crates/xtask/` for developer ergonomic
-
-```bash
-cargo xtask completions   # writes complete/*.{bash,fish,zsh,ps1}
-cargo xtask manpages      # writes docs/*.1
-cargo xtask sbom          # writes SBOM.txt
-cargo xtask notice        # writes NOTICE
-```
-
-Both entry points call into the same `noya_cli::codegen::*` functions, so output is byte-identical regardless of which path produced it. CI proves this with:
-
-```yaml
-- run: NOYA_GEN_ASSETS=1 cargo build --release --bin noyafmt --bin noyavalidate
-- run: cargo xtask completions
-- run: diff -r target/release/build/noya-cli-*/out/ complete/
-```
-
-### 2.3 Asciidoc man pages
-
-`docs/noyafmt.1.adoc` (hand-written prose) + the clap-derived flag dump (auto-generated) → `docs/noyafmt.1` (committed). Generated via `asciidoctor` invoked from `cargo xtask manpages`.
-
-**Phase 2 deliverables:** 1 PR. ~6 new files. **Effort: 1.5 days.**
-
-## Phase 3 — Distro packaging metadata
-
-`pkg/` populated with templates. No CI workflow changes (those land in Phase 4). All templates are inert text with `__VERSION__` / `__SHA256__` placeholders.
-
-### 3.1 — 3.7 Standard Linux + macOS + Windows targets
-
-| Subdir | Files | Purpose |
-|---|---|---|
-| `pkg/debian/` | `control`, `copyright`, `changelog`, `compat`, `rules`, `README.md` | Source-package metadata for upstream Debian |
-| `pkg/rpm/` | `noyalib.spec` | Fedora / RHEL .spec |
-| `pkg/arch/` | `PKGBUILD.template`, `PKGBUILD-source.template` | AUR `noyalib-bin` and `noyalib` |
-| `pkg/homebrew/` | `noyalib.rb.template` | Personal tap (`sebastienrousseau/homebrew-tap`) → eventually homebrew-core |
-| `pkg/nix/` | `flake.nix`, `package.nix` | `nix run github:sebastienrousseau/noyalib` works for any Nix user |
-| `pkg/windows/wix/` | `noyalib.wxs` | MSI installer source |
-| `pkg/windows/scoop/` | `noyalib.json` | Scoop bucket manifest |
-| `pkg/snap/` | `snapcraft.yaml` | Snap classic confinement |
-| `pkg/flatpak/` | `io.noyalib.noyafmt.yaml` | Flathub manifest |
-| `pkg/docker/` | `Dockerfile`, `Dockerfile.full`, `Dockerfile.mcp` | Distroless container, full-feature image, MCP server image |
-
-### 3.10 VS Code extension (`pkg/vscode/`)
-
-```
-pkg/vscode/
-├── package.json
-├── README.md
-├── CHANGELOG.md
-├── icon.png
-├── language-configuration.json
-├── syntaxes/yaml.tmLanguage.json
-└── src/extension.ts          # spawns noyalib-lsp over stdio
-```
-
-Built and packaged by a new `vscode-extension` job in `release-binaries.yml`. Published to:
-
-- VS Code Marketplace (`vsce publish`, secret `VSCODE_MARKETPLACE_PAT`).
-- Open VSX (`ovsx publish`, secret `OPEN_VSX_PAT`).
-- Uploaded as `noyalib-<version>.vsix` to the GitHub Release.
-
-The extension auto-detects a bundled `noyalib-lsp` binary; falls back to `which noyalib-lsp` for system installs.
-
-### 3.11 npm via `wasm-pack` (`crates/noyalib-wasm/`)
-
-New `npm-publish` job in `release-binaries.yml`:
-
-```yaml
-- run: |
-    cd crates/noyalib-wasm
-    wasm-pack build --release --target bundler --scope noyalib
-- run: |
-    cd crates/noyalib-wasm/pkg
-    npm publish --provenance --access public
-```
-
-Package name: `@noyalib/noyalib-wasm`. Secret: `NPM_TOKEN`. The
-`--provenance` flag produces an npm-native SLSA attestation.
-
-### 3.12 MCP server distribution
-
-Two channels for `noyalib-mcp`:
-
-1. **Docker image** (`pkg/docker/Dockerfile.mcp`) → `ghcr.io/sebastienrousseau/noyalib-mcp:<v>` via the existing `container-publish` job.
-2. **`npx` wrapper** (`pkg/npm-mcp-wrapper/`): a small Node bootstrap that downloads the platform-appropriate `noyalib-mcp` binary from GitHub Releases on first run, caches in `~/.cache/noyalib-mcp/`. Published as `noyalib-mcp` on npm. Lets AI agents and users invoke `npx noyalib-mcp` without a Rust toolchain — removes the #1 barrier to MCP-tool adoption.
-
-A Docker Desktop Extension is feasible but disproportionately costly to maintain — defer to v0.1.x.
-
-**Phase 3 deliverables:** 1 PR. ~30 new template files. No CI workflow changes. **Effort: 3 days.**
-
-## Phase 4 — Release pipeline (`release-binaries.yml`)
-
-A single workflow that on every `v*` tag produces signed binaries for 14 targets, `.deb` + `.rpm` packages for the Linux gnu legs, MSIs for Windows, container images for GHCR, the VS Code `.vsix`, the npm `@noyalib/noyalib-wasm` package, and updates Homebrew + AUR + Scoop manifests automatically.
-
-### 4.1 Triggers (two-phase rollout)
-
-```yaml
-# Phase 4.1.a — initial introduction
-on:
-  workflow_dispatch:
-    inputs:
-      tag:      { description: 'Tag to package', required: true }
-      dry_run:  { type: boolean, default: true }
-
-# Phase 4.1.b — after a clean dry-run end-to-end
-on:
-  push:
-    tags: ['v[0-9]+.[0-9]+.[0-9]+', 'v[0-9]+.[0-9]+.[0-9]+-*']
-  workflow_dispatch:
-    inputs:
-      dry_run: { type: boolean, default: false }
-```
-
-### 4.2 Job DAG
-
-```
-                   ┌─ create-release ─┐
-                   │                  │
-                   v                  v
-            ┌─ build-release  ─┐  build-source-tarball
-            │  (matrix × 14)    │
-            ├──► .deb (gnu legs)┤
-            ├──► .rpm (gnu legs)┤
-            ├──► .msi (win legs)┤
-            │                   │
-            v                   v
-       lipo-universal     verify-reproducible
-            │                   │
-            └──────► github-release ─────────┐
-                       │                     │
-       ┌───────┬───────┼───────┬─────────┐   │
-       v       v       v       v         v   │
-    homebrew  aur   scoop   vscode-      npm-publish
-     bump    bump    bump   extension       │
-                              │             │
-                              v             v
-                      ovsx publish   container-publish
-```
-
-### 4.3 Build matrix (14 targets)
-
-| target | runner | toolchain | `cross`? | .deb | .rpm |
-|---|---|---|---|---|---|
-| `x86_64-unknown-linux-gnu` | ubuntu-latest | stable | no | ✓ | ✓ |
-| `x86_64-unknown-linux-musl` | ubuntu-latest | stable | yes | — | — |
-| `aarch64-unknown-linux-gnu` | ubuntu-24.04-arm | stable | no | ✓ | ✓ |
-| `aarch64-unknown-linux-musl` | ubuntu-24.04-arm | stable | no | — | — |
-| `armv7-unknown-linux-gnueabihf` | ubuntu-latest | stable | yes | ✓ | — |
-| `arm-unknown-linux-gnueabihf` | ubuntu-latest | stable | yes | ✓ | — |
-| `powerpc64le-unknown-linux-gnu` | ubuntu-latest | stable | yes | ✓ | — |
-| `s390x-unknown-linux-gnu` | ubuntu-latest | stable | yes | ✓ | — |
-| `riscv64gc-unknown-linux-gnu` | ubuntu-latest | stable | yes | ✓ | — |
-| `x86_64-apple-darwin` | macos-13 | stable | no | — | — |
-| `aarch64-apple-darwin` | macos-14 | stable | no | — | — |
-| `x86_64-pc-windows-msvc` | windows-latest | stable | no | — | — |
-| `i686-pc-windows-msvc` | windows-latest | stable | no | — | — |
-| `aarch64-pc-windows-msvc` | windows-latest | stable | no | — | — |
-
-`fail-fast: false` so one target failure doesn't abort the rest.
-
-### 4.4 Per-target steps
-
-1. Checkout at the resolved tag.
-2. Install toolchain (`dtolnay/rust-toolchain@master` + `rust-src` for musl sysroot).
-3. Cache (`Swatinem/rust-cache@v2`, key includes target triple).
-4. Install `cross` if needed.
-5. **Build**: `cargo build --release --locked --target $TARGET --bin noyafmt --bin noyavalidate`.
-6. **Strip + debug-symbol split** (Linux gnu only):
-   ```bash
-   for bin in noyafmt noyavalidate; do
-     BIN="target/${TARGET}/release/${bin}"
-     llvm-objcopy --only-keep-debug "${BIN}" "${BIN}.debug"
-     llvm-objcopy --strip-debug --strip-unneeded "${BIN}"
-     llvm-objcopy --add-gnu-debuglink="${BIN}.debug" "${BIN}"
-   done
-   ```
-7. **Verify** binary type via `file`.
-8. **Stage tarball** (or zip on Windows) including `README.md`, `CHANGELOG.md`, `LICENSE-*`, `COPYING`, `docs/*.1`, `complete/*`, `NOTICE`.
-9. **Generate SHA256 + SHA512** sidecars.
-10. **Build .deb** via `cargo deb --target $TARGET --no-build`.
-11. **Build .rpm** via `cargo generate-rpm` (x86_64-gnu + aarch64-gnu).
-12. **Build .msi** via `cargo wix` (windows legs).
-13. **Sign** every artefact with cosign keyless.
-14. **Attest SLSA Build L2** via `actions/attest-build-provenance@v2`.
-15. **Upload** to the GitHub Release.
-
-### 4.5 Reproducible builds
-
-Every build leg exports:
-
-```bash
-export SOURCE_DATE_EPOCH=$(git log -1 --format=%ct "$GITHUB_REF")
-export RUSTFLAGS="--remap-path-prefix=$HOME=~ --remap-path-prefix=$(pwd)=/build"
-```
-
-A `verify-reproducible` job rebuilds one target on a clean runner and `diff`s the SHA256 against the published artefact. Promotional jobs (Homebrew, AUR, Scoop, VS Code, npm) gate on this job's success.
-
-### 4.6 macOS Universal Binary (`lipo-universal`)
-
-After both macos legs succeed:
-
-```bash
-for bin in noyafmt noyavalidate; do
-  lipo -create \
-    "noyalib-${VER}-x86_64-apple-darwin/${bin}" \
-    "noyalib-${VER}-aarch64-apple-darwin/${bin}" \
-    -output "${bin}"
-  lipo -info "${bin}"   # verifies fat-binary structure
-done
-tar -czf "noyalib-${VER}-universal-apple-darwin.tar.gz" universal/
-```
-
-Homebrew can then `bottle :all_macos` against the universal tarball.
-
-### 4.7 Promotional jobs (post `github-release`)
-
-| Job | Action | Secret |
-|---|---|---|
-| `homebrew-bump` | `mislav/bump-homebrew-formula-action@v3` against `sebastienrousseau/homebrew-tap` | `HOMEBREW_TAP_TOKEN` |
-| `aur-bump` | `KSXGitHub/github-actions-deploy-aur@v3` for `noyalib-bin` | `AUR_SSH_PRIVATE_KEY` |
-| `scoop-bump` | `ScoopInstaller/GithubActions@v2` against `sebastienrousseau/scoop-bucket` | `SCOOP_BUCKET_TOKEN` |
-| `vscode-extension` | `vsce publish` + `ovsx publish` | `VSCODE_MARKETPLACE_PAT`, `OPEN_VSX_PAT` |
-| `npm-publish` | `npm publish --provenance` for `@noyalib/noyalib-wasm` | `NPM_TOKEN` |
-| `container-publish` | `docker/build-push-action@v6` to GHCR (multi-arch amd64+arm64) | `GITHUB_TOKEN` (or optional `DOCKER_PASSWORD` for non-GHCR registries) |
-
-### 4.8 Required repo secrets summary
-
-| Secret | Purpose |
+Run Markdown lint with the repository's `.markdownlint.yaml` and the same
+file exclusions as its docs workflow. For feature-gated suites use their
+actual workflow toolchain and feature arguments. Nightly-only features must
+not be forced through an incompatible stable all-features command. Run
+MSRV, no_std, coverage and fuzz builds in separate target directories.
+No cache shared between those compile surfaces may establish a false pass.
+
+Additional owner-specific checks:
+
+| Repo / task | Required boundary check |
 |---|---|
-| `CARGO_REGISTRY_TOKEN` | crates.io publish (existing) |
-| `HOMEBREW_TAP_TOKEN` | PR against personal tap |
-| `AUR_SSH_PRIVATE_KEY` | push to AUR |
-| `SCOOP_BUCKET_TOKEN` | push to Scoop bucket |
-| `VSCODE_MARKETPLACE_PAT` | `vsce publish` |
-| `OPEN_VSX_PAT` | `ovsx publish` |
-| `NPM_TOKEN` | npm publish (with `--provenance`) |
-| `DOCKER_PASSWORD` | optional; only if pushing to non-GHCR registries |
-| `GITHUB_TOKEN` | provided automatically (GHCR push, release upload) |
-
-Documented in `pkg/README.md` for new maintainers.
-
-**Phase 4 deliverables:** 1 PR adding `release-binaries.yml` (~700 lines), simplifying `release.yml` to crates.io-only, `pkg/Dockerfile`+`pkg/Dockerfile.full`+`pkg/Dockerfile.mcp`, secrets documentation. **Effort: 5 days, including dry-run iteration.**
-
-## Phase 5 — Distro publishing
-
-| Channel | Submit | Effort | Auto-bumped after submission? |
-|---|---|---|---|
-| Personal Homebrew tap | New repo `sebastienrousseau/homebrew-tap`, seed `Formula/noyalib.rb` | 1 h | yes (`homebrew-bump`) |
-| AUR (`noyalib-bin`) | AUR account + SSH key, push initial PKGBUILD | 1 h | yes (`aur-bump`) |
-| Personal Scoop bucket | New repo + initial `noyalib.json` | 1 h | yes (`scoop-bump`) |
-| VS Code Marketplace + Open VSX | One-time publisher account creation | 2 h | yes (`vscode-extension`) |
-| npm scope `@noyalib` | One-time org / scope creation | 30 min | yes (`npm-publish`) |
-| Homebrew core | PR against `Homebrew/homebrew-core` once ≥ 75 stars + ≥ 30 days + stable API | hand-filed | no — manual |
-| Debian | ITP bug + DD sponsor + NEW queue (months) | weeks | no — manual |
-| Fedora / RHEL | Packager account + sponsor + review request (months) | weeks | no — manual |
-| openSUSE OBS | Account + initial submission | 2 h | semi-auto |
-| nixpkgs | PR against `NixOS/nixpkgs` | 2 h | no — manual |
-| Snapcraft | `snapcraft register` + `snapcraft upload` | 1 h | semi-auto via store |
-| Flathub | PR against `flathub/io.noyalib.noyafmt` | 2 h | no — manual |
-
-**Phase 5 deliverables:** ad-hoc, multi-week. Each distro tracked separately as it lands. **Effort: months of intermittent maintainer work.**
-
-> **Runbook:** `pkg/PUBLISH.md` is the per-channel runbook
-> covering bootstrap (account creation, secret population),
-> first publish, and ongoing maintenance for every channel in
-> the table above. The maintainer follows it sequentially as
-> distros come online.
-
-## Phase 6 — Documentation
-
-| File | Content | Effort |
-|---|---|---|
-| `docs/USER-GUIDE.md` | Long-form tutorial complementing README. | 1 d |
-| `docs/MIGRATION-FROM-SERDE-YAML.md` | Name-by-name mapping. | 0.5 d |
-| `docs/ARCHITECTURE.md` | Parser → AST → CST → output. | 1 d |
-| `docs/noyafmt.1.adoc`, `docs/noyavalidate.1.adoc` | Asciidoc man pages. | 1 d |
-| `pkg/VERIFY.md` | cosign + SLSA + vendoring cookbook. | 0.5 d |
-| `SECURITY.md` extension | Verification commands. | 0.25 d |
-| `CONTRIBUTING.md` extension | "How to add a new packaging target". | 0.5 d |
-| `README.md` install table | All distros. | 0.25 d |
-
-**Effort: 1 week, intermittent.**
-
-## Phase 7 — Hardening
-
-### 7.1 Reproducible builds
-
-`SOURCE_DATE_EPOCH` + `--remap-path-prefix` per release leg. `verify-reproducible` job in the release pipeline gates promotional jobs on byte-identity.
-
-### 7.2 MUSL static linking
-
-`file` check confirms `statically linked` on every musl leg. CI fails the release leg if a musl binary links dynamically.
-
-### 7.3 Dependency vendoring (`make vendor`)
-
-```makefile
-vendor:
-	cargo vendor --versioned-dirs vendor
-	@echo "Vendored. Configure cargo to use it via .cargo/config.toml [source.crates-io] replace-with = 'vendored'."
-```
-
-CI job `vendor-build` runs `cargo vendor` then `cargo build --offline --workspace`. Docs in `pkg/VERIFY.md`. A `vendor-tarball` release job ships `noyalib-<version>-vendor.tar.xz` with each release for cached offline builds.
-
-### 7.4 CodeQL static analysis
-
-New job in `.github/workflows/security.yml`:
-
-```yaml
-codeql-analyze:
-  permissions: { actions: read, contents: read, security-events: write }
-  strategy: { matrix: { language: [rust] } }
-  steps:
-    - uses: actions/checkout@v5
-    - uses: github/codeql-action/init@v3
-      with: { languages: ${{ matrix.language }} }
-    - run: cargo build --workspace --all-features
-    - uses: github/codeql-action/analyze@v3
-```
-
-Findings land in the repo's Security tab. Triage cadence: weekly during the launch program, monthly thereafter.
-
-### 7.5 Dynamic per-crate MSRV check
-
-`scripts/msrv-per-crate.sh`:
-
-```bash
-#!/usr/bin/env bash
-# Run `cargo +<msrv> check` per workspace crate independently, so a
-# satellite crate with a higher MSRV than the workspace floor is
-# caught before it merges.
-set -euo pipefail
-for crate in crates/*/; do
-  manifest="${crate}Cargo.toml"
-  [[ -f "$manifest" ]] || continue
-  msrv=$(grep -E '^rust-version' "$manifest" | head -1 | sed 's/.*"\(.*\)".*/\1/')
-  [[ -n "$msrv" ]] || continue
-  echo "→ Checking ${crate} against rust ${msrv}"
-  rustup toolchain install "$msrv" --profile minimal --quiet
-  cargo +"$msrv" check --manifest-path "$manifest" --locked
-done
-```
-
-CI job `msrv-per-crate` runs this on every PR. It reads `rust-version` from each manifest rather than hard-coding a number, so it catches drift if e.g. `noyalib-lsp` adopts a feature requiring a newer rustc than the declared floor — which would silently break distros pinned to the lower rustc. The current floor is **1.86.0** across all five crates (see [`docs/POLICIES.md`](POLICIES.md) §1).
-
-### 7.6 Intra-doc link strictness
-
-CI's docs job:
-
-```yaml
-- env:
-    RUSTDOCFLAGS: >-
-      -D warnings
-      -D rustdoc::broken_intra_doc_links
-      -D rustdoc::private_intra_doc_links
-      -D rustdoc::invalid_codeblock_attributes
-      -D rustdoc::invalid_html_tags
-      -D rustdoc::bare_urls
-      --cfg docsrs
-      --extern-html-root-url serde=https://docs.rs/serde/latest
-      --extern-html-root-url indexmap=https://docs.rs/indexmap/latest
-  run: cargo +nightly doc --workspace --all-features --no-deps
-```
-
-Every broken `[`Type`]` reference in a doc comment fails CI.
-
-### 7.7 License compliance
-
-`cargo about generate -c about.toml about.hbs > NOTICE` in CI; `NOTICE` shipped in every release tarball, .deb, .rpm, MSI.
-
-### 7.8 Cross-target test matrix
-
-`cargo test` via `cross` on every release-binary target, not just host runners. New `cross-test` job in `ci.yml`, scheduled weekly (cost-aware — full matrix takes ~2 h).
-
-### 7.9 Cosign root-of-trust pinning
-
-`pkg/VERIFY.md` documents the Rekor + Fulcio public-key fingerprints + their expiry rotation cadence so verifiers don't depend on sigstore-go's defaults.
-
-### 7.10 OpenSSF Best Practices badge
-
-Apply at https://www.bestpractices.dev once Phases 1–4 land. Gold target.
-
-**Effort: 1.5 weeks.**
-
-## Verification matrix
-
-After every phase, the following must be true:
-
-| Gate | Phase 0 | 1 | 2 | 3 | 4 | 7 |
-|---|---|---|---|---|---|---|
-| `cargo build --workspace --all-features` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| `cargo test --workspace --all-features` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| `cargo clippy --workspace --all-targets --all-features -- -D warnings` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Coverage gate | 95/93/92 | ratchet to 98 | 98 | 98 | 98 | 98 |
-| `cargo doc` (no warnings, no broken intra-doc links) | warn | deny | deny | deny | deny | deny |
-| 56+ examples runnable | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| `reuse lint` clean | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| `cargo audit` / `deny` / `vet` clean | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Miri focused suite green | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| `msrv-per-crate.sh` clean | — | ✓ | ✓ | ✓ | ✓ | ✓ |
-| CodeQL clean | — | — | — | — | — | ✓ |
-| `cargo vendor` + offline build clean | — | — | — | — | — | ✓ |
-| Release dry-run produces all 14 + universal tarballs | — | — | — | — | ✓ | ✓ |
-| Reproducible build verified | — | — | — | — | ✓ | ✓ |
-| `npm publish --dry-run`, `vsce package` clean | — | — | — | — | ✓ | ✓ |
-
-## Estimated timeline
-
-| Phase | Effort | Calendar |
-|---|---|---|
-| 0 — pre-flight | done | day 1 |
-| 1 — restructure (one zero-logic commit) | 1 d code + 1 d review | days 2–3 |
-| 2 — tooling (build.rs + xtask hybrid) | 1.5 d | days 4–5 |
-| 3 — packaging templates + VS Code + npm + MCP wrappers | 3 d | days 6–8 |
-| 4 — release pipeline + universal + debug-info + npm + .vsix | 5 d | days 9–13 |
-| 5 — distro publishing | weeks (per distro) | weeks 3+ |
-| 6 — documentation | 1 wk (intermittent) | weeks 3+ |
-| 7 — hardening (vendor + CodeQL + intra-doc + per-crate MSRV) | 1.5 wk | weeks 3–4 |
-
-**Total focused engineering: ~4 working weeks** before distro outreach kicks off.
-
-## Execution checklist
-
-| # | Phase | Lands | Estimated commits |
-|---|---|---|---|
-| 1 | 0 | branch protection verification | 0 — config only |
-| 2 | 1 | restructure (single zero-logic commit) | 1 |
-| 3 | 1.5 | `missing_docs = "deny"` + audit fixes | 1 |
-| 4 | 2 | xtask + build.rs hybrid | 1 |
-| 5 | 3 | `pkg/` templates (deb/rpm/arch/nix/win/snap/flatpak/docker) | 1 |
-| 6 | 3.10 | `pkg/vscode/` extension scaffold | 1 |
-| 7 | 3.11–12 | `pkg/npm-mcp-wrapper/` + `package.json.tmpl` | 1 |
-| 8 | 4 | `release-binaries.yml` workflow_dispatch + dry-run | 1 |
-| 9 | 4.1.b | flip release-binaries.yml to auto-on-tag | 1 |
-| 10 | 4.6 | `lipo-universal` job | 1 |
-| 11 | 4.7 | promotional jobs (Homebrew/AUR/Scoop/VS Code/npm/container) | 1 |
-| 12 | 7.1 | reproducible builds + `verify-reproducible` job | 1 |
-| 13 | 7.3 | `cargo vendor` + `make vendor` + `vendor-build` job | 1 |
-| 14 | 7.4 | CodeQL job | 1 |
-| 15 | 7.5 | `msrv-per-crate.sh` + CI job | 1 |
-| 16 | 7.6 | strengthened RUSTDOCFLAGS in docs job | 1 |
-| 17 | 7.7 | `cargo about` + `NOTICE` shipping | 1 |
-| 18 | 6 | docs/USER-GUIDE.md, docs/MIGRATION-FROM-SERDE-YAML.md, docs/ARCHITECTURE.md | 3 |
-| 19 | 6 | man-page asciidoc sources | 1 |
-| 20 | 5 | distro PRs (per distro, ad-hoc) | many |
-
-Total ~20 PRs over ~4 weeks for the engineering work; distro
-outreach then runs at distro maintainer pace.
-
-## Road to 1.0 — the long 0.x runway
-
-`1.0.0` is a contract, not a milestone date: it promises SemVer-strict
-stability and a commercial-grade support commitment. It is **earned by
-field maturity, not scheduled.** The entire `0.x` line — all the way
-through `0.9.999` — is the maturation period: ship, gather real-world
-usage, break the API freely under `0.x` rules, and harden it against
-actual workloads rather than against our own test suite. This is a
-deliberately long road. There is no target date, only gates.
-
-### Versioning posture during 0.x
-
-Cargo's SemVer rules let a `0.0.x` patch break, and a `0.x.0` minor
-break. We use that latitude on purpose — a wrong early API is far
-cheaper to fix now than to carry past `1.0`.
-
-| Band | Theme | API contract |
-|---|---|---|
-| `0.0.x` | Foundation & hardening (Phases 0–7 above) | Exploratory; may break per patch, noted in `CHANGELOG.md`. |
-| `0.1 → 0.8` | Capability maturation & API convergence | Each minor is a coherent capability milestone plus accumulated field feedback. Breaking changes allowed, increasingly rare, always with migration notes. |
-| `0.9.x` | API-freeze candidates | Feature-complete for the `1.0` scope; bugfixes and polish only. A public, written **1.0 API review** opens here. |
-| `0.9.999` | Pre-1.0 soak / extended RC | The frozen `1.0` API, shipped as a long-lived, widely-deployed release. It runs in the wild until every gate below is demonstrably met. `1.0.0` is then a near-mechanical re-tag of a proven `0.9.999`. |
-
-`0.9.999` is intentional: it announces "this *is* 1.0, pending proof"
-and lets real deployments soak the final API for a long time, without
-prematurely spending the `1.0` stability promise.
-
-### 1.0 gates (signal-gated, never date-gated)
-
-`1.0.0` ships only when **all** of the following are demonstrably true.
-Each is a measurable signal, not a vibe.
-
-**API & correctness**
-- ≥ 4 consecutive minors with **zero** breaking changes to the public API.
-- `cargo semver-checks` clean across that window; no `#[doc(hidden)]` or
-  `__`-prefixed escape hatches inside the `1.0` surface.
-- A written, reviewed **1.0 API guarantee** enumerating the stable
-  surface and the explicitly-unstable corners.
-- Fuzz targets accumulate ≥ N CPU-months with no new reproducers;
-  coverage gate held at its ceiling.
-
-**Adoption & field testing**
-- Real downstream users beyond CI/mirrors: a meaningful count of distinct
-  crates.io reverse-dependencies and/or named production deployments.
-- Issues from real workloads triaged to **zero open criticals** — a
-  steady state, not a launch spike.
-- Confirmed in the wild across the target matrix (OSes, architectures,
-  `no_std`), not just in our runners.
-
-**Community & governance**
-- **≥ 2 maintainers** with merge rights (bus-factor retired).
-- `CODE_OF_CONDUCT.md` + a short `GOVERNANCE.md` (how decisions and
-  releases are made); active Discussions.
-- The security-disclosure and release processes each exercised
-  end-to-end by more than one person.
-
-**Ecosystem & distribution**
-- Every distribution channel green **and consumed**: crates.io, docs.rs,
-  Docker/GHCR, and the packaging channels (AUR / Scoop / Homebrew / npm /
-  VS Code — see #99) actually publishing and used by real installs.
-- A stable, documented MSRV policy; the serde_yaml migration guide
-  validated by external migrators.
-
-**Operational & supply chain**
-- Reproducible builds reproduced independently by a third party.
-- OpenSSF Scorecard ≥ 8.0 and the OpenSSF Best Practices badge at
-  *passing* (targeting *silver*); zero open advisories.
-- Signed releases verified by consumers (the `pkg/VERIFY.md` cookbook
-  exercised externally).
-
-**Commercial readiness**
-- A written support / stability / LTS policy and a security-response SLA.
-- Published performance baselines with regression gating in CI.
-
-### Explicit non-gates
-
-`1.0` is **not** triggered by a calendar date, a feature count, a star
-count, or "it's been long enough." A breaking change during `0.x` is a
-tool we use deliberately, not a failure to apologise for.
-
-### After 1.0
-
-- Strict SemVer: a breaking change implies `2.0` and a deprecation cycle.
-- A `1.x` LTS branch carrying backported security fixes.
-- The stable core becomes the foundation a commercial offering can layer
-  on — never a reason to destabilise the open library.
+| Core C3 | Existing isolated float consumers for default/std/alloc, alloc-only behavioral matrix, schema/CST composition and documented bare-metal CI targets on supported toolchains |
+| CLI CLI1/CLI2 | Real binary tests, Action self-test, hooks, `make check-assets`, filesystem failure injection and supported-OS package install |
+| LSP LSP2/LSP3 | `cargo test --test framing --test protocol`, installed server framed-client sessions and extension-host tests |
+| MCP MCP1/MCP2/MCP3 | `cargo +nightly fuzz build` in fuzz scope, corpus replay, limits/protocol/transport suites, npm wrapper tests and installed bootstrap consumer |
+| WASM WASM1/WASM3 | `wasm-pack test --node`, headless browser WASM suite, installed-package TypeScript and bundler/runtime consumers |
+| Facade SHIM1 | `cargo test --test drop_in`, shared YAML suite, core compatibility contract, renamed-dependency downstream builds and differential cases |
+| Performance P1/P2 | `cargo bench --bench cli_dispatch`, `lsp_handlers`, `mcp_tools`, `shim_overhead` in their repos; core's supported benchmark commands; WASM `wasm-pack build --release --target nodejs` then `node benches/bench.js` |
+| Harness Q3 | Fixture-based parser/provenance regression checks first; then fresh six-repo `scripts/ecosystem-scorecard.sh --network --deep --with-coverage --json ...` with exact-source report |
+
+Every acceptance receipt records UTC time, source/dependency commits,
+version, toolchain/runtime, features, target/OS, command, result and artifact
+location. Preserve raw output where it supports a conclusion. Label
+unavailable services and intentionally unsupported checks explicitly.
+The existing harness score remains a probe result; 100% on executed probes
+does not establish all eleven maturity categories at 10/10.
+
+## Completion and release checkpoints
+
+- **Checkpoint A, assessment:** all six repos rated, evidence pinned and
+  this work order written. This documentation update satisfies that scope.
+- **Checkpoint B, release decision:** P0 claims reconciled, MCP finding and
+  immutable-source decision resolved, all required exact-source gates green.
+  The maintainer can then decide publication independently of the longer
+  maturity programme. A score average cannot waive a security finding.
+- **Checkpoint C, category acceptance:** close one task at a time after its
+  done-condition is observed. Record actual implementation commits and
+  artifacts; do not replace open tasks with optimistic percentages.
+- **Checkpoint D, 10/10:** G2 establishes every scoped criterion in every
+  repo, including independent review. Any unverified criterion stays open.
+
+Do not assign speculative release dates. Sequence future versions by +0.0.1
+only after branch and current-release state are reconciled. Publish release
+notes and channel claims only after the corresponding artifacts exist.

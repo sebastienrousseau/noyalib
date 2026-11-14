@@ -7,7 +7,11 @@
 #![allow(missing_docs)]
 
 use noyalib::{Mapping, Tag, TaggedValue, Value, from_str};
+#[cfg(feature = "std")]
 use std::collections::HashMap;
+
+#[cfg(not(feature = "std"))]
+type HashMap<K, V> = hashbrown::HashMap<K, V, rustc_hash::FxBuildHasher>;
 
 fn props(pairs: &[(&str, &str)]) -> HashMap<String, String> {
     pairs
@@ -83,7 +87,7 @@ fn does_not_touch_non_string_scalars() {
 fn unknown_placeholder_errors_in_strict_mode() {
     let mut v: Value = from_str("name: ${MISSING}").unwrap();
     let err = v
-        .interpolate_properties::<String>(&HashMap::new())
+        .interpolate_properties::<String>(&HashMap::default())
         .unwrap_err();
     let msg = err.to_string();
     assert!(
@@ -126,7 +130,7 @@ fn dotted_placeholder_names_supported() {
 fn unterminated_placeholder_errors() {
     let mut v: Value = from_str("name: \"${UNCLOSED\"").unwrap();
     let err = v
-        .interpolate_properties::<String>(&HashMap::new())
+        .interpolate_properties::<String>(&HashMap::default())
         .unwrap_err();
     assert!(err.to_string().contains("unterminated"));
 }
@@ -135,7 +139,7 @@ fn unterminated_placeholder_errors() {
 fn empty_placeholder_errors() {
     let mut v: Value = from_str("name: \"${}\"").unwrap();
     let err = v
-        .interpolate_properties::<String>(&HashMap::new())
+        .interpolate_properties::<String>(&HashMap::default())
         .unwrap_err();
     assert!(err.to_string().contains("empty placeholder"));
 }
@@ -144,7 +148,7 @@ fn empty_placeholder_errors() {
 fn invalid_placeholder_character_errors() {
     let mut v: Value = from_str("name: \"${A B}\"").unwrap();
     let err = v
-        .interpolate_properties::<String>(&HashMap::new())
+        .interpolate_properties::<String>(&HashMap::default())
         .unwrap_err();
     assert!(err.to_string().contains("invalid character"));
 }
@@ -237,7 +241,7 @@ fn redacted_substitutes_normally_on_success() {
 #[test]
 fn redacted_hides_placeholder_name_in_error() {
     let mut v: Value = from_str("token: ${SECRET_TOKEN_NAME}").unwrap();
-    let empty: HashMap<String, String> = HashMap::new();
+    let empty: HashMap<String, String> = HashMap::default();
     let err = v.interpolate_properties_redacted(&empty).unwrap_err();
     let msg = err.to_string();
     assert!(msg.contains("<redacted>"), "expected redaction, got: {msg}");

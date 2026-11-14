@@ -1,22 +1,11 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 // Copyright (c) 2026 Noyalib. All rights reserved.
 
-//! JSON-style UTF-16 surrogate-pair escape pairing in double-quoted
-//! YAML scalars.
+//! JSON-style surrogate pairs in YAML double-quoted scalars.
 //!
-//! YAML 1.2's escape rules for double-quoted scalars inherit JSON's
-//! treatment of `\uXXXX` escapes — including the surrogate-pair
-//! encoding of supplementary-plane code points. A high surrogate
-//! (`\uD800`–`\uDBFF`) immediately followed by a low surrogate
-//! (`\uDC00`–`\uDFFF`) combines into a single character via the
-//! UTF-16 algorithm:
-//!
-//! ```text
-//! cp = 0x10000 + ((high - 0xD800) << 10) + (low - 0xDC00)
-//! ```
-//!
-//! Lone or reversed surrogates remain rejected — they are invalid
-//! Unicode and must not silently become replacement characters.
+//! Combine adjacent high/low surrogates as
+//! `0x10000 + ((high - 0xD800) << 10) + (low - 0xDC00)`.
+//! Refuse lone and reversed surrogates without replacement characters.
 
 #![allow(missing_docs)]
 

@@ -1,0 +1,129 @@
+#!/usr/bin/env python3
+# SPDX-FileCopyrightText: 2026 Noyalib
+# SPDX-License-Identifier: MIT OR Apache-2.0
+
+"""Run a bounded fuzz campaign and retain its source, inputs and actual outcome."""
+
+import argparse
+from datetime import datetime, timezone
+import hashlib
+import json
+import os
+from pathlib import Path
+import re
+import subprocess
+import time
+import tomllib
+
+
+def campaign_stats(raw):
+    done = re.findall(r'^Done (\d+) runs in (\d+) second\(s\)$', raw, re.MULTILINE)
+    if done:
+        executions, seconds = map(int, done[-1])
+        return {'executions': executions, 'measured_seconds': seconds,
+                'completion_reported': True, 'execution_count_kind': 'complete'}
+    progress = re.findall(r'^#(\d+)\s+(?:INITED|NEW|REDUCE|pulse|RELOAD|DONE)\b',
+                          raw, re.MULTILINE)
+    return {'executions': max(map(int, progress)) if progress else None,
+            'measured_seconds': None, 'completion_reported': False,
+            'execution_count_kind': 'lower_bound' if progress else 'unavailable'}
+
+
+def digest(path):
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def inventory(root):
+    rows = []
+    for scope in ['fuzz', 'fuzz-nostd']:
+        manifest = root / scope / 'Cargo.toml'
+        if manifest.is_file():
+            for target in tomllib.loads(manifest.read_text()).get('bin', []):
+                name = target['name']
+                if not re.fullmatch(r'[A-Za-z][A-Za-z0-9_-]*', name):
+                    raise ValueError(f'invalid fuzz target name: {name!r}')
+                rows.append({'scope': scope, 'target': name})
+    return rows
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--matrix', action='store_true')
+    parser.add_argument('--scope', choices=['fuzz', 'fuzz-nostd'], default='fuzz')
+    parser.add_argument('--target')
+    parser.add_argument('--seconds', type=int, default=3600)
+    parser.add_argument('--output', type=Path)
+    parser.add_argument('--target-dir', type=Path,
+                        help='reuse build artifacts for the same checkout and fuzz scope')
+    args = parser.parse_args()
+    root = Path(subprocess.check_output(['git', 'rev-parse', '--show-toplevel'], text=True).strip())
+    targets = inventory(root)
+    if args.matrix:
+        if not targets:
+            parser.error('no fuzz targets found')
+        print(json.dumps({'include': targets}))
+        return 0
+    if not args.output or not args.target or not 1 <= args.seconds <= 3600:
+        parser.error('provide --output, --target and a duration from 1 to 3600 seconds')
+    if {'scope': args.scope, 'target': args.target} not in targets:
+        parser.error('target is not declared in the selected fuzz manifest')
+    out = args.output.resolve()
+    if out == root or root in out.parents:
+        parser.error('place campaign output outside the source checkout')
+    build_target = args.target_dir.resolve() if args.target_dir else out / 'target'
+    if build_target == root or root in build_target.parents:
+        parser.error('place build artifacts outside the source checkout')
+    out.mkdir(parents=True, exist_ok=False)
+    corpus = out / 'corpus'
+    artifacts = out / 'artifacts'
+    corpus.mkdir()
+    artifacts.mkdir()
+    fuzz = root / args.scope
+    seeds = fuzz / 'corpus/seed'
+    regressions = fuzz / 'regressions' / args.target
+    inputs = [directory for directory in [seeds, regressions] if directory.is_dir()]
+    input_hashes = {str(file.relative_to(root)): digest(file)
+                    for directory in inputs for file in sorted(directory.rglob('*')) if file.is_file()}
+    lock = fuzz / 'Cargo.lock'
+    lock_hash = digest(lock)
+    command = ['cargo', '+nightly', 'fuzz', 'run', '--fuzz-dir', args.scope, args.target,
+               str(corpus), *map(str, inputs), '--', f'-max_total_time={args.seconds}',
+               # A single allocation above 1 GiB is still a finding. The process
+               # limit is libFuzzer's default: its own corpus and coverage state
+               # grows over an hour (fuzz_value_roundtrip reached 1 GiB while a
+               # loop of the target's own work held at 3 MiB).
+               '-timeout=10', '-rss_limit_mb=2048', '-malloc_limit_mb=1024',
+               f'-artifact_prefix={artifacts}{os.sep}']
+    report = {'started_utc': datetime.now(timezone.utc).isoformat(),
+              'source_commit': subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=root, text=True).strip(),
+              'worktree_dirty': bool(subprocess.check_output(['git', 'status', '--porcelain'], cwd=root)),
+              'rustc': subprocess.check_output(['rustc', '+nightly', '-Vv'], cwd=root, text=True).strip(),
+              'scope': args.scope, 'target': args.target, 'requested_seconds': args.seconds,
+              'initial_inputs_sha256': input_hashes, 'lockfile_sha256': lock_hash,
+              'build_target_dir': str(build_target), 'command': command}
+    start = time.monotonic()
+    log = out / 'campaign.log'
+    env = {**os.environ, 'CARGO_TARGET_DIR': str(build_target)}
+    with log.open('w') as stream:
+        result = subprocess.run(command, cwd=root, env=env, stdout=stream, stderr=subprocess.STDOUT)
+    raw = log.read_text(errors='replace')
+    stats = campaign_stats(raw)
+    locks_match = digest(lock) == lock_hash
+    findings = sorted(file.name for file in artifacts.iterdir() if file.is_file())
+    passed = (result.returncode == 0 and stats['completion_reported']
+              and stats['executions'] > 0 and stats['measured_seconds'] >= args.seconds
+              and locks_match and not findings)
+    report.update(status='passed' if passed else 'failed', exit_code=result.returncode,
+                  **stats, wall_seconds=time.monotonic() - start,
+                  lockfile_unchanged=locks_match, log_sha256=digest(log),
+                  findings=findings)
+    (out / 'receipt.json').write_text(json.dumps(report, indent=2) + '\n')
+    count = stats['executions'] if stats['executions'] is not None else 'unknown'
+    duration = stats['measured_seconds'] if stats['measured_seconds'] is not None else 'unknown'
+    print(f'{args.scope}/{args.target}: {report["status"]}; {count} executions '
+          f'({stats["execution_count_kind"]}) in {duration}s; {out}')
+    return 0 if passed else 1
+
+
+if __name__ == '__main__':
+    raise SystemExit(main())

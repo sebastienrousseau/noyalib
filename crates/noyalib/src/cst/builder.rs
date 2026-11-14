@@ -152,6 +152,8 @@ fn parse_block_entry(
         ));
     }
     let mut wrapped = prepend_first_line_indent(fragment, ctx.indent);
+    let fragment_start = wrapped.len() - fragment.len();
+    let fragment_end = wrapped.len();
     if !wrapped.ends_with('\n') {
         wrapped.push('\n');
     }
@@ -170,17 +172,48 @@ fn parse_block_entry(
         SyntaxKind::SequenceItem => SyntaxKind::BlockSequence,
         _ => unreachable!("guarded by caller"),
     };
-    let parent = first_node_of_kind(&parsed, parent_kind).ok_or_else(|| {
-        Error::Parse(format!(
-            "parse_subtree: re-parsed entry did not produce a {parent_kind:?}"
-        ))
-    })?;
-    let extracted = parent.children().find_map(|c| match c {
-        GreenChild::Node(n) if n.kind() == expected => Some(n.clone()),
-        _ => None,
-    });
-    extracted
+    // A shape-changing fragment can leave the sentinel as the only node
+    // of the requested kind. Its token lengths belong to the wrapper,
+    // not the fragment, and must never be spliced into the real source.
+    first_entry_before(&parsed, parent_kind, expected, fragment_start, fragment_end)
         .ok_or_else(|| Error::Parse(format!("parse_subtree: extraction failed for {expected:?}")))
+}
+
+fn first_entry_before(
+    root: &GreenNode,
+    parent_kind: SyntaxKind,
+    entry_kind: SyntaxKind,
+    fragment_start: usize,
+    fragment_end: usize,
+) -> Option<GreenNode> {
+    let mut offset = 0;
+    for child in root.children() {
+        if offset >= fragment_end {
+            break;
+        }
+        if let GreenChild::Node(parent) = child
+            && parent.kind() == parent_kind
+        {
+            let mut entry_offset = offset;
+            for child in parent.children() {
+                if entry_offset >= fragment_end {
+                    return None;
+                }
+                if let GreenChild::Node(entry) = child
+                    && entry.kind() == entry_kind
+                {
+                    // Leading trivia and an appended wrapper newline can
+                    // cancel in text_len while shifting every token boundary.
+                    return (entry_offset == fragment_start
+                        && entry_offset.checked_add(entry.text_len())? <= fragment_end)
+                        .then(|| entry.clone());
+                }
+                entry_offset += child.text_len();
+            }
+        }
+        offset += child.text_len();
+    }
+    None
 }
 
 /// Prepend `indent` spaces to the first line of `s` if and only if
@@ -480,6 +513,28 @@ impl TreeBuilder {
         Ok(())
     }
 
+    /// Omitted keys have no synthetic-key event. Their colon must open
+    /// an entry, closing any sibling that already has a value indicator.
+    fn push_value_indicator(&mut self, leaf: GreenChild) -> Result<()> {
+        let completed_entry = self.stack.last().is_some_and(|frame| {
+            frame.kind == SyntaxKind::MappingEntry
+                && frame.children.iter().any(|child| {
+                    matches!(
+                        child,
+                        GreenChild::Token {
+                            kind: SyntaxKind::ColonIndicator,
+                            ..
+                        }
+                    )
+                })
+        });
+        if self.top_kind() == SyntaxKind::BlockMapping || completed_entry {
+            self.open_entry_in(SyntaxKind::BlockMapping, SyntaxKind::MappingEntry)?;
+        }
+        self.push_leaf(leaf);
+        Ok(())
+    }
+
     fn handle_token(&mut self, tok: &RecordedToken) -> Result<()> {
         use RecordedTokenKind as R;
         use SyntaxKind as S;
@@ -496,6 +551,7 @@ impl TreeBuilder {
                 Ok(())
             }
             R::SyntheticKey => self.open_entry_in(S::BlockMapping, S::MappingEntry),
+            R::ColonIndicator => self.push_value_indicator(leaf()?),
             R::QuestionIndicator => {
                 self.open_entry_in(S::BlockMapping, S::MappingEntry)?;
                 self.push_leaf(leaf()?);

@@ -1,25 +1,10 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 // Copyright (c) 2026 Noyalib. All rights reserved.
 
-//! Mapping-key hot-path allocation cost.
+//! Mapping-key throughput for Value and typed consumers.
 //!
-//! The v0.0.14 collision-guard fix retains the *typed* key value
-//! before it is coerced to a string, so the value-arm can tell a
-//! distinct-typed collision (`1` vs `"1"`) apart from a genuine
-//! duplicate. That means one `Value::clone()` per non-merge
-//! mapping key. Merge keys (`<<`) are exempted (the buffered path
-//! never consults the typed key), so `<<`-heavy documents pay the
-//! same cost as before.
-//!
-//! This bench guards against two regressions:
-//!
-//! 1. **Ordinary mapping-key throughput** stays close to the
-//!    pre-fix baseline — the added clone is a small-integer or
-//!    boolean, so the delta should be sub-percent per key.
-//! 2. **Merge-heavy throughput** should not degrade at all — the
-//!    merge-key clone is skipped, so this shape shows the win of
-//!    the `is_buffered_merge_key` gate over an unconditional
-//!    clone.
+//! Exercise integer, string, merge, canonical-duplicate and ignored-map paths.
+//! Criterion reports throughput; this harness does not count allocations.
 //!
 //! Run: `cargo bench --bench mapping_key_clone`
 
@@ -27,6 +12,7 @@
 
 use criterion::{BenchmarkId, Criterion, Throughput, criterion_group, criterion_main};
 use noyalib::{ParserConfig, Value, from_str, from_str_with_config};
+use std::collections::BTreeMap;
 use std::hint::black_box;
 
 /// Config with expanded alias/merge budgets so the merge-heavy
@@ -131,5 +117,44 @@ fn bench_mapping_key_clone(c: &mut Criterion) {
     group.finish();
 }
 
-criterion_group!(benches, bench_mapping_key_clone);
+#[derive(serde::Deserialize)]
+struct Kept {
+    keep: usize,
+}
+
+fn bench_duplicate_identity(c: &mut Criterion) {
+    let mut group = c.benchmark_group("duplicate_identity");
+    for count in [32, 1024] {
+        let unique = (0..count)
+            .map(|i| format!("key{i}: {i}\n"))
+            .collect::<String>();
+        let duplicate = format!("~: 0\n{unique}null: 1\n");
+        for (name, source) in [("unique", &unique), ("canonical_duplicate", &duplicate)] {
+            group.throughput(Throughput::Bytes(source.len() as u64));
+            group.bench_with_input(BenchmarkId::new(name, count), source, |b, source| {
+                b.iter(|| {
+                    black_box(from_str::<BTreeMap<String, usize>>(black_box(source)).unwrap())
+                });
+            });
+        }
+        let ignored = format!(
+            "keep: 7\nignored:\n{}",
+            unique
+                .lines()
+                .map(|line| format!("  {line}\n"))
+                .collect::<String>()
+        );
+        group.throughput(Throughput::Bytes(ignored.len() as u64));
+        group.bench_with_input(
+            BenchmarkId::new("ignored_unique", count),
+            &ignored,
+            |b, source| {
+                b.iter(|| black_box(from_str::<Kept>(black_box(source)).unwrap().keep));
+            },
+        );
+    }
+    group.finish();
+}
+
+criterion_group!(benches, bench_mapping_key_clone, bench_duplicate_identity);
 criterion_main!(benches);

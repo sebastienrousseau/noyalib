@@ -1,10 +1,7 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 // Copyright (c) 2026 Noyalib. All rights reserved.
 
-//! Coverage for `GreenChild::token_text` in `cst/green.rs`. The method
-//! is only exercised by a doctest, which `cargo llvm-cov` does not
-//! instrument by default — so its Token / Node arms show uncovered. A
-//! plain integration walk over a parsed CST hits both.
+//! CST token-text access through parsed token and node traversal.
 
 #![allow(missing_docs)]
 #![allow(clippy::unwrap_used)]

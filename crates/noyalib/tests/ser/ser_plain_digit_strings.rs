@@ -18,7 +18,8 @@ const PLAIN: &[&str] = &["2026-12-31", "2026-12", "1.2.3", "3rd", "8080abc", "1/
 // so they stay quoted for a reader with the legacy forms enabled. `++1`
 // stays quoted because a permissive reader collapses the stacked signs.
 const QUOTED: &[&str] = &[
-    "42", "1.5", "1e3", "0x1F", "0o17", "007", "0755", "12:30:00", "+3", ".5", "++1",
+    "42", "1.5", "1e3", "0x1F", "0o17", "007", "0755", "12:30:00", "+3", ".5", "++1", "0b11",
+    "0B11", "+0b11", "-0b11", "0b1_0",
 ];
 
 fn emit(s: &str) -> String {
@@ -60,4 +61,42 @@ fn every_case_reads_back_as_the_same_string() {
             "round trip of {doc:?}"
         );
     }
+}
+
+#[cfg(feature = "compat-serde-yaml")]
+#[test]
+fn compatibility_roundtrip_preserves_a_binary_looking_string_key() {
+    use noyalib::compat::serde_yaml;
+    let value: Value = serde_yaml::from_str("! 0b11:").unwrap();
+    let emitted = serde_yaml::to_string(&value).unwrap();
+    let reparsed: Value = serde_yaml::from_str(&emitted).unwrap();
+    assert_eq!(reparsed, value, "{emitted}");
+}
+
+#[cfg(feature = "lossless-u64")]
+#[test]
+fn unsigned_radix_strings_are_quoted() {
+    for value in [
+        "0x8000000000000000",
+        "0xBBB9BBBBBBB73788",
+        "0xffffffffffffffff",
+        "0o1777777777777777777777",
+        "18446744073709551616",
+    ] {
+        assert_eq!(emit(value), format!("k: \"{value}\""));
+        for lossless_u64 in [false, true] {
+            let config = noyalib::ParserConfig::new().lossless_u64_integers(lossless_u64);
+            let parsed: Value = noyalib::from_str_with_config(&emit(value), &config).unwrap();
+            assert_eq!(parsed["k"].as_str(), Some(value));
+        }
+    }
+}
+
+#[cfg(feature = "compat-serde-yaml")]
+#[test]
+fn compatibility_roundtrip_preserves_an_unsigned_hex_string_key() {
+    use noyalib::compat::serde_yaml;
+    let value: Value = serde_yaml::from_str("!88888 0xBBB9BBBBBBB73788:").unwrap();
+    let emitted = serde_yaml::to_string(&value).unwrap();
+    assert_eq!(serde_yaml::from_str::<Value>(&emitted).unwrap(), value);
 }

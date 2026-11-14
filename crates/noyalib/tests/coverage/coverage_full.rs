@@ -1,7 +1,4 @@
-//! Comprehensive coverage tests targeting all uncovered lines.
-//!
-//! Organized by source module. Each test includes a comment referencing
-//! the file and line(s) it covers.
+//! Coverage regressions organized by source module.
 
 // SPDX-License-Identifier: MIT OR Apache-2.0
 // Copyright (c) 2026 Noyalib. All rights reserved.
@@ -22,19 +19,19 @@ use noyalib::{
 };
 
 // ═══════════════════════════════════════════════════════════════════════
-// scanner.rs — Quoted scalar escape sequences (lines 938–1121)
+// scanner.rs : Quoted scalar escape sequences
 // ═══════════════════════════════════════════════════════════════════════
 
 #[test]
 fn single_quoted_escaped_quote() {
-    // scanner.rs:944-956 — '' escape in single-quoted scalar
+    // scanner.rs : '' escape in single-quoted scalar
     let v: Value = from_str("key: 'can''t stop'").unwrap();
     assert_eq!(v["key"].as_str().unwrap(), "can't stop");
 }
 
 #[test]
 fn single_quoted_line_folding() {
-    // scanner.rs:958-996 — line breaks in single-quoted scalar
+    // scanner.rs : line breaks in single-quoted scalar
     let yaml = "key: 'first\n  second\n  third'";
     let v: Value = from_str(yaml).unwrap();
     assert_eq!(v["key"].as_str().unwrap(), "first second third");
@@ -42,7 +39,7 @@ fn single_quoted_line_folding() {
 
 #[test]
 fn single_quoted_multiple_breaks() {
-    // scanner.rs:984-991 — multiple consecutive breaks in single-quoted.
+    // scanner.rs : multiple consecutive breaks in single-quoted.
     // Per YAML 1.2.2 §7.3.3, continuation lines of a multi-line quoted
     // scalar must be indented more than the parent block.
     let yaml = "key: 'para1\n\n\n  para2'";
@@ -53,7 +50,7 @@ fn single_quoted_multiple_breaks() {
 
 #[test]
 fn single_quoted_utf8_multibyte() {
-    // scanner.rs:1011-1018 — multi-byte UTF-8 in single-quoted
+    // scanner.rs : multi-byte UTF-8 in single-quoted
     let yaml = "key: 'café ñ 日本語'";
     let v: Value = from_str(yaml).unwrap();
     assert_eq!(v["key"].as_str().unwrap(), "café ñ 日本語");
@@ -61,147 +58,147 @@ fn single_quoted_utf8_multibyte() {
 
 #[test]
 fn double_quoted_escape_null() {
-    // scanner.rs:1073 — \0 escape
+    // scanner.rs : \0 escape
     let v: Value = from_str(r#"key: "null\0byte""#).unwrap();
     assert_eq!(v["key"].as_str().unwrap(), "null\0byte");
 }
 
 #[test]
 fn double_quoted_escape_bell() {
-    // scanner.rs:1074 — \a escape
+    // scanner.rs : \a escape
     let v: Value = from_str(r#"key: "\a""#).unwrap();
     assert_eq!(v["key"].as_str().unwrap(), "\x07");
 }
 
 #[test]
 fn double_quoted_escape_backspace() {
-    // scanner.rs:1075 — \b escape
+    // scanner.rs : \b escape
     let v: Value = from_str(r#"key: "\b""#).unwrap();
     assert_eq!(v["key"].as_str().unwrap(), "\x08");
 }
 
 #[test]
 fn double_quoted_escape_tab() {
-    // scanner.rs:1076 — \t escape
+    // scanner.rs : \t escape
     let v: Value = from_str(r#"key: "\t""#).unwrap();
     assert_eq!(v["key"].as_str().unwrap(), "\t");
 }
 
 #[test]
 fn double_quoted_escape_newline() {
-    // scanner.rs:1077 — \n escape
+    // scanner.rs : \n escape
     let v: Value = from_str(r#"key: "line1\nline2""#).unwrap();
     assert_eq!(v["key"].as_str().unwrap(), "line1\nline2");
 }
 
 #[test]
 fn double_quoted_escape_vertical_tab() {
-    // scanner.rs:1078 — \v escape
+    // scanner.rs : \v escape
     let v: Value = from_str(r#"key: "\v""#).unwrap();
     assert_eq!(v["key"].as_str().unwrap(), "\x0B");
 }
 
 #[test]
 fn double_quoted_escape_form_feed() {
-    // scanner.rs:1079 — \f escape
+    // scanner.rs : \f escape
     let v: Value = from_str(r#"key: "\f""#).unwrap();
     assert_eq!(v["key"].as_str().unwrap(), "\x0C");
 }
 
 #[test]
 fn double_quoted_escape_carriage_return() {
-    // scanner.rs:1080 — \r escape
+    // scanner.rs : \r escape
     let v: Value = from_str(r#"key: "\r""#).unwrap();
     assert_eq!(v["key"].as_str().unwrap(), "\r");
 }
 
 #[test]
 fn double_quoted_escape_esc() {
-    // scanner.rs:1081 — \e escape
+    // scanner.rs : \e escape
     let v: Value = from_str(r#"key: "\e""#).unwrap();
     assert_eq!(v["key"].as_str().unwrap(), "\x1B");
 }
 
 #[test]
 fn double_quoted_escape_space() {
-    // scanner.rs:1082 — \  (escaped space)
+    // scanner.rs : \  (escaped space)
     let v: Value = from_str("key: \"\\  end\"").unwrap();
     assert!(v["key"].as_str().unwrap().starts_with(' '));
 }
 
 #[test]
 fn double_quoted_escape_double_quote() {
-    // scanner.rs:1083 — \" escape
+    // scanner.rs : \" escape
     let v: Value = from_str(r#"key: "say \"hello\"""#).unwrap();
     assert_eq!(v["key"].as_str().unwrap(), r#"say "hello""#);
 }
 
 #[test]
 fn double_quoted_escape_slash() {
-    // scanner.rs:1084 — \/ escape
+    // scanner.rs : \/ escape
     let v: Value = from_str(r#"key: "a\/b""#).unwrap();
     assert_eq!(v["key"].as_str().unwrap(), "a/b");
 }
 
 #[test]
 fn double_quoted_escape_backslash() {
-    // scanner.rs:1085 — \\ escape
+    // scanner.rs : \\ escape
     let v: Value = from_str(r#"key: "a\\b""#).unwrap();
     assert_eq!(v["key"].as_str().unwrap(), "a\\b");
 }
 
 #[test]
 fn double_quoted_escape_nel() {
-    // scanner.rs:1086 — \N (next line)
+    // scanner.rs : \N (next line)
     let v: Value = from_str(r#"key: "\N""#).unwrap();
     assert_eq!(v["key"].as_str().unwrap(), "\u{0085}");
 }
 
 #[test]
 fn double_quoted_escape_nbsp() {
-    // scanner.rs:1087 — \_ (non-breaking space)
+    // scanner.rs : \_ (non-breaking space)
     let v: Value = from_str(r#"key: "\_""#).unwrap();
     assert_eq!(v["key"].as_str().unwrap(), "\u{00A0}");
 }
 
 #[test]
 fn double_quoted_escape_line_separator() {
-    // scanner.rs:1088 — \L (line separator)
+    // scanner.rs : \L (line separator)
     let v: Value = from_str(r#"key: "\L""#).unwrap();
     assert_eq!(v["key"].as_str().unwrap(), "\u{2028}");
 }
 
 #[test]
 fn double_quoted_escape_paragraph_separator() {
-    // scanner.rs:1089 — \P (paragraph separator)
+    // scanner.rs : \P (paragraph separator)
     let v: Value = from_str(r#"key: "\P""#).unwrap();
     assert_eq!(v["key"].as_str().unwrap(), "\u{2029}");
 }
 
 #[test]
 fn double_quoted_escape_hex2() {
-    // scanner.rs:1090-1092 — \xHH
+    // scanner.rs : \xHH
     let v: Value = from_str(r#"key: "\x41\x42""#).unwrap();
     assert_eq!(v["key"].as_str().unwrap(), "AB");
 }
 
 #[test]
 fn double_quoted_escape_unicode4() {
-    // scanner.rs:1094-1096 — \uHHHH
+    // scanner.rs : \uHHHH
     let v: Value = from_str(r#"key: "\u0041\u00E9""#).unwrap();
     assert_eq!(v["key"].as_str().unwrap(), "Aé");
 }
 
 #[test]
 fn double_quoted_escape_unicode8() {
-    // scanner.rs:1098-1100 — \UHHHHHHHH
+    // scanner.rs : \UHHHHHHHH
     let v: Value = from_str(r#"key: "\U00000041""#).unwrap();
     assert_eq!(v["key"].as_str().unwrap(), "A");
 }
 
 #[test]
 fn double_quoted_line_break_escape() {
-    // scanner.rs:1102-1110 — backslash + newline (line continuation)
+    // scanner.rs : backslash + newline (line continuation)
     let yaml = "key: \"line1\\\n  line2\"";
     let v: Value = from_str(yaml).unwrap();
     assert_eq!(v["key"].as_str().unwrap(), "line1line2");
@@ -209,7 +206,7 @@ fn double_quoted_line_break_escape() {
 
 #[test]
 fn double_quoted_unknown_escape_error() {
-    // scanner.rs:1112-1119 — unknown escape character
+    // scanner.rs : unknown escape character
     let result: Result<Value, _> = from_str(r#"key: "\q""#);
     assert!(result.is_err());
     let msg = result.unwrap_err().to_string();
@@ -218,7 +215,7 @@ fn double_quoted_unknown_escape_error() {
 
 #[test]
 fn double_quoted_line_folding() {
-    // scanner.rs:1123-1161 — line breaks in double-quoted scalar
+    // scanner.rs : line breaks in double-quoted scalar
     let yaml = "key: \"first\n  second\"";
     let v: Value = from_str(yaml).unwrap();
     assert_eq!(v["key"].as_str().unwrap(), "first second");
@@ -226,7 +223,7 @@ fn double_quoted_line_folding() {
 
 #[test]
 fn double_quoted_multiple_breaks() {
-    // scanner.rs:1148-1155 — multiple consecutive breaks.
+    // scanner.rs : multiple consecutive breaks.
     // Per YAML 1.2.2 §7.3.2, continuation lines must be indented
     // more than the parent block.
     let yaml = "key: \"first\n\n\n  second\"";
@@ -237,7 +234,7 @@ fn double_quoted_multiple_breaks() {
 
 #[test]
 fn double_quoted_whitespace_before_break() {
-    // scanner.rs:1163-1199 — whitespace handling before line break.
+    // scanner.rs : whitespace handling before line break.
     // Continuation must be indented more than the parent block.
     let yaml = "key: \"word   \n  more\"";
     let v: Value = from_str(yaml).unwrap();
@@ -248,25 +245,25 @@ fn double_quoted_whitespace_before_break() {
 
 #[test]
 fn double_quoted_hex_escape_invalid() {
-    // scanner.rs:1209-1211 — invalid hex digits
+    // scanner.rs : invalid hex digits
     let result: Result<Value, _> = from_str(r#"key: "\xGG""#);
     assert!(result.is_err());
 }
 
 #[test]
 fn double_quoted_hex_escape_invalid_codepoint() {
-    // scanner.rs:1220-1222 — invalid Unicode code point
+    // scanner.rs : invalid Unicode code point
     let result: Result<Value, _> = from_str(r#"key: "\UD800""#);
     assert!(result.is_err());
 }
 
 // ═══════════════════════════════════════════════════════════════════════
-// scanner.rs — Block scalars (lines 1241–1418)
+// scanner.rs : Block scalars
 // ═══════════════════════════════════════════════════════════════════════
 
 #[test]
 fn block_scalar_literal_basic() {
-    // scanner.rs:1367-1368 — literal style preserves breaks
+    // scanner.rs : literal style preserves breaks
     let yaml = "key: |\n  line1\n  line2\n";
     let v: Value = from_str(yaml).unwrap();
     assert_eq!(v["key"].as_str().unwrap(), "line1\nline2\n");
@@ -274,7 +271,7 @@ fn block_scalar_literal_basic() {
 
 #[test]
 fn block_scalar_folded_basic() {
-    // scanner.rs:1370-1376 — folded style: single break → space
+    // scanner.rs : folded style: single break → space
     let yaml = "key: >\n  line1\n  line2\n";
     let v: Value = from_str(yaml).unwrap();
     assert_eq!(v["key"].as_str().unwrap(), "line1 line2\n");
@@ -282,7 +279,7 @@ fn block_scalar_folded_basic() {
 
 #[test]
 fn block_scalar_folded_multiple_breaks() {
-    // scanner.rs:1377-1379 — multiple breaks: keep all but first
+    // scanner.rs : multiple breaks: keep all but first
     let yaml = "key: >\n  para1\n\n\n  para2\n";
     let v: Value = from_str(yaml).unwrap();
     let s = v["key"].as_str().unwrap();
@@ -291,7 +288,7 @@ fn block_scalar_folded_multiple_breaks() {
 
 #[test]
 fn block_scalar_folded_leading_blank() {
-    // scanner.rs:1372, 1385 — leading blank preserves newline
+    // scanner.rs, 1385 : leading blank preserves newline
     // In folded mode, a "more-indented" line preserves the preceding newline
     let yaml = "key: >\n  normal\n   indented\n  back\n";
     let v: Value = from_str(yaml).unwrap();
@@ -302,7 +299,7 @@ fn block_scalar_folded_leading_blank() {
 
 #[test]
 fn block_scalar_keep_chomping() {
-    // scanner.rs:1406-1408 — keep (+) appends all trailing breaks
+    // scanner.rs : keep (+) appends all trailing breaks
     let yaml = "key: |+\n  content\n\n\n";
     let v: Value = from_str(yaml).unwrap();
     let s = v["key"].as_str().unwrap();
@@ -311,7 +308,7 @@ fn block_scalar_keep_chomping() {
 
 #[test]
 fn block_scalar_strip_chomping() {
-    // scanner.rs:1416-1418 — strip (-) removes trailing breaks
+    // scanner.rs : strip (-) removes trailing breaks
     let yaml = "key: |-\n  content\n\n\n";
     let v: Value = from_str(yaml).unwrap();
     assert_eq!(v["key"].as_str().unwrap(), "content");
@@ -319,7 +316,7 @@ fn block_scalar_strip_chomping() {
 
 #[test]
 fn block_scalar_clip_chomping() {
-    // scanner.rs:1410-1414 — clip (default) keeps single trailing newline
+    // scanner.rs : clip (default) keeps single trailing newline
     let yaml = "key: |\n  content\n\n\n";
     let v: Value = from_str(yaml).unwrap();
     assert_eq!(v["key"].as_str().unwrap(), "content\n");
@@ -327,7 +324,7 @@ fn block_scalar_clip_chomping() {
 
 #[test]
 fn block_scalar_explicit_indent() {
-    // scanner.rs:1260-1262, 1285-1291 — explicit indent indicator
+    // scanner.rs, 1285-1291 : explicit indent indicator
     let yaml = "key: |2\n  content\n";
     let v: Value = from_str(yaml).unwrap();
     assert_eq!(v["key"].as_str().unwrap(), "content\n");
@@ -335,7 +332,7 @@ fn block_scalar_explicit_indent() {
 
 #[test]
 fn block_scalar_autodetect_with_empty_lines() {
-    // scanner.rs:1296-1318 — auto-detect indentation after empty lines
+    // scanner.rs : auto-detect indentation after empty lines
     let yaml = "key: |\n\n  content\n";
     let v: Value = from_str(yaml).unwrap();
     let s = v["key"].as_str().unwrap();
@@ -344,7 +341,7 @@ fn block_scalar_autodetect_with_empty_lines() {
 
 #[test]
 fn block_scalar_more_indented() {
-    // scanner.rs:1340-1352 — extra indentation preserved as spaces
+    // scanner.rs : extra indentation preserved as spaces
     let yaml = "key: |\n  base\n    extra\n";
     let v: Value = from_str(yaml).unwrap();
     let s = v["key"].as_str().unwrap();
@@ -353,19 +350,19 @@ fn block_scalar_more_indented() {
 
 #[test]
 fn block_scalar_comment_after_indicator() {
-    // scanner.rs:1273-1276 — comment after block indicator
+    // scanner.rs : comment after block indicator
     let yaml = "key: | # this is a comment\n  content\n";
     let v: Value = from_str(yaml).unwrap();
     assert_eq!(v["key"].as_str().unwrap(), "content\n");
 }
 
 // ═══════════════════════════════════════════════════════════════════════
-// scanner.rs — Tag and anchor limits (lines 661, 692–739)
+// scanner.rs : Tag and anchor limits
 // ═══════════════════════════════════════════════════════════════════════
 
 #[test]
 fn anchor_name_length_limit() {
-    // scanner.rs:661 — anchor exceeds 1024 bytes
+    // scanner.rs : anchor exceeds 1024 bytes
     let long_name = "a".repeat(1030);
     let yaml = format!("&{long_name} value");
     let result: Result<Value, _> = from_str(&yaml);
@@ -375,7 +372,7 @@ fn anchor_name_length_limit() {
 
 #[test]
 fn tag_verbatim_length_limit() {
-    // scanner.rs:696-706 — verbatim tag exceeds limit
+    // scanner.rs : verbatim tag exceeds limit
     let long_uri = "x".repeat(1030);
     let yaml = format!("!<{long_uri}> value");
     let result: Result<Value, _> = from_str(&yaml);
@@ -384,7 +381,7 @@ fn tag_verbatim_length_limit() {
 
 #[test]
 fn tag_secondary_length_limit() {
-    // scanner.rs:722 — secondary tag suffix exceeds limit
+    // scanner.rs : secondary tag suffix exceeds limit
     let long_suffix = "x".repeat(1030);
     let yaml = format!("!!{long_suffix} value");
     let result: Result<Value, _> = from_str(&yaml);
@@ -393,7 +390,7 @@ fn tag_secondary_length_limit() {
 
 #[test]
 fn tag_primary_length_limit() {
-    // scanner.rs:739 — primary tag suffix exceeds limit
+    // scanner.rs : primary tag suffix exceeds limit
     let long_suffix = "x".repeat(1030);
     let yaml = format!("!{long_suffix} value");
     let result: Result<Value, _> = from_str(&yaml);
@@ -402,7 +399,7 @@ fn tag_primary_length_limit() {
 
 #[test]
 fn tag_verbatim_normal() {
-    // scanner.rs:692-706 — valid verbatim tag
+    // scanner.rs : valid verbatim tag
     let yaml = "!<tag:example.com,2024:type> value";
     let v: Value = from_str(yaml).unwrap();
     // Verbatim tags are resolved; the value should parse successfully
@@ -415,7 +412,7 @@ fn tag_verbatim_normal() {
 
 #[test]
 fn windows_line_endings_crlf() {
-    // scanner.rs:245-246 — CR+LF handling
+    // scanner.rs : CR+LF handling
     let yaml = "key: value\r\nkey2: value2\r\n";
     let v: Value = from_str(yaml).unwrap();
     assert_eq!(v["key2"].as_str().unwrap(), "value2");
@@ -423,7 +420,7 @@ fn windows_line_endings_crlf() {
 
 #[test]
 fn tab_indentation_error() {
-    // scanner.rs:252-253 — tab indentation error
+    // scanner.rs : tab indentation error
     let yaml = "key:\n\t  value";
     let result: Result<Value, _> = from_str(yaml);
     assert!(result.is_err());
@@ -431,7 +428,7 @@ fn tab_indentation_error() {
 
 #[test]
 fn utf8_bom_at_start() {
-    // scanner.rs:452-457 — BOM skip at document start
+    // scanner.rs : BOM skip at document start
     let yaml = "\u{FEFF}key: value";
     let v: Value = from_str(yaml).unwrap();
     assert_eq!(v["key"].as_str().unwrap(), "value");
@@ -443,7 +440,7 @@ fn utf8_bom_at_start() {
 
 #[test]
 fn explicit_document_start_markers() {
-    // events.rs:190, 202, 207, 218, 220-221 — document start/end markers
+    // events.rs, 202, 207, 218, 220-221 : document start/end markers
     let yaml = "---\nfirst: 1\n...\n---\nsecond: 2\n...";
     let docs = noyalib::load_all(yaml).unwrap();
     assert_eq!(docs.len(), 2);
@@ -451,7 +448,7 @@ fn explicit_document_start_markers() {
 
 #[test]
 fn empty_document_between_markers() {
-    // events.rs:230, 235 — empty document content
+    // events.rs, 235 : empty document content
     let yaml = "---\n...\n---\nvalue\n...";
     let docs = noyalib::load_all(yaml).unwrap();
     assert!(docs.len() >= 1);
@@ -459,7 +456,7 @@ fn empty_document_between_markers() {
 
 #[test]
 fn flow_mapping_in_flow_sequence() {
-    // events.rs:120, 125-127, 313, 322 — flow mapping inside flow sequence
+    // events.rs, 125-127, 313, 322 : flow mapping inside flow sequence
     let yaml = "[{a: 1}, {b: 2}]";
     let v: Value = from_str(yaml).unwrap();
     let seq = v.as_sequence().unwrap();
@@ -468,7 +465,7 @@ fn flow_mapping_in_flow_sequence() {
 
 #[test]
 fn indentless_sequence_entry() {
-    // events.rs:112 — indentless sequence
+    // events.rs : indentless sequence
     let yaml = "key:\n  - item1\n  - item2";
     let v: Value = from_str(yaml).unwrap();
     let seq = v["key"].as_sequence().unwrap();
@@ -477,7 +474,7 @@ fn indentless_sequence_entry() {
 
 #[test]
 fn flow_sequence_with_mapping_entries() {
-    // events.rs:349, 360-361, 379 — complex flow entries
+    // events.rs, 360-361, 379 : complex flow entries
     let yaml = "[a, b: c, d]";
     let v: Value = from_str(yaml).unwrap();
     assert!(v.as_sequence().is_some());
@@ -485,7 +482,7 @@ fn flow_sequence_with_mapping_entries() {
 
 #[test]
 fn block_mapping_complex_key() {
-    // events.rs:395-421 — block mapping key/value parsing
+    // events.rs : block mapping key/value parsing
     let yaml = "? key1\n: value1\n? key2\n: value2";
     let v: Value = from_str(yaml).unwrap();
     assert_eq!(v["key1"].as_str().unwrap(), "value1");
@@ -494,7 +491,7 @@ fn block_mapping_complex_key() {
 
 #[test]
 fn flow_mapping_explicit_key() {
-    // events.rs:527-530, 550-558 — flow mapping explicit keys
+    // events.rs, 550-558 : flow mapping explicit keys
     let yaml = "{a: 1, b: 2}";
     let v: Value = from_str(yaml).unwrap();
     assert!(v.as_mapping().is_some());
@@ -503,7 +500,7 @@ fn flow_mapping_explicit_key() {
 
 #[test]
 fn node_with_anchor_and_tag() {
-    // events.rs:269-281 — anchor + tag combination
+    // events.rs : anchor + tag combination
     let yaml = "&anchor !!str tagged_value";
     let v: Value = from_str(yaml).unwrap();
     assert!(v.as_str().is_some() || matches!(v, Value::Tagged(_)));
@@ -511,7 +508,7 @@ fn node_with_anchor_and_tag() {
 
 #[test]
 fn block_mapping_implicit_value() {
-    // events.rs:432, 437, 439-440, 446, 467 — block mapping value edge cases
+    // events.rs, 437, 439-440, 446, 467 : block mapping value edge cases
     let yaml = "key1:\nkey2: value2";
     let v: Value = from_str(yaml).unwrap();
     assert!(v["key1"].is_null());
@@ -524,7 +521,7 @@ fn block_mapping_implicit_value() {
 
 #[test]
 fn multi_document_lifecycle() {
-    // loader.rs:147, 155, 159 — document start/end state tracking
+    // loader.rs, 155, 159 : document start/end state tracking
     let yaml = "---\na: 1\n---\nb: 2\n...";
     let docs = noyalib::load_all(yaml).unwrap();
     let collected: Vec<_> = docs.collect();
@@ -533,7 +530,7 @@ fn multi_document_lifecycle() {
 
 #[test]
 fn alias_expansion_byte_limit() {
-    // loader.rs:191, 199 — alias byte tracking (P0-1 fix)
+    // loader.rs, 199 : alias byte tracking (P0-1 fix)
     let config = ParserConfig::new()
         .max_alias_expansions(1024)
         .max_document_length(1024);
@@ -549,7 +546,7 @@ fn alias_expansion_byte_limit() {
 
 #[test]
 fn duplicate_key_first_policy() {
-    // loader.rs:465-468 — DuplicateKeyPolicy::First
+    // loader.rs : DuplicateKeyPolicy::First
     let config = ParserConfig::new().duplicate_key_policy(DuplicateKeyPolicy::First);
     let yaml = "a: first\na: second";
     let v: Value = from_str_with_config(yaml, &config).unwrap();
@@ -558,7 +555,7 @@ fn duplicate_key_first_policy() {
 
 #[test]
 fn duplicate_key_last_policy_span_update() {
-    // loader.rs:417, 423 — span entry update for Last policy (P0-2 fix)
+    // loader.rs, 423 : span entry update for Last policy (P0-2 fix)
     let yaml = "a: first\na: second";
     let v: Value = from_str(yaml).unwrap();
     assert_eq!(v["a"].as_str().unwrap(), "second");
@@ -566,7 +563,7 @@ fn duplicate_key_last_policy_span_update() {
 
 #[test]
 fn merge_key_from_mapping() {
-    // loader.rs:267, 273 — merge key processing
+    // loader.rs, 273 : merge key processing
     let yaml =
         "defaults: &defaults\n  color: red\n  size: large\nitem:\n  <<: *defaults\n  name: thing";
     let v: Value = from_str(yaml).unwrap();
@@ -575,7 +572,7 @@ fn merge_key_from_mapping() {
 
 #[test]
 fn merge_key_from_sequence_of_mappings() {
-    // loader.rs:273 — merge from sequence
+    // loader.rs : merge from sequence
     let yaml = "a: &a\n  x: 1\nb: &b\n  y: 2\nc:\n  <<: [*a, *b]\n  z: 3";
     let v: Value = from_str(yaml).unwrap();
     assert_eq!(v["c"]["x"].as_i64().unwrap(), 1);
@@ -584,7 +581,7 @@ fn merge_key_from_sequence_of_mappings() {
 
 #[test]
 fn merge_key_scalar_error() {
-    // loader.rs:293, 297 — merge with non-mapping value
+    // loader.rs, 297 : merge with non-mapping value
     let yaml = "a: &a scalar\nb:\n  <<: *a";
     let result: Result<Value, _> = from_str(yaml);
     assert!(result.is_err());
@@ -592,7 +589,7 @@ fn merge_key_scalar_error() {
 
 #[test]
 fn sequence_with_anchored_value() {
-    // loader.rs:222, 227, 246 — sequence end with anchored values
+    // loader.rs, 227, 246 : sequence end with anchored values
     let yaml = "&seq\n- a\n- b\n- c";
     let v: Value = from_str(yaml).unwrap();
     let seq = v.as_sequence().unwrap();
@@ -601,7 +598,7 @@ fn sequence_with_anchored_value() {
 
 #[test]
 fn tagged_scalar_resolution() {
-    // loader.rs:528, 545, 549, 556-557, 563, 568, 576, 588 — tagged scalar
+    // loader.rs, 545, 549, 556-557, 563, 568, 576, 588 : tagged scalar
     // resolution
     let yaml = "!!int 42";
     let v: Value = from_str(yaml).unwrap();
@@ -638,7 +635,7 @@ fn tagged_str_resolution() {
 
 #[test]
 fn tagged_float_special_values() {
-    // loader.rs:563, 568 — tagged float specials
+    // loader.rs, 568 : tagged float specials
     let yaml = "!!float .inf";
     let v: Value = from_str(yaml).unwrap();
     assert!(v.as_f64().unwrap().is_infinite());
@@ -671,32 +668,32 @@ fn tagged_float_invalid_error() {
 
 #[test]
 fn hex_integer_parsing() {
-    // loader.rs:638 — hex integer
+    // loader.rs : hex integer
     let v: Value = from_str("0xFF").unwrap();
     assert_eq!(v.as_i64().unwrap(), 255);
 }
 
 #[test]
 fn octal_integer_parsing() {
-    // loader.rs:638 — octal integer
+    // loader.rs : octal integer
     let v: Value = from_str("0o77").unwrap();
     assert_eq!(v.as_i64().unwrap(), 63);
 }
 
 #[test]
 fn large_integer_as_float() {
-    // loader.rs:688, 701 — integer overflow → float
+    // loader.rs, 701 : integer overflow → float
     let v: Value = from_str("99999999999999999999").unwrap();
     assert!(v.as_f64().is_some());
 }
 
 // ═══════════════════════════════════════════════════════════════════════
-// de.rs — Deserializer edge cases (lines 648, 652, 786–814)
+// de.rs : Deserializer edge cases
 // ═══════════════════════════════════════════════════════════════════════
 
 #[test]
 fn deserialize_identifier_delegates_to_str() {
-    // de.rs:648, 652 — deserialize_identifier
+    // de.rs, 652 : deserialize_identifier
     #[derive(Debug, serde::Deserialize)]
     enum Color {
         Red,
@@ -709,7 +706,7 @@ fn deserialize_identifier_delegates_to_str() {
 
 #[test]
 fn spanned_deserialize_all_fields() {
-    // de.rs:786-814 — all SpannedFieldState transitions
+    // de.rs : all SpannedFieldState transitions
     let yaml = "key: hello";
     let spanned: Spanned<Value> = from_str(yaml).unwrap();
     assert!(spanned.start.line() >= 1);
@@ -721,7 +718,7 @@ fn spanned_deserialize_all_fields() {
 
 #[test]
 fn spanned_nested_value() {
-    // de.rs:786-814 — Spanned with specific value
+    // de.rs : Spanned with specific value
     #[derive(Debug, serde::Deserialize)]
     struct Config {
         name: Spanned<String>,
@@ -732,12 +729,12 @@ fn spanned_nested_value() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════
-// ser.rs — Serializer edge cases (lines 328–688)
+// ser.rs : Serializer edge cases
 // ═══════════════════════════════════════════════════════════════════════
 
 #[test]
 fn serialize_custom_tag() {
-    // ser.rs:328-330 — non-internal tag
+    // ser.rs : non-internal tag
     let tagged = TaggedValue::new(Tag::new("!custom"), Value::String("val".into()));
     let v = Value::Tagged(Box::new(tagged));
     let s = to_string(&v).unwrap();
@@ -746,7 +743,7 @@ fn serialize_custom_tag() {
 
 #[test]
 fn serialize_flow_seq_non_sequence_fallback() {
-    // ser.rs:599-600 — FlowSeq tag on non-sequence falls through
+    // ser.rs : FlowSeq tag on non-sequence falls through
     use noyalib::fmt::FlowSeq;
     let val = FlowSeq(42i32);
     let s = to_string(&val).unwrap();
@@ -755,7 +752,7 @@ fn serialize_flow_seq_non_sequence_fallback() {
 
 #[test]
 fn serialize_flow_map_non_mapping_fallback() {
-    // ser.rs:606-607 — FlowMap tag on non-mapping falls through
+    // ser.rs : FlowMap tag on non-mapping falls through
     use noyalib::fmt::FlowMap;
     let val = FlowMap(42i32);
     let s = to_string(&val).unwrap();
@@ -764,7 +761,7 @@ fn serialize_flow_map_non_mapping_fallback() {
 
 #[test]
 fn serialize_lit_str_non_string_fallback() {
-    // ser.rs:613-614 — LitStr tag on non-string falls through
+    // ser.rs : LitStr tag on non-string falls through
     // Use the wrapper on a non-string type to exercise fallback
     use noyalib::fmt::LitString;
     let ls = LitString::from("hello".to_string());
@@ -774,7 +771,7 @@ fn serialize_lit_str_non_string_fallback() {
 
 #[test]
 fn serialize_fold_str_non_string_fallback() {
-    // ser.rs:620-621 — FoldStr tag on non-string falls through
+    // ser.rs : FoldStr tag on non-string falls through
     use noyalib::fmt::FoldString;
     let fs = FoldString::from("hello".to_string());
     let s = to_string(&fs).unwrap();
@@ -783,7 +780,7 @@ fn serialize_fold_str_non_string_fallback() {
 
 #[test]
 fn serialize_commented_value() {
-    // ser.rs:624-638 — Commented serialization
+    // ser.rs : Commented serialization
     use noyalib::Commented;
     let c = Commented::new(42, "this is a comment");
     let s = to_string(&c).unwrap();
@@ -793,7 +790,7 @@ fn serialize_commented_value() {
 
 #[test]
 fn serialize_space_after_value() {
-    // ser.rs:640-643 — SpaceAfter serialization
+    // ser.rs : SpaceAfter serialization
     use noyalib::SpaceAfter;
     let sa = SpaceAfter(42);
     let s = to_string(&sa).unwrap();
@@ -802,7 +799,7 @@ fn serialize_space_after_value() {
 
 #[test]
 fn serialize_unknown_internal_tag() {
-    // ser.rs:646 — unknown __noya_ prefixed tag
+    // ser.rs : unknown __noya_ prefixed tag
     let v = Value::Tagged(Box::new(TaggedValue::new(
         Tag::new("__noya_unknown"),
         Value::from("test"),
@@ -813,7 +810,7 @@ fn serialize_unknown_internal_tag() {
 
 #[test]
 fn looks_like_number_empty_string() {
-    // ser.rs:343 — empty string check
+    // ser.rs : empty string check
     let v = Value::String(String::new());
     let s = to_string(&v).unwrap();
     // Empty string should be quoted
@@ -822,7 +819,7 @@ fn looks_like_number_empty_string() {
 
 #[test]
 fn serialize_map_key_non_string_error() {
-    // ser.rs:1108 — map key that's not a string/number/bool
+    // ser.rs : map key that's not a string/number/bool
     // This exercises the error path when a map key is a complex type
     let mut map = std::collections::HashMap::new();
     let _ = map.insert(vec![1, 2], "value");
@@ -832,7 +829,7 @@ fn serialize_map_key_non_string_error() {
 
 #[test]
 fn serialize_string_with_control_chars() {
-    // ser.rs:442, 533 — control characters force double quoting
+    // ser.rs, 533 : control characters force double quoting
     let v = Value::String("hello\x07world".to_string());
     let s = to_string(&v).unwrap();
     assert!(s.contains('"') || s.contains("\\a"), "got: {s}");
@@ -844,7 +841,7 @@ fn serialize_string_with_control_chars() {
 
 #[test]
 fn mapping_any_ord_different_keys() {
-    // value.rs:805-811 — MappingAny Ord comparison
+    // value.rs : MappingAny Ord comparison
     let mut m1 = MappingAny::new();
     let mut m2 = MappingAny::new();
     let _ = m1.insert(Value::from("a"), Value::from(1));
@@ -854,7 +851,7 @@ fn mapping_any_ord_different_keys() {
 
 #[test]
 fn mapping_any_ord_same_keys_different_values() {
-    // value.rs:805-811 — Ord with same keys but different values
+    // value.rs : Ord with same keys but different values
     let mut m1 = MappingAny::new();
     let mut m2 = MappingAny::new();
     let _ = m1.insert(Value::from("a"), Value::from(1));
@@ -864,21 +861,21 @@ fn mapping_any_ord_same_keys_different_values() {
 
 #[test]
 fn mapping_deserialize_type_error() {
-    // value.rs:399, 402-403 — Mapping visitor expecting error
+    // value.rs, 402-403 : Mapping visitor expecting error
     let result: Result<Mapping, _> = serde_json::from_str("123");
     assert!(result.is_err());
 }
 
 #[test]
 fn mapping_any_deserialize_type_error() {
-    // value.rs:855-859 — MappingAny visitor expecting error
+    // value.rs : MappingAny visitor expecting error
     let result: Result<MappingAny, _> = serde_json::from_str("123");
     assert!(result.is_err());
 }
 
 #[test]
 fn tagged_value_deserialize_from_map() {
-    // value.rs:1446-1465 — TaggedValue deserialization
+    // value.rs : TaggedValue deserialization
     let yaml = "mytag: myvalue";
     let tv: TaggedValue = from_str(yaml).unwrap();
     assert_eq!(tv.tag().as_str(), "mytag");
@@ -886,7 +883,7 @@ fn tagged_value_deserialize_from_map() {
 
 #[test]
 fn tagged_value_enum_deserialization() {
-    // value.rs:1446-1465 — TaggedValue deserialization from map
+    // value.rs : TaggedValue deserialization from map
     let tv: TaggedValue = from_str("mytag: myvalue").unwrap();
     assert_eq!(tv.tag().as_str(), "mytag");
     assert_eq!(tv.value().as_str(), Some("myvalue"));
@@ -894,7 +891,7 @@ fn tagged_value_enum_deserialization() {
 
 #[test]
 fn tagged_value_unit_variant() {
-    // value.rs:1564-1566 — unit variant through tagged
+    // value.rs : unit variant through tagged
     #[derive(Debug, serde::Deserialize, PartialEq)]
     enum Flag {
         On,
@@ -908,7 +905,7 @@ fn tagged_value_unit_variant() {
 
 #[test]
 fn tagged_value_tuple_variant() {
-    // value.rs:1575-1580 — tuple variant through tagged
+    // value.rs : tuple variant through tagged
     #[derive(Debug, serde::Deserialize, PartialEq)]
     enum Data {
         Pair(i32, i32),
@@ -920,7 +917,7 @@ fn tagged_value_tuple_variant() {
 
 #[test]
 fn tagged_value_struct_variant() {
-    // value.rs:1582-1591 — struct variant through tagged
+    // value.rs : struct variant through tagged
     #[derive(Debug, serde::Deserialize, PartialEq)]
     enum Shape {
         Circle { radius: f64 },
@@ -932,7 +929,7 @@ fn tagged_value_struct_variant() {
 
 #[test]
 fn value_index_into_mut_tagged_sequence() {
-    // value.rs:2452 — IndexMut through tagged
+    // value.rs : IndexMut through tagged
     let seq = Value::Sequence(vec![Value::from(1), Value::from(2)]);
     let mut v = Value::Tagged(Box::new(TaggedValue::new(Tag::new("seq"), seq)));
     let item = &mut v[0];
@@ -947,7 +944,7 @@ fn value_index_into_mut_tagged_sequence() {
 
 #[test]
 fn value_index_into_mut_tagged_mapping() {
-    // value.rs:2490 — IndexMut through tagged mapping
+    // value.rs : IndexMut through tagged mapping
     let mut m = Mapping::new();
     m.insert("key", Value::from(10));
     let mut v = Value::Tagged(Box::new(TaggedValue::new(
@@ -960,7 +957,7 @@ fn value_index_into_mut_tagged_mapping() {
 
 #[test]
 fn value_deserialize_any_for_tagged() {
-    // value.rs:2763-2783, 2795-2803 — Value deserialize_any with tagged
+    // value.rs, 2795-2803 : Value deserialize_any with tagged
     let tagged = Value::Tagged(Box::new(TaggedValue::new(
         Tag::new("custom"),
         Value::String("data".into()),
@@ -972,7 +969,7 @@ fn value_deserialize_any_for_tagged() {
 
 #[test]
 fn value_deserialize_seq() {
-    // value.rs:2716-2724 — ValueSeqAccess
+    // value.rs : ValueSeqAccess
     let v = Value::Sequence(vec![Value::from(1), Value::from(2), Value::from(3)]);
     let nums: Vec<i64> = from_value(&v).unwrap();
     assert_eq!(nums, vec![1, 2, 3]);
@@ -980,7 +977,7 @@ fn value_deserialize_seq() {
 
 #[test]
 fn value_deserialize_map() {
-    // value.rs:2732-2757 — ValueMapAccess
+    // value.rs : ValueMapAccess
     let mut m = Mapping::new();
     m.insert("a", Value::from(1));
     m.insert("b", Value::from(2));
@@ -996,7 +993,7 @@ fn value_deserialize_map() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════
-// schema.rs — Validation edge cases (lines 61–193)
+// schema.rs : Validation edge cases
 // ═══════════════════════════════════════════════════════════════════════
 
 #[test]
@@ -1026,7 +1023,7 @@ fn failsafe_schema_rejects_tagged() {
 
 #[test]
 fn failsafe_schema_validates_nested_strings() {
-    // schema.rs:61, 67 — recursive validation in seq/map
+    // schema.rs : recursive validation in seq/map
     let seq = Value::Sequence(vec![Value::from("a"), Value::from("b")]);
     assert!(noyalib::validate_yaml_failsafe_schema(&seq).is_ok());
 
@@ -1037,20 +1034,20 @@ fn failsafe_schema_validates_nested_strings() {
 
 #[test]
 fn failsafe_schema_rejects_nested_number() {
-    // schema.rs:61 — nested non-string in sequence
+    // schema.rs : nested non-string in sequence
     let seq = Value::Sequence(vec![Value::from(42)]);
     assert!(noyalib::validate_yaml_failsafe_schema(&seq).is_err());
 }
 
 #[test]
 fn json_schema_rejects_nan() {
-    // schema.rs:133 — NaN not allowed
+    // schema.rs : NaN not allowed
     assert!(!noyalib::is_yaml_json_compatible(&Value::from(f64::NAN)));
 }
 
 #[test]
 fn json_schema_rejects_infinity() {
-    // schema.rs:133 — Infinity not allowed
+    // schema.rs : Infinity not allowed
     assert!(!noyalib::is_yaml_json_compatible(&Value::from(
         f64::INFINITY
     )));
@@ -1058,14 +1055,14 @@ fn json_schema_rejects_infinity() {
 
 #[test]
 fn json_schema_rejects_tagged() {
-    // schema.rs:143-144
+    // schema.rs
     let tagged = Value::Tagged(Box::new(TaggedValue::new(Tag::new("t"), Value::Null)));
     assert!(noyalib::validate_yaml_json_schema(&tagged).is_err());
 }
 
 #[test]
 fn json_schema_validates_nested() {
-    // schema.rs:132-141 — recursive validation
+    // schema.rs : recursive validation
     let seq = Value::Sequence(vec![Value::from(1), Value::from("a")]);
     assert!(noyalib::validate_yaml_json_schema(&seq).is_ok());
 
@@ -1076,7 +1073,7 @@ fn json_schema_validates_nested() {
 
 #[test]
 fn core_schema_validates_everything() {
-    // schema.rs:181, 187, 191, 193 — core schema recursive
+    // schema.rs, 187, 191, 193 : core schema recursive
     let seq = Value::Sequence(vec![Value::from(f64::NAN), Value::Null]);
     assert!(noyalib::validate_yaml_core_schema(&seq).is_ok());
 
@@ -1098,12 +1095,12 @@ fn is_failsafe_compatible_function() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════
-// path.rs — Path display variants (lines 202–269)
+// path.rs : Path display variants
 // ═══════════════════════════════════════════════════════════════════════
 
 #[test]
 fn path_display_and_parent() {
-    // path.rs:202, 204, 228, 254, 268-269
+    // path.rs, 204, 228, 254, 268-269
     use noyalib::Path;
     let root = Path::Root;
     let display = format!("{root}");
@@ -1141,12 +1138,12 @@ fn path_display_and_parent() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════
-// spanned.rs — Spanned visitor (lines 117–156)
+// spanned.rs : Spanned visitor
 // ═══════════════════════════════════════════════════════════════════════
 
 #[test]
 fn spanned_struct_deserialization() {
-    // spanned.rs:117, 118, 129, 130, 154, 156
+    // spanned.rs, 118, 129, 130, 154, 156
     let yaml = "42";
     let spanned: Spanned<i32> = from_str(yaml).unwrap();
     assert_eq!(spanned.value, 42);
@@ -1161,12 +1158,12 @@ fn spanned_string_deserialization() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════
-// fmt.rs — Wrapper getter methods (lines 155, 253, 381)
+// fmt.rs : Wrapper getter methods
 // ═══════════════════════════════════════════════════════════════════════
 
 #[test]
 fn lit_str_as_str_and_into_inner() {
-    // fmt.rs:155, 156
+    // fmt.rs, 156
     use noyalib::LitStr;
     let ls = LitStr("hello");
     assert_eq!(ls.as_str(), "hello");
@@ -1175,7 +1172,7 @@ fn lit_str_as_str_and_into_inner() {
 
 #[test]
 fn fold_str_as_str_and_into_inner() {
-    // fmt.rs:253, 254
+    // fmt.rs, 254
     use noyalib::FoldStr;
     let fs = FoldStr("world");
     assert_eq!(fs.as_str(), "world");
@@ -1183,12 +1180,12 @@ fn fold_str_as_str_and_into_inner() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════
-// with/singleton_map_recursive.rs — Tagged transform (lines 47–51)
+// with/singleton_map_recursive.rs : Tagged transform
 // ═══════════════════════════════════════════════════════════════════════
 
 #[test]
 fn singleton_map_recursive_with_tagged() {
-    // singleton_map_recursive.rs:47-51 — tagged value transformation
+    // singleton_map_recursive.rs : tagged value transformation
     #[derive(Debug, serde::Serialize, serde::Deserialize, PartialEq)]
     enum Action {
         Run(String),
@@ -1208,12 +1205,12 @@ fn singleton_map_recursive_with_tagged() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════
-// with/singleton_map_with.rs — Transform helpers (lines 113–346)
+// with/singleton_map_with.rs : Transform helpers
 // ═══════════════════════════════════════════════════════════════════════
 
 #[test]
 fn singleton_map_with_custom_transform() {
-    // singleton_map_with.rs:113, 122, 124-143, 175, 184, 187, 189
+    // singleton_map_with.rs, 122, 124-143, 175, 184, 187, 189
     use noyalib::with::singleton_map_with::{
         from_kebab_case, to_kebab_case, to_lowercase, to_pascal_case, to_snake_case, to_uppercase,
     };
@@ -1229,7 +1226,7 @@ fn singleton_map_with_custom_transform() {
 
 #[test]
 fn singleton_map_with_transform_tagged_keys() {
-    // singleton_map_with.rs:214-217 — transform_value_keys for Tagged values
+    // singleton_map_with.rs : transform_value_keys for Tagged values
     use noyalib::with::singleton_map_with::{to_snake_case, to_uppercase};
 
     // Test all the case conversion helpers
@@ -1239,7 +1236,7 @@ fn singleton_map_with_transform_tagged_keys() {
 
 #[test]
 fn singleton_map_with_from_kebab_case() {
-    // singleton_map_with.rs:346 — from_kebab_case split logic
+    // singleton_map_with.rs : from_kebab_case split logic
     use noyalib::with::singleton_map_with::from_kebab_case;
     assert_eq!(from_kebab_case("get-request"), "GetRequest");
     assert_eq!(from_kebab_case("a-b-c"), "ABC");
@@ -1286,6 +1283,7 @@ fn try_load_all_alias() {
 // ═══════════════════════════════════════════════════════════════════════
 
 #[test]
+#[cfg(feature = "std")]
 fn from_reader_basic() {
     let yaml = b"key: value";
     let v: Value = noyalib::from_reader(&yaml[..]).unwrap();
@@ -1293,6 +1291,7 @@ fn from_reader_basic() {
 }
 
 #[test]
+#[cfg(feature = "std")]
 fn from_reader_with_config() {
     let yaml = b"key: value";
     let config = ParserConfig::new().max_depth(10);
@@ -1347,6 +1346,7 @@ fn serializer_config_options() {
 }
 
 #[test]
+#[cfg(feature = "std")]
 fn to_writer_basic() {
     let v = Value::from("test");
     let mut buf = Vec::new();
@@ -1355,6 +1355,7 @@ fn to_writer_basic() {
 }
 
 #[test]
+#[cfg(feature = "std")]
 fn to_writer_with_config() {
     let config = SerializerConfig::new().document_start(true);
     let v = Value::from("test");
@@ -1372,6 +1373,7 @@ fn multi_document_serialization() {
 }
 
 #[test]
+#[cfg(feature = "std")]
 fn multi_document_writer() {
     let docs = vec![Value::from("doc1"), Value::from("doc2")];
     let mut buf = Vec::new();

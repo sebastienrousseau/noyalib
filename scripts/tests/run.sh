@@ -210,6 +210,9 @@ done
 
 # Historical evidence must describe real tests at the requested source SHA.
 if python3 scripts/tests/test_historical_test_status.py; then ok; else bad "historical test status publisher"; fi
+if python3 scripts/tests/test_ecosystem_coverage.py; then ok; else bad "ecosystem coverage measurement"; fi
+if python3 scripts/tests/test_lockfile_audit.py; then ok; else bad "all tracked lockfile audit scopes"; fi
+if python3 scripts/tests/test_release_lock_versions.py; then ok; else bad "nested lockfile release versions"; fi
 
 echo "gate self-tests: $pass passed, $fail failed"
 [ "$fail" = 0 ]

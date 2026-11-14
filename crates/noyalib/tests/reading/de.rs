@@ -479,6 +479,7 @@ fn test_from_slice_invalid_utf8() {
 }
 
 #[test]
+#[cfg(feature = "std")]
 fn test_from_reader() {
     use std::io::Cursor;
     let yaml = "key: value\n";

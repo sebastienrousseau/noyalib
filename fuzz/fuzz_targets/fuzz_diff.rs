@@ -1,19 +1,9 @@
-//! Differential fuzz target: parse the same YAML through noyalib,
-//! `serde_yaml_ng`, and `saphyr`, and flag *valid divergences* —
-//! cases where every parser says "yes, this is YAML" but they
-//! produce different `Value` shapes.
+//! Compare noyalib and `serde_yaml_ng` values on inputs accepted by saphyr.
 //!
-//! Crash-free is the bar for the other fuzz targets; this target is
-//! about *correctness alignment* with the de-facto Rust YAML
-//! ecosystem. A divergence is not necessarily a noyalib bug —
-//! noyalib is the most spec-compliant of the three, and `saphyr` /
-//! `serde_yaml_ng` have known historical quirks. But every
-//! divergence is data: it surfaces either a noyalib regression, a
-//! competitor bug, or a spec-corner the test corpus has not yet
-//! covered.
-//!
-//! Inputs that any of the parsers reject are dropped — we only
-//! diff the cases all three accept.
+//! Known resolver and grammar differences are explicit below. Repairs for
+//! archive defects must preserve the candidate's complete value and still
+//! compare it with a fresh oracle parse. Saphyr's value comparison remains
+//! separate work; this target currently checks its acceptance only.
 
 // SPDX-License-Identifier: MIT OR Apache-2.0
 // Copyright (c) 2026 Noyalib. All rights reserved.
@@ -21,6 +11,24 @@
 #![no_main]
 
 use libfuzzer_sys::fuzz_target;
+
+#[path = "../../crates/noyalib/tests/properties/oracle_normalization.rs"]
+mod oracle_normalization;
+
+#[path = "../canonical_duplicates.rs"]
+mod canonical_duplicates;
+
+#[path = "../json_numbers.rs"]
+mod json_numbers;
+
+#[path = "../decimal_integer.rs"]
+mod decimal_integer;
+
+#[path = "../question_key.rs"]
+mod question_key;
+
+#[path = "../local_core_tags.rs"]
+mod local_core_tags;
 
 fuzz_target!(|data: &[u8]| {
     let Ok(s) = std::str::from_utf8(data) else {
@@ -32,28 +40,91 @@ fuzz_target!(|data: &[u8]| {
         return;
     }
 
-    let Ok(noya) = noyalib::from_str::<serde_json::Value>(s) else {
+    // Compare the archive's complete unsigned-integer domain.
+    let mut config = noyalib::ParserConfig::default();
+    config.lossless_u64_integers = true;
+    let parse = |source: &str| noyalib::from_str_with_config::<serde_json::Value>(source, &config);
+    let Ok(noya) = parse(s) else {
         return;
     };
-    let Ok(syml) = serde_yaml_ng::from_str::<serde_json::Value>(s) else {
+    // A collection key (`? *a` naming a mapping) has no JSON key form on
+    // the archive side; noyalib stringifies it.
+    let mut scalar_keys = config.clone();
+    scalar_keys.non_scalar_key_policy = noyalib::NonScalarKeyPolicy::Error;
+    if noyalib::from_str_with_config::<serde_json::Value>(s, &scalar_keys).is_err() {
         return;
+    }
+    // `base` is the source the archive accepted: the input, or its
+    // spelling repair. Later repairs build on it.
+    let (syml, base) = match serde_yaml_ng::from_str::<serde_json::Value>(s) {
+        Ok(value) => (value, s.to_owned()),
+        Err(_) => {
+            let Some(normalized) = oracle_normalization::collection_spelling(s)
+                .or_else(|| oracle_normalization::stream_bom_prefix(s))
+            else {
+                return;
+            };
+            // A spelling repair can expose the archive's anchor-ID reuse.
+            let normalized =
+                oracle_normalization::unique_colliding_anchors(&normalized).unwrap_or(normalized);
+            let Ok(projected) = parse(&normalized) else {
+                return;
+            };
+            if !numeric_equal(&noya, &projected) {
+                return;
+            }
+            let Ok(value) = serde_yaml_ng::from_str::<serde_json::Value>(&normalized) else {
+                return;
+            };
+            (value, normalized)
+        }
     };
     // saphyr returns its own value type; compare via JSON to put all
     // three on the same axis.
-    let Ok(saph_str) =
-        std::panic::catch_unwind(|| match {
-                use saphyr::LoadableYamlNode as _;
-                saphyr::Yaml::load_from_str(s)
-            } {
+    let Ok(Some(saph_str)) = std::panic::catch_unwind(|| {
+        use saphyr::LoadableYamlNode as _;
+        match saphyr::Yaml::load_from_str(s) {
             Ok(docs) => Some(format!("{:?}", docs)),
             Err(_) => None,
-        })
-    else {
+        }
+    }) else {
         return;
     };
 
-    if !numeric_equal(&noya, &syml) && !anchor_name_outside_libyaml(s)
-        && !flow_entry_starts_with_indicator(s) && !yaml_1_1_line_break(s) {
+    if !numeric_equal(&noya, &syml)
+        && !anchor_name_outside_libyaml(s)
+        && !local_core_tags::present(s)
+        && !question_key::flow_entry_starts_with_indicator(s)
+        && !yaml_1_1_line_break(s)
+        && !canonical_duplicates::spelling_collision(&base, &config)
+        && !canonical_duplicates::aliased_duplicate(&base, &config)
+        && !canonical_duplicates::tagged_key(&base, &config)
+        && !canonical_duplicates::spelling(&base, &config)
+            .filter(|source| parse(source).is_ok_and(|value| numeric_equal(&noya, &value)))
+            .and_then(|source| serde_yaml_ng::from_str::<serde_json::Value>(&source).ok())
+            .is_some_and(|expected| numeric_equal(&noya, &expected))
+        && !oracle_normalization::stream_bom_prefix(&base)
+            .filter(|source| parse(source).is_ok_and(|value| numeric_equal(&noya, &value)))
+            .and_then(|source| serde_yaml_ng::from_str::<serde_json::Value>(&source).ok())
+            .is_some_and(|expected| numeric_equal(&noya, &expected))
+        && !oracle_normalization::collection_spelling(&base)
+            .filter(|source| parse(source).is_ok_and(|value| numeric_equal(&noya, &value)))
+            .and_then(|source| serde_yaml_ng::from_str::<serde_json::Value>(&source).ok())
+            .is_some_and(|expected| numeric_equal(&noya, &expected))
+        && !oracle_normalization::terminated_spaced_block(&base)
+            .filter(|source| parse(source).is_ok_and(|value| numeric_equal(&noya, &value)))
+            .and_then(|source| serde_yaml_ng::from_str::<serde_json::Value>(&source).ok())
+            .is_some_and(|expected| numeric_equal(&noya, &expected))
+        && !canonical_duplicates::composed(&base, &config, &|source| {
+            parse(source).is_ok_and(|value| numeric_equal(&noya, &value))
+        })
+        .and_then(|source| serde_yaml_ng::from_str::<serde_json::Value>(&source).ok())
+        .is_some_and(|expected| numeric_equal(&noya, &expected))
+        && !oracle_normalization::unique_colliding_anchors(&base)
+            .filter(|source| parse(source).is_ok_and(|value| numeric_equal(&noya, &value)))
+            .and_then(|source| serde_yaml_ng::from_str::<serde_json::Value>(&source).ok())
+            .is_some_and(|expected| numeric_equal(&noya, &expected))
+    {
         // serde_yaml_ng vs noyalib divergence — abort so libfuzzer
         // saves the input as a unique crash artefact.
         let n = serde_json::to_string(&noya).unwrap_or_default();
@@ -66,8 +137,8 @@ fuzz_target!(|data: &[u8]| {
         );
     }
     let _ = saph_str; // keep saphyr load result alive; expand the
-                     // saphyr<->noyalib comparison once the
-                     // saphyr→serde_json bridge lands.
+                      // saphyr<->noyalib comparison once the
+                      // saphyr→serde_json bridge lands.
 });
 
 /// JSON-Value equality that treats `Number(450.0) == Number(450)`.
@@ -78,29 +149,18 @@ fuzz_target!(|data: &[u8]| {
 fn numeric_equal(a: &serde_json::Value, b: &serde_json::Value) -> bool {
     use serde_json::Value as V;
     match (a, b) {
-        (V::Number(an), V::Number(bn)) => an.as_f64() == bn.as_f64(),
+        (V::Number(an), V::Number(bn)) => json_numbers::equal(an, bn),
         (V::Array(av), V::Array(bv)) => {
-            av.len() == bv.len()
-                && av.iter().zip(bv.iter()).all(|(x, y)| numeric_equal(x, y))
+            av.len() == bv.len() && av.iter().zip(bv.iter()).all(|(x, y)| numeric_equal(x, y))
         }
         (V::Object(am), V::Object(bm)) => object_equal(am, bm),
         // Known serde_yaml_ng quirk: a comment-shaped line inside a
         // block scalar's content is stripped as if it were a comment,
         // where the spec reads it as content (`>\n#` is the folded
-        // scalar "#\n"; auto-detected indent 0 is valid content for a
+        // scalar "#" at EOF; auto-detected indent 0 is valid content for a
         // root node), and ng ends the scalar there. noyalib's reading
         // is pinned in tests/competitor_bugs.rs.
         (V::String(a), V::String(b)) if cut_at_comment_line(a, b) || cut_at_comment_line(b, a) => {
-            true
-        }
-        // Known serde_yaml_ng quirk: block-scalar chomping — the
-        // default "clip" keeps the final line break (`>\n &` is the
-        // folded scalar "&\n"); ng drops it. Same text either side of
-        // one trailing newline is that divergence, not disagreement
-        // about the data.
-        (V::String(a), V::String(b))
-            if a.strip_suffix('\n') == Some(b) || b.strip_suffix('\n') == Some(a) =>
-        {
             true
         }
         // Known resolver-scheme divergence: a leading-zero integer
@@ -108,13 +168,26 @@ fn numeric_equal(a: &serde_json::Value, b: &serde_json::Value) -> bool {
         // as a decimal integer (noyalib, correctly); serde_yaml_ng's
         // 1.1-flavoured resolver keeps it a string to dodge the 1.1
         // octal ambiguity.
-        (V::Number(n), V::String(s)) | (V::String(s), V::Number(n))
-            if is_leading_zero_int(s) =>
-        {
+        (V::Number(n), V::String(s)) | (V::String(s), V::Number(n)) if is_leading_zero_int(s) => {
             // Same digits, two readings: allowed only when the string
             // spelling parses to exactly the number the other side
-            // resolved (f64 parsing accepts the leading zeros).
-            s.parse::<f64>().ok() == n.as_f64()
+            // resolved, retaining exact integers throughout the u64 domain.
+            decimal_integer::equivalent(s, n)
+        }
+        // ADR-0004 keeps large radix integers as strings by default;
+        // the archive always resolves the u64 range. Require exact digits.
+        (V::Number(n), V::String(s)) | (V::String(s), V::Number(n))
+            if oracle_normalization::default_radix_value(s)
+                .is_some_and(|value| n.as_u64() == Some(value)) =>
+        {
+            true
+        }
+        // ADR-0004: lossless mode keeps a decimal integer beyond both
+        // 64-bit domains as its digits; the archive rounds it to a float.
+        (V::Number(n), V::String(s)) | (V::String(s), V::Number(n))
+            if decimal_integer::beyond_64_bits(s, n) =>
+        {
+            true
         }
         // Known divergence: a core-schema float literal that overflows
         // f64 (`3e999`) is infinity in noyalib, which JSON can only hold
@@ -149,25 +222,7 @@ fn object_equal(
     am.len() == bm.len()
         && am
             .iter()
-            .all(|(k, v)| lookup_key(bm, k).is_some_and(|w| numeric_equal(v, w)))
-}
-
-/// Look `k` up in `m`, tolerating two known serde_yaml_ng quirks on
-/// keys: it reads `?foo` as an explicit-key indicator and drops the
-/// `?`, where YAML 1.2 (ns-plain-first; yaml-test-suite 652Z) reads
-/// the plain key "?foo"; and a block-scalar key ending the input loses
-/// its clipped final line break. noyalib's readings are pinned in
-/// tests/regressions/competitor_bugs.rs.
-fn lookup_key<'m>(
-    m: &'m serde_json::Map<String, serde_json::Value>,
-    k: &str,
-) -> Option<&'m serde_json::Value> {
-    m.get(k)
-        .or_else(|| k.strip_prefix('?').and_then(|s| m.get(s)))
-        .or_else(|| m.get(&format!("?{k}")))
-        // The block-scalar clip quirk (see `numeric_equal`) on a key.
-        .or_else(|| k.strip_suffix('\n').and_then(|s| m.get(s)))
-        .or_else(|| m.get(&format!("{k}\n")))
+            .all(|(k, v)| question_key::lookup(bm, k).is_some_and(|w| numeric_equal(v, w)))
 }
 
 /// Known libyaml quirk (serde_yaml_ng and serde_yaml): it keeps the
@@ -197,59 +252,6 @@ fn anchor_name_outside_libyaml(s: &str) -> bool {
     })
 }
 
-/// Known serde_yaml_ng quirks at the start of a flow entry: it reads
-/// a `?` followed by a non-space as the explicit-key indicator, so
-/// `[?x]` becomes `[{"x": null}]` where YAML 1.2 (ns-plain-first;
-/// yaml-test-suite 652Z) reads the plain scalar "?x"; and it cannot
-/// read an entry whose key is empty (`[: x]`, `[?, :]`), which the
-/// spec allows (yaml-test-suite CFD4). A flow mapping key with a `?`
-/// is tolerated by `lookup_key`; any other such entry changes the
-/// shape, so those inputs are dropped.
-fn flow_entry_starts_with_indicator(s: &str) -> bool {
-    // Look back past comments as well as white space.
-    let stripped = without_comments(s);
-    let b = stripped.as_bytes();
-    b.iter().enumerate().any(|(i, &c)| {
-        let question = c == b'?' && b.get(i + 1).is_some_and(|n| !n.is_ascii_whitespace());
-        (question || c == b':')
-            && b[..i]
-                .iter()
-                .rev()
-                .find(|p| !p.is_ascii_whitespace())
-                .is_some_and(|p| matches!(p, b'[' | b'{' | b','))
-    })
-}
-
-/// An integer spelling YAML 1.2's core schema leaves a string and
-/// serde_yaml_ng's 1.1-flavoured resolver reads as a number: a signed
-/// radix integer (`+0x1F`, `-0o17`; the core hex and octal patterns
-/// carry no sign) or any binary literal (`0b11`, `-0b0`; the core
-/// schema has no binary form). noyalib's reading of the binary form is
-/// pinned in tests/regressions/competitor_bugs.rs.
-fn is_yaml_11_int(s: &str) -> bool {
-    let unsigned = s.strip_prefix(['-', '+']);
-    unsigned.is_some_and(|r| r.starts_with("0x") || r.starts_with("0o"))
-        || unsigned.unwrap_or(s).starts_with("0b")
-}
-
-/// `s` with every comment (`#` at a line start or after white space,
-/// to the end of the line) blanked to spaces, offsets unchanged.
-fn without_comments(s: &str) -> String {
-    let mut out = String::with_capacity(s.len());
-    let mut in_comment = false;
-    let mut prev_blank = true;
-    for c in s.chars() {
-        if c == '\n' || c == '\r' {
-            in_comment = false;
-        } else if c == '#' && prev_blank {
-            in_comment = true;
-        }
-        prev_blank = c.is_whitespace();
-        out.push(if in_comment { ' ' } else { c });
-    }
-    out
-}
-
 /// `cut` is `full` up to the start of a line that begins with `#`,
 /// less any line breaks just before that line: the shape serde_yaml_ng
 /// leaves when it reads that line of a block scalar as a comment and
@@ -268,4 +270,16 @@ fn cut_at_comment_line(full: &str, cut: &str) -> bool {
 fn is_leading_zero_int(s: &str) -> bool {
     let digits = s.strip_prefix(['-', '+']).unwrap_or(s);
     digits.len() >= 2 && digits.starts_with('0') && digits.bytes().all(|b| b.is_ascii_digit())
+}
+
+/// An integer spelling YAML 1.2's core schema leaves a string and
+/// serde_yaml_ng's 1.1-flavoured resolver reads as a number: a signed
+/// radix integer (`+0x1F`, `-0o17`; the core hex and octal patterns
+/// carry no sign) or any binary literal (`0b11`, `-0b0`; the core
+/// schema has no binary form). noyalib's reading of the binary form is
+/// pinned in tests/regressions/competitor_bugs.rs.
+fn is_yaml_11_int(s: &str) -> bool {
+    let unsigned = s.strip_prefix(['-', '+']);
+    unsigned.is_some_and(|r| r.starts_with("0x") || r.starts_with("0o"))
+        || unsigned.unwrap_or(s).starts_with("0b")
 }

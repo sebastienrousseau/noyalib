@@ -363,6 +363,7 @@ fn test_roundtrip_collections() {
 // ============================================================================
 
 #[test]
+#[cfg(feature = "std")]
 fn test_serialize_to_writer() {
     #[derive(Debug, serde::Serialize)]
     struct Data {
@@ -408,6 +409,7 @@ fn test_serialize_with_config() {
 }
 
 #[test]
+#[cfg(feature = "std")]
 fn test_serialize_to_writer_with_config() {
     #[derive(Debug, serde::Serialize)]
     struct Data {

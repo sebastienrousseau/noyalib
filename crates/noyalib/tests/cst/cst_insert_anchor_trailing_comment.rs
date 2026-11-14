@@ -1,27 +1,9 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 // Copyright (c) 2026 Noyalib. All rights reserved.
 
-//! Where a new key lands when the mapping's last entry is a nested
-//! block collection followed by a comment.
-//!
-//! `insert_entry`, `insert_entry_value` and `set_path` all splice after
-//! the anchor entry's last line. Two span sources disagree about where that entry
-//! stops: the green tree trims a block collection to its content, while
-//! the loader's span tree runs on to the next token and sweeps up the
-//! blank and comment lines beneath it. Since v0.0.25 the anchor has come
-//! from the span tree, so a document-final comment was counted as part
-//! of the entry above it and the new key was written *below* the comment
-//! — turning a document's closing comment into the new key's head
-//! comment (#418).
-//!
-//! Indentation decides. A comment indented strictly deeper than the
-//! anchor entry's key sits inside that entry's block and keeps the new
-//! sibling below it; a comment at the entry's own column or shallower is
-//! not inside it, and the sibling goes above.
-//!
-//! Every case here asserts the whole document byte for byte, because the
-//! defect moves bytes the caller did not name and leaves a document that
-//! still parses.
+//! Inserted siblings precede document-final comments outside their anchor
+//! entry (#418). Deeper comments remain inside that entry. Each assertion
+//! compares the complete resulting source, including unchanged trivia.
 
 #![allow(missing_docs)]
 

@@ -134,13 +134,12 @@ fn overflow_path_reflects_nesting_and_sequence_indices() {
 }
 
 #[test]
-fn plus_signed_overflow_is_refused_and_negative_overflow_is_not() {
+fn signed_overflow_is_refused_and_default_fallback_is_unchanged() {
     let mut cfg = ParserConfig::new();
     cfg.integer_overflow_errors = true;
     assert!(from_str_with_config::<Value>("a: +18446744073709551616\n", &cfg).is_err());
-    // Negative giants keep the historical float fallback — upstream's
-    // "JSON number out of range" was a u64 story.
-    let doc = v("a: -99999999999999999999\n", &cfg);
+    assert!(from_str_with_config::<Value>("a: -99999999999999999999\n", &cfg).is_err());
+    let doc = v("a: -99999999999999999999\n", &ParserConfig::new());
     assert!(doc["a"].as_f64().is_some());
 }
 

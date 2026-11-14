@@ -4,6 +4,11 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 // Copyright (c) 2026 Noyalib. All rights reserved.
 
+#[cfg(feature = "std")]
+use indexmap::IndexMap;
+#[cfg(not(feature = "std"))]
+type IndexMap<K, V> = indexmap::IndexMap<K, V, rustc_hash::FxBuildHasher>;
+
 use std::str::FromStr as _;
 
 use noyalib::{
@@ -319,13 +324,13 @@ fn mapping_from_iter() {
 fn mapping_into_indexmap() {
     let mut m = Mapping::new();
     let _ = m.insert("k", Value::from(1));
-    let im: indexmap::IndexMap<String, Value> = m.into();
+    let im: IndexMap<String, Value> = m.into();
     assert_eq!(im.len(), 1);
 }
 
 #[test]
 fn mapping_from_indexmap() {
-    let mut im = indexmap::IndexMap::new();
+    let mut im = IndexMap::<String, Value>::default();
     let _ = im.insert("k".to_string(), Value::from(1));
     let m = Mapping::from(im);
     assert_eq!(m.len(), 1);
@@ -615,7 +620,7 @@ fn mapping_any_from_array() {
 
 #[test]
 fn mapping_any_from_indexmap() {
-    let mut im = indexmap::IndexMap::new();
+    let mut im = IndexMap::<Value, Value>::default();
     let _ = im.insert(Value::from("a"), Value::from(1));
     let m = MappingAny::from(im);
     assert_eq!(m.len(), 1);
@@ -625,7 +630,7 @@ fn mapping_any_from_indexmap() {
 fn mapping_any_into_indexmap() {
     let mut m = MappingAny::new();
     let _ = m.insert(Value::from("a"), Value::from(1));
-    let im: indexmap::IndexMap<Value, Value> = m.into();
+    let im: IndexMap<Value, Value> = m.into();
     assert_eq!(im.len(), 1);
 }
 

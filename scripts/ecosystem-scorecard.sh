@@ -60,7 +60,7 @@ DEEP=0
 # Per-probe wall-clock ceiling. The core crate has 167 integration test
 # files; an --all-features run of them does not finish in a useful time,
 # and a harness nobody waits for measures nothing. A probe that blows the
-# ceiling records `timeout` and scores 0 — visible, not silent.
+# ceiling records an unmeasured timeout, visible in the N/A count.
 PROBE_TIMEOUT="${PROBE_TIMEOUT:-1200}"
 # Compiling is not the thing being measured. The core crate has 167
 # integration test files and a cold debug build of them dwarfs the run
@@ -249,9 +249,11 @@ probe_repo() {
   fi
   cd "$dir" || return
 
+  local -x CARGO_TARGET_DIR="${SCORECARD_TARGET_ROOT:-$dir/target/scorecard}/$repo/std-$DEEP"
+
   local sha dirty ver
-  sha=$(git rev-parse --short HEAD 2>/dev/null || echo "-")
-  dirty=$(git status --porcelain 2>/dev/null | head -1 | grep -q . && echo "dirty" || echo "clean")
+  sha=$(git rev-parse HEAD 2>/dev/null || echo "-")
+  dirty=$([ -n "$(git status --porcelain 2>/dev/null)" ] && echo "dirty" || echo "clean")
   ver=$(grep -m1 '^version' Cargo.toml 2>/dev/null | sed 's/.*"\(.*\)".*/\1/')
   [ -z "$ver" ] && ver=$(grep -m1 '^version' crates/*/Cargo.toml 2>/dev/null | sed 's/.*"\(.*\)".*/\1/' | head -1)
   REPO_SHA[$repo]="$sha"; REPO_DIRTY[$repo]="$dirty"; REPO_VERSION[$repo]="$ver"
@@ -275,40 +277,32 @@ probe_repo() {
   # `--default-features` when no feature args were in play — a flag cargo
   # does not accept, so the one thing ECOSYSTEM.md promises ("the command
   # is printed next to the number") could not be copied and run.
-  if [ "$brc" -ne 0 ]; then
-    local why; why=$([ "$brc" = "124" ] && echo "build timeout after ${BUILD_TIMEOUT}s" || echo "build failed (rc=$brc)")
-    record "$repo" tests correctness 5 "$why" 0 "$(echo cargo test --workspace --locked $fa --no-run)"
-    return_from_tests=1
-  fi
-
-  # Phase 2: run them. Warm target dir, so this ceiling measures the suite.
-  # shellcheck disable=SC2086
-  run "$log" cargo test --workspace --locked $fa
-  local rc=$? passed failed
-  passed=$(awk '/^test result:/{s+=$4} END{print s+0}' "$log")
-  failed=$(awk '/^test result:/{s+=$6} END{print s+0}' "$log")
-  local probe; probe="$(echo cargo test --workspace --locked $fa)"
-  if [ "${return_from_tests:-0}" = "1" ]; then
-    : # already recorded a build failure above
-  elif [ "$rc" = "124" ]; then
-    # A timeout is *unmeasured*, not *failed*, and rule 2 above says an
-    # unmeasured probe never scores 0. Scoring it 0 asserted a correctness
-    # failure the suite does not have — v0.0.27's scorecard reported
-    # `correctness 83.3%` purely because this ceiling fired on a cold
-    # target dir, while the same suite run directly passed 5739/0.
-    #
-    # N/A keeps it honest and keeps it loud: N/A rows are printed and they
-    # lower the reported rubric coverage, so a suite that never finishes
-    # cannot quietly vanish from the denominator either.
-    record "$repo" tests correctness 5 "did not finish within ${PROBE_TIMEOUT}s" NA \
-      "$probe — killed at the ceiling, so not measured (raise --timeout to score it)"
-  elif [ "$rc" -ne 0 ] && [ $((passed+failed)) -eq 0 ]; then
-    record "$repo" tests correctness 5 "build failed" 0 "$probe (rc=$rc)"
+  if [ "$brc" = "124" ]; then
+    record "$repo" tests correctness 5 "build did not finish within ${BUILD_TIMEOUT}s" NA \
+      "$(echo cargo test --workspace --locked $fa --no-run)"
+  elif [ "$brc" -ne 0 ]; then
+    record "$repo" tests correctness 5 "build failed (rc=$brc)" 0 \
+      "$(echo cargo test --workspace --locked $fa --no-run)"
   else
-    record "$repo" tests correctness 5 "$passed passed / $failed failed" \
-      "$(fdiv "$passed" "$((passed+failed))")" "$probe"
+    # A failed or timed-out build must not trigger a duplicate build here.
+    # shellcheck disable=SC2086
+    run "$log" cargo test --workspace --locked $fa
+    local rc=$? passed failed
+    passed=$(awk '/^test result:/{s+=$4} END{print s+0}' "$log")
+    failed=$(awk '/^test result:/{s+=$6} END{print s+0}' "$log")
+    local probe; probe="$(echo cargo test --workspace --locked $fa)"
+    if [ "$rc" = "124" ]; then
+      record "$repo" tests correctness 5 "did not finish within ${PROBE_TIMEOUT}s" NA \
+        "$probe (timed out; not measured)"
+    elif [ "$rc" -ne 0 ] && [ $((passed+failed)) -eq 0 ]; then
+      record "$repo" tests correctness 5 "test command failed (rc=$rc)" 0 "$probe"
+    elif [ $((passed+failed)) -eq 0 ]; then
+      record "$repo" tests correctness 5 "no executed tests" NA "$probe"
+    else
+      record "$repo" tests correctness 5 "$passed passed / $failed failed" \
+        "$(fdiv "$passed" "$((passed+failed))")" "$probe"
+    fi
   fi
-  unset return_from_tests
 
   # YAML 1.2 spec conformance — only the core crate ships the suite.
   if [ -f crates/noyalib/tests/yaml_compliance_report.rs ]; then
@@ -370,7 +364,8 @@ probe_repo() {
     "$([ -n "$msrv" ] && echo 1.0000 || echo 0.0000)" "grep rust-version Cargo.toml"
 
   # ---- DOCUMENTATION ---------------------------------------------------
-  RUSTDOCFLAGS="-D warnings" run "$WORK/$repo.doc" cargo doc --workspace --no-deps --locked --all-features
+  CARGO_TARGET_DIR="$CARGO_TARGET_DIR-docs" RUSTDOCFLAGS="-D warnings" \
+    run "$WORK/$repo.doc" cargo doc --workspace --no-deps --locked --all-features
   local drc=$?
   record "$repo" rustdoc_strict docs 3 "$([ "$drc" -eq 0 ] && echo '0 warnings' || echo 'warnings present')" \
     "$(bool_score "$drc")" "RUSTDOCFLAGS=-D warnings cargo doc --workspace --no-deps --all-features (matches CI + docs.rs)"
@@ -513,20 +508,32 @@ probe_repo() {
     record "$repo" fuzz_targets robustness 2 "no fuzz/ dir" 0 "find fuzz/fuzz_targets"
   fi
 
-  if [ "$WITH_COVERAGE" = 1 ] && have cargo-llvm-cov; then
+  if [ "$WITH_COVERAGE" = 1 ] && have cargo-llvm-cov && have python3; then
+    # Keep instrumentation and feature surfaces out of ordinary build caches.
+    # Report JSON to its own file: Cargo/test diagnostics are not coverage data.
+    local coverage_json="$WORK/$repo.coverage.json" crc pct
     # shellcheck disable=SC2086
-    run "$WORK/$repo.cov" cargo llvm-cov --workspace --locked $fa --summary-only
-    local pct
-    pct=$(awk '/^TOTAL/{print $(NF-0)}' "$WORK/$repo.cov" | tr -d '%' | head -1)
-    [ -z "$pct" ] && pct=$(grep -oE '[0-9]+\.[0-9]+%' "$WORK/$repo.cov" | tail -1 | tr -d '%')
+    run "$WORK/$repo.cov" env \
+      CARGO_TARGET_DIR="${SCORECARD_COVERAGE_TARGET_ROOT:-$WORK/coverage-targets}/$repo/$DEEP" NOYALIB_COVERAGE=1 \
+      cargo +nightly llvm-cov --workspace --locked $fa --json --summary-only \
+      --output-path "$coverage_json"
+    crc=$?
+    pct=""
+    if [ "$crc" = 0 ]; then
+      pct=$(python3 "$HERE/coverage-summary.py" "$coverage_json" \
+        2>"$WORK/$repo.coverage-parser.log") || pct=""
+    fi
     if [ -n "$pct" ]; then
       record "$repo" line_coverage robustness 4 "${pct}% lines" \
-        "$(fclamp "$(fdiv "$pct" 95)")" "cargo llvm-cov --summary-only (target 95%)"
+        "$(fclamp "$(fdiv "$pct" 95)")" \
+        "cargo +nightly llvm-cov --json --summary-only (lines; target 95%)"
     else
-      record "$repo" line_coverage robustness 4 "unparsable" NA "cargo llvm-cov --summary-only"
+      record "$repo" line_coverage robustness 4 "unmeasured (rc=$crc or invalid/empty JSON)" NA \
+        "cargo +nightly llvm-cov --json --summary-only; failed/empty reports are N/A"
     fi
   else
-    record "$repo" line_coverage robustness 4 "not run" NA "pass --with-coverage to measure"
+    record "$repo" line_coverage robustness 4 "not run" NA \
+      "pass --with-coverage; requires cargo-llvm-cov, Python and nightly"
   fi
 
   # ---- RELEASE INTEGRITY (network) -------------------------------------

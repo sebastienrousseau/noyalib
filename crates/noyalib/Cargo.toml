@@ -1,12 +1,11 @@
 [package]
 name = "noyalib"
-version = "0.0.60"
+version = "0.0.61"
 edition = "2024"
 rust-version = "1.89.0"
 license = "MIT OR Apache-2.0"
 description = "A pure Rust YAML library with zero unsafe code and full serde integration"
 repository = "https://github.com/sebastienrousseau/noyalib"
-homepage = "https://github.com/sebastienrousseau/noyalib"
 documentation = "https://docs.rs/noyalib"
 readme = "README.md"
 keywords = ["yaml", "serde", "serialization", "parser", "safe"]
@@ -183,7 +182,7 @@ bytes = { version = "1", optional = true, default-features = false }
 # Safe directory-relative opens for `SafeFileResolver`. rustix is already in
 # the audited workspace graph; keeping it target-specific preserves Windows
 # builds and the alloc-only dependency surface.
-rustix = { version = "1.1.4", optional = true, features = ["fs"] }
+rustix = { version = "1.1.6", optional = true, features = ["fs"] }
 
 [dev-dependencies]
 # Independent oracle for the private portable float helpers (#500).

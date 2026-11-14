@@ -9,6 +9,9 @@
 
 use crate::prelude::*;
 
+/// Maximum length of a resolved tag URI, in bytes.
+const MAX_TAG_LEN: usize = 1024;
+
 /// Byte-offset span in the source input.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub(crate) struct Span {
@@ -277,6 +280,12 @@ pub(crate) struct Scanner<'a> {
     /// Keeping the floor makes the staleness and queue checks O(1)
     /// amortised instead of a walk of the whole stack per token.
     live_key_floor: usize,
+    /// Key-inspection work measured by the asymptotic regression test.
+    #[cfg(test)]
+    simple_key_checks: core::cell::Cell<usize>,
+    /// Bytes searched by uncached plain-scalar line lookahead.
+    #[cfg(test)]
+    plain_line_bytes: usize,
 }
 
 /// Compact record of the most recent emit, used by guard checks
@@ -484,6 +493,10 @@ impl<'a> Scanner<'a> {
             line_end_memo: (usize::MAX, 0, false),
             last_token_end: 0,
             live_key_floor: 0,
+            #[cfg(test)]
+            simple_key_checks: core::cell::Cell::new(0),
+            #[cfg(test)]
+            plain_line_bytes: 0,
         }
     }
 
@@ -610,7 +623,11 @@ impl<'a> Scanner<'a> {
             .get(self.live_key_floor..)
             .unwrap_or_default()
             .iter()
-            .find(|sk| sk.possible && !sk.stale)
+            .find(|sk| {
+                #[cfg(test)]
+                self.simple_key_checks.set(self.simple_key_checks.get() + 1);
+                sk.possible && !sk.stale
+            })
             .is_some_and(|sk| sk.token_number == next_token)
     }
 
@@ -998,7 +1015,7 @@ impl<'a> Scanner<'a> {
         // §5.1 c-printable holds for comment text as for scalar content:
         // a raw control character is an error wherever it appears (found
         // by the serde_yaml compat fuzzer on `#]\0`).
-        if remaining[..end].iter().any(|&b| Self::is_raw_control(b)) {
+        if Self::first_non_printable(&remaining[..end]).is_some() {
             return Err(self.error(
                 "comment contains a raw control character — YAML content is limited to \
                  printable characters",
@@ -1220,9 +1237,19 @@ impl<'a> Scanner<'a> {
     /// younger key's length itself.
     fn stale_simple_keys(&mut self) -> ScanResult<()> {
         while let Some(sk) = self.simple_keys.get(self.live_key_floor) {
+            #[cfg(test)]
+            self.simple_key_checks.set(self.simple_key_checks.get() + 1);
             if sk.possible && !sk.stale {
                 if !self.simple_key_is_stale(self.live_key_floor, sk) {
                     break;
+                }
+                // A block-level node still needs its colon before its key
+                // expires; a following sibling must not replace that duty.
+                if sk.required {
+                    return Err(ScanError {
+                        message: Cow::Borrowed("simple key was required but not found"),
+                        index: sk.index,
+                    });
                 }
                 self.simple_keys[self.live_key_floor].stale = true;
             }
@@ -1583,15 +1610,18 @@ impl<'a> Scanner<'a> {
         self.finish_directive_line(directive_start)
     }
 
-    /// Skip to end of line — directive contents past validation are
-    /// not interpreted further (consumers don't need the version) — and
-    /// record the directive's trivia. The skipped text, a trailing
-    /// comment included, is held to §5.1 c-printable like any other.
+    /// Validate the entire directive line, including parsed fields and
+    /// trailing comments, against §5.1 c-printable, then record its trivia.
     fn finish_directive_line(&mut self, directive_start: usize) -> ScanResult<()> {
         let rest = &self.input[self.pos..];
         let len = memchr::memchr2(b'\n', b'\r', rest).unwrap_or(rest.len());
-        if rest[..len].iter().any(|&b| Self::is_raw_control(b)) {
-            return Err(self.error("directive line contains a raw control character"));
+        if let Some(offset) =
+            Self::first_non_printable(&self.input[directive_start..self.pos + len])
+        {
+            return Err(ScanError {
+                message: Cow::Borrowed("directive line contains a raw control character"),
+                index: directive_start + offset,
+            });
         }
         if len < rest.len() {
             self.advance_by(len);
@@ -1650,9 +1680,9 @@ impl<'a> Scanner<'a> {
             self.yaml_directive_seen = false;
             self.in_document_body = false;
             self.tag_handles.clear();
-            // Per YAML 1.2.2 §6.8: a `...` document-end marker may be
-            // followed by inline whitespace and an optional comment,
-            // then a line break. Validate that here via *lookahead* —
+            // Per YAML 1.2.2 §9.1.2: a `...` document-end marker may be
+            // followed by inline whitespace (`s-separate-in-line`, tabs
+            // included) and an optional comment, then a line break. Validate that here via *lookahead* —
             // we must not advance `self.pos`, because every byte
             // between this token and the next must be visible to the
             // CST trivia recorder (`skip_to_next_token` runs before
@@ -1663,9 +1693,6 @@ impl<'a> Scanner<'a> {
             let mut look = self.pos;
             while look < self.input.len() && Self::is_blank(self.input[look]) {
                 look += 1;
-            }
-            if self.input[self.pos..look].contains(&b'\t') {
-                return Err(self.error("tabs are not allowed as separation after document marker"));
             }
             if look < self.input.len()
                 && !Self::is_break(self.input[look])
@@ -2227,7 +2254,15 @@ impl<'a> Scanner<'a> {
             {
                 break;
             }
+            if Self::is_raw_control(c)
+                || Self::is_non_printable_unicode_prefix(&self.input[self.pos..])
+            {
+                return Err(self.error("anchor or alias name contains a non-printable character"));
+            }
             self.advance();
+        }
+        if self.pos - start > MAX_ANCHOR_NAME_LEN {
+            return Err(self.error("anchor name exceeds maximum length of 1024 bytes"));
         }
         if self.pos == start {
             return Err(self.error("expected anchor or alias name"));
@@ -2235,10 +2270,14 @@ impl<'a> Scanner<'a> {
         Ok(Cow::Borrowed(self.slice_str(start, self.pos)))
     }
 
-    fn fetch_tag(&mut self) -> ScanResult<()> {
-        /// Maximum length of a tag URI (in bytes).
-        const MAX_TAG_LEN: usize = 1024;
+    /// A C0 control (tab and line breaks included), DEL, or a raw
+    /// non-printable Unicode character at the cursor: never valid in a tag.
+    fn at_tag_control(&self) -> bool {
+        let b = self.peek();
+        b < 0x20 || b == 0x7f || Self::is_non_printable_unicode_prefix(&self.input[self.pos..])
+    }
 
+    fn fetch_tag(&mut self) -> ScanResult<()> {
         if self.flow_level == 0 {
             self.check_pending_property_indent()?;
         }
@@ -2248,10 +2287,10 @@ impl<'a> Scanner<'a> {
         self.mark = self.pos;
         self.advance(); // skip '!'
 
-        let handle: Cow<'a, str>;
-        let suffix: Cow<'a, str>;
+        let (handle, suffix): (Cow<'a, str>, Cow<'a, str>);
+        let is_verbatim = self.peek() == b'<';
 
-        if self.peek() == b'<' {
+        if is_verbatim {
             // Verbatim tag: !<...>. The spec allows `ns-uri-char+`
             // between the brackets; enforcing the character class down
             // to the URI grammar would reject benign real-world tags,
@@ -2264,8 +2303,7 @@ impl<'a> Scanner<'a> {
                 if self.pos - start > MAX_TAG_LEN {
                     return Err(self.error("tag URI exceeds maximum length of 1024 bytes"));
                 }
-                let b = self.peek();
-                if b < 0x20 || b == 0x7f {
+                if self.at_tag_control() {
                     return Err(self.error(
                         "verbatim tag contains a control character — tag URIs are \
                          limited to printable characters",
@@ -2304,14 +2342,13 @@ impl<'a> Scanner<'a> {
                 if self.pos - start > MAX_TAG_LEN {
                     return Err(self.error("tag suffix exceeds maximum length of 1024 bytes"));
                 }
-                let b = self.peek();
-                if b < 0x20 || b == 0x7f {
+                if self.at_tag_control() {
                     return Err(self.error(
                         "tag suffix contains a control character — tags are limited \
                          to printable characters",
                     ));
                 }
-                if b == b'>' {
+                if self.peek() == b'>' {
                     // Not a `ns-uri-char`, and unrepresentable in the
                     // verbatim `!<...>` spelling the serializer falls
                     // back to for shorthand-unsafe tags (found by
@@ -2353,14 +2390,13 @@ impl<'a> Scanner<'a> {
                 if self.pos - start > MAX_TAG_LEN {
                     return Err(self.error("tag suffix exceeds maximum length of 1024 bytes"));
                 }
-                let b = self.peek();
-                if b < 0x20 || b == 0x7f {
+                if self.at_tag_control() {
                     return Err(self.error(
                         "tag suffix contains a control character — tags are limited \
                          to printable characters",
                     ));
                 }
-                if b == b'>' {
+                if self.peek() == b'>' {
                     // Not a `ns-uri-char`, and unrepresentable in the
                     // verbatim `!<...>` spelling the serializer falls
                     // back to for shorthand-unsafe tags (found by
@@ -2408,13 +2444,40 @@ impl<'a> Scanner<'a> {
             ));
         }
 
+        self.emit_resolved_tag(handle, suffix, is_verbatim)
+    }
+
+    fn emit_resolved_tag(
+        &mut self,
+        handle: Cow<'a, str>,
+        suffix: Cow<'a, str>,
+        is_verbatim: bool,
+    ) -> ScanResult<()> {
         // Apply any active `%TAG handle prefix` directive: replace
         // the handle with the declared URI prefix so the loader sees
         // the resolved tag (P76L spec example 6.19). Default handles
         // `!` and `!!` are always available; *named* handles
         // (`!foo!`) must be declared in a `%TAG` directive for the
         // current document — otherwise reject (QLJ7 spec example 6.21).
-        let resolved_handle = if let Some(prefix) = self.tag_handles.get(handle.as_ref()) {
+        // Verbatim and non-specific tags ignore handle redefinitions.
+        let declared_prefix = if is_verbatim || (handle == "!" && suffix.is_empty()) {
+            None
+        } else {
+            self.tag_handles.get(handle.as_ref())
+        };
+        let uri_len = declared_prefix
+            .map_or(handle.len(), String::len)
+            .saturating_add(suffix.len());
+        if uri_len == 0 {
+            return Err(self.error("tag URI must not be empty"));
+        }
+        if uri_len > MAX_TAG_LEN {
+            return Err(self.error("tag URI exceeds maximum length of 1024 bytes"));
+        }
+        if declared_prefix.is_some_and(|prefix| prefix.contains('>')) {
+            return Err(self.error("expanded tag URI contains forbidden character `>`"));
+        }
+        let resolved_handle = if let Some(prefix) = declared_prefix {
             Cow::Owned(prefix.clone())
         } else {
             let h: &str = handle.as_ref();
@@ -2465,8 +2528,6 @@ fn split_verbatim_tag(uri: &str) -> (Cow<'_, str>, Cow<'_, str>) {
     const CORE: &str = "tag:yaml.org,2002:";
     let (handle, rest) = if let Some(rest) = uri.strip_prefix(CORE) {
         (CORE, rest)
-    } else if let Some(rest) = uri.strip_prefix('!') {
-        ("!", rest)
     } else {
         ("", uri)
     };
@@ -2652,34 +2713,39 @@ mod tests {
         }
     }
 
-    /// Deep flow nesting keeps one pending simple key per level; the
-    /// staleness and queue checks must not walk every level per token.
-    /// Linear work grows about eight times between the two depths,
-    /// quadratic work about sixty-four times.
+    /// Eight times the nesting must use less than 24 times the key
+    /// inspection work. Count inspections instead of elapsed wall time,
+    /// which varies with other tests, fuzzers and CI scheduling.
     #[test]
     #[cfg_attr(
         miri,
-        ignore = "a wall-clock scaling check; Miri's timing means nothing and took 38 minutes"
+        ignore = "large scaling input; native tests check the work bound"
     )]
-    fn deep_flow_nesting_scans_in_linear_time() {
-        fn drain(depth: usize) -> core::time::Duration {
+    fn deep_flow_nesting_scans_with_linear_key_work() {
+        fn drain(depth: usize) -> usize {
             let input = format!("{}{}", "[".repeat(depth), "]".repeat(depth));
-            let start = std::time::Instant::now();
             let mut scanner = Scanner::new(&input);
-            while let Ok(token) = scanner.next_token() {
+            let mut tokens = 0;
+            loop {
+                let token = scanner.next_token().expect("valid nested flow sequence");
+                tokens += 1;
+                assert!(
+                    scanner.simple_key_checks.get() <= 16 * depth,
+                    "key checks exceeded the linear work bound at depth {depth}"
+                );
                 if matches!(token.kind, TokenKind::StreamEnd) {
                     break;
                 }
             }
-            start.elapsed()
+            assert_eq!(tokens, 2 * depth + 2);
+            scanner.simple_key_checks.get()
         }
-        let small = (0..5).map(|_| drain(5_000)).min().unwrap_or_default();
-        let large = (0..3).map(|_| drain(40_000)).min().unwrap_or_default();
-        let small = small.max(core::time::Duration::from_micros(200));
-        let ratio = large.as_secs_f64() / small.as_secs_f64();
+        let small = drain(5_000);
+        let large = drain(40_000);
+        assert!(small > 0);
         assert!(
-            ratio < 24.0,
-            "8x deeper took {ratio:.1}x ({small:?} -> {large:?})"
+            large < 24 * small,
+            "8x deeper used {large} key checks versus {small}"
         );
     }
 
@@ -2708,6 +2774,36 @@ mod tests {
                 assert_eq!(scanner.plain_line_end(), fresh, "{input:?} at {pos}");
             }
         }
+    }
+
+    #[test]
+    #[cfg_attr(miri, ignore = "large input; native tests check the work bound")]
+    fn long_flow_lines_have_linear_lookahead_work() {
+        fn measure(n: usize, invalidate: bool) -> Option<usize> {
+            let inner = format!("[{}a]", "a,".repeat(999));
+            let input = format!("[{}]\n", vec![inner; n / 1000].join(","));
+            let mut scanner = Scanner::new(&input);
+            loop {
+                if invalidate {
+                    scanner.line_end_memo = (usize::MAX, 0, false);
+                }
+                let token = scanner.next_token().expect("valid flow sequence");
+                if scanner.plain_line_bytes > 2 * input.len() {
+                    return None;
+                }
+                if matches!(token.kind, TokenKind::StreamEnd) {
+                    return Some(scanner.plain_line_bytes);
+                }
+            }
+        }
+        let small = measure(10_000, false).expect("small input has linear work");
+        let large = measure(80_000, false).expect("large input has linear work");
+        assert!(small > 0, "lookahead work must be measured");
+        assert!(large < 24 * small, "8x input exceeds the work bound");
+        assert!(
+            measure(10_000, true).is_none(),
+            "the work bound must reject restarting lookahead at every scalar"
+        );
     }
 
     /// A flow-mapping key may be any length, so the scanner holds its

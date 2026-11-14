@@ -1,20 +1,7 @@
-//! Schema-validation hardening guarantees.
+//! Refuse external schema references under feature unification.
 //!
-//! The 2026-07-28 Model Context Protocol specification lifts tool
-//! `inputSchema` / `outputSchema` to full JSON Schema 2020-12 and
-//! requires implementations to refuse auto-dereferencing external
-//! `$ref` URIs and to bound schema depth and validation time.
-//!
-//! External resolution is refused by an explicit retriever installed on
-//! every validator. The test build enables `jsonschema`'s
-//! `resolve-file` feature on purpose, mirroring a consumer whose build
-//! unifies it in, so the refusal is proven under the hostile
-//! configuration rather than the default one. The depth bound belongs
-//! to the parser and to `jsonschema`, and could be undone by a
-//! dependency bump without anything noticing.
-//!
-//! These tests turn the accidents into guarantees. If one fails, the
-//! property it protects has been lost — do not relax the test.
+//! Tests enable jsonschema's `resolve-file` support and pin schema-depth
+//! boundaries alongside refusal of external reference retrieval.
 
 // SPDX-License-Identifier: MIT OR Apache-2.0
 // Copyright (c) 2026 Noyalib. All rights reserved.

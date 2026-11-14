@@ -1,13 +1,8 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 // Copyright (c) 2026 Noyalib. All rights reserved.
 
-//! Coverage-focused deserialization tests exercising the typed
-//! `Deserializer` (`src/de/deserializer.rs`) and the public entry
-//! points in `src/de.rs`. Concentrates on error / edge branches:
-//! type mismatches, integer over/underflow, borrowed vs owned
-//! deserialisation, `deserialize_any` scalar dispatch, `Spanned`
-//! newtype handling, strict unknown-field detection, and
-//! `from_value` / `from_slice` wrappers.
+//! Test typed deserialization, scalar dispatch, numeric bounds, borrowing,
+//! spanned newtypes, strict fields and public conversion wrappers.
 
 #![allow(
     missing_docs,
@@ -21,9 +16,11 @@
 use std::borrow::Cow;
 use std::collections::{BTreeMap, HashMap};
 
+#[cfg(feature = "strict-deserialise")]
+use noyalib::from_str_strict;
 use noyalib::{
     ParserConfig, Spanned, Value, from_slice, from_slice_with_config, from_str, from_str_borrowing,
-    from_str_borrowing_with_config, from_str_strict, from_str_with_config, from_value,
+    from_str_borrowing_with_config, from_str_with_config, from_value,
 };
 
 // ============================================================================
@@ -350,6 +347,7 @@ fn from_str_with_config_value_target() {
 // ============================================================================
 
 #[test]
+#[cfg(feature = "strict-deserialise")]
 fn strict_accepts_declared_fields() {
     #[derive(Debug, serde::Deserialize)]
     struct C {
@@ -360,6 +358,7 @@ fn strict_accepts_declared_fields() {
 }
 
 #[test]
+#[cfg(feature = "strict-deserialise")]
 fn strict_rejects_unknown_field() {
     #[derive(Debug, serde::Deserialize)]
     struct C {

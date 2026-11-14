@@ -1,21 +1,11 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 // Copyright (c) 2026 Noyalib. All rights reserved.
 
-//! Refs #344: `ParserConfig::plain_scalar_strings` opts a `String` (or
-//! one-character `char`) target into accepting a plain non-string
-//! scalar (a number, bool, null, or empty value) and receiving its
-//! literal source text, matching `serde_yaml` 0.9.34's measured
-//! behaviour, instead of refusing with a "non-string scalar" type
-//! mismatch. Off by default — v0.0.28's contract is unchanged; every
-//! other test file in this crate was restored to its original text
-//! and passes unmodified.
+//! Refs #344: literal scalar spellings for `String` and `char` targets.
 //!
-//! Covers both deserializers: the streaming path
-//! (`from_str_with_config` + `plain_scalar_strings(true)`) and the
-//! `Value`-AST path, additionally forced ineligible for the streaming
-//! fast path via `ignore_binary_tag_for_string(true)` (see `de.rs`'s
-//! `stream_eligible`, which `plain_scalar_strings` deliberately does
-//! not affect).
+//! `plain_scalar_strings` accepts number, bool and null spellings while
+//! retaining default target coercion when disabled. Check streaming and
+//! forced materialized paths.
 
 #![allow(missing_docs)]
 

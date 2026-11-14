@@ -20,10 +20,6 @@ const REFUSED: &[&str] = &[
     // a key the formatter re-indents by one column: kept verbatim, the
     // lines would no longer be indented past the key.
     "6HB6#0",
-    // A literal scalar whose last line is spaces with no line break:
-    // the spaces are content (one past the indent), but the formatter
-    // trims a spaces-only last line.
-    "L24T#1",
 ];
 
 fn decode_markers(input: &str) -> String {
@@ -164,5 +160,24 @@ fn format_is_idempotent_on_what_it_accepts() {
             load(&y),
             "{name}: second pass changed the meaning"
         );
+    }
+}
+
+#[test]
+fn formatting_preserves_spaces_before_plain_continuation_tabs() {
+    for newline in ["\n", "\r\n", "\r"] {
+        let source = format!("x:{newline} - x{newline}  \tx{newline}");
+        let before: Value = noyalib::from_str(&source).unwrap();
+        for indent_size in [2, 4] {
+            let config = noyalib::cst::FormatConfig { indent_size };
+            let output = noyalib::cst::format_with_config(&source, &config)
+                .unwrap_or_else(|error| panic!("{source:?}, {indent_size}: {error}"));
+            let after: Value = noyalib::from_str(&output).unwrap();
+            assert_eq!(after, before, "{output:?}");
+            assert_eq!(
+                noyalib::cst::format_with_config(&output, &config).unwrap(),
+                output
+            );
+        }
     }
 }

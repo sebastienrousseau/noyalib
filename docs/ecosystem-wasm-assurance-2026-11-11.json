@@ -1,0 +1,256 @@
+{
+  "recorded_utc": "2026-11-11T20:36:26.296443+00:00",
+  "core_source": "f2cc26a43223b88da478ce832f4059f6d91cbb95",
+  "core_production_source": "a57b7198669e41fe3034db4e44f2e274baf96388",
+  "wasm_source": "2ed44f3aee8d76128b903b57d1371332e511a12f",
+  "wasm_previous_source": "21108cbec40e390e649ff3146551b23b591c50c8",
+  "runtime_contract": {
+    "node": 34,
+    "bun": 34,
+    "deno": 34,
+    "chromium_classic": 55
+  },
+  "runtime_resource_tests": {
+    "node": 4,
+    "installed_chromium": 3,
+    "browser_shutdown": 3
+  },
+  "scope": "Local macOS arm64 final-content checks. The shared contract whitespace-only cleanup followed execution. Hosted candidate checks and final-source resource repetitions are separate receipts. Package APIs, features and dependencies unchanged. No registry-resolution or independent review claim.",
+  "raw_archive": "docs/evidence/wasm-assurance-2026-11-11.tar.gz",
+  "archive_bytes": 11879,
+  "archive_sha256": "a99ec04b1be59946c6914b866a4427b5917e69df78138fa226fd7edd75e734c0",
+  "members": [
+    {
+      "path": "noyalib-100-browser-descendant-green.log",
+      "bytes": 375,
+      "sha256": "c60327392d023f9fef29a56c297d872ae93f379bf7f0643f29c06652b1e364c5"
+    },
+    {
+      "path": "noyalib-100-browser-descendant-red.log",
+      "bytes": 1016,
+      "sha256": "7d166a62a91767a2c9ef850fb4f620d9b9798f4f56cf8fb6eeb9b053ab7d729d"
+    },
+    {
+      "path": "noyalib-100-browser-js-heap-red.log",
+      "bytes": 1458,
+      "sha256": "00a204287432dba56d2165089fa3f0f2fe4679e7dff010efd7f64dcb599faac6"
+    },
+    {
+      "path": "noyalib-100-browser-resource-red.log",
+      "bytes": 2008,
+      "sha256": "c9a9a10c670bd9c8746e0ce297ca90d6d7401e5d0be999c8e29c782fa7b91992"
+    },
+    {
+      "path": "noyalib-100-contract-final-bun.json",
+      "bytes": 236,
+      "sha256": "2cebd462f7dab46975268999ab98b2a18178ba1e5d5eadc70b73d609c22558e5"
+    },
+    {
+      "path": "noyalib-100-contract-final-bun.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "noyalib-100-contract-final-classic.json",
+      "bytes": 183,
+      "sha256": "239179f736097cb8da3a49f2034ee22faf600d52e25d86db2047a196086794a7"
+    },
+    {
+      "path": "noyalib-100-contract-final-classic.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "noyalib-100-contract-final-deno.json",
+      "bytes": 237,
+      "sha256": "4904277fdc48c9307f30f8d9621a80d7fd589fab3f838f73083440fbc2d8dae0"
+    },
+    {
+      "path": "noyalib-100-contract-final-deno.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "noyalib-100-contract-final-node.json",
+      "bytes": 240,
+      "sha256": "c7a8a34d90de1b18a98222e2142f7d65a18a271ffd4fc3b407b7ace001e5013d"
+    },
+    {
+      "path": "noyalib-100-contract-final-node.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "noyalib-100-contract-final-summary.json",
+      "bytes": 209,
+      "sha256": "b27b7f46de1cb27d44aa7220e732b12f1e814f1975ac2554184a970f412e0421"
+    },
+    {
+      "path": "noyalib-100-final-wasm-verification/browser-resources.log",
+      "bytes": 358,
+      "sha256": "105f90aa2b262dcc934decae0534dd4524a425f0ee540efc1a0989794f9e8bb6"
+    },
+    {
+      "path": "noyalib-100-final-wasm-verification/browser-shutdown.log",
+      "bytes": 375,
+      "sha256": "6a68e5ff7dd9113aa54b34122a8151b6b7b619a8789c52b3b8ecb9edc462cde3"
+    },
+    {
+      "path": "noyalib-100-final-wasm-verification/bundler-release.log",
+      "bytes": 566,
+      "sha256": "3bbbc0941820bf47978c2208653d0ba3294d16f8e473a6a1ad2d708b9d920e45"
+    },
+    {
+      "path": "noyalib-100-final-wasm-verification/node-release.log",
+      "bytes": 753,
+      "sha256": "42dae6069ab68ddaa666111f1ec5630cad1c2c1980d20910b1accd19d2754f3a"
+    },
+    {
+      "path": "noyalib-100-final-wasm-verification/node-resources.log",
+      "bytes": 443,
+      "sha256": "445f6824b17379ece12679b24c4dbb76c4e4787cf12b2b1f18b5576825bddfff"
+    },
+    {
+      "path": "noyalib-100-final-wasm-verification/package.log",
+      "bytes": 29,
+      "sha256": "0208733bc9b287ac8fa390d9342c18dbee51a96b7f7848d9116ab2ba60e2857b"
+    },
+    {
+      "path": "noyalib-100-final-wasm-verification/prepare.log",
+      "bytes": 63,
+      "sha256": "a1193d5fcebe209255dd6ceb395bb0db5642abb2e52112e3ed0e04f5bc6a7b03"
+    },
+    {
+      "path": "noyalib-100-final-wasm-verification/size.log",
+      "bytes": 265,
+      "sha256": "59076391903436aa59ff50ed430e81ba20ab9be236816861b0dc8843a0b2ed5c"
+    },
+    {
+      "path": "noyalib-100-final-wasm-verification/summary.json",
+      "bytes": 1222,
+      "sha256": "e82224a69e7186f1dcfb0e4146c82c2c107e57985c6073a81f6f6f9d8cfa9df0"
+    },
+    {
+      "path": "noyalib-100-final-wasm-verification/wasm-node.log",
+      "bytes": 5658,
+      "sha256": "3331ba93c8fe568cb3687c488881e8a68f028061a69dcd090f9c23c5f6e584f6"
+    },
+    {
+      "path": "noyalib-100-js-heap-red.log",
+      "bytes": 1303,
+      "sha256": "83042787c6c41ab8cf608f76f5af9da524b232d53774dd78ed76b2a32c0216cb"
+    },
+    {
+      "path": "noyalib-100-missing-heap-red.log",
+      "bytes": 986,
+      "sha256": "4029b9c78acc3b5f8f718a81cd8b1360135b14a9d72fba05ebe3f461be37adba"
+    },
+    {
+      "path": "noyalib-100-no-modules-red.log",
+      "bytes": 1195,
+      "sha256": "a181673d62c488fce76e74b5ce7aa01dfe8667360ac143c0769ebd7a3d67c945"
+    },
+    {
+      "path": "noyalib-100-plain-trailing-tab-final-fuzz-replay-summary.json",
+      "bytes": 164,
+      "sha256": "384a5515ab9705fb4faef1493652b5a63499c7ee509b2960e01de832cf00f75c"
+    },
+    {
+      "path": "noyalib-100-plain-trailing-tab-red.log",
+      "bytes": 1140,
+      "sha256": "9455184fd1a15e7167b493ab78fd30a423ef6a7b4fdd1258f1b3581ba4a196f2"
+    },
+    {
+      "path": "noyalib-100-plain-trailing-tab-summary.json",
+      "bytes": 389,
+      "sha256": "7d3880e4e8ac5757966c59a353cf6f69c146a52fc911f44a00b0ef6047b519d6"
+    },
+    {
+      "path": "noyalib-100-runtime-actions.json",
+      "bytes": 4546,
+      "sha256": "60a36fb0733efc409a65c10bc7e6d19c63313e4dff4a1761da6cdc33b2d996fa"
+    },
+    {
+      "path": "noyalib-100-wasm-final-fmt.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "noyalib-100-wasm-final-markdown-verified.json",
+      "bytes": 120,
+      "sha256": "73455e8e3e9682bd21f2e07ad1b537ec059cf78a1b06cbd7904292942bf1ac63"
+    },
+    {
+      "path": "noyalib-100-wasm-final-markdown.log",
+      "bytes": 208,
+      "sha256": "48d4f51eaefa8b28ac27292897f42a74207fb2bbe8a458afa4cdaac60870ff26"
+    },
+    {
+      "path": "noyalib-100-wasm-final-reuse.log",
+      "bytes": 404,
+      "sha256": "b515bdb1bd4eb4052241e067d724b6faccc0cf5b6564ee9943971f4dad3785d4"
+    },
+    {
+      "path": "noyalib-100-wasm-final-spelling.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "noyalib-100-wasm-final-tool-hygiene.json",
+      "bytes": 109,
+      "sha256": "ddc9cfdb5ffce632d28515c8410a8a047bf431e77692c2ff69627f4eeb8bb4a4"
+    },
+    {
+      "path": "noyalib-100-wasm-final-workflow.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "noyalib-100-wasm-local-gates/clippy.log",
+      "bytes": 60,
+      "sha256": "35fc72bacfe065673ddba4b566b6467dc5b94a887c640891f8cbf1f5e1028448"
+    },
+    {
+      "path": "noyalib-100-wasm-local-gates/deny.log",
+      "bytes": 1510,
+      "sha256": "093034d8c4cdbc9ef03b166ea277b8eab7e6bbc5bdaf1ad5d67bc790a1ad0878"
+    },
+    {
+      "path": "noyalib-100-wasm-local-gates/fmt.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "noyalib-100-wasm-local-gates/summary.json",
+      "bytes": 302,
+      "sha256": "46c5846effc965506ba26404c85bf64ce21ae818362776d5c713a15773ae5112"
+    },
+    {
+      "path": "noyalib-100-wasm-local-gates/tests.log",
+      "bytes": 3854,
+      "sha256": "b07b65cbcae9875e1e132697b466b5eb305d243ec8604623477ec93edbc2b11b"
+    },
+    {
+      "path": "noyalib-100-wasm-local-gates/versions.log",
+      "bytes": 2848,
+      "sha256": "b48fc76f619d87cc3f1e3374f9d0e9b2b464cbb3cb7c6410b2365edbabf1984c"
+    },
+    {
+      "path": "noyalib-100-wasm-local-gates/vet.log",
+      "bytes": 70,
+      "sha256": "58bc4ade3cd08b63e390d163b02b6e759ab572dc154ff718447c507ca29d1302"
+    },
+    {
+      "path": "noyalib-100-wasm-resource-real-red.log",
+      "bytes": 1222,
+      "sha256": "f6c2491214f4bbb37958641fb33f64b0dd04c680d925833012423b5032923adf"
+    },
+    {
+      "path": "noyalib-100-wasm-resource-red.log",
+      "bytes": 1978,
+      "sha256": "6a1c1f557dab4628a5cd2124f6b5e6acfb0483833877cbb2400bf7e76f9584db"
+    }
+  ],
+  "source_signature": "GPG signature verified locally for 9ab1502 and 2ed44f3",
+  "installer_review_scope": "Pinned upstream installer sources were inspected locally and remain retrievable at their official immutable refs. The evidence archive distributes observations and metadata, without copying third-party action source."
+}

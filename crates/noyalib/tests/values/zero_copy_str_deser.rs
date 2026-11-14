@@ -1,26 +1,9 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 // Copyright (c) 2026 Noyalib. All rights reserved.
 
-//! Zero-copy `Deserialize<'de>` for `&'de str` and `Cow<'de, str>`
-//! from YAML input.
-//!
-//! Verifies that the streaming deserialiser surfaces plain-scalar
-//! string content via `visit_borrowed_str` when the parser produced a
-//! `Cow::Borrowed` event, allowing callers that target `&'de str` to
-//! obtain a slice into the input buffer with no intermediate
-//! allocation. Scalars that the parser materialised into an owned
-//! buffer (line-folded plain scalars, double-quoted scalars with
-//! escapes, alias replays, transformed tags) correctly fall back to
-//! `visit_string`.
-//!
-//! Plain-scalar borrowing currently fires reliably for the *terminal*
-//! scalar of an input — the parser's slow-path always allocates an
-//! owned buffer when it crosses a line break, even when no folding is
-//! actually applied. Tightening the slow path to emit
-//! `Cow::Borrowed` when the scalar does not continue on the next line
-//! is tracked as a follow-up parser optimisation; until then,
-//! `Cow<'a, str>` is the recommended target for callers who want
-//! borrow-when-possible semantics.
+//! Borrowed string deserialization retains slices when parser events permit
+//! it. Folded, escaped, aliased and otherwise transformed strings use owned
+//! content; `Cow<str>` supports both representations.
 
 #![allow(missing_docs)]
 #![allow(clippy::unwrap_used)]

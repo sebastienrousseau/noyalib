@@ -13,6 +13,7 @@
 #![allow(missing_docs, clippy::unwrap_used, clippy::expect_used)]
 
 use std::rc::Rc;
+#[cfg(feature = "std")]
 use std::sync::Arc;
 
 use noyalib::borrowed::{BorrowedValue, from_str_borrowed};
@@ -128,8 +129,11 @@ fn borrowed_values_of_different_kinds_have_a_total_order() {
 /// shareable, and constructing one does not exercise cloning it.
 #[test]
 fn the_recursion_wrappers_clone() {
-    use noyalib::{ArcRecursion, ArcRecursive, RcRecursion, RcRecursive};
+    #[cfg(feature = "std")]
+    use noyalib::{ArcRecursion, ArcRecursive};
+    use noyalib::{RcRecursion, RcRecursive};
     use std::cell::RefCell;
+    #[cfg(feature = "std")]
     use std::sync::Mutex;
 
     let strong = RcRecursive::<i32>(Rc::new(RefCell::new(Some(1))));
@@ -139,16 +143,19 @@ fn the_recursion_wrappers_clone() {
     assert_eq!(*s2.0.borrow(), Some(1), "the strong clone lost its value");
     assert!(w2.0.upgrade().is_some(), "the weak clone lost its target");
 
-    let strong = ArcRecursive::<i32>(Arc::new(Mutex::new(Some(2))));
-    let weak = ArcRecursion::<i32>(Arc::downgrade(&strong.0));
-    let s2 = Clone::clone(&strong);
-    let w2 = Clone::clone(&weak);
-    assert_eq!(
-        *s2.0.lock().expect("lock"),
-        Some(2),
-        "the strong clone lost its value"
-    );
-    assert!(w2.0.upgrade().is_some(), "the weak clone lost its target");
+    #[cfg(feature = "std")]
+    {
+        let strong = ArcRecursive::<i32>(Arc::new(Mutex::new(Some(2))));
+        let weak = ArcRecursion::<i32>(Arc::downgrade(&strong.0));
+        let s2 = Clone::clone(&strong);
+        let w2 = Clone::clone(&weak);
+        assert_eq!(
+            *s2.0.lock().expect("lock"),
+            Some(2),
+            "the strong clone lost its value"
+        );
+        assert!(w2.0.upgrade().is_some(), "the weak clone lost its target");
+    }
 }
 
 // ── the formatter ───────────────────────────────────────────────

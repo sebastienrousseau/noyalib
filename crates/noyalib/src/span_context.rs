@@ -373,8 +373,27 @@ fn walk_keys(
         (Value::Mapping(mapping), SpanTree::Mapping { entries, .. }) => {
             for ((k, v), &((start, end), ref vt)) in mapping.iter().zip(entries) {
                 let written = source.get(start..end);
-                if written.is_some_and(|w| is_canonicalised_plain_key(k, w)) {
-                    let _ = out.insert(core::ptr::from_ref(k) as usize, (start, end));
+                // An omitted scalar may still carry an anchor. Its span
+                // deliberately includes that property for diagnostics, but
+                // a typed string key reads the empty scalar, not "null".
+                let anchored_empty = k == "null"
+                    && written.is_some_and(|text| {
+                        text.strip_prefix('&').is_some_and(|name| {
+                            !name.is_empty() && !name.contains([' ', '\t', '\n', '\r'])
+                        })
+                    });
+                if anchored_empty {
+                    let _ = out.insert(core::ptr::from_ref(k) as usize, (end, end));
+                } else if let Some((offset, written)) = written.map(written_key_text)
+                    && is_canonicalised_plain_key(k, written)
+                {
+                    // Keep consumed separation and an anchor property out
+                    // of typed key text without changing diagnostic spans.
+                    let start = start + offset;
+                    let _ = out.insert(
+                        core::ptr::from_ref(k) as usize,
+                        (start, start + written.len()),
+                    );
                 }
                 walk_keys(v, vt, source, out);
             }
@@ -383,6 +402,28 @@ fn walk_keys(
         (_, SpanTree::Alias { target, .. }) => walk_keys(value, target, source, out),
         _ => {}
     }
+}
+
+/// The scalar text of a key span and its offset in that span. Plain
+/// spans may include consumed trailing separation, and an anchored
+/// key's span starts at its `&name` property (found by fuzz_diff on
+/// `{!,&d\n~}`), possibly followed by a comment line. An anchor names
+/// the node without changing its text.
+fn written_key_text(text: &str) -> (usize, &str) {
+    const SEPARATION: [char; 4] = [' ', '\t', '\n', '\r'];
+    let text = text.trim_end_matches(SEPARATION);
+    let mut scalar = text
+        .strip_prefix('&')
+        .and_then(|name| name.find(SEPARATION).map(|at| &name[at..]))
+        .map_or(text, |rest| rest.trim_start_matches(SEPARATION));
+    // A comment may follow the anchor (`&a # note` then the key).
+    while scalar.len() < text.len() && scalar.starts_with('#') {
+        let Some(at) = scalar.find(['\n', '\r']) else {
+            break;
+        };
+        scalar = scalar[at..].trim_start_matches(SEPARATION);
+    }
+    (text.len() - scalar.len(), scalar)
 }
 
 /// True when `written` is a bare plain scalar the loader stored as the

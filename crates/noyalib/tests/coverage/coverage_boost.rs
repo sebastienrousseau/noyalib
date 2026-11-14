@@ -1,12 +1,14 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 // Copyright (c) 2026 Noyalib. All rights reserved.
 
-//! Coverage boost tests — exercises uncovered lines across the codebase.
-//!
-//! This file targets specific uncovered paths identified by `cargo tarpaulin`.
-//! It must NOT modify any existing test files.
+//! Exercise scalar conversion, collection access and parser configuration.
 
 #![allow(unused_results, non_snake_case, clippy::approx_constant)]
+
+#[cfg(feature = "std")]
+use indexmap::IndexMap;
+#[cfg(not(feature = "std"))]
+type IndexMap<K, V> = indexmap::IndexMap<K, V, rustc_hash::FxBuildHasher>;
 
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -884,14 +886,14 @@ fn scanner_unicode_escape_special() {
 fn scanner_block_literal_explicit_indent() {
     let yaml = "data: |2\n  hello\n  world";
     let v: Value = from_str(yaml).unwrap();
-    assert_eq!(v["data"].as_str(), Some("hello\nworld\n"));
+    assert_eq!(v["data"].as_str(), Some("hello\nworld"));
 }
 
 #[test]
 fn scanner_block_folded_explicit_indent() {
     let yaml = "data: >2\n  hello\n  world";
     let v: Value = from_str(yaml).unwrap();
-    assert_eq!(v["data"].as_str(), Some("hello world\n"));
+    assert_eq!(v["data"].as_str(), Some("hello world"));
 }
 
 #[test]
@@ -961,7 +963,7 @@ fn number_ord_integer_vs_nan() {
 
 #[test]
 fn mapping_from_inner_into_inner() {
-    let mut std_map = indexmap::IndexMap::new();
+    let mut std_map = IndexMap::<String, Value>::default();
     std_map.insert("a".to_owned(), Value::from(1));
     std_map.insert("b".to_owned(), Value::from(2));
 
@@ -974,7 +976,7 @@ fn mapping_from_inner_into_inner() {
 
 #[test]
 fn mapping_any_from_inner_into_inner() {
-    let mut std_map = indexmap::IndexMap::new();
+    let mut std_map = IndexMap::<Value, Value>::default();
     std_map.insert(Value::from(1), Value::from("one"));
     std_map.insert(Value::from(2), Value::from("two"));
 
@@ -1589,6 +1591,7 @@ fn mapping_from_mapping_any() {
 // ============================================================================
 
 #[test]
+#[cfg(feature = "std")]
 fn from_reader_basic() {
     let yaml = "name: test\nvalue: 42";
     let cursor = std::io::Cursor::new(yaml);
@@ -1597,6 +1600,7 @@ fn from_reader_basic() {
 }
 
 #[test]
+#[cfg(feature = "std")]
 fn from_reader_with_config() {
     let yaml = "name: test";
     let cursor = std::io::Cursor::new(yaml);
@@ -1606,6 +1610,7 @@ fn from_reader_with_config() {
 }
 
 #[test]
+#[cfg(feature = "std")]
 fn from_reader_with_config_length_limit() {
     let yaml = "a very long yaml string";
     let cursor = std::io::Cursor::new(yaml);
@@ -1806,14 +1811,14 @@ fn parser_nested_flow() {
 fn parser_multiline_string() {
     let yaml = "text: |\n  line1\n  line2\n  line3";
     let v: Value = from_str(yaml).unwrap();
-    assert_eq!(v["text"].as_str(), Some("line1\nline2\nline3\n"));
+    assert_eq!(v["text"].as_str(), Some("line1\nline2\nline3"));
 }
 
 #[test]
 fn parser_folded_string() {
     let yaml = "text: >\n  hello\n  world";
     let v: Value = from_str(yaml).unwrap();
-    assert_eq!(v["text"].as_str(), Some("hello world\n"));
+    assert_eq!(v["text"].as_str(), Some("hello world"));
 }
 
 // ============================================================================
@@ -2676,6 +2681,7 @@ fn multi_doc_typed() {
 // ============================================================================
 
 #[test]
+#[cfg(feature = "std")]
 fn from_reader_streaming_path() {
     let yaml = b"name: test\ncount: 42";
     let cursor = std::io::Cursor::new(&yaml[..]);
@@ -2790,6 +2796,7 @@ fn loader_quoted_scalar_no_tag() {
 // ============================================================================
 
 #[test]
+#[cfg(feature = "std")]
 fn from_reader_fallback_path() {
     let yaml = b"a: &val hello\nb: *val";
     let cursor = std::io::Cursor::new(&yaml[..]);
@@ -2979,7 +2986,7 @@ fn parser_events_implicit_document() {
 
 #[test]
 fn value_from_indexmap_mapping() {
-    let mut map = indexmap::IndexMap::new();
+    let mut map = IndexMap::<String, Value>::default();
     map.insert("x".to_owned(), Value::from(10));
     let m = Mapping::from(map);
     assert_eq!(m.get("x"), Some(&Value::from(10)));
@@ -2987,7 +2994,7 @@ fn value_from_indexmap_mapping() {
 
 #[test]
 fn value_from_indexmap_mapping_any() {
-    let mut map = indexmap::IndexMap::new();
+    let mut map = IndexMap::<Value, Value>::default();
     map.insert(Value::from("x"), Value::from(10));
     let m = MappingAny::from(map);
     assert_eq!(m.get(&Value::from("x")), Some(&Value::from(10)));
@@ -2997,7 +3004,7 @@ fn value_from_indexmap_mapping_any() {
 fn value_into_indexmap_mapping() {
     let mut m = Mapping::new();
     m.insert("a", Value::from(1));
-    let map: indexmap::IndexMap<String, Value> = m.into();
+    let map: IndexMap<String, Value> = m.into();
     assert_eq!(map.len(), 1);
 }
 
@@ -3005,7 +3012,7 @@ fn value_into_indexmap_mapping() {
 fn value_into_indexmap_mapping_any() {
     let mut m = MappingAny::new();
     m.insert(Value::from("a"), Value::from(1));
-    let map: indexmap::IndexMap<Value, Value> = m.into();
+    let map: IndexMap<Value, Value> = m.into();
     assert_eq!(map.len(), 1);
 }
 

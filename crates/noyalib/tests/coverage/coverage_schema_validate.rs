@@ -1,11 +1,8 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 // Copyright (c) 2026 Noyalib. All rights reserved.
 
-//! Coverage for `schema_validate.rs`'s `coerce_to_schema` path — the
-//! invalid-schema guard, the JSON-pointer / navigate / try_coerce
-//! helpers, and each coercion target arm. The in-crate unit tests only
-//! exercise `validate_against_schema`, leaving the coercion machinery
-//! (which drives the `coerce_to_schema` public API) untested.
+//! Cover schema coercion: invalid schemas, JSON-pointer navigation,
+//! coercion helpers and each supported target type.
 
 // `coerce_to_schema` / `validate_against_schema` live behind the
 // `schema` feature and need `jsonschema`; the `validate-schema` feature

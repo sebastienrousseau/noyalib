@@ -14,6 +14,8 @@
 mod alias_depth;
 #[path = "limits/alias_expansion.rs"]
 mod alias_expansion;
+#[path = "anchors/redefinition.rs"]
+mod anchor_redefinition;
 #[path = "values/binary_serde_bytes.rs"]
 mod binary_serde_bytes;
 #[path = "regressions/competitive_features.rs"]
@@ -28,6 +30,8 @@ mod de_error_field_location;
 mod de_error_field_path;
 #[path = "limits/dos_hardening.rs"]
 mod dos_hardening;
+#[path = "regressions/duplicate_key_identity.rs"]
+mod duplicate_key_identity;
 #[path = "values/flatten_value.rs"]
 mod flatten_value;
 #[path = "limits/flow_key_budget.rs"]
@@ -44,10 +48,16 @@ mod max_nodes_budget;
 mod number_float_display;
 #[path = "conformance/official_suite.rs"]
 mod official_suite;
+#[path = "properties/oracle_normalization.rs"]
+mod oracle_normalization;
 #[path = "values/plain_float_specials.rs"]
 mod plain_float_specials;
+#[path = "values/query_recursive.rs"]
+mod query_recursive;
 #[path = "limits/require_indent.rs"]
 mod require_indent;
+#[path = "regressions/scalar_profile_parity.rs"]
+mod scalar_profile_parity;
 #[path = "values/scalar_resolution_toggles.rs"]
 mod scalar_resolution_toggles;
 #[path = "reading/scanner_panic_regressions.rs"]

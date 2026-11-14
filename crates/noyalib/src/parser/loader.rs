@@ -482,6 +482,36 @@ impl<'a> Loader<'a> {
         self.docs
     }
 
+    /// Resolve a scalar event. The profile refuses a decimal integer
+    /// value outside its exact domain. A JSON map key is read as a
+    /// string, so such a key keeps its spelling: a float would merge
+    /// distinct keys that round alike.
+    fn scalar_value(
+        &self,
+        value: Cow<'_, str>,
+        style: crate::parser::ScalarStyle,
+        tag: Option<(String, String)>,
+        at: usize,
+        input: &str,
+    ) -> Result<Value> {
+        let plain_untagged = matches!(style, crate::parser::ScalarStyle::Plain) && tag.is_none();
+        match plain_untagged.then(|| integer_overflow(&value, self.config)) {
+            Some(Some(_)) if matches!(self.stack.last(), Some(Frame::MappingKey { .. })) => {
+                return Ok(Value::String(value.into_owned()));
+            }
+            Some(Some(true)) => {}
+            _ => return resolve_event_scalar(value, style, tag, self.config),
+        }
+        Err(Error::IntegerOverflow {
+            location: Some(crate::error::Location::from_index(input, at)),
+            path: frames_path(self.stack.iter().map(|f| match f {
+                Frame::MappingValue { key, .. } => Some(key.clone()),
+                Frame::Sequence { items, .. } => Some(items.len().to_string()),
+                _ => None,
+            })),
+        })
+    }
+
     fn process_event(&mut self, event: Event<'_>, input: &str) -> Result<()> {
         self.meter.charge_event(&event, self.config)?;
         match event {
@@ -528,42 +558,7 @@ impl<'a> Loader<'a> {
                 // is still in hand — `resolve_untagged_scalar` returns a
                 // `Value::String("<<")` for a plain and a quoted `<<` alike.
                 let is_plain_merge_candidate = matches!(style, crate::parser::ScalarStyle::Plain);
-                // serde_yaml-profile: a plain decimal integer past
-                // `u64::MAX` is refused instead of degrading to an
-                // approximate f64.
-                if self.config.integer_overflow_errors
-                    && is_plain_merge_candidate
-                    && tag.is_none()
-                    && overflows_u64_decimal(&value)
-                {
-                    return Err(Error::IntegerOverflow {
-                        location: Some(crate::error::Location::from_index(input, span.start)),
-                        path: frames_path(self.stack.iter().map(|f| match f {
-                            Frame::MappingValue { key, .. } => Some(key.clone()),
-                            Frame::Sequence { items, .. } => Some(items.len().to_string()),
-                            _ => None,
-                        })),
-                    });
-                }
-                let v =
-                    if let Some(t) = tag {
-                        if self.config.tag_registry.as_ref().is_some_and(|r| {
-                            crate::streaming::tag_is_registry_stripped(&t.0, &t.1, r)
-                        }) {
-                            // Registered tag: strip through and resolve as if
-                            // untagged, exactly as the streaming path does.
-                            resolve_untagged_scalar(value, style, self.config)
-                        } else {
-                            resolve_tagged_scalar(
-                                &t.0,
-                                &t.1,
-                                &value,
-                                self.config.lossless_u64_integers(),
-                            )?
-                        }
-                    } else {
-                        resolve_untagged_scalar(value, style, self.config)
-                    };
+                let v = self.scalar_value(value, style, tag, span.start, input)?;
 
                 let st = if is_implicit_empty {
                     SpanTree::Leaf(span.start, span.start)
@@ -586,6 +581,9 @@ impl<'a> Loader<'a> {
                 }
                 if let Some(name) = anchor.as_ref() {
                     let _ = self.anchor_def_spans.insert(name.clone(), span.start);
+                    // A redefinition shadows its previous value immediately,
+                    // including while the new collection is still open.
+                    let _ = self.anchor_map.shift_remove(name);
                 }
                 self.stack.push(Frame::Sequence {
                     items: Vec::new(),
@@ -624,10 +622,7 @@ impl<'a> Loader<'a> {
                         end,
                         items: span_items,
                     };
-                    if let Some(name) = anchor {
-                        let cost = self.alias_cost(&v, &st);
-                        let _ = self.anchor_map.insert(name, (v.clone(), st.clone(), cost));
-                    }
+                    self.record_collection_anchor(anchor, start, &v, &st);
                     // A sequence or mapping is never the string `<<`.
                     self.push_node(v, st, input, false)?;
                 } else {
@@ -647,6 +642,9 @@ impl<'a> Loader<'a> {
                 }
                 if let Some(name) = anchor.as_ref() {
                     let _ = self.anchor_def_spans.insert(name.clone(), span.start);
+                    // A redefinition shadows its previous value immediately,
+                    // including while the new collection is still open.
+                    let _ = self.anchor_map.shift_remove(name);
                 }
                 self.stack.push(Frame::MappingKey {
                     map: Mapping::new(),
@@ -679,10 +677,7 @@ impl<'a> Loader<'a> {
                         end: span.end,
                         entries: span_entries,
                     };
-                    if let Some(name) = anchor {
-                        let cost = self.alias_cost(&v, &st);
-                        let _ = self.anchor_map.insert(name, (v.clone(), st.clone(), cost));
-                    }
+                    self.record_collection_anchor(anchor, start, &v, &st);
                     // A sequence or mapping is never the string `<<`.
                     self.push_node(v, st, input, false)?;
                 } else {
@@ -694,6 +689,24 @@ impl<'a> Loader<'a> {
     }
 
     #[inline]
+    /// Preserve a nested redefinition when its enclosing collection ends.
+    fn record_collection_anchor(
+        &mut self,
+        anchor: Option<String>,
+        start: usize,
+        value: &Value,
+        tree: &SpanTree,
+    ) {
+        if let Some(name) = anchor
+            && self.anchor_def_spans.get(&name) == Some(&start)
+        {
+            let cost = self.alias_cost(value, tree);
+            let _ = self
+                .anchor_map
+                .insert(name, (value.clone(), tree.clone(), cost));
+        }
+    }
+
     /// Push a completed node into the enclosing frame.
     ///
     /// `may_be_merge_key` says whether this value is *eligible* to be read
@@ -787,11 +800,7 @@ impl<'a> Loader<'a> {
                         ));
                     }
                 };
-                let key_span = if let SpanTree::Leaf(s, e) = span {
-                    (s, e)
-                } else {
-                    (0, 0)
-                };
+                let key_span = scalar_key_span(&span);
                 let old_map = core::mem::take(map);
                 let old_span_entries = core::mem::take(span_entries);
                 let old_typed_keys = core::mem::take(typed_keys);
@@ -1207,6 +1216,36 @@ impl<'a> NoSpanLoader<'a> {
         self.docs
     }
 
+    /// Resolve a scalar event. The profile refuses a decimal integer
+    /// value outside its exact domain. A JSON map key is read as a
+    /// string, so such a key keeps its spelling: a float would merge
+    /// distinct keys that round alike.
+    fn scalar_value(
+        &self,
+        value: Cow<'_, str>,
+        style: crate::parser::ScalarStyle,
+        tag: Option<(String, String)>,
+        at: usize,
+        input: &str,
+    ) -> Result<Value> {
+        let plain_untagged = matches!(style, crate::parser::ScalarStyle::Plain) && tag.is_none();
+        match plain_untagged.then(|| integer_overflow(&value, self.config)) {
+            Some(Some(_)) if matches!(self.stack.last(), Some(NoSpanFrame::MappingKey { .. })) => {
+                return Ok(Value::String(value.into_owned()));
+            }
+            Some(Some(true)) => {}
+            _ => return resolve_event_scalar(value, style, tag, self.config),
+        }
+        Err(Error::IntegerOverflow {
+            location: Some(crate::error::Location::from_index(input, at)),
+            path: frames_path(self.stack.iter().map(|f| match f {
+                NoSpanFrame::MappingValue { key, .. } => Some(key.clone()),
+                NoSpanFrame::Sequence { items, .. } => Some(items.len().to_string()),
+                _ => None,
+            })),
+        })
+    }
+
     fn process_event(&mut self, event: Event<'_>, input: &str) -> Result<()> {
         self.meter.charge_event(&event, self.config)?;
         match event {
@@ -1231,42 +1270,7 @@ impl<'a> NoSpanLoader<'a> {
                 tag,
                 span,
             } => {
-                // serde_yaml-profile: a plain decimal integer past
-                // `u64::MAX` is refused instead of degrading to an
-                // approximate f64.
-                if self.config.integer_overflow_errors
-                    && matches!(style, crate::parser::ScalarStyle::Plain)
-                    && tag.is_none()
-                    && overflows_u64_decimal(&value)
-                {
-                    return Err(Error::IntegerOverflow {
-                        location: Some(crate::error::Location::from_index(input, span.start)),
-                        path: frames_path(self.stack.iter().map(|f| match f {
-                            NoSpanFrame::MappingValue { key, .. } => Some(key.clone()),
-                            NoSpanFrame::Sequence { items, .. } => Some(items.len().to_string()),
-                            _ => None,
-                        })),
-                    });
-                }
-                let v =
-                    if let Some(t) = tag {
-                        if self.config.tag_registry.as_ref().is_some_and(|r| {
-                            crate::streaming::tag_is_registry_stripped(&t.0, &t.1, r)
-                        }) {
-                            // Registered tag: strip through and resolve as if
-                            // untagged, exactly as the streaming path does.
-                            resolve_untagged_scalar(value, style, self.config)
-                        } else {
-                            resolve_tagged_scalar(
-                                &t.0,
-                                &t.1,
-                                &value,
-                                self.config.lossless_u64_integers(),
-                            )?
-                        }
-                    } else {
-                        resolve_untagged_scalar(value, style, self.config)
-                    };
+                let v = self.scalar_value(value, style, tag, span.start, input)?;
                 // Merge-key eligibility is decided here, while the scalar's
                 // presentation is still known — `resolve_untagged_scalar`
                 // yields `Value::String("<<")` for a plain and a quoted `<<`
@@ -1286,6 +1290,9 @@ impl<'a> NoSpanLoader<'a> {
                 }
                 if let Some(name) = anchor.as_ref() {
                     let _ = self.anchor_def_spans.insert(name.clone(), span.start);
+                    // A redefinition shadows its previous value immediately,
+                    // including while the new collection is still open.
+                    let _ = self.anchor_map.shift_remove(name);
                 }
                 self.stack.push(NoSpanFrame::Sequence {
                     items: Vec::new(),
@@ -1305,10 +1312,7 @@ impl<'a> NoSpanLoader<'a> {
                 {
                     let inner = Value::Sequence(items);
                     let v = wrap_with_tag(inner, tag.as_ref(), self.config.tag_registry.as_deref());
-                    if let Some(name) = anchor {
-                        let cost = AliasCost::of_value(&v);
-                        let _ = self.anchor_map.insert(name, (v.clone(), cost));
-                    }
+                    self.record_collection_anchor(anchor, start, &v);
                     self.push_value(v, false, start, input)?;
                 }
             }
@@ -1319,6 +1323,9 @@ impl<'a> NoSpanLoader<'a> {
                 }
                 if let Some(name) = anchor.as_ref() {
                     let _ = self.anchor_def_spans.insert(name.clone(), span.start);
+                    // A redefinition shadows its previous value immediately,
+                    // including while the new collection is still open.
+                    let _ = self.anchor_map.shift_remove(name);
                 }
                 self.stack.push(NoSpanFrame::MappingKey {
                     map: Mapping::new(),
@@ -1345,15 +1352,22 @@ impl<'a> NoSpanLoader<'a> {
                     }
                     let inner = Value::Mapping(map);
                     let v = wrap_with_tag(inner, tag.as_ref(), self.config.tag_registry.as_deref());
-                    if let Some(name) = anchor {
-                        let cost = AliasCost::of_value(&v);
-                        let _ = self.anchor_map.insert(name, (v.clone(), cost));
-                    }
+                    self.record_collection_anchor(anchor, start, &v);
                     self.push_value(v, false, start, input)?;
                 }
             }
         }
         Ok(())
+    }
+
+    /// Preserve a nested redefinition when its enclosing collection ends.
+    fn record_collection_anchor(&mut self, anchor: Option<String>, start: usize, value: &Value) {
+        if let Some(name) = anchor
+            && self.anchor_def_spans.get(&name) == Some(&start)
+        {
+            let cost = AliasCost::of_value(value);
+            let _ = self.anchor_map.insert(name, (value.clone(), cost));
+        }
     }
 
     /// Push a completed value into the enclosing frame.
@@ -1546,7 +1560,7 @@ fn is_leading_zero_decimal(s: &str) -> bool {
 }
 
 /// YAML 1.1 binary integer: `[-+]?0b[0-1_]+`.
-fn parse_legacy_binary(s: &str) -> Option<i64> {
+pub(crate) fn parse_legacy_binary(s: &str) -> Option<i64> {
     let (negative, rest) = match s.as_bytes().first() {
         Some(b'-') => (true, &s[1..]),
         Some(b'+') => (false, &s[1..]),
@@ -1571,6 +1585,24 @@ fn parse_legacy_binary(s: &str) -> Option<i64> {
     Some(if negative { -n } else { n })
 }
 
+/// The unsigned YAML 1.1 binary form: `+?0b[0-1_]+` up to `u64::MAX`,
+/// for lossless configurations past `i64::MAX` (found by
+/// fuzz_serde_yaml_compat; the archive reads these as `u64`).
+pub(crate) fn parse_legacy_binary_u64(s: &str) -> Option<u64> {
+    let rest = s.strip_prefix('+').unwrap_or(s);
+    let digits = rest
+        .strip_prefix("0b")
+        .or_else(|| rest.strip_prefix("0B"))?;
+    if !digits.bytes().all(|b| matches!(b, b'0' | b'1' | b'_')) {
+        return None;
+    }
+    let digits: String = digits.chars().filter(|&c| c != '_').collect();
+    if digits.is_empty() {
+        return None;
+    }
+    u64::from_str_radix(&digits, 2).ok()
+}
+
 /// One of the explicit infinity spellings the resolver accepts.
 fn is_inf_spelling(s: &str) -> bool {
     matches!(
@@ -1579,10 +1611,77 @@ fn is_inf_spelling(s: &str) -> bool {
     )
 }
 
-/// A plain decimal integer (optional `+`) that does not fit `u64`.
-fn overflows_u64_decimal(s: &str) -> bool {
-    let d = s.strip_prefix('+').unwrap_or(s);
-    !d.is_empty() && d.bytes().all(|b| b.is_ascii_digit()) && d.parse::<u64>().is_err()
+/// A scalar key's own bytes. An alias key reads its anchored node's
+/// span, so the typed key keeps that node's written spelling (found by
+/// fuzz_diff on `{&d\n.3,*d}`) and a key error points at real source.
+fn scalar_key_span(span: &SpanTree) -> (usize, usize) {
+    match span {
+        SpanTree::Leaf(start, end) => (*start, *end),
+        SpanTree::Alias { target, .. } => scalar_key_span(target),
+        _ => (0, 0),
+    }
+}
+
+/// Classify a plain integer outside its JSON target's signed or unsigned
+/// 64-bit domain: `Some(true)` inside the archive's 128-bit visitor
+/// domain, `Some(false)` beyond it, where the archived parser falls
+/// through to a float (decimal) or a string (radix). `None` otherwise.
+/// The archive reads hex and octal with an optional sign, and binary
+/// when the profile does.
+fn integer_overflow(s: &str, config: &ParseConfig) -> Option<bool> {
+    if !config.integer_overflow_errors
+        || config.no_schema
+        || (config.leading_zero_integer_strings && is_leading_zero_decimal(s))
+    {
+        return None;
+    }
+    let unsigned = s.strip_prefix(['+', '-']).unwrap_or(s);
+    let (radix, digits) = match unsigned.get(..2) {
+        Some("0x") => (16, &unsigned[2..]),
+        Some("0o") => (8, &unsigned[2..]),
+        Some("0b") if config.legacy_binary_numbers => (2, &unsigned[2..]),
+        _ => (10, unsigned),
+    };
+    if digits.is_empty() || !digits.bytes().all(|b| (b as char).is_digit(radix)) {
+        return None;
+    }
+    let magnitude = u128::from_str_radix(digits, radix).ok();
+    let limit = if s.starts_with('-') {
+        1_u128 << 63
+    } else {
+        u128::from(u64::MAX)
+    };
+    if magnitude.is_some_and(|m| m <= limit) {
+        return None;
+    }
+    // The negative 128-bit domain ends at 2^127 in magnitude.
+    let within = if s.starts_with('-') {
+        1_u128 << 127
+    } else {
+        u128::MAX
+    };
+    Some(magnitude.is_some_and(|m| m <= within))
+}
+
+/// Resolve a scalar event's value through its tag, as the streaming
+/// path does: a registry-stripped tag resolves as if untagged.
+fn resolve_event_scalar(
+    value: Cow<'_, str>,
+    style: crate::parser::ScalarStyle,
+    tag: Option<(String, String)>,
+    config: &ParseConfig,
+) -> Result<Value> {
+    let Some(t) = tag else {
+        return Ok(resolve_untagged_scalar(value, style, config));
+    };
+    if config
+        .tag_registry
+        .as_ref()
+        .is_some_and(|r| crate::streaming::tag_is_registry_stripped(&t.0, &t.1, r))
+    {
+        return Ok(resolve_untagged_scalar(value, style, config));
+    }
+    resolve_tagged_scalar(&t.0, &t.1, &value, config.lossless_u64_integers())
 }
 
 /// Byte offset where a span tree's node begins.
@@ -1821,7 +1920,7 @@ fn resolve_untagged_scalar(
     style: crate::parser::ScalarStyle,
     config: &ParseConfig,
 ) -> Value {
-    if style != crate::parser::ScalarStyle::Plain {
+    if style != crate::parser::ScalarStyle::Plain || config.no_schema {
         // Quoted/literal/folded scalars always resolve as strings — YAML
         // schema resolution only applies to plain scalars.
         return Value::String(value.into_owned());
@@ -1836,6 +1935,13 @@ fn resolve_untagged_scalar(
         && let Some(n) = parse_legacy_binary(&value)
     {
         return Value::Number(Number::Integer(n));
+    }
+    #[cfg(feature = "lossless-u64")]
+    if config.legacy_binary_numbers
+        && config.lossless_u64_integers
+        && let Some(n) = parse_legacy_binary_u64(&value)
+    {
+        return Value::Number(Number::Unsigned(n));
     }
     match crate::streaming::resolve_plain_ext(
         &value,
@@ -1861,7 +1967,22 @@ fn resolve_untagged_scalar(
                 Value::Number(Number::Float(f))
             }
         }
-        crate::streaming::Scalar::Str(s) => Value::String(s.into_owned()),
+        crate::streaming::Scalar::Str(s) => {
+            // The lossless resolver keeps large integers as strings. The
+            // archive's JSON profile instead tries a finite float after
+            // exhausting its 128-bit integer visitors.
+            if config.integer_overflow_errors
+                && s.strip_prefix(['+', '-'])
+                    .unwrap_or(&s)
+                    .bytes()
+                    .all(|b| b.is_ascii_digit())
+                && let Some(f) = s.parse::<f64>().ok().filter(|f| f.is_finite())
+            {
+                Value::Number(Number::Float(f))
+            } else {
+                Value::String(s.into_owned())
+            }
+        }
     }
 }
 

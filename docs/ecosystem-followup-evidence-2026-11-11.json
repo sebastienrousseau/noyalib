@@ -1,0 +1,539 @@
+{
+  "generated_utc": "2026-11-11T14:46:15.402640+00:00",
+  "status": "implementation checkpoint; registry publication and 10/10 acceptance remain held",
+  "implementation_sources": {
+    "noyalib": "2a431c26d8aecc5a9050fe36704ce9ebb63fc7f1",
+    "noya-cli": "08d994b9f8f66cbc6a4c25a6f8681341dabba8c4",
+    "noyalib-lsp": "4ef8a74d843a9169cc67dbb99ced10c263e18960",
+    "noyalib-mcp": "ee4b7fd77a97da32f8e5706ff814cab05c0b495e",
+    "noyalib-wasm": "d507180e3286afa20f087adeec48643b68af574a",
+    "noyalib-serde-yaml": "b88dd1567d69221ad4b838c18c0d84049e503d78"
+  },
+  "last_core_production_change": "2a5aba2e6262cee52bb22f980792aaeaeb4bc94f",
+  "resolution": "local core path override; registry pins and lockfile source identities retained",
+  "registry_resolution_proof": false,
+  "test_batteries": {
+    "std_all_features": {
+      "passed": 6734,
+      "failed": 0,
+      "ignored": 0,
+      "result_groups": 20,
+      "log": {
+        "file": "noyalib-core-current-std.log",
+        "sha256": "9143de744a1a30db74881c2aadd43f99b0e2a0e2811e346ddc8ebad3ed20c2d2"
+      }
+    },
+    "alloc_baseline": {
+      "passed": 6705,
+      "failed": 0,
+      "ignored": 0,
+      "result_groups": 20,
+      "log": {
+        "file": "noyalib-alloc-deterministic-final.log",
+        "sha256": "18532ab8a2bf9d8a7bbdec64b89f02d75a0726052b9de503abb3c3f18553d7c2"
+      }
+    },
+    "alloc_portable": {
+      "passed": 7046,
+      "failed": 0,
+      "ignored": 0,
+      "result_groups": 20,
+      "log": {
+        "file": "noyalib-core-current-portable.log",
+        "sha256": "54536da442dca07572401293e2bade75aca22ecc37840fe5b066da74ce9bda18"
+      }
+    },
+    "all_feature_doctests": {
+      "passed": 590,
+      "failed": 0,
+      "ignored": 8,
+      "result_groups": 2,
+      "log": {
+        "file": "noyalib-final-keyfix-doc.log",
+        "sha256": "4f1d3f5e520b15122040b6da959b225ecb4999b1d87d8e0375659956d39472da"
+      }
+    },
+    "cli_corrected_full_suite": {
+      "passed": 123,
+      "failed": 0,
+      "ignored": 0,
+      "result_groups": 11,
+      "log": {
+        "file": "noyalib-cli-keyfix-final-tests.log",
+        "sha256": "9b32b4e6524f131f8f86993f9febec7198588bc39201aca3276f962abb0a5fe1"
+      }
+    },
+    "node_wasm": {
+      "passed": 31,
+      "failed": 0,
+      "ignored": 0,
+      "result_groups": 1,
+      "log": {
+        "file": "noyalib-final-node-tests.log",
+        "sha256": "9107cee9e9af13d3e624f62f4d33022c6c2d19abd3c4a92a51181d56b73c5cea"
+      }
+    }
+  },
+  "hygiene_checks": {
+    "count": 30,
+    "failed": 0,
+    "summary": {
+      "file": "noyalib-checkpoint-hygiene-2026-11-11/summary.json",
+      "sha256": "ba0d1ddf201d678d7f61029342ec77115fdb0210f4903468371bc949f711a2c9"
+    }
+  },
+  "bare_metal_checks": {
+    "count": 12,
+    "failed": 0,
+    "summary": {
+      "file": "noyalib-keyfix-metal-2026-11-11/summary.json",
+      "sha256": "1424d7872b2b1e803b59524fcf8630422dec1d18ddf81693172db222fa1ffd28"
+    }
+  },
+  "six_consumer_parity": {
+    "cases": 11,
+    "receipt": {
+      "file": "noyalib-keyfix-consumer-parity-2026-11-11/receipt.json",
+      "sha256": "ec041e2b9c32ebb4b4330c8f18c1af82efe0a570820315bea7ac2ef5b80e6443"
+    },
+    "note": "consumer receipt source heads precede documentation-only satellite audit commits; runtime Rust sources match"
+  },
+  "wasm_package": {
+    "raw_bytes": 613905,
+    "gzip_level_9_bytes": 211810,
+    "sha256": "b9652e8bd259e5aa0c0f54f78292fc09a1699e4d1ad93c9d362a312886614520",
+    "raw_limit_bytes": 628759,
+    "gzip_level_9_limit_bytes": 219025
+  },
+  "advisory_scan": {
+    "database_commit": "2c684a5d6746d4508eff9e3cb529b3e33f56d438",
+    "initial_cli_failure_retained": true,
+    "corrected_cli_locks": 2,
+    "corrected_cli_lock_failures": 0,
+    "other_repository_gate_failures": 0
+  },
+  "superseded_failures": [
+    {
+      "file": "noyalib-final-signed-alloc.log",
+      "reason": "elapsed-time scaling assertion was scheduling-sensitive; deterministic work gate and full alloc rerun pass"
+    },
+    {
+      "file": "noyalib-keyfix-satellites-2026-11-11/noya-cli-tests.log",
+      "reason": "L24T is now safely formattable; refusal test uses a still-refused flow layout and the full CLI rerun passes"
+    }
+  ],
+  "hosted_mcp_inspector": {
+    "url": "https://github.com/sebastienrousseau/noyalib-mcp/actions/runs/43040927622",
+    "source_commit": "ee4b7fd77a97da32f8e5706ff814cab05c0b495e",
+    "conclusion": "success",
+    "core_commit": "2a431c26d8aecc5a9050fe36704ce9ebb63fc7f1"
+  },
+  "daybreak": {
+    "required": false,
+    "global_guidance": "~/.codex/AGENTS.md",
+    "repository_guidance": "AGENTS.md in all six repositories"
+  },
+  "remaining": [
+    "hosted final-source cross-platform candidate matrix",
+    "sustained final-source fuzz acceptance for the complete inventory",
+    "registry resolution and release-channel gates",
+    "independent human review through an available channel",
+    "immutable held MCP v0.0.60 source/ref decision"
+  ],
+  "raw_evidence": {
+    "local_archive": "target/ecosystem-v0.0.61/verification-2026-11-11.tar.gz",
+    "sha256": "a298b882ff6454fbaeb3c01e9a865bf788b49268e05f03dc50b1e6cd91dbb8bf",
+    "files": [
+      {
+        "file": "noyalib-alloc-deterministic-final.log",
+        "sha256": "18532ab8a2bf9d8a7bbdec64b89f02d75a0726052b9de503abb3c3f18553d7c2"
+      },
+      {
+        "file": "noyalib-anchored-empty-key-alloc.log",
+        "sha256": "6695c949973b5ed0ea85718b91b7178c8cc7ab825d162c885478bed508fb1140"
+      },
+      {
+        "file": "noyalib-anchored-empty-key-green.log",
+        "sha256": "5eaa408b67005a48e96a9c805a7a54f6b1ea13559b5f9823b0634568f4a8d466"
+      },
+      {
+        "file": "noyalib-anchored-empty-key-original.log",
+        "sha256": "bf024cafc312f2ab4128943abf28468231d094ded4aad5bb4265269a0f9a3dd1"
+      },
+      {
+        "file": "noyalib-anchored-empty-key-red.log",
+        "sha256": "18ba8b30b9dfd3c8517da4e1005711b9fd086403b316580bbcdb35972becf87d"
+      },
+      {
+        "file": "noyalib-anchored-empty-key-replay.log",
+        "sha256": "f8fc0357c7976cf9b38a73a06ac94625309ee8834c5314cc9ed4f708ce5785b1"
+      },
+      {
+        "file": "noyalib-campaigns-final-followup-2026-11-11/status.json",
+        "sha256": "f612087631df1c06429e6e6cc3d254f5a39a8e8867e5e4badb40decbfe4df7f7"
+      },
+      {
+        "file": "noyalib-campaigns-fixed-2026-11-11/status.json",
+        "sha256": "25589eb9596259a0303f06be9b8f079e4d52d6366755820452472dcc1f7e710c"
+      },
+      {
+        "file": "noyalib-campaigns-oracles-final-2026-11-11/status.json",
+        "sha256": "1c8075fd6bf2f2493c9c25464fa35e418d8b6c8884c8025024c41c8ff40be922"
+      },
+      {
+        "file": "noyalib-checkpoint-hygiene-2026-11-11/noya-cli-codespell.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "file": "noyalib-checkpoint-hygiene-2026-11-11/noya-cli-fmt.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "file": "noyalib-checkpoint-hygiene-2026-11-11/noya-cli-markdownlint.log",
+        "sha256": "37e6887244f1a665c42d9d8498874738868ecec2f99804bef3bfefa75b83c5a7"
+      },
+      {
+        "file": "noyalib-checkpoint-hygiene-2026-11-11/noya-cli-reuse.log",
+        "sha256": "44a516088cab7b719fd56b99c6a9d831e56927532db50aa8923170eaa0ea8d8a"
+      },
+      {
+        "file": "noyalib-checkpoint-hygiene-2026-11-11/noya-cli-versions.log",
+        "sha256": "e3937adce9c1e69d65041fa7f807d9361c52120bd5c6429a9a6d810a0a383198"
+      },
+      {
+        "file": "noyalib-checkpoint-hygiene-2026-11-11/noyalib-codespell.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "file": "noyalib-checkpoint-hygiene-2026-11-11/noyalib-fmt.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "file": "noyalib-checkpoint-hygiene-2026-11-11/noyalib-lsp-codespell.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "file": "noyalib-checkpoint-hygiene-2026-11-11/noyalib-lsp-fmt.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "file": "noyalib-checkpoint-hygiene-2026-11-11/noyalib-lsp-markdownlint.log",
+        "sha256": "f075b2f1764fd32b1b321f68bc7ebd348a882c2c0ffa4caf25146a6c673a338a"
+      },
+      {
+        "file": "noyalib-checkpoint-hygiene-2026-11-11/noyalib-lsp-reuse.log",
+        "sha256": "b927ce0c93f188e6e4521dc7de0fc134144378f3d111bedeabd3d28126d95e90"
+      },
+      {
+        "file": "noyalib-checkpoint-hygiene-2026-11-11/noyalib-lsp-versions.log",
+        "sha256": "eedf27cb419c9a10801b6a638b03a3aa11256fb70535bfb6e5e42b360c03dd64"
+      },
+      {
+        "file": "noyalib-checkpoint-hygiene-2026-11-11/noyalib-markdownlint.log",
+        "sha256": "44706b5fc074d1429c1136c9ef4039ab82ea408136aa089bf9654d40f1fd826c"
+      },
+      {
+        "file": "noyalib-checkpoint-hygiene-2026-11-11/noyalib-mcp-codespell.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "file": "noyalib-checkpoint-hygiene-2026-11-11/noyalib-mcp-fmt.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "file": "noyalib-checkpoint-hygiene-2026-11-11/noyalib-mcp-markdownlint.log",
+        "sha256": "d1e88b74e0a0ea6a942b7500ee9e497045dc2aa2e40e316cdbebfe47fd6da6dd"
+      },
+      {
+        "file": "noyalib-checkpoint-hygiene-2026-11-11/noyalib-mcp-reuse.log",
+        "sha256": "18fb0a618fd46419fecc76397e31f137a96711e95fe34efa08793d6cecd68f26"
+      },
+      {
+        "file": "noyalib-checkpoint-hygiene-2026-11-11/noyalib-mcp-versions.log",
+        "sha256": "0c207aca55b747d32dced59ffbb1fad667ab31ff8da48c01b833cf88871b49d1"
+      },
+      {
+        "file": "noyalib-checkpoint-hygiene-2026-11-11/noyalib-reuse.log",
+        "sha256": "447d0383825531539daa7e6abf19ecb3a6d6869dc27a545060b0c07778cc48c9"
+      },
+      {
+        "file": "noyalib-checkpoint-hygiene-2026-11-11/noyalib-serde-yaml-codespell.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "file": "noyalib-checkpoint-hygiene-2026-11-11/noyalib-serde-yaml-fmt.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "file": "noyalib-checkpoint-hygiene-2026-11-11/noyalib-serde-yaml-markdownlint.log",
+        "sha256": "dbbe55ece1a9a3c6c8725f1c3fe8afedb4c2deb8e9d5e2fc83e25dc58063bceb"
+      },
+      {
+        "file": "noyalib-checkpoint-hygiene-2026-11-11/noyalib-serde-yaml-reuse.log",
+        "sha256": "34515aa61d2b42e0ef9445cdf839094b6dc80238f421881f4ed9f1e1cfcb69e2"
+      },
+      {
+        "file": "noyalib-checkpoint-hygiene-2026-11-11/noyalib-serde-yaml-versions.log",
+        "sha256": "2bada1c32f707189df32acc3e5042b298fd96174ff917ca3d041709c8db49f1c"
+      },
+      {
+        "file": "noyalib-checkpoint-hygiene-2026-11-11/noyalib-versions.log",
+        "sha256": "532cf16bf418b5d0f6f2b7ac4145e2c3fb15a0279f10ff0574eb7ab69932e269"
+      },
+      {
+        "file": "noyalib-checkpoint-hygiene-2026-11-11/noyalib-wasm-codespell.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "file": "noyalib-checkpoint-hygiene-2026-11-11/noyalib-wasm-fmt.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "file": "noyalib-checkpoint-hygiene-2026-11-11/noyalib-wasm-markdownlint.log",
+        "sha256": "a7375a19364beb0638234ca418c983901a83773a0817b1571ce6ad8e06bf14aa"
+      },
+      {
+        "file": "noyalib-checkpoint-hygiene-2026-11-11/noyalib-wasm-reuse.log",
+        "sha256": "17618b772f74848d4abbdbc3dc183b03181d85b9e66948f73ac0e8d9afe2cab5"
+      },
+      {
+        "file": "noyalib-checkpoint-hygiene-2026-11-11/noyalib-wasm-versions.log",
+        "sha256": "d68e17c4535503833303a3cd096ae8a87c1d54c161d4510926667762d7f70a7f"
+      },
+      {
+        "file": "noyalib-checkpoint-hygiene-2026-11-11/summary.json",
+        "sha256": "ba0d1ddf201d678d7f61029342ec77115fdb0210f4903468371bc949f711a2c9"
+      },
+      {
+        "file": "noyalib-cli-current-refusal.log",
+        "sha256": "a859bd32f5a81d96971dd4b8a395197194d02fdd0087f3c2177d3897746f98c8"
+      },
+      {
+        "file": "noyalib-cli-keyfix-final-tests.log",
+        "sha256": "9b32b4e6524f131f8f86993f9febec7198588bc39201aca3276f962abb0a5fe1"
+      },
+      {
+        "file": "noyalib-core-current-portable.log",
+        "sha256": "54536da442dca07572401293e2bade75aca22ecc37840fe5b066da74ce9bda18"
+      },
+      {
+        "file": "noyalib-core-current-std.log",
+        "sha256": "9143de744a1a30db74881c2aadd43f99b0e2a0e2811e346ddc8ebad3ed20c2d2"
+      },
+      {
+        "file": "noyalib-final-audits-2026-11-11/noya-cli-corrected/summary.json",
+        "sha256": "694babff859862635382b41139e35e2c9b447f256a21f4de37cfdb15663a12a8"
+      },
+      {
+        "file": "noyalib-final-audits-2026-11-11/noya-cli-locks.log",
+        "sha256": "c2e0bb338b15cbdef28aaca57cbf9c0824db4a3953ce9430bfd209befc089daa"
+      },
+      {
+        "file": "noyalib-final-audits-2026-11-11/summary.json",
+        "sha256": "a62baac987ac37949c62d86e46173f208512cff6e72d867cbf0b32a4a37747dc"
+      },
+      {
+        "file": "noyalib-final-keyfix-doc.log",
+        "sha256": "4f1d3f5e520b15122040b6da959b225ecb4999b1d87d8e0375659956d39472da"
+      },
+      {
+        "file": "noyalib-final-node-tests.log",
+        "sha256": "9107cee9e9af13d3e624f62f4d33022c6c2d19abd3c4a92a51181d56b73c5cea"
+      },
+      {
+        "file": "noyalib-final-signed-alloc.log",
+        "sha256": "b66e3236216db859b58dcf4159cd52c4b2862a1d99fae1a011c348e30dda4392"
+      },
+      {
+        "file": "noyalib-hosted-final-mcp-inspector.log",
+        "sha256": "c730e6d8bbe6a61f63c1aeb7ad9d7eec37491354cb66bda44d2268cf36c7a45c"
+      },
+      {
+        "file": "noyalib-hosted-mcp-inspector.log",
+        "sha256": "7ff162712fa5907eab673b34033a9819c1a4878408fbab045d7bd55a491c7a88"
+      },
+      {
+        "file": "noyalib-integrated-dependabot-closures.json",
+        "sha256": "26debfe31b049246eac7f2d0a6daf66109fc1d064f199fd5ba10e8bbc09b83b0"
+      },
+      {
+        "file": "noyalib-keyfix-consumer-parity-2026-11-11/receipt.json",
+        "sha256": "ec041e2b9c32ebb4b4330c8f18c1af82efe0a570820315bea7ac2ef5b80e6443"
+      },
+      {
+        "file": "noyalib-keyfix-metal-2026-11-11/1.89.0-aarch64-unknown-none-core.log",
+        "sha256": "58ebdc66039c0084292dc02fc7a15d29eb2a6f633e447c7cb886e324efe0c8f9"
+      },
+      {
+        "file": "noyalib-keyfix-metal-2026-11-11/1.89.0-aarch64-unknown-none-portable.log",
+        "sha256": "c255f8ea7278a54f79d6b164931a7f1cb63a19dc79c1815fd7d0dbfbffe4704a"
+      },
+      {
+        "file": "noyalib-keyfix-metal-2026-11-11/1.89.0-riscv32imac-unknown-none-elf-core.log",
+        "sha256": "a97a868a6c8664ee71367a3fca723cc20118dd09768c6be54ae990f3e4d63d55"
+      },
+      {
+        "file": "noyalib-keyfix-metal-2026-11-11/1.89.0-riscv32imac-unknown-none-elf-portable.log",
+        "sha256": "f79cc73c1cb083c3d0b85263713d3cf84dc8fc8bb742dced8b2ce1d2b02f3a7b"
+      },
+      {
+        "file": "noyalib-keyfix-metal-2026-11-11/1.89.0-thumbv7em-none-eabihf-core.log",
+        "sha256": "1d6963a6095d59f244860e73f43c17e4fe48d6b219748636374acefadac6e92a"
+      },
+      {
+        "file": "noyalib-keyfix-metal-2026-11-11/1.89.0-thumbv7em-none-eabihf-portable.log",
+        "sha256": "201e48c90285f92fd6c99820ceffa5444da6b4e5a2b142604be8fbda98b7c9cb"
+      },
+      {
+        "file": "noyalib-keyfix-metal-2026-11-11/stable-aarch64-unknown-none-core.log",
+        "sha256": "ee2b0ead556411ac0e8cd809bc6c429bed43c6b9a5715ad503c03ec2e5ed239a"
+      },
+      {
+        "file": "noyalib-keyfix-metal-2026-11-11/stable-aarch64-unknown-none-portable.log",
+        "sha256": "4a7f6efe03564e1e263081cd727b5ff31dfb3c4481debbfe1d1700d2d06765ba"
+      },
+      {
+        "file": "noyalib-keyfix-metal-2026-11-11/stable-riscv32imac-unknown-none-elf-core.log",
+        "sha256": "404dc8a2bc8565a2bfbfe0c2d201bd4ccd4f8b555da03a9a09c8a32ade20d5af"
+      },
+      {
+        "file": "noyalib-keyfix-metal-2026-11-11/stable-riscv32imac-unknown-none-elf-portable.log",
+        "sha256": "0d129fe371a4c6a9c2bfd5766a7d266287a57d2412db82027a47be393abda448"
+      },
+      {
+        "file": "noyalib-keyfix-metal-2026-11-11/stable-thumbv7em-none-eabihf-core.log",
+        "sha256": "15fed253a79c54b0a28d248441d11fbfa635dd57f7a62f18a8c04f6477382022"
+      },
+      {
+        "file": "noyalib-keyfix-metal-2026-11-11/stable-thumbv7em-none-eabihf-portable.log",
+        "sha256": "66847f67a8c2d49b6bec839ff8537484db5a812fbd1d0ca5f689bbf4ad3a357f"
+      },
+      {
+        "file": "noyalib-keyfix-metal-2026-11-11/summary.json",
+        "sha256": "1424d7872b2b1e803b59524fcf8630422dec1d18ddf81693172db222fa1ffd28"
+      },
+      {
+        "file": "noyalib-keyfix-satellites-2026-11-11/noya-cli-clippy.log",
+        "sha256": "6385f5b794b27ae4cc9cf2e484f191b089e60f490bef5ed2d54b09d68b082cb1"
+      },
+      {
+        "file": "noyalib-keyfix-satellites-2026-11-11/noya-cli-docs.log",
+        "sha256": "6e5095278b71f68cc352ac3256d30112a15304c82ca711f6ea63c5591a1b1e7a"
+      },
+      {
+        "file": "noyalib-keyfix-satellites-2026-11-11/noya-cli-tests.log",
+        "sha256": "3e26f17d3b6f2be5e1f3595fe0f91c2b62778e0ce5544b57b1c42796b77f514d"
+      },
+      {
+        "file": "noyalib-keyfix-satellites-2026-11-11/noyalib-lsp-clippy.log",
+        "sha256": "52d2bab5fe065bfd2b8ed4aa9f90180f19b01c8e370eb5edf59e04c1ca99e69a"
+      },
+      {
+        "file": "noyalib-keyfix-satellites-2026-11-11/noyalib-lsp-docs.log",
+        "sha256": "8cb5945c02f1e9c19871e0a2c7ca44b5adbbde430e25e454338f44e62912b6bc"
+      },
+      {
+        "file": "noyalib-keyfix-satellites-2026-11-11/noyalib-lsp-tests.log",
+        "sha256": "1ffe059d29df8922337062002c1cdbaa4f495c7b5ccd98b21cc1034c5a8b1f11"
+      },
+      {
+        "file": "noyalib-keyfix-satellites-2026-11-11/noyalib-mcp-clippy.log",
+        "sha256": "d540869e8f77a3897c2ddf6894c62970b168ed35513ff8e96474f1f863f25352"
+      },
+      {
+        "file": "noyalib-keyfix-satellites-2026-11-11/noyalib-mcp-docs.log",
+        "sha256": "382362997c16c15fb4f9ad910dc0cf2115997a09fbd96f5dba93bed1a3c3f943"
+      },
+      {
+        "file": "noyalib-keyfix-satellites-2026-11-11/noyalib-mcp-tests.log",
+        "sha256": "275772f18793a47678cbdc3fa6d51c0fde92c49a23999a9ffe86eb25dd0832ac"
+      },
+      {
+        "file": "noyalib-keyfix-satellites-2026-11-11/noyalib-serde-yaml-clippy.log",
+        "sha256": "632b657591a2b431b755eec7081eeee73892a6de103a6b769936b5bdf951e2fb"
+      },
+      {
+        "file": "noyalib-keyfix-satellites-2026-11-11/noyalib-serde-yaml-docs.log",
+        "sha256": "9cd1b23ad6bce9c27c41a1669f8d3ca00a915f00d8f982ae207c7c06084a1431"
+      },
+      {
+        "file": "noyalib-keyfix-satellites-2026-11-11/noyalib-serde-yaml-tests.log",
+        "sha256": "01856ac7ec1dba0ffe6c26dcce3a6ae0173dfd25c02b463f2326109cc0a99787"
+      },
+      {
+        "file": "noyalib-keyfix-satellites-2026-11-11/noyalib-wasm-clippy.log",
+        "sha256": "694dac911d1fc3c23c2d96840b6e1d45ab56f305d73cbc26bb5ce0b493b647fb"
+      },
+      {
+        "file": "noyalib-keyfix-satellites-2026-11-11/noyalib-wasm-docs.log",
+        "sha256": "2df063880c5708eebf507c39ee89181f236df30489ad12fb73d3970386b461a3"
+      },
+      {
+        "file": "noyalib-keyfix-satellites-2026-11-11/noyalib-wasm-tests.log",
+        "sha256": "f358abef72094c1458f09144d65acb7ff74443c488946afc9416f498b2026217"
+      },
+      {
+        "file": "noyalib-keyfix-satellites-2026-11-11/summary.json",
+        "sha256": "fa34df490deb88348887b84bae93e95b4d6090d6df5ea3ac5f4302a52b8e7d2f"
+      },
+      {
+        "file": "noyalib-keyfix-vet/summary.json",
+        "sha256": "c0c42518858d6150340b25de468cdcf0f18585fa1d59662b81f848748b9fc7c5"
+      },
+      {
+        "file": "noyalib-keyfix-wasm-package.log",
+        "sha256": "05093a8e54c2b0f4ab0324c691278f89f24f151c462ddebb3de347c67a462aee"
+      },
+      {
+        "file": "noyalib-lookahead-work-green.log",
+        "sha256": "8d9463c79dc8935565effb02563ceb29e12a5f516feccd41d84a58fb7b3e5693"
+      },
+      {
+        "file": "noyalib-lookahead-work-red.log",
+        "sha256": "5ee35aede7f35ed8eaa9ba1a633c31e3be51e49ba39809da68b4cc66404e2b83"
+      },
+      {
+        "file": "noyalib-oracle-colon-replay.log",
+        "sha256": "27768ddaedae9157bf3ca4516146bd7d72f3e321d3f82f0e96c1d5535c6dbcec"
+      },
+      {
+        "file": "noyalib-oracle-compact-empty-green.log",
+        "sha256": "a1679aab6ef5b84b976d172f2f1068fbec0d5f301edde42a66c5d32ea8d2d59a"
+      },
+      {
+        "file": "noyalib-oracle-compact-empty-red.log",
+        "sha256": "9a4be456fb96f68ad58e8bd1eb31b5cd11da06533cb69a5fdee45c5c9063a616"
+      },
+      {
+        "file": "noyalib-oracle-compact-empty-replay.log",
+        "sha256": "a3645a8d5dcaecae2b2e8614b957549d3bd8abd1ad8112216aba7f217e968176"
+      },
+      {
+        "file": "noyalib-oracle-spaces-colon-green.log",
+        "sha256": "acb04afc247609bae522a625c4cfbac92d8d8bb7ef811d835ce0e6d37e11dea9"
+      },
+      {
+        "file": "noyalib-oracle-spaces-colon-red.log",
+        "sha256": "32d5c6ef46e63c676dc8b4083988b51eb12f4a4ef701a879ee7e85ff8ba03eeb"
+      },
+      {
+        "file": "noyalib-oracle-spaces-replay.log",
+        "sha256": "2d0d9a2ad1a06ea8da51ac9376a4f969bc8005218d93ac115bf800331614fd7c"
+      },
+      {
+        "file": "noyalib-scanner-entry-values-green.log",
+        "sha256": "b7e28947cd02ac773e0866bbc8aa0d09378d5b8df286a8dec7397f28c4d13bac"
+      },
+      {
+        "file": "noyalib-scanner-work-clippy.log",
+        "sha256": "f9e8f5c534a3284c1fecb2dcddd552fa34ca1dfa8e2fb473b1abc638e966d931"
+      }
+    ]
+  },
+  "candidate_inputs": {
+    "docs/ecosystem-candidate.json": "6e5e0aa7a42b0789563941473354783351e8b2158aa5a1aa622253a09db57450",
+    "docs/assurance-corpus.json": "c0973e081bfd38fc6e11d860ab05becd361a664246aae87d87faaf0f90cb05e3",
+    ".github/workflows/ecosystem-candidate.yml": "127ff66d292a125bc14e4c28cb9083f6bf2c2d3da1a0eafa5db68e0424be6fad",
+    "scripts/check-ecosystem-parity.py": "a230e2dd8d0ccc3bb34c81c7a0d55856529e51242c658cf7d61842d73a1e1581"
+  }
+}

@@ -1,12 +1,8 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 // Copyright (c) 2026 Noyalib. All rights reserved.
 
-//! Coverage harness for `cst::format` (formatter) and `ser` (serializer).
-//!
-//! Exercises comment normalisation, mixed indentation, blank lines, flow
-//! collections and deep nesting through the public formatter, and drives the
-//! serializer across edge numbers, empty/nested collections, quote-forcing,
-//! block scalars, formatting-hint wrappers and error paths.
+//! Exercise formatter layout and serializer edge numbers, collections,
+//! quoting, block scalars, formatting hints and error paths.
 
 #![allow(
     missing_docs,

@@ -1,0 +1,43 @@
+// SPDX-FileCopyrightText: 2026 Noyalib
+// SPDX-License-Identifier: MIT OR Apache-2.0
+
+//! Development-only oracle classifier tests.
+
+#![forbid(unsafe_code)]
+
+#[cfg(test)]
+#[path = "../bom_classification.rs"]
+mod bom_classification;
+
+#[cfg(test)]
+#[path = "../oracle_tab_tests.rs"]
+mod oracle_tab_tests;
+
+#[cfg(test)]
+#[path = "../json_numbers.rs"]
+mod json_numbers;
+
+#[cfg(test)]
+#[path = "../decimal_integer.rs"]
+mod decimal_integer;
+
+#[cfg(test)]
+#[path = "../signed_radix.rs"]
+mod signed_radix;
+
+#[cfg(test)]
+#[path = "../canonical_duplicates.rs"]
+mod canonical_duplicates;
+
+#[cfg(test)]
+#[path = "../question_key.rs"]
+mod question_key;
+
+#[cfg(test)]
+#[path = "../../crates/noyalib/tests/properties/oracle_normalization.rs"]
+#[expect(unexpected_cfgs, reason = "shared core tests name core-only features")]
+mod oracle_normalization;
+
+#[cfg(test)]
+#[path = "../local_core_tags.rs"]
+mod local_core_tags;

@@ -143,6 +143,9 @@ struct Formatter<'a> {
     /// written as `!foo"bar"` is one tag and an empty scalar, and
     /// `*a :` written as `*a:` is an alias named `a:`.
     last_token: Option<SyntaxKind>,
+    /// A terminal block scalar without a source line break must retain EOF:
+    /// appending a break changes clip- and keep-chomped scalar values.
+    preserve_eof: bool,
 }
 
 impl<'a> Formatter<'a> {
@@ -155,12 +158,13 @@ impl<'a> Formatter<'a> {
             at_line_start: true,
             last_was_space: false,
             last_token: None,
+            preserve_eof: false,
         }
     }
 
     fn finish(self) -> String {
         let mut out = self.out;
-        if !out.ends_with('\n') && !out.is_empty() {
+        if !self.preserve_eof && !out.ends_with('\n') && !out.is_empty() {
             out.push('\n');
         }
         out
@@ -177,7 +181,7 @@ impl<'a> Formatter<'a> {
     }
 
     fn newline(&mut self) {
-        if self.at_line_start {
+        if self.at_line_start || self.preserve_eof {
             return;
         }
         // A block scalar's token carries the indentation of the line
@@ -273,6 +277,9 @@ impl<'a> Formatter<'a> {
     }
 
     fn handle_token(&mut self, kind: SyntaxKind, text: &str) {
+        self.preserve_eof = matches!(kind, SyntaxKind::LiteralScalar | SyntaxKind::FoldedScalar)
+            && text.as_bytes().as_ptr_range().end == self.source.as_bytes().as_ptr_range().end
+            && !text.ends_with(['\n', '\r']);
         match kind {
             SyntaxKind::Comment => {
                 self.ensure_space();
@@ -315,7 +322,14 @@ impl<'a> Formatter<'a> {
                     text
                 };
                 self.separate_from_property();
-                self.write_raw(trimmed);
+                if kind == SyntaxKind::PlainScalar
+                    && trimmed.contains(['\n', '\r'])
+                    && trimmed.contains('\t')
+                {
+                    self.write_plain_with_tabs(trimmed);
+                } else {
+                    self.write_raw(trimmed);
+                }
                 // A scalar token can carry the line break that ends
                 // it (`: a` / `: b` under an empty key); keep it.
                 if trimmed.len() < text.len() && text.trim_end_matches([' ', '\t']).ends_with('\n')
@@ -328,6 +342,21 @@ impl<'a> Formatter<'a> {
         if kind != SyntaxKind::Whitespace {
             self.last_token = Some(kind);
         }
+    }
+
+    /// Reindent continuation prefixes before tabs when their parent moves.
+    fn write_plain_with_tabs(&mut self, text: &str) {
+        let required = self.indent_level * self.config.indent_size + 1;
+        let mut lines = text.split_inclusive(['\r', '\n']);
+        let mut adjusted = String::from(lines.next().unwrap_or_default());
+        for line in lines {
+            let spaces = line.bytes().take_while(|byte| *byte == b' ').count();
+            if line.as_bytes().get(spaces) == Some(&b'\t') {
+                adjusted.extend(core::iter::repeat_n(' ', required.saturating_sub(spaces)));
+            }
+            adjusted.push_str(line);
+        }
+        self.write_raw(&adjusted);
     }
 
     /// Whether the last token was a tag, anchor or alias.

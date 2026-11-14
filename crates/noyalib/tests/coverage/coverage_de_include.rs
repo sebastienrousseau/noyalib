@@ -4,12 +4,7 @@
 //! Coverage for `de.rs`'s `!include` recursion error edges and
 //! `include.rs`'s filesystem read-error path.
 //!
-//! These close gaps the existing `include_directive.rs` suite leaves
-//! open because its assertions only check `is_err()` without pinning
-//! the *variant* — e.g. `max_include_depth_caps_recursion` reuses the
-//! spec `"infinite"`, so it trips the **cycle** guard and never reaches
-//! the **depth** guard (`de.rs` line 607). Each test here asserts the
-//! specific failure so the intended region is actually exercised.
+//! Assert error variants to distinguish the depth cap from the cycle guard.
 
 #![cfg(feature = "include")]
 #![allow(missing_docs)]
@@ -21,11 +16,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use noyalib::include::{IncludeRequest, IncludeResolver, InputSource};
 use noyalib::{Error, ErrorKind, ParserConfig, Result, Value, from_str_with_config};
 
-/// A depth-blowup resolver that hands back a **distinct** spec on
-/// every call, so the per-walk `visited` cycle guard never fires and
-/// resolution can only be stopped by the depth cap. This is what makes
-/// the recursion reach `de.rs`'s `RecursionLimitExceeded` branch (607)
-/// rather than the cycle branch (620) the existing test hits.
+/// Distinct child specs reach the depth cap without triggering cycle detection.
 fn ever_deeper_resolver() -> IncludeResolver {
     let counter = Arc::new(AtomicUsize::new(0));
     IncludeResolver::new(move |_req: IncludeRequest<'_>| -> Result<InputSource> {
@@ -58,11 +49,7 @@ fn depth_cap_yields_recursion_limit_not_cycle() {
 
 #[test]
 fn error_propagates_through_non_include_tagged_wrapper() {
-    // A `!custom`-tagged node whose *inner* value contains an
-    // `!include` that fails. The walker takes the non-`!include`
-    // Tagged branch (`de.rs` line 672), recurses into the wrapped
-    // mapping, and the failing include's error must propagate back up
-    // through the `?` at line 682.
+    // The failing include must propagate through the custom tag's inner mapping.
     let resolver = IncludeResolver::new(|req: IncludeRequest<'_>| -> Result<InputSource> {
         Err(Error::Custom(format!("boom for `{}`", req.spec)))
     });
@@ -78,9 +65,7 @@ fn error_propagates_through_non_include_tagged_wrapper() {
 
 #[test]
 fn error_propagates_through_sequence_element() {
-    // The OK sequence path is covered elsewhere; this pins the
-    // Err-propagation edge of the sequence arm (`de.rs` line 696):
-    // a sequence element that is a failing `!include`.
+    // A failing include must propagate through a sequence element.
     let resolver = IncludeResolver::new(|req: IncludeRequest<'_>| -> Result<InputSource> {
         Err(Error::Custom(format!("seq boom for `{}`", req.spec)))
     });

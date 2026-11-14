@@ -33,6 +33,10 @@ impl Scanner<'_> {
             from <= pos && (pos < end || (pos == end && (is_break || end == self.input.len())));
         if !reusable {
             let (rel, brk) = Self::scan_line_end(&self.input[pos..]);
+            #[cfg(test)]
+            {
+                self.plain_line_bytes += rel + usize::from(pos + rel < self.input.len());
+            }
             self.line_end_memo = (pos, pos + rel, brk);
         }
         let (_, end, is_break) = self.line_end_memo;
@@ -117,7 +121,7 @@ impl Scanner<'_> {
             return Ok(false);
         }
         let s = Cow::Borrowed(self.slice_str(self.pos, self.pos + content_len));
-        self.check_scalar_printable(&s)?;
+        self.check_unquoted_printable(&s)?;
         self.advance_by(len);
         self.emit(TokenKind::Scalar(ScalarStyle::Plain, s));
         self.last_token_opens_block = false;
@@ -233,7 +237,7 @@ impl Scanner<'_> {
 
             // Skip whitespace/newlines between plain scalar content.
             if !Self::is_blank_or_break(self.peek())
-                || self.skip_plain_separation(&mut fold, indent)
+                || self.skip_plain_separation(&mut fold, indent)?
             {
                 break;
             }
@@ -259,7 +263,7 @@ impl Scanner<'_> {
         } else {
             Cow::Owned(fold.string)
         };
-        self.check_scalar_printable(&value)?;
+        self.check_unquoted_printable(&value)?;
         self.emit(TokenKind::Scalar(ScalarStyle::Plain, value));
         self.last_token_opens_block = false;
         Ok(())
@@ -316,7 +320,7 @@ impl Scanner<'_> {
     /// Consume the blanks and breaks after a run of plain content into
     /// `fold`. Returns `true` when a break leaves the next line below the
     /// scalar's indentation, which ends it.
-    fn skip_plain_separation(&mut self, fold: &mut PlainFold, indent: i32) -> bool {
+    fn skip_plain_separation(&mut self, fold: &mut PlainFold, indent: i32) -> ScanResult<bool> {
         fold.whitespace.clear();
 
         // Consume blanks and breaks.
@@ -327,7 +331,7 @@ impl Scanner<'_> {
 
         if !Self::is_break(self.peek()) {
             // else: inline blanks between words — continue scanning.
-            return false;
+            return Ok(false);
         }
         fold.leading_blanks = true;
         fold.whitespace.clear();
@@ -344,15 +348,37 @@ impl Scanner<'_> {
                 fold.whitespace.push('\n');
                 self.advance();
             }
-            while Self::is_blank(self.peek()) {
-                self.advance();
-            }
+            self.skip_plain_line_prefix(indent)?;
             if !Self::is_break(self.peek()) {
                 break;
             }
         }
 
-        self.flow_level == 0 && (self.column() as i32) < indent
+        Ok(self.flow_level == 0 && (self.column() as i32) < indent)
+    }
+
+    /// Tabs separate content only after the required indentation spaces.
+    fn skip_plain_line_prefix(&mut self, indent: i32) -> ScanResult<()> {
+        let mut tab_in_indent = None;
+        while Self::is_blank(self.peek()) {
+            if self.peek() == b'\t' && (self.column() as i32) < indent {
+                let _ = tab_in_indent.get_or_insert(self.pos);
+            }
+            self.advance();
+        }
+        // Blank and comment lines have no content indentation to satisfy.
+        if self.flow_level == 0
+            && !self.is_eof()
+            && !Self::is_break(self.peek())
+            && self.peek() != b'#'
+            && let Some(index) = tab_in_indent
+        {
+            return Err(ScanError {
+                message: Cow::Borrowed("tab characters are not allowed as indentation"),
+                index,
+            });
+        }
+        Ok(())
     }
 
     /// Reject raw control characters in captured scalar content
@@ -377,6 +403,35 @@ impl Scanner<'_> {
             ));
         }
         Ok(())
+    }
+
+    /// Unquoted YAML content uses c-printable, unlike JSON-compatible quotes.
+    pub(super) fn check_unquoted_printable(&self, s: &str) -> ScanResult<()> {
+        self.check_scalar_printable(s)?;
+        if Self::first_non_printable_unicode(s.as_bytes()).is_some() {
+            return Err(self.error("scalar contains a non-printable Unicode character"));
+        }
+        Ok(())
+    }
+
+    pub(super) fn is_non_printable_unicode_prefix(bytes: &[u8]) -> bool {
+        matches!(bytes,
+            [0xc2, 0x80..=0x84 | 0x86..=0x9f, ..]
+            | [0xef, 0xbf, 0xbe | 0xbf, ..])
+    }
+
+    fn first_non_printable_unicode(bytes: &[u8]) -> Option<usize> {
+        memchr::memchr2_iter(0xc2, 0xef, bytes)
+            .find(|&offset| Self::is_non_printable_unicode_prefix(&bytes[offset..]))
+    }
+
+    pub(super) fn first_non_printable(bytes: &[u8]) -> Option<usize> {
+        bytes
+            .iter()
+            .position(|&b| Self::is_raw_control(b))
+            .into_iter()
+            .chain(Self::first_non_printable_unicode(bytes))
+            .min()
     }
 
     /// A C0 control character other than tab and line feed, or DEL:
@@ -621,6 +676,9 @@ impl Scanner<'_> {
                 if escaped == b'\r' && self.peek() == b'\n' {
                     self.advance();
                 }
+                // A document marker still starts the next line, as after
+                // an unescaped break (found by fuzz_serde_yaml_compat).
+                self.reject_doc_marker_in_quoted("double-quoted")?;
                 // Skip leading whitespace on next line.
                 while Self::is_blank(self.peek()) {
                     self.advance();

@@ -68,7 +68,9 @@ fn final_de_typed_ast_policy_check_value_rejects() {
 // A `Read` impl that always returns `ErrorKind::Other` exercises the
 // `read_to_string(...).map_err(Error::Io)` arm.
 
+#[cfg(feature = "std")]
 struct FailingReader;
+#[cfg(feature = "std")]
 impl std::io::Read for FailingReader {
     fn read(&mut self, _buf: &mut [u8]) -> std::io::Result<usize> {
         Err(std::io::Error::other("simulated io fail"))
@@ -76,6 +78,7 @@ impl std::io::Read for FailingReader {
 }
 
 #[test]
+#[cfg(feature = "std")]
 fn final_de_from_reader_with_config_io_error() {
     let cfg = ParserConfig::default();
     let res: Result<i64, _> = noyalib::from_reader_with_config(FailingReader, &cfg);

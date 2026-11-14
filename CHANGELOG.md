@@ -7,6 +7,152 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+## [v0.0.61] - Unreleased
+
+### Changed
+
+- **Breaking:** reject a `---` or `...` document marker at the start of
+  a line inside a double-quoted scalar after an escaped line break, as
+  after an unescaped one (yaml-test-suite 5TRB, RXY3).
+- The serializer no longer counts a tag as a nesting level of its own,
+  so every tagged collection the parser accepts within `max_depth`
+  serializes; a tag wrapping another tag still counts.
+- **Breaking:** with `legacy_binary_numbers` and lossless `u64`
+  integers, a binary literal above `i64::MAX` resolves as the `u64` it
+  spells instead of staying a string, as hex already did; serializers
+  quote strings of that shape.
+- **Breaking:** the compatibility profile refuses a hex, octal or
+  (legacy) binary literal inside the 128-bit range but outside 64 bits,
+  signed or not, as the archived parser does; a larger one stays a
+  string. Keys keep their spelling, and the default profile still keeps
+  large radix integers as strings (ADR-0004).
+- **Breaking:** an alias used as a mapping key takes its anchored
+  node's written spelling for typed targets (`{&a .3, *a}` keys ".3",
+  not "0.3"), and key errors on it point at that node.
+- **Breaking:** accept tab separation after a `...` document-end
+  marker, as YAML 1.2.2 §9.1.2 allows.
+- **Breaking:** reject raw C1 controls other than NEL (U+0080 to U+009F)
+  and the non-characters U+FFFE and U+FFFF outside quoted scalars:
+  plain and block scalars, comments, anchors, tags and directives.
+  Quoted scalars keep them. YAML 1.2.2 §5.1 limits unquoted content to
+  `c-printable`.
+- **Breaking:** keep the written spelling of an anchored typed key
+  (`&a 0x1F`, `&a ~`, also with a comment after the anchor) when a tag
+  elsewhere selects the AST path, as unanchored keys already did.
+- **Breaking:** apply the compatibility profile's integer-overflow
+  refusal to values only. A decimal mapping key beyond 64 bits stays
+  its written string, as the archived parser reads JSON keys as
+  strings, so distinct spellings remain distinct keys.
+- **Breaking:** apply canonical duplicate-key identity before typed map
+  visitors, including aliases, registered tags and ignored fields. `Last`
+  keeps the first position, last value and last scalar spelling; `First`
+  keeps the first entry and `Error` refuses canonical duplicates. Distinct
+  typed keys that stringify alike remain collisions under every policy.
+  Direct streaming and borrowing return the existing fallback error when
+  duplicate resolution requires materialization (ADR-0019).
+- Retire the unpublished MCP v0.0.60 attempt with its signed tag unchanged.
+  The approved registry-history exception permits the fixed v0.0.61 family
+  after release gates and independent review.
+- **Breaking:** reject compact block collections in implicit mapping
+  values, including `- : : `. Explicit compact entries, inline flow nodes
+  and collections separated by a line break remain supported.
+- **Breaking:** reject repeated indentation or chomping indicators in
+  block scalar headers, including `>74`, `|++` and `|-+`. A header may
+  contain one indentation digit and one chomping indicator in either order.
+- **Breaking:** retain compatibility float fallback for decimal literals
+  beyond the signed or unsigned 128-bit range. Integer-overflow refusal
+  applies to the archive's 128-bit integer domain outside JSON's 64-bit
+  bounds, with identical behavior across typed and materialized loaders.
+- **Breaking:** honor individual scalar compatibility flags for typed
+  targets through materialized parsing. Direct streaming refuses these
+  profiles instead of silently ignoring them. Integer-overflow refusal
+  also covers values below `i64::MIN`; quoted, schema-disabled and
+  compatibility leading-zero string spellings remain strings.
+- **Breaking:** preserve non-specific `!` tags under primary-handle
+  redefinitions and keep verbatim local names such as `!<!str>` custom.
+  Serialization retains literal names that resemble built-in tags.
+- **Breaking:** reject raw controls in parsed directive fields and reject
+  empty or unrepresentable expanded tag URIs. Control-character diagnostics
+  identify the offending byte.
+- **Breaking:** keep verbatim local tag URIs unchanged when a `%TAG !`
+  directive redefines the primary handle. Unused directive prefixes no
+  longer consume a verbatim tag's URI budget.
+- **Breaking:** enforce the existing 1,024-byte limit on the complete
+  resolved tag URI and on anchor names ending at EOF. Oversized tags can
+  no longer parse successfully and fail after serialization.
+- **Breaking:** reject tabs that supply required indentation on plain-scalar
+  continuation lines. Tabs after the required spaces, in content, or on
+  blank and comment lines remain valid. Formatting retains required spaces
+  when reindenting a parent block.
+- **Breaking:** preserve written explicit typed mapping keys across trailing
+  separation on AST fallback. Tags elsewhere no longer respell `~` as
+  "null" or `0x1F` as "31". Untyped `Value` keys keep canonical spellings.
+- **Breaking:** reject unindented scalar mapping values whose required key
+  never receives a colon. A following sibling can no longer discard that
+  missing-key error. Indented values and indentless sequences remain valid.
+- **Breaking:** typed parsing preserves an anchored omitted key as an empty
+  string when it uses the AST fallback, consistently with streaming parsing.
+  `Value` mappings retain the canonical null-key spelling.
+- **Breaking:** aliases use the most recent anchor declaration, including
+  nested redefinitions. An open redefinition no longer resolves to its
+  previous value. Typed parsing falls back to the AST loader for nested
+  anchor declarations.
+- **Breaking:** clipped block scalars at EOF retain a final newline only
+  when it exists in the input, as required by YAML 1.2.2.
+- Prepare the next lockstep version for the ecosystem assurance work.
+  Release dates and completed changes are recorded after verification.
+
+### Fixed
+
+- Keep locally repaired CST entries within the original fragment. Leading
+  line breaks and supplementary Unicode keys can no longer shift token
+  boundaries or panic during root edits. Retain the original 22-byte MCP
+  input and compare repaired syntax with a complete reparse.
+- Preserve omitted-key mapping entries as distinct CST nodes. Removing
+  the preceding key now retains the omitted-key sibling across LF, CRLF
+  and lone-CR documents.
+- Respect all YAML line breaks when calculating CST removal ranges. Keep
+  CRLF atomic and retain neighboring entries when removing a later empty
+  sequence item.
+- Preserve a terminal block scalar's missing line break during formatting,
+  including literal and folded scalars with comments and explicit indentation.
+- Run the complete hosted test battery with std disabled. Use the alloc map
+  types in interpolation and conversion tests, and gate I/O and mutex tests
+  on the features required by their APIs.
+- Bound scanner lookahead by measured work, including a cache-invalidation
+  regression witness. Preserve large-flow values through all entry points
+  without relying on elapsed-time ratios under shared CPU load.
+- Validate signed satellite candidates against the checked-out core on
+  Linux, macOS and Windows, with separate WASM package checks. Keep
+  registry-resolution evidence as a distinct release gate.
+- Compare archived parser oracles without accepting under-indented quoted
+  continuations or allowing later anchor-ID collisions to corrupt aliases.
+- Keep archived comparisons active for leading-colon flow scalars and the
+  official L24T terminal-space case, with full-value checks after normalization.
+- Quote unsigned radix strings under lossless resolution while retaining
+  quoting for decimal overflow strings. Compatibility roundtrips preserve
+  their original string values and keys.
+- Honor tag-dispatch dry runs before signing or creating a GitHub release.
+- Reject stale family versions in every tracked Cargo lock, including
+  standalone fuzz workspaces.
+- Quote binary-looking strings during serialization so compatibility-mode
+  parsing preserves their values and mapping keys.
+- Read actual llvm-cov line totals, preserve full source identities and
+  distinguish unmeasured tests from failures in the family scorecard.
+- Audit all tracked Cargo lockfiles and retain scoped evidence.
+- Add repeatable bounded fuzz campaigns and a shared six-consumer corpus.
+
+### Security
+
+- Require patched rustix 1.1.6 for optional filesystem includes so downstream
+  resolution cannot retain the affected 1.1.4 dependency.
+- Refuse synthetic sibling entries during local CST repair. Root shape
+  changes use a full parse, preserving UTF-8 token boundaries and keeping
+  MCP edit sessions alive.
+- Bound repeated recursive-descent lookups by tracking visited states.
+  First-result lookup stops at its first match. Queries cache failed
+  states while preserving result order and repeated matches.
+
 ## [v0.0.60] - 2026-11-10
 
 ### Fixed

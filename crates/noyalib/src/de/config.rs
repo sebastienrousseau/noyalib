@@ -377,12 +377,15 @@ pub struct ParserConfig {
     /// `serde_yaml` 0.9. Default `false` (overflow saturates to
     /// infinity, the Rust float-parsing convention).
     pub float_overflow_strings: bool,
-    /// When `true`, a plain decimal integer beyond `u64::MAX`
-    /// (`18446744073709551616`) aborts the parse with
+    /// When `true`, a plain decimal integer below `i64::MIN` or above
+    /// `u64::MAX`, but within the corresponding signed or unsigned 128-bit
+    /// range, aborts the parse with
     /// [`ErrorKind::IntegerOverflow`](crate::ErrorKind) instead
     /// of falling through to an approximate `f64`. Matches
     /// `serde_yaml` 0.9's "JSON number out of range". Default
-    /// `false`.
+    /// `false`. Larger literals retain float fallback. Quoted scalars,
+    /// disabled schema resolution and the
+    /// leading-zero string policy retain their string values.
     pub integer_overflow_errors: bool,
     /// What to do with a non-scalar mapping key (`[a, b]: v`,
     /// `{k: v}: w`). See [`NonScalarKeyPolicy`]. Default

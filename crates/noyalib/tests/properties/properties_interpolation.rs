@@ -8,11 +8,15 @@
 #![allow(clippy::unwrap_used)]
 
 use noyalib::{ParserConfig, Value, from_str_with_config};
+#[cfg(feature = "std")]
 use std::collections::HashMap;
 use std::sync::Arc;
 
+#[cfg(not(feature = "std"))]
+type HashMap<K, V> = hashbrown::HashMap<K, V, rustc_hash::FxBuildHasher>;
+
 fn props(pairs: &[(&str, &str)]) -> Arc<HashMap<String, String>> {
-    let mut m = HashMap::new();
+    let mut m = HashMap::default();
     for (k, v) in pairs {
         let _ = m.insert((*k).to_string(), (*v).to_string());
     }

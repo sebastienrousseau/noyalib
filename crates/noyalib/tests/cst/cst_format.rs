@@ -6,6 +6,24 @@
 use noyalib::cst::format;
 
 #[test]
+fn terminal_block_scalar_without_break_preserves_eof() {
+    for header in ["|", ">", "|+", ">+", "|-", ">-", "|2 # keep", ">2 # keep"] {
+        for container in ["message:   ", "-   ", ""] {
+            let input = format!("{container}{header}\n  first\n  second");
+            let before: noyalib::Value = noyalib::from_str(&input).unwrap();
+            let formatted = format(&input).unwrap_or_else(|err| panic!("{input:?}: {err}"));
+            let after: noyalib::Value = noyalib::from_str(&formatted).unwrap();
+            assert_eq!(before, after, "{input:?}");
+            assert!(!formatted.ends_with('\n'), "{formatted:?}");
+            assert_eq!(format(&formatted).unwrap(), formatted);
+            if header.contains('#') {
+                assert!(formatted.contains("# keep"));
+            }
+        }
+    }
+}
+
+#[test]
 fn test_basic_formatting() {
     let input = "a: 1\nb: 2\n";
     let formatted = format(input).unwrap();

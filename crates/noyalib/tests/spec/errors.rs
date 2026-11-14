@@ -209,6 +209,25 @@ fn doc_marker_inside_quoted_scalar_rejected() {
     assert!(r2.is_err(), "double-quoted scalar containing `---`");
 }
 
+// The same holds after an escaped line break (`\` then a break, section
+// 7.3.1): the marker still starts a line. Found by fuzz_serde_yaml_compat
+// on `{"\\\n...\n"}`.
+#[test]
+fn doc_marker_after_escaped_break_rejected() {
+    for source in [
+        "\"a\\\n...\n\"",
+        "{\"\\\n...\n\"}",
+        "\"a\\\n---\n\"",
+        "\"a\\\r\n...\n\"",
+    ] {
+        let r: Result<Value, _> = from_str(source);
+        assert!(r.is_err(), "{source:?}");
+    }
+    // Indented, the dots are content.
+    let v: Value = from_str("\"a\\\n ...\n\"").unwrap();
+    assert_eq!(v.as_str(), Some("a... "));
+}
+
 // yaml-test-suite 2G84 — block scalar indent indicator must be a single
 // digit 1..9; `0` and multi-digit forms are rejected.
 #[test]
@@ -457,4 +476,112 @@ fn from_str_drains_trailing_events_to_surface_errors() {
     // CXX2 — anchor + key on the document-start line.
     let r: Result<Value, _> = from_str("--- &anchor a: b\n");
     assert!(r.is_err());
+}
+
+// YAML 1.2.2 productions 162 and 163 allow at most one indentation
+// digit and one chomping indicator, in either order.
+#[test]
+fn repeated_block_scalar_indicators_are_rejected_across_paths() {
+    let mut duplicates = vec![
+        "++".to_owned(),
+        "--".to_owned(),
+        "+-".to_owned(),
+        "-+".to_owned(),
+    ];
+    for first in '1'..='9' {
+        for second in '1'..='9' {
+            duplicates.push(format!("{first}{second}"));
+        }
+    }
+    for style in ['|', '>'] {
+        for duplicate in &duplicates {
+            for prefix in ["", "a: ", "- "] {
+                for ending in ["", "\n", "\r", "\r\n"] {
+                    let source = format!("{prefix}{style}{duplicate}{ending}");
+                    let error = from_str::<Value>(&source).expect_err(&source);
+                    assert_eq!(
+                        error.location().unwrap().index(),
+                        prefix.len() + 2,
+                        "{source:?}"
+                    );
+                    assert!(
+                        from_str::<serde_json::Value>(&source).is_err(),
+                        "{source:?}"
+                    );
+                    let mut config = noyalib::ParserConfig::default();
+                    config.merge_key_policy = noyalib::MergeKeyPolicy::AsOrdinary;
+                    assert!(
+                        noyalib::from_str_with_config::<serde_json::Value>(&source, &config)
+                            .is_err(),
+                        "{source:?}"
+                    );
+                    assert!(noyalib::cst::parse_document(&source).is_err(), "{source:?}");
+                }
+            }
+        }
+    }
+}
+
+#[test]
+fn distinct_block_scalar_indicators_keep_both_orders() {
+    for style in ['|', '>'] {
+        for digit in 1..=9 {
+            for chomp in ['+', '-'] {
+                for flags in [format!("{digit}{chomp}"), format!("{chomp}{digit}")] {
+                    let source = format!("{style}{flags} # header\n{}text\n", " ".repeat(digit));
+                    let expected = if chomp == '-' { "text" } else { "text\n" };
+                    assert_eq!(from_str::<String>(&source).unwrap(), expected, "{source:?}");
+                    assert_eq!(
+                        from_str::<Value>(&source).unwrap().as_str(),
+                        Some(expected),
+                        "{source:?}"
+                    );
+                    let document = noyalib::cst::parse_document(&source).unwrap();
+                    assert_eq!(document.to_string(), source);
+                }
+            }
+        }
+    }
+}
+
+#[test]
+fn implicit_mapping_values_reject_inline_block_collections() {
+    for source in [
+        "- : : ",
+        ": : value\n",
+        "key: : value\n",
+        "key: - item\n",
+        "key: ? nested\n",
+    ] {
+        assert!(from_str::<Value>(source).is_err(), "{source:?}");
+        assert!(from_str::<serde_json::Value>(source).is_err(), "{source:?}");
+        let mut config = noyalib::ParserConfig::default();
+        config.merge_key_policy = noyalib::MergeKeyPolicy::AsOrdinary;
+        assert!(
+            noyalib::from_str_with_config::<serde_json::Value>(source, &config).is_err(),
+            "{source:?}"
+        );
+        assert!(noyalib::cst::parse_document(source).is_err(), "{source:?}");
+    }
+}
+
+#[test]
+fn explicit_compact_and_separated_mapping_values_remain_valid() {
+    for source in [
+        "? key\n: nested: value\n",
+        "? key\n: - item\n",
+        "- ? earth: blue\n  : moon: white\n",
+        "key:\n  nested: value\n",
+        "key:\n- item\n",
+        "key: &a\n  nested: value\n",
+        "key: {nested: value}\n",
+        "key: 'nested: value'\n",
+        "key: |\n  value\n",
+    ] {
+        assert!(from_str::<Value>(source).is_ok(), "{source:?}");
+        assert_eq!(
+            noyalib::cst::parse_document(source).unwrap().to_string(),
+            source
+        );
+    }
 }

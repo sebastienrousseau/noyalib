@@ -15,7 +15,9 @@
 
 #![allow(missing_docs, clippy::unwrap_used, clippy::expect_used)]
 
-use noyalib::{Value, from_reader, from_slice, from_str, load_all, load_all_as};
+#[cfg(feature = "std")]
+use noyalib::from_reader;
+use noyalib::{Value, from_slice, from_str, load_all, load_all_as};
 
 /// Single-document inputs, covering the shapes the readers branch on.
 const SINGLE: &[(&str, &str)] = &[
@@ -63,19 +65,22 @@ fn the_three_input_forms_agree() {
     for (label, yaml) in SINGLE {
         let by_str = from_str::<Value>(yaml);
         let by_slice = from_slice::<Value>(yaml.as_bytes());
+        #[cfg(feature = "std")]
         let by_reader = from_reader::<_, Value>(yaml.as_bytes());
 
         let shape = |r: &noyalib::Result<Value>| match r {
             Ok(v) => format!("ok:{v:?}"),
             Err(_) => "err".to_string(),
         };
-        let (a, b, c) = (shape(&by_str), shape(&by_slice), shape(&by_reader));
+        let (a, b) = (shape(&by_str), shape(&by_slice));
         if a != b {
             disagreements.push(format!(
                 "{label}: &str vs &[u8]\n  str:   {a}\n  slice: {b}"
             ));
         }
-        if a != c {
+        #[cfg(feature = "std")]
+        if a != shape(&by_reader) {
+            let c = shape(&by_reader);
             disagreements.push(format!(
                 "{label}: &str vs Read\n  str:    {a}\n  reader: {c}"
             ));
@@ -298,7 +303,7 @@ fn the_facade_reproduces_serde_yamls_documented_quirks() {
     );
 }
 
-/// A truncated stream must not be read/// A truncated stream must not be read as a shorter valid one. Cutting
+/// A truncated stream must not be read as a shorter valid one. Cutting
 /// each corpus document at every byte boundary and requiring either a
 /// clean error or a prefix-consistent value is the cheapest way to find
 /// a reader that runs off the end.
@@ -315,6 +320,7 @@ fn no_reader_panics_or_invents_data_on_a_truncated_stream() {
             // a defect in any of them.
             let _ = from_str::<Value>(prefix);
             let _ = from_slice::<Value>(prefix.as_bytes());
+            #[cfg(feature = "std")]
             let _ = from_reader::<_, Value>(prefix.as_bytes());
             let _ = load_all_as::<Value>(prefix);
             #[cfg(feature = "parallel")]

@@ -838,7 +838,15 @@ fn write_user_tag(
     if indicator_takes_a_space(inner, config) {
         output.push(' ');
     }
-    write_value(output, inner, indent, false, config, depth + 1)?;
+    // A tag decorates its node without nesting it, as the parser counts
+    // depth (found by fuzz_roundtrip_alloc_only). Only a tag wrapping
+    // another tag adds a level, which keeps hand-built chains bounded.
+    let inner_depth = if matches!(inner, Value::Tagged(_)) {
+        depth + 1
+    } else {
+        depth
+    };
+    write_value(output, inner, indent, false, config, inner_depth)?;
     if braced {
         output.push('}');
     }
@@ -861,12 +869,21 @@ fn write_tag_spelling(output: &mut String, tag_str: &str) {
         .or_else(|| tag_str.strip_prefix('!'));
     // A body starting with `<` would turn the shorthand into the
     // verbatim opener `!<` itself.
-    let needs_verbatim = shorthand_body.is_some_and(|body| {
-        body.starts_with('<')
-            || body
-                .bytes()
-                .any(|b| matches!(b, b',' | b'[' | b']' | b'{' | b'}' | b'!' | b' ' | b'\t'))
+    // A custom URI such as `!!str` must not become a built-in tag.
+    let core_looking_uri = shorthand_body.is_some_and(|body| {
+        matches!(
+            body,
+            "str" | "int" | "float" | "bool" | "null" | "seq" | "map"
+        )
     });
+    let needs_verbatim = core_looking_uri
+        || tag_str == "!!"
+        || shorthand_body.is_some_and(|body| {
+            body.starts_with('<')
+                || body
+                    .bytes()
+                    .any(|b| matches!(b, b',' | b'[' | b']' | b'{' | b'}' | b'!' | b' ' | b'\t'))
+        });
     match shorthand_body {
         // A tag a `%TAG` directive resolved is held as a bare URI with
         // no `!`. Written as it stands it is not a tag at all, and the
@@ -942,13 +959,25 @@ fn looks_like_number(s: &str) -> bool {
 ///
 /// Runs the resolver the loaders and the streaming path share, with the
 /// YAML 1.1 legacy forms enabled (`0`-prefixed octals, sexagesimals) so a
-/// string is quoted whenever any reader configuration would turn it into
-/// something else.
+/// string is quoted whenever signed or lossless unsigned resolution would
+/// turn it into something else.
 fn resolves_as_non_string(s: &str) -> bool {
-    !matches!(
-        crate::streaming::resolve_plain_ext(s, false, true, false, true, true, false),
-        crate::streaming::Scalar::Str(_)
-    )
+    crate::parser::parse_legacy_binary(s).is_some()
+        || crate::parser::parse_legacy_binary_u64(s).is_some()
+        || [false, true].into_iter().any(|lossless_u64| {
+            !matches!(
+                crate::streaming::resolve_plain_ext(
+                    s,
+                    false,
+                    true,
+                    false,
+                    true,
+                    true,
+                    lossless_u64
+                ),
+                crate::streaming::Scalar::Str(_)
+            )
+        })
 }
 
 /// A `:` ends a plain scalar only when a space, a tab, a flow indicator,
@@ -1025,10 +1054,8 @@ static FIRST_CHAR_QUOTE: [bool; 128] = {
 /// is stream-skipped on re-parse, reinterpreting the rest of the
 /// scalar as markup (found by fuzz_roundtrip).
 ///
-/// The C1 block (U+0080 to U+009F, NEL included) and the non-characters
-/// U+FFFE and U+FFFF sit outside `c-printable` (§5.1): this crate's
-/// reader takes them raw, but libyaml-based tools reject the document,
-/// so they force the same style with a hex escape (#379).
+/// Escape C1 and BMP non-characters for libyaml compatibility (#379).
+/// NEL is printable in YAML 1.2 but a line break for YAML 1.1 readers.
 fn needs_double_quoted_escape(s: &str) -> bool {
     s.chars().any(|c| {
         matches!(

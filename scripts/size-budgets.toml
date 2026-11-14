@@ -12,5 +12,8 @@
 # grow_value; its typed CST growth implementation and regression tests
 # intentionally add source to the package. Allow 20,000 more bytes for
 # that contribution, retaining the vendored YAML suite and all tests.
+# v0.0.61 measured 1,322,388 bytes: its fuzz-found parser fixes ship
+# with their conformance and regression tests (non-printable Unicode,
+# anchored typed keys, compat overflow keys). Allow 10,000 more bytes.
 [crate-package]
-max_bytes = 1320000
+max_bytes = 1330000

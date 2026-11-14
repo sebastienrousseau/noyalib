@@ -1,25 +1,6 @@
-//! Regression: removing a member of a *wrapped* flow collection left the
-//! member's indentation behind as a whitespace-only line (#294, reported
-//! by @zoosky).
-//!
-//!     ports: [          remove("ports[0]")     ports: [
-//!       80,                     ->              ␣␣
-//!       443,                                    443,
-//!     ]                                       ]
-//!
-//! The value round-tripped correctly, so this was never corruption. What
-//! it was is trailing whitespace written onto a line that had none, which
-//! `git diff --check`, `yamllint`'s `trailing-spaces` and
-//! `editorconfig-checker` all reject.
-//!
-//! The fix gives the member its whole line when — and only when — the
-//! member is alone on it. Everything else that could hold the line
-//! standing (an opening indicator, a sibling, a comment, the closing
-//! indicator) must leave the output byte-identical to before, and the
-//! bulk of this file is those negative cases.
-//!
-//! It was unreachable before #285: a wrapped flow collection did not
-//! parse, so nothing downstream of the scanner had ever seen one.
+//! Wrapped-flow removal consumes a member's entire line only when the member
+//! is alone on it (#294, reported by @zoosky). Indicators, siblings and
+//! comments keep their source bytes and must not acquire trailing spaces.
 
 // SPDX-License-Identifier: MIT OR Apache-2.0
 // Copyright (c) 2026 Noyalib. All rights reserved.

@@ -1,12 +1,9 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 // Copyright (c) 2026 Noyalib. All rights reserved.
 
-//! Broad parser/loader coverage: a wide variety of YAML documents,
-//! exercising valid edge cases (anchors, aliases, merge keys, tags,
-//! every scalar style, flow/block collections, multi-doc, empty docs,
-//! comments, explicit/complex keys) and malformed documents that must
-//! be rejected (undefined alias, unterminated flow, invalid escapes,
-//! bad tag resolution, scalar merge, key collisions, bad indentation).
+//! Exercise scalar styles, collections, multiple documents, anchors,
+//! aliases, merges and tags. Reject malformed syntax, undefined aliases,
+//! invalid escapes, non-scalar merges, key collisions and bad indentation.
 
 #![allow(
     missing_docs,

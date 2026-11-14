@@ -34,10 +34,110 @@ fn a_tag_elsewhere_does_not_respell_typed_keys() {
 }
 
 #[test]
+fn trailing_separation_does_not_respell_explicit_typed_keys() {
+    let cfg = ParserConfig::new();
+    for key in KEYS {
+        for newline in ["\n", "\r\n", "\r"] {
+            let plain = format!("{{? {key}{newline}: 1}}{newline}");
+            let tagged = format!("{{? {key}{newline}: 1, z: !t 2}}{newline}");
+            assert_eq!(keys(&plain, &cfg), [*key], "streaming {plain:?}");
+            assert_eq!(keys(&tagged, &cfg), [*key], "fallback {tagged:?}");
+        }
+    }
+}
+
+#[test]
+fn original_explicit_key_separation_keeps_typed_and_value_contracts() {
+    let source = include_str!("../fixtures/explicit-key-trailing-separation.yaml");
+    let typed: serde_json::Value = from_str(source).unwrap();
+    assert_eq!(typed.get("~"), Some(&serde_json::json!(1)));
+    assert!(typed.get("null").is_none());
+    let value: Value = from_str(source).unwrap();
+    assert_eq!(value.get("null"), Some(&Value::from(1)));
+}
+
+#[test]
 fn an_empty_key_stays_empty() {
     let cfg = ParserConfig::new();
     assert_eq!(keys("? \n: 1\nz: !t 2\n", &cfg), [""]);
     assert_eq!(keys(": 1\nz: !t 2\n", &cfg), [""]);
+}
+
+#[test]
+fn an_anchored_empty_key_stays_empty_on_the_ast_path() {
+    let cfg = ParserConfig::new();
+    for doc in ["? &a\n: 1\nz: !t 2\n", "? &a\n: 1\n"] {
+        assert_eq!(keys(doc, &cfg), [""], "{doc:?}");
+        let value: Value = from_str(doc).unwrap();
+        assert!(value.get("null").is_some(), "Value keeps canonical keys");
+    }
+}
+
+#[test]
+fn an_anchor_does_not_respell_typed_keys() {
+    // Found by fuzz_diff on `{!,&d\n~}`: the anchored key's span
+    // includes `&d`, so the AST path lost its written spelling.
+    let cfg = ParserConfig::new();
+    for key in KEYS {
+        for sep in [" ", "\n", "\t"] {
+            let plain = format!("&d{sep}{key}: 1\n");
+            let tagged = format!("&d{sep}{key}: 1\nz: !t 2\n");
+            let flow = format!("{{z: !t 2, &d{sep}{key}: 1}}\n");
+            assert_eq!(keys(&plain, &cfg), [*key], "streaming {plain:?}");
+            assert_eq!(keys(&tagged, &cfg), [*key], "fallback {tagged:?}");
+            assert_eq!(keys(&flow, &cfg), [*key], "fallback {flow:?}");
+        }
+    }
+    // A comment may separate the anchor from its key (found by
+    // fuzz_serde_yaml_compat on `{&m #\n.5}`).
+    for key in KEYS {
+        let doc = format!("{{z: !t 2, &d # note\n {key}: 1}}\n");
+        assert_eq!(keys(&doc, &cfg), [*key], "fallback {doc:?}");
+    }
+    let projected: serde_json::Value = from_str("{!,&d\n~}").unwrap();
+    assert_eq!(projected, serde_json::json!({"": null, "~": null}));
+    let value: Value = from_str("&d ~: 1\nz: !t 2\n").unwrap();
+    assert!(value.get("null").is_some(), "Value keeps canonical keys");
+}
+
+#[test]
+fn an_alias_key_takes_its_anchored_spelling() {
+    // Found by fuzz_diff on `{&d\n.3,*d}`: a duplicate reached through an
+    // alias kept no written text, so the key became "0.3".
+    let cfg = ParserConfig::new();
+    for key in KEYS {
+        for doc in [
+            format!("{{&d {key}, *d}}\n"),
+            format!("{{&d\n{key},*d}}\n"),
+            format!("&d {key}: 1\n*d : 2\n"),
+            format!("a: &d {key}\n? *d\n: 2\nz: !t 3\n"),
+        ] {
+            let m: BTreeMap<String, Value> =
+                from_str_with_config(&doc, &cfg).unwrap_or_else(|e| panic!("{doc:?}: {e}"));
+            assert!(
+                m.contains_key(*key),
+                "{doc:?}: {:?}",
+                m.keys().collect::<Vec<_>>()
+            );
+        }
+    }
+    let value: Value = from_str("{&d .3, *d}").unwrap();
+    assert!(value.get("0.3").is_some(), "Value keeps canonical keys");
+}
+
+#[test]
+fn original_anchored_empty_key_projection() {
+    let doc = include_str!("../fixtures/anchored-empty-key.yaml");
+    let actual: serde_json::Value = from_str(doc).unwrap();
+    assert_eq!(
+        actual,
+        serde_json::json!({
+            "": null,
+            "x  adapter": null,
+            "pdef!boaults": {"<<:r": null},
+            "aults": {"adapter": null},
+        })
+    );
 }
 
 #[test]
