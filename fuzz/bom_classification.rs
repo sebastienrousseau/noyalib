@@ -33,8 +33,12 @@ pub(crate) fn unquoted_content_bom_rejection(source: &str, error: &noyalib::Erro
         && prefix
             .chars()
             .all(|c| matches!(c, ' ' | '\t' | '\r' | '\n' | '\u{feff}'));
-    // A BOM straight after the stream BOM is document content (section 5.2).
-    let repeated_start = !prefix.is_empty() && prefix.chars().all(|c| c == '\u{feff}');
+    // A BOM straight after the stream BOM, or after a BOM opening a later
+    // prefix, is document content (section 5.2): `#.\n\n\u{feff}\u{feff}`.
+    let repeated_start = (!prefix.is_empty() && prefix.chars().all(|c| c == '\u{feff}'))
+        || prefix.strip_suffix('\u{feff}').is_some_and(|before| {
+            before.is_empty() || before.ends_with(['\n', '\r'])
+        });
     let rest = &source[offset + '\u{feff}'.len_utf8()..];
     // Inside a document (after content or a `---` line, before any `...`),
     // a BOM at a line start or after indentation is content too: only a
@@ -127,6 +131,7 @@ mod tests {
             "a:\r \u{feff}---",
             "{4e740,\rinf,\u{feff}}",
             "s\r\u{feff}\u{feff}",
+            "#.\n\n\u{feff}\u{feff}",
         ] {
             // The compatibility target classifies the shim's error.
             let config = noyalib::ParserConfig::serde_yaml_compat();
