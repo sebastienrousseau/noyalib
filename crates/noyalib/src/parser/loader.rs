@@ -1593,7 +1593,7 @@ pub(crate) fn parse_legacy_binary_u64(s: &str) -> Option<u64> {
     let digits = rest
         .strip_prefix("0b")
         .or_else(|| rest.strip_prefix("0B"))?;
-    if digits.starts_with(['+', '-']) {
+    if !digits.bytes().all(|b| matches!(b, b'0' | b'1' | b'_')) {
         return None;
     }
     let digits: String = digits.chars().filter(|&c| c != '_').collect();

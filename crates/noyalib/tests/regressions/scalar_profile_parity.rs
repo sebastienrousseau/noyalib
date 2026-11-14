@@ -296,6 +296,14 @@ fn legacy_binary_reaches_the_unsigned_range() {
         &config,
         serde_json::json!({ "m": 17_870_283_321_406_128_127_u64 }),
     );
+    // Only binary digits and `_` (found by fuzz_serde_yaml_compat on `0b_+0`).
+    for spelling in ["0b_+0", "0B_+0", "0b+1", "0b_-1"] {
+        parity(
+            &format!("m: {spelling}\n"),
+            &config,
+            serde_json::json!({ "m": spelling }),
+        );
+    }
     let text = noyalib::to_string(&literal).unwrap();
     let back: String = from_str_with_config(&text, &config).unwrap();
     assert_eq!(
