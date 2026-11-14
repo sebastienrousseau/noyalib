@@ -2038,9 +2038,9 @@ fn resolve_tagged_scalar(
     lossless_u64: bool,
 ) -> Result<Value> {
     // Canonicalize tag: handle `!!foo` (secondary) → `tag:yaml.org,2002:foo`.
-    let is_core = handle == "!!"
-        || handle == "tag:yaml.org,2002:"
-        || (handle == "!" && matches!(suffix, "int" | "float" | "bool" | "null" | "str"));
+    // A local tag (`!int`) is application-specific, not the core
+    // schema's `tag:yaml.org,2002:int` (§6.8.2.2), so it stays tagged.
+    let is_core = handle == "!!" || handle == "tag:yaml.org,2002:";
     if is_core {
         match suffix {
             "int" => {

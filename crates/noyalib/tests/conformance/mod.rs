@@ -22,6 +22,7 @@ mod flow_continuation_indent;
 mod implicit_key_length;
 mod implicit_null_at_eof;
 mod legacy_sexagesimal;
+mod local_core_named_tags;
 mod multi_doc;
 mod nested_value_tag_preservation;
 mod official_suite;

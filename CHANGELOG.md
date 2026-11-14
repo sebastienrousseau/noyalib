@@ -11,6 +11,12 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Changed
 
+- **Breaking:** a local tag named like a core type (`!int`, `!float`,
+  `!bool`, `!null`, `!str`) is an ordinary application tag, as YAML
+  1.2.2 §6.8.2.2 and serde_yaml 0.9 read it: `!int 5` loads as a
+  tagged node instead of the integer 5. `!!int` and
+  `tag:yaml.org,2002:int` still name the core types.
+
 - **Breaking:** `legacy_binary_numbers` reads only a lower-case `0b`
   prefix, as YAML 1.1 and serde_yaml 0.9 do; `0B11` stays a string.
   `!!int` likewise takes only the lower-case `0x` and `0o` prefixes of
