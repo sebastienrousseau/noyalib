@@ -110,6 +110,11 @@ fuzz_target!(|data: &[u8]| {
             .filter(|source| parse(source).is_ok_and(|value| numeric_equal(&noya, &value)))
             .and_then(|source| serde_yaml_ng::from_str::<serde_json::Value>(&source).ok())
             .is_some_and(|expected| numeric_equal(&noya, &expected))
+        && !canonical_duplicates::composed(&base, &config, &|source| {
+            parse(source).is_ok_and(|value| numeric_equal(&noya, &value))
+        })
+        .and_then(|source| serde_yaml_ng::from_str::<serde_json::Value>(&source).ok())
+        .is_some_and(|expected| numeric_equal(&noya, &expected))
         && !oracle_normalization::unique_colliding_anchors(&base)
             .filter(|source| parse(source).is_ok_and(|value| numeric_equal(&noya, &value)))
             .and_then(|source| serde_yaml_ng::from_str::<serde_json::Value>(&source).ok())

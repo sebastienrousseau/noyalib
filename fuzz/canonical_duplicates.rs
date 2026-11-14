@@ -63,7 +63,9 @@ pub(crate) fn spelling_collision(source: &str, config: &noyalib::ParserConfig) -
     walk(document.syntax(), 0, &mut |entries| {
         let keys: Vec<_> = entries
             .iter()
-            .filter_map(|(tokens, boundary, _)| written_key(tokens, *boundary, source, config))
+            .filter_map(|(tokens, boundary, flow)| {
+                written_key(tokens, *boundary, *flow, source, config)
+            })
             .collect();
         collision |= keys.iter().enumerate().any(|(i, (canonical, spelling))| {
             keys[i + 1..]
@@ -72,6 +74,33 @@ pub(crate) fn spelling_collision(source: &str, config: &noyalib::ParserConfig) -
         });
     });
     collision
+}
+
+/// Apply every repair in turn, keeping each only when `keeps` proves the
+/// candidate's value unchanged, so independent oracle defects compose
+/// (an anchor-ID collision beside duplicate keys or an L24T block).
+pub(crate) fn composed(
+    source: &str,
+    config: &noyalib::ParserConfig,
+    keeps: &dyn Fn(&str) -> bool,
+) -> Option<String> {
+    use crate::oracle_normalization as repair;
+    let steps: [&dyn Fn(&str) -> Option<String>; 5] = [
+        &repair::stream_bom_prefix,
+        &repair::collection_spelling,
+        &repair::terminated_spaced_block,
+        &repair::unique_colliding_anchors,
+        &|current| spelling(current, config),
+    ];
+    let mut current = source.to_owned();
+    let mut changed = false;
+    for step in steps {
+        if let Some(next) = step(&current).filter(|next| keeps(next)) {
+            current = next;
+            changed = true;
+        }
+    }
+    changed.then_some(current)
 }
 
 /// True when a mapping has duplicate keys and one of its keys is an
@@ -103,6 +132,7 @@ pub(crate) fn aliased_duplicate(source: &str, config: &noyalib::ParserConfig) ->
 fn written_key(
     tokens: &[Token],
     boundary: usize,
+    flow: bool,
     source: &str,
     config: &noyalib::ParserConfig,
 ) -> Option<(noyalib::Value, String)> {
@@ -138,7 +168,18 @@ fn written_key(
         None => return None,
     };
     let raw = source.get(start..end)?.trim();
-    let wrapped = format!("{{{raw} : 0}}");
+    // A block scalar key cannot sit in a flow wrapper; its value is a
+    // string, spelled as itself.
+    if raw.starts_with(['|', '>']) {
+        let value: noyalib::Value = noyalib::from_str_with_config(raw, config).ok()?;
+        let spelling = value.as_str()?.to_owned();
+        return Some((value, spelling));
+    }
+    let wrapped = if flow {
+        format!("{{{raw} : 0}}")
+    } else {
+        format!("{raw} : 0\n")
+    };
     let resolved: noyalib::Value = noyalib::from_str_with_config(&wrapped, config).ok()?;
     let (canonical, _) = resolved.as_mapping()?.iter().next()?;
     let map: serde_json::Value = noyalib::from_str_with_config(&wrapped, config).ok()?;
@@ -209,7 +250,13 @@ fn key(
         return None;
     }
     let identity: noyalib::Value = noyalib::from_str_with_config(raw, config).ok()?;
-    let wrapped = format!("{{{raw}: 0}}");
+    // A block key may hold flow indicators (`9,~0 ,ault`); read it in
+    // its own context.
+    let wrapped = if flow {
+        format!("{{{raw}: 0}}")
+    } else {
+        format!("{raw}: 0\n")
+    };
     let resolved: noyalib::Value = noyalib::from_str_with_config(&wrapped, config).ok()?;
     let canonical = resolved.as_mapping()?.keys().next()?.clone();
     let map: serde_json::Value = noyalib::from_str_with_config(&wrapped, config).ok()?;
@@ -355,6 +402,24 @@ mod tests {
     }
 
     #[test]
+    fn repairs_compose_across_independent_defects() {
+        let config = ParserConfig::default();
+        let keeps = |source: &str| {
+            let before: serde_json::Value =
+                noyalib::from_str_with_config("? ~\n?\n9,~0 ,ault:\n9,~0 ,ault:", &config).unwrap();
+            noyalib::from_str_with_config::<serde_json::Value>(source, &config)
+                .is_ok_and(|after| after == before)
+        };
+        let normalized =
+            super::composed("? ~\n?\n9,~0 ,ault:\n9,~0 ,ault:", &config, &keeps).unwrap();
+        let oracle: serde_json::Value = serde_yaml_ng::from_str(&normalized).unwrap();
+        assert!(keeps(&normalized));
+        let before: serde_json::Value =
+            noyalib::from_str_with_config("? ~\n?\n9,~0 ,ault:\n9,~0 ,ault:", &config).unwrap();
+        assert_eq!(before, oracle, "{normalized:?}");
+    }
+
+    #[test]
     fn duplicate_groups_with_an_alias_key_are_reported() {
         let config = ParserConfig::default();
         assert!(super::aliased_duplicate(
@@ -376,6 +441,7 @@ mod tests {
             "! : 1\n: 2\n",
             "{!,~,? }",
             "{~,&d,!\n#\n}",
+            "?\r? >\r?\r: 4",
         ] {
             assert!(super::spelling_collision(source, &config), "{source:?}");
         }

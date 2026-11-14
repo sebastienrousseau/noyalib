@@ -1,0 +1,14 @@
+d:fa?lts*:faults*: &defaults
+  ap*: &d
+development:
+  &defcults
+  ~adl: 5
+lts*: &deFhulta s
+ d
+develo`ment:
+  &defaults
+ {m: ,04,6480.00,8320,+?001/,0064"660,0,0320,00.00000,+0.0000,0,232320,+0001/,0064"660,000.0000,-361 -80-00,000}
+ent:
+  <<: *defaults
+  databsae: pro`_db
+  p*: &d26

@@ -26,7 +26,13 @@ pub(crate) fn unquoted_content_bom_rejection(source: &str, error: &noyalib::Erro
     let line = prefix.rsplit(['\r', '\n']).next().unwrap_or_default();
     // A stream-leading BOM must precede horizontal separation (section 9.1.1).
     // A later document prefix is handled by the documented policy below.
-    let displaced_start = !prefix.is_empty() && prefix.bytes().all(|b| matches!(b, b' ' | b'\t'));
+    // Blank lines may come first: the BOM then follows indentation on
+    // what would be the first content line (`\n \u{feff}`).
+    let displaced_start = !prefix.is_empty()
+        && !line.is_empty()
+        && prefix
+            .bytes()
+            .all(|b| matches!(b, b' ' | b'\t' | b'\r' | b'\n'));
     // A BOM straight after the stream BOM is document content (section 5.2).
     let repeated_start = !prefix.is_empty() && prefix.chars().all(|c| c == '\u{feff}');
     // Documented policy (v0.0.29, 612fc07): the scanner rejects
@@ -90,6 +96,7 @@ mod tests {
             "[\u{feff},]",
             "{\u{feff}'}",
             "n:\n\u{feff}",
+            "\n \u{feff}",
         ] {
             let error = noyalib::from_str::<noyalib::Value>(source).unwrap_err();
             assert!(

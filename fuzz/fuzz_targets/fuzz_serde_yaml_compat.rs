@@ -71,6 +71,17 @@ fuzz_target!(|data: &[u8]| {
                 && !oracle_agrees(oracle_normalization::collection_spelling(s), &a)
                 && !oracle_agrees(oracle_normalization::unique_colliding_anchors(s), &a)
                 && !oracle_agrees(oracle_normalization::terminated_spaced_block(s), &a)
+                && !oracle_agrees(
+                    canonical_duplicates::composed(
+                        s,
+                        &noyalib::ParserConfig::serde_yaml_compat(),
+                        &|source| {
+                            noyalib::compat::serde_yaml::from_str::<serde_json::Value>(source)
+                                .is_ok_and(|value| equivalent(&a, &value))
+                        },
+                    ),
+                    &a,
+                )
             {
                 panic!(
                     "shim != serde_yaml on accepted input (len {}):\n  shim     : {}\n  upstream : {}",
@@ -204,9 +215,14 @@ fn known_reject_divergence(s: &str) -> bool {
     // yaml-test-suite blesses them and noyalib passes it 406/406 —
     // but libyaml wants a key before the `:` in block context
     // ("did not find expected key").
-    if s.split(['\r', '\n'])
-        .any(|l| l.trim_start().starts_with(':'))
-    {
+    if s.split(['\r', '\n']).any(|l| {
+        // `- : v` is an empty key in a compact mapping.
+        let mut l = l.trim_start();
+        while let Some(rest) = l.strip_prefix("- ") {
+            l = rest.trim_start();
+        }
+        l.starts_with(':')
+    }) {
         return true;
     }
     // libyaml rejects a tab that starts a line ("cannot start any
@@ -287,9 +303,9 @@ fn root_block_scalar_with_column_0_content(s: &str) -> bool {
     let Some(mut header) = lines.next() else {
         return false;
     };
-    // The header may follow a bare `---` line.
+    // The header may follow a bare `---` line and blank lines.
     if header.trim_end() == "---" {
-        let Some(next) = lines.next() else {
+        let Some(next) = lines.find(|l| !l.trim().is_empty()) else {
             return false;
         };
         header = next;
