@@ -272,13 +272,7 @@ pub(crate) fn document_boundaries(input: &str) -> Result<Vec<(usize, usize)>> {
         match t.kind {
             RecordedTokenKind::DocStart => {
                 if has_content && !saw_explicit_end {
-                    // A BOM right before the marker opens this
-                    // document's prefix (§9.2), so it belongs here.
-                    let start = if input[..t.start].ends_with('\u{feff}') {
-                        t.start - 3
-                    } else {
-                        t.start
-                    };
+                    let start = prefix_start(input, t.start);
                     out.push((cur_start, start));
                     cur_start = start;
                 }
@@ -298,12 +292,8 @@ pub(crate) fn document_boundaries(input: &str) -> Result<Vec<(usize, usize)>> {
                 }
                 let bytes = input.as_bytes();
                 let mut close = t.end;
-                if bytes.get(close) == Some(&b'\r') {
-                    close += 1;
-                }
-                if bytes.get(close) == Some(&b'\n') {
-                    close += 1;
-                }
+                close += usize::from(bytes.get(close) == Some(&b'\r'));
+                close += usize::from(bytes.get(close) == Some(&b'\n'));
                 out.push((cur_start, close));
                 cur_start = close;
                 has_content = false;
@@ -328,6 +318,17 @@ pub(crate) fn document_boundaries(input: &str) -> Result<Vec<(usize, usize)>> {
         out.push((0, input.len()));
     }
     Ok(out)
+}
+
+/// Where the document whose `---` marker sits at `marker` starts: a
+/// BOM right before the marker opens its prefix (§9.2), so it belongs
+/// to that document.
+fn prefix_start(input: &str, marker: usize) -> usize {
+    if input[..marker].ends_with('\u{feff}') {
+        marker - '\u{feff}'.len_utf8()
+    } else {
+        marker
+    }
 }
 
 /// Run the recording scanner over `source` and assemble the result

@@ -1442,27 +1442,7 @@ impl<'a> Scanner<'a> {
             b'\'' => self.fetch_quoted_scalar(false),
             b'"' => self.fetch_quoted_scalar(true),
             b'%' if self.column() == 0 => self.fetch_directive(),
-            // BOM at start
-            0xEF if self.pos == 0 && self.peek_at(1) == 0xBB && self.peek_at(2) == 0xBF => {
-                self.advance_by(3);
-                Ok(())
-            }
-            // A BOM anywhere else is an error, not content (§5.2: "a
-            // BOM must not appear inside a document"). Treating it as
-            // the first character of a plain scalar produced a value
-            // the serializer wrote back unquoted — on re-parse the
-            // leading BOM was stream-skipped and the rest of the
-            // scalar reinterpreted as markup (found by fuzz_roundtrip
-            // on `\u{feff}\n\u{feff}*'`).
-            0xEF if self.peek_at(1) == 0xBB
-                && self.peek_at(2) == 0xBF
-                && self.opens_document_prefix() =>
-            {
-                self.skip_prefix_bom();
-                Ok(())
-            }
-            0xEF if self.peek_at(1) == 0xBB && self.peek_at(2) == 0xBF => Err(self
-                .error("byte order mark inside a document: a BOM may only open a document prefix")),
+            0xEF if self.peek_at(1) == 0xBB && self.peek_at(2) == 0xBF => self.fetch_bom(),
             // §5.10: `@` and `` ` `` are reserved indicators — "must
             // not be used to start a plain scalar" (found by the
             // serde_yaml parity fuzzer; libyaml rejects them too).
@@ -1514,6 +1494,28 @@ impl<'a> Scanner<'a> {
         self.mark = self.pos;
         self.emit(TokenKind::StreamStart);
         Ok(())
+    }
+
+    /// A byte order mark at the cursor: the stream's own, one opening a
+    /// later document prefix, or an error.
+    fn fetch_bom(&mut self) -> ScanResult<()> {
+        // BOM at start
+        if self.pos == 0 {
+            self.advance_by(3);
+            return Ok(());
+        }
+        if self.opens_document_prefix() {
+            self.skip_prefix_bom();
+            return Ok(());
+        }
+        // A BOM anywhere else is an error, not content (§5.2: "a
+        // BOM must not appear inside a document"). Treating it as
+        // the first character of a plain scalar produced a value
+        // the serializer wrote back unquoted — on re-parse the
+        // leading BOM was stream-skipped and the rest of the
+        // scalar reinterpreted as markup (found by fuzz_roundtrip
+        // on `\u{feff}\n\u{feff}*'`).
+        Err(self.error("byte order mark inside a document: a BOM may only open a document prefix"))
     }
 
     /// YAML 1.2.2 §9.2 `l-yaml-stream`: every `l-document-prefix`

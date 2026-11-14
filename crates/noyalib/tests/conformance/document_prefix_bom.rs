@@ -41,14 +41,17 @@ fn a_bom_opening_a_later_document_prefix_loads() {
         let docs: Vec<String> = docs.iter().map(ToString::to_string).collect();
         assert_eq!(docs, expected, "{source:?}");
         assert!(cst::parse_stream(&source).is_ok(), "CST {source:?}");
-        let read: Vec<String> = noyalib::read::<_, serde_json::Value>(source.as_bytes())
-            .unwrap_or_else(|e| panic!("read {source:?}: {e}"))
-            .map(|doc| {
-                doc.unwrap_or_else(|e| panic!("read {source:?}: {e}"))
-                    .to_string()
-            })
-            .collect();
-        assert_eq!(read, expected, "read {source:?}");
+        #[cfg(feature = "std")]
+        {
+            let read: Vec<String> = noyalib::read::<_, serde_json::Value>(source.as_bytes())
+                .unwrap_or_else(|e| panic!("read {source:?}: {e}"))
+                .map(|doc| {
+                    doc.unwrap_or_else(|e| panic!("read {source:?}: {e}"))
+                        .to_string()
+                })
+                .collect();
+            assert_eq!(read, expected, "read {source:?}");
+        }
         // The parallel loader splits documents at `---` only.
         #[cfg(feature = "parallel")]
         if source.matches("---").count() + 1 >= expected.len() {

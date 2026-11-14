@@ -506,6 +506,10 @@ impl<'a> Loader<'a> {
         at: usize,
         input: &str,
     ) -> Result<Value> {
+        if let Some(name) = anchor {
+            // A redefinition replaces an anchored overflow key.
+            let _ = self.overflow_keys.shift_remove(name);
+        }
         let plain_untagged = matches!(style, crate::parser::ScalarStyle::Plain) && tag.is_none();
         match plain_untagged.then(|| integer_overflow(&value, self.config)) {
             Some(Some(within)) if self.in_key_position() => {
@@ -528,6 +532,20 @@ impl<'a> Loader<'a> {
             _ => return resolve_event_scalar(value, style, tag, self.config),
         }
         Err(self.overflow_at(at, input))
+    }
+
+    /// A redefinition of `name` shadows its previous value immediately.
+    fn forget_anchor(&mut self, name: &str) {
+        let _ = self.anchor_map.shift_remove(name);
+        let _ = self.overflow_keys.shift_remove(name);
+    }
+
+    /// Anchors do not cross `---`; remember where the last ones were.
+    fn start_document_anchors(&mut self) {
+        self.anchor_map.clear();
+        self.overflow_keys.clear();
+        self.earlier_anchor_defs
+            .extend(self.anchor_def_spans.drain(..));
     }
 
     /// The next node fills a mapping key.
@@ -565,10 +583,7 @@ impl<'a> Loader<'a> {
             Event::StreamStart | Event::StreamEnd => {}
             Event::DocumentStart => {
                 self.in_document = true;
-                self.anchor_map.clear();
-                self.overflow_keys.clear();
-                self.earlier_anchor_defs
-                    .extend(self.anchor_def_spans.drain(..));
+                self.start_document_anchors();
             }
             Event::DocumentEnd => {
                 self.in_document = false;
@@ -607,10 +622,6 @@ impl<'a> Loader<'a> {
                 // is still in hand — `resolve_untagged_scalar` returns a
                 // `Value::String("<<")` for a plain and a quoted `<<` alike.
                 let is_plain_merge_candidate = matches!(style, crate::parser::ScalarStyle::Plain);
-                if let Some(name) = anchor.as_deref() {
-                    // A redefinition replaces an anchored overflow key.
-                    let _ = self.overflow_keys.shift_remove(name);
-                }
                 let v =
                     self.scalar_value(value, style, tag, anchor.as_deref(), span.start, input)?;
 
@@ -637,8 +648,7 @@ impl<'a> Loader<'a> {
                     let _ = self.anchor_def_spans.insert(name.clone(), span.start);
                     // A redefinition shadows its previous value immediately,
                     // including while the new collection is still open.
-                    let _ = self.anchor_map.shift_remove(name);
-                    let _ = self.overflow_keys.shift_remove(name);
+                    self.forget_anchor(name);
                 }
                 self.stack.push(Frame::Sequence {
                     items: Vec::new(),
@@ -699,8 +709,7 @@ impl<'a> Loader<'a> {
                     let _ = self.anchor_def_spans.insert(name.clone(), span.start);
                     // A redefinition shadows its previous value immediately,
                     // including while the new collection is still open.
-                    let _ = self.anchor_map.shift_remove(name);
-                    let _ = self.overflow_keys.shift_remove(name);
+                    self.forget_anchor(name);
                 }
                 self.stack.push(Frame::MappingKey {
                     map: Mapping::new(),
@@ -1292,6 +1301,10 @@ impl<'a> NoSpanLoader<'a> {
         at: usize,
         input: &str,
     ) -> Result<Value> {
+        if let Some(name) = anchor {
+            // A redefinition replaces an anchored overflow key.
+            let _ = self.overflow_keys.shift_remove(name);
+        }
         let plain_untagged = matches!(style, crate::parser::ScalarStyle::Plain) && tag.is_none();
         match plain_untagged.then(|| integer_overflow(&value, self.config)) {
             Some(Some(within)) if self.in_key_position() => {
@@ -1314,6 +1327,20 @@ impl<'a> NoSpanLoader<'a> {
             _ => return resolve_event_scalar(value, style, tag, self.config),
         }
         Err(self.overflow_at(at, input))
+    }
+
+    /// A redefinition of `name` shadows its previous value immediately.
+    fn forget_anchor(&mut self, name: &str) {
+        let _ = self.anchor_map.shift_remove(name);
+        let _ = self.overflow_keys.shift_remove(name);
+    }
+
+    /// Anchors do not cross `---`; remember where the last ones were.
+    fn start_document_anchors(&mut self) {
+        self.anchor_map.clear();
+        self.overflow_keys.clear();
+        self.earlier_anchor_defs
+            .extend(self.anchor_def_spans.drain(..));
     }
 
     /// The next node fills a mapping key.
@@ -1351,10 +1378,7 @@ impl<'a> NoSpanLoader<'a> {
             Event::StreamStart | Event::StreamEnd => {}
             Event::DocumentStart => {
                 self.in_document = true;
-                self.anchor_map.clear();
-                self.overflow_keys.clear();
-                self.earlier_anchor_defs
-                    .extend(self.anchor_def_spans.drain(..));
+                self.start_document_anchors();
             }
             Event::DocumentEnd => {
                 self.in_document = false;
@@ -1371,10 +1395,6 @@ impl<'a> NoSpanLoader<'a> {
                 tag,
                 span,
             } => {
-                if let Some(name) = anchor.as_deref() {
-                    // A redefinition replaces an anchored overflow key.
-                    let _ = self.overflow_keys.shift_remove(name);
-                }
                 let v =
                     self.scalar_value(value, style, tag, anchor.as_deref(), span.start, input)?;
                 // Merge-key eligibility is decided here, while the scalar's
@@ -1398,8 +1418,7 @@ impl<'a> NoSpanLoader<'a> {
                     let _ = self.anchor_def_spans.insert(name.clone(), span.start);
                     // A redefinition shadows its previous value immediately,
                     // including while the new collection is still open.
-                    let _ = self.anchor_map.shift_remove(name);
-                    let _ = self.overflow_keys.shift_remove(name);
+                    self.forget_anchor(name);
                 }
                 self.stack.push(NoSpanFrame::Sequence {
                     items: Vec::new(),
@@ -1432,8 +1451,7 @@ impl<'a> NoSpanLoader<'a> {
                     let _ = self.anchor_def_spans.insert(name.clone(), span.start);
                     // A redefinition shadows its previous value immediately,
                     // including while the new collection is still open.
-                    let _ = self.anchor_map.shift_remove(name);
-                    let _ = self.overflow_keys.shift_remove(name);
+                    self.forget_anchor(name);
                 }
                 self.stack.push(NoSpanFrame::MappingKey {
                     map: Mapping::new(),
@@ -2475,17 +2493,15 @@ fn int_hint(value: &str) -> String {
     let trimmed = value.trim();
     let negative = trimmed.starts_with('-');
     let unsigned = trimmed.strip_prefix(['-', '+']).unwrap_or(trimmed);
-    if unsigned.starts_with("0b") {
-        let digits = &unsigned[2..];
-        if !digits.is_empty()
-            && digits.bytes().all(|b| matches!(b, b'0' | b'1'))
-            && let Ok(n) = i64::from_str_radix(digits, 2)
-        {
-            let n = if negative { -n } else { n };
-            return format!(
-                "!!int {trimmed}: YAML 1.2 has no binary literal, `0b` was YAML 1.1; write {n}"
-            );
-        }
+    if let Some(digits) = unsigned.strip_prefix("0b")
+        && !digits.is_empty()
+        && digits.bytes().all(|b| matches!(b, b'0' | b'1'))
+        && let Ok(n) = i64::from_str_radix(digits, 2)
+    {
+        let n = if negative { -n } else { n };
+        return format!(
+            "!!int {trimmed}: YAML 1.2 has no binary literal, `0b` was YAML 1.1; write {n}"
+        );
     }
     if unsigned.contains('_') {
         let stripped: String = trimmed.chars().filter(|c| *c != '_').collect();
