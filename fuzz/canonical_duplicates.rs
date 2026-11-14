@@ -23,9 +23,10 @@ struct Key {
     /// separation folded to one space, so the next token cannot start an
     /// under-indented line after the quoted spelling.
     tail: &'static str,
-    /// The key's plain one-line text, reusable verbatim: duplicates share
-    /// a canonical value, so respelling the others with it keeps every
-    /// type, even when an alias elsewhere observes an anchored key.
+    /// An anchored key's plain one-line text. Quoting keeps the archive
+    /// reading flow keys (`{d:,}`), but an alias elsewhere observes an
+    /// anchored key's type; duplicates share a canonical value, so the
+    /// others take this text and the anchored key stays as written.
     plain: Option<String>,
 }
 
@@ -228,6 +229,7 @@ fn key(
     }
     let mut scalar = None;
     let mut plain_token = false;
+    let mut anchored = false;
     for &(kind, start, end) in tokens {
         match kind {
             SyntaxKind::ColonIndicator => break,
@@ -236,8 +238,8 @@ fn key(
             SyntaxKind::Whitespace
             | SyntaxKind::Newline
             | SyntaxKind::Comment
-            | SyntaxKind::QuestionIndicator
-            | SyntaxKind::AnchorMark => {}
+            | SyntaxKind::QuestionIndicator => {}
+            SyntaxKind::AnchorMark => anchored = true,
             SyntaxKind::PlainScalar
             | SyntaxKind::SingleQuotedScalar
             | SyntaxKind::DoubleQuotedScalar
@@ -295,7 +297,7 @@ fn key(
         spelling,
         empty: scalar.is_none(),
         tail,
-        plain: (plain_token && !raw.is_empty() && !raw.contains(['\n', '\r']))
+        plain: (anchored && plain_token && !raw.is_empty() && !raw.contains(['\n', '\r']))
             .then(|| raw.to_owned()),
     })
 }
@@ -333,8 +335,8 @@ fn group(keys: Vec<Key>, edits: &mut Vec<Edit>) {
             })
             .collect();
         if duplicates.len() > 1 {
-            // Reuse the last key's plain text where it has one; it keeps
-            // the type an alias of that key observes.
+            // Reuse an anchored last key's plain text; it keeps the type an
+            // alias of that key observes.
             let replacement = key.plain.clone().unwrap_or_else(|| quoted(&key.spelling));
             let keep_last = key.plain.is_some();
             edits.extend(
@@ -446,10 +448,11 @@ mod tests {
         check("{? &y,~}");
         check("{~\n,&d}");
         check("n: {0,&defaults +0}\ne: *defaults");
+        check("{~,d:,&e,d}");
         // A duplicate only where `06` resolves as the integer 6.
         let config = ParserConfig::default();
         let normalized = spelling("{6\n,06}", &config).expect("default duplicates");
-        assert_eq!(normalized, "{06 ,06}");
+        assert_eq!(normalized, "{\"06\" ,\"06\"}");
         let oracle: serde_json::Value = serde_yaml_ng::from_str(&normalized).unwrap();
         assert_eq!(oracle, serde_json::json!({"06": null}));
         check("? &a\n? ~\n");
