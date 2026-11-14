@@ -129,6 +129,7 @@ fuzz_target!(|data: &[u8]| {
                 && !flow_indent_rejection(&e.to_string())
                 && !leading_space_line_rejection(&e.to_string())
                 && !key_collision_rejection(&e.to_string())
+                && !bom_column_shift(s)
             {
                 panic!(
                     "shim rejected what serde_yaml accepts (len {}):\n  shim     : {e}\n  upstream : {}",
@@ -385,7 +386,17 @@ fn multiline_flow_key(s: &str) -> bool {
             continue;
         }
         match c {
-            b'\'' | b'"' => quote = Some(c),
+            // A quote opens a scalar only at a node's start, not inside
+            // a plain scalar (`\\"`).
+            b'\'' | b'"'
+                if b[..i]
+                    .iter()
+                    .rev()
+                    .find(|p| !p.is_ascii_whitespace())
+                    .is_none_or(|p| matches!(p, b'{' | b'[' | b',' | b':' | b'?')) =>
+            {
+                quote = Some(c);
+            }
             b'{' | b'[' | b',' => entry = i + 1,
             b':' if after_quote || b.get(i + 1).is_none_or(|n| n.is_ascii_whitespace()) => {
                 let key = &b[entry..i];
@@ -425,4 +436,13 @@ fn leading_document_end(s: &str) -> bool {
 /// keeps both written spellings as JSON keys.
 fn key_collision_rejection(message: &str) -> bool {
     message.contains("distinct mapping keys collide after string conversion")
+}
+
+/// libyaml counts a stream BOM as a column, so the first line's nodes
+/// sit one column right of where the spec puts them (section 9.1.1,
+/// `\u{feff}I: _\n /:`). When the archive refuses the same text without
+/// that BOM, the disagreement is the shift, not the document.
+fn bom_column_shift(s: &str) -> bool {
+    s.strip_prefix('\u{feff}')
+        .is_some_and(|rest| serde_yaml::from_str::<serde_json::Value>(rest).is_err())
 }
