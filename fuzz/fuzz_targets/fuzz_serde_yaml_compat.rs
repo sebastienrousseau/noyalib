@@ -63,6 +63,7 @@ fuzz_target!(|data: &[u8]| {
                     s,
                     &noyalib::ParserConfig::serde_yaml_compat(),
                 )
+                && !canonical_duplicates::tagged_key(s, &noyalib::ParserConfig::serde_yaml_compat())
                 && !canonical_duplicates::aliased_duplicate(
                     s,
                     &noyalib::ParserConfig::serde_yaml_compat(),
@@ -127,6 +128,7 @@ fuzz_target!(|data: &[u8]| {
                 && !bom_classification::unquoted_content_bom_rejection(s, e.inner())
                 && !flow_indent_rejection(&e.to_string())
                 && !leading_space_line_rejection(&e.to_string())
+                && !key_collision_rejection(&e.to_string())
             {
                 panic!(
                     "shim rejected what serde_yaml accepts (len {}):\n  shim     : {e}\n  upstream : {}",
@@ -408,4 +410,11 @@ fn leading_document_end(s: &str) -> bool {
             let rest = rest.trim_start();
             rest.is_empty() || rest.starts_with('#')
         })
+}
+
+/// noyalib refuses distinct typed keys that stringify alike
+/// (`{.inf, inf}`) under every duplicate policy (ADR-0019); the archive
+/// keeps both written spellings as JSON keys.
+fn key_collision_rejection(message: &str) -> bool {
+    message.contains("distinct mapping keys collide after string conversion")
 }

@@ -103,6 +103,26 @@ pub(crate) fn composed(
     changed.then_some(current)
 }
 
+/// True when a mapping key carries a tag (`{!!float 0}`). Typed targets
+/// restore the written spelling only for bare plain keys
+/// (`is_canonicalised_plain_key`); a tagged key keeps its canonical
+/// spelling ("0.0"), where the archive keeps the written text ("0").
+pub(crate) fn tagged_key(source: &str, config: &noyalib::ParserConfig) -> bool {
+    let Ok(document) = noyalib::cst::parse_document_with_config(source, config) else {
+        return false;
+    };
+    let mut tagged = false;
+    walk(document.syntax(), 0, &mut |entries| {
+        tagged |= entries.iter().any(|(tokens, _, _)| {
+            tokens
+                .iter()
+                .take_while(|t| t.0 != SyntaxKind::ColonIndicator)
+                .any(|t| t.0 == SyntaxKind::TagMark)
+        });
+    });
+    tagged
+}
+
 /// True when a mapping has duplicate keys and one of its keys is an
 /// alias (`{&a x, *a}`): the repair cannot respell an alias, so no
 /// archive comparison applies.
@@ -444,6 +464,15 @@ mod tests {
             r#""a\Nb\L\x9f\u001b""#
         );
         check("{0, +0, \"x\\Ny\", \"x\\Ny\"}");
+    }
+
+    #[test]
+    fn tagged_keys_are_reported() {
+        let config = ParserConfig::default();
+        assert!(super::tagged_key("{!!float 0}", &config));
+        assert!(super::tagged_key("!t k: 1\n", &config));
+        assert!(!super::tagged_key("k: !t 1\n", &config));
+        assert!(!super::tagged_key("{a: !!float 0}", &config));
     }
 
     #[test]
