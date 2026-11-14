@@ -57,6 +57,7 @@ fuzz_target!(|data: &[u8]| {
             if !equivalent(&a, &b)
                 && !anchor_name_outside_libyaml(s)
                 && !local_core_tags::present(s)
+                && !bom_hides_marker(s)
                 && !question_key::flow_entry_starts_with_indicator(s)
                 && !yaml_1_1_line_break(s)
                 && !canonical_duplicates::spelling_collision(
@@ -299,12 +300,7 @@ fn known_reject_divergence(s: &str) -> bool {
     {
         return true;
     }
-    // libyaml misses a `---` or `...` marker straight after the stream
-    // BOM and reads it as plain text (`\u{feff}---\n>f` loads "--- >f");
-    // the BOM is transparent to the document markers (section 9.1.1).
-    if s.strip_prefix('\u{feff}')
-        .is_some_and(|rest| rest.starts_with("---") || rest.starts_with("..."))
-    {
+    if bom_hides_marker(s) {
         return true;
     }
     // A `#` straight after a block scalar header (`|#`, `>-#`) is not a
@@ -474,4 +470,12 @@ fn key_collision_rejection(message: &str) -> bool {
 fn bom_column_shift(s: &str) -> bool {
     s.strip_prefix('\u{feff}')
         .is_some_and(|rest| serde_yaml::from_str::<serde_json::Value>(rest).is_err())
+}
+
+/// libyaml misses a `---` or `...` marker straight after the stream BOM
+/// and reads it as plain text (`\u{feff}---\n>f` loads "--- >f"); the
+/// BOM is transparent to the document markers (section 9.1.1).
+fn bom_hides_marker(s: &str) -> bool {
+    s.strip_prefix('\u{feff}')
+        .is_some_and(|rest| rest.starts_with("---") || rest.starts_with("..."))
 }
