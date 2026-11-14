@@ -182,13 +182,20 @@ pub(crate) fn aliased_duplicate(source: &str, config: &noyalib::ParserConfig) ->
     let Ok(document) = noyalib::cst::parse_document_with_config(source, config) else {
         return false;
     };
+    // An alias anywhere observes an anchored key's type; an empty anchored
+    // null key (`{&a,&b}` with `*a`) has no respelling that keeps both its
+    // type and noyalib's JSON key.
+    let document_aliased = has_alias(document.syntax());
     let mut aliased = false;
     walk(document.syntax(), 0, &mut |entries| {
         aliased |= entries.iter().any(|(tokens, _, _)| {
             tokens
                 .iter()
                 .take_while(|t| t.0 != SyntaxKind::ColonIndicator)
-                .any(|t| t.0 == SyntaxKind::AliasMark)
+                .any(|t| {
+                    t.0 == SyntaxKind::AliasMark
+                        || document_aliased && t.0 == SyntaxKind::AnchorMark
+                })
         });
     });
     aliased
@@ -598,6 +605,14 @@ mod tests {
         assert!(super::aliased_duplicate("{&a x: 1, *a : 2}", &config));
         assert!(!super::aliased_duplicate("{&a x: 1, y: *a}", &config));
         assert!(!super::aliased_duplicate("{~: 1, null: 2}", &config));
+        assert!(super::aliased_duplicate(
+            "d: {+0,0,&defaults,&7}\ne: *defaults",
+            &config
+        ));
+        assert!(!super::aliased_duplicate(
+            "d: {+0,0,&defaults,&7}\n",
+            &config
+        ));
     }
 
     #[test]
