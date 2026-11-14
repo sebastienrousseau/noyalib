@@ -70,6 +70,9 @@ fn a_bom_inside_a_document_is_still_refused() {
         format!("\n {BOM}"),
         format!("{BOM}{BOM}"),
         format!("a\n{BOM}b"),
+        // Found by fuzz_serde_yaml_compat: a BOM right after a prefix
+        // BOM is content, not a second prefix.
+        format!("s\r{BOM}{BOM}"),
         format!("a\n{BOM}# c\nb"),
         format!("a\n{BOM} ---\nb"),
         format!("a\r{BOM}# c\rb"),
@@ -85,4 +88,13 @@ fn a_bom_inside_a_document_is_still_refused() {
             "{source:?}: {error}"
         );
     }
+}
+
+#[test]
+fn a_bom_right_after_a_line_start_bom_is_refused_at_the_first() {
+    // Found by fuzz_serde_yaml_compat: the first BOM was taken for a
+    // prefix because a BOM followed it, then the second was refused.
+    let source = format!("s\r{BOM}{BOM}");
+    let error = from_str::<Value>(&source).expect_err(&source);
+    assert_eq!(error.location().map(|l| l.index()), Some(2), "{error}");
 }

@@ -1553,7 +1553,9 @@ impl<'a> Scanner<'a> {
                 .position(|&b| !Self::is_blank(b))
                 .map_or(&[][..], |i| &line[i..]);
             if !body.is_empty() && body[0] != b'#' {
-                return line.starts_with(&[0xEF, 0xBB, 0xBF])
+                // A BOM opens another prefix only on a later line; straight
+                // after this one it is content (`s\r\u{feff}\u{feff}`).
+                return (start > 0 && line.starts_with(&[0xEF, 0xBB, 0xBF]))
                     || ((line.starts_with(b"---") || line.starts_with(b"..."))
                         && line.get(3).is_none_or(|&b| Self::is_blank(b)));
             }
