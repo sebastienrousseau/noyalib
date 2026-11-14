@@ -11,6 +11,12 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Changed
 
+- **Breaking:** `legacy_binary_numbers` reads only a lower-case `0b`
+  prefix, as YAML 1.1 and serde_yaml 0.9 do; `0B11` stays a string.
+  `!!int` likewise takes only the lower-case `0x` and `0o` prefixes of
+  the YAML 1.2 core schema, so `!!int 0XF` is refused. The serializer
+  still quotes `0B` spellings for older readers.
+
 - **Breaking:** the compatibility profile reads a signed hex or octal
   integer (`-0xF`, `+0o17`, `!!int -0xF`) as a number, as serde_yaml
   0.9 does, through the new `ParserConfig::signed_radix_integers`

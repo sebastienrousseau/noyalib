@@ -1570,9 +1570,7 @@ pub(crate) fn parse_legacy_binary(s: &str) -> Option<i64> {
         Some(b'+') => (false, &s[1..]),
         _ => (false, s),
     };
-    let digits = rest
-        .strip_prefix("0b")
-        .or_else(|| rest.strip_prefix("0B"))?;
+    let digits = rest.strip_prefix("0b")?;
     if digits.is_empty() || digits.bytes().all(|b| b == b'_') {
         return None;
     }
@@ -1594,9 +1592,7 @@ pub(crate) fn parse_legacy_binary(s: &str) -> Option<i64> {
 /// fuzz_serde_yaml_compat; the archive reads these as `u64`).
 pub(crate) fn parse_legacy_binary_u64(s: &str) -> Option<u64> {
     let rest = s.strip_prefix('+').unwrap_or(s);
-    let digits = rest
-        .strip_prefix("0b")
-        .or_else(|| rest.strip_prefix("0B"))?;
+    let digits = rest.strip_prefix("0b")?;
     if !digits.bytes().all(|b| matches!(b, b'0' | b'1' | b'_')) {
         return None;
     }
@@ -2050,15 +2046,10 @@ fn resolve_tagged_scalar(
             "int" => {
                 // Accept decimal, hex (0x), octal (0o), with optional sign.
                 let trimmed = value.trim();
-                let parsed = if let Some(rest) = trimmed
-                    .strip_prefix("0x")
-                    .or_else(|| trimmed.strip_prefix("0X"))
-                {
+                // The core schema's prefixes are lower-case (§10.3.2).
+                let parsed = if let Some(rest) = trimmed.strip_prefix("0x") {
                     parse_tagged_integer(rest, 16, lossless_u64)
-                } else if let Some(rest) = trimmed
-                    .strip_prefix("0o")
-                    .or_else(|| trimmed.strip_prefix("0O"))
-                {
+                } else if let Some(rest) = trimmed.strip_prefix("0o") {
                     parse_tagged_integer(rest, 8, lossless_u64)
                 } else {
                     parse_tagged_decimal_integer(trimmed, lossless_u64)
@@ -2380,7 +2371,7 @@ fn int_hint(value: &str) -> String {
     let trimmed = value.trim();
     let negative = trimmed.starts_with('-');
     let unsigned = trimmed.strip_prefix(['-', '+']).unwrap_or(trimmed);
-    if unsigned.starts_with("0b") || unsigned.starts_with("0B") {
+    if unsigned.starts_with("0b") {
         let digits = &unsigned[2..];
         if !digits.is_empty()
             && digits.bytes().all(|b| matches!(b, b'0' | b'1'))

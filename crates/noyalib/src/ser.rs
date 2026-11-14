@@ -962,8 +962,18 @@ fn looks_like_number(s: &str) -> bool {
 /// string is quoted whenever signed or lossless unsigned resolution would
 /// turn it into something else.
 fn resolves_as_non_string(s: &str) -> bool {
-    crate::parser::parse_legacy_binary(s).is_some()
-        || crate::parser::parse_legacy_binary_u64(s).is_some()
+    // An upper-case `0B` binary spelling stays quoted too: noyalib
+    // before v0.0.61 read it as a number.
+    let lower;
+    let binary = match s.strip_prefix("0B") {
+        Some(digits) => {
+            lower = format!("0b{digits}");
+            lower.as_str()
+        }
+        None => s,
+    };
+    crate::parser::parse_legacy_binary(binary).is_some()
+        || crate::parser::parse_legacy_binary_u64(binary).is_some()
         || [false, true].into_iter().any(|lossless_u64| {
             !matches!(
                 crate::streaming::resolve_plain_ext(

@@ -100,10 +100,14 @@ fn the_shim_reads_signed_radix_like_upstream() {
 fn binary_literals_resolve_when_enabled() {
     let mut cfg = ParserConfig::new();
     cfg.legacy_binary_numbers = true;
-    let doc = v("a: 0b11\nb: -0b101\nc: 0B1_0\n", &cfg);
+    let doc = v("a: 0b11\nb: -0b101\nc: 0b1_0\nd: 0B11\n", &cfg);
     assert_eq!(doc["a"].as_i64(), Some(3));
     assert_eq!(doc["b"].as_i64(), Some(-5));
     assert_eq!(doc["c"].as_i64(), Some(2));
+    // Prefixes are lower-case in YAML 1.1 and 1.2 and in serde_yaml 0.9.
+    assert_eq!(doc["d"].as_str(), Some("0B11"));
+    assert!(noyalib::from_str::<Value>("e: !!int 0XF\n").is_err());
+    assert!(noyalib::from_str::<Value>("e: !!int 0O17\n").is_err());
 }
 
 #[test]
