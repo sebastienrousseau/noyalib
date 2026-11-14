@@ -469,10 +469,14 @@ fn bom_column_shift(s: &str) -> bool {
         .is_some_and(|rest| serde_yaml::from_str::<serde_json::Value>(rest).is_err())
 }
 
-/// libyaml misses a `---` or `...` marker straight after the stream BOM
-/// and reads it as plain text (`\u{feff}---\n>f` loads "--- >f"); the
-/// BOM is transparent to the document markers (section 9.1.1).
+/// libyaml misses a `---` or `...` marker straight after a line-start
+/// BOM and reads it as plain text (`\u{feff}---\n>f` loads "--- >f",
+/// `-\r\u{feff}---` loads ["---"]); the BOM opens a document prefix and
+/// is transparent to the marker (sections 9.1.1 and 9.2).
 fn bom_hides_marker(s: &str) -> bool {
-    s.strip_prefix('\u{feff}')
-        .is_some_and(|rest| rest.starts_with("---") || rest.starts_with("..."))
+    s.match_indices('\u{feff}').any(|(at, bom)| {
+        let line_start = at == 0 || s[..at].ends_with(['\n', '\r']);
+        let rest = &s[at + bom.len()..];
+        line_start && (rest.starts_with("---") || rest.starts_with("..."))
+    })
 }
