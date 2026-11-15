@@ -217,9 +217,12 @@ fn written_key(
     let raw = source.get(start..end)?.trim();
     // A block scalar key cannot sit in a flow wrapper; its value is a
     // string, spelled as itself. Read that token alone: a following
-    // comment line (`? >\r#\r: B`) is not part of it.
+    // comment line (`? >\r#\r: B`) is not part of it. Only a token
+    // before the colon is the key: an empty key's value may itself be
+    // a block scalar (`?\r: |+1`).
     if let Some(block) = tokens
         .iter()
+        .take_while(|t| t.0 != SyntaxKind::ColonIndicator)
         .find(|t| matches!(t.0, SyntaxKind::LiteralScalar | SyntaxKind::FoldedScalar))
     {
         let text = source.get(block.1..block.2)?;
