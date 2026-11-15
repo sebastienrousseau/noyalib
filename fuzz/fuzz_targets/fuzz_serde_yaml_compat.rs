@@ -72,8 +72,7 @@ fuzz_target!(|data: &[u8]| {
                 )
                 && !oracle_agrees(oracle_normalization::stream_bom_prefix(s), &a)
                 && !oracle_agrees(bare_stream_bom(s), &a)
-                && !oracle_agrees(bom_classification::without_prefix_boms(s), &a)
-                && !oracle_agrees(bom_classification::without_prefix_boms_or_tab_lines(s), &a)
+                && !prefix_bom_repair_agrees(s, &a)
                 && !oracle_agrees(oracle_normalization::collection_spelling(s), &a)
                 && !oracle_agrees(oracle_normalization::unique_colliding_anchors(s), &a)
                 && !oracle_agrees(oracle_normalization::terminated_spaced_block(s), &a)
@@ -106,7 +105,7 @@ fuzz_target!(|data: &[u8]| {
                 )
                 && !oracle_agrees(oracle_normalization::stream_bom_prefix(s), &a)
                 && !oracle_agrees(bare_stream_bom(s), &a)
-                && !oracle_agrees(bom_classification::without_prefix_boms(s), &a)
+                && !prefix_bom_repair_agrees(s, &a)
                 && !oracle_agrees(oracle_normalization::collection_spelling(s), &a)
                 && !oracle_agrees(
                     oracle_normalization::collection_spelling(s)
@@ -482,6 +481,24 @@ fn prefix_bom_rejection_agrees(s: &str) -> bool {
         noyalib::compat::serde_yaml::from_str::<serde_json::Value>(&source).is_err()
             && serde_yaml::from_str::<serde_json::Value>(&source).is_err()
     })
+}
+
+/// The source without its line-start BOMs (and with the tab-line repair),
+/// each also through the collection spelling repairs: libyaml reads a
+/// BOM line after a scalar as text, and the BOM can hide its other
+/// quirks (`\n\u{feff}-\n- \t`). The values must still agree.
+fn prefix_bom_repair_agrees(s: &str, a: &serde_json::Value) -> bool {
+    [
+        bom_classification::without_prefix_boms(s),
+        bom_classification::without_prefix_boms_or_tab_lines(s),
+    ]
+    .into_iter()
+    .flatten()
+    .flat_map(|source| {
+        let spelled = oracle_normalization::collection_spelling(&source);
+        [Some(source), spelled]
+    })
+    .any(|candidate| oracle_agrees(candidate, a))
 }
 
 /// The source without its stream BOM and no further repair. libyaml can

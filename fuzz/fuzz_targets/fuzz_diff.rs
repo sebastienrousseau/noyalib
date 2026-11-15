@@ -134,6 +134,11 @@ fuzz_target!(|data: &[u8]| {
         ]
         .into_iter()
         .flatten()
+        .flat_map(|source| {
+            let spelled = oracle_normalization::collection_spelling(&source);
+            [Some(source), spelled]
+        })
+        .flatten()
         .filter(|source| parse(source).is_ok_and(|value| numeric_equal(&noya, &value)))
         .any(|source| {
             serde_yaml_ng::from_str::<serde_json::Value>(&source)
