@@ -21,16 +21,16 @@ likely to cost something. The `benches/` directory measures them.
 | Lines | Location | Function |
 | --- | --- | --- |
 | 672 | `src/cst/document.rs` | `insert_entry_value` |
-| 508 | `src/cst/document.rs` | `is_flow_collection` |
-| 309 | `src/parser/scanner/scalars.rs` | `scan_double_quoted_scalar` |
+| 513 | `src/cst/document.rs` | `is_flow_collection` |
+| 312 | `src/parser/scanner/scalars.rs` | `scan_double_quoted_scalar` |
 | 228 | `src/cst/document.rs` | `entry_line_span` |
-| 222 | `src/parser/loader.rs` | `push_node` |
-| 210 | `src/parser/loader.rs` | `process_event` |
-| 199 | `src/parser/scanner.rs` | `fetch_tag` |
+| 218 | `src/parser/loader.rs` | `push_node` |
+| 175 | `src/parser/loader.rs` | `process_event` |
 | 171 | `src/parser/loader.rs` | `push_value` |
-| 148 | `src/parser/loader.rs` | `process_event` |
+| 169 | `src/parser/scanner.rs` | `fetch_tag` |
 | 132 | `src/cst/document.rs` | `set_value` |
 | 118 | `src/parser/scanner/scalars.rs` | `scan_single_quoted_scalar` |
+| 113 | `src/parser/loader.rs` | `process_event` |
 | 106 | `src/cst/document.rs` | `guarded_insert` |
 
 ## Module map
@@ -42,32 +42,32 @@ likely to cost something. The `benches/` directory measures them.
 | `anchors.rs` | 1138 | Smart pointer anchor types for shared/DAG structures. |
 | `ariadne_adapter.rs` | 115 | [`ariadne`] adapter for [`crate::Error`]. |
 | `base64.rs` | 282 | Internal base64 codec for `!!binary` scalars (YAML 1.2.2 §10.4). |
-| `borrowed.rs` | 954 | Zero-copy YAML values that borrow strings from the input. |
+| `borrowed.rs` | 955 | Zero-copy YAML values that borrow strings from the input. |
 | `comments.rs` | 265 | Comment capture on the parse path. |
 | `compat/mod.rs` | 19 | Compatibility shims for downstream crates migrating to `noyalib`. |
-| `compat/serde_yaml.rs` | 968 | Drop-in API surface compatible with `serde_yaml` 0.9. |
+| `compat/serde_yaml.rs` | 1014 | Drop-in API surface compatible with `serde_yaml` 0.9. |
 | `cst/anchor.rs` | 721 | Anchor and alias management. |
 | `cst/annotated.rs` | 909 | Comment-aware read view over a [`crate::cst::Document`]. |
-| `cst/builder.rs` | 683 | Build the parts of a [`crate::cst::Document`] from input bytes. |
+| `cst/builder.rs` | 747 | Build the parts of a [`crate::cst::Document`] from input bytes. |
 | `cst/coerce.rs` | 231 | Lossless schema-driven type coercion on the CST path. |
 | `cst/document/edit.rs` | 262 | Atomic source splicing and local green-tree repair. |
 | `cst/document/path.rs` | 411 | Green-tree path resolution without typed-cache materialization. |
 | `cst/document/transaction.rs` | 152 | Atomic batches of byte-range CST edits. |
 | `cst/document/validation.rs` | 87 | Typed-cache validation and atomic document-state replacement. |
-| `cst/document.rs` | 7367 | Public `Document` handle and parse / mutation entry points. |
+| `cst/document.rs` | 7399 | Public `Document` handle and parse / mutation entry points. |
 | `cst/emit.rs` | 463 | Auto-formatting for values spliced by the CST insertion mutators. |
 | `cst/entry.rs` | 671 | Path-shaped mutable handle to a CST node — the `Entry` "pro" |
-| `cst/format.rs` | 610 | Formatter for YAML CST. |
+| `cst/format.rs` | 639 | Formatter for YAML CST. |
 | `cst/green.rs` | 283 | Immutable green-node primitive with relative-length leaves. |
 | `cst/mod.rs` | 145 | Side-table CST (concrete syntax tree) for lossless round-tripping. |
 | `cst/syntax.rs` | 135 | Syntax-kind tags for green-tree nodes and tokens. |
-| `de/config.rs` | 1444 | Parser configuration types. |
+| `de/config.rs` | 1457 | Parser configuration types. |
 | `de/deserializer.rs` | 1061 | The serde `Deserializer` over a `&Value` and its access types. |
-| `de.rs` | 1300 | YAML Deserialization. |
+| `de.rs` | 1305 | YAML Deserialization. |
 | `diagnostic.rs` | 447 | Framework-neutral structured diagnostics and optional `miette` bridges. |
-| `doc_boundary.rs` | 355 | Workspace-private `---` document-boundary scanner. |
+| `doc_boundary.rs` | 360 | Workspace-private `---` document-boundary scanner. |
 | `document.rs` | 518 | Multi-document YAML loading. |
-| `error.rs` | 2277 | Error handling types. |
+| `error.rs` | 2279 | Error handling types. |
 | `figment.rs` | 241 | [`figment`] provider for noyalib YAML. |
 | `flattened.rs` | 165 | `Flattened<T>` — capture the underlying [`Value`] alongside the |
 | `fmt.rs` | 648 | Formatting wrappers for fine-grained control over YAML output style. |
@@ -79,13 +79,13 @@ likely to cost something. The `benches/` directory measures them.
 | `macros.rs` | 99 | Declarative builders for the public config types. |
 | `parallel.rs` | 526 | Parallel multi-document YAML parsing — the "MapReduce" path. |
 | `parser/budget.rs` | 282 | The resource budgets the loaders enforce, as pure predicates. |
-| `parser/events.rs` | 820 | YAML 1.2 event-based parser. |
-| `parser/loader.rs` | 2234 | Event-to-Value tree builder with security limits. |
+| `parser/events.rs` | 867 | YAML 1.2 event-based parser. |
+| `parser/loader.rs` | 2534 | Event-to-Value tree builder with security limits. |
 | `parser/meter.rs` | 422 | The stateful half of the budgets: one meter every loader charges. |
 | `parser/mod.rs` | 108 | Native YAML 1.2 parser. |
-| `parser/scanner/block_scalars.rs` | 401 | Literal and folded block scalar scanning for the YAML scanner, as a |
-| `parser/scanner/scalars.rs` | 948 | Scalar scanning for the YAML scanner: plain, single/double-quoted |
-| `parser/scanner.rs` | 2761 | YAML 1.2 lexical scanner. |
+| `parser/scanner/block_scalars.rs` | 407 | Literal and folded block scalar scanning for the YAML scanner, as a |
+| `parser/scanner/scalars.rs` | 1012 | Scalar scanning for the YAML scanner: plain, single/double-quoted |
+| `parser/scanner.rs` | 2989 | YAML 1.2 lexical scanner. |
 | `path.rs` | 1101 | Path tracking for YAML structure locations. |
 | `policy.rs` | 285 | Pluggable parser policies for "Safe YAML" enforcement. |
 | `portable_float.rs` | 287 | Private binary64 operations for alloc-only builds. |
@@ -93,12 +93,12 @@ likely to cost something. The `benches/` directory measures them.
 | `schema.rs` | 334 | YAML 1.2 schema validation helpers. |
 | `schema_codegen.rs` | 322 | JSON Schema codegen for Rust types. |
 | `schema_validate.rs` | 1010 | JSON Schema 2020-12 validation against a parsed [`crate::Value`]. |
-| `ser.rs` | 2516 | YAML serialization. |
+| `ser.rs` | 2553 | YAML serialization. |
 | `simd.rs` | 1554 | SIMD-friendly structural-scanning primitives. |
-| `span_context.rs` | 441 | Source context for typed deserialization and `Spanned<T>` locations. |
+| `span_context.rs` | 486 | Source context for typed deserialization and `Spanned<T>` locations. |
 | `spanned.rs` | 291 | Source location tracking for deserialized values. |
-| `streaming.rs` | 2540 | Streaming YAML deserializer that operates directly on parser events. |
-| `sval_adapter.rs` | 442 | `sval` adapter — stream noyalib values through any |
+| `streaming.rs` | 2432 | Stream typed values directly from parser events; materialize only on fallback. |
+| `sval_adapter.rs` | 443 | `sval` adapter — stream noyalib values through any |
 | `tag_registry.rs` | 215 | Streaming-path registry for custom YAML tag pass-through. |
 | `tokio_async.rs` | 831 | Native async YAML parsing for [`tokio`](https://tokio.rs) |
 | `validated.rs` | 262 | Declarative validation via [`garde`] or [`validator`]. |
@@ -109,7 +109,7 @@ likely to cost something. The `benches/` directory measures them.
 | `value/number.rs` | 631 | YAML number type (`Number`). |
 | `value/serde_impl.rs` | 370 | serde `Serialize`/`Deserialize` for `Value`. |
 | `value/tag.rs` | 554 | YAML tag types (`Tag`, `TaggedValue`) and tag utilities. |
-| `value.rs` | 1825 | YAML value types. |
+| `value.rs` | 1892 | YAML value types. |
 | `with/mod.rs` | 54 | Helper modules for customizing serialization and deserialization. |
 | `with/singleton_map.rs` | 212 | Serialize enums as single-entry maps. |
 | `with/singleton_map_optional.rs` | 265 | Serialize optional enums as single-entry maps. |
