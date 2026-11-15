@@ -199,3 +199,19 @@ fn a_string_holding_a_bom_round_trips_through_the_default_profile() {
         assert_eq!(back, doc, "{yaml:?}");
     }
 }
+
+/// The refusal points at the byte order mark itself, not at wherever
+/// the scanner stopped reading the scalar or comment that holds it.
+#[test]
+fn a_refused_bom_is_located_where_it_stands() {
+    for (yaml, line, column) in [
+        ("a: 1\nb: x\u{feff}y\n", 2, 5),
+        ("a: 1\nb: x\u{feff}y\n  z\nc: 2\n", 2, 5),
+        ("a: |\n  x\n  y\u{feff}z\n", 3, 4),
+        ("a: 1 # c\u{feff}\n", 1, 9),
+    ] {
+        let err = noyalib::from_str::<Value>(yaml).unwrap_err();
+        let at = err.location().unwrap();
+        assert_eq!((at.line(), at.column()), (line, column), "{yaml:?}: {err}");
+    }
+}

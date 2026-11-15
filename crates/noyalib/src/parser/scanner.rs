@@ -1710,6 +1710,7 @@ impl<'a> Scanner<'a> {
         }
         self.check_no_text_bom(
             &self.input[directive_start..self.pos + len],
+            directive_start,
             "byte order mark inside a directive line: YAML 1.2 keeps one only in a \
              quoted scalar or a document prefix",
         )?;
