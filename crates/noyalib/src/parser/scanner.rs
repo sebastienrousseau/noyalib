@@ -2188,15 +2188,18 @@ impl<'a> Scanner<'a> {
             .iter()
             .rposition(|&b| b == b'\n' || b == b'\r')
             .map_or(0, |nl| nl + 1);
-        // A leading BOM occupies the first three bytes of the
-        // stream but contributes no visual column. Exclude it so a
-        // first-line key is measured from column 0 (consistent with
-        // `self.col`, which is reset after the BOM in
-        // `fetch_stream_start`). Without this the key's indent is
-        // over-counted by 3, so a following sibling at column 0 is
-        // misread as a dedent and the mapping is split in two.
-        if line_start == 0 && self.input.starts_with(&[0xEF, 0xBB, 0xBF]) {
-            line_start = 3;
+        // A BOM opening a line (the stream's own, or one opening a
+        // later document prefix) occupies three bytes but contributes
+        // no visual column. Exclude it so the key is measured from
+        // column 0 (consistent with `self.col`, which is reset after
+        // the BOM in `fetch_stream_start` and `skip_prefix_bom`).
+        // Without this the key's indent is over-counted by 3, so a
+        // sibling at column 0, or a value indented less than 3 on the
+        // next line, is misread as a dedent and the mapping is split.
+        // A line-start BOM that opens no prefix never gets here:
+        // `fetch_bom` refuses it.
+        if self.input[line_start..].starts_with(&[0xEF, 0xBB, 0xBF]) {
+            line_start += 3;
         }
         let leading = &self.input[line_start..sk.index];
         // YAML 1.2.2 §6.1: block-mapping key indentation
@@ -2770,6 +2773,25 @@ mod tests {
     /// A leading BOM must be transparent for every top-level construct, not
     /// just single-line mappings: a BOM-prefixed sequence, a nested mapping,
     /// and a leading comment must each scan identically to their BOM-less form.
+    #[test]
+    fn test_scanner_prefix_bom_after_a_blank_line_is_transparent() {
+        // A BOM opening a later document prefix is zero-width like the
+        // stream's own: a key after it sits at column 0, so a value
+        // indented on the next line stays inside the mapping (found by
+        // fuzz_serde_yaml_compat on `\n\u{feff}-server:\n  h`).
+        for (bommed, plain) in [
+            ("\n\u{FEFF}a:\n  b\n", "\na:\n  b\n"),
+            ("\n\u{FEFF}-a:\n  b\n", "\n-a:\n  b\n"),
+            ("# c\n\u{FEFF}a:\n  b: 1\nc: 2\n", "# c\na:\n  b: 1\nc: 2\n"),
+        ] {
+            assert_eq!(
+                scan_kinds(bommed),
+                scan_kinds(plain),
+                "prefix-BOM input {bommed:?} should scan identically to {plain:?}",
+            );
+        }
+    }
+
     #[test]
     fn test_scanner_leading_bom_is_transparent() {
         for (bommed, plain) in [

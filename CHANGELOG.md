@@ -48,7 +48,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   of refusing every BOM after the stream start. A line-start BOM no
   longer continues a plain scalar, so `a\n\u{feff}b` is now refused
   instead of loading as one string, and the error reads "byte order
-  mark inside a document".
+  mark inside a document". Like the stream's own BOM it takes no
+  column, so a key after it sits at column 0 (`\n\u{feff}a:\n  b`
+  loads as `{a: b}`).
 
 - **Breaking:** reject an under-indented continuation line of a plain
   or quoted scalar inside a flow collection nested in a block, as
