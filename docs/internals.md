@@ -118,7 +118,7 @@ likely to cost something. The `benches/` directory measures them.
 
 ## Features
 
-28 features, read from `crates/noyalib/Cargo.toml`.
+27 features, read from `crates/noyalib/Cargo.toml`.
 
 | Feature | Enables | Notes |
 | --- | --- | --- |
@@ -143,7 +143,6 @@ likely to cost something. The `benches/` directory measures them.
 | `validate-schema` | `schema`, `dep:jsonschema` | JSON Schema validation engine. With this on you can call `noyalib::validate_against_schema(value, schema)` to enforce a JSON Schema 2020-12 contract against parsed YAML data. Implies `schema` so the codegen and validation halves of Phase 3 can be enabled together with one flag. |
 | `figment` | `dep:figment`, `std` | `figment` provider integration. With this on, `noyalib::figment` exposes a `Yaml` provider that drops into `figment::Figment` layering chains the same way `figment::providers::Toml` / `figment::providers::Json` do. |
 | `simd` | — | SIMD-friendly multi-byte search primitives for parser hot paths. Ships a feature-gated `noyalib::simd` module containing `find_any_of` and friends — vectorised via memchr's SSE2 / NEON arity-1/2/3 primitives where applicable, SWAR (8-byte-stride u64 packing) for needle sets of 4+ bytes, and a scalar fallback. Pure-safe Rust (no `unsafe`) — preserves the workspace `unsafe_code = "forbid"` invariant. Off by default so the most conservative environments stay on the byte-by-byte baseline; on by callers who want the throughput uplift on supported targets. |
-| `compare-saphyr` | `dep:serde-saphyr` | Opt-in cross-library benchmark comparison against `serde-saphyr`. Off by default because the saphyr crate's manifest requires Rust 2024 edition (Cargo 1.85+). Enabling this feature pulls saphyr in as a dev-dep and gates the comparison bench arms on its presence. |
 | `tokio` | `dep:tokio`, `dep:tokio-util`, `dep:bytes`, `std` | Native async stream parsing on top of `tokio::io::AsyncRead`. Adds `noyalib::tokio_async` with bounded reader helpers, `AsyncYamlStream`, and a `YamlDecoder` codec for custom framed pipelines. Off by default to keep the dep list lean for sync-only callers. |
 | `sval` | `dep:sval` | `sval` zero-allocation streaming serialization framework adapter. Adds `impl sval::Value for Value` (and the other in-tree value types) plus a `noyalib::sval_adapter::to_sval_writer` entry point. serde remains the default; this is opt-in for callers that want to skip serde monomorphisation overhead. |
 | `arbitrary` | `dep:arbitrary`, `std` | Structure-aware fuzzing and property testing: `arbitrary::Arbitrary` for every public value type. The arbitrary crate needs std. |

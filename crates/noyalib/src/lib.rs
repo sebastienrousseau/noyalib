@@ -189,10 +189,6 @@
 //! - **Companion crates** ([`noya-cli`], [`noyalib-lsp`]) share
 //!   the same `1.89.0` floor; as of v0.0.58 the whole lockstep
 //!   set declares one number.
-//! - **`compare-saphyr`** is an opt-in, bench-only feature
-//!   whose `serde-saphyr` dependency uses let-chains and needs
-//!   rustc 1.88+, inside the 1.89.0 floor. The MSRV gate does
-//!   not build it, and does not build `--all-features`.
 //! - **`nightly-simd`** is the only feature that requires nightly
 //!   rustc (`#![feature(portable_simd)]`); a `build.rs` cfg-detect
 //!   probe means stable builds with `--all-features` still
@@ -225,7 +221,6 @@
 //! | `simd` | ⛔ | — | forward-compat no-op — `noyalib::simd::*` is always available; the hot path uses it unconditionally | — |
 //! | `nightly-simd` | ⛔ | nightly rustc | 32-byte `StructuralIter` | `simd` |
 //! | `compat-serde-yaml` | ⛔ | — | `noyalib::compat::serde_yaml` shim | — |
-//! | `compare-saphyr` | ⛔ | `serde-saphyr` | comparison-bench arms (dev-only — do **not** ship in release builds) | — |
 //! | `noyavalidate` | ⛔ | — | meta-feature: `validate-schema` + `miette` | `validate-schema`, `miette` |
 //! | `wasm-opt` | ⛔ | — | marker consumed by `noyalib-wasm`'s build.rs to opt into a Binaryen post-build pass | — |
 //!

@@ -65,7 +65,7 @@ equivalent. The ones that catch people out:
 | :--- | :--- | :--- |
 | `docs-strict` | `RUSTDOCFLAGS='-D warnings' cargo doc --no-deps --all-features` | feature-gated intra-doc links need explicit paths |
 | `coverage-gate` | `cargo +nightly llvm-cov --all-features` | thresholds: 95% fn / 94% line / 93% region — rationale in the job's comment |
-| `each-feature` | `cargo hack check -p noyalib --each-feature --exclude-features nightly-simd,compare-saphyr --no-dev-deps` | **cargo-hack rewrites Cargo.toml while running** — never run other cargo commands concurrently |
+| `each-feature` | `cargo hack check -p noyalib --each-feature --exclude-features nightly-simd --no-dev-deps` | **cargo-hack rewrites Cargo.toml while running** — never run other cargo commands concurrently |
 | `fuzz-regression` | `cd fuzz && cargo +nightly fuzz build`, then replay `corpus/seed` + `regressions/<target>` per target with `-- -runs=0` | needs nightly + source-installed cargo-fuzz |
 | `cargo-vet` | `cargo vet` (after a dep change: `cargo vet regenerate exemptions`) | exemptions must move with every dependency bump |
 | `no-std` legs | `cargo check --no-default-features` (+ feature combos from `shared-no-std.yml`) | `std`-only items need `#[cfg(feature = "std")]` |

@@ -106,7 +106,6 @@ Command-line and integration surfaces ship as companion projects:
 | :--- | :---: | :--- |
 | `noyalib` | Rust 1.89.0 | `msrv-core` and per-crate CI jobs |
 | Satellite crates | Rust 1.89.0 | lockstep per-crate MSRV jobs |
-| Optional `compare-saphyr` benchmark | Rust 1.88.0 | within the floor; not built by the MSRV gate |
 
 The floor may rise only on the breaking version axis, with the reason recorded
 in the changelog. See [`docs/MSRV-AND-DEPRECATION.md`](docs/MSRV-AND-DEPRECATION.md).

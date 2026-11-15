@@ -10,9 +10,6 @@ name: Feature powerset
 #
 # Excluded from the sweep:
 #   - `nightly-simd` — needs a nightly toolchain; this job runs stable.
-#   - `compare-saphyr` — bench-only dep needing rustc 1.88+; it holds
-#     `--all-features` off the MSRV toolchain already (see the
-#     test-matrix note in ci.yml) and gates nothing in the library.
 #
 # `--no-dev-deps` keeps the sweep to the library graph (cargo-hack
 # temporarily rewrites Cargo.toml and restores it — fine in CI, the
@@ -59,7 +56,7 @@ jobs:
         run: >
           cargo hack check -p noyalib
           --feature-powerset --depth 2
-          --exclude-features nightly-simd,compare-saphyr
+          --exclude-features nightly-simd
           --no-dev-deps
 
       # The pair sweep above is `--no-dev-deps`, so it never compiles a
@@ -74,4 +71,4 @@ jobs:
         run: >
           cargo hack check -p noyalib
           --each-feature --features default --all-targets
-          --exclude-features nightly-simd,compare-saphyr
+          --exclude-features nightly-simd

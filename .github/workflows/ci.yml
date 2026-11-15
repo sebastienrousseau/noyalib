@@ -360,11 +360,10 @@ jobs:
           tool: cargo-hack
       - name: cargo check each feature in isolation
         # --exclude-features mirrors feature-powerset.yml: nightly-simd
-        # needs a nightly compiler and compare-saphyr is a dev-only
-        # bench arm.
+        # needs a nightly compiler.
         run: |
           cargo hack check -p noyalib --each-feature \
-            --exclude-features nightly-simd,compare-saphyr \
+            --exclude-features nightly-simd \
             --no-dev-deps
 
   cargo-semver-checks:
@@ -493,8 +492,7 @@ jobs:
     # Value / CST. 1.89 is one floor shared with the maintainer's
     # other Rust crates (ADR-0014); the toolchain-driven floor is
     # 1.86, because `criterion 0.8` (dev-dependency) requires it.
-    # The opt-in, bench-only `compare-saphyr` feature (serde-saphyr,
-    # let-chains, 1.88+) and `--all-features` are not built here.
+    # `--all-features` is not built here.
     uses: ./.github/workflows/shared-msrv-core.yml
     with:
       toolchain: "1.89.0"

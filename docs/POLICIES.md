@@ -578,7 +578,6 @@ When in `no_std` mode:
 | `noyavalidate` | no | meta — pulls validate-schema + miette/fancy | (transitive) |
 | `wasm-opt` | no | post-build wasm-opt pass marker (used by `noyalib-wasm`) | (none) |
 | `nightly-simd` | no | enables nightly-only `std::simd` paths in `simd.rs`; gracefully no-ops on stable | (none — gated by `cfg(noyalib_nightly)`) |
-| `compare-saphyr` | no | bench-only — pulls `serde_saphyr` into the comparison harness; never built into a release artefact | `serde_saphyr` (dev-only) |
 
 ### Feature compatibility
 
@@ -595,11 +594,10 @@ When in `no_std` mode:
   gracefully no-ops to portable scalar fallbacks when built on
   stable. Not enabled in `default` — opt-in via
   `cargo +nightly build --features nightly-simd`.
-- `compare-saphyr` is **not** intended for production builds.
-  It compiles in `serde_saphyr` purely so the comparison
-  benches in `crates/noyalib/benches/comparison.rs` can pit
-  `noyalib` head-to-head against it; downstream packagers
-  must not enable this feature in shipped binaries.
+- The head-to-head benches against other Rust YAML crates live
+  in the unpublished `crates/noyalib-compare` crate (since
+  v0.0.62), so no competitor crate is a noyalib dependency or
+  feature.
 
 ---
 

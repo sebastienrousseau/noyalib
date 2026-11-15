@@ -19,69 +19,10 @@ use std::hint::black_box;
 // ── Test Payloads ────────────────────────────────────────────────────
 
 /// Kubernetes-style config: medium depth, mixed types, sequences.
-const K8S_DEPLOYMENT: &str = "\
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: web-app
-  namespace: production
-  labels:
-    app: web-app
-    version: v2.1.0
-    tier: frontend
-spec:
-  replicas: 3
-  selector:
-    matchLabels:
-      app: web-app
-  template:
-    metadata:
-      labels:
-        app: web-app
-    spec:
-      containers:
-        - name: web
-          image: registry.io/web-app:v2.1.0
-          ports:
-            - containerPort: 8080
-              protocol: TCP
-          resources:
-            limits:
-              cpu: 500m
-              memory: 256Mi
-            requests:
-              cpu: 100m
-              memory: 128Mi
-          env:
-            - name: DATABASE_URL
-              value: postgres://db:5432/prod
-            - name: REDIS_URL
-              value: redis://cache:6379
-        - name: sidecar
-          image: registry.io/envoy:v1.28
-          ports:
-            - containerPort: 9901
-";
+const K8S_DEPLOYMENT: &str = include_str!("fixtures/architecture_k8s.yaml");
 
 /// Zero-copy payload: all plain scalars, no escapes, no multiline.
-const ZERO_COPY: &str = "\
-host: localhost
-port: 8080
-name: myservice
-version: 42
-debug: false
-timeout: 30000
-retries: 3
-workers: 8
-log_level: info
-format: json
-output: stdout
-max_connections: 1000
-idle_timeout: 60
-graceful_shutdown: 15
-tls_enabled: true
-tls_port: 8443
-";
+const ZERO_COPY: &str = include_str!("fixtures/zero_copy.yaml");
 
 /// Deeply nested YAML (20 levels).
 fn deep_yaml(depth: usize) -> String {
@@ -314,48 +255,6 @@ fn bench_security(c: &mut Criterion) {
     group.finish();
 }
 
-// ── Benchmark: Competitor Matrix ─────────────────────────────────────
-
-fn bench_competitors(c: &mut Criterion) {
-    let mut group = c.benchmark_group("competitors");
-
-    // K8s payload across all libraries
-    group.bench_function("noyalib/k8s", |b| {
-        b.iter(|| {
-            let _: noyalib::Value = noyalib::from_str(black_box(K8S_DEPLOYMENT)).unwrap();
-        });
-    });
-
-    #[cfg(feature = "compare-saphyr")]
-    group.bench_function("serde_saphyr/k8s", |b| {
-        b.iter(|| {
-            let _: serde_json::Value = serde_saphyr::from_str(black_box(K8S_DEPLOYMENT)).unwrap();
-        });
-    });
-
-    group.bench_function("yaml_rust2/k8s", |b| {
-        b.iter(|| {
-            let _ = yaml_rust2::YamlLoader::load_from_str(black_box(K8S_DEPLOYMENT)).unwrap();
-        });
-    });
-
-    // Zero-copy payload
-    group.bench_function("noyalib/zero_copy", |b| {
-        b.iter(|| {
-            let _: noyalib::Value = noyalib::from_str(black_box(ZERO_COPY)).unwrap();
-        });
-    });
-
-    #[cfg(feature = "compare-saphyr")]
-    group.bench_function("serde_saphyr/zero_copy", |b| {
-        b.iter(|| {
-            let _: serde_json::Value = serde_saphyr::from_str(black_box(ZERO_COPY)).unwrap();
-        });
-    });
-
-    group.finish();
-}
-
 // ── Benchmark: Borrowed vs Owned Value ───────────────────────────────
 
 fn bench_borrowed_vs_owned(c: &mut Criterion) {
@@ -394,6 +293,5 @@ criterion_group!(
     bench_span_overhead,
     bench_security,
     bench_borrowed_vs_owned,
-    bench_competitors,
 );
 criterion_main!(benches);

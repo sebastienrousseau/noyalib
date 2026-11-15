@@ -159,7 +159,6 @@ the application needs.
 | `nightly-simd` | `simd` (nightly toolchain) | `core::simd`-backed `StructuralIter` (32-byte chunks) | [Benchmarks](#benchmarks) |
 | `compat-serde-yaml` | — | **behavioural** `serde_yaml` 0.9 shim (values, error text, and locations pinned by the live-captured 18-case contract suite); `noyalib-serde-yaml` packages it as a Cargo package-rename drop-in | [When not to use noyalib](#when-not-to-use-noyalib) |
 | `lossless-u64` | — | `Number::Unsigned(u64)` plus opt-in parser/serializer config for scalars in `(i64::MAX, u64::MAX]` | [`docs/adr/0004-lossless-u64-integers.md`](adr/0004-lossless-u64-integers.md), `examples/lossless_u64.rs`, `benches/lossless_u64.rs` |
-| `compare-saphyr` | `serde-saphyr` *(dev only)* | Cross-library bench comparison arms | `benches/comparison.rs` |
 | `wasm-opt` | — | Build-time flag opting the `noyalib-wasm` bundle into `wasm-opt` size passes (no API surface) | [`sebastienrousseau/noyalib-wasm`](https://github.com/sebastienrousseau/noyalib-wasm) |
 | `noyavalidate` | `std` + `miette` + `validate-schema` | Enables the schema-validation surface the `noyavalidate` CLI is built on | [`docs/USER-GUIDE.md` §11](USER-GUIDE.md) |
 
@@ -222,10 +221,8 @@ also guarantee never to require a rustc newer than 12 months old
 at release time — see
 [`docs/POLICIES.md` §1](POLICIES.md#1-msrv-minimum-supported-rust-version).
 
-The opt-in, bench-only `compare-saphyr` feature needs rustc 1.88+
-(`serde-saphyr` uses let-chains), which the 1.89.0 floor covers. It
-is still not built by the MSRV gate, which checks the core feature
-sets.
+The head-to-head benches (`crates/noyalib-compare`, unpublished)
+are not built by the MSRV gate, which checks the core feature sets.
 
 `rust-toolchain.toml` itself selects `stable` for local
 development; the 1.89.0 floor on the core surface is enforced

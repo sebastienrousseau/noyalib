@@ -25,6 +25,13 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   opening a scalar after other text on the line (`a: \u{feff}b`,
   `- \u{feff}b`), which both profiles used to refuse.
 
+- **Breaking:** the bench-only `compare-saphyr` feature is gone, and
+  `serde-saphyr` is no longer a noyalib dependency. The head-to-head
+  benchmarks moved to the unpublished `crates/noyalib-compare` crate,
+  where the competitor crates are plain dev-dependencies
+  (`make bench-compare`). Rust 1.100's `unused_dependencies` lint
+  flagged the optional dependency on every `--all-features` build.
+
 - **Breaking:** an error path brackets a sequence index everywhere,
   as typed-field errors already did: a duplicate key, key collision or
   integer overflow under a sequence now reads `items[0].name`, not

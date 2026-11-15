@@ -129,6 +129,16 @@ if pin and name != "noyalib":
     else:
         bad("Cargo.lock noyalib", f"{core} — stale; CI builds --locked")
 
+# The core's unpublished comparison-bench crate pins its path dependency
+# exactly, so cargo-deny does not read it as a wildcard.
+compare = root / "crates" / "noyalib-compare" / "Cargo.toml"
+if compare.is_file():
+    pin = re.search(r'noyalib\s*=\s*\{[^}]*version\s*=\s*"=([^"]+)"', compare.read_text(encoding="utf-8"))
+    if pin and pin.group(1) == version:
+        ok("noyalib-compare noyalib pin", f"={pin.group(1)}")
+    else:
+        bad("noyalib-compare noyalib pin", f"{pin.group(1) if pin else 'missing'} — lockstep requires ={version}")
+
 # JSON manifests that carry a version of their own.
 #
 # Only the repository root is checked. A nested wrapper such as

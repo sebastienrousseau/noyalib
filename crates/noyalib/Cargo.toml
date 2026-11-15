@@ -145,15 +145,6 @@ jsonschema = { version = "0.60", optional = true, default-features = false }
 # layered-configuration crate. Pulled in only when the `figment`
 # feature is on so non-figment users don't pay for it.
 figment = { version = "0.10", optional = true, features = ["env"] }
-# NOTE: `serde-saphyr` lives under `[dependencies]` (not
-# `[dev-dependencies]`) because Cargo doesn't allow optional
-# dev-deps. It's gated behind the `compare-saphyr` feature and
-# only used inside `#[cfg(feature = "compare-saphyr")]` bench
-# arms; nothing in the runtime crate references it. Off by default
-# so an `--all-features` build doesn't pull in the saphyr crate
-# (which builds on the 1.89 MSRV but is still extra deps the rest of
-# the workspace doesn't need).
-serde-saphyr = { version = "2.0", optional = true }
 # Parallel multi-document parsing — pulled in only when the
 # `parallel` feature is on. Rayon is the de-facto safe data-parallel
 # Rust crate and itself uses well-vetted unsafe internally; the
@@ -196,20 +187,6 @@ criterion = "0.8"
 proptest = "1.11"
 yaml-rust2 = "0.13"
 rust-yaml = "1.0.1"
-# Bench-only competitor surface. None of these ship transitively
-# in any release artefact — they are dev-deps used exclusively by
-# `crates/noyalib/benches/comparison.rs` for head-to-head Rust
-# YAML benchmarks. See `docs/BENCHMARKS.md` for measured numbers.
-#
-# `yaml-spanned` is the closest other span-tracking parser
-# in the ecosystem. (`serde_yml` — the maintainer's prior crate
-# — was previously benched here; it was retired in v0.0.6 after
-# RUSTSEC-2025-0068 flagged it unsound + unmaintained so the
-# OpenSSF Scorecard Vulnerabilities check stays clean.
-# `serde_yaml_ng` followed in v0.0.58: it depends on
-# `unsafe-libyaml`, which RUSTSEC-2024-0449 marks unmaintained, and
-# cargo-deny fails on it.)
-yaml-spanned = "0.0"
 # Ecosystem interop verification — proves noyalib's
 # `Deserializer<'de>` works with the standard serde wrappers
 # without any custom integration code.
@@ -231,10 +208,6 @@ jsonschema = { version = "0.60", default-features = false, features = ["resolve-
 
 [[bench]]
 name = "benchmarks"
-harness = false
-
-[[bench]]
-name = "comparison"
 harness = false
 
 [[bench]]
@@ -404,11 +377,6 @@ figment = ["dep:figment", "std"]
 # conservative environments stay on the byte-by-byte baseline; on
 # by callers who want the throughput uplift on supported targets.
 simd = []
-# Opt-in cross-library benchmark comparison against `serde-saphyr`.
-# Off by default because the saphyr crate's manifest requires Rust
-# 2024 edition (Cargo 1.85+). Enabling this feature pulls saphyr in
-# as a dev-dep and gates the comparison bench arms on its presence.
-compare-saphyr = ["dep:serde-saphyr"]
 # Native async stream parsing on top of `tokio::io::AsyncRead`.
 # Adds `noyalib::tokio_async` with bounded reader helpers,
 # `AsyncYamlStream`, and a `YamlDecoder` codec for custom framed pipelines.

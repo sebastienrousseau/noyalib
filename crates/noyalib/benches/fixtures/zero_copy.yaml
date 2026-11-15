@@ -1,0 +1,16 @@
+host: localhost
+port: 8080
+name: myservice
+version: 42
+debug: false
+timeout: 30000
+retries: 3
+workers: 8
+log_level: info
+format: json
+output: stdout
+max_connections: 1000
+idle_timeout: 60
+graceful_shutdown: 15
+tls_enabled: true
+tls_port: 8443

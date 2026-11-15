@@ -1181,7 +1181,6 @@ dependencies = [
  "ryu",
  "schemars",
  "serde",
- "serde-saphyr",
  "serde_bytes",
  "serde_core",
  "serde_ignored",
@@ -1192,6 +1191,18 @@ dependencies = [
  "tokio",
  "tokio-util",
  "validator",
+ "yaml-rust2",
+]
+
+[[package]]
+name = "noyalib-compare"
+version = "0.0.0"
+dependencies = [
+ "criterion",
+ "noyalib",
+ "serde",
+ "serde-saphyr",
+ "serde_json",
  "yaml-rust2",
  "yaml-spanned",
 ]

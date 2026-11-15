@@ -1,0 +1,38 @@
+# SPDX-License-Identifier: MIT OR Apache-2.0
+# Copyright (c) 2026 Noyalib. All rights reserved.
+
+# Head-to-head benchmarks against other Rust YAML crates. Never
+# published: the competitors are plain dev-dependencies here, so none
+# of them appears in noyalib's own manifest, feature list or package.
+[package]
+name = "noyalib-compare"
+version = "0.0.0"
+edition = "2024"
+rust-version = "1.89.0"
+license = "MIT OR Apache-2.0"
+publish = false
+description = "Unpublished benchmarks comparing noyalib with other Rust YAML crates"
+
+[dev-dependencies]
+# Pinned like every lockstep reference: a bump that misses this line
+# fails to resolve instead of benchmarking a stale build.
+noyalib = { path = "../noyalib", version = "=0.0.61" }
+criterion = "0.8"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+serde-saphyr = "2.0"
+yaml-rust2 = "0.13"
+# `yaml-spanned` is the closest other span-tracking parser in the
+# ecosystem. (`serde_yml` was retired in v0.0.6 after RUSTSEC-2025-0068
+# flagged it unsound and unmaintained; `serde_yaml_ng` followed in
+# v0.0.58, as it depends on `unsafe-libyaml`, which RUSTSEC-2024-0449
+# marks unmaintained.)
+yaml-spanned = "0.0"
+
+[[bench]]
+name = "comparison"
+harness = false
+
+[[bench]]
+name = "competitors"
+harness = false
