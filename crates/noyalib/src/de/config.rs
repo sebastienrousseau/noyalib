@@ -380,7 +380,7 @@ pub struct ParserConfig {
     /// When `true`, a byte order mark (U+FEFF) is ordinary text in
     /// plain and block scalars and in comments, as `serde_yaml` 0.9
     /// (libyaml) reads it: `a: \u{feff}b` loads the string
-    /// `"\u{feff}b"`. Default `false`: YAML 1.2.2 production [27]
+    /// `"\u{feff}b"`. Default `false`: YAML 1.2.2 production 27
     /// leaves the BOM out of `nb-char`, so it may only open a
     /// document prefix or sit in a single- or double-quoted scalar,
     /// and anywhere else it is refused. Anchor names and tags refuse

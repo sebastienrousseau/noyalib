@@ -434,7 +434,7 @@ impl Scanner<'_> {
         Ok(())
     }
 
-    /// YAML 1.2.2 production [27] leaves the byte order mark out of
+    /// YAML 1.2.2 production 27 leaves the byte order mark out of
     /// `nb-char`, the text of plain and block scalars and comments;
     /// only quoted scalars (`nb-json`) and a document prefix hold one.
     /// The `serde_yaml` profile reads it as text, as libyaml does.
