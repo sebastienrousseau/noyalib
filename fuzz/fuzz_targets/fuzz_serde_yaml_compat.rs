@@ -227,8 +227,9 @@ fn known_reject_divergence(s: &str) -> bool {
     // but libyaml wants a key before the `:` in block context
     // ("did not find expected key").
     if s.split(['\r', '\n']).any(|l| {
-        // `- : v` is an empty key in a compact mapping.
-        let mut l = l.trim_start();
+        // `- : v` is an empty key in a compact mapping. A line-start BOM
+        // opens a document prefix (section 9.2), so `\u{feff}:` counts.
+        let mut l = l.trim_start_matches('\u{feff}').trim_start();
         while let Some(rest) = l.strip_prefix("- ") {
             l = rest.trim_start();
         }
@@ -253,7 +254,7 @@ fn known_reject_divergence(s: &str) -> bool {
     // A tab after a block sequence's `-` is s-separate-in-line (§6.2);
     // libyaml rejects it the same way.
     if s.split(['\r', '\n'])
-        .any(|l| l.trim_start_matches(' ').starts_with("-\t"))
+        .any(|l| l.trim_start_matches([' ', '\u{feff}']).starts_with("-\t"))
     {
         return true;
     }
