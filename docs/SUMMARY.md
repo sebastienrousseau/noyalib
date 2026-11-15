@@ -38,14 +38,16 @@
 - [CII best practices](CII-BEST-PRACTICES.md)
 - [Pre-commit hooks](pre-commit.md)
 - [Packaging for distributions](packaging.md)
-- [Production-readiness plan](PLAN.md)
-- [Road to 10/10](ROADMAP-TO-10.md)
 - [Repository standard compliance grade](COMPLIANCE-GRADE.md)
 - [Detailed README reference](README-REFERENCE.md)
 
 # The ecosystem
 
 - [Ecosystem map and scorecard](ECOSYSTEM.md)
+  - [Six-repository assessment and acceptance criteria](ROADMAP-TO-10.md)
+  - [Ecosystem implementation work order](PLAN.md)
+  - [Ecosystem contracts and verification](ECOSYSTEM-CONTRACTS.md)
+  - [Ecosystem implementation record](IMPLEMENTATION-STATUS.md)
 
 # Decisions
 

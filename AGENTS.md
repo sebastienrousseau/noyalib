@@ -7,6 +7,13 @@ The invariants a contribution must respect, whether typed by a human
 or generated with an assistant. `DEVELOPMENT.md` covers the how;
 this file covers the rules that are easy for an agent to violate.
 
+## Daybreak access
+
+Daybreak access is not required. Do not request Daybreak setup or access,
+and do not treat its absence as a blocker. Continue authorized work using
+local tools, GitHub and available review channels. Existing quality,
+independent review and release gates still apply through those channels.
+
 ## Versioning and branches
 
 - Releases increment strictly by **+0.0.1**, six crates in lockstep

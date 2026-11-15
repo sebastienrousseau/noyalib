@@ -944,11 +944,12 @@ fn borrowed_cost(root: &BorrowedValue<'_>) -> AliasCost {
     tally.finish()
 }
 
-/// Whether `tag` is YAML's core-schema string tag, in any of its
-/// spellings: `!!str`, the verbatim `tag:yaml.org,2002:str`, or the
-/// primary `!str`. Matches the owned loader's `resolve_tagged_scalar`.
+/// Whether `tag` is YAML's core-schema string tag, in either of its
+/// spellings: `!!str` or the verbatim `tag:yaml.org,2002:str`. The
+/// local `!str` is a custom tag (§6.8.2.2). Matches the owned loader's
+/// `resolve_tagged_scalar`.
 fn is_core_string_tag(tag: Option<&(String, String)>) -> bool {
     tag.is_some_and(|(handle, suffix)| {
-        suffix == "str" && (handle == "!!" || handle == "tag:yaml.org,2002:" || handle == "!")
+        suffix == "str" && (handle == "!!" || handle == "tag:yaml.org,2002:")
     })
 }

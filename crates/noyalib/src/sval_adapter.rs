@@ -225,6 +225,7 @@ pub fn to_sval_writer_with_config<'sval, S: sval::Stream<'sval> + ?Sized>(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::prelude::*;
     use crate::value::{Mapping, Number, Sequence};
 
     /// Minimal `sval::Stream` that just records the event

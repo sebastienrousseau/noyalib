@@ -1,0 +1,65 @@
+# SPDX-FileCopyrightText: 2026 Noyalib
+# SPDX-License-Identifier: MIT OR Apache-2.0
+
+name: Ecosystem consumer parity
+
+on:
+  schedule:
+    - cron: '0 4 * * 3'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  parity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          path: noyalib
+          persist-credentials: false
+      - name: Check out the five product repositories
+        run: |
+          set -euo pipefail
+          for repo in noya-cli noyalib-lsp noyalib-mcp noyalib-wasm noyalib-serde-yaml; do
+            git clone --depth 1 --branch main "https://github.com/sebastienrousseau/$repo.git" "$repo"
+          done
+      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8
+        with:
+          toolchain: stable
+          targets: wasm32-unknown-unknown
+      - uses: jetli/wasm-pack-action@0d096b08b4e5a7de8c28de67e11e945404e9eefa
+        with:
+          version: 'v0.15.0'
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - name: Build the checked-out products from their locked dependency graphs
+        run: |
+          set -euo pipefail
+          cargo fetch --locked --manifest-path noyalib/Cargo.toml
+          cargo fetch --locked --manifest-path noyalib-serde-yaml/Cargo.toml
+          for repo in noya-cli noyalib-lsp noyalib-mcp; do
+            cargo build --locked --manifest-path "$repo/Cargo.toml" --bins
+          done
+          (cd noyalib-wasm && wasm-pack build --dev --target nodejs --out-dir pkg-node -- --locked)
+      - name: Execute the same cases through six actual consumers
+        run: |
+          python3 noyalib/scripts/check-ecosystem-parity.py --root "$GITHUB_WORKSPACE" \
+            --cli noya-cli/target/debug/noyafmt \
+            --lsp noyalib-lsp/target/debug/noyalib-lsp \
+            --mcp noyalib-mcp/target/debug/noyalib-mcp \
+            --wasm noyalib-wasm/pkg-node/noyalib_wasm.js \
+            --output "$RUNNER_TEMP/consumer-parity"
+      - name: Retain source and artifact identities and the case results
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: consumer-parity
+          path: |
+            ${{ runner.temp }}/consumer-parity/receipt.json
+            ${{ runner.temp }}/consumer-parity/projection-build.log
+          if-no-files-found: error

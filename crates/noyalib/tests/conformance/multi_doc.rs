@@ -3,7 +3,9 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 // Copyright (c) 2026 Noyalib. All rights reserved.
 
-use noyalib::{Value, load_all, to_string_multi, to_writer_multi};
+#[cfg(feature = "std")]
+use noyalib::to_writer_multi;
+use noyalib::{Value, load_all, to_string_multi};
 
 #[test]
 fn test_to_string_multi() {
@@ -22,6 +24,7 @@ fn test_to_string_multi() {
 }
 
 #[test]
+#[cfg(feature = "std")]
 fn test_to_writer_multi() {
     let docs = vec!["hello", "world"];
     let mut buf = Vec::new();

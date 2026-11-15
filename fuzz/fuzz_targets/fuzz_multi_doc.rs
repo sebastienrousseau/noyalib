@@ -11,7 +11,9 @@
 use libfuzzer_sys::fuzz_target;
 
 fuzz_target!(|data: &[u8]| {
-    let Ok(s) = std::str::from_utf8(data) else { return };
+    let Ok(s) = std::str::from_utf8(data) else {
+        return;
+    };
 
     // Multi-document load — should never panic.
     if let Ok(iter) = noyalib::load_all(s) {

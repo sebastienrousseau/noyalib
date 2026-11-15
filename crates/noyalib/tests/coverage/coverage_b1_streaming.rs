@@ -9,15 +9,9 @@
     non_snake_case
 )]
 
-//! Broad coverage sweep for `crates/noyalib/src/streaming.rs`.
-//!
-//! Drives the streaming deserializer both directly via
-//! [`noyalib::StreamingDeserializer`] and indirectly through
-//! [`noyalib::from_str`] / [`noyalib::from_str_with_config`] (which route
-//! typed non-`Value` targets through `streaming::from_str_streaming`). Each
-//! test exercises a distinct code path: scalar resolution, all scalar styles,
-//! flow/block collections, anchors/aliases, merge keys, tags, enums, bytes,
-//! options, and the parser/security-limit error paths.
+//! Exercise direct `StreamingDeserializer` and routed typed parsing:
+//! scalar styles, collections, anchors, aliases, merges, tags, enums,
+//! bytes, options and parser/security-budget errors.
 
 use std::collections::BTreeMap;
 use std::sync::Arc;

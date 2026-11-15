@@ -1,0 +1,4029 @@
+{
+  "generated_utc": "2026-11-11T18:30:46.616492+00:00",
+  "status": "Verified implementation checkpoint; final hosted CI, sustained fuzz acceptance and release review remain open",
+  "ci_fix_core_source": "0ff5b3c2119ce60a1830b205b6c5c9c466234fad",
+  "oracle_core_source": "266f5844d06ef4df229a83db706b7aa8a1954f27",
+  "last_production_source_change": "6b913fefdfe3d3ee1e3295b431abd10020f9dd64",
+  "satellite_sources": [
+    {
+      "repo": "noya-cli",
+      "commit": "96815b527a08db3519529c59fc07b0dfb1a7c68e",
+      "signature": "G"
+    },
+    {
+      "repo": "noyalib-lsp",
+      "commit": "4e929edf1263242eda757520bb0d2e30cbd698b2",
+      "signature": "G"
+    },
+    {
+      "repo": "noyalib-mcp",
+      "commit": "3771cdf75211fd87dbaee9c894a641789134a52f",
+      "signature": "G"
+    },
+    {
+      "repo": "noyalib-wasm",
+      "commit": "21108cbec40e390e649ff3146551b23b591c50c8",
+      "signature": "G"
+    },
+    {
+      "repo": "noyalib-serde-yaml",
+      "commit": "120f6b251e08359d431587717a4f8d0313486afb",
+      "signature": "G"
+    }
+  ],
+  "registry_resolution_proof": false,
+  "hosted_checkpoints": {
+    "headRefOid": "a57b7198669e41fe3034db4e44f2e274baf96388",
+    "isDraft": false,
+    "statusCheckRollup": [
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-11-11T18:17:39Z",
+        "conclusion": "SKIPPED",
+        "detailsUrl": "https://github.com/sebastienrousseau/noyalib/actions/runs/43076376676/job/130717165148",
+        "name": "Auto-approve patch + minor Dependabot bumps",
+        "startedAt": "2026-11-11T18:17:39Z",
+        "status": "COMPLETED",
+        "workflowName": "Auto-approve Dependabot"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-11-11T18:17:37Z",
+        "conclusion": "SKIPPED",
+        "detailsUrl": "https://github.com/sebastienrousseau/noyalib/actions/runs/43076376700/job/130717216053",
+        "name": "crates.io ownership drift",
+        "startedAt": "2026-11-11T18:17:45Z",
+        "status": "COMPLETED",
+        "workflowName": "crates.io ownership drift"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-11-11T18:19:15Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/sebastienrousseau/noyalib/actions/runs/43076376733/job/130717148703",
+        "name": "Audit all Cargo lockfiles",
+        "startedAt": "2026-11-11T18:19:03Z",
+        "status": "COMPLETED",
+        "workflowName": "Audit all lockfiles"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-11-11T18:21:11Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/sebastienrousseau/noyalib/actions/runs/43076378157/job/130717307099",
+        "name": "Rust CI / Check & Test",
+        "startedAt": "2026-11-11T18:18:13Z",
+        "status": "COMPLETED",
+        "workflowName": "CI"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-11-11T18:18:42Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/sebastienrousseau/noyalib/actions/runs/43076376849/job/130717148498",
+        "name": "sources",
+        "startedAt": "2026-11-11T18:18:34Z",
+        "status": "COMPLETED",
+        "workflowName": "Ecosystem candidate"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-11-11T18:24:01Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/sebastienrousseau/noyalib/actions/runs/43076376675/job/130717148509",
+        "name": "Family scorecard (floor 0.90)",
+        "startedAt": "2026-11-11T18:18:55Z",
+        "status": "COMPLETED",
+        "workflowName": "Ecosystem scorecard"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-11-11T18:20:05Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/sebastienrousseau/noyalib/actions/runs/43076376727/job/130717149112",
+        "name": "Dependency Review",
+        "startedAt": "2026-11-11T18:19:55Z",
+        "status": "COMPLETED",
+        "workflowName": "Security"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-11-11T18:19:01Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/sebastienrousseau/noyalib/actions/runs/43076378157/job/130717307016",
+        "name": "Rust CI / Audit",
+        "startedAt": "2026-11-11T18:18:49Z",
+        "status": "COMPLETED",
+        "workflowName": "CI"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-11-11T18:24:00Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/sebastienrousseau/noyalib/actions/runs/43076376849/job/130717745016",
+        "name": "noya-cli (ubuntu-latest)",
+        "startedAt": "2026-11-11T18:22:30Z",
+        "status": "COMPLETED",
+        "workflowName": "Ecosystem candidate"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-11-11T18:26:33Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/sebastienrousseau/noyalib/actions/runs/43076376727/job/130717149304",
+        "name": "CodeQL",
+        "startedAt": "2026-11-11T18:18:34Z",
+        "status": "COMPLETED",
+        "workflowName": "Security"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-11-11T18:24:10Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/sebastienrousseau/noyalib/actions/runs/43076376849/job/130717744743",
+        "name": "noyalib-lsp (ubuntu-latest)",
+        "startedAt": "2026-11-11T18:22:59Z",
+        "status": "COMPLETED",
+        "workflowName": "Ecosystem candidate"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-11-11T18:24:46Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/sebastienrousseau/noyalib/actions/runs/43076376849/job/130717744944",
+        "name": "noyalib-mcp (ubuntu-latest)",
+        "startedAt": "2026-11-11T18:23:20Z",
+        "status": "COMPLETED",
+        "workflowName": "Ecosystem candidate"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-11-11T18:24:41Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/sebastienrousseau/noyalib/actions/runs/43076376849/job/130717745037",
+        "name": "noyalib-wasm (ubuntu-latest)",
+        "startedAt": "2026-11-11T18:23:39Z",
+        "status": "COMPLETED",
+        "workflowName": "Ecosystem candidate"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-11-11T18:24:50Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/sebastienrousseau/noyalib/actions/runs/43076376849/job/130717744796",
+        "name": "noyalib-serde-yaml (ubuntu-latest)",
+        "startedAt": "2026-11-11T18:23:48Z",
+        "status": "COMPLETED",
+        "workflowName": "Ecosystem candidate"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "0001-01-01T00:00:00Z",
+        "conclusion": "",
+        "detailsUrl": "https://github.com/sebastienrousseau/noyalib/actions/runs/43076376849/job/130717744827",
+        "name": "noya-cli (macos-latest)",
+        "startedAt": "2026-11-11T18:18:43Z",
+        "status": "QUEUED",
+        "workflowName": "Ecosystem candidate"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "0001-01-01T00:00:00Z",
+        "conclusion": "",
+        "detailsUrl": "https://github.com/sebastienrousseau/noyalib/actions/runs/43076376849/job/130717744763",
+        "name": "noyalib-lsp (macos-latest)",
+        "startedAt": "2026-11-11T18:18:43Z",
+        "status": "QUEUED",
+        "workflowName": "Ecosystem candidate"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "0001-01-01T00:00:00Z",
+        "conclusion": "",
+        "detailsUrl": "https://github.com/sebastienrousseau/noyalib/actions/runs/43076376849/job/130717744883",
+        "name": "noyalib-mcp (macos-latest)",
+        "startedAt": "2026-11-11T18:18:43Z",
+        "status": "QUEUED",
+        "workflowName": "Ecosystem candidate"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "0001-01-01T00:00:00Z",
+        "conclusion": "",
+        "detailsUrl": "https://github.com/sebastienrousseau/noyalib/actions/runs/43076376849/job/130717745041",
+        "name": "noyalib-wasm (macos-latest)",
+        "startedAt": "2026-11-11T18:18:43Z",
+        "status": "QUEUED",
+        "workflowName": "Ecosystem candidate"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-11-11T18:26:45Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/sebastienrousseau/noyalib/actions/runs/43076376849/job/130717744913",
+        "name": "noyalib-serde-yaml (macos-latest)",
+        "startedAt": "2026-11-11T18:25:27Z",
+        "status": "COMPLETED",
+        "workflowName": "Ecosystem candidate"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-11-11T18:22:13Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/sebastienrousseau/noyalib/actions/runs/43076376849/job/130717744905",
+        "name": "noya-cli (windows-latest)",
+        "startedAt": "2026-11-11T18:19:40Z",
+        "status": "COMPLETED",
+        "workflowName": "Ecosystem candidate"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-11-11T18:20:53Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/sebastienrousseau/noyalib/actions/runs/43076376849/job/130717744843",
+        "name": "noyalib-lsp (windows-latest)",
+        "startedAt": "2026-11-11T18:19:02Z",
+        "status": "COMPLETED",
+        "workflowName": "Ecosystem candidate"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-11-11T18:23:23Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/sebastienrousseau/noyalib/actions/runs/43076376849/job/130717744800",
+        "name": "noyalib-mcp (windows-latest)",
+        "startedAt": "2026-11-11T18:18:59Z",
+        "status": "COMPLETED",
+        "workflowName": "Ecosystem candidate"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-11-11T18:23:05Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/sebastienrousseau/noyalib/actions/runs/43076376849/job/130717744903",
+        "name": "noyalib-wasm (windows-latest)",
+        "startedAt": "2026-11-11T18:20:54Z",
+        "status": "COMPLETED",
+        "workflowName": "Ecosystem candidate"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-11-11T18:23:12Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/sebastienrousseau/noyalib/actions/runs/43076376849/job/130717744923",
+        "name": "noyalib-serde-yaml (windows-latest)",
+        "startedAt": "2026-11-11T18:21:12Z",
+        "status": "COMPLETED",
+        "workflowName": "Ecosystem candidate"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-11-11T18:17:55Z",
+        "conclusion": "SKIPPED",
+        "detailsUrl": "https://github.com/sebastienrousseau/noyalib/actions/runs/43076378157/job/130717309142",
+        "name": "Rust CI / Coverage",
+        "startedAt": "2026-11-11T18:17:55Z",
+        "status": "COMPLETED",
+        "workflowName": "CI"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-11-11T18:17:37Z",
+        "conclusion": "SKIPPED",
+        "detailsUrl": "https://github.com/sebastienrousseau/noyalib/actions/runs/43076376727/job/130717150931",
+        "name": "Validate historical revision",
+        "startedAt": "2026-11-11T18:17:38Z",
+        "status": "COMPLETED",
+        "workflowName": "Security"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-11-11T18:23:02Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/sebastienrousseau/noyalib/actions/runs/43076376849/job/130717744267",
+        "name": "wasm",
+        "startedAt": "2026-11-11T18:21:43Z",
+        "status": "COMPLETED",
+        "workflowName": "Ecosystem candidate"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-11-11T18:21:11Z",
+        "conclusion": "SKIPPED",
+        "detailsUrl": "https://github.com/sebastienrousseau/noyalib/actions/runs/43076378157/job/130719107308",
+        "name": "Rust CI / Test (${{ matrix.os }})",
+        "startedAt": "2026-11-11T18:21:11Z",
+        "status": "COMPLETED",
+        "workflowName": "CI"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-11-11T18:17:37Z",
+        "conclusion": "SKIPPED",
+        "detailsUrl": "https://github.com/sebastienrousseau/noyalib/actions/runs/43076376727/job/130717151551",
+        "name": "Soak fuzz (${{ matrix.target }})",
+        "startedAt": "2026-11-11T18:17:38Z",
+        "status": "COMPLETED",
+        "workflowName": "Security"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-11-11T18:23:46Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/sebastienrousseau/noyalib/actions/runs/43076376849/job/130717744085",
+        "name": "Six actual consumers",
+        "startedAt": "2026-11-11T18:21:46Z",
+        "status": "COMPLETED",
+        "workflowName": "Ecosystem candidate"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-11-11T18:17:37Z",
+        "conclusion": "SKIPPED",
+        "detailsUrl": "https://github.com/sebastienrousseau/noyalib/actions/runs/43076376727/job/130717151489",
+        "name": "Soak Miri (full suite)",
+        "startedAt": "2026-11-11T18:17:38Z",
+        "status": "COMPLETED",
+        "workflowName": "Security"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-11-11T18:23:49Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/sebastienrousseau/noyalib/actions/runs/43076378157/job/130717307524",
+        "name": "test-matrix / Test (ubuntu-latest, stable)",
+        "startedAt": "2026-11-11T18:20:51Z",
+        "status": "COMPLETED",
+        "workflowName": "CI"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-11-11T18:21:41Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/sebastienrousseau/noyalib/actions/runs/43076378157/job/130717307568",
+        "name": "test-matrix / Test (ubuntu-latest, beta)",
+        "startedAt": "2026-11-11T18:20:01Z",
+        "status": "COMPLETED",
+        "workflowName": "CI"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-11-11T18:22:21Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/sebastienrousseau/noyalib/actions/runs/43076378157/job/130717307635",
+        "name": "test-matrix / Test (ubuntu-latest, nightly)",
+        "startedAt": "2026-11-11T18:20:24Z",
+        "status": "COMPLETED",
+        "workflowName": "CI"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-11-11T18:22:47Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/sebastienrousseau/noyalib/actions/runs/43076378157/job/130717307092",
+        "name": "test-matrix / Test (macos-latest, stable)",
+        "startedAt": "2026-11-11T18:21:39Z",
+        "status": "COMPLETED",
+        "workflowName": "CI"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-11-11T18:25:21Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/sebastienrousseau/noyalib/actions/runs/43076378157/job/130717307805",
+        "name": "test-matrix / Test (macos-latest, beta)",
+        "startedAt": "2026-11-11T18:22:50Z",
+        "status": "COMPLETED",
+        "workflowName": "CI"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-11-11T18:29:35Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/sebastienrousseau/noyalib/actions/runs/43076378157/job/130717307703",
+        "name": "test-matrix / Test (macos-latest, nightly)",
+        "startedAt": "2026-11-11T18:26:47Z",
+        "status": "COMPLETED",
+        "workflowName": "CI"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-11-11T18:23:43Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/sebastienrousseau/noyalib/actions/runs/43076378157/job/130717307653",
+        "name": "test-matrix / Test (windows-latest, stable)",
+        "startedAt": "2026-11-11T18:18:22Z",
+        "status": "COMPLETED",
+        "workflowName": "CI"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-11-11T18:23:41Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/sebastienrousseau/noyalib/actions/runs/43076378157/job/130717307122",
+        "name": "test-matrix / Test (windows-latest, beta)",
+        "startedAt": "2026-11-11T18:18:22Z",
+        "status": "COMPLETED",
+        "workflowName": "CI"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-11-11T18:24:22Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/sebastienrousseau/noyalib/actions/runs/43076378157/job/130717307229",
+        "name": "test-matrix / Test (windows-latest, nightly)",
+        "startedAt": "2026-11-11T18:18:13Z",
+        "status": "COMPLETED",
+        "workflowName": "CI"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "0001-01-01T00:00:00Z",
+        "conclusion": "",
+        "detailsUrl": "https://github.com/sebastienrousseau/noyalib/actions/runs/43076378157/job/130717307421",
+        "name": "miri-focused / Miri (focused, per-PR)",
+        "startedAt": "2026-11-11T18:19:24Z",
+        "status": "IN_PROGRESS",
+        "workflowName": "CI"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-11-11T18:17:37Z",
+        "conclusion": "SKIPPED",
+        "detailsUrl": "https://github.com/sebastienrousseau/noyalib/actions/runs/43076376727/job/130717151905",
+        "name": "Historical commit tests",
+        "startedAt": "2026-11-11T18:17:38Z",
+        "status": "COMPLETED",
+        "workflowName": "Security"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-11-11T18:17:54Z",
+        "conclusion": "SKIPPED",
+        "detailsUrl": "https://github.com/sebastienrousseau/noyalib/actions/runs/43076378157/job/130717364150",
+        "name": "miri-full",
+        "startedAt": "2026-11-11T18:18:01Z",
+        "status": "COMPLETED",
+        "workflowName": "CI"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-11-11T18:17:37Z",
+        "conclusion": "SKIPPED",
+        "detailsUrl": "https://github.com/sebastienrousseau/noyalib/actions/runs/43076376727/job/130717152304",
+        "name": "Record historical test result",
+        "startedAt": "2026-11-11T18:17:38Z",
+        "status": "COMPLETED",
+        "workflowName": "Security"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-11-11T18:19:09Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/sebastienrousseau/noyalib/actions/runs/43076378157/job/130717307046",
+        "name": "cargo-deny / cargo-deny",
+        "startedAt": "2026-11-11T18:18:34Z",
+        "status": "COMPLETED",
+        "workflowName": "CI"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-11-11T18:19:28Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/sebastienrousseau/noyalib/actions/runs/43076378157/job/130717307045",
+        "name": "actionlint / workflow lint (actionlint)",
+        "startedAt": "2026-11-11T18:19:17Z",
+        "status": "COMPLETED",
+        "workflowName": "CI"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-11-11T18:18:54Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/sebastienrousseau/noyalib/actions/runs/43076378157/job/130717307187",
+        "name": "zizmor / workflow audit (zizmor)",
+        "startedAt": "2026-11-11T18:18:44Z",
+        "status": "COMPLETED",
+        "workflowName": "CI"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-11-11T18:19:01Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/sebastienrousseau/noyalib/actions/runs/43076378157/job/130717307855",
+        "name": "single-publisher / single publisher (release.yml only)",
+        "startedAt": "2026-11-11T18:18:56Z",
+        "status": "COMPLETED",
+        "workflowName": "CI"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-11-11T18:18:42Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/sebastienrousseau/noyalib/actions/runs/43076378157/job/130717306989",
+        "name": "Gate-scripts contract",
+        "startedAt": "2026-11-11T18:18:32Z",
+        "status": "COMPLETED",
+        "workflowName": "CI"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-11-11T18:24:31Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/sebastienrousseau/noyalib/actions/runs/43076378157/job/130717307757",
+        "name": "Size gate (declared budgets)",
+        "startedAt": "2026-11-11T18:24:24Z",
+        "status": "COMPLETED",
+        "workflowName": "CI"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-11-11T18:19:01Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/sebastienrousseau/noyalib/actions/runs/43076378157/job/130717306559",
+        "name": "Complexity baseline",
+        "startedAt": "2026-11-11T18:18:25Z",
+        "status": "COMPLETED",
+        "workflowName": "CI"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-11-11T18:19:59Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/sebastienrousseau/noyalib/actions/runs/43076378157/job/130717308028",
+        "name": "docs-lint / markdownlint + codespell",
+        "startedAt": "2026-11-11T18:19:46Z",
+        "status": "COMPLETED",
+        "workflowName": "CI"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-11-11T18:23:53Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/sebastienrousseau/noyalib/actions/runs/43076378157/job/130717308310",
+        "name": "Isolated float consumer (default)",
+        "startedAt": "2026-11-11T18:23:33Z",
+        "status": "COMPLETED",
+        "workflowName": "CI"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-11-11T18:23:31Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/sebastienrousseau/noyalib/actions/runs/43076378157/job/130717307796",
+        "name": "Isolated float consumer (std)",
+        "startedAt": "2026-11-11T18:23:20Z",
+        "status": "COMPLETED",
+        "workflowName": "CI"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-11-11T18:23:19Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/sebastienrousseau/noyalib/actions/runs/43076378157/job/130717307599",
+        "name": "Isolated float consumer (alloc)",
+        "startedAt": "2026-11-11T18:23:06Z",
+        "status": "COMPLETED",
+        "workflowName": "CI"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-11-11T18:24:57Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/sebastienrousseau/noyalib/actions/runs/43076378157/job/130717307590",
+        "name": "Portable YAML behavior (alloc-only, core)",
+        "startedAt": "2026-11-11T18:23:54Z",
+        "status": "COMPLETED",
+        "workflowName": "CI"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-11-11T18:23:49Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/sebastienrousseau/noyalib/actions/runs/43076378157/job/130717307686",
+        "name": "Portable YAML behavior (alloc-only, accelerated)",
+        "startedAt": "2026-11-11T18:23:04Z",
+        "status": "COMPLETED",
+        "workflowName": "CI"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-11-11T18:24:37Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/sebastienrousseau/noyalib/actions/runs/43076378157/job/130717307630",
+        "name": "Portable YAML behavior (alloc-only, portable)",
+        "startedAt": "2026-11-11T18:23:46Z",
+        "status": "COMPLETED",
+        "workflowName": "CI"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-11-11T18:24:43Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/sebastienrousseau/noyalib/actions/runs/43076378157/job/130717307593",
+        "name": "Complete test battery (std disabled)",
+        "startedAt": "2026-11-11T18:23:45Z",
+        "status": "COMPLETED",
+        "workflowName": "CI"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-11-11T18:22:28Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/sebastienrousseau/noyalib/actions/runs/43076378157/job/130717307123",
+        "name": "Schema/CST composition (core std disabled)",
+        "startedAt": "2026-11-11T18:22:12Z",
+        "status": "COMPLETED",
+        "workflowName": "CI"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-11-11T18:20:50Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/sebastienrousseau/noyalib/actions/runs/43076378157/job/130717307738",
+        "name": "fuzz-diff / Differential fuzz (10s smoke)",
+        "startedAt": "2026-11-11T18:19:03Z",
+        "status": "COMPLETED",
+        "workflowName": "CI"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-11-11T18:23:58Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/sebastienrousseau/noyalib/actions/runs/43076378157/job/130717307390",
+        "name": "fuzz-regression",
+        "startedAt": "2026-11-11T18:22:23Z",
+        "status": "COMPLETED",
+        "workflowName": "CI"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-11-11T18:20:03Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/sebastienrousseau/noyalib/actions/runs/43076378157/job/130717307038",
+        "name": "each-feature",
+        "startedAt": "2026-11-11T18:19:13Z",
+        "status": "COMPLETED",
+        "workflowName": "CI"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-11-11T18:24:37Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/sebastienrousseau/noyalib/actions/runs/43076378157/job/130717307755",
+        "name": "cargo-semver-checks",
+        "startedAt": "2026-11-11T18:24:29Z",
+        "status": "COMPLETED",
+        "workflowName": "CI"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-11-11T18:20:28Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/sebastienrousseau/noyalib/actions/runs/43076378157/job/130717307999",
+        "name": "cargo-vet / cargo-vet",
+        "startedAt": "2026-11-11T18:18:56Z",
+        "status": "COMPLETED",
+        "workflowName": "CI"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-11-11T18:19:54Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/sebastienrousseau/noyalib/actions/runs/43076378157/job/130717308317",
+        "name": "cargo-machete / cargo-machete (unused-dep gate)",
+        "startedAt": "2026-11-11T18:19:44Z",
+        "status": "COMPLETED",
+        "workflowName": "CI"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-11-11T18:22:42Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/sebastienrousseau/noyalib/actions/runs/43076378157/job/130717307399",
+        "name": "build.rs contract",
+        "startedAt": "2026-11-11T18:22:38Z",
+        "status": "COMPLETED",
+        "workflowName": "CI"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-11-11T18:19:50Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/sebastienrousseau/noyalib/actions/runs/43076378157/job/130717307857",
+        "name": "reuse-lint / REUSE.software compliance",
+        "startedAt": "2026-11-11T18:19:40Z",
+        "status": "COMPLETED",
+        "workflowName": "CI"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-11-11T18:20:18Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/sebastienrousseau/noyalib/actions/runs/43076378157/job/130717308062",
+        "name": "msrv-core / MSRV (1.89.0) core build",
+        "startedAt": "2026-11-11T18:19:51Z",
+        "status": "COMPLETED",
+        "workflowName": "CI"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-11-11T18:20:41Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/sebastienrousseau/noyalib/actions/runs/43076378157/job/130717307776",
+        "name": "coverage-gate / Coverage gate (≥95%)",
+        "startedAt": "2026-11-11T18:18:56Z",
+        "status": "COMPLETED",
+        "workflowName": "CI"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-11-11T18:20:18Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/sebastienrousseau/noyalib/actions/runs/43076378157/job/130717308002",
+        "name": "vendor-build / vendor + offline build",
+        "startedAt": "2026-11-11T18:19:17Z",
+        "status": "COMPLETED",
+        "workflowName": "CI"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-11-11T18:20:44Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/sebastienrousseau/noyalib/actions/runs/43076378157/job/130717308027",
+        "name": "msrv-per-crate / Per-crate MSRV",
+        "startedAt": "2026-11-11T18:20:30Z",
+        "status": "COMPLETED",
+        "workflowName": "CI"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-11-11T18:20:05Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/sebastienrousseau/noyalib/actions/runs/43076378157/job/130717308457",
+        "name": "no-std / no_std (alloc-only) build",
+        "startedAt": "2026-11-11T18:19:54Z",
+        "status": "COMPLETED",
+        "workflowName": "CI"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-11-11T18:21:23Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/sebastienrousseau/noyalib/actions/runs/43076378157/job/130717308350",
+        "name": "no-std / no_std (wasm32-unknown-unknown bare-metal)",
+        "startedAt": "2026-11-11T18:21:06Z",
+        "status": "COMPLETED",
+        "workflowName": "CI"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-11-11T18:20:58Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/sebastienrousseau/noyalib/actions/runs/43076378157/job/130717308138",
+        "name": "no-std / no_std (thumbv7em-none-eabihf)",
+        "startedAt": "2026-11-11T18:20:43Z",
+        "status": "COMPLETED",
+        "workflowName": "CI"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-11-11T18:19:11Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/sebastienrousseau/noyalib/actions/runs/43076378157/job/130717307788",
+        "name": "no-std / no_std (riscv32imac-unknown-none-elf)",
+        "startedAt": "2026-11-11T18:18:59Z",
+        "status": "COMPLETED",
+        "workflowName": "CI"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-11-11T18:20:21Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/sebastienrousseau/noyalib/actions/runs/43076378157/job/130717307814",
+        "name": "no-std / no_std (aarch64-unknown-none)",
+        "startedAt": "2026-11-11T18:20:05Z",
+        "status": "COMPLETED",
+        "workflowName": "CI"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-11-11T18:24:27Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/sebastienrousseau/noyalib/actions/runs/43076378157/job/130717308118",
+        "name": "wasm32-wasip2 build",
+        "startedAt": "2026-11-11T18:24:00Z",
+        "status": "COMPLETED",
+        "workflowName": "CI"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-11-11T18:26:06Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/sebastienrousseau/noyalib/actions/runs/43076378157/job/130717307226",
+        "name": "Kani proofs (parser budgets)",
+        "startedAt": "2026-11-11T18:22:36Z",
+        "status": "COMPLETED",
+        "workflowName": "CI"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-11-11T18:19:04Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/sebastienrousseau/noyalib/actions/runs/43076378157/job/130717307055",
+        "name": "Default-feature targets typecheck",
+        "startedAt": "2026-11-11T18:18:32Z",
+        "status": "COMPLETED",
+        "workflowName": "CI"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-11-11T18:18:56Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/sebastienrousseau/noyalib/actions/runs/43076378157/job/130717307205",
+        "name": "Documented commands resolve",
+        "startedAt": "2026-11-11T18:18:51Z",
+        "status": "COMPLETED",
+        "workflowName": "CI"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-11-11T18:25:50Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/sebastienrousseau/noyalib/actions/runs/43076378157/job/130717307450",
+        "name": "Installation guides build and run",
+        "startedAt": "2026-11-11T18:24:07Z",
+        "status": "COMPLETED",
+        "workflowName": "CI"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-11-11T18:21:01Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/sebastienrousseau/noyalib/actions/runs/43076378157/job/130717307846",
+        "name": "readme-examples / Markdown examples",
+        "startedAt": "2026-11-11T18:19:56Z",
+        "status": "COMPLETED",
+        "workflowName": "CI"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-11-11T18:19:53Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/sebastienrousseau/noyalib/actions/runs/43076378157/job/130717307845",
+        "name": "docs-strict / rustdoc (strict)",
+        "startedAt": "2026-11-11T18:19:41Z",
+        "status": "COMPLETED",
+        "workflowName": "CI"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-11-11T18:19:38Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/sebastienrousseau/noyalib/actions/runs/43076378157/job/130717307880",
+        "name": "verify-signatures / Verify commit signatures",
+        "startedAt": "2026-11-11T18:19:06Z",
+        "status": "COMPLETED",
+        "workflowName": "CI"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-11-11T18:22:38Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/sebastienrousseau/noyalib/actions/runs/43076378157/job/130717307181",
+        "name": "Run all examples",
+        "startedAt": "2026-11-11T18:19:53Z",
+        "status": "COMPLETED",
+        "workflowName": "CI"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "0001-01-01T00:00:00Z",
+        "conclusion": "",
+        "detailsUrl": "https://github.com/sebastienrousseau/noyalib/actions/runs/43076378157/job/130717307121",
+        "name": "Smoke-run all benches",
+        "startedAt": "2026-11-11T18:20:58Z",
+        "status": "IN_PROGRESS",
+        "workflowName": "CI"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-11-11T18:19:30Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/sebastienrousseau/noyalib/actions/runs/43076378157/job/130717307042",
+        "name": "lossless-u64 (defaults)",
+        "startedAt": "2026-11-11T18:18:33Z",
+        "status": "COMPLETED",
+        "workflowName": "CI"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-11-11T18:25:53Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/sebastienrousseau/noyalib/actions/runs/43076378157/job/130717307712",
+        "name": "lossless-u64 (all-features)",
+        "startedAt": "2026-11-11T18:24:14Z",
+        "status": "COMPLETED",
+        "workflowName": "CI"
+      },
+      {
+        "__typename": "CheckRun",
+        "completedAt": "2026-11-11T18:26:27Z",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/sebastienrousseau/noyalib/runs/130722041955",
+        "name": "CodeQL",
+        "startedAt": "2026-11-11T18:26:23Z",
+        "status": "COMPLETED",
+        "workflowName": ""
+      }
+    ]
+  },
+  "local_checks": {
+    "std_properties_passed": 153,
+    "alloc_oracle_tests_passed": 18,
+    "browser_shutdown_tests_passed": 2,
+    "installed_browser_checks_passed": 21,
+    "strict_clippy_exit_code": 0,
+    "complexity_exit_code": 0,
+    "clean_package_bytes": 1319876,
+    "unchanged_package_ceiling_bytes": 1320000,
+    "hygiene_checks_passed": 30,
+    "satellite_vet_checks_passed": 5,
+    "new_original_fuzz_input_replays_passed": 11,
+    "accounting_unit_tests_passed": 24,
+    "clean_package_source": "11ff333edbb4cc7911f02e59569ce399440238c1",
+    "real_accounting_smoke": {
+      "target": "fuzz_parse",
+      "requested_seconds": 1,
+      "executions": 14,
+      "measured_seconds": 4,
+      "is_sustained_release_evidence": false
+    },
+    "bare_metal_checks_passed": 12,
+    "product_checks_passed": 20,
+    "wasm_node_tests_passed": 31,
+    "actual_consumer_cases_passed": 13,
+    "retained_diff_regressions_passed": 14,
+    "retained_compat_regressions_passed": 14
+  },
+  "fuzz_scope": "Eleven resolved follow-up findings retain original inputs, failing-first tests and sanitizer evidence: eight development-oracle corrections and three production corrections. The new canonical-duplicate typed-key finding is unresolved pending an explicit contract decision. No failed or running campaign counts as sustained acceptance.",
+  "raw_evidence": {
+    "archive": "target/ecosystem-v0.0.61/ci-repair-evidence-2026-11-11.tar.gz",
+    "sha256": "e7d36e2d2ee8571e599d8cb9ea9a9ad7345c4527b2ca9e8b74f7853f196f9f2a",
+    "files": [
+      {
+        "member": "tmp/noyalib-browser-shutdown-red.log",
+        "sha256": "15c6db86cfdccb500d4ce88aa55c970d973a4b583d63c9f666b6645ffeff0e1b"
+      },
+      {
+        "member": "tmp/noyalib-browser-shutdown-green.log",
+        "sha256": "af4e53d7e939c9d0e222f871037a8cdecd836c293e0d284bce183328927e17d8"
+      },
+      {
+        "member": "tmp/noyalib-browser-cleanup-consumer.log",
+        "sha256": "3a515a1ed460ce3562c6ef48d2f9b6cde5aaaf83ada15a5df976a5df2dbef4a4"
+      },
+      {
+        "member": "tmp/noyalib-ci-repair-clippy.log",
+        "sha256": "1fc48b193f0455e38a9b294d66b1e0f18af3780290d00b73c7d1c71f9cd26465"
+      },
+      {
+        "member": "tmp/noyalib-ci-repair-size.log",
+        "sha256": "e92f56603fc7cbbe8417c7f61c697469a22b2013e3c6457953638d2b09ec190d"
+      },
+      {
+        "member": "tmp/noyalib-ci-repair-final-size.log",
+        "sha256": "7d34cdfaab46e688e8be9ace9fbdd374cd2426a66da49e16f1f3a267012b762c"
+      },
+      {
+        "member": "tmp/noyalib-ci-repair-complexity.log",
+        "sha256": "8ff4f89edbb632be8ac015888ceee3987755b2361af04cf8e72595e3dc90af6a"
+      },
+      {
+        "member": "tmp/noyalib-ci-repair-hosted-checks.json",
+        "sha256": "f0fb7249ac639aa8687b076fd372cc2f2bbbfd193688d49274ea5c21cc00421b"
+      },
+      {
+        "member": "tmp/noyalib-ci-repair-satellite-heads.json",
+        "sha256": "fb1b14a9f28b61fe8b8fa6b9eab31d4be8b40d04bf7e0af7bcb17f5b9beda37b"
+      },
+      {
+        "member": "tmp/noyalib-refactor-std-net.log",
+        "sha256": "23b036315ecb4f82099cc995edb877ae9b723f7c975133326e7cc3b9aac9ca98"
+      },
+      {
+        "member": "tmp/noyalib-refactor-alloc-net.log",
+        "sha256": "ae4366e59718a259490df36687638cd56d0c087fed4516eb2df2ecc3d962b0b8"
+      },
+      {
+        "member": "tmp/noyalib-multiline-flow-oracle-red.log",
+        "sha256": "3f6248c1ffb08f2c765ef1e6a587babbe7cb441e31149ff0fe3172e4d9051043"
+      },
+      {
+        "member": "tmp/noyalib-radix-oracle-red.log",
+        "sha256": "46d65706a3f98110e568888de0df5b7418594321c5e29201b8035e942c21bcd3"
+      },
+      {
+        "member": "tmp/noyalib-oracle-followup-properties-green.log",
+        "sha256": "736690c45a3c8b4a32f39971c420efcc71012b7905a6cc0f0d382dca2dd8b928"
+      },
+      {
+        "member": "tmp/noyalib-oracle-followup-alloc-green.log",
+        "sha256": "3220dedbb2af2279d1bffdca134798217276c69c286c1ff4957dc2557500bba9"
+      },
+      {
+        "member": "tmp/noyalib-oracle-followup-compat-replay.log",
+        "sha256": "c6155a10d169dddd4686ab0f81c45cc107b97b9cbf308e3b05907fe25b22fe3c"
+      },
+      {
+        "member": "tmp/noyalib-oracle-followup-diff-replay.log",
+        "sha256": "381acfeb872aa8b96fe538b6eae734517aaabb6b7388c1e6119bc00085eacd1e"
+      },
+      {
+        "member": "tmp/noyalib-oracle-followup-clippy.log",
+        "sha256": "6b4e9a649a94f6f00803b51f3dec82688316fd4b9cd5b2f53e5f3eacca9b7a61"
+      },
+      {
+        "member": "tmp/noyalib-oracle-followup-reuse.log",
+        "sha256": "1f7c034c339451d57181e5ec6f053e97aa2c6a359ef5cef8e2f96bf1f292c42f"
+      },
+      {
+        "member": "noyalib-ci-repair-vet/summary.json",
+        "sha256": "c0c42518858d6150340b25de468cdcf0f18585fa1d59662b81f848748b9fc7c5"
+      },
+      {
+        "member": "noyalib-checkpoint-hygiene-2026-11-11/summary.json",
+        "sha256": "ba0d1ddf201d678d7f61029342ec77115fdb0210f4903468371bc949f711a2c9"
+      },
+      {
+        "member": "noyalib-ci-repair-vet/noya-cli.log",
+        "sha256": "325a71b6fcde051f574153af4124fea7c0d0288bab1ad89ad7a2bdd578375539"
+      },
+      {
+        "member": "noyalib-ci-repair-vet/noyalib-lsp.log",
+        "sha256": "dc88ee8d93181f6c10413b01ab3cf82b122330ab7b53eb1bfc852b41e7bd1e66"
+      },
+      {
+        "member": "noyalib-ci-repair-vet/noyalib-wasm.log",
+        "sha256": "58bc4ade3cd08b63e390d163b02b6e759ab572dc154ff718447c507ca29d1302"
+      },
+      {
+        "member": "noyalib-ci-repair-vet/noyalib-serde-yaml.log",
+        "sha256": "4cedbe460c8c1332d12386959baef819decbd08aacc9d9d5d2ca0afe743692c6"
+      },
+      {
+        "member": "noyalib-ci-repair-vet/noyalib-mcp.log",
+        "sha256": "024c7b28078fbf2e9cebb6edf18dc11c7013c2b66d7612f80066e42b8a571f1c"
+      },
+      {
+        "member": "noyalib-checkpoint-hygiene-2026-11-11/noyalib-versions.log",
+        "sha256": "532cf16bf418b5d0f6f2b7ac4145e2c3fb15a0279f10ff0574eb7ab69932e269"
+      },
+      {
+        "member": "noyalib-checkpoint-hygiene-2026-11-11/noyalib-serde-yaml-fmt.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "member": "noyalib-checkpoint-hygiene-2026-11-11/noyalib-serde-yaml-codespell.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "member": "noyalib-checkpoint-hygiene-2026-11-11/noyalib-mcp-markdownlint.log",
+        "sha256": "d1e88b74e0a0ea6a942b7500ee9e497045dc2aa2e40e316cdbebfe47fd6da6dd"
+      },
+      {
+        "member": "noyalib-checkpoint-hygiene-2026-11-11/noyalib-lsp-fmt.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "member": "noyalib-checkpoint-hygiene-2026-11-11/noyalib-wasm-fmt.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "member": "noyalib-checkpoint-hygiene-2026-11-11/noyalib-mcp-codespell.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "member": "noyalib-checkpoint-hygiene-2026-11-11/noya-cli-markdownlint.log",
+        "sha256": "37e6887244f1a665c42d9d8498874738868ecec2f99804bef3bfefa75b83c5a7"
+      },
+      {
+        "member": "noyalib-checkpoint-hygiene-2026-11-11/noyalib-serde-yaml-markdownlint.log",
+        "sha256": "dbbe55ece1a9a3c6c8725f1c3fe8afedb4c2deb8e9d5e2fc83e25dc58063bceb"
+      },
+      {
+        "member": "noyalib-checkpoint-hygiene-2026-11-11/noyalib-mcp-versions.log",
+        "sha256": "0c207aca55b747d32dced59ffbb1fad667ab31ff8da48c01b833cf88871b49d1"
+      },
+      {
+        "member": "noyalib-checkpoint-hygiene-2026-11-11/noyalib-serde-yaml-reuse.log",
+        "sha256": "c0788a4c19660c18abb9cd40638b5a98404186f206cbc565e36bdc5edee9eedc"
+      },
+      {
+        "member": "noyalib-checkpoint-hygiene-2026-11-11/noyalib-wasm-versions.log",
+        "sha256": "d68e17c4535503833303a3cd096ae8a87c1d54c161d4510926667762d7f70a7f"
+      },
+      {
+        "member": "noyalib-checkpoint-hygiene-2026-11-11/noyalib-lsp-markdownlint.log",
+        "sha256": "f075b2f1764fd32b1b321f68bc7ebd348a882c2c0ffa4caf25146a6c673a338a"
+      },
+      {
+        "member": "noyalib-checkpoint-hygiene-2026-11-11/noya-cli-reuse.log",
+        "sha256": "6ecf7a386914e3ed9d0812b220c060e752f6524d1ea93cac5716cf8368157458"
+      },
+      {
+        "member": "noyalib-checkpoint-hygiene-2026-11-11/noyalib-markdownlint.log",
+        "sha256": "44706b5fc074d1429c1136c9ef4039ab82ea408136aa089bf9654d40f1fd826c"
+      },
+      {
+        "member": "noyalib-checkpoint-hygiene-2026-11-11/noya-cli-versions.log",
+        "sha256": "e3937adce9c1e69d65041fa7f807d9361c52120bd5c6429a9a6d810a0a383198"
+      },
+      {
+        "member": "noyalib-checkpoint-hygiene-2026-11-11/noyalib-wasm-reuse.log",
+        "sha256": "a8edfdd85f631cec75727c4c8866271a339d21cbda672791333e745fa2b8eabf"
+      },
+      {
+        "member": "noyalib-checkpoint-hygiene-2026-11-11/noyalib-lsp-reuse.log",
+        "sha256": "41fe1901ba6af041443f6b5de99afad6d74bd49b5b0b1d8b398c7efac474d881"
+      },
+      {
+        "member": "noyalib-checkpoint-hygiene-2026-11-11/noyalib-serde-yaml-versions.log",
+        "sha256": "2bada1c32f707189df32acc3e5042b298fd96174ff917ca3d041709c8db49f1c"
+      },
+      {
+        "member": "noyalib-checkpoint-hygiene-2026-11-11/noyalib-wasm-codespell.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "member": "noyalib-checkpoint-hygiene-2026-11-11/noyalib-mcp-fmt.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "member": "noyalib-checkpoint-hygiene-2026-11-11/noyalib-reuse.log",
+        "sha256": "b4c3fe0ba691db023fd8b369b6a74cd6dc4ce0a8f328a81fa429f29e2f1b3d4a"
+      },
+      {
+        "member": "noyalib-checkpoint-hygiene-2026-11-11/noyalib-fmt.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "member": "noyalib-checkpoint-hygiene-2026-11-11/noya-cli-codespell.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "member": "noyalib-checkpoint-hygiene-2026-11-11/noyalib-lsp-codespell.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "member": "noyalib-checkpoint-hygiene-2026-11-11/noyalib-mcp-reuse.log",
+        "sha256": "1535237f2dea8426185c31a422878e5ed9169c46fb7be92fd74fae0941d35efd"
+      },
+      {
+        "member": "noyalib-checkpoint-hygiene-2026-11-11/noyalib-codespell.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "member": "noyalib-checkpoint-hygiene-2026-11-11/noyalib-lsp-versions.log",
+        "sha256": "eedf27cb419c9a10801b6a638b03a3aa11256fb70535bfb6e5e42b360c03dd64"
+      },
+      {
+        "member": "noyalib-checkpoint-hygiene-2026-11-11/noya-cli-fmt.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "member": "noyalib-checkpoint-hygiene-2026-11-11/noyalib-wasm-markdownlint.log",
+        "sha256": "a7375a19364beb0638234ca418c983901a83773a0817b1571ce6ad8e06bf14aa"
+      },
+      {
+        "member": "tmp/noyalib-comment-oracle-red.log",
+        "sha256": "dad1d4794c7dad2e06538e6a6a602ef3636373685fbaeb6d6a4d41eb73ca5616"
+      },
+      {
+        "member": "tmp/noyalib-comment-oracle-corrected-red.log",
+        "sha256": "93df2c9ba2dc91613ace7fa66e32f721f57423944125ba772cc513532dde4436"
+      },
+      {
+        "member": "tmp/noyalib-comment-oracle-properties-green.log",
+        "sha256": "eb17565be02ff076e6a71edd4a15693f9653fbeb8d940aac7f54767665ff8703"
+      },
+      {
+        "member": "tmp/noyalib-comment-oracle-properties-final-green.log",
+        "sha256": "622cac6e43a392bcfb29450561787a56d1fe54d6dd7f74cfca2c94d5b67e666c"
+      },
+      {
+        "member": "tmp/noyalib-comment-oracle-alloc-green.log",
+        "sha256": "4abde3378404c2485fa9ddd16a69ae3e38a1203ec133110ccd823ade3144c2b6"
+      },
+      {
+        "member": "tmp/noyalib-comment-oracle-replay.log",
+        "sha256": "eed01d7125c214bd6952ef4edac9c5a5ef12753b376558000f1eadb10d747ed6"
+      },
+      {
+        "member": "tmp/noyalib-comment-oracle-clippy.log",
+        "sha256": "987b444301f6cb51a0875bc010fa844969ac23e63c1b5b03c3f061f373991092"
+      },
+      {
+        "member": "tmp/noyalib-fuzz-receipt-red.log",
+        "sha256": "028a9de890fce0db5477c7da23dc098a3841e82e705ba618b0f55d1af5cb891d"
+      },
+      {
+        "member": "tmp/noyalib-fuzz-receipt-green.log",
+        "sha256": "af55efa5c3ceb122f8184c380aa405d3f3b4e7e0c1e892773d0eff31d0645c8a"
+      },
+      {
+        "member": "tmp/noyalib-fuzz-receipt-real-smoke.log",
+        "sha256": "9acec630b5ce3b3f829d310cf10191b8c9543b1f69261a1f6ea4dbf8a71fbe9f"
+      },
+      {
+        "member": "tmp/noyalib-recovered-fuzz-metrics.json",
+        "sha256": "55d2bb1250d6a07411498768ec238bb3536011d45d12f3f3c2de648cbc8929a9"
+      },
+      {
+        "member": "tmp/noyalib-accounting-satellite-heads.json",
+        "sha256": "35257d770ca8d2b1b67a78c64bf694269c087b7f620511934b642eb0535ec651"
+      },
+      {
+        "member": "tmp/noya-cli-fuzz-accounting-red.log",
+        "sha256": "488e72b8fc532610178ecf82b64708f58cc77d5676a7240443257d680d74a37d"
+      },
+      {
+        "member": "tmp/noya-cli-fuzz-accounting-green.log",
+        "sha256": "b6a161abed43b9a0dba9259cd451b39b20b10425ac13cc14786554c0e6fac7f1"
+      },
+      {
+        "member": "tmp/noyalib-lsp-fuzz-accounting-red.log",
+        "sha256": "e1514f00515a3ca0e1b10869e570561957645f04c8b110309e91218424e1508a"
+      },
+      {
+        "member": "tmp/noyalib-lsp-fuzz-accounting-green.log",
+        "sha256": "feabb4add9e2ca3374e538560634d1ec97dc4f4ce89aab12f3d726e36ea9b2f6"
+      },
+      {
+        "member": "tmp/noyalib-mcp-fuzz-accounting-red.log",
+        "sha256": "399d6eecf621b91dfd961725e63602a314ff99ead543f9cf43ea331aea6294fd"
+      },
+      {
+        "member": "tmp/noyalib-mcp-fuzz-accounting-green.log",
+        "sha256": "feabb4add9e2ca3374e538560634d1ec97dc4f4ce89aab12f3d726e36ea9b2f6"
+      },
+      {
+        "member": "tmp/noyalib-wasm-fuzz-accounting-red.log",
+        "sha256": "172cc354d73fc83423d7b6fc70fd34a6021a18b310276ae92bfc642c30aa1c0a"
+      },
+      {
+        "member": "tmp/noyalib-wasm-fuzz-accounting-green.log",
+        "sha256": "feabb4add9e2ca3374e538560634d1ec97dc4f4ce89aab12f3d726e36ea9b2f6"
+      },
+      {
+        "member": "tmp/noyalib-serde-yaml-fuzz-accounting-red.log",
+        "sha256": "7e2f2cd9eddb1e4c7a67f74c465faa471eed7859ce54a650c058ba0003576a56"
+      },
+      {
+        "member": "tmp/noyalib-serde-yaml-fuzz-accounting-green.log",
+        "sha256": "feabb4add9e2ca3374e538560634d1ec97dc4f4ce89aab12f3d726e36ea9b2f6"
+      },
+      {
+        "member": "noyalib-fuzz-receipt-real-smoke-2026-11-11/receipt.json",
+        "sha256": "df5d9a231637848b0dac432064c455555f3a1919d55c104999b8c6fc6b1b7c06"
+      },
+      {
+        "member": "noyalib-fuzz-receipt-real-smoke-2026-11-11/campaign.log",
+        "sha256": "ba5c689a56f96a689ec0d32891291c42b422e301f50a78f4753eac6e40608ae8"
+      },
+      {
+        "member": "tmp/noyalib-key-expiry-size-after-comments.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "member": "tmp/noyalib-key-expiry-reuse.log",
+        "sha256": "b4c3fe0ba691db023fd8b369b6a74cd6dc4ce0a8f328a81fa429f29e2f1b3d4a"
+      },
+      {
+        "member": "tmp/noyalib-key-expiry-official-size.log",
+        "sha256": "5b338c62d4e2dd76bff8084128a561277be31aa6966a67083d50185cebd7040c"
+      },
+      {
+        "member": "tmp/noyalib-key-expiry-wasm-size.log",
+        "sha256": "c87f03f54a4bc8e4a0d6ed234264efad0a35b49696d86769152e60c7ec0ac14e"
+      },
+      {
+        "member": "tmp/noyalib-key-expiry-wasm-bundler-build.log",
+        "sha256": "9b4ffa91e55c0b2914894bcf6183dc07ae4a60eb7153fbebe369f794d8b7c20a"
+      },
+      {
+        "member": "tmp/noyalib-key-expiry-parity.log",
+        "sha256": "224ab55fdec47c4f5cc7b332ae7e7db7831e3645ca98abf8ed367f81fd10b9dd"
+      },
+      {
+        "member": "tmp/noyalib-key-expiry-baremetal.log",
+        "sha256": "6fe32cba7dbbc2d1f3c905599ee7303ac6ca7ae9dedd74fdb15a962d7ffd7b58"
+      },
+      {
+        "member": "tmp/noyalib-key-expiry-versions.log",
+        "sha256": "532cf16bf418b5d0f6f2b7ac4145e2c3fb15a0279f10ff0574eb7ab69932e269"
+      },
+      {
+        "member": "tmp/noyalib-key-expiry-markdown.log",
+        "sha256": "3888dff75e035e75d3cadc56648656ab3b5c28db73533c2e15170d37292bf7de"
+      },
+      {
+        "member": "tmp/noyalib-key-expiry-wasm-consumer.log",
+        "sha256": "305657b0682fa134b4b2a89e2e4a37cb862a92bcad7f11835ef1e6902a7c9970"
+      },
+      {
+        "member": "tmp/noyalib-key-expiry-clippy.log",
+        "sha256": "57d3db1cc0fc23b9ee03027f04ac96cdccd0b005a943f8de2c1ebaa243537883"
+      },
+      {
+        "member": "tmp/noyalib-key-expiry-wasm-node.log",
+        "sha256": "c5fafa95b2ca17234084db20ac4b7e2ec05cee0d6d3ef243eef357fa713b69bd"
+      },
+      {
+        "member": "tmp/noyalib-key-expiry-wasm-package.log",
+        "sha256": "0208733bc9b287ac8fa390d9342c18dbee51a96b7f7848d9116ab2ba60e2857b"
+      },
+      {
+        "member": "tmp/noyalib-key-expiry-full-portable.log",
+        "sha256": "fb830a6289e5d24085824c3652ef1ab56f5408278b42800415506e74144f974c"
+      },
+      {
+        "member": "tmp/noyalib-key-expiry-full-std.log",
+        "sha256": "696187060992975718de94db9aeb056ab4cc91e3fae57c9a6789caf5b62b4b86"
+      },
+      {
+        "member": "tmp/noyalib-key-expiry-full-alloc.log",
+        "sha256": "660aafb371a916df4f7cc89349ef62caf655fc577a564f034c0d9060300a20dd"
+      },
+      {
+        "member": "tmp/noyalib-key-expiry-complexity.log",
+        "sha256": "8ff4f89edbb632be8ac015888ceee3987755b2361af04cf8e72595e3dc90af6a"
+      },
+      {
+        "member": "tmp/noyalib-key-expiry-wasm-node-build.log",
+        "sha256": "d002b6e6b0a2208d3272a46a51b2ab26b4e54a997233832077a9e68ba18a41ab"
+      },
+      {
+        "member": "tmp/noyalib-key-expiry-size-probe.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "member": "tmp/noyalib-key-expiry-wasm-prepare.log",
+        "sha256": "a1193d5fcebe209255dd6ceb395bb0db5642abb2e52112e3ed0e04f5bc6a7b03"
+      },
+      {
+        "member": "tmp/noyalib-key-expiry-family-hygiene.log",
+        "sha256": "ea37de37403fe383da26ff19945b79108c262c7262f3310df39eaa019676b91e"
+      },
+      {
+        "member": "tmp/noyalib-mapping-indent-all-paths-red-2.log",
+        "sha256": "84d3d3c8c946acb57912d07b493c75ff1cb035f5a3db625a90a00429dc2f76f5"
+      },
+      {
+        "member": "tmp/noyalib-mapping-indent-all-paths-red-1.log",
+        "sha256": "36626d20f7928e0cc178de380c199f36af3cf92da47b16799115bed7cf2235f3"
+      },
+      {
+        "member": "tmp/noyalib-mapping-indent-red.log",
+        "sha256": "508abd9c3d09af20dde4a50e1efb5cb18664308780aa72c6bf7c55dfb620b1e3"
+      },
+      {
+        "member": "tmp/noyalib-mapping-indent-green.log",
+        "sha256": "825d4e8ee6d5d0c941e44ad464934784b891e00bd6cb1381003bccf7243f10a9"
+      },
+      {
+        "member": "tmp/noyalib-mapping-indent-sanitizer.log",
+        "sha256": "ce1eb2da52eafda9547cdbe169beaafb720fa80f3cb209862832832f2c0cd093"
+      },
+      {
+        "member": "tmp/noyalib-flow-value-oracle-replay.log",
+        "sha256": "44003820b94fb908a8f9f63bd6028a25aaddd111568e422588735e7399db8d69"
+      },
+      {
+        "member": "tmp/noyalib-flow-value-compat-replay.log",
+        "sha256": "ffc836bfcc27e56b52cd72f9ba7ab9aa39676415fa1f20b2105ec800850164c7"
+      },
+      {
+        "member": "tmp/noyalib-flow-separation-oracle-alloc-green.log",
+        "sha256": "7b3e93772a43b2dcd7adb110455f602fe4313c8c5e100b8662490885ee809aab"
+      },
+      {
+        "member": "tmp/noyalib-flow-separation-fuzz_serde_yaml_compat-replay.log",
+        "sha256": "4aa48e2307651d09d7a73c1236a04f2d1511e5ccc60ce6245878287e78bcaa48"
+      },
+      {
+        "member": "tmp/noyalib-flow-separation-fuzz_diff-replay.log",
+        "sha256": "b7bcac44fc9f5a7f52d063a9d869fc137e5afd75c1ba29a5e2d9e56627d51c83"
+      },
+      {
+        "member": "tmp/noyalib-flow-separation-oracle-reuse.log",
+        "sha256": "9723ee2ee688ed8ba8b977a3764cc7f701787c0d2606f730438e8071f9c5f994"
+      },
+      {
+        "member": "tmp/noyalib-flow-separation-oracle-red.log",
+        "sha256": "0a181b8b107b2b9ca9d13a895053966c4542e5416719761a34ff18745f348e3e"
+      },
+      {
+        "member": "tmp/noyalib-flow-separation-oracle-clippy.log",
+        "sha256": "92b8277f341c2934622b9d71570383e182a516f70669f3477dacc8ff65ad2d7f"
+      },
+      {
+        "member": "tmp/noyalib-flow-separation-oracle-complexity.log",
+        "sha256": "8ff4f89edbb632be8ac015888ceee3987755b2361af04cf8e72595e3dc90af6a"
+      },
+      {
+        "member": "tmp/noyalib-flow-separation-oracle-properties-green.log",
+        "sha256": "61958b69773718140dc00f9c786c7e7f4f8281fcd7e123538fcb328cf53dc8a8"
+      },
+      {
+        "member": "tmp/noyalib-final-fuzz_diff-all-regressions.log",
+        "sha256": "fec4f46574f888ce2cba33a20b6ab82d9555a1f19b1af1aaec77abdd30d8cf9b"
+      },
+      {
+        "member": "tmp/noyalib-final-fuzz_serde_yaml_compat-all-regressions.log",
+        "sha256": "e54f0510e2eae0674b0042e52f2b338f345de8472531f370e4e11c325691767e"
+      },
+      {
+        "member": "tmp/noyalib-final-oracle-official-size.log",
+        "sha256": "bd110bd7f602fef7ea7ba3da1499cf31db8dbbb66ac863d9313bc3f7c3f79920"
+      },
+      {
+        "member": "noyalib-key-expiry-baremetal/1.89.0-portable-riscv32imac-unknown-none-elf.log",
+        "sha256": "def8f7c9531c7c10a08136c4f2368cb347d23b85a6676a7217555726b62dbe30"
+      },
+      {
+        "member": "noyalib-key-expiry-baremetal/1.89.0-baseline-riscv32imac-unknown-none-elf.log",
+        "sha256": "723effeee4732bd00ca139ac2965feb69ae9fd7b93e04404267311f0b02d3d39"
+      },
+      {
+        "member": "noyalib-key-expiry-baremetal/stable-baseline-thumbv7em-none-eabihf.log",
+        "sha256": "0c82dc817226d977216c1fb13176bf788ae997d094f5fdb513d400f48f5b0ebf"
+      },
+      {
+        "member": "noyalib-key-expiry-baremetal/1.89.0-baseline-aarch64-unknown-none.log",
+        "sha256": "40d3790f5710e8a3fddb808b8b0e1b431cce7387507d3a11149b0fa9ba9c9e6f"
+      },
+      {
+        "member": "noyalib-key-expiry-baremetal/stable-baseline-riscv32imac-unknown-none-elf.log",
+        "sha256": "a1927ee30d3c7c40e2c1379c68cb620f31286adf1a531ac689d83bb89a52e49d"
+      },
+      {
+        "member": "noyalib-key-expiry-baremetal/1.89.0-portable-thumbv7em-none-eabihf.log",
+        "sha256": "ee7c947631e5a971e9bbdd58d3feccb3d10d131721e86bf1b7dcab08a59c15b8"
+      },
+      {
+        "member": "noyalib-key-expiry-baremetal/stable-portable-riscv32imac-unknown-none-elf.log",
+        "sha256": "b4247fe16001252f06ef8d8b040d1915b809b71cf1804850788c6dbc1fd9271f"
+      },
+      {
+        "member": "noyalib-key-expiry-baremetal/stable-portable-aarch64-unknown-none.log",
+        "sha256": "599e5300f776abdd043f3eb1a99f9f83552cf5ffaeb09c3e02c20e0d4180bbfc"
+      },
+      {
+        "member": "noyalib-key-expiry-baremetal/stable-portable-thumbv7em-none-eabihf.log",
+        "sha256": "32965585ebad1d5a43b089a7459248157d589e2b9905b35916e857dc102569cd"
+      },
+      {
+        "member": "noyalib-key-expiry-baremetal/stable-baseline-aarch64-unknown-none.log",
+        "sha256": "6b0c1acc430e17721bf50fccbd4f87bc69a109b66a2338c0654465a4688a9bab"
+      },
+      {
+        "member": "noyalib-key-expiry-baremetal/1.89.0-portable-aarch64-unknown-none.log",
+        "sha256": "c28406de8b0c416dc9b0feeb9ff3b53fda78dfaa9ec33650f63160e7fd2205fe"
+      },
+      {
+        "member": "noyalib-key-expiry-baremetal/1.89.0-baseline-thumbv7em-none-eabihf.log",
+        "sha256": "cd66c3f661f72daaaaa676df6a185c0742f281c02a4f92dbec0be189aa4eb21d"
+      },
+      {
+        "member": "noyalib-key-expiry-baremetal/summary.json",
+        "sha256": "c1adec0a803a6170fe8f3ada24e6e73773dcb9b65e74a9421721bfe985fce1af"
+      },
+      {
+        "member": "noyalib-key-expiry-products/noyalib-serde-yaml-vet.log",
+        "sha256": "4cedbe460c8c1332d12386959baef819decbd08aacc9d9d5d2ca0afe743692c6"
+      },
+      {
+        "member": "noyalib-key-expiry-products/noyalib-lsp-vet.log",
+        "sha256": "dc88ee8d93181f6c10413b01ab3cf82b122330ab7b53eb1bfc852b41e7bd1e66"
+      },
+      {
+        "member": "noyalib-key-expiry-products/noyalib-wasm-vet.log",
+        "sha256": "58bc4ade3cd08b63e390d163b02b6e759ab572dc154ff718447c507ca29d1302"
+      },
+      {
+        "member": "noyalib-key-expiry-products/noyalib-serde-yaml-docs.log",
+        "sha256": "eb2ae69947c27501841e4b2dce7081b34e89256af4ceeec9206abbb72d4ed643"
+      },
+      {
+        "member": "noyalib-key-expiry-products/noyalib-mcp-clippy.log",
+        "sha256": "e1b9dd82833f634e05de5071bdb98196abdec746fccaf8580c01d0ef8125f5fd"
+      },
+      {
+        "member": "noyalib-key-expiry-products/noyalib-mcp-tests.log",
+        "sha256": "813b19d8d2e8cd5c2ab4f116264a59bbc781fe980226700dc1d827b6b2bb9f12"
+      },
+      {
+        "member": "noyalib-key-expiry-products/noya-cli-clippy.log",
+        "sha256": "d4bd7d698ecdf3b7691f40595d52ba9066b1cd896b8c94b062d5d74be7c10ee1"
+      },
+      {
+        "member": "noyalib-key-expiry-products/noyalib-lsp-clippy.log",
+        "sha256": "6a5cd81cebe491d280a42a717c2ddf865da25ecfb166c02fb8cb0fffec62053b"
+      },
+      {
+        "member": "noyalib-key-expiry-products/noya-cli-docs.log",
+        "sha256": "e9c6c8db54d222eb5a210c76a010962ec234a0f48e26ee034604aa4125eeca6b"
+      },
+      {
+        "member": "noyalib-key-expiry-products/noyalib-lsp-tests.log",
+        "sha256": "7caa06e406c3d51b63546d495bb3df3aa294e50abb5a4c9a5f6c965aaa542602"
+      },
+      {
+        "member": "noyalib-key-expiry-products/noyalib-wasm-tests.log",
+        "sha256": "53a6270cebe8a529c9d758cd96cd864d64a8610954b6e23647742f39d8fb64d8"
+      },
+      {
+        "member": "noyalib-key-expiry-products/noyalib-wasm-docs.log",
+        "sha256": "4b7ae4e1eee589c95041276e83d7ab420aeb4c5b550d1100ffd4adda72fad54d"
+      },
+      {
+        "member": "noyalib-key-expiry-products/noyalib-mcp-docs.log",
+        "sha256": "cc31e6232ac87030aa2cd766a88dbc922073a800571783df444d025709a75d85"
+      },
+      {
+        "member": "noyalib-key-expiry-products/noya-cli-tests.log",
+        "sha256": "eac97e7aaf3641054ac881a590dca48b467c3c2243aeef70bd00b234808551ae"
+      },
+      {
+        "member": "noyalib-key-expiry-products/noyalib-serde-yaml-clippy.log",
+        "sha256": "a3890c98707bf5d0c8650326f102e1ad59fa473a8bdd5a6c91dc39454e5e147d"
+      },
+      {
+        "member": "noyalib-key-expiry-products/noyalib-mcp-vet.log",
+        "sha256": "024c7b28078fbf2e9cebb6edf18dc11c7013c2b66d7612f80066e42b8a571f1c"
+      },
+      {
+        "member": "noyalib-key-expiry-products/noyalib-serde-yaml-tests.log",
+        "sha256": "cff7919e8c580e6d7cd2711e42bec713fc70a871f0061b99b4cb59d40f25486a"
+      },
+      {
+        "member": "noyalib-key-expiry-products/noyalib-wasm-clippy.log",
+        "sha256": "88ba4247668ae4039061bbc2ca5f8503eef828d1f030c1c4e5f9d97ca88b8fba"
+      },
+      {
+        "member": "noyalib-key-expiry-products/noyalib-lsp-docs.log",
+        "sha256": "51b6e5d0e75480af796f928cc48a6c64477a5d6dc7ed3cd80b8c9406f2a4ddcb"
+      },
+      {
+        "member": "noyalib-key-expiry-products/noya-cli-vet.log",
+        "sha256": "325a71b6fcde051f574153af4124fea7c0d0288bab1ad89ad7a2bdd578375539"
+      },
+      {
+        "member": "noyalib-key-expiry-products/summary.json",
+        "sha256": "debd25709369b8669399599abd338eab111ef28d969bd54fa5c4ca78325469d3"
+      },
+      {
+        "member": "noyalib-key-expiry-parity/receipt.json",
+        "sha256": "9f91d220de78475e75f5f7a289be6728867a42a671b6edcf647ba5aad318c0ce"
+      },
+      {
+        "member": "noyalib-key-expiry-parity/projection-build.log",
+        "sha256": "6397eadb4c43c239c26174de4b64161775a7ec5d4740915f056b616277ba9753"
+      },
+      {
+        "member": "tmp/noyalib-key-expiry-satellite-heads.json",
+        "sha256": "2939b9cf95e07f02c7797984956f92269ac034c322a7b60555511232465abd33"
+      },
+      {
+        "member": "tmp/noyalib-ci-evidence-campaign-status.json",
+        "sha256": "3e92f3984877232981f34e1c8d62c8634ed5780a4035b0641bc6cd77d52f21d6"
+      },
+      {
+        "member": "tmp/noyalib-key-expiry-mcp-inspector.json",
+        "sha256": "21b01ae3aaea7da52054ec65114a80769dc8ce4f036dc0c0bea0b961558ed567"
+      },
+      {
+        "member": "key-expiry-oracles/fuzz_diff/receipt.json",
+        "sha256": "c23e9a7eb312bd9deaaafce59c22400bf30aeb68a2669038cea343951765c003"
+      },
+      {
+        "member": "key-expiry-oracles/fuzz_diff/campaign.log",
+        "sha256": "cf2dd3cbec86399131d7b688323049435c708e0df46cf458a1b768beca8107b9"
+      },
+      {
+        "member": "key-expiry-oracles/fuzz_serde_yaml_compat/receipt.json",
+        "sha256": "d9e390abeccba437fcdaaac4f6bfa374b3814febd83b1e455e9cd2013f223bd7"
+      },
+      {
+        "member": "key-expiry-oracles/fuzz_serde_yaml_compat/campaign.log",
+        "sha256": "eaa43c19e75d5f6e167dc6d5b407a553e6863514a0a5b27ca49425ed4196b9ff"
+      },
+      {
+        "member": "tmp/noyalib-key-separation-wasm-consumer.log",
+        "sha256": "6a9aa83b094f5f6135567249832d80650fde7ce5846622544b4948575cd52399"
+      },
+      {
+        "member": "tmp/noyalib-key-separation-satellite-commits.log",
+        "sha256": "9af476dc6eb0c2e9499662db8cc218df7a8100523f2dfc0a8fc14bd289130b8d"
+      },
+      {
+        "member": "tmp/noyalib-key-separation-build-noyalib-mcp.log",
+        "sha256": "2cdbcb69723e50b2375d03336bce8176e4095074c0c8e640a7df11d5e5724f8f"
+      },
+      {
+        "member": "tmp/noyalib-key-separation-parity.log",
+        "sha256": "5ee388557f57c19b7fbe9910d4f12accdf75b2b5bece730dc875f89b1a27afce"
+      },
+      {
+        "member": "tmp/noyalib-key-separation-precommit-0.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "member": "tmp/noyalib-key-separation-full-portable.log",
+        "sha256": "a4a26e2dc0378180b6a7bf8a7d8d7eeb4687848a8a78c13411b4d09bd70ec825"
+      },
+      {
+        "member": "tmp/noyalib-key-separation-precommit-1.log",
+        "sha256": "11b7a7132f05673112b04c8d034f4baf8d750694c6d4c3682d4e8c2c2a0f00d6"
+      },
+      {
+        "member": "tmp/noyalib-key-separation-build-noya-cli.log",
+        "sha256": "6aec1edec8dc7549de4841db5d2f8c3dfad28c69fa5b8ea2785f63f3c41fb1e9"
+      },
+      {
+        "member": "tmp/noyalib-key-separation-precommit-3.log",
+        "sha256": "532cf16bf418b5d0f6f2b7ac4145e2c3fb15a0279f10ff0574eb7ab69932e269"
+      },
+      {
+        "member": "tmp/noyalib-key-separation-precommit-2.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "member": "tmp/noyalib-key-separation-wasm-node-build.log",
+        "sha256": "d5cb9263752de9e606f2032a3058b0e8711fa33cd2147b32cba58931340368b8"
+      },
+      {
+        "member": "tmp/noyalib-key-separation-wasm-node.log",
+        "sha256": "c32f8ce1f44fb3f024a7c7df088ce09b89a4c66773c031b5158946f0f13a5875"
+      },
+      {
+        "member": "tmp/noyalib-key-separation-wasm-retry.log",
+        "sha256": "469ec2b0e2ff4a80d0c631a7a6b3a1649484593d821d9597fabd85b8edfef858"
+      },
+      {
+        "member": "tmp/noyalib-key-separation-wasm-node-retry.log",
+        "sha256": "b097120ffe2637f6183b1136fa05d00244dfc4ea5a356b4ca0a4e4f90c6b5c41"
+      },
+      {
+        "member": "tmp/noyalib-key-separation-products.log",
+        "sha256": "e2331bf33af46be62d4767f47b4b0568eb17b49dcc8b56d8536db209237fe4c7"
+      },
+      {
+        "member": "tmp/noyalib-key-separation-vet.log",
+        "sha256": "7338388222867426eafa9265115a0de311ed506e37d6ccf9326cb5a8bdbc0504"
+      },
+      {
+        "member": "tmp/noyalib-key-separation-red.log",
+        "sha256": "052b5797aa4fd31f0b555dac8098f722e2ad7488f21090cb230fb2a83c74b771"
+      },
+      {
+        "member": "tmp/noyalib-key-separation-family-hygiene.log",
+        "sha256": "8018ee4a1dea6086eb266814f1a79d5177c5604019f6ff8b319eeedc91c12914"
+      },
+      {
+        "member": "tmp/noyalib-key-separation-wasm-bundler-build.log",
+        "sha256": "c7c1a3d8d6da24347c646705cd3e377ed48485319e3467ae2d671efbd0c75669"
+      },
+      {
+        "member": "tmp/noyalib-key-separation-full-std.log",
+        "sha256": "35fce313d0f30cefed7baaecc4d1552fd7a328c2403aefb29e827dda43057650"
+      },
+      {
+        "member": "tmp/noyalib-key-separation-baremetal.log",
+        "sha256": "6fe32cba7dbbc2d1f3c905599ee7303ac6ca7ae9dedd74fdb15a962d7ffd7b58"
+      },
+      {
+        "member": "tmp/noyalib-key-separation-accounting.log",
+        "sha256": "e6ec182765cd965f2837d8eeaef5a64af48a104f245cd1a0b7281559194c57c1"
+      },
+      {
+        "member": "tmp/noyalib-key-separation-all-red-1.log",
+        "sha256": "6d9d187d82ce0fa5a1c8e231bb969664d0e2209e575bbc848f7d88001ccc6e07"
+      },
+      {
+        "member": "tmp/noyalib-key-separation-build-bins.log",
+        "sha256": "39b052267f85eac8732827b4807651343173f631d2ccc69893a37a005136588b"
+      },
+      {
+        "member": "tmp/noyalib-key-separation-clippy.log",
+        "sha256": "98215a087e68497ff198c050a4ad29ab42e05d4f7e1a9ccc81ec4dec4ef729de"
+      },
+      {
+        "member": "tmp/noyalib-key-separation-doctests.log",
+        "sha256": "6ba9f6de386b06aab7f27c04298b73a8c8bd2d02b7115acb961f66fee48c5e49"
+      },
+      {
+        "member": "tmp/noyalib-key-separation-all-red-2.log",
+        "sha256": "7a56f2e976b389fc865423b810586f375622123dc0ec85eb15544460ffb6e8a7"
+      },
+      {
+        "member": "tmp/noyalib-key-separation-wasm-package.log",
+        "sha256": "0208733bc9b287ac8fa390d9342c18dbee51a96b7f7848d9116ab2ba60e2857b"
+      },
+      {
+        "member": "tmp/noyalib-key-separation-full-alloc.log",
+        "sha256": "7020a26f6ab6bf1d0bebb99739a8baaa595c852f7dd11414a7e3ade261a84a0c"
+      },
+      {
+        "member": "tmp/noyalib-key-separation-official-size.log",
+        "sha256": "c5450721915d6e10c9d8917b825fc295a20f833d9949597bd588c327ec085380"
+      },
+      {
+        "member": "tmp/noyalib-key-separation-markdown.log",
+        "sha256": "8c1ec81e713240869eef866f9407f734d00f1699a0e0fa83b39c935a551f4198"
+      },
+      {
+        "member": "tmp/noyalib-key-separation-size-probe-2.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "member": "tmp/noyalib-key-separation-wasm.log",
+        "sha256": "7a403d2a55b542fc69b800b1ba308d6d7bb0cfbc27aff9981fd3c5451dce9656"
+      },
+      {
+        "member": "tmp/noyalib-key-separation-complexity.log",
+        "sha256": "8ff4f89edbb632be8ac015888ceee3987755b2361af04cf8e72595e3dc90af6a"
+      },
+      {
+        "member": "tmp/noyalib-key-separation-green.log",
+        "sha256": "b8ee6ca0f566c81dde59c1945dfac0341bcd2eeba6896f094147db9e260651aa"
+      },
+      {
+        "member": "tmp/noyalib-key-separation-build-noyalib-lsp.log",
+        "sha256": "d7d7dc8fbfe9ea5e22516fb4bdcd3a7b946e41cf93656401445d12451ca0635a"
+      },
+      {
+        "member": "tmp/noyalib-key-separation-wasm-node-build-retry.log",
+        "sha256": "7b42c45dabf2bdc99145d1374dc236ba18602094e4d392292ba80080371b1830"
+      },
+      {
+        "member": "tmp/noyalib-key-separation-wasm-prepare.log",
+        "sha256": "a1193d5fcebe209255dd6ceb395bb0db5642abb2e52112e3ed0e04f5bc6a7b03"
+      },
+      {
+        "member": "tmp/noyalib-key-separation-sanitizer.log",
+        "sha256": "093400d11ab427124058d0c1ff07c13d9863f89b7a0a799f9a8a186d366e4d2d"
+      },
+      {
+        "member": "tmp/noyalib-key-separation-size-probe.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "member": "tmp/noyalib-key-separation-candidate.log",
+        "sha256": "0e29c00ab9cb6365f952057c6036dfe4e63dc6053214c246d511925f3c2631fb"
+      },
+      {
+        "member": "tmp/noyalib-key-separation-wasm-size.log",
+        "sha256": "def482bf12e5154fb80663ae8a3256bd6f90b0d793a8cdef04b64ec60f2890c9"
+      },
+      {
+        "member": "tmp/noyalib-plain-tab-full-std.log",
+        "sha256": "fd9ca91c155b1f7c85f36060157d121162da3d2fd3eaa15b1f0f95482151867f"
+      },
+      {
+        "member": "tmp/noyalib-plain-tab-official-size.log",
+        "sha256": "8458d73080ff8426fc9f6e1701bf03ae5d9d8d7b1655891c59cf89f4afd1bd4f"
+      },
+      {
+        "member": "tmp/noyalib-plain-tab-final-size-probe.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "member": "tmp/noyalib-plain-tab-vet.log",
+        "sha256": "985c89fc440d403ababbcb42b925eac07e8a063e856a8c0a85cec51778c83e1d"
+      },
+      {
+        "member": "tmp/noyalib-plain-tab-core-gates.log",
+        "sha256": "23a0c8c4a4000a6f9da31eacafb2de78ad0dbe963754e59760e74bf2f5ce532a"
+      },
+      {
+        "member": "tmp/noyalib-plain-tab-wasm-prepare.log",
+        "sha256": "a1193d5fcebe209255dd6ceb395bb0db5642abb2e52112e3ed0e04f5bc6a7b03"
+      },
+      {
+        "member": "tmp/noyalib-plain-tab-indent-green.log",
+        "sha256": "8e552fad075319d8a54db3f159f7c2368c25adfc3c81b5ca291d86804f752f81"
+      },
+      {
+        "member": "tmp/noyalib-plain-tab-products.log",
+        "sha256": "104209330cbdcedde2d250a3610597d1e96c76b899e5f081b6f3b1e2f7a5a903"
+      },
+      {
+        "member": "tmp/noyalib-plain-tab-complexity.log",
+        "sha256": "8ff4f89edbb632be8ac015888ceee3987755b2361af04cf8e72595e3dc90af6a"
+      },
+      {
+        "member": "tmp/noyalib-plain-tab-size-probe.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "member": "tmp/noyalib-plain-tab-formatter-red.log",
+        "sha256": "b60dec7fa48539be74e797c8a448e7a1a48091a7cdc57181050c115bbbddded8"
+      },
+      {
+        "member": "tmp/noyalib-plain-tab-final-core-gates.log",
+        "sha256": "822631a55347f49029a2e40cf2287d04b993275197f3721a5cb431feafaa77d7"
+      },
+      {
+        "member": "tmp/noyalib-plain-tab-formatter-green.log",
+        "sha256": "125ea96bca3b01e7b026fd960324de9683f8e000d2ce3cf9914942e592f1ac66"
+      },
+      {
+        "member": "tmp/noyalib-plain-tab-final-complexity.log",
+        "sha256": "8ff4f89edbb632be8ac015888ceee3987755b2361af04cf8e72595e3dc90af6a"
+      },
+      {
+        "member": "tmp/noyalib-plain-tab-wasm-package.log",
+        "sha256": "0208733bc9b287ac8fa390d9342c18dbee51a96b7f7848d9116ab2ba60e2857b"
+      },
+      {
+        "member": "tmp/noyalib-plain-tab-parity.log",
+        "sha256": "f32f62b64e3e6d38496c01792d6b62dbb67ddcff71b8c3460d28b7a903aac26e"
+      },
+      {
+        "member": "tmp/noyalib-plain-tab-wasm-node-build-retry.log",
+        "sha256": "0ebc8aab67d97d5dbff955e293a7fceba8a50652981a8fc077de5852be8e2bf8"
+      },
+      {
+        "member": "tmp/noyalib-plain-tab-size-probe-2.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "member": "tmp/noyalib-plain-tab-final-full-alloc.log",
+        "sha256": "158fc94cc6bf04945bfc650d0c2c9ee01a48618f98f4db2a5f3feccb83e4734c"
+      },
+      {
+        "member": "tmp/noyalib-plain-tab-final-full-std.log",
+        "sha256": "32ea8e3b6f4143c0a07dbf93df7745ae70cf773360c4245528243303dd986e0b"
+      },
+      {
+        "member": "tmp/noyalib-plain-tab-fuzz-replays.log",
+        "sha256": "7c0c4127131d269b3f435d2f9075d4f500585b8ddd279566d948234d5d83501a"
+      },
+      {
+        "member": "tmp/noyalib-plain-tab-full-alloc.log",
+        "sha256": "2cb98fb25ea9b71d243edfcb513d66b46ec8d109d01cf4ed96e94322c9694998"
+      },
+      {
+        "member": "tmp/noyalib-plain-tab-full-portable.log",
+        "sha256": "f1374f3203d8e90e4d631e892f094116706eeebcbf8d40b6ccf2d6949075d953"
+      },
+      {
+        "member": "tmp/noyalib-plain-tab-final-full-portable.log",
+        "sha256": "56e2f4a3e70b45ae0756e661a75e7c7dab3f116748069459cf968433177d720f"
+      },
+      {
+        "member": "tmp/noyalib-plain-tab-baremetal.log",
+        "sha256": "6fe32cba7dbbc2d1f3c905599ee7303ac6ca7ae9dedd74fdb15a962d7ffd7b58"
+      },
+      {
+        "member": "tmp/noyalib-plain-tab-final-doctests.log",
+        "sha256": "11904fbd8a7033a19e38c013a27662e992567510cc6e1c409ea122d5f99eeddf"
+      },
+      {
+        "member": "tmp/noyalib-plain-tab-family-hygiene.log",
+        "sha256": "8876aa157287f634b745d6140f46253a7bf83288fd449b6e9cdeae096325f82c"
+      },
+      {
+        "member": "tmp/noyalib-plain-tab-wasm-consumer.log",
+        "sha256": "db43f77efeb7908f6198dd79e5faa9f2304c380e5996ce546507181b5718088e"
+      },
+      {
+        "member": "tmp/noyalib-plain-tab-final-fuzz_serde_yaml_compat-replays.log",
+        "sha256": "b76d828fef82bb4113ad89035a1127f46b024326945b00afb89a58497c344e1f"
+      },
+      {
+        "member": "tmp/noyalib-plain-tab-indent-red.log",
+        "sha256": "aa94939d535bc453d3f656ac041c5e464d140c6fe03a51a0004a7e46b28f9e67"
+      },
+      {
+        "member": "tmp/noyalib-plain-tab-final-clippy.log",
+        "sha256": "ddc185a9901ce20a020155858654d6b1a82a9a278fada6e3326c265f8e694120"
+      },
+      {
+        "member": "tmp/noyalib-plain-tab-wasm-node-retry.log",
+        "sha256": "04c50e329747904ea10f5d2435ae8f4c03231ecde2f6ec4d738d3f174b22944f"
+      },
+      {
+        "member": "tmp/noyalib-plain-tab-satellite-commits.log",
+        "sha256": "6355c086062577ea83daa6d2f5ee458c8c00fb91a76b50f52181a20497280df9"
+      },
+      {
+        "member": "tmp/noyalib-plain-tab-final-fuzz_diff-replays.log",
+        "sha256": "a0ffc75d88bba60fbc20e91aa35eaf685d3db8f87ef1a0f5da95a5d7d859515a"
+      },
+      {
+        "member": "tmp/noyalib-plain-tab-precommit-4.log",
+        "sha256": "3888dff75e035e75d3cadc56648656ab3b5c28db73533c2e15170d37292bf7de"
+      },
+      {
+        "member": "tmp/noyalib-plain-tab-sanitizer.log",
+        "sha256": "879b0a2cbb66368142d15c729c53ec915a35e96991dab308e111ca256d6dfbce"
+      },
+      {
+        "member": "tmp/noyalib-plain-tab-wasm.log",
+        "sha256": "abaa5754de26220e568418383d9c604732b9671a1730b8529954be35310cd54a"
+      },
+      {
+        "member": "tmp/noyalib-plain-tab-doctests.log",
+        "sha256": "9de6b6f01d79efda3562cc253487bf5393db10d6c21d4810781b1f8cee4a174b"
+      },
+      {
+        "member": "tmp/noyalib-plain-tab-wasm-bundler-build.log",
+        "sha256": "b453ac3b62b9a366ef855c04a821b833b3c82ada2c996544c8cd373a23a14ec8"
+      },
+      {
+        "member": "tmp/noyalib-plain-tab-precommit-1.log",
+        "sha256": "cb3225d3b24607b25e2b9c248022b5f81793a1a8ea1e23eb5a2eea8ad8104b61"
+      },
+      {
+        "member": "tmp/noyalib-plain-tab-wasm-size.log",
+        "sha256": "59076391903436aa59ff50ed430e81ba20ab9be236816861b0dc8843a0b2ed5c"
+      },
+      {
+        "member": "tmp/noyalib-plain-tab-precommit-0.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "member": "tmp/noyalib-plain-tab-clippy.log",
+        "sha256": "d7ee3b937b2f73073929f6741dfb33a2244ece4165aa65399ae1df50b55c2523"
+      },
+      {
+        "member": "tmp/noyalib-plain-tab-wasm-consumer-retry.log",
+        "sha256": "2fc274f90ac506f68838b414906d065af936ba28970ebb0d2b849cdb79820219"
+      },
+      {
+        "member": "tmp/noyalib-plain-tab-precommit-2.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "member": "tmp/noyalib-plain-tab-indent-positive-before.log",
+        "sha256": "7cd337b662083fb63509427834717db51b4befcb75854ba6933b1fed1ab12e99"
+      },
+      {
+        "member": "tmp/noyalib-plain-tab-final-size-probe-2.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "member": "tmp/noyalib-plain-tab-precommit-3.log",
+        "sha256": "532cf16bf418b5d0f6f2b7ac4145e2c3fb15a0279f10ff0574eb7ab69932e269"
+      },
+      {
+        "member": "noyalib-plain-tab-baremetal/summary.json",
+        "sha256": "6dd85448cc347e390a3d39acf370a8f89c2bdc967f24ba7f56cdadb5323c5575"
+      },
+      {
+        "member": "noyalib-plain-tab-baremetal/1.89.0-portable-riscv32imac-unknown-none-elf.log",
+        "sha256": "90ee7bd494dac0fa43c25a5d9e60f4b0af5dc90e5358bf4bbadd0747ab60ccec"
+      },
+      {
+        "member": "noyalib-plain-tab-baremetal/1.89.0-baseline-riscv32imac-unknown-none-elf.log",
+        "sha256": "8574d09170a4d4854662c13d166d5ec865595817eb07a46c3e9d5a021f2376cc"
+      },
+      {
+        "member": "noyalib-plain-tab-baremetal/stable-baseline-thumbv7em-none-eabihf.log",
+        "sha256": "2104315037b64083e7a0c82c9ea148551ad79cf06687b8cb057ac1a61cb38bed"
+      },
+      {
+        "member": "noyalib-plain-tab-baremetal/1.89.0-baseline-aarch64-unknown-none.log",
+        "sha256": "d7cc371763da4edbd9688d5740c8f1fb82c452306f055d6d2c36bd740079345e"
+      },
+      {
+        "member": "noyalib-plain-tab-baremetal/stable-baseline-riscv32imac-unknown-none-elf.log",
+        "sha256": "2eec556af212984ff952e3eae485b772e59d09bf26adb6592a060c8eee94082b"
+      },
+      {
+        "member": "noyalib-plain-tab-baremetal/1.89.0-portable-thumbv7em-none-eabihf.log",
+        "sha256": "a99fec5d289f5e068dcdcf3941c38fc30fef24707c2e542c43863c3d264df0c2"
+      },
+      {
+        "member": "noyalib-plain-tab-baremetal/stable-portable-riscv32imac-unknown-none-elf.log",
+        "sha256": "77c774d9c87476502877b1d8dc721944d556659e99c4b058a82f0555c89d8602"
+      },
+      {
+        "member": "noyalib-plain-tab-baremetal/stable-portable-aarch64-unknown-none.log",
+        "sha256": "daf914d41f39883e7618f11b43d8be55ec970c67c3174cdb5526d90a3079a8de"
+      },
+      {
+        "member": "noyalib-plain-tab-baremetal/stable-portable-thumbv7em-none-eabihf.log",
+        "sha256": "f6fe4c92811ed0033cf53fa231c80c219142db9bdbc42bb35c557abb4ae05d41"
+      },
+      {
+        "member": "noyalib-plain-tab-baremetal/stable-baseline-aarch64-unknown-none.log",
+        "sha256": "54b08fc363b4ca0f246e3fcc5e1a99e56bb9c9e646ad380fccef117baeb500b3"
+      },
+      {
+        "member": "noyalib-plain-tab-baremetal/1.89.0-portable-aarch64-unknown-none.log",
+        "sha256": "82af2e048bb234abf5dfeb756752b114c0bab0c626ba015668234e5954dce35f"
+      },
+      {
+        "member": "noyalib-plain-tab-baremetal/1.89.0-baseline-thumbv7em-none-eabihf.log",
+        "sha256": "6d4d0865409a7d7de784cf79a0b37cbd7c1bc0ec7bfdbb67ffe26b2a851a55c3"
+      },
+      {
+        "member": "noyalib-plain-tab-products/summary.json",
+        "sha256": "2a95125fbafdf23c4a139ee504b6c2f0f3959bce6c8aabbe2491a604c9b919cc"
+      },
+      {
+        "member": "noyalib-plain-tab-products/noyalib-serde-yaml-vet.log",
+        "sha256": "4cedbe460c8c1332d12386959baef819decbd08aacc9d9d5d2ca0afe743692c6"
+      },
+      {
+        "member": "noyalib-plain-tab-products/noyalib-lsp-vet.log",
+        "sha256": "dc88ee8d93181f6c10413b01ab3cf82b122330ab7b53eb1bfc852b41e7bd1e66"
+      },
+      {
+        "member": "noyalib-plain-tab-products/noyalib-wasm-vet.log",
+        "sha256": "58bc4ade3cd08b63e390d163b02b6e759ab572dc154ff718447c507ca29d1302"
+      },
+      {
+        "member": "noyalib-plain-tab-products/noyalib-serde-yaml-docs.log",
+        "sha256": "c36e2d324fe4283ecd5d11e0395232918aed853aa5b0b14408db68166bfd3042"
+      },
+      {
+        "member": "noyalib-plain-tab-products/noyalib-mcp-clippy.log",
+        "sha256": "b9ce303064c932a0160aca8d63f5ab8b71f62e5c133156f802bc248c06905a30"
+      },
+      {
+        "member": "noyalib-plain-tab-products/noyalib-mcp-tests.log",
+        "sha256": "f523f25f24958c71a1d04228d2666df86b6904d52d24b8dd78e7d57049e2f91b"
+      },
+      {
+        "member": "noyalib-plain-tab-products/noya-cli-clippy.log",
+        "sha256": "ddfc371eb51adb4989d7c23bd6946291bad8185db771f5a1b425705752265399"
+      },
+      {
+        "member": "noyalib-plain-tab-products/noyalib-lsp-clippy.log",
+        "sha256": "3395ac68d7f01ee896c66d9d4bee8c8160d0560e41f9e17e14ff4ab365004e40"
+      },
+      {
+        "member": "noyalib-plain-tab-products/noya-cli-docs.log",
+        "sha256": "dbecce7ad517fbfb39898d8cf1d460d7c22622110410b1bbc2351a869f06e07b"
+      },
+      {
+        "member": "noyalib-plain-tab-products/noyalib-lsp-tests.log",
+        "sha256": "82e6efa4bc9941c56d4898e21940caba873e8a97aa9b3ca62551374635acdcef"
+      },
+      {
+        "member": "noyalib-plain-tab-products/noyalib-wasm-tests.log",
+        "sha256": "c3a0b6510cb051bf2991571dcb1f683652c174dc6c63470e032f702825768bc5"
+      },
+      {
+        "member": "noyalib-plain-tab-products/noyalib-wasm-docs.log",
+        "sha256": "cd1569999f880caa1e0bdcfb3835c276c4920b9a372998fba212e03941fde247"
+      },
+      {
+        "member": "noyalib-plain-tab-products/noyalib-mcp-docs.log",
+        "sha256": "6348af534aed2123b8fd0496605564410ab8e7d003c8a4042845a485d3d8b748"
+      },
+      {
+        "member": "noyalib-plain-tab-products/noya-cli-tests.log",
+        "sha256": "785502f3e66a0121931458411f9e0ab62192a116ff5e274519f5f4752337c1ba"
+      },
+      {
+        "member": "noyalib-plain-tab-products/noyalib-serde-yaml-clippy.log",
+        "sha256": "4ad067066a7af261e7baca71b0fc332c8c3a3a3b25f5573a751e7efe3a6de2f0"
+      },
+      {
+        "member": "noyalib-plain-tab-products/noyalib-mcp-vet.log",
+        "sha256": "024c7b28078fbf2e9cebb6edf18dc11c7013c2b66d7612f80066e42b8a571f1c"
+      },
+      {
+        "member": "noyalib-plain-tab-products/noyalib-serde-yaml-tests.log",
+        "sha256": "800d9847ae6dfc0a4b1dbf454e910f90ce65bb0706340772274a807847d5694f"
+      },
+      {
+        "member": "noyalib-plain-tab-products/noyalib-wasm-clippy.log",
+        "sha256": "4c1969292c1992ca00e101567256f3156eb190e1d240bbedc79fa14906e79d42"
+      },
+      {
+        "member": "noyalib-plain-tab-products/vet-summary.json",
+        "sha256": "74c189933589929e923754f824a155f8ab6119e225a2159a3975c07d577223bf"
+      },
+      {
+        "member": "noyalib-plain-tab-products/noyalib-lsp-docs.log",
+        "sha256": "de3176cdfce898740990522569d5eb118d07823d95fc83df92896d056c7778e6"
+      },
+      {
+        "member": "noyalib-plain-tab-products/noya-cli-vet.log",
+        "sha256": "325a71b6fcde051f574153af4124fea7c0d0288bab1ad89ad7a2bdd578375539"
+      },
+      {
+        "member": "noyalib-plain-tab-parity/receipt.json",
+        "sha256": "43218308ed2d53525e65306968f43a03d845d8f1e18216456121938277fafc18"
+      },
+      {
+        "member": "noyalib-plain-tab-parity/projection-build.log",
+        "sha256": "4f98cf1f4161f343ce2c5121097a169b0603c07e2e2b6292a9001eb7d68774ca"
+      },
+      {
+        "member": "tmp/noyalib-plain-tab-satellite-heads.json",
+        "sha256": "a7ec996c1856118242b4aaa8bbf2717b0b2aba9f46c7cb90dd95015c357b49fc"
+      },
+      {
+        "member": "tmp/noyalib-plain-tab-mcp-inspector.json",
+        "sha256": "a0e9305d2d949051d3dec341c110b66c30a996811f5b51e16a649314b1ea02a5"
+      },
+      {
+        "member": "tmp/noyalib-plain-tab-final-core-summary.json",
+        "sha256": "f665df95ef7283f05fd8f6b094dfa4af2581cf16303d56f6be68d8f2f405a2f7"
+      },
+      {
+        "member": "key-separation-campaigns/fuzz_diff/campaign.log",
+        "sha256": "a44fc00cca4decbda6e720a0e506195648f056547696d9316842b87a313198ac"
+      },
+      {
+        "member": "key-separation-campaigns/fuzz_diff/receipt.json",
+        "sha256": "a7a61bb79b694fc5e97546c2fe0e79bf5dec6ab7342b279fbe1bccf32d5fcd5c"
+      },
+      {
+        "member": "key-separation-campaigns/fuzz_diff/artifacts/crash-337857b0c28cc63b127643f0ad7afc11c7d6391c",
+        "sha256": "22495f3a6dbc24f06e00cf921e938953cf9ae54d233f7aab4068dd6a78a2f0f8"
+      },
+      {
+        "member": "key-separation-campaigns/fuzz_serde_yaml_compat/campaign.log",
+        "sha256": "9c37073758a24e909bfa8accecfef25271473485f121a34f4c5a87764383597b"
+      },
+      {
+        "member": "key-separation-campaigns/fuzz_serde_yaml_compat/receipt.json",
+        "sha256": "c9da7b54778da618e42da1d344a414de02c267d573a831f560668aad452ac6f2"
+      },
+      {
+        "member": "key-separation-campaigns/fuzz_serde_yaml_compat/artifacts/crash-9ef0a166fafe8ef948212129497b9ffda666f058",
+        "sha256": "a7709b64ca84cd8e0ddeae05c092a1200c0040d21691c335469b75927d854395"
+      },
+      {
+        "member": "tmp/noyalib-empty-line-tab-official-size.log",
+        "sha256": "7e8dbfff7f2f20a1974859a60c773953888b85e1160259b065b62fc2c3c1938b"
+      },
+      {
+        "member": "tmp/noyalib-empty-line-tab-oracle-red.log",
+        "sha256": "9256a3fb5832b54b80b8716a1cc4ce402aa2db28edb69e93f9621f862aa31dff"
+      },
+      {
+        "member": "tmp/noyalib-empty-line-tab-hygiene-0.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "member": "tmp/noyalib-empty-line-tab-hygiene-1.log",
+        "sha256": "958160dd6a2ab198b058f3d221a84936c6dda29ff71f47add1713326db2c5c3b"
+      },
+      {
+        "member": "tmp/noyalib-empty-line-tab-hygiene-2.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "member": "tmp/noyalib-empty-line-tab-final-fuzz_serde_yaml_compat-replays.log",
+        "sha256": "8369fb836b8052b56076a8bbeb2c0c99b9415b7ed8c6c8b1cd170b50e9458cb4"
+      },
+      {
+        "member": "tmp/noyalib-empty-line-tab-size-probe-2.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "member": "tmp/noyalib-empty-line-tab-fuzz-replays.log",
+        "sha256": "be3154bba2a5d611c3508423d9714624af74ac548da9f2a5f489fee3d5809e2a"
+      },
+      {
+        "member": "tmp/noyalib-empty-line-tab-final-fuzz_diff-replays.log",
+        "sha256": "835d481225048d711351d875bb84299f4a2d033b97ffa53f415de27515194fe2"
+      },
+      {
+        "member": "tmp/noyalib-empty-line-tab-size-probe.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "member": "tmp/noyalib-empty-line-tab-sanitizer.log",
+        "sha256": "8f9f1ca843ced7422ff414f1ef31ed25d299b5bf843c23e549a72199dadae948"
+      },
+      {
+        "member": "tmp/noyalib-empty-line-tab-properties.log",
+        "sha256": "23f7521760fffe3f70a295e51b2d5adaa1082ce489fc98dee6370272d89eb630"
+      },
+      {
+        "member": "tmp/noyalib-empty-line-tab-checks.log",
+        "sha256": "d3d4d3d5ea77fa7f803a99265288aa4189fd0ae750bbce87d1eacaa25af5b90f"
+      },
+      {
+        "member": "tmp/noyalib-empty-line-tab-clippy.log",
+        "sha256": "e2c96549aef77689e75c7bdfbb5bd1cac5d6dd29aeacdf664539807dbbe5d322"
+      },
+      {
+        "member": "tmp/noyalib-empty-line-tab-alloc-oracle.log",
+        "sha256": "e4140d2d6b764b53ba8243f5d5521c8f04b405ff0b77f81313ea3d3af7bfedf0"
+      },
+      {
+        "member": "tmp/noyalib-final-docs-workflow.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "member": "tmp/noyalib-final-docs-versions.log",
+        "sha256": "532cf16bf418b5d0f6f2b7ac4145e2c3fb15a0279f10ff0574eb7ab69932e269"
+      },
+      {
+        "member": "tmp/noyalib-final-docs-accounting.log",
+        "sha256": "feabb4add9e2ca3374e538560634d1ec97dc4f4ce89aab12f3d726e36ea9b2f6"
+      },
+      {
+        "member": "tmp/noyalib-final-docs-markdown.log",
+        "sha256": "e09d37d5165952025c8b3a1fea453ffb55f602c4e06abcd75be160211e6eea08"
+      },
+      {
+        "member": "tmp/noyalib-final-docs-spelling.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "member": "tmp/noyalib-final-docs-candidate.log",
+        "sha256": "a8942d59bb48c864d747bf1f15f63f66e1a3ff19e651ac29fe86b578e102d33f"
+      },
+      {
+        "member": "tmp/noyalib-final-docs-fmt.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "member": "tmp/noyalib-final-docs-reuse.log",
+        "sha256": "0af317af322f839bbb0488e55f2b34cb19a0d2fa76005ade2ddf73e65e07c5bb"
+      },
+      {
+        "member": "plain-tab-compat-campaign/campaign.log",
+        "sha256": "001c6edf8d1a7192d12b80afef3920ce0b82b1cb804e09c56728513c8a8be6cf"
+      },
+      {
+        "member": "plain-tab-compat-campaign/receipt.json",
+        "sha256": "8b5ce81782946bf1b29df200025dfbeb64c3bf8a979d368c308558db13235993"
+      },
+      {
+        "member": "plain-tab-compat-campaign/artifacts/crash-52568e4593f08b4a92f3234e9a9da8764bedbbeb",
+        "sha256": "47974a8e1542478d4a8d4befba2aa23992c4ac57cd7fb2908d0defba14bc3a3e"
+      }
+    ]
+  },
+  "release_hold": "MCP immutable v0.0.60 source decision, independent review, registry gates and final campaign acceptance remain open. Daybreak is not required.",
+  "oracle_followup_source": "07733760a6b45b5113f7201d3f152d6599b0cea9",
+  "accounting_source": "390af59436ade50265e8fcd18bebecfbfc99fa76",
+  "recovered_failed_campaign_metrics": [
+    {
+      "source_commit": "04a56e89317ad059892035b61ee9812c7976d095",
+      "target": "fuzz_diff",
+      "original_receipt": "/private/tmp/noyalib-campaigns-release-candidate-2026-11-11/campaigns/noyalib/fuzz/fuzz_diff/receipt.json",
+      "original_status": "failed",
+      "log_sha256": "b97ab9d6f962411001419fa25972ffc3b9990253317930a6f18b04d7bc166eff",
+      "recovered_stats": {
+        "executions": 929138,
+        "measured_seconds": null,
+        "completion_reported": false,
+        "execution_count_kind": "lower_bound"
+      }
+    },
+    {
+      "source_commit": "04a56e89317ad059892035b61ee9812c7976d095",
+      "target": "fuzz_serde_yaml_compat",
+      "original_receipt": "/private/tmp/noyalib-campaigns-release-candidate-2026-11-11/campaigns/noyalib/fuzz/fuzz_serde_yaml_compat/receipt.json",
+      "original_status": "failed",
+      "log_sha256": "111605a1d79a9c431a9d6230265d18a6195a23dbb11809ec3eb4c260bc9e01b4",
+      "recovered_stats": {
+        "executions": 65,
+        "measured_seconds": null,
+        "completion_reported": false,
+        "execution_count_kind": "lower_bound"
+      }
+    },
+    {
+      "source_commit": "266f5844d06ef4df229a83db706b7aa8a1954f27",
+      "target": "fuzz_serde_yaml_compat",
+      "original_receipt": "/private/tmp/noyalib-oracles-followup-candidate-2026-11-11/fuzz_serde_yaml_compat/receipt.json",
+      "original_status": "failed",
+      "log_sha256": "690838d9448dc6f6f04be1a6895ada29e701e5e183d68379ebbe499c62c8704b",
+      "recovered_stats": {
+        "executions": 23735,
+        "measured_seconds": null,
+        "completion_reported": false,
+        "execution_count_kind": "lower_bound"
+      }
+    }
+  ],
+  "hosted_scope_note": "Checkpoint results name their source commit. Final candidate CI and review remain separate from local gates.",
+  "latest_core_source": "11ff333edbb4cc7911f02e59569ce399440238c1",
+  "complete_battery_scope": {
+    "source": "a57b7198669e41fe3034db4e44f2e274baf96388",
+    "std": {
+      "passed": 6748,
+      "failed": 0,
+      "ignored": 0
+    },
+    "alloc_baseline": {
+      "passed": 6726,
+      "failed": 0,
+      "ignored": 0
+    },
+    "alloc_portable": {
+      "passed": 7067,
+      "failed": 0,
+      "ignored": 0
+    },
+    "result_groups_per_profile": 20,
+    "later_test_change": "Empty-line-tab oracle correction separately verifies all 153 properties and 18 alloc oracle tests. Production source and Cargo declarations are unchanged."
+  },
+  "wasm_package": {
+    "artifact": "noyalib_wasm_bg.wasm",
+    "raw_bytes": 614712,
+    "gzip_level_9_bytes": 212267,
+    "sha256": "019620b9d83d4fee1548b8ecce67edf33ca304933bc210ea6819ba531d7c77d7",
+    "status": "passed",
+    "raw_limit_bytes": 628759,
+    "gzip_level_9_limit_bytes": 219025
+  },
+  "installed_wasm_consumer": {
+    "status": "passed",
+    "version": "0.0.61",
+    "bundle": {
+      "webpack": "5.112.2",
+      "status": "passed",
+      "checks": 21,
+      "browser": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/158.0.0.0 Safari/537.36"
+    },
+    "node": "v24.22.2",
+    "typescript": "Version 7.0.2",
+    "sha256": "c4a8efe111bc5a9b892296a29b418954bf09981c6455b4c6bb648bcd889d879c",
+    "files": [
+      "LICENSE-APACHE",
+      "LICENSE-MIT",
+      "README.md",
+      "noyalib_wasm_bg.js",
+      "noyalib_wasm_bg.wasm",
+      "noyalib_wasm.d.ts",
+      "noyalib_wasm.js",
+      "package.json"
+    ]
+  },
+  "bare_metal_scope": {
+    "core_source": "a57b7198669e41fe3034db4e44f2e274baf96388",
+    "library_worktree_clean": true,
+    "checks": [
+      {
+        "toolchain": "stable",
+        "profile": "baseline",
+        "target": "thumbv7em-none-eabihf",
+        "exit_code": 0,
+        "log": "stable-baseline-thumbv7em-none-eabihf.log",
+        "sha256": "2104315037b64083e7a0c82c9ea148551ad79cf06687b8cb057ac1a61cb38bed"
+      },
+      {
+        "toolchain": "stable",
+        "profile": "baseline",
+        "target": "riscv32imac-unknown-none-elf",
+        "exit_code": 0,
+        "log": "stable-baseline-riscv32imac-unknown-none-elf.log",
+        "sha256": "2eec556af212984ff952e3eae485b772e59d09bf26adb6592a060c8eee94082b"
+      },
+      {
+        "toolchain": "stable",
+        "profile": "baseline",
+        "target": "aarch64-unknown-none",
+        "exit_code": 0,
+        "log": "stable-baseline-aarch64-unknown-none.log",
+        "sha256": "54b08fc363b4ca0f246e3fcc5e1a99e56bb9c9e646ad380fccef117baeb500b3"
+      },
+      {
+        "toolchain": "stable",
+        "profile": "portable",
+        "target": "thumbv7em-none-eabihf",
+        "exit_code": 0,
+        "log": "stable-portable-thumbv7em-none-eabihf.log",
+        "sha256": "f6fe4c92811ed0033cf53fa231c80c219142db9bdbc42bb35c557abb4ae05d41"
+      },
+      {
+        "toolchain": "stable",
+        "profile": "portable",
+        "target": "riscv32imac-unknown-none-elf",
+        "exit_code": 0,
+        "log": "stable-portable-riscv32imac-unknown-none-elf.log",
+        "sha256": "77c774d9c87476502877b1d8dc721944d556659e99c4b058a82f0555c89d8602"
+      },
+      {
+        "toolchain": "stable",
+        "profile": "portable",
+        "target": "aarch64-unknown-none",
+        "exit_code": 0,
+        "log": "stable-portable-aarch64-unknown-none.log",
+        "sha256": "daf914d41f39883e7618f11b43d8be55ec970c67c3174cdb5526d90a3079a8de"
+      },
+      {
+        "toolchain": "1.89.0",
+        "profile": "baseline",
+        "target": "thumbv7em-none-eabihf",
+        "exit_code": 0,
+        "log": "1.89.0-baseline-thumbv7em-none-eabihf.log",
+        "sha256": "6d4d0865409a7d7de784cf79a0b37cbd7c1bc0ec7bfdbb67ffe26b2a851a55c3"
+      },
+      {
+        "toolchain": "1.89.0",
+        "profile": "baseline",
+        "target": "riscv32imac-unknown-none-elf",
+        "exit_code": 0,
+        "log": "1.89.0-baseline-riscv32imac-unknown-none-elf.log",
+        "sha256": "8574d09170a4d4854662c13d166d5ec865595817eb07a46c3e9d5a021f2376cc"
+      },
+      {
+        "toolchain": "1.89.0",
+        "profile": "baseline",
+        "target": "aarch64-unknown-none",
+        "exit_code": 0,
+        "log": "1.89.0-baseline-aarch64-unknown-none.log",
+        "sha256": "d7cc371763da4edbd9688d5740c8f1fb82c452306f055d6d2c36bd740079345e"
+      },
+      {
+        "toolchain": "1.89.0",
+        "profile": "portable",
+        "target": "thumbv7em-none-eabihf",
+        "exit_code": 0,
+        "log": "1.89.0-portable-thumbv7em-none-eabihf.log",
+        "sha256": "a99fec5d289f5e068dcdcf3941c38fc30fef24707c2e542c43863c3d264df0c2"
+      },
+      {
+        "toolchain": "1.89.0",
+        "profile": "portable",
+        "target": "riscv32imac-unknown-none-elf",
+        "exit_code": 0,
+        "log": "1.89.0-portable-riscv32imac-unknown-none-elf.log",
+        "sha256": "90ee7bd494dac0fa43c25a5d9e60f4b0af5dc90e5358bf4bbadd0747ab60ccec"
+      },
+      {
+        "toolchain": "1.89.0",
+        "profile": "portable",
+        "target": "aarch64-unknown-none",
+        "exit_code": 0,
+        "log": "1.89.0-portable-aarch64-unknown-none.log",
+        "sha256": "82af2e048bb234abf5dfeb756752b114c0bab0c626ba015668234e5954dce35f"
+      }
+    ]
+  },
+  "product_checks": [
+    {
+      "repo": "noya-cli",
+      "check": "clippy",
+      "exit_code": 0,
+      "log": "/private/tmp/noyalib-plain-tab-products/noya-cli-clippy.log"
+    },
+    {
+      "repo": "noya-cli",
+      "check": "tests",
+      "exit_code": 0,
+      "log": "/private/tmp/noyalib-plain-tab-products/noya-cli-tests.log"
+    },
+    {
+      "repo": "noya-cli",
+      "check": "docs",
+      "exit_code": 0,
+      "log": "/private/tmp/noyalib-plain-tab-products/noya-cli-docs.log"
+    },
+    {
+      "repo": "noyalib-lsp",
+      "check": "clippy",
+      "exit_code": 0,
+      "log": "/private/tmp/noyalib-plain-tab-products/noyalib-lsp-clippy.log"
+    },
+    {
+      "repo": "noyalib-lsp",
+      "check": "tests",
+      "exit_code": 0,
+      "log": "/private/tmp/noyalib-plain-tab-products/noyalib-lsp-tests.log"
+    },
+    {
+      "repo": "noyalib-lsp",
+      "check": "docs",
+      "exit_code": 0,
+      "log": "/private/tmp/noyalib-plain-tab-products/noyalib-lsp-docs.log"
+    },
+    {
+      "repo": "noyalib-mcp",
+      "check": "clippy",
+      "exit_code": 0,
+      "log": "/private/tmp/noyalib-plain-tab-products/noyalib-mcp-clippy.log"
+    },
+    {
+      "repo": "noyalib-mcp",
+      "check": "tests",
+      "exit_code": 0,
+      "log": "/private/tmp/noyalib-plain-tab-products/noyalib-mcp-tests.log"
+    },
+    {
+      "repo": "noyalib-mcp",
+      "check": "docs",
+      "exit_code": 0,
+      "log": "/private/tmp/noyalib-plain-tab-products/noyalib-mcp-docs.log"
+    },
+    {
+      "repo": "noyalib-wasm",
+      "check": "clippy",
+      "exit_code": 0,
+      "log": "/private/tmp/noyalib-plain-tab-products/noyalib-wasm-clippy.log"
+    },
+    {
+      "repo": "noyalib-wasm",
+      "check": "tests",
+      "exit_code": 0,
+      "log": "/private/tmp/noyalib-plain-tab-products/noyalib-wasm-tests.log"
+    },
+    {
+      "repo": "noyalib-wasm",
+      "check": "docs",
+      "exit_code": 0,
+      "log": "/private/tmp/noyalib-plain-tab-products/noyalib-wasm-docs.log"
+    },
+    {
+      "repo": "noyalib-serde-yaml",
+      "check": "clippy",
+      "exit_code": 0,
+      "log": "/private/tmp/noyalib-plain-tab-products/noyalib-serde-yaml-clippy.log"
+    },
+    {
+      "repo": "noyalib-serde-yaml",
+      "check": "tests",
+      "exit_code": 0,
+      "log": "/private/tmp/noyalib-plain-tab-products/noyalib-serde-yaml-tests.log"
+    },
+    {
+      "repo": "noyalib-serde-yaml",
+      "check": "docs",
+      "exit_code": 0,
+      "log": "/private/tmp/noyalib-plain-tab-products/noyalib-serde-yaml-docs.log"
+    },
+    {
+      "repo": "noya-cli",
+      "check": "vet",
+      "exit_code": 0,
+      "log": "/private/tmp/noyalib-plain-tab-products/noya-cli-vet.log"
+    },
+    {
+      "repo": "noyalib-lsp",
+      "check": "vet",
+      "exit_code": 0,
+      "log": "/private/tmp/noyalib-plain-tab-products/noyalib-lsp-vet.log"
+    },
+    {
+      "repo": "noyalib-mcp",
+      "check": "vet",
+      "exit_code": 0,
+      "log": "/private/tmp/noyalib-plain-tab-products/noyalib-mcp-vet.log"
+    },
+    {
+      "repo": "noyalib-wasm",
+      "check": "vet",
+      "exit_code": 0,
+      "log": "/private/tmp/noyalib-plain-tab-products/noyalib-wasm-vet.log"
+    },
+    {
+      "repo": "noyalib-serde-yaml",
+      "check": "vet",
+      "exit_code": 0,
+      "log": "/private/tmp/noyalib-plain-tab-products/noyalib-serde-yaml-vet.log"
+    }
+  ],
+  "parity_receipt": {
+    "utc": "2026-11-11T18:20:47.390873+00:00",
+    "corpus_sha256": "d9d86430d48ccbabdbce5c1d56b8077225e91522ed3c8c5bd4f57ec9df466020",
+    "runner_sha256": "a230e2dd8d0ccc3bb34c81c7a0d55856529e51242c658cf7d61842d73a1e1581",
+    "runtimes": {
+      "rustc": "rustc 1.99.0 (b940084d7 2026-09-28)\nbinary: rustc\ncommit-hash: b940084d7eb6a299eb4bfeb8e34901bc051e7ac4\ncommit-date: 2026-09-28\nhost: aarch64-apple-darwin\nrelease: 1.99.0\nLLVM version: 23.1.1",
+      "node": "v24.22.2",
+      "mcp_server_sdk": "3.9.0"
+    },
+    "sources": {
+      "noyalib": {
+        "head_sha": "a57b7198669e41fe3034db4e44f2e274baf96388",
+        "dirty": true,
+        "lockfile_sha256": "0ebb308224e3ea0cba9bcd653e7818d23122174fcac7738874754091ada9325c"
+      },
+      "noya-cli": {
+        "head_sha": "96815b527a08db3519529c59fc07b0dfb1a7c68e",
+        "dirty": true,
+        "lockfile_sha256": "ea3c6cffb17588bf2f79e5b44074bd217266ad5b1f58e580fc96b6b652f30fa6"
+      },
+      "noyalib-lsp": {
+        "head_sha": "4e929edf1263242eda757520bb0d2e30cbd698b2",
+        "dirty": true,
+        "lockfile_sha256": "d3cd661f1bc9a9c9eebdf1693b7a0af8526939cb6cf254420405fd358a671e09"
+      },
+      "noyalib-mcp": {
+        "head_sha": "3771cdf75211fd87dbaee9c894a641789134a52f",
+        "dirty": true,
+        "lockfile_sha256": "4caf8bc7bd2d4cf6b6b1af519f2e6946eda6cc9fb1fbbbbee69fa5164a3b9f6a"
+      },
+      "noyalib-wasm": {
+        "head_sha": "21108cbec40e390e649ff3146551b23b591c50c8",
+        "dirty": true,
+        "lockfile_sha256": "66a310afb61e80a5e4e15db570af760b46c7b0fda6749b576fde43dd0fb477ad"
+      },
+      "noyalib-serde-yaml": {
+        "head_sha": "120f6b251e08359d431587717a4f8d0313486afb",
+        "dirty": true,
+        "lockfile_sha256": "921ffbc75daaa46f35c19c3fa4030db83188e33dc118d4897570efe1249cedfd"
+      }
+    },
+    "artifacts": {
+      "cli": "d48a9cd124770fa0b111c4c4b571e74db12e9f23f313256c0751102ab645c97c",
+      "lsp": "b74f5a81723cec83e8da646da451f5ff4ecc411767cd0381a6c64e80f0cc073c",
+      "mcp": "2e26a780638a61169cc578536b92e4521e307c76a49f518ee62d7537407840bf",
+      "wasm": "b0fe49b7c7f7fada82946de7d4824755c9383967d21b69188bbee1e05fce8355",
+      "rust_projection": "41133c6068e71cdcde6adbc03aa4cc2665605f4811a60ad14536762e6152b6f4",
+      "wasm_module": "75da649fe372dd44e274ed48e42ed33150d508da18f6f28b00a28804eed3a91b"
+    },
+    "cases": [
+      {
+        "id": "structured-values",
+        "projections": {
+          "core": {
+            "enabled": true,
+            "missing": null,
+            "nodes": [
+              "alpha",
+              "beta"
+            ],
+            "server": {
+              "name": "gateway",
+              "port": 8080
+            }
+          },
+          "CLI": {
+            "enabled": true,
+            "missing": null,
+            "nodes": [
+              "alpha",
+              "beta"
+            ],
+            "server": {
+              "name": "gateway",
+              "port": 8080
+            }
+          },
+          "LSP": {
+            "enabled": true,
+            "missing": null,
+            "nodes": [
+              "alpha",
+              "beta"
+            ],
+            "server": {
+              "name": "gateway",
+              "port": 8080
+            }
+          },
+          "MCP": {
+            "enabled": true,
+            "missing": null,
+            "nodes": [
+              "alpha",
+              "beta"
+            ],
+            "server": {
+              "name": "gateway",
+              "port": 8080
+            }
+          },
+          "WASM": {
+            "server": {
+              "name": "gateway",
+              "port": 8080
+            },
+            "enabled": true,
+            "nodes": [
+              "alpha",
+              "beta"
+            ],
+            "missing": null
+          },
+          "facade": {
+            "enabled": true,
+            "missing": null,
+            "nodes": [
+              "alpha",
+              "beta"
+            ],
+            "server": {
+              "name": "gateway",
+              "port": 8080
+            }
+          }
+        },
+        "difference": null
+      },
+      {
+        "id": "unicode-and-quoted-scalars",
+        "projections": {
+          "core": {
+            "code": "0123",
+            "mode": "NO",
+            "name": "café 🚀"
+          },
+          "CLI": {
+            "code": "0123",
+            "mode": "NO",
+            "name": "café 🚀"
+          },
+          "LSP": {
+            "code": "0123",
+            "mode": "NO",
+            "name": "café 🚀"
+          },
+          "MCP": {
+            "code": "0123",
+            "mode": "NO",
+            "name": "café 🚀"
+          },
+          "WASM": {
+            "name": "café 🚀",
+            "code": "0123",
+            "mode": "NO"
+          },
+          "facade": {
+            "code": "0123",
+            "mode": "NO",
+            "name": "café 🚀"
+          }
+        },
+        "difference": null
+      },
+      {
+        "id": "legacy-compatibility-profile",
+        "projections": {
+          "core": {
+            "code": 123
+          },
+          "CLI": {
+            "code": 123
+          },
+          "LSP": {
+            "code": 123
+          },
+          "MCP": {
+            "code": 123
+          },
+          "WASM": {
+            "code": 123
+          },
+          "facade": {
+            "code": "0123"
+          }
+        },
+        "difference": "The documented serde_yaml compatibility profile preserves this legacy spelling as text."
+      },
+      {
+        "id": "malformed-flow",
+        "rejected_by": [
+          "core",
+          "facade",
+          "CLI",
+          "LSP",
+          "MCP",
+          "WASM"
+        ]
+      },
+      {
+        "id": "literal-clip-at-eof",
+        "projections": {
+          "core": {
+            "message": "value"
+          },
+          "CLI": {
+            "message": "value"
+          },
+          "LSP": {
+            "message": "value"
+          },
+          "MCP": {
+            "message": "value"
+          },
+          "WASM": {
+            "message": "value"
+          },
+          "facade": {
+            "message": "value"
+          }
+        },
+        "difference": null
+      },
+      {
+        "id": "folded-clip-at-eof",
+        "projections": {
+          "core": {
+            "message": "first second"
+          },
+          "CLI": {
+            "message": "first second"
+          },
+          "LSP": {
+            "message": "first second"
+          },
+          "MCP": {
+            "message": "first second"
+          },
+          "WASM": {
+            "message": "first second"
+          },
+          "facade": {
+            "message": "first second"
+          }
+        },
+        "difference": null
+      },
+      {
+        "id": "nested-anchor-redefinition",
+        "projections": {
+          "core": {
+            "copy": "inner",
+            "first": "old",
+            "second": [
+              "inner"
+            ]
+          },
+          "CLI": {
+            "copy": "inner",
+            "first": "old",
+            "second": [
+              "inner"
+            ]
+          },
+          "LSP": {
+            "copy": "inner",
+            "first": "old",
+            "second": [
+              "inner"
+            ]
+          },
+          "MCP": {
+            "copy": "inner",
+            "first": "old",
+            "second": [
+              "inner"
+            ]
+          },
+          "WASM": {
+            "first": "old",
+            "second": [
+              "inner"
+            ],
+            "copy": "inner"
+          },
+          "facade": {
+            "copy": "inner",
+            "first": "old",
+            "second": [
+              "inner"
+            ]
+          }
+        },
+        "difference": null
+      },
+      {
+        "id": "quoted-compatibility-strings",
+        "projections": {
+          "core": {
+            "0b11": "0xBBB9BBBBBBB73788"
+          },
+          "CLI": {
+            "0b11": "0xBBB9BBBBBBB73788"
+          },
+          "LSP": {
+            "0b11": "0xBBB9BBBBBBB73788"
+          },
+          "MCP": {
+            "0b11": "0xBBB9BBBBBBB73788"
+          },
+          "WASM": {
+            "0b11": "0xBBB9BBBBBBB73788"
+          },
+          "facade": {
+            "0b11": "0xBBB9BBBBBBB73788"
+          }
+        },
+        "difference": null
+      },
+      {
+        "id": "unicode-root-with-cr-comment",
+        "projections": {
+          "core": "ޙ",
+          "CLI": "ޙ",
+          "LSP": "ޙ",
+          "MCP": "ޙ",
+          "WASM": "ޙ",
+          "facade": "ޙ"
+        },
+        "difference": null
+      },
+      {
+        "id": "alias-before-later-anchor",
+        "projections": {
+          "core": {
+            "copy": "new",
+            "first": "old",
+            "last": "leaf",
+            "second": "new"
+          },
+          "CLI": {
+            "copy": "new",
+            "first": "old",
+            "last": "leaf",
+            "second": "new"
+          },
+          "LSP": {
+            "copy": "new",
+            "first": "old",
+            "last": "leaf",
+            "second": "new"
+          },
+          "MCP": {
+            "copy": "new",
+            "first": "old",
+            "last": "leaf",
+            "second": "new"
+          },
+          "WASM": {
+            "first": "old",
+            "second": "new",
+            "copy": "new",
+            "last": "leaf"
+          },
+          "facade": {
+            "copy": "new",
+            "first": "old",
+            "last": "leaf",
+            "second": "new"
+          }
+        },
+        "difference": null
+      },
+      {
+        "id": "under-indented-quoted-continuation",
+        "rejected_by": [
+          "core",
+          "facade",
+          "CLI",
+          "LSP",
+          "MCP",
+          "WASM"
+        ]
+      },
+      {
+        "id": "unindented-mapping-value",
+        "rejected_by": [
+          "core",
+          "facade",
+          "CLI",
+          "LSP",
+          "MCP",
+          "WASM"
+        ]
+      },
+      {
+        "id": "plain-continuation-tab-indentation",
+        "rejected_by": [
+          "core",
+          "facade",
+          "CLI",
+          "LSP",
+          "MCP",
+          "WASM"
+        ]
+      }
+    ]
+  },
+  "hosted_inspector": {
+    "conclusion": "success",
+    "databaseId": 43076697522,
+    "headSha": "3771cdf75211fd87dbaee9c894a641789134a52f",
+    "status": "completed",
+    "url": "https://github.com/sebastienrousseau/noyalib-mcp/actions/runs/43076697522"
+  },
+  "final_oracle_campaign_source": {
+    "commit": "6d2f324db7f04b5788deaf2393ab58b7727e5664",
+    "status": "both failed; tab indentation corrected, canonical duplicate decision pending"
+  },
+  "full_inventory_checkpoint": {
+    "started_utc": "2026-11-11T14:49:33.512953+00:00",
+    "parallel_campaigns": 3,
+    "requested_seconds": 3600,
+    "source_commits": {
+      "noyalib": "04a56e89317ad059892035b61ee9812c7976d095",
+      "noyalib-mcp": "ee4b7fd77a97da32f8e5706ff814cab05c0b495e",
+      "noya-cli": "08d994b9f8f66cbc6a4c25a6f8681341dabba8c4",
+      "noyalib-lsp": "4ef8a74d843a9169cc67dbb99ced10c263e18960",
+      "noyalib-wasm": "d507180e3286afa20f087adeec48643b68af574a",
+      "noyalib-serde-yaml": "b88dd1567d69221ad4b838c18c0d84049e503d78"
+    },
+    "satellite_core_resolution": "local source at the pinned core commit",
+    "campaigns": [
+      {
+        "repo": "noyalib-wasm",
+        "scope": "fuzz",
+        "target": "fuzz_document_path",
+        "status": "passed",
+        "started_utc": "2026-11-11T14:49:33.515700+00:00",
+        "output": "/private/tmp/noyalib-campaigns-release-candidate-2026-11-11/campaigns/noyalib-wasm/fuzz/fuzz_document_path",
+        "completed_utc": "2026-11-11T15:51:31.901090+00:00",
+        "exit_code": 0,
+        "executions": 10997857,
+        "measured_seconds": 3601,
+        "findings": []
+      },
+      {
+        "repo": "noyalib",
+        "scope": "fuzz",
+        "target": "fuzz_serde_yaml_compat",
+        "status": "failed",
+        "started_utc": "2026-11-11T14:49:33.518227+00:00",
+        "output": "/private/tmp/noyalib-campaigns-release-candidate-2026-11-11/campaigns/noyalib/fuzz/fuzz_serde_yaml_compat",
+        "completed_utc": "2026-11-11T14:50:58.078495+00:00",
+        "exit_code": 1,
+        "executions": 0,
+        "measured_seconds": 0,
+        "findings": [
+          "crash-04f30d1eadf09755f10ec3df3d62a6750e8e169d"
+        ]
+      },
+      {
+        "repo": "noyalib-serde-yaml",
+        "scope": "fuzz",
+        "target": "fuzz_roundtrip",
+        "status": "passed",
+        "started_utc": "2026-11-11T14:49:33.521362+00:00",
+        "output": "/private/tmp/noyalib-campaigns-release-candidate-2026-11-11/campaigns/noyalib-serde-yaml/fuzz/fuzz_roundtrip",
+        "completed_utc": "2026-11-11T15:50:53.164537+00:00",
+        "exit_code": 0,
+        "executions": 15582098,
+        "measured_seconds": 3601,
+        "findings": []
+      },
+      {
+        "repo": "noyalib",
+        "scope": "fuzz",
+        "target": "fuzz_diff",
+        "status": "failed",
+        "started_utc": "2026-11-11T14:50:58.079713+00:00",
+        "output": "/private/tmp/noyalib-campaigns-release-candidate-2026-11-11/campaigns/noyalib/fuzz/fuzz_diff",
+        "completed_utc": "2026-11-11T14:55:22.846371+00:00",
+        "exit_code": 1,
+        "executions": 0,
+        "measured_seconds": 0,
+        "findings": [
+          "crash-88c6043c6265ce894a7e04d51f4235254dcbdae1"
+        ]
+      },
+      {
+        "repo": "noyalib",
+        "scope": "fuzz-nostd",
+        "target": "fuzz_parse_alloc_only",
+        "status": "passed",
+        "started_utc": "2026-11-11T14:55:22.849033+00:00",
+        "output": "/private/tmp/noyalib-campaigns-release-candidate-2026-11-11/campaigns/noyalib/fuzz-nostd/fuzz_parse_alloc_only",
+        "completed_utc": "2026-11-11T15:56:35.062967+00:00",
+        "exit_code": 0,
+        "executions": 13416321,
+        "measured_seconds": 3601,
+        "findings": []
+      },
+      {
+        "repo": "noyalib-mcp",
+        "scope": "fuzz",
+        "target": "tools",
+        "status": "running",
+        "started_utc": "2026-11-11T15:50:53.177260+00:00",
+        "output": "/private/tmp/noyalib-campaigns-release-candidate-2026-11-11/campaigns/noyalib-mcp/fuzz/tools"
+      },
+      {
+        "repo": "noya-cli",
+        "scope": "fuzz",
+        "target": "fuzz_argv",
+        "status": "running",
+        "started_utc": "2026-11-11T15:51:31.903539+00:00",
+        "output": "/private/tmp/noyalib-campaigns-release-candidate-2026-11-11/campaigns/noya-cli/fuzz/fuzz_argv"
+      },
+      {
+        "repo": "noyalib-lsp",
+        "scope": "fuzz",
+        "target": "fuzz_handle_message",
+        "status": "running",
+        "started_utc": "2026-11-11T15:56:35.070345+00:00",
+        "output": "/private/tmp/noyalib-campaigns-release-candidate-2026-11-11/campaigns/noyalib-lsp/fuzz/fuzz_handle_message"
+      },
+      {
+        "repo": "noyalib-wasm",
+        "scope": "fuzz",
+        "target": "fuzz_core",
+        "status": "queued"
+      },
+      {
+        "repo": "noyalib-serde-yaml",
+        "scope": "fuzz",
+        "target": "fuzz_from_str",
+        "status": "queued"
+      },
+      {
+        "repo": "noyalib",
+        "scope": "fuzz",
+        "target": "fuzz_parse",
+        "status": "queued"
+      },
+      {
+        "repo": "noyalib-mcp",
+        "scope": "fuzz",
+        "target": "http_headers",
+        "status": "queued"
+      },
+      {
+        "repo": "noya-cli",
+        "scope": "fuzz",
+        "target": "fuzz_derive_parse",
+        "status": "queued"
+      },
+      {
+        "repo": "noyalib-lsp",
+        "scope": "fuzz",
+        "target": "fuzz_did_change",
+        "status": "queued"
+      },
+      {
+        "repo": "noyalib",
+        "scope": "fuzz",
+        "target": "fuzz_roundtrip",
+        "status": "queued"
+      },
+      {
+        "repo": "noyalib",
+        "scope": "fuzz",
+        "target": "fuzz_from_value",
+        "status": "queued"
+      },
+      {
+        "repo": "noyalib",
+        "scope": "fuzz",
+        "target": "fuzz_multi_doc",
+        "status": "queued"
+      },
+      {
+        "repo": "noyalib",
+        "scope": "fuzz",
+        "target": "fuzz_strict",
+        "status": "queued"
+      },
+      {
+        "repo": "noyalib",
+        "scope": "fuzz",
+        "target": "fuzz_borrowed_alias",
+        "status": "queued"
+      },
+      {
+        "repo": "noyalib",
+        "scope": "fuzz",
+        "target": "fuzz_yaml_v1_1",
+        "status": "queued"
+      },
+      {
+        "repo": "noyalib",
+        "scope": "fuzz",
+        "target": "fuzz_double_quoted",
+        "status": "queued"
+      },
+      {
+        "repo": "noyalib",
+        "scope": "fuzz",
+        "target": "fuzz_no_span_loader",
+        "status": "queued"
+      },
+      {
+        "repo": "noyalib",
+        "scope": "fuzz",
+        "target": "fuzz_editors",
+        "status": "queued"
+      },
+      {
+        "repo": "noyalib",
+        "scope": "fuzz",
+        "target": "fuzz_value_roundtrip",
+        "status": "queued"
+      },
+      {
+        "repo": "noyalib",
+        "scope": "fuzz",
+        "target": "fuzz_reader_and_slice",
+        "status": "queued"
+      },
+      {
+        "repo": "noyalib",
+        "scope": "fuzz",
+        "target": "fuzz_borrowing",
+        "status": "queued"
+      },
+      {
+        "repo": "noyalib",
+        "scope": "fuzz",
+        "target": "fuzz_query_path",
+        "status": "queued"
+      },
+      {
+        "repo": "noyalib",
+        "scope": "fuzz",
+        "target": "fuzz_cst_set",
+        "status": "queued"
+      },
+      {
+        "repo": "noyalib",
+        "scope": "fuzz",
+        "target": "fuzz_cst_format_roundtrip",
+        "status": "queued"
+      },
+      {
+        "repo": "noyalib",
+        "scope": "fuzz-nostd",
+        "target": "fuzz_roundtrip_alloc_only",
+        "status": "queued"
+      }
+    ]
+  },
+  "core_checks": [
+    {
+      "check": "full-std",
+      "exit_code": 0,
+      "log": "/private/tmp/noyalib-plain-tab-final-full-std.log"
+    },
+    {
+      "check": "clippy",
+      "exit_code": 0,
+      "log": "/private/tmp/noyalib-plain-tab-final-clippy.log"
+    },
+    {
+      "check": "doctests",
+      "exit_code": 0,
+      "log": "/private/tmp/noyalib-plain-tab-final-doctests.log"
+    },
+    {
+      "check": "full-alloc",
+      "exit_code": 0,
+      "log": "/private/tmp/noyalib-plain-tab-final-full-alloc.log"
+    },
+    {
+      "check": "full-portable",
+      "exit_code": 0,
+      "log": "/private/tmp/noyalib-plain-tab-final-full-portable.log"
+    },
+    {
+      "check": "complexity",
+      "exit_code": 0,
+      "log": "/private/tmp/noyalib-plain-tab-final-complexity.log"
+    }
+  ],
+  "browser_initial_failure": {
+    "log": "noyalib-plain-tab-wasm-consumer.log",
+    "symptom": "Chrome did not expose its isolated debugging port; cause unconfirmed. A separate startup probe succeeded before one repeat. No retry or timeout change was made to the product gate."
+  },
+  "compatibility_campaign_checkpoint": {
+    "started_utc": "2026-11-11T18:21:13.195665+00:00",
+    "parallel_campaigns": 1,
+    "requested_seconds": 3600,
+    "source_commits": {
+      "noyalib": "a57b7198669e41fe3034db4e44f2e274baf96388",
+      "noyalib-mcp": "3771cdf75211fd87dbaee9c894a641789134a52f",
+      "noya-cli": "96815b527a08db3519529c59fc07b0dfb1a7c68e",
+      "noyalib-lsp": "4e929edf1263242eda757520bb0d2e30cbd698b2",
+      "noyalib-wasm": "21108cbec40e390e649ff3146551b23b591c50c8",
+      "noyalib-serde-yaml": "120f6b251e08359d431587717a4f8d0313486afb"
+    },
+    "satellite_core_resolution": "local source at the pinned core commit",
+    "campaigns": [
+      {
+        "repo": "noyalib",
+        "scope": "fuzz",
+        "target": "fuzz_serde_yaml_compat",
+        "status": "failed",
+        "started_utc": "2026-11-11T18:21:13.197361+00:00",
+        "output": "/private/tmp/noyalib-plain-tab-compat-campaign-2026-11-11/campaigns/noyalib/fuzz/fuzz_serde_yaml_compat",
+        "completed_utc": "2026-11-11T18:22:26.885646+00:00",
+        "exit_code": 1,
+        "executions": 20324,
+        "measured_seconds": null,
+        "findings": [
+          "crash-52568e4593f08b4a92f3234e9a9da8764bedbbeb"
+        ]
+      }
+    ],
+    "completed_utc": "2026-11-11T18:22:26.886740+00:00"
+  },
+  "unresolved_findings": [
+    {
+      "artifact": "crash-337857b0c28cc63b127643f0ad7afc11c7d6391c",
+      "source": "6d2f324db7f04b5788deaf2393ab58b7727e5664",
+      "bytes": 88,
+      "minimal_input": "{~: 1, ? }",
+      "description": "Streaming preserves separate written string keys; AST fallback applies canonical YAML duplicate handling. Preserve collision detection and settle the typed-map contract before changing behavior or the oracle."
+    }
+  ],
+  "release-candidate_campaign_checkpoint": {
+    "started_utc": "2026-11-11T14:49:33.512953+00:00",
+    "parallel_campaigns": 3,
+    "requested_seconds": 3600,
+    "source_commits": {
+      "noyalib": "04a56e89317ad059892035b61ee9812c7976d095",
+      "noyalib-mcp": "ee4b7fd77a97da32f8e5706ff814cab05c0b495e",
+      "noya-cli": "08d994b9f8f66cbc6a4c25a6f8681341dabba8c4",
+      "noyalib-lsp": "4ef8a74d843a9169cc67dbb99ced10c263e18960",
+      "noyalib-wasm": "d507180e3286afa20f087adeec48643b68af574a",
+      "noyalib-serde-yaml": "b88dd1567d69221ad4b838c18c0d84049e503d78"
+    },
+    "satellite_core_resolution": "local source at the pinned core commit",
+    "campaigns": [
+      {
+        "repo": "noyalib-wasm",
+        "scope": "fuzz",
+        "target": "fuzz_document_path",
+        "status": "passed",
+        "started_utc": "2026-11-11T14:49:33.515700+00:00",
+        "output": "/private/tmp/noyalib-campaigns-release-candidate-2026-11-11/campaigns/noyalib-wasm/fuzz/fuzz_document_path",
+        "completed_utc": "2026-11-11T15:51:31.901090+00:00",
+        "exit_code": 0,
+        "executions": 10997857,
+        "measured_seconds": 3601,
+        "findings": []
+      },
+      {
+        "repo": "noyalib",
+        "scope": "fuzz",
+        "target": "fuzz_serde_yaml_compat",
+        "status": "failed",
+        "started_utc": "2026-11-11T14:49:33.518227+00:00",
+        "output": "/private/tmp/noyalib-campaigns-release-candidate-2026-11-11/campaigns/noyalib/fuzz/fuzz_serde_yaml_compat",
+        "completed_utc": "2026-11-11T14:50:58.078495+00:00",
+        "exit_code": 1,
+        "executions": 0,
+        "measured_seconds": 0,
+        "findings": [
+          "crash-04f30d1eadf09755f10ec3df3d62a6750e8e169d"
+        ]
+      },
+      {
+        "repo": "noyalib-serde-yaml",
+        "scope": "fuzz",
+        "target": "fuzz_roundtrip",
+        "status": "passed",
+        "started_utc": "2026-11-11T14:49:33.521362+00:00",
+        "output": "/private/tmp/noyalib-campaigns-release-candidate-2026-11-11/campaigns/noyalib-serde-yaml/fuzz/fuzz_roundtrip",
+        "completed_utc": "2026-11-11T15:50:53.164537+00:00",
+        "exit_code": 0,
+        "executions": 15582098,
+        "measured_seconds": 3601,
+        "findings": []
+      },
+      {
+        "repo": "noyalib",
+        "scope": "fuzz",
+        "target": "fuzz_diff",
+        "status": "failed",
+        "started_utc": "2026-11-11T14:50:58.079713+00:00",
+        "output": "/private/tmp/noyalib-campaigns-release-candidate-2026-11-11/campaigns/noyalib/fuzz/fuzz_diff",
+        "completed_utc": "2026-11-11T14:55:22.846371+00:00",
+        "exit_code": 1,
+        "executions": 0,
+        "measured_seconds": 0,
+        "findings": [
+          "crash-88c6043c6265ce894a7e04d51f4235254dcbdae1"
+        ]
+      },
+      {
+        "repo": "noyalib",
+        "scope": "fuzz-nostd",
+        "target": "fuzz_parse_alloc_only",
+        "status": "passed",
+        "started_utc": "2026-11-11T14:55:22.849033+00:00",
+        "output": "/private/tmp/noyalib-campaigns-release-candidate-2026-11-11/campaigns/noyalib/fuzz-nostd/fuzz_parse_alloc_only",
+        "completed_utc": "2026-11-11T15:56:35.062967+00:00",
+        "exit_code": 0,
+        "executions": 13416321,
+        "measured_seconds": 3601,
+        "findings": []
+      },
+      {
+        "repo": "noyalib-mcp",
+        "scope": "fuzz",
+        "target": "tools",
+        "status": "passed",
+        "started_utc": "2026-11-11T15:50:53.177260+00:00",
+        "output": "/private/tmp/noyalib-campaigns-release-candidate-2026-11-11/campaigns/noyalib-mcp/fuzz/tools",
+        "completed_utc": "2026-11-11T16:55:18.191339+00:00",
+        "exit_code": 0,
+        "executions": 4566463,
+        "measured_seconds": 3601,
+        "findings": []
+      },
+      {
+        "repo": "noya-cli",
+        "scope": "fuzz",
+        "target": "fuzz_argv",
+        "status": "passed",
+        "started_utc": "2026-11-11T15:51:31.903539+00:00",
+        "output": "/private/tmp/noyalib-campaigns-release-candidate-2026-11-11/campaigns/noya-cli/fuzz/fuzz_argv",
+        "completed_utc": "2026-11-11T16:57:08.170274+00:00",
+        "exit_code": 0,
+        "executions": 5925980,
+        "measured_seconds": 3601,
+        "findings": []
+      },
+      {
+        "repo": "noyalib-lsp",
+        "scope": "fuzz",
+        "target": "fuzz_handle_message",
+        "status": "passed",
+        "started_utc": "2026-11-11T15:56:35.070345+00:00",
+        "output": "/private/tmp/noyalib-campaigns-release-candidate-2026-11-11/campaigns/noyalib-lsp/fuzz/fuzz_handle_message",
+        "completed_utc": "2026-11-11T17:01:41.950729+00:00",
+        "exit_code": 0,
+        "executions": 7688871,
+        "measured_seconds": 3601,
+        "findings": []
+      },
+      {
+        "repo": "noyalib-wasm",
+        "scope": "fuzz",
+        "target": "fuzz_core",
+        "status": "passed",
+        "started_utc": "2026-11-11T16:55:18.193397+00:00",
+        "output": "/private/tmp/noyalib-campaigns-release-candidate-2026-11-11/campaigns/noyalib-wasm/fuzz/fuzz_core",
+        "completed_utc": "2026-11-11T17:55:38.397796+00:00",
+        "exit_code": 0,
+        "executions": 5347646,
+        "measured_seconds": 3601,
+        "findings": []
+      },
+      {
+        "repo": "noyalib-serde-yaml",
+        "scope": "fuzz",
+        "target": "fuzz_from_str",
+        "status": "passed",
+        "started_utc": "2026-11-11T16:57:08.177573+00:00",
+        "output": "/private/tmp/noyalib-campaigns-release-candidate-2026-11-11/campaigns/noyalib-serde-yaml/fuzz/fuzz_from_str",
+        "completed_utc": "2026-11-11T17:57:23.852003+00:00",
+        "exit_code": 0,
+        "executions": 24764135,
+        "measured_seconds": 3601,
+        "findings": []
+      },
+      {
+        "repo": "noyalib",
+        "scope": "fuzz",
+        "target": "fuzz_parse",
+        "status": "passed",
+        "started_utc": "2026-11-11T17:01:41.953011+00:00",
+        "output": "/private/tmp/noyalib-campaigns-release-candidate-2026-11-11/campaigns/noyalib/fuzz/fuzz_parse",
+        "completed_utc": "2026-11-11T18:01:58.323964+00:00",
+        "exit_code": 0,
+        "executions": 21927930,
+        "measured_seconds": 3601,
+        "findings": []
+      },
+      {
+        "repo": "noyalib-mcp",
+        "scope": "fuzz",
+        "target": "http_headers",
+        "status": "running",
+        "started_utc": "2026-11-11T17:55:38.402418+00:00",
+        "output": "/private/tmp/noyalib-campaigns-release-candidate-2026-11-11/campaigns/noyalib-mcp/fuzz/http_headers"
+      },
+      {
+        "repo": "noya-cli",
+        "scope": "fuzz",
+        "target": "fuzz_derive_parse",
+        "status": "running",
+        "started_utc": "2026-11-11T17:57:23.853586+00:00",
+        "output": "/private/tmp/noyalib-campaigns-release-candidate-2026-11-11/campaigns/noya-cli/fuzz/fuzz_derive_parse"
+      },
+      {
+        "repo": "noyalib-lsp",
+        "scope": "fuzz",
+        "target": "fuzz_did_change",
+        "status": "running",
+        "started_utc": "2026-11-11T18:01:58.325480+00:00",
+        "output": "/private/tmp/noyalib-campaigns-release-candidate-2026-11-11/campaigns/noyalib-lsp/fuzz/fuzz_did_change"
+      },
+      {
+        "repo": "noyalib",
+        "scope": "fuzz",
+        "target": "fuzz_roundtrip",
+        "status": "queued"
+      },
+      {
+        "repo": "noyalib",
+        "scope": "fuzz",
+        "target": "fuzz_from_value",
+        "status": "queued"
+      },
+      {
+        "repo": "noyalib",
+        "scope": "fuzz",
+        "target": "fuzz_multi_doc",
+        "status": "queued"
+      },
+      {
+        "repo": "noyalib",
+        "scope": "fuzz",
+        "target": "fuzz_strict",
+        "status": "queued"
+      },
+      {
+        "repo": "noyalib",
+        "scope": "fuzz",
+        "target": "fuzz_borrowed_alias",
+        "status": "queued"
+      },
+      {
+        "repo": "noyalib",
+        "scope": "fuzz",
+        "target": "fuzz_yaml_v1_1",
+        "status": "queued"
+      },
+      {
+        "repo": "noyalib",
+        "scope": "fuzz",
+        "target": "fuzz_double_quoted",
+        "status": "queued"
+      },
+      {
+        "repo": "noyalib",
+        "scope": "fuzz",
+        "target": "fuzz_no_span_loader",
+        "status": "queued"
+      },
+      {
+        "repo": "noyalib",
+        "scope": "fuzz",
+        "target": "fuzz_editors",
+        "status": "queued"
+      },
+      {
+        "repo": "noyalib",
+        "scope": "fuzz",
+        "target": "fuzz_value_roundtrip",
+        "status": "queued"
+      },
+      {
+        "repo": "noyalib",
+        "scope": "fuzz",
+        "target": "fuzz_reader_and_slice",
+        "status": "queued"
+      },
+      {
+        "repo": "noyalib",
+        "scope": "fuzz",
+        "target": "fuzz_borrowing",
+        "status": "queued"
+      },
+      {
+        "repo": "noyalib",
+        "scope": "fuzz",
+        "target": "fuzz_query_path",
+        "status": "queued"
+      },
+      {
+        "repo": "noyalib",
+        "scope": "fuzz",
+        "target": "fuzz_cst_set",
+        "status": "queued"
+      },
+      {
+        "repo": "noyalib",
+        "scope": "fuzz",
+        "target": "fuzz_cst_format_roundtrip",
+        "status": "queued"
+      },
+      {
+        "repo": "noyalib",
+        "scope": "fuzz-nostd",
+        "target": "fuzz_roundtrip_alloc_only",
+        "status": "queued"
+      }
+    ]
+  },
+  "fixed_campaign_checkpoint": {
+    "started_utc": "2026-11-11T08:15:30.965846+00:00",
+    "parallel_campaigns": 3,
+    "requested_seconds": 3600,
+    "source_commits": {
+      "noyalib": "87261ce27452445e0f5324077e62b3582cc98be3",
+      "noyalib-mcp": "b6af21344fc05a4a9293d3e06c7d783bff8fa923",
+      "noya-cli": "dd239d3fac70b23ebefcf851693e3ab60676f97f",
+      "noyalib-lsp": "70a0ce9d9d82664beb3233b0441e2c2a9b70f53a",
+      "noyalib-wasm": "cecdbf898d99c25471082d261b0b875ced8d2664",
+      "noyalib-serde-yaml": "bb90e69928cbe70179d3d477b34f9643597179f4"
+    },
+    "satellite_core_resolution": "local source at the pinned core commit",
+    "campaigns": [
+      {
+        "repo": "noyalib-wasm",
+        "scope": "fuzz",
+        "target": "fuzz_document_path",
+        "status": "passed",
+        "started_utc": "2026-11-11T08:15:30.966736+00:00",
+        "output": "/private/tmp/noyalib-campaigns-fixed-2026-11-11/campaigns/noyalib-wasm/fuzz/fuzz_document_path",
+        "completed_utc": "2026-11-11T09:16:16.223390+00:00",
+        "exit_code": 0,
+        "executions": 24124400,
+        "measured_seconds": 3601,
+        "findings": []
+      },
+      {
+        "repo": "noyalib",
+        "scope": "fuzz",
+        "target": "fuzz_serde_yaml_compat",
+        "status": "failed",
+        "started_utc": "2026-11-11T08:15:30.967872+00:00",
+        "output": "/private/tmp/noyalib-campaigns-fixed-2026-11-11/campaigns/noyalib/fuzz/fuzz_serde_yaml_compat",
+        "completed_utc": "2026-11-11T08:16:18.810592+00:00",
+        "exit_code": 1,
+        "executions": 0,
+        "measured_seconds": 0,
+        "findings": [
+          "crash-e17cce87229ac34a0b190b73a1f5271e1842c2a1"
+        ]
+      },
+      {
+        "repo": "noyalib-serde-yaml",
+        "scope": "fuzz",
+        "target": "fuzz_roundtrip",
+        "status": "failed",
+        "started_utc": "2026-11-11T08:15:30.969221+00:00",
+        "output": "/private/tmp/noyalib-campaigns-fixed-2026-11-11/campaigns/noyalib-serde-yaml/fuzz/fuzz_roundtrip",
+        "completed_utc": "2026-11-11T08:27:01.369572+00:00",
+        "exit_code": 1,
+        "executions": 0,
+        "measured_seconds": 0,
+        "findings": [
+          "crash-93bb85241b596af979f39149cde36363ebf272dc"
+        ]
+      },
+      {
+        "repo": "noyalib",
+        "scope": "fuzz",
+        "target": "fuzz_diff",
+        "status": "failed",
+        "started_utc": "2026-11-11T08:16:18.811913+00:00",
+        "output": "/private/tmp/noyalib-campaigns-fixed-2026-11-11/campaigns/noyalib/fuzz/fuzz_diff",
+        "completed_utc": "2026-11-11T08:16:39.096192+00:00",
+        "exit_code": 1,
+        "executions": 0,
+        "measured_seconds": 0,
+        "findings": [
+          "crash-f57db3e1b4f852307a2aa22cc08268af7fb09a8b"
+        ]
+      },
+      {
+        "repo": "noyalib",
+        "scope": "fuzz-nostd",
+        "target": "fuzz_parse_alloc_only",
+        "status": "passed",
+        "started_utc": "2026-11-11T08:16:39.097662+00:00",
+        "output": "/private/tmp/noyalib-campaigns-fixed-2026-11-11/campaigns/noyalib/fuzz-nostd/fuzz_parse_alloc_only",
+        "completed_utc": "2026-11-11T09:17:30.276117+00:00",
+        "exit_code": 0,
+        "executions": 34262702,
+        "measured_seconds": 3601,
+        "findings": []
+      },
+      {
+        "repo": "noyalib-mcp",
+        "scope": "fuzz",
+        "target": "tools",
+        "status": "failed",
+        "started_utc": "2026-11-11T08:27:01.371299+00:00",
+        "output": "/private/tmp/noyalib-campaigns-fixed-2026-11-11/campaigns/noyalib-mcp/fuzz/tools",
+        "completed_utc": "2026-11-11T09:20:43.067437+00:00",
+        "exit_code": 1,
+        "executions": 0,
+        "measured_seconds": 0,
+        "findings": [
+          "crash-253f15a02365d0a81150a0a62ba9415e84d88beb"
+        ]
+      },
+      {
+        "repo": "noya-cli",
+        "scope": "fuzz",
+        "target": "fuzz_argv",
+        "status": "passed",
+        "started_utc": "2026-11-11T09:16:16.230398+00:00",
+        "output": "/private/tmp/noyalib-campaigns-fixed-2026-11-11/campaigns/noya-cli/fuzz/fuzz_argv",
+        "completed_utc": "2026-11-11T10:17:42.327565+00:00",
+        "exit_code": 0,
+        "executions": 13132890,
+        "measured_seconds": 3601,
+        "findings": []
+      },
+      {
+        "repo": "noyalib-lsp",
+        "scope": "fuzz",
+        "target": "fuzz_handle_message",
+        "status": "passed",
+        "started_utc": "2026-11-11T09:17:30.277822+00:00",
+        "output": "/private/tmp/noyalib-campaigns-fixed-2026-11-11/campaigns/noyalib-lsp/fuzz/fuzz_handle_message",
+        "completed_utc": "2026-11-11T10:18:50.621831+00:00",
+        "exit_code": 0,
+        "executions": 13203092,
+        "measured_seconds": 3601,
+        "findings": []
+      },
+      {
+        "repo": "noyalib-wasm",
+        "scope": "fuzz",
+        "target": "fuzz_core",
+        "status": "passed",
+        "started_utc": "2026-11-11T09:20:43.075399+00:00",
+        "output": "/private/tmp/noyalib-campaigns-fixed-2026-11-11/campaigns/noyalib-wasm/fuzz/fuzz_core",
+        "completed_utc": "2026-11-11T10:20:56.380305+00:00",
+        "exit_code": 0,
+        "executions": 10638446,
+        "measured_seconds": 3601,
+        "findings": []
+      },
+      {
+        "repo": "noyalib-serde-yaml",
+        "scope": "fuzz",
+        "target": "fuzz_from_str",
+        "status": "passed",
+        "started_utc": "2026-11-11T10:17:42.329940+00:00",
+        "output": "/private/tmp/noyalib-campaigns-fixed-2026-11-11/campaigns/noyalib-serde-yaml/fuzz/fuzz_from_str",
+        "completed_utc": "2026-11-11T11:17:53.367621+00:00",
+        "exit_code": 0,
+        "executions": 36880560,
+        "measured_seconds": 3601,
+        "findings": []
+      },
+      {
+        "repo": "noyalib",
+        "scope": "fuzz",
+        "target": "fuzz_parse",
+        "status": "passed",
+        "started_utc": "2026-11-11T10:18:50.623667+00:00",
+        "output": "/private/tmp/noyalib-campaigns-fixed-2026-11-11/campaigns/noyalib/fuzz/fuzz_parse",
+        "completed_utc": "2026-11-11T11:19:01.389921+00:00",
+        "exit_code": 0,
+        "executions": 32543511,
+        "measured_seconds": 3601,
+        "findings": []
+      },
+      {
+        "repo": "noyalib-mcp",
+        "scope": "fuzz",
+        "target": "http_headers",
+        "status": "passed",
+        "started_utc": "2026-11-11T10:20:56.381905+00:00",
+        "output": "/private/tmp/noyalib-campaigns-fixed-2026-11-11/campaigns/noyalib-mcp/fuzz/http_headers",
+        "completed_utc": "2026-11-11T11:21:07.967926+00:00",
+        "exit_code": 0,
+        "executions": 193104050,
+        "measured_seconds": 3601,
+        "findings": []
+      },
+      {
+        "repo": "noya-cli",
+        "scope": "fuzz",
+        "target": "fuzz_derive_parse",
+        "status": "passed",
+        "started_utc": "2026-11-11T11:17:53.371471+00:00",
+        "output": "/private/tmp/noyalib-campaigns-fixed-2026-11-11/campaigns/noya-cli/fuzz/fuzz_derive_parse",
+        "completed_utc": "2026-11-11T12:18:14.923453+00:00",
+        "exit_code": 0,
+        "executions": 9395789,
+        "measured_seconds": 3604,
+        "findings": []
+      },
+      {
+        "repo": "noyalib-lsp",
+        "scope": "fuzz",
+        "target": "fuzz_did_change",
+        "status": "passed",
+        "started_utc": "2026-11-11T11:19:01.391957+00:00",
+        "output": "/private/tmp/noyalib-campaigns-fixed-2026-11-11/campaigns/noyalib-lsp/fuzz/fuzz_did_change",
+        "completed_utc": "2026-11-11T12:19:14.935779+00:00",
+        "exit_code": 0,
+        "executions": 5353859,
+        "measured_seconds": 3601,
+        "findings": []
+      },
+      {
+        "repo": "noyalib",
+        "scope": "fuzz",
+        "target": "fuzz_roundtrip",
+        "status": "passed",
+        "started_utc": "2026-11-11T11:21:07.969604+00:00",
+        "output": "/private/tmp/noyalib-campaigns-fixed-2026-11-11/campaigns/noyalib/fuzz/fuzz_roundtrip",
+        "completed_utc": "2026-11-11T12:21:19.639497+00:00",
+        "exit_code": 0,
+        "executions": 20037417,
+        "measured_seconds": 3601,
+        "findings": []
+      },
+      {
+        "repo": "noyalib",
+        "scope": "fuzz",
+        "target": "fuzz_from_value",
+        "status": "passed",
+        "started_utc": "2026-11-11T12:18:14.985813+00:00",
+        "output": "/private/tmp/noyalib-campaigns-fixed-2026-11-11/campaigns/noyalib/fuzz/fuzz_from_value",
+        "completed_utc": "2026-11-11T13:19:11.904869+00:00",
+        "exit_code": 0,
+        "executions": 14657557,
+        "measured_seconds": 3601,
+        "findings": []
+      },
+      {
+        "repo": "noyalib",
+        "scope": "fuzz",
+        "target": "fuzz_multi_doc",
+        "status": "passed",
+        "started_utc": "2026-11-11T12:19:14.940738+00:00",
+        "output": "/private/tmp/noyalib-campaigns-fixed-2026-11-11/campaigns/noyalib/fuzz/fuzz_multi_doc",
+        "completed_utc": "2026-11-11T13:19:41.420334+00:00",
+        "exit_code": 0,
+        "executions": 9822725,
+        "measured_seconds": 3601,
+        "findings": []
+      },
+      {
+        "repo": "noyalib",
+        "scope": "fuzz",
+        "target": "fuzz_strict",
+        "status": "passed",
+        "started_utc": "2026-11-11T12:21:19.653926+00:00",
+        "output": "/private/tmp/noyalib-campaigns-fixed-2026-11-11/campaigns/noyalib/fuzz/fuzz_strict",
+        "completed_utc": "2026-11-11T13:22:13.690601+00:00",
+        "exit_code": 0,
+        "executions": 16247019,
+        "measured_seconds": 3601,
+        "findings": []
+      },
+      {
+        "repo": "noyalib",
+        "scope": "fuzz",
+        "target": "fuzz_borrowed_alias",
+        "status": "passed",
+        "started_utc": "2026-11-11T13:19:11.915271+00:00",
+        "output": "/private/tmp/noyalib-campaigns-fixed-2026-11-11/campaigns/noyalib/fuzz/fuzz_borrowed_alias",
+        "completed_utc": "2026-11-11T14:19:33.104443+00:00",
+        "exit_code": 0,
+        "executions": 19864193,
+        "measured_seconds": 3601,
+        "findings": []
+      },
+      {
+        "repo": "noyalib",
+        "scope": "fuzz",
+        "target": "fuzz_yaml_v1_1",
+        "status": "passed",
+        "started_utc": "2026-11-11T13:19:41.421939+00:00",
+        "output": "/private/tmp/noyalib-campaigns-fixed-2026-11-11/campaigns/noyalib/fuzz/fuzz_yaml_v1_1",
+        "completed_utc": "2026-11-11T14:19:54.857669+00:00",
+        "exit_code": 0,
+        "executions": 10200715,
+        "measured_seconds": 3601,
+        "findings": []
+      },
+      {
+        "repo": "noyalib",
+        "scope": "fuzz",
+        "target": "fuzz_double_quoted",
+        "status": "passed",
+        "started_utc": "2026-11-11T13:22:13.700582+00:00",
+        "output": "/private/tmp/noyalib-campaigns-fixed-2026-11-11/campaigns/noyalib/fuzz/fuzz_double_quoted",
+        "completed_utc": "2026-11-11T14:22:29.907520+00:00",
+        "exit_code": 0,
+        "executions": 19528271,
+        "measured_seconds": 3602,
+        "findings": []
+      },
+      {
+        "repo": "noyalib",
+        "scope": "fuzz",
+        "target": "fuzz_no_span_loader",
+        "status": "passed",
+        "started_utc": "2026-11-11T14:19:33.108938+00:00",
+        "output": "/private/tmp/noyalib-campaigns-fixed-2026-11-11/campaigns/noyalib/fuzz/fuzz_no_span_loader",
+        "completed_utc": "2026-11-11T15:19:46.809266+00:00",
+        "exit_code": 0,
+        "executions": 12424414,
+        "measured_seconds": 3601,
+        "findings": []
+      },
+      {
+        "repo": "noyalib",
+        "scope": "fuzz",
+        "target": "fuzz_editors",
+        "status": "passed",
+        "started_utc": "2026-11-11T14:19:54.859087+00:00",
+        "output": "/private/tmp/noyalib-campaigns-fixed-2026-11-11/campaigns/noyalib/fuzz/fuzz_editors",
+        "completed_utc": "2026-11-11T15:20:06.760217+00:00",
+        "exit_code": 0,
+        "executions": 11630502,
+        "measured_seconds": 3601,
+        "findings": []
+      },
+      {
+        "repo": "noyalib",
+        "scope": "fuzz",
+        "target": "fuzz_value_roundtrip",
+        "status": "passed",
+        "started_utc": "2026-11-11T14:22:29.914933+00:00",
+        "output": "/private/tmp/noyalib-campaigns-fixed-2026-11-11/campaigns/noyalib/fuzz/fuzz_value_roundtrip",
+        "completed_utc": "2026-11-11T15:22:51.597637+00:00",
+        "exit_code": 0,
+        "executions": 2654963,
+        "measured_seconds": 3601,
+        "findings": []
+      },
+      {
+        "repo": "noyalib",
+        "scope": "fuzz",
+        "target": "fuzz_reader_and_slice",
+        "status": "passed",
+        "started_utc": "2026-11-11T15:19:46.814248+00:00",
+        "output": "/private/tmp/noyalib-campaigns-fixed-2026-11-11/campaigns/noyalib/fuzz/fuzz_reader_and_slice",
+        "completed_utc": "2026-11-11T16:20:12.806620+00:00",
+        "exit_code": 0,
+        "executions": 5250125,
+        "measured_seconds": 3601,
+        "findings": []
+      },
+      {
+        "repo": "noyalib",
+        "scope": "fuzz",
+        "target": "fuzz_borrowing",
+        "status": "passed",
+        "started_utc": "2026-11-11T15:20:06.763471+00:00",
+        "output": "/private/tmp/noyalib-campaigns-fixed-2026-11-11/campaigns/noyalib/fuzz/fuzz_borrowing",
+        "completed_utc": "2026-11-11T16:20:26.040920+00:00",
+        "exit_code": 0,
+        "executions": 6237750,
+        "measured_seconds": 3601,
+        "findings": []
+      },
+      {
+        "repo": "noyalib",
+        "scope": "fuzz",
+        "target": "fuzz_query_path",
+        "status": "passed",
+        "started_utc": "2026-11-11T15:22:51.600081+00:00",
+        "output": "/private/tmp/noyalib-campaigns-fixed-2026-11-11/campaigns/noyalib/fuzz/fuzz_query_path",
+        "completed_utc": "2026-11-11T16:23:08.526072+00:00",
+        "exit_code": 0,
+        "executions": 20156019,
+        "measured_seconds": 3601,
+        "findings": []
+      },
+      {
+        "repo": "noyalib",
+        "scope": "fuzz",
+        "target": "fuzz_cst_set",
+        "status": "passed",
+        "started_utc": "2026-11-11T16:20:12.814746+00:00",
+        "output": "/private/tmp/noyalib-campaigns-fixed-2026-11-11/campaigns/noyalib/fuzz/fuzz_cst_set",
+        "completed_utc": "2026-11-11T17:20:29.065423+00:00",
+        "exit_code": 0,
+        "executions": 1789185,
+        "measured_seconds": 3601,
+        "findings": []
+      },
+      {
+        "repo": "noyalib",
+        "scope": "fuzz",
+        "target": "fuzz_cst_format_roundtrip",
+        "status": "passed",
+        "started_utc": "2026-11-11T16:20:26.048008+00:00",
+        "output": "/private/tmp/noyalib-campaigns-fixed-2026-11-11/campaigns/noyalib/fuzz/fuzz_cst_format_roundtrip",
+        "completed_utc": "2026-11-11T17:20:41.127236+00:00",
+        "exit_code": 0,
+        "executions": 7448026,
+        "measured_seconds": 3601,
+        "findings": []
+      },
+      {
+        "repo": "noyalib",
+        "scope": "fuzz-nostd",
+        "target": "fuzz_roundtrip_alloc_only",
+        "status": "passed",
+        "started_utc": "2026-11-11T16:23:08.530102+00:00",
+        "output": "/private/tmp/noyalib-campaigns-fixed-2026-11-11/campaigns/noyalib/fuzz-nostd/fuzz_roundtrip_alloc_only",
+        "completed_utc": "2026-11-11T17:23:25.501719+00:00",
+        "exit_code": 0,
+        "executions": 14103672,
+        "measured_seconds": 3601,
+        "findings": []
+      }
+    ],
+    "completed_utc": "2026-11-11T17:23:25.513288+00:00"
+  }
+}

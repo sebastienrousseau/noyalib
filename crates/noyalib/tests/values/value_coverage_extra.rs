@@ -12,7 +12,10 @@
 //! `apply_merge` / `Display` walks, `ValueIndex` impls, and the
 //! Serde Deserializer for `&Value`.
 
+#[cfg(feature = "std")]
 use std::collections::HashMap;
+#[cfg(not(feature = "std"))]
+type HashMap<K, V> = hashbrown::HashMap<K, V, rustc_hash::FxBuildHasher>;
 
 use noyalib::{
     Mapping, MappingAny, Number, Tag, TaggedValue, Value, from_str, from_value, to_string,
@@ -478,7 +481,7 @@ fn value_ref_deserialize_enum_via_mapping() {
 #[test]
 fn interpolate_properties_walks_tagged() {
     let mut v: Value = from_str("!Cfg\n  name: ${who}\n").expect("parse");
-    let mut props: HashMap<String, String> = HashMap::new();
+    let mut props: HashMap<String, String> = HashMap::default();
     let _ = props.insert("who".into(), "world".into());
     v.interpolate_properties(&props).expect("interpolate");
     let inner = v.untag_ref();
@@ -489,7 +492,7 @@ fn interpolate_properties_walks_tagged() {
 #[test]
 fn interpolate_properties_walks_sequence() {
     let mut v: Value = from_str("- ${a}\n- ${b}\n").expect("parse seq");
-    let mut props: HashMap<String, String> = HashMap::new();
+    let mut props: HashMap<String, String> = HashMap::default();
     let _ = props.insert("a".into(), "alpha".into());
     let _ = props.insert("b".into(), "beta".into());
     v.interpolate_properties(&props).expect("interpolate seq");

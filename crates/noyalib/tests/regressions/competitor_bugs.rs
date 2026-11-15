@@ -347,7 +347,7 @@ fn comment_shaped_line_is_block_scalar_content() {
     // line (`#` at column 0, valid content for a root node), and
     // comments cannot occur inside scalar content.
     let v: Value = from_str(">\n#").unwrap();
-    assert_eq!(v.as_str(), Some("#\n"));
+    assert_eq!(v.as_str(), Some("#"));
     let v: Value = from_str("|\n#x\n#y\n").unwrap();
     assert_eq!(v.as_str(), Some("#x\n#y\n"));
     // After leading breaks too (artifact `|+` with CR breaks): ng
@@ -358,7 +358,7 @@ fn comment_shaped_line_is_block_scalar_content() {
     // With clip chomping ng is left with only breaks, so it returns ""
     // (artifact `|\r\r#|z`); the `#|z` line is content.
     let v: Value = from_str("|\r\r#|z").unwrap();
-    assert_eq!(v.as_str(), Some("\n#|z\n"));
+    assert_eq!(v.as_str(), Some("\n#|z"));
 }
 
 #[test]
@@ -449,14 +449,13 @@ fn root_block_scalar_content_may_start_at_column_0() {
 }
 
 #[test]
-fn clipped_block_scalar_key_keeps_its_final_break() {
-    // Found by fuzz_diff: a folded key that ends the input keeps its
-    // clipped line break (as a value does, yaml-test-suite L24T); ng
-    // drops it.
+fn clipped_block_scalar_keys_preserve_only_a_present_break() {
+    // YAML 1.2.2 production 165 permits either a final line break or
+    // EOF. Clip preserves an existing break and never invents one.
     let v: Value = from_str("? >\n  k\n").unwrap();
     assert!(v.get("k\n").is_some(), "{v:?}");
     let v: Value = from_str("? >\r\n  *z").unwrap();
-    assert!(v.get("*z\n").is_some(), "{v:?}");
+    assert!(v.get("*z").is_some(), "{v:?}");
 }
 
 #[test]

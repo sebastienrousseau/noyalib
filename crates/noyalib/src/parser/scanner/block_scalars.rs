@@ -63,14 +63,16 @@ impl BlockBody {
 
     /// Apply chomping. YAML 1.2.2 §8.1.1.2:
     ///   `+` (keep): preserve every trailing line break.
-    ///   default (clip): a single trailing `\n` if and only if the
-    ///     scalar has any content. An empty scalar with `>`/`|` and
+    ///   default (clip): retain a single final line break when one
+    ///     follows content. An empty scalar with `>`/`|` and
     ///     trailing blank lines stays empty.
     ///   `-` (strip): no trailing line break.
     fn chomp(mut self, chomping: i8) -> String {
         match chomping {
             1 => self.string.push_str(&self.trailing_breaks),
-            0 if !self.string.is_empty() => self.string.push('\n'),
+            0 if !self.string.is_empty() && !self.trailing_breaks.is_empty() => {
+                self.string.push('\n');
+            }
             _ => {}
         }
         self.string
@@ -88,7 +90,7 @@ impl Scanner<'_> {
         // breaks are already folded to `\n` and tab is legal, so the
         // shared printable check fits exactly (found by the
         // serde_yaml parity fuzzer on `>-\x07`).
-        self.check_scalar_printable(&string)?;
+        self.check_unquoted_printable(&string)?;
         let style = if literal {
             ScalarStyle::Literal
         } else {
@@ -133,9 +135,11 @@ impl Scanner<'_> {
                 break;
             }
             match self.peek() {
-                b'+' => chomping = 1,
-                b'-' => chomping = -1,
-                c if c.is_ascii_digit() && c != b'0' => increment = (c - b'0') as usize,
+                b'+' if chomping == 0 => chomping = 1,
+                b'-' if chomping == 0 => chomping = -1,
+                c if c.is_ascii_digit() && c != b'0' && increment == 0 => {
+                    increment = (c - b'0') as usize;
+                }
                 _ => break,
             }
             self.advance();
@@ -173,7 +177,9 @@ impl Scanner<'_> {
                 return Err(self.error("comment indicator '#' must be preceded by a space or tab"));
             }
             while !self.is_eof() && !Self::is_break(self.peek()) {
-                if Self::is_raw_control(self.peek()) {
+                if Self::is_raw_control(self.peek())
+                    || Self::is_non_printable_unicode_prefix(&self.input[self.pos..])
+                {
                     return Err(self.error("comment contains a raw control character"));
                 }
                 self.advance();

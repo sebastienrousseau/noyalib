@@ -1,0 +1,11 @@
+plain: hello world
+single: 'can''t stop'
+double: "line1\nline2\ttab"
+literal: |
+  first line
+  second line
+folded: >
+  paragraph one-
+  continues here
+
+  p--ara

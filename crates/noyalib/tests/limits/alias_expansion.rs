@@ -191,3 +191,67 @@ fn borrowed_reports_the_same_breach_as_the_owned_loader() {
     ));
     assert_eq!(owned.to_string(), borrowed.to_string());
 }
+
+/// The compatibility profile reads an alias to an anchored overflow
+/// key (past 64 bits) as a value through a side table. That lookup
+/// runs after the alias is charged, so the alias budgets of
+/// GHSA-43mr-q2q7-9r2p and GHSA-cgjc-95j2-3fm8 still apply on both
+/// loaders and the typed path.
+#[test]
+fn aliased_overflow_keys_are_still_charged() {
+    let wide = "3".repeat(42);
+    let yaml = format!("{{&a {wide}: 1, b: [*a, *a, *a, *a]}}\n");
+    let compat = ParserConfig::serde_yaml_compat;
+    // The span-full loader runs whenever a policy is set.
+    let span_full = || compat().with_policy(noyalib::policy::MaxScalarLength(1 << 20));
+    let v = from_str_with_config::<Value>(&yaml, &compat()).expect("parses");
+    assert!(
+        v["b"][0].as_f64().is_some(),
+        "the alias reads as a value: {v:?}"
+    );
+    let is_alias_refusal = |e: &Error| {
+        matches!(
+            e,
+            Error::RepetitionLimitExceeded | Error::Budget(BudgetBreach::AliasAnchorRatio { .. })
+        )
+    };
+    for (name, cfg) in [
+        ("max_alias_expansions", compat().max_alias_expansions(3)),
+        (
+            "max_alias_expansions, span-full",
+            span_full().max_alias_expansions(3),
+        ),
+        ("alias_anchor_ratio", compat().alias_anchor_ratio(Some(2.0))),
+        (
+            "alias_anchor_ratio, span-full",
+            span_full().alias_anchor_ratio(Some(2.0)),
+        ),
+    ] {
+        let value = from_str_with_config::<Value>(&yaml, &cfg).map(drop);
+        let typed = from_str_with_config::<serde_json::Value>(&yaml, &cfg).map(drop);
+        for (target, result) in [("Value", value), ("typed", typed)] {
+            assert!(
+                result.as_ref().is_err_and(is_alias_refusal),
+                "{name}, {target} target: {result:?}"
+            );
+        }
+    }
+}
+
+/// A byte order mark opening a later document's prefix must not open a
+/// way around the per-document alias budgets.
+#[test]
+fn a_billion_laughs_behind_a_prefix_bom_is_refused() {
+    let yaml = format!("a: 1\n\u{feff}---\n{}", laughs(9));
+    let cfg = ParserConfig::default();
+    let owned = noyalib::load_all_with_config(&yaml, &cfg).map(|d| d.count());
+    assert!(
+        matches!(owned, Err(Error::RepetitionLimitExceeded)),
+        "{owned:?}"
+    );
+    let borrowed = from_str_borrowed_with_config(&yaml, &cfg);
+    assert!(
+        matches!(borrowed, Err(Error::RepetitionLimitExceeded)),
+        "{borrowed:?}"
+    );
+}

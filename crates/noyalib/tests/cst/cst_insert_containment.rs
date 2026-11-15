@@ -1,23 +1,8 @@
-//! A fragment passed to an inserter must not reach beyond the one
-//! entry it creates.
+//! Insertions preserve the target boundary and its siblings.
 //!
-//! `set` gained its containment oracle in v0.0.21
-//! (`set_fragment_containment.rs`); `push_back` and `insert_after`
-//! gained the outside-the-container half via `guarded_insert`. This
-//! file pins the remaining holes:
-//!
-//! - `insert_entry`'s new-key path spliced with no oracle at all, so a
-//!   lone `\r` (a YAML line break the `contains('\n')` branch test
-//!   never sees) escaped the fragment into sibling territory;
-//! - the key half was spliced verbatim, so a key holding `: ` or a
-//!   line break restructured the mapping;
-//! - the sequence inserters' oracle elides the whole container, so a
-//!   fragment could smuggle *extra items into the container* — one
-//!   `push_back` call appending two items;
-//! - the existing-key fast path resolved `"{path}.{key}"` through the
-//!   path syntax, so `insert_entry("m", "a.b", …)` with a nested
-//!   `m.a.b` replaced that nested entry instead of adding the literal
-//!   `a.b` key Kubernetes-style callers mean.
+//! Pin CR fragments, structural key punctuation and extra sequence items
+//! that escaped containment checks. Dotted keys address literal entries
+//! on both existing-key and new-key paths.
 
 // SPDX-License-Identifier: MIT OR Apache-2.0
 // Copyright (c) 2026 Noyalib. All rights reserved.

@@ -1,16 +1,9 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 // Copyright (c) 2026 Noyalib. All rights reserved.
 
-//! Integration coverage for `Value`'s serde impl (`value/serde_impl.rs`),
-//! the `Tag` / `TaggedValue` types (`value/tag.rs`) and the four
-//! `with/singleton_map*` adapters.
-//!
-//! Every adapter is applied through its real, documented `#[serde(with =
-//! "noyalib::with::…")]` path (mirrored from the module docs) and driven
-//! serialize -> YAML -> deserialize, asserting round-trip equality. The
-//! `Value` variants are exercised both through the public
-//! `to_string`/`from_str` YAML round-trip and through the borrowed
-//! `&Value` deserializer via `from_value`.
+//! Exercise Value serde, tags and singleton-map adapters through their
+//! documented `serde(with)` paths. Assert YAML round trips and borrowed
+//! `from_value` deserialization.
 
 #![allow(
     missing_docs,

@@ -20,3 +20,5 @@ mod serializer_config_round_trip;
 mod set_value_roundtrip_prop;
 mod simd_equivalence;
 mod span_tree_invariants;
+
+mod oracle_normalization;

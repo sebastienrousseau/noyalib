@@ -1,27 +1,10 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 // Copyright (c) 2026 Noyalib. All rights reserved.
 
-//! Behaviour of the optional features, asserted rather than assumed.
+//! Shared contracts for optional feature implementations.
 //!
-//! Ten features had no integration test naming them. Three of those are
-//! pure aliases (`minimal`, `noyavalidate`, `compare-saphyr`) with no
-//! `cfg` site of their own — for those the only meaningful claim is that
-//! the composition still resolves, which a build with the feature on
-//! proves by existing.
-//!
-//! The rest select between two implementations of the same thing:
-//!
-//! | feature | swaps |
-//! | :--- | :--- |
-//! | `fast-int` | `itoa` for `write!` when serialising integers |
-//! | `fast-float` | `ryu` for `{:?}` when checking float round-trips |
-//! | `wasm-opt` | an alternative streaming buffer strategy |
-//!
-//! A faster implementation that produces *different output* is a bug,
-//! not an optimisation. So these tests assert the observable result and
-//! are written to pass identically whether the feature is on or off —
-//! run under both configurations, they pin the equivalence. A test that
-//! only ran in one configuration could not.
+//! Run the same boundary assertions with features enabled and disabled:
+//! integer and float formatting, streaming buffers and compatibility aliases.
 
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 

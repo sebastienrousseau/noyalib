@@ -8,14 +8,19 @@
 //! allocations with equal values do NOT, round-trip preserves values, and
 //! weak refs behave correctly.
 
+#[cfg(feature = "std")]
 use std::rc::Rc;
+#[cfg(feature = "std")]
 use std::sync::Arc;
 
-use noyalib::{ArcAnchor, RcAnchor, to_string, to_string_tracking_shared};
+#[cfg(feature = "std")]
+use noyalib::{ArcAnchor, to_string_tracking_shared};
+use noyalib::{RcAnchor, to_string};
 
 // ── Basic emission ──────────────────────────────────────────────────────
 
 #[test]
+#[cfg(feature = "std")]
 fn single_ref_emits_anchor_but_no_alias() {
     // One use of the Rc → an anchor is assigned but no alias references it.
     // Emission is `&id001 <value>`; valid YAML (anchors without aliases are legal).
@@ -26,6 +31,7 @@ fn single_ref_emits_anchor_but_no_alias() {
 }
 
 #[test]
+#[cfg(feature = "std")]
 fn two_clones_emit_one_anchor_one_alias() {
     let a: RcAnchor<String> = RcAnchor::from("shared".to_string());
     let doc = vec![a.clone(), a];
@@ -36,6 +42,7 @@ fn two_clones_emit_one_anchor_one_alias() {
 }
 
 #[test]
+#[cfg(feature = "std")]
 fn three_clones_one_anchor_two_aliases() {
     let a: RcAnchor<String> = RcAnchor::from("x".to_string());
     let doc = vec![a.clone(), a.clone(), a];
@@ -45,6 +52,7 @@ fn three_clones_one_anchor_two_aliases() {
 }
 
 #[test]
+#[cfg(feature = "std")]
 fn distinct_allocations_with_equal_value_emit_two_anchors() {
     // Value equality is not identity. Two separate Rc::new calls → two anchors.
     let a: RcAnchor<String> = RcAnchor::from("same".to_string());
@@ -59,6 +67,7 @@ fn distinct_allocations_with_equal_value_emit_two_anchors() {
 }
 
 #[test]
+#[cfg(feature = "std")]
 fn disjoint_does_not_leak_state_between_calls() {
     // First call assigns id001. Second call must start fresh at id001, not id002.
     let a: RcAnchor<String> = RcAnchor::from("one".to_string());
@@ -83,6 +92,7 @@ fn tracking_opt_in_default_unchanged() {
 
 // ── Mapping / struct inner ──────────────────────────────────────────────
 
+#[cfg(feature = "std")]
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
 struct Endpoint {
     host: String,
@@ -90,6 +100,7 @@ struct Endpoint {
 }
 
 #[test]
+#[cfg(feature = "std")]
 fn mapping_inner_anchor_is_valid_yaml() {
     let cfg: RcAnchor<Endpoint> = RcAnchor::from(Endpoint {
         host: "db.local".to_string(),
@@ -109,6 +120,7 @@ fn mapping_inner_anchor_is_valid_yaml() {
 }
 
 #[test]
+#[cfg(feature = "std")]
 fn nested_struct_with_shared_leaf() {
     #[derive(serde::Serialize)]
     struct Root {
@@ -140,6 +152,7 @@ fn nested_struct_with_shared_leaf() {
 // ── Sequence inner ───────────────────────────────────────────────────────
 
 #[test]
+#[cfg(feature = "std")]
 fn sequence_inner_anchor() {
     let list: RcAnchor<Vec<i32>> = RcAnchor::from(vec![1, 2, 3]);
     let doc = vec![list.clone(), list];
@@ -153,6 +166,7 @@ fn sequence_inner_anchor() {
 // ── Arc variant ──────────────────────────────────────────────────────────
 
 #[test]
+#[cfg(feature = "std")]
 fn arc_two_clones_emit_anchor_and_alias() {
     let a: ArcAnchor<String> = ArcAnchor::from("arc".to_string());
     let doc = vec![a.clone(), a];
@@ -162,6 +176,7 @@ fn arc_two_clones_emit_anchor_and_alias() {
 }
 
 #[test]
+#[cfg(feature = "std")]
 fn arc_struct_shared() {
     #[derive(serde::Serialize)]
     struct Root {
@@ -186,6 +201,7 @@ fn arc_struct_shared() {
 // ── Multiple distinct shared pointers ────────────────────────────────────
 
 #[test]
+#[cfg(feature = "std")]
 fn multiple_distinct_shared_pointers() {
     let a: RcAnchor<String> = RcAnchor::from("A".to_string());
     let b: RcAnchor<String> = RcAnchor::from("B".to_string());
@@ -202,6 +218,7 @@ fn multiple_distinct_shared_pointers() {
 // ── Round-trip preserves values (not identity) ───────────────────────────
 
 #[test]
+#[cfg(feature = "std")]
 fn round_trip_value_equivalence() {
     let a: RcAnchor<String> = RcAnchor::from("payload".to_string());
     let doc = vec![a.clone(), a.clone(), a];
@@ -213,6 +230,7 @@ fn round_trip_value_equivalence() {
 // ── Pointer-level verification ───────────────────────────────────────────
 
 #[test]
+#[cfg(feature = "std")]
 fn identity_driven_not_value_driven() {
     // A = Rc::new("x"); B = Rc::new("x"); C = A.clone().
     // Tracking must emit: anchor(A), anchor(B), alias(A) — not alias(B).
@@ -233,6 +251,7 @@ fn identity_driven_not_value_driven() {
 // ── Scope cleanup ────────────────────────────────────────────────────────
 
 #[test]
+#[cfg(feature = "std")]
 fn state_cleared_between_calls_even_on_error_path() {
     // If tracking state leaked, the second call would either see a stale map
     // or the id counter would continue. Verified implicitly by
@@ -261,6 +280,7 @@ fn plain_to_string_with_rcanchor_delegates_to_inner() {
 // ── Arc across threads (separate serialization on worker thread) ─────────
 
 #[test]
+#[cfg(feature = "std")]
 fn arc_worker_thread_serializes_independently() {
     let a: ArcAnchor<String> = ArcAnchor::from("worker".to_string());
     let clone = a.clone();
@@ -279,6 +299,7 @@ fn arc_worker_thread_serializes_independently() {
 // ── Ensure we still return a usable Rc after serialization ───────────────
 
 #[test]
+#[cfg(feature = "std")]
 fn rc_usable_after_tracking_serialization() {
     let a: RcAnchor<String> = RcAnchor::from("live".to_string());
     let clone = a.clone();
@@ -290,6 +311,7 @@ fn rc_usable_after_tracking_serialization() {
 }
 
 #[test]
+#[cfg(feature = "std")]
 fn arc_usable_after_tracking_serialization() {
     let a: ArcAnchor<String> = ArcAnchor::from("live".to_string());
     let clone = a.clone();

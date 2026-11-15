@@ -1,0 +1,280 @@
+{
+  "recorded_utc": "2026-11-12T02:20:21.719348+00:00",
+  "scope": "Literal verbatim-tag identity under primary handle redefinitions; browser startup diagnostics remain a separate earlier-source CI observation.",
+  "source_commit": "2455c640268cd4894a93e2752ff47b7ff5f689ca",
+  "scanner_sha256": "e961c23c22f65b8009bf8ba53187535ffb9cf46de5c58e7b3db4940087490478",
+  "regression_sha256": "44ea9773633d87c32a82fe29fb4288e629b4fc98cc1c5cd4ec1d5894bc5d31cb",
+  "reproducer": {
+    "input": "%TAG ! tag:example:\n---\n!<!foo> x\n",
+    "bytes": 34,
+    "expected_tag": "!foo",
+    "actual_before_fix": "tag:example:foo",
+    "red_observed": true,
+    "cases": "Value, typed mapping and CST; ordinary, 1024-byte and empty primary prefixes; shorthand expansion remains active."
+  },
+  "behavior": "Only shorthand tags consult directive prefixes. Verbatim URIs retain their written identity and byte budget.",
+  "public_api_features_msrv_dependencies": "Unchanged",
+  "suites": {
+    "full-std": {
+      "groups": 20,
+      "passed": 6752,
+      "failed": 0,
+      "ignored": 0
+    },
+    "full-alloc": {
+      "groups": 20,
+      "passed": 6733,
+      "failed": 0,
+      "ignored": 0
+    },
+    "full-portable": {
+      "groups": 20,
+      "passed": 7074,
+      "failed": 0,
+      "ignored": 0
+    },
+    "doctests": {
+      "groups": 2,
+      "passed": 590,
+      "failed": 0,
+      "ignored": 8
+    }
+  },
+  "bare_metal_checks_passed": 12,
+  "asan_inputs": {
+    "std": 11,
+    "alloc_only": 3
+  },
+  "complexity": "Unchanged 81-entry baseline; fetch_tag remains 120 lines.",
+  "package": {
+    "authoritative_gate": "scripts/size-monitor.sh",
+    "source_commit": "2455c640268cd4894a93e2752ff47b7ff5f689ca",
+    "bytes": 1319883,
+    "budget_bytes": 1320000,
+    "passed": true
+  },
+  "browser_startup": {
+    "failed_source": "291d05ba75243b09e10ee7f7ea51d8cab412fe67",
+    "failed_jobs": [
+      130908714402,
+      130912111113
+    ],
+    "failure": "No isolated DevTools port appeared within the existing startup poll window.",
+    "diagnostic_source": "d9bbd6f5431fe832c9dedd4844bdc3d7f5823145",
+    "wasm_source": "a3d690d98eac9b0ac15aa7b73d1dc05c0a420759",
+    "successful_job": 130915625588,
+    "chrome_version": "156.0.8078.79",
+    "startup_deadline_and_product_assertions": "Unchanged",
+    "root_cause": "Undetermined; the diagnostic run passed. This is not proof of a startup-defect correction."
+  },
+  "sustained_campaigns": {
+    "superseded_source": "291d05ba75243b09e10ee7f7ea51d8cab412fe67",
+    "superseded_credit": "Interrupted deliberately after the later scanner correction; no full-hour acceptance. Raw controller receipts remain unchanged.",
+    "replacement_source": "2455c640268cd4894a93e2752ff47b7ff5f689ca",
+    "replacement_output": "/private/tmp/noyalib-verbatim-campaigns-2026-11-12",
+    "replacement_scope": "Two affected targets; running at this checkpoint, no completed time credited. Full 31-target family acceptance remains open."
+  },
+  "remaining": [
+    "Typed duplicate identity in ADR-0019 awaits the maintainer choice; its original 88-byte failure remains retained.",
+    "Full final-source family fuzz, independent review, continuity and held MCP release recovery remain open."
+  ],
+  "archive": {
+    "path": "evidence/verbatim-tags-2026-11-12.tar.gz",
+    "sha256": "78051aa0c8ea97ec95a0c50be77b0721f7e6825ca4eb4deb73b1a2eb1c17ec03",
+    "bytes": 1505534,
+    "members": {
+      "campaigns/superseded-291/alloc/campaign.log": {
+        "sha256": "ad41421c005865d08ed0839b60e4a6445aa9b6ffc7ac1828d5385d517d1ee804",
+        "bytes": 6830676
+      },
+      "campaigns/superseded-291/alloc/receipt.json": {
+        "sha256": "75dec76e4566acb94c103cbedcd79b689f4041730fe51e103e3e1510e5163eec",
+        "bytes": 2313
+      },
+      "campaigns/superseded-291/sources.json": {
+        "sha256": "66e1dbef160acee8fc8719d439c06020cce9d3166bcefd100a670fd291c5e7d1",
+        "bytes": 353
+      },
+      "campaigns/superseded-291/std/campaign.log": {
+        "sha256": "645717e8c1bfb4ef505473d48f9a5d68077ce324c80094c811d525acd80dced5",
+        "bytes": 5686113
+      },
+      "campaigns/superseded-291/std/receipt.json": {
+        "sha256": "30ee5f41fbda8bbedef77af498c1ea3dd2eac645a468746784c1ceea98eacc02",
+        "bytes": 3966
+      },
+      "campaigns/superseded-291/superseded.json": {
+        "sha256": "f950b30928122deb89943dadac5e39cb2df9fafbb58a7178574bfd0baa74f557",
+        "bytes": 588
+      },
+      "checks/baremetal/1.89.0-baseline-aarch64-unknown-none.log": {
+        "sha256": "4c36bbd0c4cdcb268a6dbce30751cd92c2b34f1c0e1fc569a4e78995ed670659",
+        "bytes": 221
+      },
+      "checks/baremetal/1.89.0-baseline-riscv32imac-unknown-none-elf.log": {
+        "sha256": "f213bc1e33608f55743c57b957c47ab3835448dd127df3d3673b5e6a97669caa",
+        "bytes": 221
+      },
+      "checks/baremetal/1.89.0-baseline-thumbv7em-none-eabihf.log": {
+        "sha256": "6c5d5d6063c19b382d49566f39dc26e92fc21f5077a4734284f0425fb2aacf0b",
+        "bytes": 221
+      },
+      "checks/baremetal/1.89.0-portable-aarch64-unknown-none.log": {
+        "sha256": "fded58476b3264be47144dadcd0c9986c8c5687a7f8e65fae81feb42e8a6f412",
+        "bytes": 222
+      },
+      "checks/baremetal/1.89.0-portable-riscv32imac-unknown-none-elf.log": {
+        "sha256": "c7cbaf3e21077a1269a02671347d46f2d35da7e78c92512a2ffd69b0dc1f0ab8",
+        "bytes": 221
+      },
+      "checks/baremetal/1.89.0-portable-thumbv7em-none-eabihf.log": {
+        "sha256": "1679882bebc7c4e0de465934dc988da4683abf3ec00a57cf6e55655a164ef6f4",
+        "bytes": 221
+      },
+      "checks/baremetal/stable-baseline-aarch64-unknown-none.log": {
+        "sha256": "03b449720dfa343d7cd8dc3e00e570ed4d8cdf7001220e37531e7ac0cec90b04",
+        "bytes": 377
+      },
+      "checks/baremetal/stable-baseline-riscv32imac-unknown-none-elf.log": {
+        "sha256": "cf3dc3bbb90a824d6cfe85e6d5b767b46646677a98d71861e27a6e6095c3513c",
+        "bytes": 377
+      },
+      "checks/baremetal/stable-baseline-thumbv7em-none-eabihf.log": {
+        "sha256": "486510a97a29d5d9b756c0f2f932a2cab02e45fe0683e0b6593bc53e59d26fc6",
+        "bytes": 326
+      },
+      "checks/baremetal/stable-portable-aarch64-unknown-none.log": {
+        "sha256": "5d7976057459bcf22ac98f73ba15c6d42cbc3ef2d096e392e3f0c5d527f6c053",
+        "bytes": 377
+      },
+      "checks/baremetal/stable-portable-riscv32imac-unknown-none-elf.log": {
+        "sha256": "0ac7a1c54ee1c39e0482964f2117ad7817d06f770d5206661a5f3add8c3f93e6",
+        "bytes": 377
+      },
+      "checks/baremetal/stable-portable-thumbv7em-none-eabihf.log": {
+        "sha256": "0896b9f82bfa91f5166f77e8af45fcb7a8685a5d17b207421d0a60007cd92ff2",
+        "bytes": 378
+      },
+      "checks/baremetal/summary.json": {
+        "sha256": "cca054ad15eb6dc8cf0f14c9b231ebacb3b195208a420f331a21451d6e5674a2",
+        "bytes": 3553
+      },
+      "checks/noyalib-100-verbatim-docs-markdown.json": {
+        "sha256": "21f2a45fbdd1f307e1d9bd942cceb38a0ec142121df9c0450fb9d20c35eb7857",
+        "bytes": 98
+      },
+      "checks/noyalib-100-verbatim-final-core-summary.json": {
+        "sha256": "180b114513c51d04708778267b572725a4bd0fc12195c6fdbb5a28666fbb9b05",
+        "bytes": 737
+      },
+      "checks/noyalib-100-verbatim-markdown.json": {
+        "sha256": "4732ec1f37dd573f1c48ba43eb3c9b9f455197cf7b2d7ba10c0dc227b695d570",
+        "bytes": 117
+      },
+      "logs/browser/noyalib-100-291d05b-wasm-job.log": {
+        "sha256": "72c03c7215edbbd75631b18b35be2d720e658f2e7ed4b84666122348d53cf4da",
+        "bytes": 75694
+      },
+      "logs/browser/noyalib-100-291d05b-wasm-retry.log": {
+        "sha256": "bc0ca88c31499dfeed9f8d444377aed270dec6a6f1382abb74ccdc84a9a5ac70",
+        "bytes": 74602
+      },
+      "logs/browser/noyalib-100-d9bbd6f-wasm-success.log": {
+        "sha256": "30f872be90c477d17c174babda83d19156c029e8ed0c82730645ca73dfed9c28",
+        "bytes": 76628
+      },
+      "logs/core/noyalib-100-verbatim-doc-links.log": {
+        "sha256": "7fbabcfcae1e18d5baa12022d47675c8ddf3c8ebcaab5f0fa6c66e51adbce19d",
+        "bytes": 24
+      },
+      "logs/core/noyalib-100-verbatim-final-alloc-asan.log": {
+        "sha256": "ca1036bc233713032cdb47b7cf045c968fa9f922e294516a640b526cbb042946",
+        "bytes": 1439
+      },
+      "logs/core/noyalib-100-verbatim-final-baremetal.log": {
+        "sha256": "0699bf8be1176dd0f6d963baafe1a0a82202b78746d208c231efcd6f189d6ac0",
+        "bytes": 504
+      },
+      "logs/core/noyalib-100-verbatim-final-clippy.log": {
+        "sha256": "152aa1d6ad19ae1e111a664a4477f71726e7cd5a585c5dd3534a68d0f1a6462d",
+        "bytes": 9394
+      },
+      "logs/core/noyalib-100-verbatim-final-complexity.log": {
+        "sha256": "8ff4f89edbb632be8ac015888ceee3987755b2361af04cf8e72595e3dc90af6a",
+        "bytes": 89
+      },
+      "logs/core/noyalib-100-verbatim-final-doctests.log": {
+        "sha256": "fca99b62961e12f22d668977fb0862b7ca76fd74f7915ead630a0ac36d3e5414",
+        "bytes": 51570
+      },
+      "logs/core/noyalib-100-verbatim-final-full-alloc.log": {
+        "sha256": "ef2bb25847511844db3486cfac3398acb17c923ef8b217bf5d348d5aba636217",
+        "bytes": 487924
+      },
+      "logs/core/noyalib-100-verbatim-final-full-portable.log": {
+        "sha256": "263ab7f1a17eb9379031bc644e4f9cc8509b9a083046a5a0c86cbc18e3479044",
+        "bytes": 513771
+      },
+      "logs/core/noyalib-100-verbatim-final-full-std.log": {
+        "sha256": "f01fd298a250c7d9c219995e73642fe4f046071597da46d7892f247db39478c5",
+        "bytes": 494354
+      },
+      "logs/core/noyalib-100-verbatim-final-gates.log": {
+        "sha256": "822631a55347f49029a2e40cf2287d04b993275197f3721a5cb431feafaa77d7",
+        "bytes": 73
+      },
+      "logs/core/noyalib-100-verbatim-final-std-asan.log": {
+        "sha256": "4019cc8cbea923619c8644fcc806f4e4626bd195201a4c9043d8ef95e40775bd",
+        "bytes": 1399
+      },
+      "logs/core/noyalib-100-verbatim-official-size.log": {
+        "sha256": "19fb096f1852731f3b9ec03061af076456fd91ebb73de81c8c0f720743ff8b5c",
+        "bytes": 170
+      },
+      "logs/core/noyalib-100-verbatim-override-green.log": {
+        "sha256": "3bf121c938d043ef3a916366f5744f66a4bc992453a7a19416b20600e6ccf69b",
+        "bytes": 845
+      },
+      "logs/core/noyalib-100-verbatim-override-red.log": {
+        "sha256": "036e55f83faf54ec8c001f3fd8ee4aa86cb836ba1e13b871cda2974bfb5301bc",
+        "bytes": 1014
+      },
+      "logs/core/noyalib-100-verbatim-override-valid-red.log": {
+        "sha256": "66c0d71dc02733b447c65cb3cd038f7a9efe6223248d078fcc6d895dee243ed8",
+        "bytes": 1026
+      },
+      "logs/core/noyalib-100-verbatim-package-preflight-final.log": {
+        "sha256": "cce2f78d441834d82863991a9a8410b53f1ae40dcb9bae1f0cf8ca6c0741fafe",
+        "bytes": 45
+      },
+      "logs/core/noyalib-100-verbatim-package-preflight.log": {
+        "sha256": "6047d64e0eca031f331656843a5c6067cc1a3e7ecbe90f305aee4649918f5cd6",
+        "bytes": 45
+      },
+      "logs/core/noyalib-100-verbatim-reuse.log": {
+        "sha256": "50b38abdfb24e353a85651ec3f6e1502c9dce15eb141745a8cc612e26349ea8a",
+        "bytes": 408
+      },
+      "logs/core/noyalib-100-verbatim-versions.log": {
+        "sha256": "788ac9aac967fea2fbdfbeaf12da4672a10bf55531b61da33bfdb168844d1308",
+        "bytes": 6247
+      },
+      "source/crates/noyalib/src/parser/scanner.rs": {
+        "sha256": "e961c23c22f65b8009bf8ba53187535ffb9cf46de5c58e7b3db4940087490478",
+        "bytes": 119338
+      },
+      "source/crates/noyalib/tests/regressions/verbatim_tags.rs": {
+        "sha256": "44ea9773633d87c32a82fe29fb4288e629b4fc98cc1c5cd4ec1d5894bc5d31cb",
+        "bytes": 3320
+      },
+      "source/fuzz/regressions/fuzz_roundtrip/verbatim-local-primary-override": {
+        "sha256": "ab1725cff183e2cab1312439cf4a4bf9a600d9e2801fc26a85463423290d102c",
+        "bytes": 34
+      },
+      "source/scripts/complexity/baseline.tsv": {
+        "sha256": "1bbc6618691159ba694591a3e27ebe5151fb6372670fa319406f4700ece72bbe",
+        "bytes": 6018
+      }
+    }
+  }
+}

@@ -33,6 +33,10 @@ fuzz_target!(|data: &[u8]| {
         .unwrap_or_else(|| panic!("format made a valid document invalid: {formatted:?}"));
     assert_eq!(after, before, "format changed the meaning: {formatted:?}");
     if let Ok(again) = noyalib::cst::format(&formatted) {
-        assert_eq!(load(&again), Some(before), "a second format changed the meaning");
+        assert_eq!(
+            load(&again),
+            Some(before),
+            "a second format changed the meaning"
+        );
     }
 });

@@ -1,11 +1,8 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 // Copyright (c) 2026 Noyalib. All rights reserved.
 
-//! Coverage for `Number::Unsigned` arms in `value/number.rs` — the
-//! predicates (`as_f64` / `is_i64` / `is_nan` / `is_infinite` /
-//! `is_finite`), the full cross-type `Ord` matrix, and parsing an
-//! integer above `i64::MAX`. All of these live behind `lossless-u64`,
-//! which is why the arms stay uncovered without the feature.
+//! Cover lossless-u64 number predicates, cross-type ordering and parsing
+//! integers above `i64::MAX`. These cases require the `lossless-u64` feature.
 
 #![cfg(feature = "lossless-u64")]
 #![allow(missing_docs)]

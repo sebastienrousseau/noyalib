@@ -5,6 +5,11 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 // Copyright (c) 2026 Noyalib. All rights reserved.
 
+#[cfg(feature = "std")]
+use indexmap::IndexMap;
+#[cfg(not(feature = "std"))]
+type IndexMap<K, V> = indexmap::IndexMap<K, V, rustc_hash::FxBuildHasher>;
+
 use std::borrow::Cow;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher as _};
@@ -1761,7 +1766,7 @@ fn test_mapping_from_array() {
 
 #[test]
 fn test_mapping_from_indexmap() {
-    let mut inner = indexmap::IndexMap::new();
+    let mut inner: IndexMap<String, Value> = IndexMap::default();
     let _ = inner.insert("key".to_string(), Value::from(42));
 
     let map = Mapping::from(inner);
@@ -1773,7 +1778,7 @@ fn test_mapping_into_indexmap() {
     let mut map = Mapping::new();
     let _ = map.insert("key", Value::from(42));
 
-    let inner: indexmap::IndexMap<String, Value> = map.into();
+    let inner: IndexMap<String, Value> = map.into();
     assert_eq!(inner.get("key").unwrap().as_i64(), Some(42));
 }
 
@@ -1788,7 +1793,7 @@ fn test_mapping_into_inner() {
 
 #[test]
 fn test_mapping_from_inner() {
-    let mut inner = indexmap::IndexMap::new();
+    let mut inner: IndexMap<String, Value> = IndexMap::default();
     let _ = inner.insert("key".to_string(), Value::from(42));
 
     let map = Mapping::from_inner(inner);

@@ -370,6 +370,13 @@ pub struct ParserConfig {
     /// (`0b11` → 3). Default `false` to honour the YAML 1.2
     /// schema, which has no binary form.
     pub legacy_binary_numbers: bool,
+    /// When `true`, a plain hex or octal integer may carry a sign
+    /// (`-0xF` → -15, `+0o17` → 15), as `serde_yaml` 0.9 reads
+    /// them. The prefix stays lower-case and the digits may not
+    /// hold `_`. Default `false`: YAML 1.2's core schema has only
+    /// unsigned hex and octal forms, so a signed spelling is a
+    /// string.
+    pub signed_radix_integers: bool,
     /// When `true`, a plain scalar float whose *literal* spelling
     /// overflows `f64` (`1e999`) resolves as a **string** instead
     /// of infinity. The explicit spellings `.inf` / `-.Inf` /
@@ -377,12 +384,15 @@ pub struct ParserConfig {
     /// `serde_yaml` 0.9. Default `false` (overflow saturates to
     /// infinity, the Rust float-parsing convention).
     pub float_overflow_strings: bool,
-    /// When `true`, a plain decimal integer beyond `u64::MAX`
-    /// (`18446744073709551616`) aborts the parse with
+    /// When `true`, a plain decimal integer below `i64::MIN` or above
+    /// `u64::MAX`, but within the corresponding signed or unsigned 128-bit
+    /// range, aborts the parse with
     /// [`ErrorKind::IntegerOverflow`](crate::ErrorKind) instead
     /// of falling through to an approximate `f64`. Matches
     /// `serde_yaml` 0.9's "JSON number out of range". Default
-    /// `false`.
+    /// `false`. Larger literals retain float fallback. Quoted scalars,
+    /// disabled schema resolution and the
+    /// leading-zero string policy retain their string values.
     pub integer_overflow_errors: bool,
     /// What to do with a non-scalar mapping key (`[a, b]: v`,
     /// `{k: v}: w`). See [`NonScalarKeyPolicy`]. Default
@@ -510,6 +520,7 @@ impl Default for ParserConfig {
             lossless_u64_integers: false,
             leading_zero_integer_strings: false,
             legacy_binary_numbers: false,
+            signed_radix_integers: false,
             float_overflow_strings: false,
             integer_overflow_errors: false,
             non_scalar_key_policy: NonScalarKeyPolicy::Stringify,
@@ -601,9 +612,10 @@ impl ParserConfig {
     /// - `<<` merge keys stay ordinary entries whose alias values
     ///   resolve ([`MergeKeyPolicy::AsOrdinary`]) — serde_yaml
     ///   never implemented the merge;
-    /// - leading-zero integers (`0123`) resolve as strings and
-    ///   YAML 1.1 binary literals (`0b11`) as integers — libyaml's
-    ///   resolver, spec versions notwithstanding;
+    /// - leading-zero integers (`0123`) resolve as strings, and
+    ///   YAML 1.1 binary literals (`0b11`) and signed hex or octal
+    ///   (`-0xF`) as integers — libyaml's resolver, spec versions
+    ///   notwithstanding;
     /// - a literal float overflow (`1e999`) is a string, not
     ///   infinity;
     /// - integers past `u64::MAX` error ("JSON number out of
@@ -630,6 +642,7 @@ impl ParserConfig {
             merge_key_policy: MergeKeyPolicy::AsOrdinary,
             leading_zero_integer_strings: true,
             legacy_binary_numbers: true,
+            signed_radix_integers: true,
             float_overflow_strings: true,
             integer_overflow_errors: true,
             non_scalar_key_policy: NonScalarKeyPolicy::Error,

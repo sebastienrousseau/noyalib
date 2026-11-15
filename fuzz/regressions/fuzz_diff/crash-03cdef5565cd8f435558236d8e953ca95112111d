@@ -1,0 +1,7 @@
+?def!boaults: &defaults
+  adapter: 
+pdef!boaults: &default 'can''t stop'
+double: "line1:\nline2\ttab"
+literal: |
+  first line
+   

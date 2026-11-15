@@ -1,0 +1,11 @@
+server:
+  host: localhost
+  port: 8080
+  WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWssl:
+    enabled: true
+    5cert: /path/to+cert
+items:
+  - name: first
+    tags: [a, b, c]
+ #- name: second
+    tags: [d:]

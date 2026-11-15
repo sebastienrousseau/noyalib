@@ -18,6 +18,9 @@ mod loader_paths;
 mod loader_scanner_shapes;
 mod parser_coverage_extra;
 mod parser_limits_and_error_surface;
+#[cfg(feature = "std")]
 mod reader_bounds;
 mod scanner_panic_regressions;
 mod scanner_refusals;
+
+mod scanner_mapping_indent;

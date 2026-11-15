@@ -70,3 +70,51 @@ fn verbatim_core_uri_keeps_its_core_meaning() {
     let s: Value = noyalib::from_str("!<tag:yaml.org,2002:str> 7\n").unwrap();
     assert_eq!(s, Value::from("7"));
 }
+
+#[test]
+fn verbatim_local_tags_ignore_primary_handle_overrides() {
+    for prefix in [
+        "tag:example:".into(),
+        format!("tag:example:{}", "x".repeat(1012)),
+        String::new(),
+    ] {
+        let header = format!("%TAG ! {prefix}\n---\n");
+        assert_eq!(tag_of(&format!("{header}!<!foo> x\n")), "!foo");
+        let source = format!("{header}key: !<!foo> x\n");
+        let typed: std::collections::BTreeMap<String, Value> = noyalib::from_str(&source).unwrap();
+        let Value::Tagged(tag) = &typed["key"] else {
+            panic!("verbatim tag must be retained");
+        };
+        assert_eq!(tag.tag().as_str(), "!foo");
+        assert_eq!(
+            noyalib::cst::parse_document(&source).unwrap().to_string(),
+            source
+        );
+    }
+    assert_eq!(
+        tag_of("%TAG ! tag:example:\n---\n!foo x\n"),
+        "tag:example:foo"
+    );
+}
+
+#[test]
+fn nonspecific_tags_ignore_primary_handle_overrides() {
+    for prefix in ["tag:example:", ""] {
+        for body in ["12", "en<afoo=:=:>", ""] {
+            let source = format!("%TAG ! {prefix}\n---\n! {body}\n");
+            assert_eq!(tag_of(&source), "!");
+            let (before, after) = round_trip(&source);
+            assert_eq!(before, after);
+        }
+    }
+}
+
+#[test]
+fn verbatim_local_builtin_names_remain_custom_tags() {
+    for name in ["str", "int", "float", "bool", "null", "seq", "map"] {
+        let source = format!("!<!{name}> x\n");
+        assert_eq!(tag_of(&source), format!("!{name}"));
+        let (before, after) = round_trip(&source);
+        assert_eq!(before, after);
+    }
+}

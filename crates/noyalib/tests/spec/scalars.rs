@@ -185,3 +185,30 @@ fn string_with_hash() {
     let v: String = from_str("\"no # comment\"").unwrap();
     assert_eq!(v, "no # comment");
 }
+
+#[test]
+fn block_scalar_clip_keeps_only_a_present_final_break() {
+    for header in ["|", ">"] {
+        for (ending, expected) in [
+            ("", "text"),
+            ("\n", "text\n"),
+            ("\r\n", "text\n"),
+            ("\r", "text\n"),
+            ("\n\n", "text\n"),
+        ] {
+            let yaml = format!("value: {header}\n  text{ending}");
+            let typed: std::collections::BTreeMap<String, String> = from_str(&yaml).unwrap();
+            assert_eq!(typed["value"], expected, "{yaml:?}");
+            let value: Value = from_str(&yaml).unwrap();
+            assert_eq!(value["value"].as_str(), Some(expected), "{yaml:?}");
+            let document_value = noyalib::load_all(&yaml).unwrap().next().unwrap().unwrap();
+            assert_eq!(document_value["value"].as_str(), Some(expected), "{yaml:?}");
+            let document = noyalib::cst::parse_document(&yaml).unwrap();
+            assert_eq!(
+                document.as_value()["value"].as_str(),
+                Some(expected),
+                "{yaml:?}"
+            );
+        }
+    }
+}

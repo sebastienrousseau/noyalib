@@ -1,23 +1,12 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 // Copyright (c) 2026 Noyalib. All rights reserved.
 
-//! Cross-path parity for every budget and policy, on every entry point.
+//! Budget and policy parity across typed, Value and public parse paths.
 //!
-//! A typed target with the default configuration is served by the
-//! streaming deserializer; a `Value` target is served by the loaders.
-//! Until v0.0.53 the streaming path never charged `max_events`,
-//! `max_nodes`, `max_total_scalar_bytes`, `max_merge_keys` or the
-//! alias ratio, so tightening any of them had no effect on the common
-//! case. The first tests here drive the same input through both paths
-//! and assert the same `BudgetBreach`.
-//!
-//! The table below generalises that: every public entry point that
-//! reads YAML text, crossed with every limit and policy, each on a
-//! hostile input built to break exactly that limit. Every cell must
-//! refuse, for the right reason. `every_public_entry_point_has_a_row`
-//! scans the crate's source for public parse functions, so an entry
-//! point added without a row (or an explicit, reasoned exemption) fails
-//! CI instead of shipping without enforcement.
+//! Before v0.0.53, streaming omitted event, node, scalar-byte, merge-key
+//! and alias-ratio charges. Inputs now pin the same `BudgetBreach`.
+//! A source inventory requires every public text parse entry point to
+//! have a tested row or an explicit exemption.
 
 #![allow(missing_docs)]
 
@@ -294,6 +283,7 @@ mod table {
             ("from_slice_with_config<Value>", |s, c| {
                 done(noyalib::from_slice_with_config::<Value>(s.as_bytes(), c))
             }),
+            #[cfg(feature = "std")]
             ("from_reader_with_config<Value>", |s, c| {
                 done(noyalib::from_reader_with_config::<_, Value>(
                     s.as_bytes(),
@@ -328,6 +318,7 @@ mod table {
             ("load_all_as_with_config<Value>", |s, c| {
                 done(noyalib::load_all_as_with_config::<Value>(s, c))
             }),
+            #[cfg(feature = "std")]
             ("read_with_config<Value>", |s, c| {
                 done(noyalib::read_with_config::<_, Value>(s.as_bytes(), c))
             }),
@@ -587,8 +578,9 @@ mod table {
     }
 
     /// The hostile inputs are hostile only through their limit: under
-    /// the default configuration every cell accepts them, so a refusal
-    /// above is the limit at work and not something else.
+    /// the default configuration materializing APIs accept them. Direct
+    /// streaming APIs require fallback for duplicates under `Last`, while
+    /// the strict policy must still report the duplicate itself above.
     #[test]
     fn the_hostile_inputs_parse_without_their_limit() {
         let mut probes = single_document();
@@ -596,7 +588,16 @@ mod table {
         let mut wrong = Vec::new();
         for l in per_document_limits() {
             for (ep, probe) in &probes {
-                if let Err(e) = probe(&l.hostile, &ParserConfig::default()) {
+                let result = probe(&l.hostile, &ParserConfig::default());
+                if l.name == "DuplicateKeyPolicy::Error"
+                    && matches!(
+                        *ep,
+                        "from_str_borrowing_with_config<BTreeMap<&str, Value>>"
+                            | "StreamingDeserializer::with_config + end"
+                    )
+                {
+                    assert_eq!(result.unwrap_err(), "$__noyalib_streaming_fallback");
+                } else if let Err(e) = result {
                     wrong.push(format!("{ep} × {}: {e}", l.name));
                 }
             }

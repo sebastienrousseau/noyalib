@@ -1,24 +1,9 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 // Copyright (c) 2026 Noyalib. All rights reserved.
 
-//! Stress / load / stability test battery.
+//! Large documents, nesting, aliases and repeated parse/emit behavior.
 //!
-//! Pins the parser's behaviour on the kinds of pathological input
-//! a foundational YAML library should handle without panic, OOM,
-//! or silent miscompute:
-//!
-//!   - Large single document (~1 MB).
-//!   - Deep nesting (depth at the configured ceiling).
-//!   - Many documents (thousands of `---` separators).
-//!   - Wide collections (10k entries / 10k items).
-//!   - Long scalars (1 MB plain string).
-//!   - Billion-laughs-style alias amplification (DoS guard).
-//!   - Exhaustion of the recursion limit.
-//!   - Repeated parse / emit cycles for mutation stability.
-//!
-//! Each test is a regression net: if a future change breaks the
-//! resource-limit gates or the pure-functional emit determinism,
-//! it surfaces here rather than as an OOM in production.
+//! Assert successful bounded workloads and configured limit refusals.
 
 #![allow(missing_docs)]
 

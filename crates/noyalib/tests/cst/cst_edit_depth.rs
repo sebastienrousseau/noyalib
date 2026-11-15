@@ -1,10 +1,17 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 // Copyright (c) 2026 Noyalib. All rights reserved.
 
-//! A deeply nested edit fragment must be refused with an error, not
-//! overflow the stack, on every edit entry point.
+//! A deeply nested edit fragment must be refused with
+//! `Error::RecursionLimitExceeded`, not overflow the stack, on every edit
+//! entry point (GHSA-xc8w-rwj7-v8x8).
 
 use noyalib::cst::parse_document;
+
+/// The refusal the advisory promises: the depth limit, not some other
+/// error that happens to fire first.
+fn refused_for_depth<T: std::fmt::Debug>(result: noyalib::Result<T>) -> bool {
+    matches!(result, Err(noyalib::Error::RecursionLimitExceeded { .. }))
+}
 
 const DEPTH: usize = 100_000;
 
@@ -31,7 +38,7 @@ fn set_with_deep_fragment_is_refused() {
     on_small_stack(|| {
         let mut doc = parse_document("a: 1\nb: 2\n").unwrap();
         let before = doc.source().to_owned();
-        assert!(doc.set("a", &deep_flow(DEPTH)).is_err());
+        assert!(refused_for_depth(doc.set("a", &deep_flow(DEPTH))));
         assert_eq!(doc.source(), before);
     });
 }
@@ -42,7 +49,7 @@ fn replace_span_with_deep_fragment_is_refused() {
         let mut doc = parse_document("a: 1\nb: 2\n").unwrap();
         let before = doc.source().to_owned();
         let (s, e) = doc.span_at("a").unwrap();
-        assert!(doc.replace_span(s, e, &deep_flow(DEPTH)).is_err());
+        assert!(refused_for_depth(doc.replace_span(s, e, &deep_flow(DEPTH))));
         assert_eq!(doc.source(), before);
     });
 }
@@ -53,7 +60,7 @@ fn replace_span_with_deep_block_entry_is_refused() {
         let mut doc = parse_document("a:\n  x: 1\nb: 2\n").unwrap();
         let before = doc.source().to_owned();
         let (s, e) = doc.span_at("a.x").unwrap();
-        assert!(doc.replace_span(s, e, &deep_flow(DEPTH)).is_err());
+        assert!(refused_for_depth(doc.replace_span(s, e, &deep_flow(DEPTH))));
         assert_eq!(doc.source(), before);
     });
 }
@@ -62,7 +69,7 @@ fn replace_span_with_deep_block_entry_is_refused() {
 fn parse_document_with_deep_text_errors() {
     on_small_stack(|| {
         let src = format!("a: {}\n", deep_flow(DEPTH));
-        assert!(parse_document(&src).is_err());
+        assert!(refused_for_depth(parse_document(&src)));
     });
 }
 
@@ -99,7 +106,8 @@ fn every_fragment_editor_refuses_a_deep_fragment() {
         ];
         for (name, edit) in edits {
             let mut doc = parse_document(src).unwrap();
-            assert!(edit(&mut doc, &deep).is_err(), "{name} accepted");
+            let result = edit(&mut doc, &deep);
+            assert!(refused_for_depth(result), "{name} not refused for depth");
             assert_eq!(doc.source(), src, "{name} changed the document");
         }
     });

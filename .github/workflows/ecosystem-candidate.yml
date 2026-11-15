@@ -1,0 +1,500 @@
+# SPDX-FileCopyrightText: 2026 Noyalib
+# SPDX-License-Identifier: MIT OR Apache-2.0
+
+name: Ecosystem candidate
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: candidate-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  sources:
+    runs-on: ubuntu-latest
+    outputs:
+      products: ${{ steps.matrix.outputs.products }}
+      wasm: ${{ steps.matrix.outputs.wasm }}
+      mcp: ${{ steps.matrix.outputs.mcp }}
+      cli: ${{ steps.matrix.outputs.cli }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Test candidate guards and campaign accounting
+        run: |
+          python3 scripts/tests/test_ecosystem_candidate.py
+          python3 scripts/tests/test_ecosystem_parity.py
+          python3 scripts/tests/test_cli_homebrew.py
+          python3 scripts/tests/test_cli_arch.py
+          python3 scripts/tests/test_fuzz_campaign.py
+      - name: Validate the five immutable product refs
+        id: matrix
+        run: |
+          python3 scripts/prepare-ecosystem-candidate.py matrix docs/ecosystem-candidate.json > products.json
+          python3 - <<'PY'
+          import json, os
+          rows = json.load(open('products.json'))
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              print('products=' + json.dumps(rows, separators=(',', ':')), file=output)
+              print('wasm=' + next(row['commit'] for row in rows if row['repo'] == 'noyalib-wasm'), file=output)
+              print('mcp=' + next(row['commit'] for row in rows if row['repo'] == 'noyalib-mcp'), file=output)
+              print('cli=' + next(row['commit'] for row in rows if row['repo'] == 'noya-cli'), file=output)
+          PY
+
+  native:
+    needs: sources
+    name: ${{ matrix.product.repo }} (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        product: ${{ fromJSON(needs.sources.outputs.products) }}
+    defaults:
+      run:
+        shell: bash
+    env:
+      CARGO_INCREMENTAL: '0'
+      CARGO_PROFILE_DEV_DEBUG: '0'
+      CARGO_PROFILE_TEST_DEBUG: '0'
+      CARGO_TARGET_DIR: ${{ github.workspace }}/target-candidate-stable
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          path: noyalib
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: sebastienrousseau/${{ matrix.product.repo }}
+          ref: ${{ matrix.product.commit }}
+          persist-credentials: false
+          path: product
+          submodules: recursive
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.13'
+      - name: Prepare the exact candidate without changing registry pins
+        env:
+          PRODUCT_REPO: ${{ matrix.product.repo }}
+          PRODUCT_COMMIT: ${{ matrix.product.commit }}
+        run: |
+          python noyalib/scripts/prepare-ecosystem-candidate.py prepare \
+            --core noyalib --satellite product --repo "$PRODUCT_REPO" \
+            --commit "$PRODUCT_COMMIT" --receipt candidate-receipt.json
+      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8
+        with:
+          toolchain: stable
+          components: clippy,rustfmt
+      - name: Check and exercise the native product boundary
+        working-directory: product
+        run: |
+          bash scripts/verify-release-versions.sh
+          python3 scripts/tests/test_fuzz_campaign.py
+          cargo fmt --all -- --check
+          cargo clippy --locked --all-features --all-targets -- -D warnings
+          cargo test --locked --all-features --lib --tests
+          cargo test --locked --all-features --doc
+      - name: Exercise documented MCP clients against the actual binary
+        if: matrix.product.repo == 'noyalib-mcp'
+        working-directory: product
+        run: python scripts/tests/test_example_clients.py
+      - name: Check CLI distribution recipe sources
+        if: matrix.product.repo == 'noya-cli'
+        working-directory: product
+        run: |
+          python scripts/check-distribution-recipes.py
+          python scripts/tests/test_distribution_recipes.py
+          python scripts/tests/test_distribution_consumer.py
+      - name: Exercise the published CLI native installation and recovery
+        if: matrix.product.repo == 'noya-cli'
+        working-directory: product
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python scripts/check-distribution-consumer.py --provenance --output "$RUNNER_TEMP/candidate-cli-release"
+      - name: Install and remove the CLI through Homebrew
+        if: matrix.product.repo == 'noya-cli' && matrix.os == 'macos-latest'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python noyalib/scripts/check-cli-homebrew.py --cli product \
+            --output "$RUNNER_TEMP/candidate-cli-homebrew"
+      - name: Install and remove the CLI through Scoop
+        if: matrix.product.repo == 'noya-cli' && matrix.os == 'windows-latest'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python noyalib/scripts/check-cli-scoop.py --cli product \
+            --output "$RUNNER_TEMP/candidate-cli-scoop"
+      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8
+        with:
+          toolchain: '1.89.0'
+      - name: Check the declared Rust floor in an isolated target directory
+        working-directory: product
+        env:
+          CARGO_TARGET_DIR: ${{ runner.temp }}/candidate-msrv
+        run: cargo +1.89.0 check --locked --lib --bins
+      - name: Refuse changed sources or locks
+        if: always()
+        run: python noyalib/scripts/prepare-ecosystem-candidate.py verify --receipt candidate-receipt.json
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always()
+        with:
+          name: candidate-${{ matrix.product.repo }}-${{ matrix.os }}
+          path: |
+            candidate-receipt.json
+            ${{ runner.temp }}/candidate-cli-release/receipt.json
+            ${{ runner.temp }}/candidate-cli-release/provenance.json
+            ${{ runner.temp }}/candidate-cli-release/provenance.stderr
+            ${{ runner.temp }}/candidate-cli-homebrew/receipt.json
+            ${{ runner.temp }}/candidate-cli-homebrew/*.log
+            ${{ runner.temp }}/candidate-cli-scoop/receipt.json
+            ${{ runner.temp }}/candidate-cli-scoop/*.log
+          if-no-files-found: error
+
+  native-architectures:
+    name: CLI published consumer (${{ matrix.os }})
+    needs: sources
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-15-intel
+            python-architecture: x64
+          - os: ubuntu-24.04-arm
+            python-architecture: arm64
+          - os: windows-11-arm
+            python-architecture: arm64
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          path: noyalib
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: sebastienrousseau/noya-cli
+          ref: ${{ needs.sources.outputs.cli }}
+          persist-credentials: false
+          path: product
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.13'
+          architecture: ${{ matrix.python-architecture }}
+      - name: Install and recover authentic native release bytes
+        working-directory: product
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python scripts/check-distribution-recipes.py
+          python scripts/check-distribution-consumer.py --provenance \
+            --output "$RUNNER_TEMP/candidate-cli-native"
+      - name: Exercise the Intel Homebrew formula
+        if: runner.os == 'macOS'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python noyalib/scripts/check-cli-homebrew.py --cli product \
+            --output "$RUNNER_TEMP/candidate-cli-manager"
+      - name: Exercise the Arm64 Scoop manifest
+        if: runner.os == 'Windows'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python noyalib/scripts/check-cli-scoop.py --cli product \
+            --output "$RUNNER_TEMP/candidate-cli-manager"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always()
+        with:
+          name: candidate-cli-architecture-${{ matrix.os }}
+          path: |
+            ${{ runner.temp }}/candidate-cli-native/receipt.json
+            ${{ runner.temp }}/candidate-cli-native/provenance.json
+            ${{ runner.temp }}/candidate-cli-native/provenance.stderr
+            ${{ runner.temp }}/candidate-cli-manager/receipt.json
+            ${{ runner.temp }}/candidate-cli-manager/*.log
+          if-no-files-found: error
+
+  arch-package:
+    name: CLI Arch package installation
+    needs: sources
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          path: noyalib
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: sebastienrousseau/noya-cli
+          ref: ${{ needs.sources.outputs.cli }}
+          persist-credentials: false
+          path: product
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.13'
+      - uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6
+      - name: Build, install, exercise and remove the actual PKGBUILD
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python noyalib/scripts/check-cli-arch.py --cli product \
+            --output "$RUNNER_TEMP/candidate-cli-arch"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always()
+        with:
+          name: candidate-cli-arch-package
+          path: |
+            ${{ runner.temp }}/candidate-cli-arch/receipt.json
+            ${{ runner.temp }}/candidate-cli-arch/*.log
+            ${{ runner.temp }}/candidate-cli-arch/*.sha256
+            ${{ runner.temp }}/candidate-cli-arch/*.conf
+          if-no-files-found: error
+
+  oracle-tests:
+    name: Oracle classifiers (std and alloc)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      CARGO_BUILD_JOBS: '2'
+      CARGO_INCREMENTAL: '0'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8
+        with:
+          toolchain: nightly
+      - name: Test the development classifier with the std core
+        env:
+          CARGO_TARGET_DIR: ${{ runner.temp }}/oracle-tests-std
+        run: cargo +nightly test --locked --manifest-path fuzz/Cargo.toml --lib
+      - name: Test the same classifier with the alloc-only core
+        env:
+          CARGO_TARGET_DIR: ${{ runner.temp }}/oracle-tests-alloc
+        run: cargo +nightly test --locked --manifest-path fuzz-nostd/Cargo.toml --lib
+
+  mcp-fuzz:
+    needs: sources
+    name: MCP transport and session fuzz smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      CARGO_TARGET_DIR: ${{ github.workspace }}/target-candidate-mcp-asan
+      CARGO_BUILD_JOBS: '2'
+      CARGO_INCREMENTAL: '0'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          path: noyalib
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: sebastienrousseau/noyalib-mcp
+          ref: ${{ needs.sources.outputs.mcp }}
+          persist-credentials: false
+          path: product
+      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8
+        with:
+          toolchain: nightly
+      - name: Prepare the pinned MCP candidate
+        env:
+          PRODUCT_COMMIT: ${{ needs.sources.outputs.mcp }}
+        run: |
+          python3 noyalib/scripts/prepare-ecosystem-candidate.py prepare \
+            --core noyalib --satellite product --repo noyalib-mcp \
+            --commit "$PRODUCT_COMMIT" --receipt candidate-receipt.json
+      - name: Install the pinned fuzz driver
+        run: cargo install --locked cargo-fuzz --version 0.13.2
+      - name: Exercise tools, HTTP guards and session state with sanitizers
+        working-directory: product
+        run: |
+          set -euo pipefail
+          for target in tools http_headers session_lifecycle; do
+            python3 ../noyalib/scripts/run-fuzz-campaign.py --target "$target" --seconds 60 \
+              --output "$RUNNER_TEMP/campaign-$target" \
+              --target-dir "$CARGO_TARGET_DIR"
+          done
+      - name: Refuse changed sources or locks
+        if: always()
+        run: python3 noyalib/scripts/prepare-ecosystem-candidate.py verify --receipt candidate-receipt.json
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always()
+        with:
+          name: candidate-mcp-fuzz
+          path: |
+            candidate-receipt.json
+            ${{ runner.temp }}/campaign-*/
+          if-no-files-found: error
+
+  wasm:
+    needs: sources
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      CARGO_TARGET_DIR: ${{ github.workspace }}/target-candidate-wasm
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          path: noyalib
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: sebastienrousseau/noyalib-wasm
+          ref: ${{ needs.sources.outputs.wasm }}
+          persist-credentials: false
+          path: product
+      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8
+        with:
+          toolchain: stable
+          targets: wasm32-unknown-unknown
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - uses: jetli/wasm-pack-action@0d096b08b4e5a7de8c28de67e11e945404e9eefa
+        with:
+          version: 'v0.15.0'
+      - uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed
+        with:
+          deno-version: '2.9.8'
+          cache: 'false'
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: '1.4.4'
+          no-cache: true
+          token: ''
+      - name: Prepare the pinned WASM candidate
+        env:
+          PRODUCT_COMMIT: ${{ needs.sources.outputs.wasm }}
+        run: |
+          python3 noyalib/scripts/prepare-ecosystem-candidate.py prepare \
+            --core noyalib --satellite product --repo noyalib-wasm \
+            --commit "$PRODUCT_COMMIT" --receipt candidate-receipt.json
+      - name: Exercise actual JS exports and the optimized installed package
+        working-directory: product
+        run: |
+          google-chrome --version
+          node --test scripts/tests/test-browser-shutdown.mjs
+          wasm-pack test --node
+          wasm-pack build --release --target nodejs --out-dir pkg-node -- --locked
+          node --test scripts/tests/test-runtime-resources.mjs
+          node --expose-gc scripts/check-runtime-resources.mjs pkg-node normal > runtime-resources-node.json
+          node scripts/check-runtime-contract.mjs pkg-node/noyalib_wasm.js > runtime-contract-node.json
+          bun -e 'if (Bun.version !== "1.4.4") throw Error("Unexpected Bun version")'
+          bun scripts/check-runtime-contract.mjs pkg-node/noyalib_wasm.js > runtime-contract-bun.json
+          wasm-pack build --release --target deno --out-dir pkg-deno -- --locked
+          deno eval 'if (Deno.version.deno !== "2.9.8") throw Error("Unexpected Deno version")'
+          deno run --no-config --allow-read=pkg-deno scripts/check-runtime-contract.mjs pkg-deno/noyalib_wasm.js > runtime-contract-deno.json
+          wasm-pack build --release --target no-modules --out-dir pkg-no-modules -- --locked
+          node scripts/check-browser-consumer.mjs pkg-no-modules "$(command -v google-chrome)" --no-modules > runtime-contract-classic.json
+          wasm-pack build --release --target bundler --scope sebastienrousseau -- --locked
+          python3 scripts/prepare-npm-package.py pkg
+          scripts/check-npm-package.sh pkg
+          python3 scripts/check-package-size.py pkg/noyalib_wasm_bg.wasm
+          npm ci --ignore-scripts --prefix tests/typescript
+          npm audit --package-lock-only --ignore-scripts --prefix tests/typescript
+          CHROME_BIN="$(command -v google-chrome)" node --test scripts/tests/test-browser-resources.mjs
+          node scripts/check-installed-consumer.mjs pkg "$(command -v google-chrome)" --resources > runtime-resources-browser.json
+      - name: Refuse changed sources or locks
+        if: always()
+        run: python3 noyalib/scripts/prepare-ecosystem-candidate.py verify --receipt candidate-receipt.json
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always()
+        with:
+          name: candidate-wasm-consumer
+          path: |
+            candidate-receipt.json
+            product/runtime-resources-node.json
+            product/runtime-resources-browser.json
+            product/runtime-contract-*.json
+          if-no-files-found: error
+
+  parity:
+    needs: sources
+    name: Six actual consumers
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      CARGO_BUILD_JOBS: '2'
+      CARGO_INCREMENTAL: '0'
+      CARGO_PROFILE_DEV_DEBUG: '0'
+      CARGO_PROFILE_TEST_DEBUG: '0'
+      PARITY_OUTPUT: ${{ github.workspace }}/candidate-parity
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          path: noyalib
+      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8
+        with:
+          toolchain: stable
+          targets: wasm32-unknown-unknown
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - uses: jetli/wasm-pack-action@0d096b08b4e5a7de8c28de67e11e945404e9eefa
+        with:
+          version: 'v0.15.0'
+      - name: Check out and prepare the five pinned product sources
+        run: |
+          python3 - <<'PY'
+          import json, pathlib, subprocess
+          root = pathlib.Path.cwd()
+          script = root / 'noyalib/scripts/prepare-ecosystem-candidate.py'
+          rows = json.loads(subprocess.check_output([
+              'python3', str(script), 'matrix', 'noyalib/docs/ecosystem-candidate.json']))
+          receipts = root / 'candidate-source-receipts'
+          receipts.mkdir()
+          for row in rows:
+              repo, commit = row['repo'], row['commit']
+              subprocess.run(['git', 'clone', '--quiet', '--no-checkout', '--depth', '1',
+                              'https://github.com/sebastienrousseau/' + repo + '.git', repo], check=True)
+              subprocess.run(['git', '-C', repo, 'fetch', '--quiet', '--depth', '1', 'origin', commit], check=True)
+              subprocess.run(['git', '-C', repo, 'checkout', '--quiet', '--detach', commit], check=True)
+              subprocess.run(['python3', str(script), 'prepare', '--core', 'noyalib',
+                              '--satellite', repo, '--repo', repo, '--commit', commit,
+                              '--receipt', str(receipts / (repo + '.json'))], check=True)
+          PY
+      - name: Build locked products with their local candidate configuration
+        run: |
+          cargo fetch --locked --manifest-path noyalib/Cargo.toml
+          (cd noyalib-serde-yaml && cargo fetch --locked)
+          for repo in noya-cli noyalib-lsp noyalib-mcp; do
+            (cd "$repo" && cargo build --locked --bins)
+          done
+          (cd noyalib-wasm && wasm-pack build --dev --target nodejs --out-dir pkg-node -- --locked)
+      - name: Compare the same regression cases through all six boundaries
+        run: |
+          python3 noyalib/scripts/check-ecosystem-parity.py --root "$GITHUB_WORKSPACE" \
+            --cli noya-cli/target/debug/noyafmt \
+            --lsp noyalib-lsp/target/debug/noyalib-lsp \
+            --mcp noyalib-mcp/target/debug/noyalib-mcp \
+            --wasm noyalib-wasm/pkg-node/noyalib_wasm.js \
+            --output "$PARITY_OUTPUT"
+      - name: Refuse changed candidate sources or locks
+        if: always()
+        run: |
+          for receipt in candidate-source-receipts/*.json; do
+            python3 noyalib/scripts/prepare-ecosystem-candidate.py verify --receipt "$receipt"
+          done
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always()
+        with:
+          name: candidate-six-consumer-parity
+          path: |
+            candidate-parity/receipt.json
+            candidate-parity/projection-build.log
+            candidate-source-receipts/*.json
+          if-no-files-found: error

@@ -43,6 +43,8 @@ pub struct ParseConfig {
     pub legacy_sexagesimal: bool,
     pub leading_zero_integer_strings: bool,
     pub legacy_binary_numbers: bool,
+    /// See [`crate::ParserConfig::signed_radix_integers`].
+    pub signed_radix_integers: bool,
     pub float_overflow_strings: bool,
     pub integer_overflow_errors: bool,
     pub non_scalar_key_policy: crate::de::NonScalarKeyPolicy,
@@ -87,6 +89,7 @@ impl Default for ParseConfig {
             legacy_sexagesimal: false,
             leading_zero_integer_strings: false,
             legacy_binary_numbers: false,
+            signed_radix_integers: false,
             float_overflow_strings: false,
             integer_overflow_errors: false,
             non_scalar_key_policy: crate::de::NonScalarKeyPolicy::Stringify,
@@ -146,6 +149,7 @@ impl From<&crate::de::ParserConfig> for ParseConfig {
             legacy_sexagesimal: c.legacy_sexagesimal,
             leading_zero_integer_strings: c.leading_zero_integer_strings,
             legacy_binary_numbers: c.legacy_binary_numbers,
+            signed_radix_integers: c.signed_radix_integers,
             float_overflow_strings: c.float_overflow_strings,
             integer_overflow_errors: c.integer_overflow_errors,
             non_scalar_key_policy: c.non_scalar_key_policy,
@@ -375,6 +379,12 @@ struct Loader<'a> {
     /// (YAML 1.2.2 §3.2.2.2); when an alias names one of these the
     /// error says so instead of only "unknown anchor".
     earlier_anchor_defs: IndexMap<String, usize>,
+    /// Anchored mapping keys past 64 bits under the compatibility
+    /// profile, by anchor name: the key's definition offset and what the
+    /// scalar reads as in a value position (`None`: an overflow refusal).
+    /// The key itself keeps its spelling; an alias used as a value reads
+    /// it as a value, as the archive does.
+    overflow_keys: IndexMap<String, (usize, Option<Value>)>,
     /// Every budget counter, charged in the order all loaders share.
     meter: Meter,
     config: &'a ParseConfig,
@@ -471,6 +481,7 @@ impl<'a> Loader<'a> {
             anchor_map: IndexMap::with_capacity_and_hasher(4, Default::default()),
             anchor_def_spans: IndexMap::with_capacity_and_hasher(4, Default::default()),
             earlier_anchor_defs: IndexMap::default(),
+            overflow_keys: IndexMap::default(),
             meter: Meter::new(config),
             config,
             depth: 0,
@@ -482,15 +493,97 @@ impl<'a> Loader<'a> {
         self.docs
     }
 
+    /// Resolve a scalar event. The profile refuses a decimal integer
+    /// value outside its exact domain. A JSON map key is read as a
+    /// string, so such a key keeps its spelling: a float would merge
+    /// distinct keys that round alike.
+    fn scalar_value(
+        &mut self,
+        value: Cow<'_, str>,
+        style: crate::parser::ScalarStyle,
+        tag: Option<(String, String)>,
+        anchor: Option<&str>,
+        at: usize,
+        input: &str,
+    ) -> Result<Value> {
+        if let Some(name) = anchor {
+            // A redefinition replaces an anchored overflow key.
+            let _ = self.overflow_keys.shift_remove(name);
+        }
+        let plain_untagged = matches!(style, crate::parser::ScalarStyle::Plain) && tag.is_none();
+        match plain_untagged.then(|| integer_overflow(&value, self.config)) {
+            Some(Some(within)) if self.in_key_position() => {
+                if let Some(name) = anchor {
+                    let as_value = if within {
+                        None
+                    } else {
+                        Some(resolve_event_scalar(
+                            Cow::Borrowed(&*value),
+                            style,
+                            None,
+                            self.config,
+                        )?)
+                    };
+                    let _ = self.overflow_keys.insert(name.to_owned(), (at, as_value));
+                }
+                return Ok(Value::String(value.into_owned()));
+            }
+            Some(Some(true)) => {}
+            _ => return resolve_event_scalar(value, style, tag, self.config),
+        }
+        Err(self.overflow_at(at, input))
+    }
+
+    /// A redefinition of `name` shadows its previous value immediately.
+    fn forget_anchor(&mut self, name: &str) {
+        let _ = self.anchor_map.shift_remove(name);
+        let _ = self.overflow_keys.shift_remove(name);
+    }
+
+    /// Anchors do not cross `---`; remember where the last ones were.
+    fn start_document_anchors(&mut self) {
+        self.anchor_map.clear();
+        self.overflow_keys.clear();
+        self.earlier_anchor_defs
+            .extend(self.anchor_def_spans.drain(..));
+    }
+
+    /// The next node fills a mapping key.
+    fn in_key_position(&self) -> bool {
+        matches!(self.stack.last(), Some(Frame::MappingKey { .. }))
+    }
+
+    /// The profile's refusal of an integer outside its exact domain,
+    /// with the path of the node being filled.
+    fn overflow_at(&self, at: usize, input: &str) -> Error {
+        Error::IntegerOverflow {
+            location: Some(crate::error::Location::from_index(input, at)),
+            path: frames_path(self.stack.iter().map(|f| match f {
+                Frame::MappingValue { key, .. } => Some(key.clone()),
+                Frame::Sequence { items, .. } => Some(items.len().to_string()),
+                _ => None,
+            })),
+        }
+    }
+
+    /// An alias's value: an anchored overflow key (see `overflow_keys`)
+    /// reads as a value outside a key position, refused or resolved.
+    fn aliased_value(&self, anchor: &str, value: Value, input: &str) -> Result<Value> {
+        match self.overflow_keys.get(anchor) {
+            Some((at, as_value)) if !self.in_key_position() => {
+                as_value.clone().ok_or_else(|| self.overflow_at(*at, input))
+            }
+            _ => Ok(value),
+        }
+    }
+
     fn process_event(&mut self, event: Event<'_>, input: &str) -> Result<()> {
         self.meter.charge_event(&event, self.config)?;
         match event {
             Event::StreamStart | Event::StreamEnd => {}
             Event::DocumentStart => {
                 self.in_document = true;
-                self.anchor_map.clear();
-                self.earlier_anchor_defs
-                    .extend(self.anchor_def_spans.drain(..));
+                self.start_document_anchors();
             }
             Event::DocumentEnd => {
                 self.in_document = false;
@@ -503,6 +596,7 @@ impl<'a> Loader<'a> {
                 // `*x` happens to resolve to the string `\"<<\"` is an
                 // ordinary key whose value is that string.
                 let (value, span_tree) = self.resolve_alias(&anchor, span, input)?;
+                let value = self.aliased_value(&anchor, value, input)?;
                 self.push_node(value, span_tree, input, false)?;
             }
             Event::Scalar {
@@ -528,42 +622,8 @@ impl<'a> Loader<'a> {
                 // is still in hand — `resolve_untagged_scalar` returns a
                 // `Value::String("<<")` for a plain and a quoted `<<` alike.
                 let is_plain_merge_candidate = matches!(style, crate::parser::ScalarStyle::Plain);
-                // serde_yaml-profile: a plain decimal integer past
-                // `u64::MAX` is refused instead of degrading to an
-                // approximate f64.
-                if self.config.integer_overflow_errors
-                    && is_plain_merge_candidate
-                    && tag.is_none()
-                    && overflows_u64_decimal(&value)
-                {
-                    return Err(Error::IntegerOverflow {
-                        location: Some(crate::error::Location::from_index(input, span.start)),
-                        path: frames_path(self.stack.iter().map(|f| match f {
-                            Frame::MappingValue { key, .. } => Some(key.clone()),
-                            Frame::Sequence { items, .. } => Some(items.len().to_string()),
-                            _ => None,
-                        })),
-                    });
-                }
                 let v =
-                    if let Some(t) = tag {
-                        if self.config.tag_registry.as_ref().is_some_and(|r| {
-                            crate::streaming::tag_is_registry_stripped(&t.0, &t.1, r)
-                        }) {
-                            // Registered tag: strip through and resolve as if
-                            // untagged, exactly as the streaming path does.
-                            resolve_untagged_scalar(value, style, self.config)
-                        } else {
-                            resolve_tagged_scalar(
-                                &t.0,
-                                &t.1,
-                                &value,
-                                self.config.lossless_u64_integers(),
-                            )?
-                        }
-                    } else {
-                        resolve_untagged_scalar(value, style, self.config)
-                    };
+                    self.scalar_value(value, style, tag, anchor.as_deref(), span.start, input)?;
 
                 let st = if is_implicit_empty {
                     SpanTree::Leaf(span.start, span.start)
@@ -586,6 +646,9 @@ impl<'a> Loader<'a> {
                 }
                 if let Some(name) = anchor.as_ref() {
                     let _ = self.anchor_def_spans.insert(name.clone(), span.start);
+                    // A redefinition shadows its previous value immediately,
+                    // including while the new collection is still open.
+                    self.forget_anchor(name);
                 }
                 self.stack.push(Frame::Sequence {
                     items: Vec::new(),
@@ -624,10 +687,7 @@ impl<'a> Loader<'a> {
                         end,
                         items: span_items,
                     };
-                    if let Some(name) = anchor {
-                        let cost = self.alias_cost(&v, &st);
-                        let _ = self.anchor_map.insert(name, (v.clone(), st.clone(), cost));
-                    }
+                    self.record_collection_anchor(anchor, start, &v, &st);
                     // A sequence or mapping is never the string `<<`.
                     self.push_node(v, st, input, false)?;
                 } else {
@@ -647,6 +707,9 @@ impl<'a> Loader<'a> {
                 }
                 if let Some(name) = anchor.as_ref() {
                     let _ = self.anchor_def_spans.insert(name.clone(), span.start);
+                    // A redefinition shadows its previous value immediately,
+                    // including while the new collection is still open.
+                    self.forget_anchor(name);
                 }
                 self.stack.push(Frame::MappingKey {
                     map: Mapping::new(),
@@ -679,10 +742,7 @@ impl<'a> Loader<'a> {
                         end: span.end,
                         entries: span_entries,
                     };
-                    if let Some(name) = anchor {
-                        let cost = self.alias_cost(&v, &st);
-                        let _ = self.anchor_map.insert(name, (v.clone(), st.clone(), cost));
-                    }
+                    self.record_collection_anchor(anchor, start, &v, &st);
                     // A sequence or mapping is never the string `<<`.
                     self.push_node(v, st, input, false)?;
                 } else {
@@ -694,6 +754,24 @@ impl<'a> Loader<'a> {
     }
 
     #[inline]
+    /// Preserve a nested redefinition when its enclosing collection ends.
+    fn record_collection_anchor(
+        &mut self,
+        anchor: Option<String>,
+        start: usize,
+        value: &Value,
+        tree: &SpanTree,
+    ) {
+        if let Some(name) = anchor
+            && self.anchor_def_spans.get(&name) == Some(&start)
+        {
+            let cost = self.alias_cost(value, tree);
+            let _ = self
+                .anchor_map
+                .insert(name, (value.clone(), tree.clone(), cost));
+        }
+    }
+
     /// Push a completed node into the enclosing frame.
     ///
     /// `may_be_merge_key` says whether this value is *eligible* to be read
@@ -787,11 +865,7 @@ impl<'a> Loader<'a> {
                         ));
                     }
                 };
-                let key_span = if let SpanTree::Leaf(s, e) = span {
-                    (s, e)
-                } else {
-                    (0, 0)
-                };
+                let key_span = scalar_key_span(&span);
                 let old_map = core::mem::take(map);
                 let old_span_entries = core::mem::take(span_entries);
                 let old_typed_keys = core::mem::take(typed_keys);
@@ -1135,6 +1209,12 @@ struct NoSpanLoader<'a> {
     /// (YAML 1.2.2 §3.2.2.2); when an alias names one of these the
     /// error says so instead of only "unknown anchor".
     earlier_anchor_defs: IndexMap<String, usize>,
+    /// Anchored mapping keys past 64 bits under the compatibility
+    /// profile, by anchor name: the key's definition offset and what the
+    /// scalar reads as in a value position (`None`: an overflow refusal).
+    /// The key itself keeps its spelling; an alias used as a value reads
+    /// it as a value, as the archive does.
+    overflow_keys: IndexMap<String, (usize, Option<Value>)>,
     /// Every budget counter, shared with the span-full loader's order.
     meter: Meter,
     config: &'a ParseConfig,
@@ -1172,6 +1252,7 @@ impl<'a> NoSpanLoader<'a> {
             anchor_map: IndexMap::default(),
             anchor_def_spans: IndexMap::default(),
             earlier_anchor_defs: IndexMap::default(),
+            overflow_keys: IndexMap::default(),
             meter: Meter::new(config),
             config,
             depth: 0,
@@ -1207,21 +1288,104 @@ impl<'a> NoSpanLoader<'a> {
         self.docs
     }
 
+    /// Resolve a scalar event. The profile refuses a decimal integer
+    /// value outside its exact domain. A JSON map key is read as a
+    /// string, so such a key keeps its spelling: a float would merge
+    /// distinct keys that round alike.
+    fn scalar_value(
+        &mut self,
+        value: Cow<'_, str>,
+        style: crate::parser::ScalarStyle,
+        tag: Option<(String, String)>,
+        anchor: Option<&str>,
+        at: usize,
+        input: &str,
+    ) -> Result<Value> {
+        if let Some(name) = anchor {
+            // A redefinition replaces an anchored overflow key.
+            let _ = self.overflow_keys.shift_remove(name);
+        }
+        let plain_untagged = matches!(style, crate::parser::ScalarStyle::Plain) && tag.is_none();
+        match plain_untagged.then(|| integer_overflow(&value, self.config)) {
+            Some(Some(within)) if self.in_key_position() => {
+                if let Some(name) = anchor {
+                    let as_value = if within {
+                        None
+                    } else {
+                        Some(resolve_event_scalar(
+                            Cow::Borrowed(&*value),
+                            style,
+                            None,
+                            self.config,
+                        )?)
+                    };
+                    let _ = self.overflow_keys.insert(name.to_owned(), (at, as_value));
+                }
+                return Ok(Value::String(value.into_owned()));
+            }
+            Some(Some(true)) => {}
+            _ => return resolve_event_scalar(value, style, tag, self.config),
+        }
+        Err(self.overflow_at(at, input))
+    }
+
+    /// A redefinition of `name` shadows its previous value immediately.
+    fn forget_anchor(&mut self, name: &str) {
+        let _ = self.anchor_map.shift_remove(name);
+        let _ = self.overflow_keys.shift_remove(name);
+    }
+
+    /// Anchors do not cross `---`; remember where the last ones were.
+    fn start_document_anchors(&mut self) {
+        self.anchor_map.clear();
+        self.overflow_keys.clear();
+        self.earlier_anchor_defs
+            .extend(self.anchor_def_spans.drain(..));
+    }
+
+    /// The next node fills a mapping key.
+    fn in_key_position(&self) -> bool {
+        matches!(self.stack.last(), Some(NoSpanFrame::MappingKey { .. }))
+    }
+
+    /// The profile's refusal of an integer outside its exact domain,
+    /// with the path of the node being filled.
+    fn overflow_at(&self, at: usize, input: &str) -> Error {
+        Error::IntegerOverflow {
+            location: Some(crate::error::Location::from_index(input, at)),
+            path: frames_path(self.stack.iter().map(|f| match f {
+                NoSpanFrame::MappingValue { key, .. } => Some(key.clone()),
+                NoSpanFrame::Sequence { items, .. } => Some(items.len().to_string()),
+                _ => None,
+            })),
+        }
+    }
+
+    /// An alias's value: an anchored overflow key (see `overflow_keys`)
+    /// reads as a value outside a key position, refused or resolved.
+    fn aliased_value(&self, anchor: &str, value: Value, input: &str) -> Result<Value> {
+        match self.overflow_keys.get(anchor) {
+            Some((at, as_value)) if !self.in_key_position() => {
+                as_value.clone().ok_or_else(|| self.overflow_at(*at, input))
+            }
+            _ => Ok(value),
+        }
+    }
+
     fn process_event(&mut self, event: Event<'_>, input: &str) -> Result<()> {
         self.meter.charge_event(&event, self.config)?;
         match event {
             Event::StreamStart | Event::StreamEnd => {}
             Event::DocumentStart => {
                 self.in_document = true;
-                self.anchor_map.clear();
-                self.earlier_anchor_defs
-                    .extend(self.anchor_def_spans.drain(..));
+                self.start_document_anchors();
             }
             Event::DocumentEnd => {
                 self.in_document = false;
             }
             Event::Alias { anchor, span } => {
                 let value = self.resolve_alias(&anchor, span.start, input)?;
+                let value = self.aliased_value(&anchor, value, input)?;
                 self.push_value(value, false, span.start, input)?;
             }
             Event::Scalar {
@@ -1231,42 +1395,8 @@ impl<'a> NoSpanLoader<'a> {
                 tag,
                 span,
             } => {
-                // serde_yaml-profile: a plain decimal integer past
-                // `u64::MAX` is refused instead of degrading to an
-                // approximate f64.
-                if self.config.integer_overflow_errors
-                    && matches!(style, crate::parser::ScalarStyle::Plain)
-                    && tag.is_none()
-                    && overflows_u64_decimal(&value)
-                {
-                    return Err(Error::IntegerOverflow {
-                        location: Some(crate::error::Location::from_index(input, span.start)),
-                        path: frames_path(self.stack.iter().map(|f| match f {
-                            NoSpanFrame::MappingValue { key, .. } => Some(key.clone()),
-                            NoSpanFrame::Sequence { items, .. } => Some(items.len().to_string()),
-                            _ => None,
-                        })),
-                    });
-                }
                 let v =
-                    if let Some(t) = tag {
-                        if self.config.tag_registry.as_ref().is_some_and(|r| {
-                            crate::streaming::tag_is_registry_stripped(&t.0, &t.1, r)
-                        }) {
-                            // Registered tag: strip through and resolve as if
-                            // untagged, exactly as the streaming path does.
-                            resolve_untagged_scalar(value, style, self.config)
-                        } else {
-                            resolve_tagged_scalar(
-                                &t.0,
-                                &t.1,
-                                &value,
-                                self.config.lossless_u64_integers(),
-                            )?
-                        }
-                    } else {
-                        resolve_untagged_scalar(value, style, self.config)
-                    };
+                    self.scalar_value(value, style, tag, anchor.as_deref(), span.start, input)?;
                 // Merge-key eligibility is decided here, while the scalar's
                 // presentation is still known — `resolve_untagged_scalar`
                 // yields `Value::String("<<")` for a plain and a quoted `<<`
@@ -1286,6 +1416,9 @@ impl<'a> NoSpanLoader<'a> {
                 }
                 if let Some(name) = anchor.as_ref() {
                     let _ = self.anchor_def_spans.insert(name.clone(), span.start);
+                    // A redefinition shadows its previous value immediately,
+                    // including while the new collection is still open.
+                    self.forget_anchor(name);
                 }
                 self.stack.push(NoSpanFrame::Sequence {
                     items: Vec::new(),
@@ -1305,10 +1438,7 @@ impl<'a> NoSpanLoader<'a> {
                 {
                     let inner = Value::Sequence(items);
                     let v = wrap_with_tag(inner, tag.as_ref(), self.config.tag_registry.as_deref());
-                    if let Some(name) = anchor {
-                        let cost = AliasCost::of_value(&v);
-                        let _ = self.anchor_map.insert(name, (v.clone(), cost));
-                    }
+                    self.record_collection_anchor(anchor, start, &v);
                     self.push_value(v, false, start, input)?;
                 }
             }
@@ -1319,6 +1449,9 @@ impl<'a> NoSpanLoader<'a> {
                 }
                 if let Some(name) = anchor.as_ref() {
                     let _ = self.anchor_def_spans.insert(name.clone(), span.start);
+                    // A redefinition shadows its previous value immediately,
+                    // including while the new collection is still open.
+                    self.forget_anchor(name);
                 }
                 self.stack.push(NoSpanFrame::MappingKey {
                     map: Mapping::new(),
@@ -1345,15 +1478,22 @@ impl<'a> NoSpanLoader<'a> {
                     }
                     let inner = Value::Mapping(map);
                     let v = wrap_with_tag(inner, tag.as_ref(), self.config.tag_registry.as_deref());
-                    if let Some(name) = anchor {
-                        let cost = AliasCost::of_value(&v);
-                        let _ = self.anchor_map.insert(name, (v.clone(), cost));
-                    }
+                    self.record_collection_anchor(anchor, start, &v);
                     self.push_value(v, false, start, input)?;
                 }
             }
         }
         Ok(())
+    }
+
+    /// Preserve a nested redefinition when its enclosing collection ends.
+    fn record_collection_anchor(&mut self, anchor: Option<String>, start: usize, value: &Value) {
+        if let Some(name) = anchor
+            && self.anchor_def_spans.get(&name) == Some(&start)
+        {
+            let cost = AliasCost::of_value(value);
+            let _ = self.anchor_map.insert(name, (value.clone(), cost));
+        }
     }
 
     /// Push a completed value into the enclosing frame.
@@ -1546,15 +1686,13 @@ fn is_leading_zero_decimal(s: &str) -> bool {
 }
 
 /// YAML 1.1 binary integer: `[-+]?0b[0-1_]+`.
-fn parse_legacy_binary(s: &str) -> Option<i64> {
+pub(crate) fn parse_legacy_binary(s: &str) -> Option<i64> {
     let (negative, rest) = match s.as_bytes().first() {
         Some(b'-') => (true, &s[1..]),
         Some(b'+') => (false, &s[1..]),
         _ => (false, s),
     };
-    let digits = rest
-        .strip_prefix("0b")
-        .or_else(|| rest.strip_prefix("0B"))?;
+    let digits = rest.strip_prefix("0b")?;
     if digits.is_empty() || digits.bytes().all(|b| b == b'_') {
         return None;
     }
@@ -1571,6 +1709,54 @@ fn parse_legacy_binary(s: &str) -> Option<i64> {
     Some(if negative { -n } else { n })
 }
 
+/// The unsigned YAML 1.1 binary form: `+?0b[0-1_]+` up to `u64::MAX`,
+/// for lossless configurations past `i64::MAX` (found by
+/// fuzz_serde_yaml_compat; the archive reads these as `u64`).
+pub(crate) fn parse_legacy_binary_u64(s: &str) -> Option<u64> {
+    let rest = s.strip_prefix('+').unwrap_or(s);
+    let digits = rest.strip_prefix("0b")?;
+    if !digits.bytes().all(|b| matches!(b, b'0' | b'1' | b'_')) {
+        return None;
+    }
+    let digits: String = digits.chars().filter(|&c| c != '_').collect();
+    if digits.is_empty() {
+        return None;
+    }
+    u64::from_str_radix(&digits, 2).ok()
+}
+
+/// A signed hex or octal integer (`-0xF`, `+0o17`) within 64 bits, as
+/// serde_yaml 0.9 reads it: a lower-case prefix and plain digits. A
+/// positive value past `i64::MAX` needs the lossless `u64` form.
+pub(crate) fn parse_signed_radix(s: &str, lossless_u64: bool) -> Option<Number> {
+    let negative = match s.as_bytes().first() {
+        Some(b'-') => true,
+        Some(b'+') => false,
+        _ => return None,
+    };
+    let (radix, digits) = match s.get(1..3) {
+        Some("0x") => (16, &s[3..]),
+        Some("0o") => (8, &s[3..]),
+        _ => return None,
+    };
+    if digits.is_empty() || !digits.bytes().all(|b| (b as char).is_digit(radix)) {
+        return None;
+    }
+    let magnitude = u64::from_str_radix(digits, radix).ok()?;
+    if negative {
+        return 0_i64.checked_sub_unsigned(magnitude).map(Number::Integer);
+    }
+    match i64::try_from(magnitude) {
+        Ok(n) => Some(Number::Integer(n)),
+        #[cfg(feature = "lossless-u64")]
+        Err(_) if lossless_u64 => Some(Number::Unsigned(magnitude)),
+        Err(_) => {
+            let _ = lossless_u64;
+            None
+        }
+    }
+}
+
 /// One of the explicit infinity spellings the resolver accepts.
 fn is_inf_spelling(s: &str) -> bool {
     matches!(
@@ -1579,10 +1765,85 @@ fn is_inf_spelling(s: &str) -> bool {
     )
 }
 
-/// A plain decimal integer (optional `+`) that does not fit `u64`.
-fn overflows_u64_decimal(s: &str) -> bool {
-    let d = s.strip_prefix('+').unwrap_or(s);
-    !d.is_empty() && d.bytes().all(|b| b.is_ascii_digit()) && d.parse::<u64>().is_err()
+/// A scalar key's own bytes. An alias key reads its anchored node's
+/// span, so the typed key keeps that node's written spelling (found by
+/// fuzz_diff on `{&d\n.3,*d}`) and a key error points at real source.
+fn scalar_key_span(span: &SpanTree) -> (usize, usize) {
+    match span {
+        SpanTree::Leaf(start, end) => (*start, *end),
+        SpanTree::Alias { target, .. } => scalar_key_span(target),
+        _ => (0, 0),
+    }
+}
+
+/// Classify a plain integer outside its JSON target's signed or unsigned
+/// 64-bit domain: `Some(true)` inside the archive's 128-bit visitor
+/// domain, `Some(false)` beyond it, where the archived parser falls
+/// through to a float (decimal) or a string (radix). `None` otherwise.
+/// The archive reads hex and octal with an optional sign, and binary
+/// when the profile does.
+fn integer_overflow(s: &str, config: &ParseConfig) -> Option<bool> {
+    if !config.integer_overflow_errors
+        || config.no_schema
+        || (config.leading_zero_integer_strings && is_leading_zero_decimal(s))
+    {
+        return None;
+    }
+    let unsigned = s.strip_prefix(['+', '-']).unwrap_or(s);
+    let (radix, digits) = match unsigned.get(..2) {
+        Some("0x") => (16, &unsigned[2..]),
+        Some("0o") => (8, &unsigned[2..]),
+        Some("0b") if config.legacy_binary_numbers => (2, &unsigned[2..]),
+        _ => (10, unsigned),
+    };
+    if digits.is_empty() || !digits.bytes().all(|b| (b as char).is_digit(radix)) {
+        return None;
+    }
+    let magnitude = u128::from_str_radix(digits, radix).ok();
+    let limit = if s.starts_with('-') {
+        1_u128 << 63
+    } else {
+        u128::from(u64::MAX)
+    };
+    if magnitude.is_some_and(|m| m <= limit) {
+        return None;
+    }
+    // The negative 128-bit domain ends at 2^127 in magnitude.
+    let within = if s.starts_with('-') {
+        1_u128 << 127
+    } else {
+        u128::MAX
+    };
+    Some(magnitude.is_some_and(|m| m <= within))
+}
+
+/// Resolve a scalar event's value through its tag, as the streaming
+/// path does: a registry-stripped tag resolves as if untagged.
+fn resolve_event_scalar(
+    value: Cow<'_, str>,
+    style: crate::parser::ScalarStyle,
+    tag: Option<(String, String)>,
+    config: &ParseConfig,
+) -> Result<Value> {
+    let Some(t) = tag else {
+        return Ok(resolve_untagged_scalar(value, style, config));
+    };
+    if config
+        .tag_registry
+        .as_ref()
+        .is_some_and(|r| crate::streaming::tag_is_registry_stripped(&t.0, &t.1, r))
+    {
+        return Ok(resolve_untagged_scalar(value, style, config));
+    }
+    // serde_yaml 0.9 reads `!!int -0xF` like the plain form.
+    let core_int = t.1 == "int" && matches!(t.0.as_str(), "!!" | "tag:yaml.org,2002:");
+    if core_int
+        && config.signed_radix_integers
+        && let Some(n) = parse_signed_radix(value.trim(), config.lossless_u64_integers())
+    {
+        return Ok(Value::Number(n));
+    }
+    resolve_tagged_scalar(&t.0, &t.1, &value, config.lossless_u64_integers())
 }
 
 /// Byte offset where a span tree's node begins.
@@ -1821,7 +2082,7 @@ fn resolve_untagged_scalar(
     style: crate::parser::ScalarStyle,
     config: &ParseConfig,
 ) -> Value {
-    if style != crate::parser::ScalarStyle::Plain {
+    if style != crate::parser::ScalarStyle::Plain || config.no_schema {
         // Quoted/literal/folded scalars always resolve as strings — YAML
         // schema resolution only applies to plain scalars.
         return Value::String(value.into_owned());
@@ -1836,6 +2097,18 @@ fn resolve_untagged_scalar(
         && let Some(n) = parse_legacy_binary(&value)
     {
         return Value::Number(Number::Integer(n));
+    }
+    #[cfg(feature = "lossless-u64")]
+    if config.legacy_binary_numbers
+        && config.lossless_u64_integers
+        && let Some(n) = parse_legacy_binary_u64(&value)
+    {
+        return Value::Number(Number::Unsigned(n));
+    }
+    if config.signed_radix_integers
+        && let Some(n) = parse_signed_radix(&value, config.lossless_u64_integers())
+    {
+        return Value::Number(n);
     }
     match crate::streaming::resolve_plain_ext(
         &value,
@@ -1861,7 +2134,22 @@ fn resolve_untagged_scalar(
                 Value::Number(Number::Float(f))
             }
         }
-        crate::streaming::Scalar::Str(s) => Value::String(s.into_owned()),
+        crate::streaming::Scalar::Str(s) => {
+            // The lossless resolver keeps large integers as strings. The
+            // archive's JSON profile instead tries a finite float after
+            // exhausting its 128-bit integer visitors.
+            if config.integer_overflow_errors
+                && s.strip_prefix(['+', '-'])
+                    .unwrap_or(&s)
+                    .bytes()
+                    .all(|b| b.is_ascii_digit())
+                && let Some(f) = s.parse::<f64>().ok().filter(|f| f.is_finite())
+            {
+                Value::Number(Number::Float(f))
+            } else {
+                Value::String(s.into_owned())
+            }
+        }
     }
 }
 
@@ -1872,23 +2160,18 @@ fn resolve_tagged_scalar(
     lossless_u64: bool,
 ) -> Result<Value> {
     // Canonicalize tag: handle `!!foo` (secondary) → `tag:yaml.org,2002:foo`.
-    let is_core = handle == "!!"
-        || handle == "tag:yaml.org,2002:"
-        || (handle == "!" && matches!(suffix, "int" | "float" | "bool" | "null" | "str"));
+    // A local tag (`!int`) is application-specific, not the core
+    // schema's `tag:yaml.org,2002:int` (§6.8.2.2), so it stays tagged.
+    let is_core = handle == "!!" || handle == "tag:yaml.org,2002:";
     if is_core {
         match suffix {
             "int" => {
                 // Accept decimal, hex (0x), octal (0o), with optional sign.
                 let trimmed = value.trim();
-                let parsed = if let Some(rest) = trimmed
-                    .strip_prefix("0x")
-                    .or_else(|| trimmed.strip_prefix("0X"))
-                {
+                // The core schema's prefixes are lower-case (§10.3.2).
+                let parsed = if let Some(rest) = trimmed.strip_prefix("0x") {
                     parse_tagged_integer(rest, 16, lossless_u64)
-                } else if let Some(rest) = trimmed
-                    .strip_prefix("0o")
-                    .or_else(|| trimmed.strip_prefix("0O"))
-                {
+                } else if let Some(rest) = trimmed.strip_prefix("0o") {
                     parse_tagged_integer(rest, 8, lossless_u64)
                 } else {
                     parse_tagged_decimal_integer(trimmed, lossless_u64)
@@ -2210,17 +2493,15 @@ fn int_hint(value: &str) -> String {
     let trimmed = value.trim();
     let negative = trimmed.starts_with('-');
     let unsigned = trimmed.strip_prefix(['-', '+']).unwrap_or(trimmed);
-    if unsigned.starts_with("0b") || unsigned.starts_with("0B") {
-        let digits = &unsigned[2..];
-        if !digits.is_empty()
-            && digits.bytes().all(|b| matches!(b, b'0' | b'1'))
-            && let Ok(n) = i64::from_str_radix(digits, 2)
-        {
-            let n = if negative { -n } else { n };
-            return format!(
-                "!!int {trimmed}: YAML 1.2 has no binary literal, `0b` was YAML 1.1; write {n}"
-            );
-        }
+    if let Some(digits) = unsigned.strip_prefix("0b")
+        && !digits.is_empty()
+        && digits.bytes().all(|b| matches!(b, b'0' | b'1'))
+        && let Ok(n) = i64::from_str_radix(digits, 2)
+    {
+        let n = if negative { -n } else { n };
+        return format!(
+            "!!int {trimmed}: YAML 1.2 has no binary literal, `0b` was YAML 1.1; write {n}"
+        );
     }
     if unsigned.contains('_') {
         let stripped: String = trimmed.chars().filter(|c| *c != '_').collect();

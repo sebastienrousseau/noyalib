@@ -1,427 +1,304 @@
-<!--
-SPDX-FileCopyrightText: 2026 Noyalib
-SPDX-License-Identifier: MIT OR Apache-2.0
--->
+<!-- SPDX-FileCopyrightText: 2026 Noyalib -->
+<!-- SPDX-License-Identifier: MIT OR Apache-2.0 -->
 
-# noyalib ecosystem — road to 10/10
+# Ecosystem assessment and road to 10/10
 
-Last reconciled against the tree at **v0.0.21**. Every number in §1 was
-counted from the repository at that point, not carried forward; where a
-previous revision of this document was wrong, §0 says so.
+Assessed **2026-11-10**, against the six clean `main` snapshots below.
+This replaces the v0.0.21 assessment. Scores describe engineering maturity
+within each repository's documented role. They are judgement informed by
+source, CI, registry and release evidence, not probabilities of correctness.
+No repository currently meets every acceptance criterion for 10/10.
 
----
+The executable work order is [PLAN.md](PLAN.md). The dated
+[evidence snapshot](ecosystem-assessment-2026-11-10.json) records full commits,
+CI runs, coverage totals, workflow floors, alerts and publication state.
+Missing evidence is an open assurance gap, not proof of defective code.
 
-## 0. What changed since the last revision
+## Release state
 
-This document had drifted. Recorded plainly so the corrections are
-auditable:
+Five crates are published at v0.0.60. MCP remains published at v0.0.59.
+Its [v0.0.60 workflow](https://github.com/sebastienrousseau/noyalib-mcp/actions/runs/42897537938)
+was cancelled before publication for this assessment. Its signed tag is
+preserved at source `aa3c9db6409c108bc5c1911c076181763a965021`.
+The family v0.0.60 release is incomplete.
 
-| Claim (previous) | Reality at v0.0.21 |
+Complete the P0 work in the plan before reconsidering publication. The
+longer 10/10 programme is separate from that release decision: a category
+average never overrides a concrete release blocker. Updating this assessment
+does not authorize moving the existing tag or publishing changed source
+under it.
+
+## Scope and rubric
+
+Scope is all six lockstep crate repos: core, CLI, LSP, MCP, WASM and the
+`serde_yaml` facade. Homebrew, Scoop, AUR, editor marketplaces, npm, container
+and MCP registries are assessed as distribution channels. Their hosting
+repositories are not represented as separately audited codebases here.
+
+Eleven categories cover the previous roadmap's axes and the automated
+harness's seven groups. Architecture and distribution are explicit; each
+satellite gets its own assessment instead of one aggregate satellite grade.
+
+| Score | Meaning |
 |---|---|
-| 467 public fns | **488** |
-| 142 test files | **161** |
-| 77 examples | **79** |
-| A1 comment mutation → M1 (v0.0.18–0.0.19) | landed in **v0.0.21** |
-| A2 reorder, A5 key spans → "planned" | landed in **v0.0.19** |
-| A3 extended remove → M2, unqualified | **partly** done — see EPIC A |
-| D1 bare-metal → M3 (v0.0.21) | landed in **v0.0.20**, closed #210 |
-| #210 open | **closed** |
-| Coverage gate "≥95%" | 95% functions, deliberately rebaselined from 96 |
+| 0 to 5 | Absent, failing, or too little evidence to establish the scoped contract |
+| 6 | Implemented, with material evidence or assurance gaps |
+| 7 | CI exercised, with consumer or contract gaps |
+| 8 | Strong automation and exercised boundaries; acceptance work remains |
+| 9 | Broad evidence and verified consumers; final acceptance work remains |
+| 10 | All scoped category criteria below closed, independently reviewed, and maintained by regression checks |
 
-The coverage rebaseline deserves a note rather than a silent number: 96%
-left under three functions of slack, and the metric proved unstable
-across runs of the *same commit* (78 uncovered then 77). A threshold a
-no-op rename can breach measures LLVM's instantiation accounting, not
-the test suite. Line (94%) and region (93%) floors were stable and are
-unchanged.
+These are ordinal ratings, deliberately rounded to whole points. The
+assessment does not claim a mathematical difference between an 8 and a 9.
+Unavailable external scores remain unavailable. A passing probe or a high
+coverage percentage alone cannot establish 10/10.
 
----
+| Category | Acceptance required for 10/10 | Harness relationship |
+|---|---|---|
+| Functionality / API | Every advertised capability mapped to executable positive, negative and boundary cases; intentional limits explicit | correctness |
+| Correctness / testing | Contract tests at real product boundaries, regression inputs, sustained fuzz evidence, reviewed coverage gaps and relevant properties | correctness, robustness |
+| Architecture / maintainability | Reviewed boundary contracts, dependency direction and failure ownership; characterisation evidence before structural changes | code_health |
+| Performance / resources | Commit-bound reproducible throughput, latency, memory and size baselines; justified budgets and a demonstrated regression signal | robustness; timing is outside the harness |
+| Security / supply chain | All manifest/lockfile and wrapper scopes scanned; audit evidence current; findings fixed or individually justified; authentic release artifacts verified | supply_chain, integrity |
+| Documentation | Claims match source and published packages; examples run at supported consumer boundaries; version and link checks pass | docs |
+| Portability / no_std | Declared targets, toolchains and feature compositions exercised; core alloc-only behavior and float parity preserved | correctness, code_health |
+| Developer experience / diagnostics | Fresh setup and install succeed; failure messages, exit codes and recovery paths tested; local commands agree with CI | code_health, docs |
+| Interoperability | Versioned compatibility matrix with real clients and deliberate differences; unsupported capabilities are explicit | correctness, release |
+| Distribution / consumers | Every claimed channel installs the exact release; bytes, signatures and provenance verified; install failure and rollback paths exercised | release, integrity |
+| Release / governance | Immutable signed sources, green exact-source gates, recovery rehearsal and sustainable independent review with real maintainers | release, integrity, supply_chain |
 
-## 1. Current-state scorecard
+A 10 is a dated, bounded acceptance judgement, never a guarantee that future
+bugs cannot exist. New functionality is not required merely to increase a
+score. Public API, MSRV and feature changes need maintainer direction.
 
-| Category | Now | Evidence (counted at v0.0.21) | Gap to 10/10 |
+## Ratings out of 10
+
+| Category | Core | CLI | LSP | MCP | WASM | Facade |
+|---|---:|---:|---:|---:|---:|---:|
+| Functionality / API | 9 | 8 | 7 | 9 | 8 | 8 |
+| Correctness / testing | 9 | 8 | 8 | 8 | 8 | 8 |
+| Architecture / maintainability | 8 | 8 | 8 | 8 | 8 | 9 |
+| Performance / resources | 8 | 6 | 6 | 6 | 6 | 6 |
+| Security / supply chain | 9 | 8 | 8 | 6 | 8 | 8 |
+| Documentation | 8 | 7 | 6 | 7 | 6 | 6 |
+| Portability / no_std | 9 | 8 | 8 | 8 | 7 | 7 |
+| Developer experience / diagnostics | 8 | 8 | 7 | 8 | 7 | 8 |
+| Interoperability | 9 | 8 | 7 | 8 | 7 | 8 |
+| Distribution / consumers | 9 | 9 | 8 | 7 | 8 | 9 |
+| Release / governance | 6 | 6 | 6 | 6 | 6 | 6 |
+
+Confidence is high for the recorded commits, API responses, CI conclusions,
+coverage totals and identified contradictions. Architectural, ergonomic and
+performance maturity ratings have moderate confidence: this pass inspected
+contracts and evidence, rather than conducting a new exhaustive code audit,
+user study, penetration test or benchmark campaign. All ratings remain
+provisional until independent review in G1.
+
+## Evidence baseline
+
+| Repo | Assessed commit | Exact-source CI | Published crate |
 |---|---|---|---|
-| **API / functionality** | 9 | 488 public fns; lossless CST editors incl. `set`/`insert`/`remove`/`rename_key`/`rename_anchor`/`swap_items`/`move_item`/`set_comment`/`remove_comment`; streaming; async | #221 **closed** in v0.0.23 — flow-member and sole-entry removal completed sub-ask 4; sub-ask 5 was resolved in v0.0.21 by a structural oracle rather than auto-quoting |
-| **Correctness / testing** | 9.5 | 161 test files, 5 961 tests, coverage gate (95 fn / 94 line / 93 region), Miri, differential fuzz vs saphyr | Fuzz is a PR smoke, not continuous; no structured fuzzers for the *editors*; property-test breadth uneven |
-| **Performance** | 9 | 16 benches, SIMD, `fast-int`/`fast-float`, `parallel` | No published numbers; no CI regression gate; no criterion baselines |
-| **Security / supply-chain** | 9 | cargo-vet, cargo-deny, cargo-audit, CodeQL, OSSF scorecard, REUSE 850/850, `unsafe` forbidden except `simd`; schema-validator hardening pinned by test (v0.0.21); SLSA Build L2 attestation + keyless sigstore in release.yml; `build.rs` contract CI-enforced (`build-script-contract`); CycloneDX SBOM signed + attested per release (v0.0.29); weekly `cargo hack --feature-powerset --depth 2` sweep (v0.0.29, found the `ariadne`-without-`std` break on day one) | No OpenSSF badge; the schema validator's recursion bound is the `jsonschema` crate's fixed 129 (pinned by test, not caller-configurable — upstream limitation; parser/serializer `max_depth` ARE caller-configurable). Earlier revisions of this row claimed no SBOM, no SLSA, unaudited `build.rs`, and an unconfigurable depth bound generally — all four were stale. |
-| **Documentation** | 9 | rustdoc-strict + broken-intra-doc-link gate, `USER-GUIDE.md`, ADRs, 79 examples | No docs.rs feature-matrix proof; no cookbook; no competitive comparison page |
-| **no_std / portability** | **10** | `no_std`+alloc; wasm32 and bare-metal `thumbv7em` / `riscv32imac` / `aarch64-unknown-none` build (v0.0.20) **and are gated in CI** (v0.0.21) | — |
-| **DX / ergonomics** | 8.5 | miette/ariadne diagnostics, typed path API, recovery | No derive helpers/builders; fix-hints not uniform across the error taxonomy |
-| **Interop / ecosystem** | 9 | serde, `compat-serde-yaml` shim, figment, schemars, garde/validator, tokio, sval | Successor position is *earned but unclaimed* — see EPIC F1 |
-| **Satellites** | 7.5 | wasm/mcp/lsp/cli all shipping | Each v0.0.x; **`noyalib-mcp` predates the 2026-07-28 MCP spec**; no npm/registry packaging |
-| **Release / governance** | 9.5 | ADR-0005 lockstep, signed commits, Keep-a-Changelog | MSRV/deprecation policy undocumented; release partly manual |
+| [Core](https://github.com/sebastienrousseau/noyalib) | `2b3966235352c44b70071390faf6f06ec8b4d65d` | [42787265272](https://github.com/sebastienrousseau/noyalib/actions/runs/42787265272) | 0.0.60 |
+| [CLI](https://github.com/sebastienrousseau/noya-cli) | `9fdd09a177b6bf29084f0897db0d3e6823a27e96` | [42799812146](https://github.com/sebastienrousseau/noya-cli/actions/runs/42799812146) | 0.0.60 |
+| [LSP](https://github.com/sebastienrousseau/noyalib-lsp) | `3fccfbe5782e5b43f6ac6c8bb04595063e024e8d` | [42792082961](https://github.com/sebastienrousseau/noyalib-lsp/actions/runs/42792082961) | 0.0.60 |
+| [MCP](https://github.com/sebastienrousseau/noyalib-mcp) | `aa3c9db6409c108bc5c1911c076181763a965021` | [42896967498](https://github.com/sebastienrousseau/noyalib-mcp/actions/runs/42896967498) | 0.0.59; 0.0.60 held |
+| [WASM](https://github.com/sebastienrousseau/noyalib-wasm) | `b00e5ece6281c1d0e137445464734037f6531e53` | [42792100355](https://github.com/sebastienrousseau/noyalib-wasm/actions/runs/42792100355) | 0.0.60 |
+| [Facade](https://github.com/sebastienrousseau/noyalib-serde-yaml) | `91e2b3cbdf04549893c983704c81f6d4cdf61865` | [42792116009](https://github.com/sebastienrousseau/noyalib-serde-yaml/actions/runs/42792116009) | 0.0.60 |
 
-**Weighted read:** core ≈ **9.2/10**, satellites ≈ **7.5/10**.
+All executed jobs in these CI runs succeeded. Conditional skipped jobs are
+recorded as skipped in the JSON, not credited as successful checks. Relevant
+PR, release and consumer checks add evidence, but do not convert a skipped
+main-branch Miri or signature job into a pass.
 
----
+### Coverage and robustness
 
-## 2. Gaps & issues (grounded)
+Values come from the successful coverage jobs' `TOTAL` rows, with the
+column headers checked. They are not inferred from a job name such as
+"Coverage gate (≥95%)", which hides caller-specific thresholds.
 
-### 2.1 Project-tracked
+| Repo | Lines | Functions | Regions | Current floors: line / function / region | Fuzz targets |
+|---|---:|---:|---:|---|---:|
+| Core | 95.25% | 96.93% | 94.08% | 94 / 96 / 93 | 18 main + 2 alloc-only |
+| CLI | 97.09% | 96.91% | 95.91% | 88 / 96 / 90 | 2 |
+| LSP | 95.57% | 98.17% | 95.30% | 94 / 96 / 93 | 2 |
+| MCP | 98.26% | 97.52% | 96.36% | 94 / 96 / 93 | 1 |
+| WASM | 99.00% | 100.00% | 99.10% | 94 / 96 / 93 | 2 |
+| Facade | N/A | N/A | N/A | No independent coverable runtime functions | 2 |
 
-- **#221 — CST edit API.** Sub-asks 1 (comment mutation), 2 (`rename_key`
-  + key spans) and 3 (reorder) are **done**. Remaining:
-  - **(4) Extended `remove`** — multi-line values, nested collections and
-    nested sequence items *do* work. Sole entries and flow-collection
-    members are refused; `remove_subtree` does not exist.
-  - **(5) Quoting-aware fragment emit** — **closed in v0.0.29.**
-    The *`_value`* inserters already quoted via `Emit`; `set` gained a
-    structural oracle in v0.0.21; and v0.0.29 closed the remainder:
-    `insert_entry` runs under the same oracle (its new-key splice was
-    entirely unguarded — a lone `U+000D` in the fragment escaped, and
-    the key half spliced verbatim), keys refuse `<<`/non-printables and
-    auto-quote like `rename_key`, and `guarded_insert` pins container
-    growth to exactly one entry, so `push_back("s", "v\n  - w")` can no
-    longer append two items *inside* the elided container. Pinned by
-    `tests/cst_insert_containment.rs`. The lesson from the v0.0.21
-    `remove` bug applied: every fast path now has an oracle, not an
-    intuition.
-- **#210 — bare-metal `no_std`.** **Closed in v0.0.20.**
+Coverage includes instrumented `cfg(test)` source. WASM native coverage is
+not browser coverage; subprocess, protocol and generated wrapper paths have
+different denominators. Branch coverage is unmeasured in these totals.
+The facade's thin re-export is assessed through its downstream contract,
+not assigned a fabricated 100% coverage result. Target counts establish
+inventory, not fuzzing duration or effectiveness.
 
-### 2.2 Analysis-surfaced
+### Security and governance
 
-- **A `remove` data-loss bug, found and fixed in v0.0.21.** The oracle
-  guard only ran for multi-line edits; single-line entries took an
-  unguarded path. In a flow collection an entry shares its line with its
-  siblings *and its parent*, so `remove("a.x")` on `a: {x: 1, y: 2}`
-  deleted the whole document and returned `Ok`. The lesson generalises:
-  **any fast path that skips the oracle needs a proof, not an intuition.**
-- **Schema validator hardening was untested, not absent.** Measured at
-  v0.0.21: external `$ref` *is* refused, and recursion *is* bounded (the
-  `jsonschema` crate stops at depth 129). Both properties come from how the
-  dependency is configured — `default-features = false` — rather than from
-  anything this crate asserts, so a feature flag or a version bump could
-  have removed either silently. **Fixed in v0.0.21** by
-  `tests/schema_hardening.rs`, which pins both. An earlier revision of this
-  roadmap claimed the bounds were missing; they were merely unguarded.
-- **`build.rs` unaudited — stale; closed before this revision.** The
-  `build-script-contract` CI job greps the script for network /
-  filesystem / process capability and fails on any reach beyond its
-  documented contract (declare cfgs, read `$RUSTC --version`, read one
-  env var).
-- **Fuzzing is a PR smoke.** No corpus accretion, no continuous run, and
-  no structured fuzzers for the editors — only the parser is differentially
-  fuzzed against saphyr.
-- **No performance regression gate**, and no published numbers to anchor
-  the SIMD / `fast-float` claims.
-- **SIMD `unsafe` audit.** `simd`/`nightly-simd` opt out of
-  `unsafe_code = forbid` with no published soundness note.
+GitHub returned zero open Dependabot alerts in all six repos. Code scanning
+returned zero open alerts in five and one current **high** alert in MCP:
+[alert 25](https://github.com/sebastienrousseau/noyalib-mcp/security/code-scanning/25),
+Scorecard `VulnerabilitiesID`, against the assessed main commit.
 
----
+[RUSTSEC-2026-0386](https://rustsec.org/advisories/RUSTSEC-2026-0386.html)
+affects Tokio's `AsyncFd` constructors. The
+[MCP production lock](https://github.com/sebastienrousseau/noyalib-mcp/blob/aa3c9db6409c108bc5c1911c076181763a965021/Cargo.lock)
+uses patched Tokio **1.54.1**; its
+[fuzz lock](https://github.com/sebastienrousseau/noyalib-mcp/blob/aa3c9db6409c108bc5c1911c076181763a965021/fuzz/Cargo.lock)
+uses affected **1.53.1**. This is a matching affected dependency, not a proven
+production exploit or a proven false positive. Fix and rescan the fuzz scope;
+keep the alert open until the scanner confirms resolution. Registry
+`const-oid` 0.10.3 and SDK 3.9.0 are already in the production graph; their
+successful audit work does not cover a different fuzz lockfile.
 
-## 3. Implementation plan — core crate
+All six `main` protections are strict, but require **zero approving
+reviews**. The direct-collaborator API returned one human per repo. This
+establishes a review and continuity gap; it does not establish who can
+recover every signing, registry or organisation account. G1 must establish
+that separately with the maintainer. No contributors will be invented to
+improve a number.
 
-Format: **Epic → tasks → acceptance → effort (S≤1d / M≤1wk / L>1wk) →
-risk → categories moved.**
+The external OpenSSF API could not be reached during this assessment.
+Its previous scores are historical, not current evidence. GitHub's current
+Scorecard alert remains valid evidence independently of that API outage.
 
-### EPIC A — Finish the CST surgical-edit API (closes #221)
+## Per-repository gaps and route to 10
 
-- ~~**A1. Comment mutation**~~ — **done, v0.0.21.**
-  `set_comment(path, position, text)` / `remove_comment(path, position)`
-  with `CommentPosition ∈ {Inline, Before}`, leading blocks written at the
-  node's own indentation. *Deferred:* a separate `insert_comment` and a
-  `Trailing` position — `set_comment` covers both intents today; add them
-  only if a caller shows the distinction matters.
-- ~~**A2. Sequence reorder**~~ — **done, v0.0.19** (`swap_items`, `move_item`).
-- **A3. Extended `remove`** — remaining: `remove_subtree`, sole-entry
-  removal yielding a valid empty collection, and flow-collection members.
-  - *Accept:* flow-member removal rewrites the flow collection rather than
-    the line; a fuzz target removes a random path and asserts
-    `value == original − path`; every refusal leaves the source
-    byte-identical (already tested).
-  - M · medium risk · **API, correctness**
-- ~~**A4. Fragment containment**~~ — **done, v0.0.21.** Investigation
-  changed the shape of this task twice.
-  - Routing `set` through `Emit` would have **broken its documented
-    contract**: it splices verbatim on purpose, and `set(p, "{x: 1}")`
-    turning a scalar into a mapping is legitimate use. The safe route already
-    exists — `set_value` renders a typed value, and was verified to
-    round-trip every hazardous input exactly (`"true"`, `""`,
-    `"v # x"`, `"v\nc: 3"`, `"x: y"`, `"- item"`).
-  - The real defect was narrower and worse: a fragment could reach
-    **outside its path**. `set("a", "v\nc: 3")` gave the document a new
-    key `c` and returned `Ok`, because the result is valid YAML. **Fixed**
-    by a structural oracle — the document's shape outside the edited path
-    must be unchanged.
-  - The oracle compares *shape*, not values, and that distinction was
-    found the hard way: a value-comparing first version wrongly rejected
-    edits to **anchored** values, whose aliases legitimately change
-    elsewhere. It also parses fallibly, because an invalid splice commits
-    optimistically by design and surfaces via `validate`.
-  - **Completed, v0.0.21.** `push_back` and `insert_after` had the same
-    hole — `push_back("s", "v\nqq: 7")` appended to the sequence *and*
-    gave the document a top-level `qq`. Both now run through
-    `guarded_insert`, which elides the container being inserted into
-    (its shape must change) and requires everything else to match; for
-    `insert_after("items[2]", ..)` the container is the parent sequence.
-    `insert_entry` was already covered, delegating to the guarded `set`.
-  - Property tests at 512 cases each now generalise the round-trip claim
-    beyond enumerated inputs: arbitrary scalars survive `set_value` at
-    top level and nested, and `set` never silently corrupts — whatever
-    it returns, siblings survive and the entry count holds.
-- ~~**A5. Read-only key spans**~~ — **done, v0.0.19** (`key_span`).
+Each row explains its rating and names plan tasks that close the remaining
+acceptance criteria. Shared tasks apply to every repo listed in the plan.
 
-### EPIC B — Testing to a defensible 10
+### Core: noyalib
 
-- **B1. Coverage floor.** Keep 95/94/93 rather than chase 100. The v0.0.19
-  experience is the argument: the function metric moved between runs of an
-  identical commit, so a higher floor buys flakiness, not assurance.
-  Instead: **B1′ — make the metric trustworthy** by pinning the nightly
-  used for coverage, so run-to-run variance is attributable. S · low ·
-  **testing**
-- **B2. Editor fuzzing** — structured `arbitrary` targets per mutator
-  (set/insert/remove/rename/reorder/comment): apply a random edit, assert
-  the oracle invariant or a clean refusal. The v0.0.21 data-loss bug is
-  exactly what this catches. M · low · **testing, correctness**
-- **B3. Continuous fuzzing** — OSS-Fuzz, or a nightly ≥30 min job with a
-  persisted corpus. M · low · **testing, security**
-- **B4. Property-test parity** — a checklist test that fails when a public
-  codec entry point has no round-trip property. M · low · **testing**
+Evidence includes [CI](https://github.com/sebastienrousseau/noyalib/actions/runs/42787265272),
+[architecture](ARCHITECTURE.md), [benchmarks](BENCHMARKS.md),
+[feature manifest](../crates/noyalib/Cargo.toml) and the
+[unconditional unsafe prohibition](../crates/noyalib/src/lib.rs).
 
-### EPIC C — Performance, measured and defended
+| Category | Basis and remaining acceptance work | Tasks |
+|---|---|---|
+| Functionality: 9 | Broad parser, Serde, CST and streaming surface; finish a capability-to-test ledger including refusals and limits | C1, Q1 |
+| Correctness: 9 | Conformance, properties, differential fuzz, Kani and regression CI; sustained editor fuzz and production-only gap review still needed | C1, Q2 |
+| Architecture: 8 | Documented distinct loaders and complexity gate; review their parity obligations and error ownership before any extraction | C2 |
+| Performance: 8 | Real historical benchmark tables and size gate; refresh commit-bound baselines with memory and variance | P1, P2 |
+| Security: 9 | Audit, deny, vet, offline build, unsafe prohibition and verified release; expand lockfile scope and independent security review | S1, S2, G1 |
+| Documentation: 8 | Extensive manual and runnable examples; stale planning claims and feature documentation need systematic reconciliation | D1, C1 |
+| Portability: 9 | Real alloc-only behavior, float consumers and bare-metal CI; retain a complete feature-to-target support ledger and negative graph checks | C3 |
+| DX: 8 | Typed paths and rich diagnostics; test fresh setup and classify actionable error/recovery cases across loaders | C1, X1 |
+| Interoperability: 9 | Serde and multiple integrations exercised; record supported combinations and intentional behavior differences | C1, I1 |
+| Distribution: 9 | Authentic registry source, signed release and consumer tests verified; retain reusable receipts and recovery evidence | R1, R2 |
+| Governance: 6 | Signed lockstep releases and protections; independent review and access continuity remain open | G1, G2 |
 
-- **C1. Published benchmarks** — criterion baselines + `BENCHMARKS.md` with
-  numbers against `serde-saphyr`, `yaml-rust2` and (as a historical
-  baseline) `serde_yaml`, on a stated corpus and machine. S–M · low ·
-  **performance, docs**
-- **C2. CI regression gate** — fail on >X% regression. Budget for runner
-  noise: the CI *duration* monitor in this repo already demonstrates the
-  failure mode, where a single slow run tripped a 1.1× threshold that the
-  rolling average then absorbed. Use a median-of-N, not a single sample.
-  M · medium · **performance**
-- **C3. SIMD soundness note** — document the `unsafe` invariants; Miri over
-  the scalar-fallback equivalence tests; a `simd == scalar` differential
-  property. M · medium · **performance, security**
+### CLI: noya-cli
 
-### EPIC D — no_std / portability
+Evidence: [source](https://github.com/sebastienrousseau/noya-cli/tree/9fdd09a177b6bf29084f0897db0d3e6823a27e96),
+including `src/atomic.rs`, `tests/`, `action.yml`, `.pre-commit-hooks.yaml`,
+`docs/cli-reference.md` and `docs/BENCHMARKS.md`.
 
-- ~~**D1. Bare-metal build**~~ — **done, v0.0.20.** Four root causes, two
-  more than #210 documented: dependencies pulling `std` unconditionally;
-  `FxHashMap`/`FxHashSet` being std-only aliases; `indexmap`'s default
-  hasher being std-only (worked around with a cfg-defaulted alias so no
-  public signature changed); and `core` having no `f64::fract`/`mul_add`.
-- ~~**D2. Keep it built**~~ — **done, v0.0.21.** `shared-no-std.yml` gains
-  a `bare-metal` matrix over `thumbv7em-none-eabihf`,
-  `riscv32imac-unknown-none-elf` and `aarch64-unknown-none`. Recorded there:
-  wasm32 passed *throughout* the #210 bug, because the target has `std`
-  available and masked three dependencies pulling it in unconditionally —
-  so wasm32 alone was never sufficient cover.
-- **D3. `alloc`-free surface audit** — document which APIs need `alloc` vs
-  pure `core`. M · medium · **no_std, docs**
+| Category | Basis and remaining acceptance work | Tasks |
+|---|---|---|
+| Functionality: 8 | Two shipped tools cover formatting, validation and repair; map each flag and exit contract to real binary tests | CLI1 |
+| Correctness: 8 | Platform matrix, YAML suite and fuzz replay; extend atomic-write and interruption failures at process boundaries | CLI1, Q2 |
+| Architecture: 8 | Dispatch, text and atomic I/O are separated; review I/O ownership and characterise failure paths | CLI2 |
+| Performance: 6 | Criterion harness exists; README's approximate 10 ms lacks an accompanying reproducible result | P1, P2, D1 |
+| Security: 8 | Dependency and workflow gates pass; audit all lock scopes and review write/path handling independently | S1, S2, CLI2 |
+| Documentation: 7 | Generated flags, manpages and examples exist; align install and performance claims with verified channels | D1, CLI1 |
+| Portability: 8 | OS/toolchain matrix and native assets; exercise filesystem differences and package installation on supported OSes | CLI1, R2 |
+| DX: 8 | Completions, manpages, Action and hooks exist; verify fresh install, stdin, failure messages and uninstall | X1, CLI1 |
+| Interoperability: 8 | Shared core, Action and hooks; add a cross-surface semantics corpus and executable integration recipes | I1, CLI1 |
+| Distribution: 9 | Archives, packages and multiarch container verified; run package-manager and rollback checks with retained receipts | R1, R2 |
+| Governance: 6 | Shared review and continuity gap | G1, G2 |
 
-### EPIC E — Security / supply-chain to 10
+### LSP: noyalib-lsp
 
-Updated against 2026 practice: SBOM alone is table stakes; provenance and
-VEX are what auditors now ask for.
+Evidence: [source](https://github.com/sebastienrousseau/noyalib-lsp/tree/3fccfbe5782e5b43f6ac6c8bb04595063e024e8d),
+particularly `src/lib.rs::dispatch`, `tests/framing.rs`, `tests/protocol.rs`,
+`editors/vscode/`, `README.md` and `docs/protocol-coverage.md`.
 
-- **E1. Per-release SBOM** — CycloneDX *and* SPDX (`cargo-cyclonedx` /
-  `cargo-sbom`) as release assets. S · low · **security**
-- **E2. SLSA build provenance** — GitHub's `attest-build-provenance` reaches
-  SLSA Build L2. Reaching L3 requires a hardened, isolated builder, which this repo
-  does not yet use. Attest the release artifacts and the SBOM
-  predicate. S–M · low · **security, governance**
-- **E3. VEX statements** — publish exploitability assessments for advisories
-  that cannot be fixed upstream. The fleet has a live example: an advisory
-  reachable only through a dependency the crate never called. VEX is how
-  you say that formally instead of in a commit message. M · low ·
-  **security**
-- **E4. OpenSSF Best Practices badge** — passing → silver. S · low ·
-  **security, governance**
-- ~~**E5. `build.rs` contract**~~ — **done, v0.0.21.** The module comment
-  states what it may do (declare cfgs, read `$RUSTC --version`, read one
-  env var) and what it must never do; a `build-script-contract` CI job
-  asserts the latter by grepping for network and filesystem capability, a
-  subprocess count above one, and any `[build-dependencies]`. Grepping for
-  capability means a future edit has to defeat CI rather than a reader's
-  attention.
-- ~~**E6. MSRV & deprecation policy**~~ — **done, v0.0.21.**
-  `docs/MSRV-AND-DEPRECATION.md`. The clause that mattered: a dev-dependency
-  outrunning the floor is a *decision*, not a mechanical fix — raising a
-  user-facing promise to accommodate a test tool should be deliberate, not
-  a way to turn a job green.
+| Category | Basis and remaining acceptance work | Tasks |
+|---|---|---|
+| Functionality: 7 | Dispatch implements formatting and hover; README advertises completion and symbols that dispatch lacks | LSP1 |
+| Correctness: 8 | Framing, protocol and handler tests; strengthen Unicode positions, lifecycle, malformed framing and stale changes | LSP2, Q2 |
+| Architecture: 8 | Separate formatting, hover and diagnostic handlers; review sync, cache invalidation and request lifecycle contracts | LSP2 |
+| Performance: 6 | Handler benchmark harness without recorded baseline; measure edit-to-diagnostic latency and memory | P1, P2 |
+| Security: 8 | Input and dependency gates; review schema retrieval and framing/resource boundaries independently | S1, S2, LSP2 |
+| Documentation: 6 | README and protocol table contradict each other; editor setup still uses an unframed echo as a smoke check | LSP1, D1 |
+| Portability: 8 | Three-OS Rust matrix and VSIX build; add real editor/OS boundary checks | LSP3, X1 |
+| DX: 7 | Editor setup and VSIX exist; executable setup, capability discovery and diagnostics need consistent guidance | LSP1, LSP3, X1 |
+| Interoperability: 7 | Protocol 3.17 scope documented; real-client capability and Unicode position matrix incomplete | LSP2, LSP3, I1 |
+| Distribution: 8 | Signed native releases and Marketplace evidence; verify extension's installed server path and other claimed channels | LSP3, R1, R2 |
+| Governance: 6 | Shared review and continuity gap | G1, G2 |
 
-### EPIC F — Documentation & interop leadership
+### MCP: noyalib-mcp
 
-- **F1. Claim the successor position.** `serde_yaml` is archived and
-  `serde_yml` now ships a shim pointing here; noyalib is already named
-  alongside `serde-saphyr` and `yaml-rust2` in community "what should I use
-  now" threads. Convert that into `MIGRATING-FROM-SERDE-YAML.md` with a
-  shim parity table, a one-line `Cargo.toml` swap and a compile-tested
-  example. **Highest adoption ROI on this list.** M · low · **interop, docs**
-- **F2. Honest competitive comparison** — a page stating where each library
-  wins. `serde-saphyr` deliberately has *no* `Value` DOM and deserialises
-  straight into typed structs, which is faster and leaner for
-  `from_str::<T>` and unable to do what a CST does. noyalib's differentiator
-  is the lossless editing surface plus schema validation. Say so, including
-  where a reader should pick the other one. S · low · **docs, interop**
-- **F3. The Norway problem, stated.** `serde-saphyr` markets its typed-schema
-  approach as the answer to `NO → false`. Document noyalib's resolution
-  rules and how to get strict behaviour, rather than leaving readers to
-  infer it. S · low · **docs, correctness**
-- **F4. Task-oriented cookbook** — runnable, doctested recipes. M · low ·
-  **docs, DX**
-- **F5. docs.rs feature-matrix proof** — CI builds docs under each major
-  feature combination. S · low · **docs**
+Evidence: [source](https://github.com/sebastienrousseau/noyalib-mcp/tree/aa3c9db6409c108bc5c1911c076181763a965021),
+including `tests/protocol.rs`, `tests/limits.rs`, `src/transport/`,
+`src/fsio.rs`, `pkg/npm-wrapper/`, `supply-chain/` and the linked alert above.
 
-### EPIC G — Agent-era readiness *(new)*
+| Category | Basis and remaining acceptance work | Tasks |
+|---|---|---|
+| Functionality: 9 | SDK 3.9.0, multiple protocol revisions, tools and three transports exercised; publish exact capability/transport limits | MCP2 |
+| Correctness: 8 | Protocol, root and limit regressions; only one tool fuzzer, no equivalent sustained transport/state fuzz evidence | MCP2, Q2 |
+| Architecture: 8 | Filesystem and transport guards are separated; review cancellation, session and write ownership together | MCP2 |
+| Performance: 6 | Tool harness exists; request, concurrency and backpressure budgets lack reproducible measurements | P1, P2, MCP2 |
+| Security: 6 | Production crypto audit completed, but current high alert matches affected fuzz Tokio; independently review transports and filesystem confinement | S1, S2, MCP1, MCP2 |
+| Documentation: 7 | Current SDK and distribution documented; align capability/revision, auth and wrapper contracts with actual support | MCP2, D1 |
+| Portability: 8 | OS matrix and native assets; validate transport and filesystem limits on each supported OS | MCP2, X1 |
+| DX: 8 | Cargo, npm bootstrap and container install work at v0.0.59; exercise errors, offline/cache and configuration paths | MCP3, X1 |
+| Interoperability: 8 | Legacy and stateless protocol tests; pin real client/Inspector versions and transport/security cases | MCP2, I1 |
+| Distribution: 7 | All five v0.0.59 channels verified; v0.0.60 intentionally unpublished and awaits source/hold decision | R0, MCP3, R1, R2 |
+| Governance: 6 | Immutable signed tag preserved; shared review and continuity gap remains | R0, G1, G2 |
 
-The 2026-07-28 MCP specification is the largest revision since launch: a
-stateless protocol core, an Extensions framework, Tasks, MCP Apps,
-authorization hardening and a formal deprecation policy. It also lifts
-tool `inputSchema`/`outputSchema` to **full JSON Schema 2020-12** —
-`oneOf`/`anyOf`/`allOf`, conditionals, `$ref`/`$defs` — and requires that
-implementations **not auto-dereference external `$ref` URIs** and **bound
-schema depth and validation time**.
+### WASM: noyalib-wasm
 
-noyalib already ships a JSON Schema 2020-12 validator. That makes this an
-opportunity rather than a chore — but the hardening the spec requires is
-currently absent.
+Evidence: [source](https://github.com/sebastienrousseau/noyalib-wasm/tree/b00e5ece6281c1d0e137445464734037f6531e53),
+including `src/guard.rs`, `tests/wasm.rs`, `benches/bench.js`,
+`docs/js-api.md`, `docs/bundling.md`, the
+[package-content gate](https://github.com/sebastienrousseau/noyalib-wasm/blob/b00e5ece6281c1d0e137445464734037f6531e53/scripts/check-npm-package.sh)
+and the release workflow that generates `pkg/package.json`.
 
-- ~~**G1. Pin the schema-validator hardening**~~ — **done, v0.0.21.**
-  Measurement changed the shape of this task: the protections already
-  existed, undocumented and untested. `tests/schema_hardening.rs` now pins
-  six properties — external `$ref` refused, that refusal being fast enough
-  to rule out a network attempt, recursion bounded at depth 500/2 000/10 000
-  without stack exhaustion, the bound naming itself in the error, local
-  `$ref`/`$defs` still resolving, and ordinary schemas unaffected — and
-  `schema_validate.rs` documents them as contract.
-  - *Still open:* a **configurable** depth bound and an explicit
-    validation-time budget. Today's limit is `jsonschema`'s, not ours, so a
-    caller cannot tighten it. S–M · low · **security, interop**
-- **G2. `noyalib-mcp` → 2026-07-28 conformance.** Stateless core, Tasks for
-  long edits, Extensions, OAuth 2.1. Add an MCP Inspector conformance job.
-  L · medium · **satellites, ecosystem**
-- **G3. Tool-schema generation.** noyalib already has `schemars`; expose a
-  helper that emits an MCP-shaped tool schema from a Rust type, so agent
-  authors get validated tool definitions without hand-writing JSON Schema.
-  M · low · **interop, DX**
-- **G4. Agent-safe editing profile.** Agents edit configuration files
-  unattended. Package the existing guarantees — oracle-guarded mutators,
-  byte-faithful round-trip, refusal over silent corruption — as a documented
-  "safe for unattended edits" profile, with the failure modes stated. The
-  v0.0.21 data-loss bug is precisely the class this profile must exclude.
-  S–M · low · **docs, DX, correctness**
+| Category | Basis and remaining acceptance work | Tasks |
+|---|---|---|
+| Functionality: 8 | JS and lossless document APIs, guarded conversion; test every generated export against its documented value/error shape | WASM1 |
+| Correctness: 8 | Native 99% lines and Node WASM tests; real browser, cycle, alias and numeric boundaries need a complete contract ledger | WASM1, Q2 |
+| Architecture: 8 | Conversion guard and native core separation; review JS ownership, lifetimes and unchanged-on-error guarantees | WASM1 |
+| Performance: 6 | Real JS boundary harness exists; missing reproducible cold-start, memory, latency and generated size baseline | P1, P2, WASM2 |
+| Security: 8 | Guard tests and npm provenance; complete JS graph/resource and build-tool audit scope | WASM1, S1, S2 |
+| Documentation: 6 | JS docs use an unscoped npm name and promise web/nodejs subpaths and rough sizes; reconcile with the actual scoped package, export map and bytes | WASM3, D1 |
+| Portability: 7 | Node boundary exercised; browser and claimed bundler/runtime combinations need package-level execution | WASM3 |
+| DX: 7 | TypeScript declarations and JS reference exist; compile and run copyable recipes from the installed tarball | WASM3, X1 |
+| Interoperability: 7 | Generated wrapper works in Node; JS number, tags, non-string keys and module-format semantics need a tested matrix | WASM1, WASM3, I1 |
+| Distribution: 8 | npm signatures/provenance and registry crate verified; retain browser/export-map and package-manager consumer receipts | WASM3, R1, R2 |
+| Governance: 6 | Shared review and continuity gap | G1, G2 |
 
----
+### Compatibility facade: noyalib-serde-yaml
 
-## 4. Implementation plan — satellites
+Evidence: [source](https://github.com/sebastienrousseau/noyalib-serde-yaml/tree/91e2b3cbdf04549893c983704c81f6d4cdf61865),
+including `src/lib.rs`, `Cargo.toml`, `tests/drop_in.rs`,
+`docs/CONTRACT.md` and `docs/MIGRATION.md`.
 
-### 4.1 `noya-cli` (noyafmt, noyavalidate)
+| Category | Basis and remaining acceptance work | Tasks |
+|---|---|---|
+| Functionality: 8 | Thin re-export with captured compatibility contract; enumerate API and behavioral limits instead of unrestricted drop-in claims | SHIM1 |
+| Correctness: 8 | Downstream and shared YAML tests; expand representative compile contracts and documented differential cases | SHIM1, Q2 |
+| Architecture: 9 | One small re-export module; verify export/dependency drift and core compatibility ownership | SHIM1 |
+| Performance: 6 | Shim overhead harness without a captured equivalence baseline | P1, P2, SHIM1 |
+| Security: 8 | No archived runtime implementation; audit test/fuzz scopes and inherited compatibility resource limits | S1, S2, SHIM1 |
+| Documentation: 6 | Contract doc claims standalone no_std, but manifest enables core std; test paths also retain monorepo locations | SHIM2, D1 |
+| Portability: 7 | Rust/OS matrix, but facade requires std; correct the claim while preserving core alloc-only compatibility support | SHIM2, C3 |
+| DX: 8 | Cargo rename migration works; run realistic downstream compile/error examples and rollback | SHIM1, X1 |
+| Interoperability: 8 | Eighteen captured cases are valuable, not exhaustive equivalence; extend supported API/type/error matrix | SHIM1, I1 |
+| Distribution: 9 | Registry crate and signed release verified; add reusable renamed-dependency consumer receipt | R1, SHIM1 |
+| Governance: 6 | Shared review and continuity gap | G1, G2 |
 
-- **CLI-1.** `noyaedit` exposing the CST mutators as a jq-style path CLI.
-- **CLI-2.** Shell completions (`clap_complete`) + man pages (`clap_mangen`).
-- **CLI-3.** Prebuilt binaries (`cargo-dist`), `cargo-binstall` metadata,
-  Homebrew tap, official `pre-commit-hooks.yaml`.
-- **CLI-4.** `--format json|sarif` for `noyavalidate` so it lands in code
-  scanning.
+## Corrections to earlier plans
 
-### 4.2 `noyalib-mcp`
+MCP npm and registry packaging, satellite fuzz harnesses, CLI Action and
+pre-commit hooks, VS Code packaging, core bare-metal builds, schema hardening,
+SBOMs and release attestations already exist. They are not new feature work.
+The core forbids unsafe code unconditionally, including SIMD paths.
+The MSRV policy and comparison/migration docs also already exist.
 
-Now gated on **G2** above — conformance to the 2026-07-28 spec comes before
-feature breadth.
-
-- **MCP-1.** Cover the complete CST edit API as it lands.
-- **MCP-2.** Resources + prompts, not just tools.
-- **MCP-3.** Publish to the MCP registry with a signed release.
-
-### 4.3 `noyalib-lsp`
-
-- **LSP-1.** Duplicate-key diagnostics on `key_span`; code actions backed by
-  the mutators — including the new comment mutators.
-- **LSP-2.** Semantic tokens, symbols, folding, schema-aware hover.
-- **LSP-3.** VS Code extension (Marketplace + OpenVSX); Neovim/Helix/Emacs.
-
-### 4.4 `noyalib-wasm`
-
-- **WASM-1.** npm package with TypeScript types, ESM + CJS, size-tracked.
-- **WASM-2.** Expose the full lossless-edit API; a live playground.
-- **WASM-3.** `wasm32-wasi` + Deno/Bun smoke tests.
-
----
-
-## 5. New feature proposals
-
-Ranked value-to-effort; each semver-additive and feature-gated.
-
-1. **`Document::diff` / structural patch** — a minimal comment-preserving
-   patch between two documents. Powers CLI/LSP/MCP "apply change" flows and
-   3-way merges, and is the natural substrate for agent edits (**G4**).
-2. **JSONPath / JMESPath-style query** over `Value` and `Document`.
-3. **Deterministic canonical form** (`to_canonical`) for hashing and signing
-   payloads — increasingly relevant as config gets signed rather than
-   trusted.
-4. **YAML↔JSON lossless-where-possible converters**, with anchor/merge
-   behaviour documented.
-5. **Schema *inference*** — emit a JSON Schema or `struct` skeleton from a
-   sample document. Pairs with **G3**: infer, then serve as a tool schema.
-6. **Merge-key (`<<`) round-trip policy** as a documented, tested surface.
-7. **Editor-grade recovery surface** — expose partial parses as a public
-   best-effort API.
-
----
-
-## 6. Sequencing & milestones
-
-Releasable under the lockstep contract (core + satellites move together).
-
-- **M1 — "Finish the editors" (v0.0.18–0.0.19).** ✅ A2 reorder, A5 key
-  spans, B1 coverage gate, F5 docs-matrix groundwork. *A1 slipped to
-  v0.0.21.*
-- **M2 — "Reach everywhere" (v0.0.20).** ✅ D1 bare-metal (*closed #210*).
-- **M3 — "Safe to automate" (v0.0.21).** ✅ A1 comment mutation; the
-  `remove` data-loss fix. **Open:** A4 quoting-aware `Emit` — the last
-  correctness hazard — and **G1** validator hardening.
-- **M4 — "Provably trustworthy" (v0.0.22).** A3 remainder, B2 editor
-  fuzzing, E1–E6 (SBOM, SLSA provenance, VEX, badge, `build.rs` contract,
-  MSRV policy), D2 embedded CI targets.
-- **M5 — "Own the niche" (v0.0.23 → 0.1.0).** F1 succession guide, F2
-  comparison, F3 Norway stance, G2–G4 agent readiness, C1–C2 published and
-  gated performance, the satellite build-outs. Cut **0.1.0** when the edit
-  API is complete, the successor story is documented, and MCP conformance
-  is demonstrated.
-
-### Category → milestone it reaches 10
-
-| Category | Reaches 10 at |
-|---|---|
-| no_std / portability | M2 ✅ (M4 to keep it there) |
-| API / functionality | M3–M4 (needs A3 + A4) |
-| Correctness / testing | M4 |
-| Security / supply-chain | M4 |
-| Interop / ecosystem | M5 |
-| Documentation | M5 |
-| Performance | M5 |
-| Satellites | M5 |
-
----
-
-## 7. Effort summary
-
-Roughly 6–9 focused weeks to M4, and M5 is dominated by satellites rather
-than core work. The two items with the best ratio of value to effort are
-**F1** (the successor guide — adoption, near-zero risk) and **G1**
-(validator hardening — small, and a prerequisite for any MCP claim).
-
-The single highest-risk item remains **A4**: it touches every mutator, and
-the failure it prevents is silent.
-
----
-
-## 8. What I'd *not* do
-
-- **Chase a 100% coverage floor.** Demonstrated flaky at 96; the marginal
-  5% is mostly unreachable error arms, and a flaky gate teaches people to
-  ignore gates.
-- **Re-implement a CSS/JS/general minifier, or any large third-party
-  surface, to avoid a dependency** — unless the dependency carries an
-  unfixable advisory *and* the replacement is small enough to test
-  exhaustively. (The sibling `html-generator` case met that bar; most will
-  not.)
-- **Chase `serde-saphyr` on no-DOM deserialisation throughput.** Different
-  design centre. Compete on lossless editing, schema validation and
-  portability, and say so honestly.
-- **Add a plugin/scripting surface.** A YAML library that executes user code
-  inherits an attack surface disproportionate to the benefit.
-- **Support YAML 1.1 semantics by default.** Legacy behaviours stay behind
-  explicit flags; the default should be predictable.
+The retired `xtask` monorepo restructure is not an active workstream. No
+0.1.0 jump is proposed: releases remain +0.0.1 for exactly six crates under
+ADR-0005. Query tools, a new linter crate, Python/native Node bindings,
+remote schema catalogues and new MCP capabilities are optional product
+proposals, not prerequisites invented to force a score to 10.

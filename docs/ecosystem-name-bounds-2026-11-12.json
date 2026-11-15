@@ -1,0 +1,436 @@
+{
+  "recorded_utc": "2026-11-12T01:31:46.675244+00:00",
+  "scope": "Feature-branch name bounds and actual MCP SDK blocking-budget characterization. No registry publication or complete ecosystem rating.",
+  "core": {
+    "fix_commit": "de3c2cfb06ad9c15dec22b4bba14f563b28457a7",
+    "verified_source_commit": "2bd0976f07eb004528f7f8a7922a1d84b6bd1c4e",
+    "scanner_sha256": "555305df325c61f1aa97ee3478adca72a1eb6731b0fca94aeeeb7cf152a96182",
+    "tests_sha256": "e05d31b9e1c9e7ec743cbd24717bf52d30ed13f35683bb718496b539eba8b229",
+    "breaking_change": "Resolved tag URIs and EOF anchor names exceeding the existing 1024-byte bound are rejected.",
+    "red": "Both new tests failed because Value, typed and CST consumers accepted 1025 bytes. The original 1056-byte tag input failed parse/serialize/reparse.",
+    "green": {
+      "full-std": {
+        "groups": 20,
+        "passed": 6751,
+        "failed": 0,
+        "ignored": 0
+      },
+      "full-alloc": {
+        "groups": 20,
+        "passed": 6732,
+        "failed": 0,
+        "ignored": 0
+      },
+      "full-portable": {
+        "groups": 20,
+        "passed": 7073,
+        "failed": 0,
+        "ignored": 0
+      },
+      "doctests": {
+        "groups": 2,
+        "passed": 590,
+        "failed": 0,
+        "ignored": 8
+      }
+    },
+    "bare_metal_checks": 12,
+    "asan_regression_inputs": {
+      "std_roundtrip": 10,
+      "alloc_only_roundtrip": 2
+    },
+    "extraction": {
+      "before_commit": "de3c2cfb06ad9c15dec22b4bba14f563b28457a7",
+      "after_scanner_sha256": "555305df325c61f1aa97ee3478adca72a1eb6731b0fca94aeeeb7cf152a96182",
+      "moved_resolution_body_byte_identical": true,
+      "moved_body_sha256": "c3a886ffdbddccc9a1dcb546fb48146f686e61d3b4fae946a2251a034b78a01a",
+      "tag_limit_value_unchanged": true,
+      "changes": "Extract resolution and emission into private emit_resolved_tag; move the shared constant to module scope."
+    },
+    "complexity": "See unchanged 81-entry baseline with reduced fetch_tag measurement; no ceiling raised.",
+    "package_verified_bytes": 1319928,
+    "package_source_commit": "2bd0976f07eb004528f7f8a7922a1d84b6bd1c4e",
+    "package_budget_bytes": 1320000,
+    "package_scope": "Authoritative size-monitor gate passed with signed packaged source; pending review documents are outside the shipped crate."
+  },
+  "mcp": {
+    "source_commit": "26af76331088c99d61435d8f1a5638c148f4e3cb",
+    "core_dependency_during_local_checks": "de3c2cfb06ad9c15dec22b4bba14f563b28457a7",
+    "production_changes": false,
+    "native_tests_passed": 136,
+    "fault_injection": {
+      "fault": "replace process-wide blocking semaphore with a fresh semaphore per tool call",
+      "expected_failure_observed": true,
+      "exit_code": 101,
+      "restored_tools_sha256": "b7134f92e07422186e7b13d008da33a28235ccb8850d6321e3a04a5124b5c20b"
+    },
+    "checks": [
+      "full tests",
+      "clippy all features and targets with denied warnings",
+      "cargo deny",
+      "cargo vet",
+      "fmt",
+      "REUSE",
+      "codespell",
+      "markdownlint",
+      "versions"
+    ],
+    "hosted_inspector_run": 43134279149,
+    "hosted_inspector_conclusion": "success"
+  },
+  "security": {
+    "closing_run": {
+      "conclusion": "success",
+      "headSha": "17d064f2f9a56afa173761f3d7089198dac59faa",
+      "status": "completed",
+      "url": "https://github.com/sebastienrousseau/noyalib/actions/runs/43129554384"
+    },
+    "open_alerts_for_feature_branch": [],
+    "scope": "Closing scan of the earlier cache isolation correction, not a scan of subsequent scanner changes."
+  },
+  "remaining": [
+    "Typed duplicate identity awaits the decision in ADR-0019; its 88-byte failure remains retained.",
+    "Final-source sustained family fuzz campaigns remain required.",
+    "Independent review and continuity ownership remain open.",
+    "Held MCP release source/ref decision and registry release gates remain open."
+  ],
+  "archive": {
+    "path": "evidence/name-bounds-sdk-capacity-2026-11-12.tar.gz",
+    "sha256": "78013f622daf925c681a2c307bef3f938079263ada001fdee23ac6ce764cc824",
+    "bytes": 518630,
+    "members": {
+      "checks/noyalib-100-mcp-capacity-hygiene/noyalib-mcp-codespell.log": {
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "bytes": 0
+      },
+      "checks/noyalib-100-mcp-capacity-hygiene/noyalib-mcp-fmt.log": {
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "bytes": 0
+      },
+      "checks/noyalib-100-mcp-capacity-hygiene/noyalib-mcp-markdownlint.log": {
+        "sha256": "cb4838e3b3b9daa1b31aa652c216ca25f92898afe9430be32e01b3a37b1b70e9",
+        "bytes": 189
+      },
+      "checks/noyalib-100-mcp-capacity-hygiene/noyalib-mcp-reuse.log": {
+        "sha256": "f8dd7ce09217189627d652f50624c77c16a982fed68b8908718c8419faa2b1cc",
+        "bytes": 404
+      },
+      "checks/noyalib-100-mcp-capacity-hygiene/noyalib-mcp-versions.log": {
+        "sha256": "0c207aca55b747d32dced59ffbb1fad667ab31ff8da48c01b833cf88871b49d1",
+        "bytes": 3223
+      },
+      "checks/noyalib-100-mcp-capacity-hygiene/summary.json": {
+        "sha256": "3f3cdb40879f5968090911445c39f9ff07fcb0637bffabb4a2c85e10cd6c4786",
+        "bytes": 822
+      },
+      "checks/noyalib-100-mcp-capacity-sdk-injection.json": {
+        "sha256": "a2ee98f57d5feb3a355c09cbfdcb938ac9ccf6852b98933bc8a54a03e1a7e28b",
+        "bytes": 246
+      },
+      "checks/noyalib-100-tag-name-codeql-closing-run.json": {
+        "sha256": "fc997b4c4649f1723f4169623ec6b537540691e6eda3542c97a6f02d892d0bcb",
+        "bytes": 177
+      },
+      "checks/noyalib-100-tag-name-codeql-open-alerts.json": {
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "bytes": 2
+      },
+      "checks/noyalib-100-tag-name-extracted-baremetal/1.89.0-baseline-aarch64-unknown-none.log": {
+        "sha256": "681b56f8bc8dd07f71834e4d6eb73d4cd916c87e234c18710e6619ec9de5972e",
+        "bytes": 222
+      },
+      "checks/noyalib-100-tag-name-extracted-baremetal/1.89.0-baseline-riscv32imac-unknown-none-elf.log": {
+        "sha256": "1b8915cc8d0bed30ad52c6bdfd682cd4808f0201ce11aada0c46a09230ccbebe",
+        "bytes": 222
+      },
+      "checks/noyalib-100-tag-name-extracted-baremetal/1.89.0-baseline-thumbv7em-none-eabihf.log": {
+        "sha256": "b0049506f29232ced384d376c7bdf84514d402c7187f2f38422bc023f29066b4",
+        "bytes": 274
+      },
+      "checks/noyalib-100-tag-name-extracted-baremetal/1.89.0-portable-aarch64-unknown-none.log": {
+        "sha256": "199e4f20d81d338910fdb302e2908c829164c28e17678d71b617167b8429590c",
+        "bytes": 222
+      },
+      "checks/noyalib-100-tag-name-extracted-baremetal/1.89.0-portable-riscv32imac-unknown-none-elf.log": {
+        "sha256": "62a23eda1458e8764f1b1955d05d14f4c57ce329153e4014b4c4ed5276ee85c2",
+        "bytes": 222
+      },
+      "checks/noyalib-100-tag-name-extracted-baremetal/1.89.0-portable-thumbv7em-none-eabihf.log": {
+        "sha256": "8a3edf261df240eae39f7f6af882368ea0088d304dca04640e370dde5983d22f",
+        "bytes": 222
+      },
+      "checks/noyalib-100-tag-name-extracted-baremetal/stable-baseline-aarch64-unknown-none.log": {
+        "sha256": "fe2c48b09cc980f7a66fdb7f4abdf2a6081db2d5aeab5fd0cd448446e2c46ba7",
+        "bytes": 222
+      },
+      "checks/noyalib-100-tag-name-extracted-baremetal/stable-baseline-riscv32imac-unknown-none-elf.log": {
+        "sha256": "81c1cccfa4d47468e2326123e46aec83382df19a5a8bfed2bb562f240c3aea11",
+        "bytes": 222
+      },
+      "checks/noyalib-100-tag-name-extracted-baremetal/stable-baseline-thumbv7em-none-eabihf.log": {
+        "sha256": "b41505989874352a0d76b09febf534be9188d70ea395c0eddddc0a79fb0cac27",
+        "bytes": 378
+      },
+      "checks/noyalib-100-tag-name-extracted-baremetal/stable-portable-aarch64-unknown-none.log": {
+        "sha256": "fef51970f7c8c19358e216aee528cd2681dac43af36a08ded4a71477ede4f1a0",
+        "bytes": 222
+      },
+      "checks/noyalib-100-tag-name-extracted-baremetal/stable-portable-riscv32imac-unknown-none-elf.log": {
+        "sha256": "e0997df67a57605ffe564a7d084f7ba9a98946676cd45a3cf839d8982c79d9dc",
+        "bytes": 222
+      },
+      "checks/noyalib-100-tag-name-extracted-baremetal/stable-portable-thumbv7em-none-eabihf.log": {
+        "sha256": "5f53fd50cabdf95fc79603c0c143938de363dcf688f8109bc5ddf0186701af03",
+        "bytes": 378
+      },
+      "checks/noyalib-100-tag-name-extracted-baremetal/summary.json": {
+        "sha256": "eb076972d3145076bb4a2c9fab542a4ecdad507991f0ef85cabd1044a3b492e9",
+        "bytes": 3553
+      },
+      "checks/noyalib-100-tag-name-extracted-core-summary.json": {
+        "sha256": "7fddf8792b273598572508e1e9217a630410a4496ed7ec02cf6366ec713d9326",
+        "bytes": 761
+      },
+      "checks/noyalib-100-tag-name-extraction-proof.json": {
+        "sha256": "a11ea75c5b9f482d3d15824bc46c7425bae0dd4509b253658b9096a33f73552f",
+        "bytes": 458
+      },
+      "checks/noyalib-100-tag-name-final-docs-markdown.json": {
+        "sha256": "21f2a45fbdd1f307e1d9bd942cceb38a0ec142121df9c0450fb9d20c35eb7857",
+        "bytes": 98
+      },
+      "checks/noyalib-100-tag-name-final-hygiene/codespell.log": {
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "bytes": 0
+      },
+      "checks/noyalib-100-tag-name-final-hygiene/doc-links.log": {
+        "sha256": "7fbabcfcae1e18d5baa12022d47675c8ddf3c8ebcaab5f0fa6c66e51adbce19d",
+        "bytes": 24
+      },
+      "checks/noyalib-100-tag-name-final-hygiene/fmt.log": {
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "bytes": 0
+      },
+      "checks/noyalib-100-tag-name-final-hygiene/reuse.log": {
+        "sha256": "cc56292098b132b45e5b882e2210308c6e03e37596c8db2f27c79b33214eef71",
+        "bytes": 408
+      },
+      "checks/noyalib-100-tag-name-final-hygiene/summary.json": {
+        "sha256": "0ad37a10cd84e4041a66609a46cdddcf85b89be0e9b68c37e97b9cd44a93be8a",
+        "bytes": 262
+      },
+      "checks/noyalib-100-tag-name-final-hygiene/versions.log": {
+        "sha256": "788ac9aac967fea2fbdfbeaf12da4672a10bf55531b61da33bfdb168844d1308",
+        "bytes": 6247
+      },
+      "checks/noyalib-100-tag-name-hygiene/codespell.log": {
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "bytes": 0
+      },
+      "checks/noyalib-100-tag-name-hygiene/fmt.log": {
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "bytes": 0
+      },
+      "checks/noyalib-100-tag-name-hygiene/reuse.log": {
+        "sha256": "3a656a430dcb22a070a703ec08a81ee5caad4c70661aa50369b7dc11bcb91c37",
+        "bytes": 408
+      },
+      "checks/noyalib-100-tag-name-hygiene/summary.json": {
+        "sha256": "81dd2f5c347022752eb4d59bf8bfe36be61e0bcb66308d30126e839ca54a3d65",
+        "bytes": 208
+      },
+      "checks/noyalib-100-tag-name-hygiene/versions.log": {
+        "sha256": "788ac9aac967fea2fbdfbeaf12da4672a10bf55531b61da33bfdb168844d1308",
+        "bytes": 6247
+      },
+      "checks/noyalib-100-tag-name-markdown.json": {
+        "sha256": "fd9a21ec81bc26432f02ea6b79cefe83e1834339b4d030951b15a72b1cad46bc",
+        "bytes": 145
+      },
+      "logs/core/noyalib-100-tag-name-alloc-asan.log": {
+        "sha256": "1d4db0a50026034fa4143dba80d9dc539b69687b04d24efce53fadef5369297f",
+        "bytes": 3594
+      },
+      "logs/core/noyalib-100-tag-name-baremetal.log": {
+        "sha256": "662fcc50336d79857d12170bce5fcaff41c353a733502063931b4ee154aba536",
+        "bytes": 508
+      },
+      "logs/core/noyalib-100-tag-name-budget-green.log": {
+        "sha256": "6730429b5d479ea46cbeaa01831f3393145a1a5d4e4fa62b7a876e7c4b85af9f",
+        "bytes": 3308
+      },
+      "logs/core/noyalib-100-tag-name-budget-red.log": {
+        "sha256": "4165a7fb0bfde3074351062b7605b8b98d78d6e5350ee7e02a92d8ad685e67b5",
+        "bytes": 6097
+      },
+      "logs/core/noyalib-100-tag-name-candidate-tests.log": {
+        "sha256": "8f05af4e4bf84b709b226b1d0652e0237e3e8b7b4cb95d3c3669045319af48b3",
+        "bytes": 104
+      },
+      "logs/core/noyalib-100-tag-name-core-gates.log": {
+        "sha256": "182a8cdb5439142be24e1719fed7c5bd36e02aba2cc3a512b3613053b657a3f9",
+        "bytes": 79
+      },
+      "logs/core/noyalib-100-tag-name-doc-links-final.log": {
+        "sha256": "7fbabcfcae1e18d5baa12022d47675c8ddf3c8ebcaab5f0fa6c66e51adbce19d",
+        "bytes": 24
+      },
+      "logs/core/noyalib-100-tag-name-extracted-alloc-asan.log": {
+        "sha256": "c6378c30231f95df1f95390f6a0585681ba707e1a3e230816435392371b7ba0c",
+        "bytes": 1434
+      },
+      "logs/core/noyalib-100-tag-name-extracted-baremetal.log": {
+        "sha256": "6fe32cba7dbbc2d1f3c905599ee7303ac6ca7ae9dedd74fdb15a962d7ffd7b58",
+        "bytes": 504
+      },
+      "logs/core/noyalib-100-tag-name-extracted-clippy.log": {
+        "sha256": "9feeae3b0ea4b5e8e552a79465d4558049331344cf37c098c1cbab3f165963bd",
+        "bytes": 9394
+      },
+      "logs/core/noyalib-100-tag-name-extracted-complexity.log": {
+        "sha256": "e05f3001e1e0acb1407755b060972797e33d0818463116bbdc6883eeb2c1d117",
+        "bytes": 64
+      },
+      "logs/core/noyalib-100-tag-name-extracted-doctests.log": {
+        "sha256": "3e0909cdfe5719f75d93c1e89473a2b404fa0e46a74021a5058ad777da50b870",
+        "bytes": 51570
+      },
+      "logs/core/noyalib-100-tag-name-extracted-full-alloc.log": {
+        "sha256": "d38c199494616c2444fb073294465c7f470762d004ebf50f1b5e6faa05053e0b",
+        "bytes": 487891
+      },
+      "logs/core/noyalib-100-tag-name-extracted-full-portable.log": {
+        "sha256": "34baf12eb00072b95efc2d70417a14d3f46cd21f486a2da4a5a002f3ee02eff6",
+        "bytes": 513579
+      },
+      "logs/core/noyalib-100-tag-name-extracted-full-std.log": {
+        "sha256": "5628de1b95bd7f433a388a495c260f959471df3f9bca1a26aa59f7ab254bb4a6",
+        "bytes": 494425
+      },
+      "logs/core/noyalib-100-tag-name-extracted-gates.log": {
+        "sha256": "778a0f84ff60fe5fc83583df1f17b9271ff353a1e278bc8256f84c3609854ef4",
+        "bytes": 73
+      },
+      "logs/core/noyalib-100-tag-name-extracted-official-size.log": {
+        "sha256": "0c7d9cdfd06679b5ea0ed1106070da5883ee14a3abfd8219fbb4aef8ec188769",
+        "bytes": 170
+      },
+      "logs/core/noyalib-100-tag-name-extracted-package-preflight.log": {
+        "sha256": "2cda5f806b6f27970e4804556fe2fc6a004f7dac5180871af55fc9d6836c8412",
+        "bytes": 45
+      },
+      "logs/core/noyalib-100-tag-name-extracted-std-asan.log": {
+        "sha256": "d8f2d7da02a67f31ab4c063bd50b842969169e397549e4dd9eb4138bd69811eb",
+        "bytes": 1436
+      },
+      "logs/core/noyalib-100-tag-name-family-tests.log": {
+        "sha256": "ff2fd3e02909a64cb289e3a01ffde17db484ece72a21fc09aa97b64f3e15de87",
+        "bytes": 105
+      },
+      "logs/core/noyalib-100-tag-name-fetch.log": {
+        "sha256": "3d8fb0f4ad37df2cc27b74bce6634c0c07f40480c953ee1d7b7135a7d60cdef7",
+        "bytes": 10542
+      },
+      "logs/core/noyalib-100-tag-name-final-clippy.log": {
+        "sha256": "86ffa077f0a6b0500c4448c8b3a072959fd26eeb463589b87276a2cc2c2ff7df",
+        "bytes": 19940
+      },
+      "logs/core/noyalib-100-tag-name-final-complexity.log": {
+        "sha256": "fb031dd39fadf11a994023db82b660fd9d56d5cb6b487149e357d44f56dd6fb6",
+        "bytes": 216
+      },
+      "logs/core/noyalib-100-tag-name-final-doctests.log": {
+        "sha256": "1208ea29170ee1ae0772816c13c1d99f87cae7ae145ee5e705e0955fb2110c5a",
+        "bytes": 51734
+      },
+      "logs/core/noyalib-100-tag-name-final-full-alloc.log": {
+        "sha256": "4f69024b759bbb48ebab67956212883ade07d9ce03ffacf692914c2b0639e484",
+        "bytes": 487685
+      },
+      "logs/core/noyalib-100-tag-name-final-full-portable.log": {
+        "sha256": "6487c49844e32572e35fa685e31a8465b4bd2f5c447440866ca2e47d89c3f844",
+        "bytes": 632
+      },
+      "logs/core/noyalib-100-tag-name-final-full-std.log": {
+        "sha256": "4e59e92225d0fc08d8f18017147cf613662cb75fa06d5c108d3b337c42ab39c6",
+        "bytes": 20109
+      },
+      "logs/core/noyalib-100-tag-name-network-retry-clippy.log": {
+        "sha256": "d6eed39f3502eefcee8f5b382775d7c49c2f31bc9badf16d58694cabf19270f8",
+        "bytes": 9394
+      },
+      "logs/core/noyalib-100-tag-name-network-retry-doctests.log": {
+        "sha256": "02fa23f99d0fd71c7c87a2f68a85150a78873cbea6fb569b2763aacfdb0210b2",
+        "bytes": 51572
+      },
+      "logs/core/noyalib-100-tag-name-network-retry-full-portable.log": {
+        "sha256": "ec75c4645a18286d1dc239e03f3a56f18b6b2963715fc93fc536e38ba498995d",
+        "bytes": 513582
+      },
+      "logs/core/noyalib-100-tag-name-network-retry-full-std.log": {
+        "sha256": "81314f8f17d85e47caef322ef6081e2a94d6e4719a76032450fb30a9bbbcca8f",
+        "bytes": 494298
+      },
+      "logs/core/noyalib-100-tag-name-network-retry.log": {
+        "sha256": "a7a7d1b6747350f454828c7521a25a542aa45736844fc9da50c1a67112f922fd",
+        "bytes": 47
+      },
+      "logs/core/noyalib-100-tag-name-package-preflight-network.log": {
+        "sha256": "c16aa5c54911a258371b9644d80b67e17e4740ecbb906d2a6bace4eba060f896",
+        "bytes": 45
+      },
+      "logs/core/noyalib-100-tag-name-package-preflight.log": {
+        "sha256": "9e92604c78f5ea822bb3218b3a6067a99e5b1a765a711f6257f039d3aa2e80e2",
+        "bytes": 185
+      },
+      "logs/core/noyalib-100-tag-name-std-asan.log": {
+        "sha256": "7ca3fdea252cf88a6f2c3f4c7e5f1e88f7e1bbf793ca348f228e587a166854ff",
+        "bytes": 1436
+      },
+      "logs/mcp/noyalib-100-mcp-capacity-sdk-baseline.log": {
+        "sha256": "411b5ea8940e0f1746dbdb97a970e7e6a7a56d3456ba77f61ee9e5c6432955ff",
+        "bytes": 603
+      },
+      "logs/mcp/noyalib-100-mcp-capacity-sdk-final-clippy.log": {
+        "sha256": "f8ba2f75476455af603a596145f6e2ce51cd894765d772177c95a70657537011",
+        "bytes": 243
+      },
+      "logs/mcp/noyalib-100-mcp-capacity-sdk-final-deny.log": {
+        "sha256": "36bfa2420495d9a83fa04c6bb72ce370a13e0e08aec656bafe021e800efb2f4d",
+        "bytes": 12441
+      },
+      "logs/mcp/noyalib-100-mcp-capacity-sdk-final-tests.log": {
+        "sha256": "3c9f7c0eb5776b35718503efd1def7f713149cd8b15a64c11391858bb14c0f72",
+        "bytes": 11716
+      },
+      "logs/mcp/noyalib-100-mcp-capacity-sdk-final-vet.log": {
+        "sha256": "024c7b28078fbf2e9cebb6edf18dc11c7013c2b66d7612f80066e42b8a571f1c",
+        "bytes": 73
+      },
+      "logs/mcp/noyalib-100-mcp-capacity-sdk-injected-red.log": {
+        "sha256": "04856f5e5f9e746a00dd3f75ad5e803c8068b4a1a2a74ae19d7b4055464d7964",
+        "bytes": 1748
+      },
+      "source/core/crates/noyalib/src/parser/scanner.rs": {
+        "sha256": "555305df325c61f1aa97ee3478adca72a1eb6731b0fca94aeeeb7cf152a96182",
+        "bytes": 119088
+      },
+      "source/core/crates/noyalib/tests/limits/dos_hardening.rs": {
+        "sha256": "e05d31b9e1c9e7ec743cbd24717bf52d30ed13f35683bb718496b539eba8b229",
+        "bytes": 7344
+      },
+      "source/core/fuzz/regressions/fuzz_roundtrip/crash-3eee8e14d8486eecc2c0280af136869ea275d727": {
+        "sha256": "5c69a2117a5730b4d8aed901d0a46e248c8db392387a7c5146d62b933a19b780",
+        "bytes": 1056
+      },
+      "source/core/scripts/complexity/baseline.tsv": {
+        "sha256": "1bbc6618691159ba694591a3e27ebe5151fb6372670fa319406f4700ece72bbe",
+        "bytes": 6018
+      },
+      "source/mcp/tests/blocking_capacity.rs": {
+        "sha256": "82fcbe47e9de93ae0084d3156c3bef76310d59932246462a4eaf30054152c3cf",
+        "bytes": 3874
+      }
+    }
+  }
+}

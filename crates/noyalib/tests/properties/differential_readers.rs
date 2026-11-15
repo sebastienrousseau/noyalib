@@ -208,7 +208,7 @@ fn the_owned_and_borrowed_graphs_agree_except_where_documented() {
 fn the_core_string_tag_is_honoured_by_both_graphs() {
     for (label, yaml) in [
         ("secondary handle", "a: !!str 1\n"),
-        ("primary handle", "a: !str 1\n"),
+        ("verbatim", "a: !<tag:yaml.org,2002:str> 1\n"),
         ("a boolean-looking payload", "a: !!str true\n"),
         ("a float-looking payload", "a: !!str 2.5\n"),
         ("a null-looking payload", "a: !!str ~\n"),

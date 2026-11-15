@@ -51,16 +51,63 @@ fn leading_zero_integers_stay_numbers_by_default() {
     assert_eq!(doc["a"].as_i64(), Some(123));
 }
 
+// ── signed_radix_integers ──────────────────────────────────────────
+
+#[test]
+fn signed_radix_literals_resolve_when_enabled() {
+    let mut cfg = ParserConfig::new();
+    cfg.signed_radix_integers = true;
+    let doc = v(
+        "a: -0xF\nb: +0o17\nc: -0x8000000000000000\nd: !!int -0xF\n",
+        &cfg,
+    );
+    assert_eq!(doc["a"].as_i64(), Some(-15));
+    assert_eq!(doc["b"].as_i64(), Some(15));
+    assert_eq!(doc["c"].as_i64(), Some(i64::MIN));
+    assert_eq!(doc["d"].as_i64(), Some(-15));
+    // Spellings serde_yaml 0.9 keeps as strings.
+    let doc = v(
+        "a: -0x\nb: -0x-5\nc: -0x_F\nd: -0XF\ne: -0o8\nf: !!str -0xF\n",
+        &cfg,
+    );
+    for key in ["a", "b", "c", "d", "e", "f"] {
+        assert!(doc[key].as_str().is_some(), "{key}: {:?}", doc[key]);
+    }
+}
+
+#[test]
+fn signed_radix_literals_are_strings_by_default() {
+    let doc = v("a: -0xF\nb: +0o17\n", &ParserConfig::new());
+    assert_eq!(doc["a"].as_str(), Some("-0xF"));
+    assert_eq!(doc["b"].as_str(), Some("+0o17"));
+}
+
+#[test]
+fn the_shim_reads_signed_radix_like_upstream() {
+    // Live serde_yaml 0.9.34 output.
+    let value: serde_json::Value =
+        noyalib::compat::serde_yaml::from_str("a: -0xF\nb: +0o17\nc: [-0xF]\n").unwrap();
+    assert_eq!(value.to_string(), r#"{"a":-15,"b":15,"c":[-15]}"#);
+    // The serializer quotes the string spelling, so it reads back as one.
+    let emitted = noyalib::compat::serde_yaml::to_string(&"-0xF").unwrap();
+    let back: String = noyalib::compat::serde_yaml::from_str(&emitted).unwrap();
+    assert_eq!(back, "-0xF", "{emitted:?}");
+}
+
 // ── legacy_binary_numbers ──────────────────────────────────────────
 
 #[test]
 fn binary_literals_resolve_when_enabled() {
     let mut cfg = ParserConfig::new();
     cfg.legacy_binary_numbers = true;
-    let doc = v("a: 0b11\nb: -0b101\nc: 0B1_0\n", &cfg);
+    let doc = v("a: 0b11\nb: -0b101\nc: 0b1_0\nd: 0B11\n", &cfg);
     assert_eq!(doc["a"].as_i64(), Some(3));
     assert_eq!(doc["b"].as_i64(), Some(-5));
     assert_eq!(doc["c"].as_i64(), Some(2));
+    // Prefixes are lower-case in YAML 1.1 and 1.2 and in serde_yaml 0.9.
+    assert_eq!(doc["d"].as_str(), Some("0B11"));
+    assert!(noyalib::from_str::<Value>("e: !!int 0XF\n").is_err());
+    assert!(noyalib::from_str::<Value>("e: !!int 0O17\n").is_err());
 }
 
 #[test]
@@ -134,13 +181,12 @@ fn overflow_path_reflects_nesting_and_sequence_indices() {
 }
 
 #[test]
-fn plus_signed_overflow_is_refused_and_negative_overflow_is_not() {
+fn signed_overflow_is_refused_and_default_fallback_is_unchanged() {
     let mut cfg = ParserConfig::new();
     cfg.integer_overflow_errors = true;
     assert!(from_str_with_config::<Value>("a: +18446744073709551616\n", &cfg).is_err());
-    // Negative giants keep the historical float fallback — upstream's
-    // "JSON number out of range" was a u64 story.
-    let doc = v("a: -99999999999999999999\n", &cfg);
+    assert!(from_str_with_config::<Value>("a: -99999999999999999999\n", &cfg).is_err());
+    let doc = v("a: -99999999999999999999\n", &ParserConfig::new());
     assert!(doc["a"].as_f64().is_some());
 }
 
@@ -280,9 +326,10 @@ mod shim_errors {
     #[test]
     fn eof_remap_applies_only_at_end_of_input() {
         // Mid-document parse errors keep their position untouched.
-        let err = syml::from_str::<serde_json::Value>("a: [1,\nb: 2\n").unwrap_err();
+        // serde_yaml 0.9.34 reports this one at line 1 column 8.
+        let err = syml::from_str::<serde_json::Value>("a: [1, }\nb: 2\n").unwrap_err();
         let loc = err.location().unwrap();
-        assert!(loc.index() < "a: [1,\nb: 2\n".len());
+        assert_eq!((loc.line(), loc.column(), loc.index()), (1, 8, 7));
     }
 
     #[test]

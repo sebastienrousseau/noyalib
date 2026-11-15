@@ -1,9 +1,7 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 // Copyright (c) 2026 Noyalib. All rights reserved.
 
-//! Targeted coverage for smaller modules with lower line counts but
-//! reachable public surface: `diagnostic`, `borrowed`, `validated` edge
-//! cases, and miscellaneous error paths.
+//! Diagnostics, borrowed-value conversion and validation error paths.
 
 #![allow(unused_imports)]
 

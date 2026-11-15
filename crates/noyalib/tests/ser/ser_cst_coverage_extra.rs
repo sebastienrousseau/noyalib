@@ -13,16 +13,20 @@
 //! `noyalib::fmt::*` newtypes and the anchor-tracking serializer.
 
 use std::collections::BTreeMap;
+#[cfg(feature = "std")]
 use std::io;
 
 use noyalib::cst::{FormatConfig, format, format_with_config, parse_document, parse_stream};
 use noyalib::fmt::{Commented, FlowMap, FlowSeq, FoldString, LitString, SpaceAfter};
 use noyalib::{
-    FlowStyle, Mapping, RcAnchor, ScalarStyle, SerializerConfig, Tag, TaggedValue, Value,
-    to_fmt_writer, to_fmt_writer_with_config, to_string, to_string_multi,
-    to_string_multi_with_config, to_string_tracking_shared, to_string_tracking_shared_with_config,
-    to_string_value, to_string_value_with_config, to_string_with_config, to_value, to_writer,
-    to_writer_multi, to_writer_multi_with_config, to_writer_tracking_shared,
+    FlowStyle, Mapping, ScalarStyle, SerializerConfig, Tag, TaggedValue, Value, to_fmt_writer,
+    to_fmt_writer_with_config, to_string, to_string_multi, to_string_multi_with_config,
+    to_string_value, to_string_value_with_config, to_string_with_config,
+};
+#[cfg(feature = "std")]
+use noyalib::{
+    RcAnchor, to_string_tracking_shared, to_string_tracking_shared_with_config, to_value,
+    to_writer, to_writer_multi, to_writer_multi_with_config, to_writer_tracking_shared,
     to_writer_tracking_shared_with_config, to_writer_value, to_writer_value_with_config,
     to_writer_with_config,
 };
@@ -40,6 +44,7 @@ fn ser_ser_to_string_with_config_default_round_trip() {
 }
 
 #[test]
+#[cfg(feature = "std")]
 fn ser_ser_to_writer_with_config_writes_full_payload() {
     // Drives lines 361-363: `let s = to_string_with_config?; write_all(&s)`.
     let mut buf = Vec::<u8>::new();
@@ -48,6 +53,7 @@ fn ser_ser_to_writer_with_config_writes_full_payload() {
 }
 
 #[test]
+#[cfg(feature = "std")]
 fn ser_ser_to_writer_value_with_config_writes_payload() {
     // Drives 616-618: to_writer_value_with_config.
     let v = Value::Mapping({
@@ -61,6 +67,7 @@ fn ser_ser_to_writer_value_with_config_writes_payload() {
 }
 
 #[test]
+#[cfg(feature = "std")]
 fn ser_ser_to_writer_value_default_writes_payload() {
     let v: Value = to_value(&42i64).unwrap();
     let mut buf = Vec::<u8>::new();
@@ -69,6 +76,7 @@ fn ser_ser_to_writer_value_default_writes_payload() {
 }
 
 #[test]
+#[cfg(feature = "std")]
 fn ser_ser_to_writer_default_round_trip() {
     let mut buf = Vec::<u8>::new();
     to_writer(&mut buf, &"x").unwrap();
@@ -76,6 +84,7 @@ fn ser_ser_to_writer_default_round_trip() {
 }
 
 #[test]
+#[cfg(feature = "std")]
 fn ser_ser_to_writer_multi_default() {
     let docs = vec![1i32, 2, 3];
     let mut buf = Vec::<u8>::new();
@@ -84,6 +93,7 @@ fn ser_ser_to_writer_multi_default() {
 }
 
 #[test]
+#[cfg(feature = "std")]
 fn ser_ser_to_writer_multi_with_config_writes_full() {
     // Drives 1393-1395.
     let docs = vec![1i32, 2];
@@ -101,6 +111,7 @@ fn ser_ser_to_string_multi_pair() {
 }
 
 #[test]
+#[cfg(feature = "std")]
 fn ser_ser_to_writer_io_error_propagates() {
     // Drives the `?` propagation in `to_writer_with_config`. A
     // failing writer surfaces `Error::Io`.
@@ -142,6 +153,7 @@ fn ser_ser_to_fmt_writer_error_propagates_serialize() {
 }
 
 #[test]
+#[cfg(feature = "std")]
 fn ser_ser_to_string_tracking_shared_default_and_with_config() {
     // Drives 458-460 (writer variants), 1542-1549 (newtype magic
     // anchor branch), 1206-1240 (anchor def/ref emission).
@@ -156,6 +168,7 @@ fn ser_ser_to_string_tracking_shared_default_and_with_config() {
 }
 
 #[test]
+#[cfg(feature = "std")]
 fn ser_ser_to_writer_tracking_shared_default_and_with_config() {
     let shared: RcAnchor<String> = RcAnchor::from("payload".to_string());
     let doc = vec![shared.clone(), shared];
@@ -172,6 +185,7 @@ fn ser_ser_to_writer_tracking_shared_default_and_with_config() {
 // ============================================================================
 
 #[test]
+#[cfg(feature = "std")]
 fn ser_ser_anchor_tagged_block_mapping_value() {
     // Drives 1117-1122 (mapping value with MAGIC_ANCHOR_DEF needing
     // space after `:`) and 1213-1219 (anchor wrapping a non-empty
@@ -189,6 +203,7 @@ fn ser_ser_anchor_tagged_block_mapping_value() {
 }
 
 #[test]
+#[cfg(feature = "std")]
 fn ser_ser_anchor_tagged_block_sequence_value() {
     // Drives 1221-1224 (anchor wrapping non-empty sequence).
     let shared: RcAnchor<Vec<i32>> = RcAnchor::from(vec![1, 2, 3]);
@@ -198,6 +213,7 @@ fn ser_ser_anchor_tagged_block_sequence_value() {
 }
 
 #[test]
+#[cfg(feature = "std")]
 fn ser_ser_anchor_tagged_scalar_value() {
     // Drives 1226-1229 (anchor wrapping a scalar — push ' ' then
     // write_value).

@@ -1,13 +1,8 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 // Copyright (c) 2026 Noyalib. All rights reserved.
 
-//! Coverage tests for `BorrowedValue<'a>` — the zero-copy YAML value.
-//!
-//! Before these tests the `borrowed` module had zero exercised paths.
-//! The suite here covers the public API surface: construction, accessors
-//! (`is_null`, `as_str`, `as_i64`, `as_bool`, `as_sequence`, `as_mapping`),
-//! path queries (`get_path`, `query`), and conversion to owned `Value`
-//! via `into_owned`.
+//! Coverage for the zero-copy `BorrowedValue` public API: construction,
+//! accessors, path queries and conversion to owned `Value`.
 
 use noyalib::Value;
 #[cfg(feature = "lossless-u64")]

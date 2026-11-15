@@ -1,28 +1,10 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 // Copyright (c) 2026 Noyalib. All rights reserved.
 
-//! Targeted line/region coverage for `crates/noyalib/src/error.rs`.
+//! Error source chains, source rendering, diagnostics and name suggestions.
 //!
-//! Each test exercises a specific uncovered branch:
-//!
-//! - `Error::source` arms for `Io` / `Shared` (L746-L747).
-//! - `format_with_source` line-out-of-range fallback (L808).
-//! - `format_with_source_radius` empty-source / out-of-range
-//!   fallback paths (L864-L865).
-//! - `format_with_source_truncated` &
-//!   `format_with_source_radius_truncated` truncate paths
-//!   (L939-L942, L958, L964-L966).
-//! - `RenderOptions::new` / `crop_radius` / `color` builders
-//!   (L1167-L1169, L1182-L1185, L1197-L1200).
-//! - `CroppedRegion::extract` happy + empty + out-of-range paths
-//!   (L1248-L1268).
-//! - `colorize_render` arms for the `error:` / gutter / caret /
-//!   plain branches (L1296-L1308).
-//! - `serde_core::ser::Error` / `serde_core::de::Error` impls (L1305).
-//! - `closest_name` + `edit_distance` low-level helpers (L1495+,
-//!   L1508, L1511).
-//! - miette integration when the `miette` feature is on
-//!   (`noyalib::Diagnostic` impl — gated).
+//! Cover empty and out-of-range source positions, truncation, render-option
+//! builders, Serde error adapters and optional miette diagnostics.
 
 use std::sync::Arc;
 
@@ -80,6 +62,7 @@ fn variant_gallery() -> Vec<Error> {
         Error::FailedToParseNumber("nan".into()),
         Error::Message("m".into(), Some(7)),
         Error::Message("m".into(), None),
+        #[cfg(feature = "std")]
         Error::Io(std::io::Error::other("i")),
     ]
 }
@@ -144,6 +127,7 @@ fn miette_code_help_labels_cover_every_variant() {
 // ============================================================================
 
 #[test]
+#[cfg(feature = "std")]
 fn error_source_io_some() {
     use std::error::Error as _;
     let ioe = std::io::Error::other("nope");
@@ -171,6 +155,7 @@ fn error_source_other_none() {
 // ============================================================================
 
 #[test]
+#[cfg(feature = "std")]
 fn error_from_io_error() {
     let ioe = std::io::Error::new(std::io::ErrorKind::PermissionDenied, "x");
     let e: Error = ioe.into();
@@ -543,6 +528,7 @@ fn display_every_variant() {
         Error::FailedToParseNumber("nan".into()),
         Error::Message("m".into(), Some(7)),
         Error::Message("m".into(), None),
+        #[cfg(feature = "std")]
         Error::Io(std::io::Error::other("i")),
     ];
     for e in cases {

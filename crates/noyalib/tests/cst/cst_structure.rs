@@ -212,3 +212,74 @@ fn document_root_kinds_top_level() {
     let ks = kinds(doc.syntax());
     assert!(ks.contains(&SyntaxKind::BlockMapping), "kinds: {ks:?}");
 }
+
+#[test]
+fn omitted_block_keys_have_distinct_entry_nodes() {
+    fn entries(node: &GreenNode) -> usize {
+        usize::from(node.kind() == SyntaxKind::MappingEntry)
+            + node
+                .children()
+                .map(|child| match child {
+                    GreenChild::Node(node) => entries(node),
+                    GreenChild::Token { .. } => 0,
+                })
+                .sum::<usize>()
+    }
+    for ending in ["\n", "\r", "\r\n"] {
+        for (text, expected) in [
+            (": after", 1),
+            ("- : after", 1),
+            ("d: before\n: after", 2),
+            ("d: before\n:\n  nested: after", 3),
+            ("? explicit\n: after", 1),
+        ] {
+            let source = text.replace('\n', ending) + ending;
+            let document = parse_document(&source).unwrap();
+            assert_eq!(entries(document.syntax()), expected, "{source:?}");
+            assert_eq!(document.to_string(), source);
+        }
+    }
+}
+
+#[test]
+fn removing_a_key_preserves_its_omitted_key_sibling() {
+    for ending in ["\n", "\r", "\r\n"] {
+        let source = format!("d: before{ending}: after{ending}");
+        let mut document = parse_document(&source).unwrap();
+        document.remove("d").unwrap();
+        let value: serde_json::Value = noyalib::from_str(document.source()).unwrap();
+        assert_eq!(
+            value,
+            serde_json::json!({"": "after"}),
+            "{ending:?}: {:?}",
+            document.source()
+        );
+    }
+}
+
+#[test]
+fn removal_keeps_siblings_and_line_break_spellings() {
+    for ending in ["\n", "\r", "\r\n"] {
+        for (source, path, expected) in [
+            ("a: 1\nb: 2\nc: 3\n", "a", "b: 2\nc: 3\n"),
+            ("a: 1\nb: 2\nc: 3\n", "b", "a: 1\nc: 3\n"),
+            ("a: 1\nb: 2\nc: 3\n", "c", "a: 1\nb: 2\n"),
+            (
+                "outer:\n  # remove\n  d: before\n  keep: after\n",
+                "outer.d",
+                "outer:\n  keep: after\n",
+            ),
+            ("- \n- keep\n", "[0]", "- keep\n"),
+            ("- first\n- \n", "[1]", "- first\n"),
+        ] {
+            let source = source.replace('\n', ending);
+            let mut document = parse_document(&source).unwrap();
+            document.remove(path).unwrap();
+            assert_eq!(
+                document.source(),
+                expected.replace('\n', ending),
+                "{ending:?}: {path}"
+            );
+        }
+    }
+}

@@ -276,6 +276,12 @@ impl Error {
     #[must_use]
     pub fn from_noyalib_with_input(inner: crate::error::Error, input: &str) -> Self {
         let mut location = inner.location();
+        // libyaml does not check flow indentation (§7.3), so a flow
+        // sequence left open runs to end-of-input there. Report it at
+        // EOF, the way upstream does.
+        if flow_indent_error(&inner) && unmatched_open_bracket(input, input.len()).is_some() {
+            location = Some(Location::from_index(input, input.len()));
+        }
         // libyaml reports an error at end-of-input on the line after
         // the last one, column 1; noyalib says end-of-last-line.
         if let Some(loc) = location {
@@ -374,6 +380,13 @@ fn parse_shaped(e: &crate::error::Error) -> bool {
     )
 }
 
+/// Is this noyalib's §7.3 flow-indentation refusal, which libyaml
+/// never raises?
+fn flow_indent_error(e: &crate::error::Error) -> bool {
+    matches!(e, crate::error::Error::ParseWithLocation { message, .. }
+        if message.starts_with("flow content must be indented more than the surrounding block"))
+}
+
 /// Render a noyalib error the way `serde_yaml` 0.9 would have worded
 /// it. Classes without an upstream analogue keep noyalib's wording.
 fn render_upstream_style(
@@ -405,7 +418,12 @@ fn render_upstream_style(
                 .as_deref()
                 .map(|p| format!("{p}: "))
                 .unwrap_or_default();
-            format!("{prefix}JSON number out of range{}", at(location))
+            let suffix = if path.is_some() {
+                at(location)
+            } else {
+                String::new()
+            };
+            format!("{prefix}JSON number out of range{suffix}")
         }
         E::ParseWithLocation { message, .. } => {
             if message.starts_with("expected a node but found Flow") {
@@ -413,7 +431,10 @@ fn render_upstream_style(
                     "did not find expected node content{}, while parsing a flow node",
                     at(location)
                 )
-            } else if message == "expected ',' or ']' in flow sequence" {
+            } else if message == "expected ',' or ']' in flow sequence"
+                || flow_indent_error(e)
+                    && input.is_some_and(|i| unmatched_open_bracket(i, i.len()).is_some())
+            {
                 let ctx = input
                     .and_then(|inp| location.and_then(|l| unmatched_open_bracket(inp, l.index())))
                     .map(|open| {
@@ -545,7 +566,8 @@ pub mod with {
 /// `<<` merge keys stay literal entries (alias values resolved),
 /// leading-zero integers stay strings and `0b11` is 3, a literal
 /// float overflow stays a string, `u64`-range integers keep full
-/// precision and one past `u64::MAX` errors, non-scalar keys error,
+/// precision and decimal integers outside the signed/unsigned 64-bit domain
+/// error, non-scalar keys error,
 /// transitive alias expansion is budgeted exactly as upstream
 /// ("repetition limit exceeded"), and a duplicate mapping key is
 /// refused when the target is [`Value`] (`duplicate entry with key
@@ -591,10 +613,14 @@ where
     }
     let mut walk = config.clone();
     walk.merge_key_policy = crate::MergeKeyPolicy::Auto;
-    match crate::streaming::from_str_streaming::<T>(s, &walk) {
-        Some(Err(e)) if e.to_string().contains("duplicate field `") => Some(e),
-        _ => None,
-    }
+    // The main parse already checked scalar semantics; this walk only
+    // asks Serde whether a struct field was repeated.
+    walk.leading_zero_integer_strings = false;
+    walk.legacy_binary_numbers = false;
+    walk.signed_radix_integers = false;
+    walk.float_overflow_strings = false;
+    walk.integer_overflow_errors = false;
+    crate::streaming::duplicate_struct_field::<T>(s, &walk)
 }
 
 /// The configuration the shim parses under for target `T`:
@@ -789,6 +815,7 @@ mod tests {
         assert_eq!(cfg.port, 8080);
     }
 
+    #[cfg(feature = "std")]
     #[test]
     fn from_reader_typed() {
         // `serde_yaml::from_reader` drop-in: deserialize straight from
@@ -804,6 +831,7 @@ mod tests {
         );
     }
 
+    #[cfg(feature = "std")]
     #[test]
     fn to_writer_then_from_str_round_trips() {
         // `serde_yaml::to_writer` drop-in: serialize into an

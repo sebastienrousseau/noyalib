@@ -1,27 +1,6 @@
-//! Only a **plain** `<<` scalar is a merge key.
-//!
-//! The YAML merge type assigns `tag:yaml.org,2002:merge` to a plain `<<`
-//! scalar. Anything else that merely *spells* `<<` resolves to
-//! `tag:yaml.org,2002:str` and is an ordinary key:
-//!
-//! * `"<<"` / `'<<'` — quoted, so the resolver gives it the string tag.
-//! * `*alias` where the alias happens to resolve to the string `"<<"` —
-//!   the merge tag comes from the scalar's own presentation, not from
-//!   whatever an alias points at.
-//!
-//! Both were treated as merge keys. By the time a scalar reaches the
-//! loader's mapping-key handling it is a `Value::String("<<")` either
-//! way, so eligibility is now decided at the scalar-resolution site,
-//! where the style is still in hand, and carried through `push_node`.
-//!
-//! The streaming path already required `ScalarStyle::Plain`, so the
-//! quoted case only ever reached it by falling back to the AST loader —
-//! which is why both paths reported the same error and it looked like a
-//! shared bug rather than a delegated one.
-//!
-//! Every case below asserts on **both** paths: `from_str` drives the
-//! streaming deserializer, `load_all` the document loader. A fix that
-//! landed on only one of them shows up here as a disagreement.
+//! Only plain `<<` scalars are merge keys. Quoted spellings and aliases
+//! resolving to the same text remain ordinary keys. Single-value and
+//! whole-stream entry points must agree.
 
 // SPDX-License-Identifier: MIT OR Apache-2.0
 // Copyright (c) 2026 Noyalib. All rights reserved.

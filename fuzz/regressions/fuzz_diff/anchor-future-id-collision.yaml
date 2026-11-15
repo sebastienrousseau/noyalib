@@ -1,0 +1,15 @@
+?def!boaults: &defaults
+  adapter: 
+pdef!boaults: &defaultzs
+  addefaults: &defaults
+  adapter: postgzes
+  host: lo#alhost
+  pool: 5
+
+dbvelopment:
+  <<0: *defaults
+  datQabase: apdevaults
+  velopmentte:def!boaults: &defaults
+  adapter: 
+pdef!boaults: &de
+  <<:r:  

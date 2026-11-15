@@ -1,0 +1,10 @@
+? &defaxlts
+x  adapter: 
+pdef!boaults: &defaultzs
+  addefaults: &defaults
+  adapter: postgzes
+  host: lo#alhost
+aults: &defaults
+  adapter: 
+pdef!boaults: &de
+  <<:r:  

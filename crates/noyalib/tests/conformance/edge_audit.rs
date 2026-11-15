@@ -156,8 +156,11 @@ fn multi_doc_with_tagged_doc() {
 // 9) interpolate_properties walks into a Tagged value's inner.
 #[test]
 fn interpolate_into_tagged_inner() {
+    #[cfg(feature = "std")]
     use std::collections::HashMap;
-    let mut props: HashMap<String, String> = HashMap::new();
+    #[cfg(not(feature = "std"))]
+    type HashMap<K, V> = hashbrown::HashMap<K, V, rustc_hash::FxBuildHasher>;
+    let mut props: HashMap<String, String> = HashMap::default();
     let _ = props.insert("HOST".into(), "api.example.com".into());
 
     let mut v: Value = from_str("server: !Custom ${HOST}\n").unwrap();
@@ -339,6 +342,7 @@ fn to_string_value_with_config_emits_tag() {
 
 // 19) `to_writer_value` / `to_writer_value_with_config` round-trip.
 #[test]
+#[cfg(feature = "std")]
 fn to_writer_value_round_trip() {
     use noyalib::SerializerConfig;
     let v = Value::Tagged(Box::new(TaggedValue::new(

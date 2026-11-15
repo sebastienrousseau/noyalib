@@ -1,23 +1,10 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 // Copyright (c) 2026 Noyalib. All rights reserved.
 
-//! YAML Test Suite — honest compliance gap report.
+//! Classify YAML Test Suite acceptance and complete JSON-value gaps.
 //!
-//! Walks every case in `tests/yaml-test-suite/` and classifies each
-//! against the YAML 1.2 expectations encoded in the suite. Unlike the
-//! sibling `tests/official_suite.rs`, this runner does *not* score a
-//! case as pass when the parser is more lenient than the spec, when
-//! the parsed value diverges from the expected JSON, or when the
-//! case is known to require non-scalar key support — those are
-//! surfaced as distinct failure modes so the gap can be prioritised.
-//!
-//! Output:
-//!   - Markdown report written to
-//!     `${CARGO_MANIFEST_DIR}/target/yaml-compliance-report.md`
-//!   - Summary printed to stderr (visible with `--nocapture`)
-//!
-//! No assertions — this test is a *report*, not a regression net.
-//! The regression net lives in `tests/official_suite.rs`.
+//! Write `target/yaml-compliance-report.md` and print a summary. This
+//! diagnostic report has no assertions; `official_suite.rs` owns the gate.
 
 #![allow(missing_docs)]
 

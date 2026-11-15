@@ -9,11 +9,12 @@ use std::collections::BTreeMap;
 
 use noyalib::{
     DuplicateKeyPolicy, Error, FlowStyle, Location, Mapping, MappingAny, Number, ParserConfig,
-    Path, ScalarStyle, SerializerConfig, Spanned, Tag, TaggedValue, Value, from_reader,
-    from_reader_with_config, from_slice, from_str, from_str_with_config, from_value, load_all,
-    load_all_as, load_all_with_config, to_string, to_string_multi, to_string_multi_with_config,
-    to_string_with_config, to_value, to_writer, to_writer_with_config, try_load_all,
+    Path, ScalarStyle, SerializerConfig, Spanned, Tag, TaggedValue, Value, from_slice, from_str,
+    from_str_with_config, from_value, load_all, load_all_as, load_all_with_config, to_string,
+    to_string_multi, to_string_multi_with_config, to_string_with_config, to_value, try_load_all,
 };
+#[cfg(feature = "std")]
+use noyalib::{from_reader, from_reader_with_config, to_writer, to_writer_with_config};
 
 // ============================================================================
 // from_slice: valid + invalid + UTF-8 error
@@ -68,6 +69,7 @@ fn from_slice_empty() {
 // ============================================================================
 
 #[test]
+#[cfg(feature = "std")]
 fn from_reader_valid() {
     let yaml = b"key: value\n";
     let cursor = std::io::Cursor::new(yaml);
@@ -76,6 +78,7 @@ fn from_reader_valid() {
 }
 
 #[test]
+#[cfg(feature = "std")]
 fn from_reader_typed() {
     #[derive(serde::Deserialize)]
     struct Item {
@@ -87,6 +90,7 @@ fn from_reader_typed() {
 }
 
 #[test]
+#[cfg(feature = "std")]
 fn from_reader_invalid_yaml() {
     let bad = b"[broken: {yaml";
     let result: Result<Value, _> = from_reader(std::io::Cursor::new(bad));
@@ -94,6 +98,7 @@ fn from_reader_invalid_yaml() {
 }
 
 #[test]
+#[cfg(feature = "std")]
 fn from_reader_empty() {
     let result: Result<Value, _> = from_reader(std::io::Cursor::new(b""));
     if let Ok(v) = result {
@@ -102,6 +107,7 @@ fn from_reader_empty() {
 }
 
 #[test]
+#[cfg(feature = "std")]
 fn from_reader_with_config_strict() {
     let config = ParserConfig::strict();
     let yaml = b"a: 1\nb: 2\n";
@@ -110,6 +116,7 @@ fn from_reader_with_config_strict() {
 }
 
 #[test]
+#[cfg(feature = "std")]
 fn from_reader_with_config_rejects_deep_nesting() {
     let config = ParserConfig::new().max_depth(2);
     let yaml = b"a:\n  b:\n    c:\n      d: deep\n";
@@ -208,6 +215,7 @@ fn duplicate_key_complex_pattern() {
 // ============================================================================
 
 #[test]
+#[cfg(feature = "std")]
 fn to_writer_roundtrip() {
     let value = Value::from("hello");
     let mut buf = Vec::new();
@@ -218,6 +226,7 @@ fn to_writer_roundtrip() {
 }
 
 #[test]
+#[cfg(feature = "std")]
 fn to_writer_struct() {
     #[derive(serde::Serialize)]
     struct Item {
@@ -236,6 +245,7 @@ fn to_writer_struct() {
 }
 
 #[test]
+#[cfg(feature = "std")]
 fn to_writer_with_config_indent() {
     let config = SerializerConfig::new().indent(4);
     let mut map = BTreeMap::new();
@@ -1534,6 +1544,7 @@ fn parser_document_length_exceeded() {
 // ============================================================================
 
 #[test]
+#[cfg(feature = "std")]
 fn error_from_io() {
     let io_err = std::io::Error::new(std::io::ErrorKind::NotFound, "file missing");
     let noya_err: Error = io_err.into();

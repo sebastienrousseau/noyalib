@@ -1,0 +1,4 @@
+&defaults
+s: &defaults
+ s: &t
+? *defaults

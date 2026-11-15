@@ -9,8 +9,9 @@ use std::collections::BTreeMap;
 use noyalib::{
     FlowStyle, Mapping, ScalarStyle, SerializerConfig, Value, to_string,
     to_string_multi_with_config, to_string_value, to_string_with_config, to_value,
-    to_writer_multi_with_config, to_writer_with_config,
 };
+#[cfg(feature = "std")]
+use noyalib::{to_writer_multi_with_config, to_writer_with_config};
 
 // ============================================================================
 // FlowStyle config
@@ -116,6 +117,7 @@ fn to_string_multi_with_custom_config() {
 }
 
 #[test]
+#[cfg(feature = "std")]
 fn to_writer_multi_with_custom_config() {
     let config = SerializerConfig::new().indent(4);
     let docs = vec!["a", "b"];
@@ -130,6 +132,7 @@ fn to_writer_multi_with_custom_config() {
 // ============================================================================
 
 #[test]
+#[cfg(feature = "std")]
 fn to_writer_with_custom_config() {
     let config = SerializerConfig::new().document_start(true);
     let mut buf = Vec::new();

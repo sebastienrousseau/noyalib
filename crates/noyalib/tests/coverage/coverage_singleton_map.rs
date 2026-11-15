@@ -1,16 +1,9 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 // Copyright (c) 2026 Noyalib. All rights reserved.
 
-//! Coverage for the `with/singleton_map*` serde adapters: the empty-word
-//! edge of `to_pascal_case`, plus behavioural regression tests that a
-//! custom tag survives the recursive / key-transform serialize walks.
-//!
-//! Note: the `Value::Tagged` arms of `transform_to_singleton_map`
-//! (recursive.rs:51-54) and `transform_value_keys` (with.rs:234-237) are
-//! **defensive-unreachable via the serialize path** — `to_value` never
-//! emits a `Value::Tagged` from a Rust type (Value's own serializer
-//! flattens a tagged node into a `{tag, value}` mapping), so the walk
-//! never encounters that variant. They are effective-100% exclusions.
+//! Cover empty-word case conversion and tag retention in singleton-map
+//! adapters. Their serialization walks cannot receive `Value::Tagged`:
+//! `to_value` represents tags as mappings before those walks begin.
 
 #![allow(missing_docs)]
 #![allow(clippy::unwrap_used)]

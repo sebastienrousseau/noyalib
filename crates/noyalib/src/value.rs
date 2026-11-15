@@ -466,7 +466,7 @@ impl Value {
                 QuerySegment::Key(key) => current.get(key.as_str())?,
                 QuerySegment::Index(idx) => current.get(*idx)?,
                 QuerySegment::Wildcard | QuerySegment::RecursiveDescent => {
-                    return self.query_path(path).into_iter().next();
+                    return query_first(self, path.segments());
                 }
             };
         }
@@ -521,13 +521,13 @@ impl Value {
         let segments = parse_path(path);
         let mut current = self;
 
-        for segment in segments {
+        for segment in &segments {
             current = match segment {
                 QuerySegment::Key(key) => current.get(key.as_str())?,
-                QuerySegment::Index(idx) => current.get(idx)?,
+                QuerySegment::Index(idx) => current.get(*idx)?,
                 QuerySegment::Wildcard | QuerySegment::RecursiveDescent => {
                     // For get_path, return the first match
-                    return self.query(path).into_iter().next();
+                    return query_first(self, &segments);
                 }
             };
         }
@@ -539,7 +539,13 @@ impl Value {
     #[must_use]
     pub fn query_path(&self, path: &QueryPath) -> Vec<&Self> {
         let mut results = Vec::new();
-        query_recursive(self, path.segments(), 0, &mut results);
+        query_recursive(
+            self,
+            path.segments(),
+            0,
+            &mut results,
+            &mut FxHashSet::default(),
+        );
         results
     }
 
@@ -573,7 +579,7 @@ impl Value {
     pub fn query(&self, path: &str) -> Vec<&Self> {
         let segments = parse_path(path);
         let mut results = Vec::new();
-        query_recursive(self, &segments, 0, &mut results);
+        query_recursive(self, &segments, 0, &mut results, &mut FxHashSet::default());
         results
     }
 
@@ -1193,38 +1199,96 @@ fn parse_path(path: &str) -> Vec<QuerySegment> {
     parse_query_path(path)
 }
 
+/// Find the first result in query traversal order. Recursive descent can
+/// reach the same node and segment through many routes, so visit each state
+/// once. The explicit stack also handles long paths without stack recursion.
+fn query_first<'a>(value: &'a Value, segments: &[QuerySegment]) -> Option<&'a Value> {
+    let mut pending = vec![(value, 0)];
+    let mut visited = FxHashSet::default();
+
+    while let Some((value, depth)) = pending.pop() {
+        if depth == segments.len() {
+            return Some(value);
+        }
+        if !visited.insert((core::ptr::from_ref(value), depth)) {
+            continue;
+        }
+        match &segments[depth] {
+            QuerySegment::Key(key) => {
+                if let Some(child) = value.get(key.as_str()) {
+                    pending.push((child, depth + 1));
+                }
+            }
+            QuerySegment::Index(index) => {
+                if let Some(child) = value.get(*index) {
+                    pending.push((child, depth + 1));
+                }
+            }
+            QuerySegment::Wildcard | QuerySegment::RecursiveDescent => {
+                let recursive = matches!(segments[depth], QuerySegment::RecursiveDescent);
+                if recursive && depth + 1 == segments.len() {
+                    continue;
+                }
+                let child_depth = if recursive { depth } else { depth + 1 };
+                match value {
+                    Value::Sequence(sequence) => {
+                        pending.extend(sequence.iter().rev().map(|child| (child, child_depth)));
+                    }
+                    Value::Mapping(mapping) => {
+                        pending.extend(mapping.values().rev().map(|child| (child, child_depth)));
+                    }
+                    Value::Tagged(tagged) if recursive => {
+                        pending.push((tagged.value(), child_depth));
+                    }
+                    _ => {}
+                }
+                if recursive {
+                    pending.push((value, depth + 1));
+                }
+            }
+        }
+    }
+    None
+}
+
 /// Recursively query a Value tree against path segments.
 fn query_recursive<'a>(
     value: &'a Value,
     segments: &[QuerySegment],
     depth: usize,
     results: &mut Vec<&'a Value>,
+    misses: &mut FxHashSet<(*const Value, usize)>,
 ) {
     if depth >= segments.len() {
         results.push(value);
         return;
     }
 
+    let state = (core::ptr::from_ref(value), depth);
+    if misses.contains(&state) {
+        return;
+    }
+    let before = results.len();
     match &segments[depth] {
         QuerySegment::Key(key) => {
             if let Some(child) = value.get(key.as_str()) {
-                query_recursive(child, segments, depth + 1, results);
+                query_recursive(child, segments, depth + 1, results, misses);
             }
         }
         QuerySegment::Index(idx) => {
             if let Some(child) = value.get(*idx) {
-                query_recursive(child, segments, depth + 1, results);
+                query_recursive(child, segments, depth + 1, results, misses);
             }
         }
         QuerySegment::Wildcard => match value {
             Value::Sequence(seq) => {
                 for item in seq {
-                    query_recursive(item, segments, depth + 1, results);
+                    query_recursive(item, segments, depth + 1, results, misses);
                 }
             }
             Value::Mapping(map) => {
                 for (_, v) in map {
-                    query_recursive(v, segments, depth + 1, results);
+                    query_recursive(v, segments, depth + 1, results, misses);
                 }
             }
             _ => {}
@@ -1234,26 +1298,29 @@ fn query_recursive<'a>(
             let remaining = &segments[depth + 1..];
             if !remaining.is_empty() {
                 // Try matching the rest of the path at this node
-                query_recursive(value, segments, depth + 1, results);
+                query_recursive(value, segments, depth + 1, results, misses);
                 // Recurse into all children
                 match value {
                     Value::Sequence(seq) => {
                         for item in seq {
-                            query_recursive(item, segments, depth, results);
+                            query_recursive(item, segments, depth, results, misses);
                         }
                     }
                     Value::Mapping(map) => {
                         for (_, v) in map {
-                            query_recursive(v, segments, depth, results);
+                            query_recursive(v, segments, depth, results, misses);
                         }
                     }
                     Value::Tagged(t) => {
-                        query_recursive(t.value(), segments, depth, results);
+                        query_recursive(t.value(), segments, depth, results, misses);
                     }
                     _ => {}
                 }
             }
         }
+    }
+    if results.len() == before {
+        let _ = misses.insert(state);
     }
 }
 

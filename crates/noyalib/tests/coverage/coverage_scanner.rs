@@ -1,7 +1,4 @@
-//! Scanner and parser deep-coverage tests.
-//!
-//! These tests exercise internal parser paths by feeding specific YAML patterns
-//! that trigger rare code branches in the scanner and event parser.
+//! Scanner and event parser edge cases driven by YAML documents.
 
 // SPDX-License-Identifier: MIT OR Apache-2.0
 // Copyright (c) 2026 Noyalib. All rights reserved.

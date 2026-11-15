@@ -1,10 +1,5 @@
-//! Coverage for public API surface that had **zero** references from
-//! the test suite.
-//!
-//! Found by cross-referencing every `pub fn` in `src/` against the
-//! whole `tests/` tree. These are exported, documented entry points
-//! that were only ever exercised by their own doctests (which do not
-//! contribute to `cargo llvm-cov` line coverage).
+//! Exercise public entry points through integration tests in addition
+//! to their doctests, which do not contribute to native line coverage.
 
 // SPDX-License-Identifier: MIT OR Apache-2.0
 // Copyright (c) 2026 Noyalib. All rights reserved.

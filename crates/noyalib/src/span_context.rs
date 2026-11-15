@@ -373,8 +373,27 @@ fn walk_keys(
         (Value::Mapping(mapping), SpanTree::Mapping { entries, .. }) => {
             for ((k, v), &((start, end), ref vt)) in mapping.iter().zip(entries) {
                 let written = source.get(start..end);
-                if written.is_some_and(|w| is_canonicalised_plain_key(k, w)) {
-                    let _ = out.insert(core::ptr::from_ref(k) as usize, (start, end));
+                // An omitted scalar may still carry an anchor. Its span
+                // deliberately includes that property for diagnostics, but
+                // a typed string key reads the empty scalar, not "null".
+                let anchored_empty = k == "null"
+                    && written.is_some_and(|text| {
+                        text.strip_prefix('&').is_some_and(|name| {
+                            !name.is_empty() && !name.contains([' ', '\t', '\n', '\r'])
+                        })
+                    });
+                if anchored_empty {
+                    let _ = out.insert(core::ptr::from_ref(k) as usize, (end, end));
+                } else if let Some((offset, written)) = written.map(written_key_text)
+                    && is_canonicalised_plain_key(k, written)
+                {
+                    // Keep consumed separation and an anchor property out
+                    // of typed key text without changing diagnostic spans.
+                    let start = start + offset;
+                    let _ = out.insert(
+                        core::ptr::from_ref(k) as usize,
+                        (start, start + written.len()),
+                    );
                 }
                 walk_keys(v, vt, source, out);
             }
@@ -385,10 +404,36 @@ fn walk_keys(
     }
 }
 
+/// The scalar text of a key span and its offset in that span. Plain
+/// spans may include consumed trailing separation, and a key's span
+/// starts at its properties: an `&name` anchor (found by fuzz_diff on
+/// `{!,&d\n~}`) or a tag (`{!!float 0}`), in either order, each
+/// possibly followed by a comment line. Properties name or type the
+/// node without changing its text.
+fn written_key_text(text: &str) -> (usize, &str) {
+    const SEPARATION: [char; 4] = [' ', '\t', '\n', '\r'];
+    let text = text.trim_end_matches(SEPARATION);
+    let mut scalar = text;
+    loop {
+        let rest = match scalar.as_bytes().first() {
+            Some(b'&' | b'!') => scalar.find(SEPARATION).map_or("", |at| &scalar[at..]),
+            // A comment may follow a property (`&a # note` then the key).
+            Some(b'#') if scalar.len() < text.len() => match scalar.find(['\n', '\r']) {
+                Some(at) => &scalar[at..],
+                None => break,
+            },
+            _ => break,
+        };
+        scalar = rest.trim_start_matches(SEPARATION);
+    }
+    (text.len() - scalar.len(), scalar)
+}
+
 /// True when `written` is a bare plain scalar the loader stored as the
-/// canonical spelling `key` of a null, bool or number. Quoted, tagged,
-/// anchored, aliased and multi-line keys never qualify, and a key whose
-/// text was kept as written has nothing to restore.
+/// canonical spelling `key` of a null, bool or number, once its
+/// properties are skipped. Quoted, aliased and multi-line keys never
+/// qualify, and a key whose text was kept as written has nothing to
+/// restore.
 fn is_canonicalised_plain_key(key: &str, written: &str) -> bool {
     let canonical_scalar = matches!(key, "null" | "true" | "false" | "nan" | "inf" | "-inf")
         || key.parse::<i64>().is_ok()

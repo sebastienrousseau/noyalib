@@ -1,44 +1,34 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 // Copyright (c) 2026 Noyalib. All rights reserved.
 
-//! Targeted line/region coverage for `crates/noyalib/src/de.rs`.
-//!
-//! Each test here exercises a specific uncovered branch identified
-//! by `cargo llvm-cov`:
-//!
-//! - `from_str_strict` / `from_slice_strict` / `from_reader_strict`
-//!   error paths (L903-L921).
-//! - The `Value`-fast-path inside `from_str_with_config` and
-//!   `from_value` when a policy rejects the document (L1132).
-//! - `from_reader_with_config` (L1280).
-//! - `wrap_err` span-attached error path (L1456-L1464).
-//! - `Deserializer::deserialize_*` arms that surface
-//!   `Error::TypeMismatch` (L1480, L1482, L1484, L1493-L1495, L1659,
-//!   L1692, L1694, L1748, L1864).
-//! - `ValueMapAccess::next_value_seed` missing-value error (L1983).
-//! - `VariantAccess::tuple_variant` / `struct_variant` (L2003,
-//!   L2021-L2022).
-//! - `is_binary_tag` exhaustive matching (L2136).
+//! Deserializer policy refusals, typed errors, byte payloads and enum variants.
 
+#[cfg(feature = "std")]
 use std::io::Cursor;
 
+#[cfg(all(feature = "std", feature = "strict-deserialise"))]
+use noyalib::from_reader_strict;
+#[cfg(feature = "std")]
+use noyalib::from_reader_with_config;
 use noyalib::{
-    Deserializer, ParserConfig, Tag, TaggedValue, Value, from_reader_strict,
-    from_reader_with_config, from_slice_strict, from_str, from_str_strict, from_str_with_config,
-    from_value,
+    Deserializer, ParserConfig, Tag, TaggedValue, Value, from_str, from_str_with_config, from_value,
 };
+#[cfg(feature = "strict-deserialise")]
+use noyalib::{from_slice_strict, from_str_strict};
 use serde_core::Deserialize as _;
 
 // ============================================================================
 // from_str_strict / from_slice_strict / from_reader_strict — happy + error
 // ============================================================================
 
+#[cfg(any(feature = "std", feature = "strict-deserialise"))]
 #[derive(Debug, serde::Deserialize)]
 struct StrictCfg {
     port: u16,
 }
 
 #[test]
+#[cfg(feature = "strict-deserialise")]
 fn from_str_strict_extra_field_errors() {
     let yaml = "port: 8080\nporrt: 9090\n";
     let r: Result<StrictCfg, _> = from_str_strict(yaml);
@@ -48,6 +38,7 @@ fn from_str_strict_extra_field_errors() {
 }
 
 #[test]
+#[cfg(feature = "strict-deserialise")]
 fn from_str_strict_multiple_extras_lists_all() {
     let yaml = "port: 8080\nfoo: 1\nbar: 2\n";
     let r: Result<StrictCfg, _> = from_str_strict(yaml);
@@ -56,6 +47,7 @@ fn from_str_strict_multiple_extras_lists_all() {
 }
 
 #[test]
+#[cfg(feature = "strict-deserialise")]
 fn from_str_strict_clean_input_succeeds() {
     let yaml = "port: 8080\n";
     let s: StrictCfg = from_str_strict(yaml).expect("strict ok");
@@ -63,6 +55,7 @@ fn from_str_strict_clean_input_succeeds() {
 }
 
 #[test]
+#[cfg(feature = "strict-deserialise")]
 fn from_slice_strict_clean_succeeds() {
     let yaml = b"port: 8080\n";
     let s: StrictCfg = from_slice_strict(yaml).expect("slice strict ok");
@@ -70,6 +63,7 @@ fn from_slice_strict_clean_succeeds() {
 }
 
 #[test]
+#[cfg(feature = "strict-deserialise")]
 fn from_slice_strict_invalid_utf8_errors() {
     let bad: &[u8] = &[0xFF, 0xFE];
     let r: Result<StrictCfg, _> = from_slice_strict(bad);
@@ -77,6 +71,7 @@ fn from_slice_strict_invalid_utf8_errors() {
 }
 
 #[test]
+#[cfg(all(feature = "std", feature = "strict-deserialise"))]
 fn from_reader_strict_extra_field_errors() {
     let yaml = b"port: 8080\nporrt: 9090\n".to_vec();
     let r: Result<StrictCfg, _> = from_reader_strict(&yaml[..]);
@@ -84,6 +79,7 @@ fn from_reader_strict_extra_field_errors() {
 }
 
 #[test]
+#[cfg(all(feature = "std", feature = "strict-deserialise"))]
 fn from_reader_strict_clean_succeeds() {
     let yaml = b"port: 8080\n".to_vec();
     let s: StrictCfg = from_reader_strict(&yaml[..]).expect("reader strict");
@@ -91,10 +87,11 @@ fn from_reader_strict_clean_succeeds() {
 }
 
 // ============================================================================
-// from_reader_with_config (L1280)
+// from_reader_with_config
 // ============================================================================
 
 #[test]
+#[cfg(feature = "std")]
 fn from_reader_with_config_typed() {
     let yaml = "port: 8080\n";
     let reader = Cursor::new(yaml.as_bytes());
@@ -104,7 +101,7 @@ fn from_reader_with_config_typed() {
 }
 
 // ============================================================================
-// Deserializer typed methods — TypeMismatch error paths (L1480-L1484, L1493+)
+// Deserializer typed methods — TypeMismatch error paths
 // ============================================================================
 
 #[test]
@@ -164,7 +161,7 @@ fn deserializer_str_mismatch_errors() {
 }
 
 // ============================================================================
-// Deserializer for bytes / byte_buf — !!binary path & errors (L1692, L1694)
+// Deserializer for bytes / byte_buf — !!binary path & errors
 // ============================================================================
 
 #[derive(Debug, serde::Deserialize)]
@@ -233,7 +230,7 @@ fn deserialize_str_with_ignore_binary_tag_for_string_succeeds() {
 }
 
 // ============================================================================
-// deserialize_seq / deserialize_map — Tagged transparent path (L1748, L1805)
+// deserialize_seq / deserialize_map — Tagged transparent path
 // ============================================================================
 
 #[test]
@@ -273,7 +270,7 @@ fn deserialize_map_mismatch_errors() {
 }
 
 // ============================================================================
-// deserialize_enum — fall-through / errors (L1851-L1854, L1864)
+// deserialize_enum — fall-through / errors
 // ============================================================================
 
 #[derive(Debug, serde::Deserialize, PartialEq)]
@@ -362,7 +359,7 @@ fn preserve_tags_value_target_round_trip() {
 }
 
 // ============================================================================
-// VariantAccess — tuple/struct/newtype variants (L2003, L2021-L2022)
+// VariantAccess — tuple/struct/newtype variants
 // ============================================================================
 
 #[derive(Debug, serde::Deserialize, PartialEq)]
@@ -402,7 +399,7 @@ fn variant_access_struct() {
 }
 
 // ============================================================================
-// is_binary_tag — exhaustive form coverage (L2136)
+// is_binary_tag — exhaustive form coverage
 // ============================================================================
 
 #[test]
@@ -429,7 +426,7 @@ fn binary_tag_all_forms_decode() {
 
 // ============================================================================
 // wrap_err — TypeMismatch flowing through from_str_with_config (with span ctx)
-// triggers the deserialize_at branch when location is known (L1456-L1464).
+// triggers the deserialize_at branch when location is known.
 // ============================================================================
 
 #[test]

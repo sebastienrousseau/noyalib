@@ -65,6 +65,7 @@ enum State {
     BlockMappingFirstKey,
     BlockMappingKey,
     BlockMappingValue,
+    BlockMappingExplicitValue,
     FlowSequenceFirstEntry,
     FlowSequenceEntry,
     FlowSequenceEntryMappingKey,
@@ -80,6 +81,7 @@ enum State {
 /// YAML event-based parser.
 #[derive(Debug)]
 pub(crate) struct Parser<'a> {
+    input: &'a str,
     scanner: Scanner<'a>,
     /// Parser state stack. Each `State` is a 1-byte enum; 16 slots inline
     /// is plenty for realistic nesting and costs just 16 bytes of stack,
@@ -104,6 +106,7 @@ pub(crate) struct Parser<'a> {
 impl<'a> Parser<'a> {
     pub(crate) fn new(input: &'a str) -> Self {
         Parser {
+            input,
             scanner: Scanner::new(input),
             states: smallvec::SmallVec::new(),
             state: State::StreamStart,
@@ -156,13 +159,14 @@ impl<'a> Parser<'a> {
             State::DocumentStart => self.parse_document_start(false),
             State::DocumentContent => self.parse_document_content(),
             State::DocumentEnd => self.parse_document_end(),
-            State::BlockNode => self.parse_node(true, false),
+            State::BlockNode => self.parse_node(true, false, None),
             State::BlockSequenceFirstEntry => self.parse_block_sequence_entry(true),
             State::BlockSequenceEntry => self.parse_block_sequence_entry(false),
             State::IndentlessSequenceEntry => self.parse_indentless_sequence_entry(),
             State::BlockMappingFirstKey => self.parse_block_mapping_key(true),
             State::BlockMappingKey => self.parse_block_mapping_key(false),
-            State::BlockMappingValue => self.parse_block_mapping_value(),
+            State::BlockMappingValue => self.parse_block_mapping_value(false),
+            State::BlockMappingExplicitValue => self.parse_block_mapping_value(true),
             State::FlowSequenceFirstEntry => self.parse_flow_sequence_entry(true),
             State::FlowSequenceEntry => self.parse_flow_sequence_entry(false),
             State::FlowSequenceEntryMappingKey => self.parse_flow_sequence_entry_mapping_key(),
@@ -311,7 +315,7 @@ impl<'a> Parser<'a> {
             Ok(self.empty_scalar(span))
         } else {
             self.states.push(State::DocumentEnd);
-            self.parse_node(true, false)
+            self.parse_node(true, false, None)
         }
     }
 
@@ -334,7 +338,12 @@ impl<'a> Parser<'a> {
         Ok(Event::DocumentEnd)
     }
 
-    fn parse_node(&mut self, block: bool, indentless: bool) -> Result<Event<'a>, ScanError> {
+    fn parse_node(
+        &mut self,
+        block: bool,
+        indentless: bool,
+        value_indicator: Option<Span>,
+    ) -> Result<Event<'a>, ScanError> {
         // Peek once to get the span; use take() to extract owned data only
         // when the token is actually consumed — avoids cloning Strings.
         let _ = self.peek()?;
@@ -356,6 +365,7 @@ impl<'a> Parser<'a> {
         // Main node dispatch — take() for Scalar to move the String.
         let _ = self.peek()?;
         let tok_span = self.current_span;
+        self.reject_implicit_compact_value(value_indicator, tok_span)?;
         let kind_ref = self
             .current_kind
             .as_ref()
@@ -386,6 +396,38 @@ impl<'a> Parser<'a> {
             }
             _ => self.parse_empty_node(props, indentless, span),
         }
+    }
+
+    /// Implicit values allow inline flow nodes, but block collections need
+    /// a line break. Explicit entries use the compact grammar (8.2.2).
+    fn reject_implicit_compact_value(
+        &self,
+        indicator: Option<Span>,
+        node: Span,
+    ) -> Result<(), ScanError> {
+        let Some(indicator) = indicator else {
+            return Ok(());
+        };
+        if matches!(
+            self.current_kind,
+            Some(
+                TokenKind::BlockMappingStart
+                    | TokenKind::BlockSequenceStart
+                    | TokenKind::BlockEntry
+            )
+        ) && !self
+            .input
+            .get(indicator.end..node.start)
+            .is_some_and(|text| text.contains(['\r', '\n']))
+        {
+            return Err(ScanError {
+                message: Cow::Borrowed(
+                    "compact block collections are not allowed in implicit mapping values",
+                ),
+                index: node.start,
+            });
+        }
+        Ok(())
     }
 
     /// Parse optional anchor and tag, in either order — take() to move
@@ -518,7 +560,7 @@ impl<'a> Parser<'a> {
                 Ok(self.empty_scalar(span))
             } else {
                 self.states.push(State::BlockSequenceEntry);
-                self.parse_node(true, false)
+                self.parse_node(true, false, None)
             }
         } else if self.peek_is(|k| matches!(k, TokenKind::BlockEnd))? {
             self.skip()?;
@@ -548,7 +590,7 @@ impl<'a> Parser<'a> {
                 Ok(self.empty_scalar(span))
             } else {
                 self.states.push(State::IndentlessSequenceEntry);
-                self.parse_node(true, false)
+                self.parse_node(true, false, None)
             }
         } else {
             self.state = self.pop_state();
@@ -563,15 +605,20 @@ impl<'a> Parser<'a> {
         let span = self.current_span;
 
         if self.peek_is(|k| matches!(k, TokenKind::Key))? {
+            let value_state = if span.start == span.end {
+                State::BlockMappingValue
+            } else {
+                State::BlockMappingExplicitValue
+            };
             self.skip()?;
             if self
                 .peek_is(|k| matches!(k, TokenKind::Key | TokenKind::Value | TokenKind::BlockEnd))?
             {
-                self.state = State::BlockMappingValue;
+                self.state = value_state;
                 Ok(self.empty_scalar(span))
             } else {
-                self.states.push(State::BlockMappingValue);
-                self.parse_node(true, true)
+                self.states.push(value_state);
+                self.parse_node(true, true, None)
             }
         } else if self.peek_is(|k| matches!(k, TokenKind::BlockEnd))? {
             self.skip()?;
@@ -603,7 +650,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_block_mapping_value(&mut self) -> Result<Event<'a>, ScanError> {
+    fn parse_block_mapping_value(&mut self, explicit: bool) -> Result<Event<'a>, ScanError> {
         let _ = self.peek()?;
         let span = self.current_span;
 
@@ -616,7 +663,7 @@ impl<'a> Parser<'a> {
                 Ok(self.empty_scalar(span))
             } else {
                 self.states.push(State::BlockMappingKey);
-                self.parse_node(true, true)
+                self.parse_node(true, true, (!explicit).then_some(span))
             }
         } else {
             self.state = State::BlockMappingKey;
@@ -678,7 +725,7 @@ impl<'a> Parser<'a> {
         }
 
         self.states.push(State::FlowSequenceEntry);
-        self.parse_node(false, false)
+        self.parse_node(false, false, None)
     }
 
     fn parse_flow_sequence_entry_mapping_key(&mut self) -> Result<Event<'a>, ScanError> {
@@ -695,7 +742,7 @@ impl<'a> Parser<'a> {
             Ok(self.empty_scalar(span))
         } else {
             self.states.push(State::FlowSequenceEntryMappingValue);
-            self.parse_node(false, false)
+            self.parse_node(false, false, None)
         }
     }
 
@@ -707,7 +754,7 @@ impl<'a> Parser<'a> {
             self.skip()?;
             if !self.peek_is(|k| matches!(k, TokenKind::FlowEntry | TokenKind::FlowSequenceEnd))? {
                 self.states.push(State::FlowSequenceEntryMappingEnd);
-                return self.parse_node(false, false);
+                return self.parse_node(false, false, None);
             }
         }
 
@@ -758,7 +805,7 @@ impl<'a> Parser<'a> {
                 )
             })? {
                 self.states.push(State::FlowMappingValue);
-                return self.parse_node(false, false);
+                return self.parse_node(false, false, None);
             }
             self.state = State::FlowMappingValue;
             return Ok(self.empty_scalar(next_span));
@@ -774,7 +821,7 @@ impl<'a> Parser<'a> {
 
         // Implicit key.
         self.states.push(State::FlowMappingEmptyValue);
-        self.parse_node(false, false)
+        self.parse_node(false, false, None)
     }
 
     fn parse_flow_mapping_value(&mut self, empty: bool) -> Result<Event<'a>, ScanError> {
@@ -790,7 +837,7 @@ impl<'a> Parser<'a> {
             self.skip()?;
             if !self.peek_is(|k| matches!(k, TokenKind::FlowEntry | TokenKind::FlowMappingEnd))? {
                 self.states.push(State::FlowMappingKey);
-                return self.parse_node(false, false);
+                return self.parse_node(false, false, None);
             }
         }
 

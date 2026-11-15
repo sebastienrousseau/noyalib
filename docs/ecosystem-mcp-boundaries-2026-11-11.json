@@ -1,0 +1,203 @@
+{
+  "recorded_utc": "2026-11-11T21:13:38.674589+00:00",
+  "runtime_fix": "839e63717383e4e1b13e63e4b91a02f887237fe9",
+  "examples_and_documentation_source": "41d49d1ebdeedc2537aebbc9d2e5b3eb951692ea",
+  "core_production_source": "a57b7198669e41fe3034db4e44f2e274baf96388",
+  "observed_before": "Concurrent creation admitted two sessions under cap1. Deterministic queued-reader regression fails before correction. Separate threaded create/restore/mixed checks characterize concurrency; they did not reliably reproduce the old race. File and formatting demos called unregistered tools. The new client initially hid a nonzero server exit after valid responses; its real-server exit wrapper regression failed before the final check.",
+  "observed_after": {
+    "full_mcp_tests_passed": 132,
+    "full_mcp_tests_failed": 0,
+    "full_mcp_tests_ignored": 0,
+    "session_tests": 8,
+    "example_scenarios": 4,
+    "gate_receipt": [
+      {
+        "check": "fmt",
+        "exit_code": 0
+      },
+      {
+        "check": "clippy",
+        "exit_code": 0
+      },
+      {
+        "check": "tests",
+        "exit_code": 0
+      },
+      {
+        "check": "doctests",
+        "exit_code": 0
+      },
+      {
+        "check": "examples",
+        "exit_code": 0
+      },
+      {
+        "check": "deny",
+        "exit_code": 0
+      },
+      {
+        "check": "vet",
+        "exit_code": 0
+      },
+      {
+        "check": "versions",
+        "exit_code": 0,
+        "log": "versions-final.log",
+        "initial_failure_log": "versions.log"
+      },
+      {
+        "check": "reuse",
+        "exit_code": 0
+      },
+      {
+        "check": "spelling",
+        "exit_code": 0
+      },
+      {
+        "check": "workflow",
+        "exit_code": 0
+      }
+    ]
+  },
+  "scope": "Local macOS arm64. Both commits have verified GPG signatures. No public API, feature, MSRV or dependency changes. Root and standalone CI repeat real-server example tests across three OSes. Hosted final-source, registry and independent-review outcomes remain separate. Initial test compilation, version-pattern and harness failures remain in the archive.",
+  "raw_archive": "docs/evidence/mcp-boundaries-2026-11-11.tar.gz",
+  "archive_bytes": 16062,
+  "archive_sha256": "76b571c3cabeb60d5adff020acaad12ffaab36f697296f5b2c2ebb2ee5eed99a",
+  "members": [
+    {
+      "path": "clippy.log",
+      "bytes": 318,
+      "sha256": "428ac25b349378c3700b5e63bef93313a72ea75064259d29397fbc1398a032d0"
+    },
+    {
+      "path": "completion-summary.json",
+      "bytes": 640,
+      "sha256": "f39656b121b187501a8ce2ae2eb1dcb7e17d88d57c85a9d5f218683bf7c65f3f"
+    },
+    {
+      "path": "deny.log",
+      "bytes": 12441,
+      "sha256": "36bfa2420495d9a83fa04c6bb72ce370a13e0e08aec656bafe021e800efb2f4d"
+    },
+    {
+      "path": "doctests.log",
+      "bytes": 199,
+      "sha256": "169e60d4d3652f9e9fe87a4a2ccb13bb2f39a3a2c29195c3436b4d28049857ab"
+    },
+    {
+      "path": "examples.log",
+      "bytes": 101,
+      "sha256": "0303cd90ccde4c464a762ea5b86b38e23a886cfcc9242307d0407b40a3f1c5c1"
+    },
+    {
+      "path": "fmt.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "noyalib-100-mcp-docs-final-reuse.log",
+      "bytes": 404,
+      "sha256": "744c59c9cd43eeae4363e2f49c6e35e1f947f32893b393e158507a0c92c7bc94"
+    },
+    {
+      "path": "noyalib-100-mcp-example-exit-green.log",
+      "bytes": 102,
+      "sha256": "d1b456b9d6863c7fad7ef542b3322b17b0f2ac27b1e33d07ecf79e24330bea60"
+    },
+    {
+      "path": "noyalib-100-mcp-example-exit-red.log",
+      "bytes": 11359,
+      "sha256": "e06d8d37372bc6f9c7723b72d583acdfde7a8cab60caac8390325f483dd8a0f1"
+    },
+    {
+      "path": "noyalib-100-mcp-examples-green.log",
+      "bytes": 101,
+      "sha256": "9d5ee7b2417c7d3adb372cd996f5ee595958733551f94f729690e1e6a123d9c6"
+    },
+    {
+      "path": "noyalib-100-mcp-examples-red.log",
+      "bytes": 2355,
+      "sha256": "d626f6b8c855c7d40f5cb1c4a7b84fa32809bba9de4ebbcbddd692eec7658481"
+    },
+    {
+      "path": "noyalib-100-mcp-final-markdown.json",
+      "bytes": 330,
+      "sha256": "41f8c9ddf349acc72a444caef680bdb028fdbfa29e8a6f54fa976211fbb317de"
+    },
+    {
+      "path": "noyalib-100-mcp-final-vet-after-review.log",
+      "bytes": 73,
+      "sha256": "024c7b28078fbf2e9cebb6edf18dc11c7013c2b66d7612f80066e42b8a571f1c"
+    },
+    {
+      "path": "noyalib-100-mcp-pending-red.log",
+      "bytes": 33,
+      "sha256": "76a868227534bfac8bd1a8a42d396fc81aa90c07878757320e28373ec1a59e2f"
+    },
+    {
+      "path": "noyalib-100-mcp-session-admission-all-red.log",
+      "bytes": 693,
+      "sha256": "e0ba980a9e604f0bd00a8cd93119177d8922af230daff5a255d8082a5c27ba77"
+    },
+    {
+      "path": "noyalib-100-mcp-session-admission-deterministic-red.log",
+      "bytes": 968,
+      "sha256": "0d215ee4070b5a62936610cb6f36babcf34be0c5a281aaa1c3b3de3df38ecfb6"
+    },
+    {
+      "path": "noyalib-100-mcp-session-admission-green.log",
+      "bytes": 1102,
+      "sha256": "37e3ecafb4a6125ad2d4b978f6f6e83216cea9317d7bdf40635bc13f6834df42"
+    },
+    {
+      "path": "noyalib-100-mcp-session-admission-red-observed.log",
+      "bytes": 1030,
+      "sha256": "845d090477e6128a766c716c7586f88187a94d9d67e4e66becd73efa0356f9bc"
+    },
+    {
+      "path": "noyalib-100-mcp-session-admission-red.log",
+      "bytes": 32890,
+      "sha256": "39787f195bff595616e0495c8a347d781ef7747c8b8baf3d97e6b64acc09e0b5"
+    },
+    {
+      "path": "reuse.log",
+      "bytes": 404,
+      "sha256": "744c59c9cd43eeae4363e2f49c6e35e1f947f32893b393e158507a0c92c7bc94"
+    },
+    {
+      "path": "spelling.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "summary.json",
+      "bytes": 564,
+      "sha256": "8ae0667a04b16b1a9ad52da0878f7f631fde0a0c0ea3232e3e788a0746a075d8"
+    },
+    {
+      "path": "tests.log",
+      "bytes": 11104,
+      "sha256": "1e1e2201359845bcb0d7d273c463490b47f81da62534eb73f229010a6d5568ee"
+    },
+    {
+      "path": "versions-final.log",
+      "bytes": 3223,
+      "sha256": "0c207aca55b747d32dced59ffbb1fad667ab31ff8da48c01b833cf88871b49d1"
+    },
+    {
+      "path": "versions.log",
+      "bytes": 3384,
+      "sha256": "df41ef97136b674481030a49abfff2fe7e1f53bdae38332af2123b390e518fd3"
+    },
+    {
+      "path": "vet.log",
+      "bytes": 73,
+      "sha256": "024c7b28078fbf2e9cebb6edf18dc11c7013c2b66d7612f80066e42b8a571f1c"
+    },
+    {
+      "path": "workflow.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ]
+}

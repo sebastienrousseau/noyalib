@@ -3,11 +3,13 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 // Copyright (c) 2026 Noyalib. All rights reserved.
 
+#[cfg(feature = "std")]
 use std::io::Cursor;
 
+#[cfg(feature = "std")]
+use noyalib::from_reader_with_config;
 use noyalib::{
-    DuplicateKeyPolicy, ParserConfig, Value, from_reader_with_config, from_str,
-    from_str_with_config, from_value,
+    DuplicateKeyPolicy, ParserConfig, Value, from_str, from_str_with_config, from_value,
 };
 
 // ============================================================================
@@ -64,6 +66,7 @@ fn max_mapping_keys_exceeded() {
 // ============================================================================
 
 #[test]
+#[cfg(feature = "std")]
 fn from_reader_with_config_basic() {
     let yaml = "key: value\n";
     let reader = Cursor::new(yaml);
@@ -73,6 +76,7 @@ fn from_reader_with_config_basic() {
 }
 
 #[test]
+#[cfg(feature = "std")]
 fn from_reader_with_config_length_exceeded() {
     let yaml = "this is a long string that exceeds the limit";
     let reader = Cursor::new(yaml);

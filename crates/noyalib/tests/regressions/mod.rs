@@ -32,11 +32,13 @@ mod phase4;
 mod phase5;
 mod plain_trailing_blank_continuation;
 mod radix_int_spelling;
+#[cfg(feature = "std")]
 mod read_iterator;
 mod recovery;
 mod reference_docs_are_complete;
 mod remove_flow_data_loss;
 mod review_fixes;
+mod scalar_profile_parity;
 mod security_audit_v0058;
 mod set_fragment_containment;
 mod shaped_document_paths;

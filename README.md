@@ -53,20 +53,26 @@
 
 ---
 
+## Development version
+
+This branch prepares unreleased v0.0.61. Versioned Cargo examples target
+that release; use an already published version for registry installation
+until it ships.
+
 ## Install
 
 ### As a Rust library
 
 ```toml
 [dependencies]
-noyalib = "0.0.60"
+noyalib = "0.0.61"
 ```
 
 Disable the default `std` feature for `core` + `alloc` environments:
 
 ```toml
 [dependencies]
-noyalib = { version = "0.0.60", default-features = false }
+noyalib = { version = "0.0.61", default-features = false }
 ```
 
 Build the library and its test surface from source:

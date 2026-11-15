@@ -139,6 +139,37 @@ fn stream_wide_budgets_still_admit_a_stream_inside_them() {
     }
 }
 
+/// A byte order mark may open every document prefix (YAML 1.2.2
+/// §9.2). Prefix BOMs must not reset or bypass the stream-wide budgets
+/// (GHSA-3g8h-p447-63jx), nor `max_documents`, on any reader.
+#[test]
+fn prefix_boms_keep_stream_wide_budgets() {
+    let yaml = "\u{feff}---\n[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]\n".repeat(4);
+    let mut limits = cases();
+    limits.push(("max_documents", ParserConfig::default().max_documents(2)));
+    let mut gaps = Vec::new();
+    for (limit, cfg) in limits {
+        for (name, read) in readers() {
+            if limit == "max_stream_bytes" && name == "tokio YamlDecoder" {
+                continue;
+            }
+            if let Ok(n) = read(&yaml, &cfg) {
+                gaps.push(format!(
+                    "{name} accepted the BOM-prefixed stream over {limit} ({n} documents)"
+                ));
+            }
+        }
+    }
+    assert!(gaps.is_empty(), "{gaps:#?}");
+    let roomy = ParserConfig::default()
+        .max_events(200)
+        .max_nodes(100)
+        .max_total_scalar_bytes(100);
+    for (name, read) in readers() {
+        assert!(read(&yaml, &roomy).is_ok(), "{name}");
+    }
+}
+
 /// The Tokio frame decoder counts documents across frames.
 #[cfg(feature = "tokio")]
 #[test]

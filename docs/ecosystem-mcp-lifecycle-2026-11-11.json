@@ -1,0 +1,270 @@
+{
+  "recorded_utc": "2026-11-11T23:02:44.619635+00:00",
+  "sources": {
+    "mcp": "55ef95bceb54ac29006b5ccc9d17d3f31fefc11b",
+    "blocking_guard": "55384dc15e92a744fc8291583075e295d80a62a4",
+    "windows_launcher": "28343339024bccee5921cfa9000b0f7b78e223f0",
+    "passing_hosted_core": "68999cd54d823551cf36f80cbedaf60a5fb19bb9",
+    "core_production": "a57b7198669e41fe3034db4e44f2e274baf96388"
+  },
+  "observations": {
+    "mcp_tests": 135,
+    "mcp_failures": 0,
+    "mcp_ignores": 0,
+    "worker_tests": 3,
+    "worker_red_failures": 2,
+    "session_fuzz_executions": 119419,
+    "session_fuzz_reported_seconds": 61,
+    "session_fuzz_findings": 0,
+    "resolved_packages_before": 197,
+    "resolved_packages_after": 197,
+    "resolved_feature_changes": 0,
+    "sanitizer_targets_built_and_replayed": [
+      "tools",
+      "http_headers",
+      "session_lifecycle"
+    ],
+    "hosted_successes": 80,
+    "hosted_conditional_skips": 10,
+    "hosted_failures": 0,
+    "hosted_candidate_mcp": "28343339024bccee5921cfa9000b0f7b78e223f0",
+    "hosted_later_mcp_commits_verified": false,
+    "current_family_fuzz_targets": 31
+  },
+  "scope": "Local macOS arm64 lifecycle/worker verification. Rust 1.89 check uses installed SDK 26.5; initial SDK 27.2 linker failure retained. Hosted Windows and full CI success cover MCP 2834333; later guard and state fuzzer require their own candidate receipt. Smoke is not one-hour acceptance. No public API, product dependency, feature, MSRV, audit trust or held-tag changes. Wire framing, independent review, held-source recovery and typed duplicate policy remain separate. Superseded campaign counts retain their exact sources, partial and unstarted states.",
+  "raw_archive": "docs/evidence/mcp-lifecycle-2026-11-11.tar.gz",
+  "archive_bytes": 214081,
+  "archive_sha256": "6775ab16ef7c8b04c46e1d7b55a61b52a3ff32e7c50724c5f05879495ea0a489",
+  "members": [
+    {
+      "path": "campaigns/current-inventory.json",
+      "bytes": 2717,
+      "sha256": "2dac9984d23c664ed57029690a00d556ca542b89a6aad9e66ea3e76261d2e265"
+    },
+    {
+      "path": "campaigns/superseded-status.json",
+      "bytes": 13428,
+      "sha256": "e6ebf0cecdfaf981e30b7312d74eed569708f38dc4c22abafc45e2f47b2ba8a5"
+    },
+    {
+      "path": "campaigns/supersession.log",
+      "bytes": 94,
+      "sha256": "241ef07d985fe0a845161e0d48e41d19e1aa10ad38b9f2e5b3f68617474a853b"
+    },
+    {
+      "path": "observations/68999-hosted-final.json",
+      "bytes": 14016,
+      "sha256": "d25b84c348593e9a3219f66cf775e26d932ea7aaaea8190a077b22c0b2e55af5"
+    },
+    {
+      "path": "observations/de74-candidate-failure.json",
+      "bytes": 58765,
+      "sha256": "04c3fee7f037cf08d37b597ddd905964b53d5920150351ca9f69af2404ea7273"
+    },
+    {
+      "path": "observations/de74-mcp-windows-failure.log",
+      "bytes": 9556,
+      "sha256": "c41ce0f4d7a35fb414438e4133f4d6f236680d1c44ab64d8ba964a9fc3f91c6b"
+    },
+    {
+      "path": "observations/mcp-blocking-extraction-clippy.log",
+      "bytes": 160,
+      "sha256": "59cc1117cf0e5d5beff3020ce1927f278aff1927397f851e5737c7f8ef30326a"
+    },
+    {
+      "path": "observations/mcp-blocking-extraction-tests.log",
+      "bytes": 10946,
+      "sha256": "9c81fdd97fe20aabaa5250055d9927040e07fecf02b51d774125a8d51e231f66"
+    },
+    {
+      "path": "observations/mcp-refactor-net-mutant-red.log",
+      "bytes": 1034,
+      "sha256": "3a5c5c959fd6871b87b202cb57f1d6b5b0fbcfff5273d9edd57cafdf828b4aef"
+    },
+    {
+      "path": "observations/mcp-shell-path-local-green.log",
+      "bytes": 102,
+      "sha256": "da69082bd505ad547105d6607aad1a3c714595b575601caa92531e2099b852a4"
+    },
+    {
+      "path": "observations/mcp-worker-budget-green.log",
+      "bytes": 892,
+      "sha256": "e00a5b16354f1e6fe9f7c634c5fdd17aa1b6c72e95c146fe02826bdf85a50926"
+    },
+    {
+      "path": "observations/mcp-worker-budget-red.log",
+      "bytes": 1460,
+      "sha256": "0d424de15708effc404cfd973ad3219c5e2fd98ded51bc91b0166cb53ffe981d"
+    },
+    {
+      "path": "observations/mcp-worker-doc-links.log",
+      "bytes": 24,
+      "sha256": "7fbabcfcae1e18d5baa12022d47675c8ddf3c8ebcaab5f0fa6c66e51adbce19d"
+    },
+    {
+      "path": "observations/mcp-worker-final-markdown.json",
+      "bytes": 174,
+      "sha256": "2f011d04af54ba1126cf9d31670a4f127ecb892764f0b18dda4942d3c2a32a6e"
+    },
+    {
+      "path": "observations/mcp-worker-final-reuse.log",
+      "bytes": 404,
+      "sha256": "f8f078ec67b06aa765e0720040079d4cafb8cc5013a348d2b48d92cc622b0473"
+    },
+    {
+      "path": "observations/mcp-worker-final-versions.log",
+      "bytes": 3223,
+      "sha256": "0c207aca55b747d32dced59ffbb1fad667ab31ff8da48c01b833cf88871b49d1"
+    },
+    {
+      "path": "observations/mcp-worker-msrv-sdk26.log",
+      "bytes": 4714,
+      "sha256": "3589740bedd664afd25a00ef5b59e85092db76064deefad9e4f2660ea863eed1"
+    },
+    {
+      "path": "observations/mcp-worker-msrv.log",
+      "bytes": 2173,
+      "sha256": "f67473823b22a21fe0a13d373aa3c429f76630ff48bb25ba2b1b10aea74735bc"
+    },
+    {
+      "path": "session-fuzz/all-build.log",
+      "bytes": 235,
+      "sha256": "b0b457dc2e483c9619cf248c655f78e678f9dc368d28615baa59da97b6eaa014"
+    },
+    {
+      "path": "session-fuzz/build-corrected.log",
+      "bytes": 183,
+      "sha256": "5db25f5ca8153dee6ef9842db35461f9e66aa1b28b4d6b21439c04c6e6c7a170"
+    },
+    {
+      "path": "session-fuzz/build.log",
+      "bytes": 6069,
+      "sha256": "980f9d7960aab73fa54ee0e3d2b5888b0fac682e082879f925969a7ab9742c27"
+    },
+    {
+      "path": "session-fuzz/fmt.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "session-fuzz/fuzz-fmt.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "session-fuzz/graph-comparison.json",
+      "bytes": 105,
+      "sha256": "cb5a34b967f095682190833cf45b0ee7c1d7772cea890b7f8a3f52ed17fe2633"
+    },
+    {
+      "path": "session-fuzz/markdown.json",
+      "bytes": 52,
+      "sha256": "d0fd03ad035a25992d93f4510a607da1dc25ca45c1eb7a8c54e9a99cb539d1c5"
+    },
+    {
+      "path": "session-fuzz/metadata-after.json",
+      "bytes": 1026838,
+      "sha256": "25f22944adeb9b7fad02e8ea93d9f885f5ddcb2e356d98898113fd18d65a8e60"
+    },
+    {
+      "path": "session-fuzz/metadata-before.json",
+      "bytes": 1025355,
+      "sha256": "d99947f04e5e25e8ccd891acb07f249ee6ae7350e206dbb1e0c7e81389f1d34c"
+    },
+    {
+      "path": "session-fuzz/replay-http_headers.log",
+      "bytes": 1031,
+      "sha256": "5691660808bb7d4c722b00d3b4832577d9fe63f45c7d77467914977790938221"
+    },
+    {
+      "path": "session-fuzz/replay-session_lifecycle.log",
+      "bytes": 1052,
+      "sha256": "c32c50c36ca205e5f78a2da5739600766c4ec0c8f17d4be031d58eeaffb90b1a"
+    },
+    {
+      "path": "session-fuzz/replay-tools-regressions.log",
+      "bytes": 1027,
+      "sha256": "42698085c3ef88bbd2ad45888ea4587507bb51ae5fb40478ca27c9aaf6f7995f"
+    },
+    {
+      "path": "session-fuzz/replay-tools.log",
+      "bytes": 1025,
+      "sha256": "627f519d2abbc9aa1330df9e8b4acf0487c0858f7d478c3e179a7223ece17dfd"
+    },
+    {
+      "path": "session-fuzz/reuse.log",
+      "bytes": 404,
+      "sha256": "5ee6adcce0d1fb9e009d76eb948fe7c5ddc45211957b008fcf8c3bbf4a8d4ab7"
+    },
+    {
+      "path": "session-fuzz/smoke.log",
+      "bytes": 134610,
+      "sha256": "37b4ea9129911d61c3b8d948d2d67e61f87d563fe5dbbc42b2d33aa86115ee4c"
+    },
+    {
+      "path": "session-fuzz/spelling.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "worker-gates/clippy.log",
+      "bytes": 1029,
+      "sha256": "5d365f4e86d79e4457c5f1dc342c9bbf6c0da237b0b1a7e41c4c689afadb6f72"
+    },
+    {
+      "path": "worker-gates/deny.log",
+      "bytes": 12441,
+      "sha256": "36bfa2420495d9a83fa04c6bb72ce370a13e0e08aec656bafe021e800efb2f4d"
+    },
+    {
+      "path": "worker-gates/doctests.log",
+      "bytes": 199,
+      "sha256": "d9cfe5632190f278001fec10cff2f6881e678a39db75614763de2485a94df91a"
+    },
+    {
+      "path": "worker-gates/examples.log",
+      "bytes": 102,
+      "sha256": "583e54109cc793ef28d99e495b7f4df3cf36eeeb24934448791464f26ecdd23c"
+    },
+    {
+      "path": "worker-gates/fmt.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "worker-gates/reuse.log",
+      "bytes": 404,
+      "sha256": "744c59c9cd43eeae4363e2f49c6e35e1f947f32893b393e158507a0c92c7bc94"
+    },
+    {
+      "path": "worker-gates/spelling.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "worker-gates/summary.json",
+      "bytes": 564,
+      "sha256": "2bb073c0b03ae4650d519f37e27e7d90fc7635f5f3f6e61af62ffc940d3c052a"
+    },
+    {
+      "path": "worker-gates/tests.log",
+      "bytes": 11851,
+      "sha256": "9ff27e05cacdf870c03c28ebd89d14c81f553aab4f5fe30b399d08724cd45c5d"
+    },
+    {
+      "path": "worker-gates/versions.log",
+      "bytes": 3223,
+      "sha256": "0c207aca55b747d32dced59ffbb1fad667ab31ff8da48c01b833cf88871b49d1"
+    },
+    {
+      "path": "worker-gates/vet.log",
+      "bytes": 73,
+      "sha256": "024c7b28078fbf2e9cebb6edf18dc11c7013c2b66d7612f80066e42b8a571f1c"
+    },
+    {
+      "path": "worker-gates/workflow.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ]
+}

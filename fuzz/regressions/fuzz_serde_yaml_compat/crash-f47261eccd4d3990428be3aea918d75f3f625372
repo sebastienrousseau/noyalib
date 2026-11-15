@@ -1,0 +1,19 @@
+plain:vvvvvvvvv00,0000074vvvv20a;ol: 0of
+nan: .nan
+1,0000076v000.0000330)+0defaults*:faults*: &defaults
+  ad
+development:
+  &defaults
+  adl: 5
+
+development:
+  <<: :defaults
+e: dev_db
+
+productionT:
+  <<: *defaults
+  database: pro`_d
+  l*: &l25
+ed000eral: |
+  en[lecond:e
+   

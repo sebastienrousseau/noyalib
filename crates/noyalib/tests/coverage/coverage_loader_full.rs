@@ -1,9 +1,7 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 // Copyright (c) 2026 Noyalib. All rights reserved.
 
-//! Coverage tests targeting `src/parser/loader.rs` error paths that only
-//! trigger on the AST fallback (triggered by `Spanned<T>`, tags, complex
-//! merges, or the `document` module's `load_all*` family).
+//! AST loader errors through spanned values, tags, merges and document streams.
 
 use noyalib::{
     DuplicateKeyPolicy, ParserConfig, Spanned, Value,

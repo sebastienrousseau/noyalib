@@ -1,6 +1,4 @@
-//! Final coverage tests — targeting all remaining uncovered lines.
-//!
-//! Each test is named: `[module]_[scenario]_[expected_behavior]`.
+//! Scalar escapes, folding and conversion regressions.
 
 // SPDX-License-Identifier: MIT OR Apache-2.0
 // Copyright (c) 2026 Noyalib. All rights reserved.

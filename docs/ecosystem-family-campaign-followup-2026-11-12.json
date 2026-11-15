@@ -1,0 +1,38 @@
+{
+  "run": "https://github.com/sebastienrousseau/noyalib/actions/runs/43192902589",
+  "core_candidate_source": "f7e6d5ce9f02ff6789edad017099adb667c85759",
+  "target_results": {
+    "passed": 29,
+    "failed": 2,
+    "total": 31
+  },
+  "retained_artifacts": 32,
+  "archive": {
+    "path": "docs/evidence/family-campaign-followup-2026-11-12.tar.gz",
+    "bytes": 29993377,
+    "sha256": "4a2aa276f60f91a0fc335a8327fbc4073f2cb2f7f90efa8fefded28bd891ea4d"
+  },
+  "corpora": "Full corpora retained locally and in GitHub artifacts with finite retention. Archive index records each corpus file digest, not corpus contents.",
+  "completed_roundtrip_hours": [
+    {
+      "source_commit": "76c5baabae5886340cd05a33e1cfac839cb1c814",
+      "scope": "fuzz",
+      "target": "fuzz_roundtrip",
+      "status": "passed",
+      "executions": 29784747,
+      "measured_seconds": 3601,
+      "worktree_dirty": false
+    },
+    {
+      "source_commit": "76c5baabae5886340cd05a33e1cfac839cb1c814",
+      "scope": "fuzz-nostd",
+      "target": "fuzz_roundtrip_alloc_only",
+      "status": "passed",
+      "executions": 35102052,
+      "measured_seconds": 3601,
+      "worktree_dirty": false
+    }
+  ],
+  "acceptance": "Historical source scopes only. Neither 29 target passes nor two roundtrip hours establish final-source full-family acceptance.",
+  "open_finding": "Typed canonical duplicate identity remains pending ADR-0019; its original input remains compared."
+}

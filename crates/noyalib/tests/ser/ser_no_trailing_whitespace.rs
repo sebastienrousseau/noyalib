@@ -1,32 +1,9 @@
 // SPDX-FileCopyrightText: 2026 Noyalib
 // SPDX-License-Identifier: MIT OR Apache-2.0
 
-//! The serializer writes no trailing whitespace that is not string content —
-//! issue #297.
-//!
-//! Two sources, both of them duplicated logic that had drifted from the rule
-//! its sibling already applied:
-//!
-//! 1. **A dangling indicator.** `write_mapping` writes `key:` with no space
-//!    when the value is a block collection, because the value begins on the
-//!    next line. `write_sequence` carried its own copy of the key-writing and
-//!    always wrote `key: `, so any pair inside a sequence item whose value was
-//!    a mapping or a list ended its line with a space. The `-` indicator had
-//!    the same problem for a nested sequence.
-//! 2. **An empty block-scalar line.** The content loop wrote the block's
-//!    indent before every line including empty ones, leaving the indent
-//!    standing on a line that holds nothing. It existed in three identical
-//!    copies (`|` auto, `|` explicit, `>`), so the rule was missing from all
-//!    three.
-//!
-//! Nothing here is a correctness fix: every "before" output loads back to the
-//! same value. What it is, is output a repo's own lint rejects —
-//! `git diff --check`, `yamllint`'s `trailing-spaces`, `editorconfig-checker`.
-//!
-//! The distinction that governs every case below is **content versus
-//! leftovers**. Trailing whitespace a block scalar's *string* owns must
-//! survive untouched; the tests at the end pin that, because a blanket
-//! line-strip would be the tempting fix and it silently changes values.
+//! Serialization leaves no whitespace after dangling collection indicators
+//! or on empty block-scalar lines (#297). String-owned trailing whitespace
+//! remains content and must survive unchanged.
 
 use noyalib::{Value, from_str, to_string_value};
 

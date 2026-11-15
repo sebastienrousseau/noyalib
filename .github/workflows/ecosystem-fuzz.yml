@@ -1,0 +1,176 @@
+# SPDX-FileCopyrightText: 2026 Noyalib
+# SPDX-License-Identifier: MIT OR Apache-2.0
+
+name: Full family fuzz campaigns
+
+on:
+  pull_request:
+    branches: [main, "feat/**"]
+    types: [labeled]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: family-fuzz-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  inventory:
+    if: github.event.label.name == 'full-fuzz'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    outputs:
+      matrix: ${{ steps.inventory.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha }}
+          path: noyalib
+      - name: Test inventory and evidence guards
+        run: |
+          python3 noyalib/scripts/tests/test_family_fuzz_matrix.py
+          python3 noyalib/scripts/tests/test_ecosystem_candidate.py
+          python3 noyalib/scripts/tests/test_fuzz_campaign.py
+      - name: Resolve only the five immutable candidate refs
+        id: sources
+        run: |
+          python3 - <<'PY'
+          import os, pathlib, runpy
+          candidate = runpy.run_path('noyalib/scripts/prepare-ecosystem-candidate.py')
+          rows = candidate['products'](pathlib.Path('noyalib/docs/ecosystem-candidate.json'))
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              for row in rows:
+                  print(row['repo'].replace('-', '_') + '=' + row['commit'], file=output)
+          PY
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: sebastienrousseau/noya-cli
+          ref: ${{ steps.sources.outputs.noya_cli }}
+          persist-credentials: false
+          path: noya-cli
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: sebastienrousseau/noyalib-lsp
+          ref: ${{ steps.sources.outputs.noyalib_lsp }}
+          persist-credentials: false
+          path: noyalib-lsp
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: sebastienrousseau/noyalib-mcp
+          ref: ${{ steps.sources.outputs.noyalib_mcp }}
+          persist-credentials: false
+          path: noyalib-mcp
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: sebastienrousseau/noyalib-wasm
+          ref: ${{ steps.sources.outputs.noyalib_wasm }}
+          persist-credentials: false
+          path: noyalib-wasm
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: sebastienrousseau/noyalib-serde-yaml
+          ref: ${{ steps.sources.outputs.noyalib_serde_yaml }}
+          persist-credentials: false
+          path: noyalib-serde-yaml
+      - name: Discover every target from the checked-out manifests
+        id: inventory
+        run: |
+          python3 noyalib/scripts/family-fuzz-matrix.py "$GITHUB_WORKSPACE" > family-matrix.json
+          python3 - <<'PY'
+          import json, os
+          rows = json.load(open('family-matrix.json'))
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              print('matrix=' + json.dumps(rows, separators=(',', ':')), file=output)
+          PY
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: family-fuzz-inventory
+          path: family-matrix.json
+          if-no-files-found: error
+          retention-days: 14
+
+  fuzz:
+    needs: inventory
+    name: ${{ matrix.repo }} / ${{ matrix.scope }} / ${{ matrix.target }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      max-parallel: 16
+      matrix: ${{ fromJSON(needs.inventory.outputs.matrix) }}
+    env:
+      CARGO_BUILD_JOBS: '2'
+      CARGO_INCREMENTAL: '0'
+      CARGO_TERM_COLOR: never
+      RUSTC_WRAPPER: ''
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha }}
+          path: noyalib
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        if: matrix.repo != 'noyalib'
+        with:
+          repository: sebastienrousseau/${{ matrix.repo }}
+          ref: ${{ matrix.commit }}
+          persist-credentials: false
+          path: product
+      - name: Validate source identity and exact candidate resolution
+        env:
+          PRODUCT_REPO: ${{ matrix.repo }}
+          PRODUCT_COMMIT: ${{ matrix.commit }}
+        run: |
+          set -euo pipefail
+          if [ "$PRODUCT_REPO" = noyalib ]; then
+            test "$(git -C noyalib rev-parse HEAD)" = "$PRODUCT_COMMIT"
+          else
+            python3 noyalib/scripts/prepare-ecosystem-candidate.py prepare \
+              --core noyalib --satellite product --repo "$PRODUCT_REPO" \
+              --commit "$PRODUCT_COMMIT" --receipt candidate-receipt.json
+          fi
+      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8
+        with:
+          toolchain: nightly
+      - name: Install the pinned fuzz driver
+        run: cargo install --locked cargo-fuzz --version 0.13.2
+      - name: Retain the unresolved duplicate-key counterexample in comparison
+        if: matrix.repo == 'noyalib' && matrix.target == 'fuzz_diff'
+        run: |
+          mkdir -p noyalib/fuzz/regressions/fuzz_diff/pending-contract
+          cp noyalib/docs/evidence/pending-typed-duplicate-identity.bin \
+            noyalib/fuzz/regressions/fuzz_diff/pending-contract/original.bin
+      - name: Run and record one hour of actual fuzz execution
+        working-directory: ${{ matrix.repo == 'noyalib' && 'noyalib' || 'product' }}
+        env:
+          FUZZ_SCOPE: ${{ matrix.scope }}
+          FUZZ_TARGET: ${{ matrix.target }}
+          CORE_RUNNER: ${{ github.workspace }}/noyalib/scripts/run-fuzz-campaign.py
+        run: |
+          python3 "$CORE_RUNNER" --scope "$FUZZ_SCOPE" --target "$FUZZ_TARGET" \
+            --seconds 3600 --output "$RUNNER_TEMP/campaign" \
+            --target-dir "$RUNNER_TEMP/campaign-build"
+      - name: Refuse changed tracked sources and locks
+        if: always()
+        env:
+          PRODUCT_REPO: ${{ matrix.repo }}
+        run: |
+          set -euo pipefail
+          git -C noyalib diff --exit-code HEAD
+          if [ "$PRODUCT_REPO" != noyalib ]; then
+            python3 noyalib/scripts/prepare-ecosystem-candidate.py verify --receipt candidate-receipt.json
+          fi
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always()
+        with:
+          name: family-${{ matrix.repo }}-${{ matrix.scope }}-${{ matrix.target }}
+          path: |
+            candidate-receipt.json
+            ${{ runner.temp }}/campaign/campaign.log
+            ${{ runner.temp }}/campaign/receipt.json
+            ${{ runner.temp }}/campaign/artifacts/
+            ${{ runner.temp }}/campaign/corpus/
+          if-no-files-found: error
+          retention-days: 14

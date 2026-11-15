@@ -1,13 +1,7 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 // Copyright (c) 2026 Noyalib. All rights reserved.
 
-//! Targeted coverage for residual gaps in `parser/scanner.rs`,
-//! `parser/loader.rs`, and `parser/events.rs` after the 282-test
-//! push at 7c640f3. Each test is named
-//! `parser_<file>_<short_description>` and is intentionally narrow:
-//! it exists to drive a *specific* uncovered branch surfaced by
-//! the workspace's local llvm-cov run, not to revalidate semantics
-//! already exercised elsewhere.
+//! Scanner, loader and event-parser acceptance and refusal regressions.
 
 #![allow(missing_docs)]
 

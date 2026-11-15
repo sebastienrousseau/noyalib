@@ -1,14 +1,7 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 // Copyright (c) 2026 Noyalib. All rights reserved.
 
-//! Targeted coverage tests for regression-prone paths surfaced during
-//! the v0.0.1 cleanup:
-//!   * Tagged-scalar resolution in the loader (`!!int`, `!!float`, `!!bool`,
-//!     `!!null`, `!!str`, custom tags).
-//!   * Complex-key coercion to string for the AST Mapping.
-//!   * Alias expansion byte limit in the streaming path.
-//!   * Merge-key injection edge cases.
-//!   * Duplicate-key policy `First` / `Last` / `Error` in the streaming path.
+//! Tagged scalars, complex keys, alias budgets, merges and duplicate policies.
 
 use noyalib::{DuplicateKeyPolicy, ParserConfig, Value, from_str, from_str_with_config};
 use std::collections::BTreeMap;

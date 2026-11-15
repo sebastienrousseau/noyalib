@@ -124,6 +124,7 @@ fn from_slice_into_value() {
 // ── from_reader: io::Read interface ────────────────────────────────
 
 #[test]
+#[cfg(feature = "std")]
 fn from_reader_round_trips_typed() {
     let yaml = "name: noyalib\nport: 8080\nenabled: true\n";
     let cursor = std::io::Cursor::new(yaml);
@@ -133,6 +134,7 @@ fn from_reader_round_trips_typed() {
 }
 
 #[test]
+#[cfg(feature = "std")]
 fn from_reader_into_value() {
     let yaml = "foo: bar\nbaz: qux\n";
     let cursor = std::io::Cursor::new(yaml);
@@ -141,6 +143,7 @@ fn from_reader_into_value() {
 }
 
 #[test]
+#[cfg(feature = "std")]
 fn from_reader_with_config() {
     let yaml = "key: value\n";
     let cursor = std::io::Cursor::new(yaml);
@@ -153,6 +156,7 @@ fn from_reader_with_config() {
 // ── from_str_strict: surfaces unknown keys ─────────────────────────
 
 #[test]
+#[cfg(feature = "strict-deserialise")]
 fn from_str_strict_rejects_unknown_field() {
     let yaml = "name: noyalib\nport: 8080\nenabled: true\nextra: oops\n";
     let r: Result<Cfg, _> = noyalib::from_str_strict(yaml);
@@ -160,6 +164,7 @@ fn from_str_strict_rejects_unknown_field() {
 }
 
 #[test]
+#[cfg(feature = "strict-deserialise")]
 fn from_str_strict_passes_when_clean() {
     let yaml = "name: noyalib\nport: 8080\nenabled: true\n";
     let cfg: Cfg = noyalib::from_str_strict(yaml).expect("strict clean");
@@ -169,6 +174,7 @@ fn from_str_strict_passes_when_clean() {
 // ── from_slice_strict / from_reader_strict ──────────────────────────
 
 #[test]
+#[cfg(feature = "strict-deserialise")]
 fn from_slice_strict_rejects_unknown_field() {
     let bytes = b"name: x\nport: 1\nenabled: true\nextra: oops\n";
     let r: Result<Cfg, _> = noyalib::from_slice_strict(bytes);
@@ -176,6 +182,7 @@ fn from_slice_strict_rejects_unknown_field() {
 }
 
 #[test]
+#[cfg(all(feature = "std", feature = "strict-deserialise"))]
 fn from_reader_strict_rejects_unknown_field() {
     let bytes = b"name: x\nport: 1\nenabled: true\nextra: oops\n";
     let cursor = std::io::Cursor::new(bytes);

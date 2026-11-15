@@ -75,7 +75,7 @@ fn bench_value_bump_at(c: &mut Criterion, target: &str, n_entries_list: &[usize]
         // two), the comparison shows the parse-vs-walk gap.
         group.bench_with_input(
             BenchmarkId::new("baseline_full_reparse", n),
-            &(src.clone(), key.clone(), new_val),
+            &(src, key, new_val),
             |b, (src, key, new_val)| {
                 b.iter_with_setup(
                     || {

@@ -46,7 +46,10 @@ fn check(op: &str, source: &str, path: &str, fragment: &str) {
         return;
     }
     if let Err(e) = noyalib::from_str::<Value>(doc.source()) {
-        panic!("an accepted edit does not re-parse ({e}): {:?}", doc.source());
+        panic!(
+            "an accepted edit does not re-parse ({e}): {:?}",
+            doc.source()
+        );
     }
     if let Err(e) = doc.validate() {
         panic!("an accepted edit fails validate ({e}): {:?}", doc.source());

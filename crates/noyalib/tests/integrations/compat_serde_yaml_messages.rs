@@ -1,18 +1,9 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 // Copyright (c) 2026 Noyalib. All rights reserved.
 
-//! The `compat::serde_yaml` façade's error wording.
+//! Compatibility error wording and quote-aware flow-context locations.
 //!
-//! The point of the compat layer is that code ported from `serde_yaml`
-//! keeps working — including code that matches on the *text* of an
-//! error, which is more common than it should be and is exactly what a
-//! drop-in replacement has to preserve.
-//!
-//! Each branch of the message mapper rewrites one noyalib error into
-//! upstream's phrasing, and several of them build a positional trailer
-//! by re-scanning the source for the flow context libyaml would have
-//! named. That re-scan is quote-aware, which only matters when the
-//! document has quotes *and* brackets in it — the case nothing reached.
+//! Keep upstream phrasing and positional trailers for pinned refusal classes.
 
 // The whole file exercises the `compat::serde_yaml` façade, which only
 // exists behind its own feature. Without this the file is a compile

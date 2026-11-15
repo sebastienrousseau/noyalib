@@ -1,0 +1,14 @@
+defaults*:faults*: &defaults
+  ad
+development:
+  &defaults
+  adl: 5
+
+development:
+  <<: :defaults
+  data`ase: dev_db
+
+production:
+  <<: *defaults
+  database: pro`_db
+  p*: &d25

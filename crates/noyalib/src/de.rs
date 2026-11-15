@@ -98,7 +98,10 @@ where
 /// targets `&'a str` and the YAML scalar required transformation,
 /// serde's `&str` visitor surfaces an `invalid type: string,
 /// expected a borrowed string` error — switch the target to
-/// `Cow<'a, str>` or `String` to accept either form.
+/// `Cow<'a, str>` or `String` to accept either form. Repeated canonical
+/// mapping keys and other inputs requiring AST materialization return the
+/// streaming fallback error. Use [`from_str`] with an owned target for those
+/// inputs.
 ///
 /// # Examples
 ///
@@ -129,7 +132,9 @@ where
 /// # Errors
 ///
 /// Returns an error if `s` is not valid YAML under the supplied
-/// config or cannot be deserialised into `T`.
+/// config or cannot be deserialised into `T`. As with [`from_str_borrowing`],
+/// repeated canonical keys requiring materialization return the streaming
+/// fallback error.
 ///
 /// # Examples
 ///
