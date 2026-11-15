@@ -9,6 +9,10 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [v0.0.62] - Unreleased
 
+v0.0.61 was never published: on 2026-11-15 the maintainer folded it into
+this release, so crates.io goes from v0.0.60 to v0.0.62. Every v0.0.61
+change below ships here.
+
 ### Changed
 
 - **Breaking:** the default profile refuses a byte order mark (U+FEFF)
@@ -41,7 +45,10 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   and `.[1][0]: JSON number out of range`, instead of `[1]` and `1.0`.
   Paths under a key (`items[1]`) already matched.
 
-## [v0.0.61] - Unreleased
+## [v0.0.61] - Not published
+
+Folded into v0.0.62 (2026-11-15); there is no v0.0.61 tag or registry
+release.
 
 ### Changed
 
