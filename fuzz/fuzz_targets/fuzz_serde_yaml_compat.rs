@@ -71,9 +71,7 @@ fuzz_target!(|data: &[u8]| {
                     &a,
                 )
                 && !oracle_agrees(oracle_normalization::stream_bom_prefix(s), &a)
-                && !oracle_agrees(bare_stream_bom(s), &a)
-                && !prefix_bom_repair_agrees(s, &a)
-                && !oracle_agrees(oracle_normalization::collection_spelling(s), &a)
+                && !repaired_reading_agrees(s, &a)
                 && !oracle_agrees(oracle_normalization::unique_colliding_anchors(s), &a)
                 && !oracle_agrees(oracle_normalization::terminated_spaced_block(s), &a)
                 && !oracle_agrees(
@@ -104,9 +102,7 @@ fuzz_target!(|data: &[u8]| {
                     &a,
                 )
                 && !oracle_agrees(oracle_normalization::stream_bom_prefix(s), &a)
-                && !oracle_agrees(bare_stream_bom(s), &a)
-                && !prefix_bom_repair_agrees(s, &a)
-                && !oracle_agrees(oracle_normalization::collection_spelling(s), &a)
+                && !repaired_reading_agrees(s, &a)
                 && !oracle_agrees(
                     oracle_normalization::collection_spelling(s)
                         .and_then(|n| oracle_normalization::unique_colliding_anchors(&n)),
@@ -483,12 +479,18 @@ fn prefix_bom_rejection_agrees(s: &str) -> bool {
     })
 }
 
-/// The source without its line-start BOMs (and with the tab-line repair),
-/// each also through the collection spelling repairs: libyaml reads a
-/// BOM line after a scalar as text, and the BOM can hide its other
-/// quirks (`\n\u{feff}-\n- \t`). The values must still agree.
-fn prefix_bom_repair_agrees(s: &str, a: &serde_json::Value) -> bool {
+/// The source as written, without its stream BOM alone, or without its
+/// line-start BOMs (and with the tab-line repair), each also through the
+/// collection spelling repairs or the dash-tab repair alone: libyaml
+/// reads a BOM line after a scalar as text, and the BOM can hide its
+/// other quirks (`\n\u{feff}-\n- \t`, `\u{feff}-:\r- \t\nk: |+\n `).
+/// The dash-tab repair runs alone too because the full spelling also
+/// ends a trailing space line, which changes a keep-chomped block
+/// scalar (`- \t|+\n `). The values must still agree.
+fn repaired_reading_agrees(s: &str, a: &serde_json::Value) -> bool {
     [
+        Some(s.to_owned()),
+        bare_stream_bom(s),
         bom_classification::without_prefix_boms(s),
         bom_classification::without_prefix_boms_or_tab_lines(s),
     ]
@@ -496,7 +498,8 @@ fn prefix_bom_repair_agrees(s: &str, a: &serde_json::Value) -> bool {
     .flatten()
     .flat_map(|source| {
         let spelled = oracle_normalization::collection_spelling(&source);
-        [Some(source), spelled]
+        let dash_tabs = oracle_normalization::spaced_sequence_tabs(&source);
+        [Some(source), spelled, dash_tabs]
     })
     .any(|candidate| oracle_agrees(candidate, a))
 }
