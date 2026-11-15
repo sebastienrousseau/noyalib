@@ -78,11 +78,11 @@ pub(crate) fn without_prefix_boms(source: &str) -> Option<String> {
     changed.then_some(out)
 }
 
-/// [`without_prefix_boms`] with the tabs of each line of only white space
-/// made spaces. libyaml refuses a line-start tab even on a blank line
-/// (`$\n#\n\t`), which it otherwise read inside the scalar the BOM
-/// extended. The line stays (emptying one between CR and LF would join
-/// them into one break). The values must still agree.
+/// [`without_prefix_boms`] with the leading tabs of each blank or comment
+/// line made spaces. libyaml refuses a line-start tab even there
+/// (`$\n#\n\t`, `b\n#\n\t#`), which it otherwise read inside the scalar
+/// the BOM extended. The line stays (emptying one between CR and LF would
+/// join them into one break). The values must still agree.
 #[allow(dead_code)]
 pub(crate) fn without_prefix_boms_or_tab_lines(source: &str) -> Option<String> {
     let stripped = without_prefix_boms(source)?;
@@ -92,8 +92,11 @@ pub(crate) fn without_prefix_boms_or_tab_lines(source: &str) -> Option<String> {
         let end = rest.find(['\n', '\r']).map_or(rest.len(), |at| at + 1);
         let (line, tail) = rest.split_at(end);
         let body = line.trim_end_matches(['\n', '\r']);
-        if body.contains('\t') && body.chars().all(|c| matches!(c, ' ' | '\t')) {
-            out.push_str(&line.replace('\t', " "));
+        let text = body.trim_start_matches([' ', '\t']);
+        let lead = body.len() - text.len();
+        if lead > 0 && (text.is_empty() || text.starts_with('#')) {
+            out.push_str(&body[..lead].replace('\t', " "));
+            out.push_str(&line[lead..]);
         } else {
             out.push_str(line);
         }
@@ -180,7 +183,7 @@ mod tests {
     }
 
     #[test]
-    fn tab_line_repair_spaces_only_white_lines_with_a_tab() {
+    fn tab_line_repair_spaces_blank_and_comment_line_tabs() {
         assert_eq!(
             without_prefix_boms_or_tab_lines("\n$\n\u{feff}#\n\n \t\r\n\t a\n").as_deref(),
             Some("\n$\n#\n\n  \r\n\t a\n")
@@ -189,6 +192,11 @@ mod tests {
         assert_eq!(
             without_prefix_boms_or_tab_lines("a\r\t\n\u{feff}").as_deref(),
             Some("a\r \n")
+        );
+        // Found by fuzz_serde_yaml_compat: a tab before a comment.
+        assert_eq!(
+            without_prefix_boms_or_tab_lines("b\n\u{feff}#\n\t#\t\n").as_deref(),
+            Some("b\n#\n #\t\n")
         );
         assert_eq!(without_prefix_boms_or_tab_lines("a\n\t\n"), None);
     }
