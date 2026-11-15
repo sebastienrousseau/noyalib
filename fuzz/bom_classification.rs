@@ -140,6 +140,29 @@ mod tests {
 
     #[test]
     fn unquoted_bom_oracle_difference_requires_an_actual_located_rejection() {
+        // A BOM opening a later line that is no document prefix: both
+        // profiles refuse it, and the classifier recognises the refusal.
+        for source in [
+            "\u{feff}\u{feff}",
+            "-\r\u{feff}-",
+            "s\r\u{feff}\u{feff}",
+            "#.\n\n\u{feff}\u{feff}",
+        ] {
+            for config in [
+                noyalib::ParserConfig::default(),
+                noyalib::ParserConfig::serde_yaml_compat(),
+            ] {
+                let error =
+                    noyalib::from_str_with_config::<noyalib::Value>(source, &config).unwrap_err();
+                assert!(
+                    unquoted_content_bom_rejection(source, &error),
+                    "{source:?}: {error}"
+                );
+            }
+        }
+        // A BOM opening a token after other text on its line: since
+        // v0.0.62 the compatibility profile reads it as text, as libyaml
+        // does, so only the default profile's refusal is classified.
         for source in [
             "- \u{feff}\t",
             "key: \u{feff}value",
@@ -147,28 +170,31 @@ mod tests {
             " \u{feff}\tUo\t)/ ",
             "\t\u{feff}value",
             "{\u{feff}}",
-            "\u{feff}\u{feff}",
             "{a: \u{feff}b, c: \u{feff}d}",
             "[\u{feff},]",
             "{\u{feff}'}",
             "\n \u{feff}",
             "-\r \u{feff}",
-            "-\r\u{feff}-",
             "\u{feff} \u{feff}",
             "a:\r \u{feff}---",
-            "{4e740,\rinf,\u{feff}}",
-            "s\r\u{feff}\u{feff}",
-            "#.\n\n\u{feff}\u{feff}",
         ] {
-            // The compatibility target classifies the shim's error.
-            let config = noyalib::ParserConfig::serde_yaml_compat();
-            let error =
-                noyalib::from_str_with_config::<noyalib::Value>(source, &config).unwrap_err();
+            let compat = noyalib::ParserConfig::serde_yaml_compat();
+            assert!(
+                noyalib::from_str_with_config::<noyalib::Value>(source, &compat).is_ok(),
+                "{source:?}"
+            );
+            let error = noyalib::from_str::<noyalib::Value>(source).unwrap_err();
             assert!(
                 unquoted_content_bom_rejection(source, &error),
                 "{source:?}: {error}"
             );
         }
+        // The default profile stops earlier here (`4e740` is an infinity
+        // that collides with the `inf` key), so only the compatibility
+        // profile reaches the BOM, which it now reads as text.
+        let source = "{4e740,\rinf,\u{feff}}";
+        let compat = noyalib::ParserConfig::serde_yaml_compat();
+        assert!(noyalib::from_str_with_config::<noyalib::Value>(source, &compat).is_ok());
     }
 
     #[test]
