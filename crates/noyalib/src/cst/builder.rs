@@ -48,7 +48,7 @@ pub(crate) fn parse_full(input: &str, cfg: &ParseConfig) -> Result<ParsedDocumen
     };
     crate::policy::check_document(&cfg.policies, &value)?;
     let source: Arc<str> = Arc::from(input);
-    let green = build_green_tree(&source, cfg.max_depth)?;
+    let green = build_green_tree(&source, cfg)?;
     Ok(ParsedDocument {
         green,
         value,
@@ -110,15 +110,13 @@ pub(crate) fn parse_subtree(
     fragment: &str,
     ctx: SubtreeContext,
     expected: SyntaxKind,
-    max_depth: usize,
+    cfg: &ParseConfig,
 ) -> Result<GreenNode> {
     use SyntaxKind as S;
     match expected {
-        S::BlockMapping | S::BlockSequence => {
-            parse_block_collection(fragment, ctx, expected, max_depth)
-        }
-        S::MappingEntry | S::SequenceItem => parse_block_entry(fragment, ctx, expected, max_depth),
-        S::Document => build_green_tree(fragment, max_depth),
+        S::BlockMapping | S::BlockSequence => parse_block_collection(fragment, ctx, expected, cfg),
+        S::MappingEntry | S::SequenceItem => parse_block_entry(fragment, ctx, expected, cfg),
+        S::Document => build_green_tree(fragment, cfg),
         _ => Err(Error::Parse(format!(
             "parse_subtree: unsupported expected kind {expected:?}"
         ))),
@@ -129,10 +127,10 @@ fn parse_block_collection(
     fragment: &str,
     ctx: SubtreeContext,
     expected: SyntaxKind,
-    max_depth: usize,
+    cfg: &ParseConfig,
 ) -> Result<GreenNode> {
     let modified = prepend_first_line_indent(fragment, ctx.indent);
-    let parsed = build_green_tree(&modified, max_depth)?;
+    let parsed = build_green_tree(&modified, cfg)?;
     first_node_of_kind(&parsed, expected).ok_or_else(|| {
         Error::Parse(format!(
             "parse_subtree: re-parsed fragment did not contain a {expected:?} at root"
@@ -144,7 +142,7 @@ fn parse_block_entry(
     fragment: &str,
     ctx: SubtreeContext,
     expected: SyntaxKind,
-    max_depth: usize,
+    cfg: &ParseConfig,
 ) -> Result<GreenNode> {
     if is_yaml_blank(fragment) {
         return Err(Error::Parse(
@@ -166,7 +164,7 @@ fn parse_block_entry(
         SyntaxKind::SequenceItem => wrapped.push_str("- 0\n"),
         _ => unreachable!("guarded by caller"),
     }
-    let parsed = build_green_tree(&wrapped, max_depth)?;
+    let parsed = build_green_tree(&wrapped, cfg)?;
     let parent_kind = match expected {
         SyntaxKind::MappingEntry => SyntaxKind::BlockMapping,
         SyntaxKind::SequenceItem => SyntaxKind::BlockSequence,
@@ -245,8 +243,9 @@ fn first_node_of_kind(node: &GreenNode, kind: SyntaxKind) -> Option<GreenNode> {
 
 /// Walk the token stream once and report `(start, end)` byte ranges
 /// for each logical YAML document in `input`.
-pub(crate) fn document_boundaries(input: &str) -> Result<Vec<(usize, usize)>> {
+pub(crate) fn document_boundaries(input: &str, cfg: &ParseConfig) -> Result<Vec<(usize, usize)>> {
     let mut scanner = Scanner::new(input);
+    scanner.set_byte_order_marks_in_text(cfg.byte_order_marks_in_text);
     scanner.enable_recording();
     loop {
         // Keep the scanner's byte position: the typed loaders report
@@ -335,13 +334,14 @@ fn prefix_start(input: &str, marker: usize) -> usize {
 /// into a green tree. Drains the token stream so any scanner-level
 /// error surfaces here rather than later.
 ///
-/// `max_depth` is the document's [`ParseConfig::max_depth`]. The
-/// builder refuses a tree that nests deeper than the loader would
-/// accept, so a fragment that never reaches the full parse (the
-/// local repair behind an edit) cannot build a tree whose recursive
-/// walkers exhaust the stack.
-pub(crate) fn build_green_tree(source: &str, max_depth: usize) -> Result<GreenNode> {
+/// `cfg` is the document's [`ParseConfig`]. The builder refuses a tree
+/// that nests deeper than its `max_depth`, as the loader would, so a
+/// fragment that never reaches the full parse (the local repair behind
+/// an edit) cannot build a tree whose recursive walkers exhaust the
+/// stack, and it reads a byte order mark as the loader does.
+pub(crate) fn build_green_tree(source: &str, cfg: &ParseConfig) -> Result<GreenNode> {
     let mut scanner = Scanner::new(source);
+    scanner.set_byte_order_marks_in_text(cfg.byte_order_marks_in_text);
     scanner.enable_recording();
 
     loop {
@@ -358,7 +358,7 @@ pub(crate) fn build_green_tree(source: &str, max_depth: usize) -> Result<GreenNo
     let comments = scanner.take_comments();
     drop(scanner);
 
-    assemble(trivia, tokens, comments, max_depth)
+    assemble(trivia, tokens, comments, cfg.max_depth)
 }
 
 /// Merge the three streams (trivia, tokens, comments) into a nested

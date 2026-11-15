@@ -45,6 +45,8 @@ pub struct ParseConfig {
     pub legacy_binary_numbers: bool,
     /// See [`crate::ParserConfig::signed_radix_integers`].
     pub signed_radix_integers: bool,
+    /// See [`crate::ParserConfig::byte_order_marks_in_text`].
+    pub byte_order_marks_in_text: bool,
     pub float_overflow_strings: bool,
     pub integer_overflow_errors: bool,
     pub non_scalar_key_policy: crate::de::NonScalarKeyPolicy,
@@ -90,6 +92,7 @@ impl Default for ParseConfig {
             leading_zero_integer_strings: false,
             legacy_binary_numbers: false,
             signed_radix_integers: false,
+            byte_order_marks_in_text: false,
             float_overflow_strings: false,
             integer_overflow_errors: false,
             non_scalar_key_policy: crate::de::NonScalarKeyPolicy::Stringify,
@@ -150,6 +153,7 @@ impl From<&crate::de::ParserConfig> for ParseConfig {
             leading_zero_integer_strings: c.leading_zero_integer_strings,
             legacy_binary_numbers: c.legacy_binary_numbers,
             signed_radix_integers: c.signed_radix_integers,
+            byte_order_marks_in_text: c.byte_order_marks_in_text,
             float_overflow_strings: c.float_overflow_strings,
             integer_overflow_errors: c.integer_overflow_errors,
             non_scalar_key_policy: c.non_scalar_key_policy,
@@ -1130,7 +1134,7 @@ pub(crate) fn load_exactly_one_no_spans(input: &str, config: &ParseConfig) -> Re
 /// Skip-span loader entry point: parse all documents into
 /// `Value`s without building `SpanTree`s. See [`load_one_no_spans`].
 pub(crate) fn load_all_no_spans(input: &str, config: &ParseConfig) -> Result<Vec<Value>> {
-    let mut parser = crate::parser::events::Parser::with_max_events(input, config.max_events);
+    let mut parser = crate::parser::events::Parser::for_config(input, config);
     let mut loader = NoSpanLoader::new(config);
     loop {
         match parser.next_event() {

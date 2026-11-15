@@ -176,14 +176,10 @@ impl Scanner<'_> {
             if self.pos == pos_before_blank {
                 return Err(self.error("comment indicator '#' must be preceded by a space or tab"));
             }
-            while !self.is_eof() && !Self::is_break(self.peek()) {
-                if Self::is_raw_control(self.peek())
-                    || Self::is_non_printable_unicode_prefix(&self.input[self.pos..])
-                {
-                    return Err(self.error("comment contains a raw control character"));
-                }
-                self.advance();
-            }
+            let rest = &self.input[self.pos..];
+            let len = memchr::memchr2(b'\n', b'\r', rest).unwrap_or(rest.len());
+            self.check_comment_text(&rest[..len])?;
+            self.advance_by(len);
         }
 
         // Per §8.1.1 the header line ends here: anything left that is

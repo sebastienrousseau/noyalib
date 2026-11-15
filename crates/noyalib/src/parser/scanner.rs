@@ -174,6 +174,9 @@ pub(crate) struct Scanner<'a> {
     /// The parse's `max_events`, from which the most tokens the queue
     /// may hold back is derived (see [`Self::set_max_events`]).
     max_events: usize,
+    /// A byte order mark is text in plain and block scalars and in
+    /// comments (`ParserConfig::byte_order_marks_in_text`).
+    bom_in_text: bool,
     /// Index of the next token to consume from `tokens`.
     tokens_consumed: usize,
     /// Total tokens produced (including consumed ones).
@@ -466,6 +469,7 @@ impl<'a> Scanner<'a> {
             col: 0,
             tokens: Vec::with_capacity(estimated_tokens),
             max_events: usize::MAX,
+            bom_in_text: false,
             tokens_consumed: 0,
             tokens_produced: 0,
             indent: -1,
@@ -546,6 +550,12 @@ impl<'a> Scanner<'a> {
     /// a margin already proves the document is over its event budget.
     pub(crate) fn set_max_events(&mut self, max_events: usize) {
         self.max_events = max_events;
+    }
+
+    /// Read a byte order mark as text where YAML 1.2 refuses it (see
+    /// `ParserConfig::byte_order_marks_in_text`).
+    pub(crate) fn set_byte_order_marks_in_text(&mut self, on: bool) {
+        self.bom_in_text = on;
     }
 
     fn queue_over_budget(&self) -> bool {
@@ -1021,12 +1031,7 @@ impl<'a> Scanner<'a> {
         // §5.1 c-printable holds for comment text as for scalar content:
         // a raw control character is an error wherever it appears (found
         // by the serde_yaml compat fuzzer on `#]\0`).
-        if Self::first_non_printable(&remaining[..end]).is_some() {
-            return Err(self.error(
-                "comment contains a raw control character — YAML content is limited to \
-                 printable characters",
-            ));
-        }
+        self.check_comment_text(&remaining[..end])?;
         if self.capture_comments {
             // `#` itself is at `comment_start`; the text starts
             // one byte later. Skip the `#` but keep any following
@@ -1508,6 +1513,11 @@ impl<'a> Scanner<'a> {
             self.skip_prefix_bom();
             return Ok(());
         }
+        // libyaml reads a BOM that does not open a line as the first
+        // character of a plain scalar; the `serde_yaml` profile follows.
+        if self.bom_in_text && self.col > 0 {
+            return self.fetch_plain_scalar();
+        }
         // A BOM anywhere else is an error, not content (§5.2: "a
         // BOM must not appear inside a document"). Treating it as
         // the first character of a plain scalar produced a value
@@ -1698,6 +1708,11 @@ impl<'a> Scanner<'a> {
                 index: directive_start + offset,
             });
         }
+        self.check_no_text_bom(
+            &self.input[directive_start..self.pos + len],
+            "byte order mark inside a directive line: YAML 1.2 keeps one only in a \
+             quoted scalar or a document prefix",
+        )?;
         if len < rest.len() {
             self.advance_by(len);
         } else {
@@ -2367,10 +2382,10 @@ impl<'a> Scanner<'a> {
             {
                 break;
             }
-            if Self::is_raw_control(c)
-                || Self::is_non_printable_unicode_prefix(&self.input[self.pos..])
-            {
-                return Err(self.error("anchor or alias name contains a non-printable character"));
+            if Self::is_raw_control(c) || Self::is_excluded_name_prefix(&self.input[self.pos..]) {
+                return Err(self.error(
+                    "anchor or alias name contains a non-printable character or byte order mark",
+                ));
             }
             self.advance();
         }
@@ -2387,7 +2402,15 @@ impl<'a> Scanner<'a> {
     /// non-printable Unicode character at the cursor: never valid in a tag.
     fn at_tag_control(&self) -> bool {
         let b = self.peek();
-        b < 0x20 || b == 0x7f || Self::is_non_printable_unicode_prefix(&self.input[self.pos..])
+        b < 0x20 || b == 0x7f || Self::is_excluded_name_prefix(&self.input[self.pos..])
+    }
+
+    /// A raw non-printable Unicode character or a byte order mark at the
+    /// start of `bytes`: never part of an anchor name or a tag, in any
+    /// profile (YAML 1.2.2 builds both on `ns-char`; libyaml refuses a
+    /// BOM there too).
+    fn is_excluded_name_prefix(bytes: &[u8]) -> bool {
+        Self::is_non_printable_unicode_prefix(bytes) || bytes.starts_with(&scalars::BOM)
     }
 
     fn fetch_tag(&mut self) -> ScanResult<()> {
@@ -2418,8 +2441,8 @@ impl<'a> Scanner<'a> {
                 }
                 if self.at_tag_control() {
                     return Err(self.error(
-                        "verbatim tag contains a control character — tag URIs are \
-                         limited to printable characters",
+                        "verbatim tag contains a control character or byte order mark — tag \
+                         URIs are limited to printable characters",
                     ));
                 }
                 self.advance();
@@ -2457,8 +2480,8 @@ impl<'a> Scanner<'a> {
                 }
                 if self.at_tag_control() {
                     return Err(self.error(
-                        "tag suffix contains a control character — tags are limited \
-                         to printable characters",
+                        "tag suffix contains a control character or byte order mark — tags \
+                         are limited to printable characters",
                     ));
                 }
                 if self.peek() == b'>' {
@@ -2505,8 +2528,8 @@ impl<'a> Scanner<'a> {
                 }
                 if self.at_tag_control() {
                     return Err(self.error(
-                        "tag suffix contains a control character — tags are limited \
-                         to printable characters",
+                        "tag suffix contains a control character or byte order mark — tags \
+                         are limited to printable characters",
                     ));
                 }
                 if self.peek() == b'>' {

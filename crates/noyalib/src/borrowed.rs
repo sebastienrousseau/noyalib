@@ -600,7 +600,7 @@ pub fn from_str_borrowed_with_config<'a>(
         )));
     }
 
-    let mut parser = Parser::with_max_events(input, config.max_events);
+    let mut parser = Parser::for_config(input, &config);
     let mut builder = BorrowedBuilder::new(&config);
 
     loop {

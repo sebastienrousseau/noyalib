@@ -141,7 +141,7 @@ impl Document {
             let indent = entry_indent_column(&self.source, n_old_start);
             let ctx = SubtreeContext::block_at(indent);
 
-            match parse_subtree(fragment, ctx, cand.kind, self.config.max_depth) {
+            match parse_subtree(fragment, ctx, cand.kind, &self.config) {
                 Ok(new_sub)
                     if new_sub.kind() == cand.kind && new_sub.text_len() == fragment.len() =>
                 {

@@ -5,6 +5,7 @@
 
 mod anchors_aliases;
 mod block_scalars;
+mod byte_order_marks;
 mod comments;
 mod edge_cases;
 mod errors;

@@ -11,6 +11,20 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Changed
 
+- **Breaking:** the default profile refuses a byte order mark (U+FEFF)
+  inside plain and block scalars, comments and directive lines, as
+  YAML 1.2.2 production [27] requires (`nb-char` excludes it).
+  `a: x\u{feff}y` used to load the string `"x\u{feff}y"`; it is now a
+  parse error. A BOM still opens the stream or a later document
+  prefix, and single- and double-quoted scalars keep one (`nb-json`).
+  Anchor names and tags refuse it in every profile, as libyaml does.
+
+- The `serde_yaml` profile reads a BOM as text in plain and block
+  scalars and comments, as serde_yaml 0.9 does, through the new
+  `ParserConfig::byte_order_marks_in_text` flag. That includes a BOM
+  opening a scalar after other text on the line (`a: \u{feff}b`,
+  `- \u{feff}b`), which both profiles used to refuse.
+
 - **Breaking:** an error path brackets a sequence index everywhere,
   as typed-field errors already did: a duplicate key, key collision or
   integer overflow under a sequence now reads `items[0].name`, not

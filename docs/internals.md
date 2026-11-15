@@ -61,7 +61,7 @@ likely to cost something. The `benches/` directory measures them.
 | `cst/green.rs` | 283 | Immutable green-node primitive with relative-length leaves. |
 | `cst/mod.rs` | 145 | Side-table CST (concrete syntax tree) for lossless round-tripping. |
 | `cst/syntax.rs` | 135 | Syntax-kind tags for green-tree nodes and tokens. |
-| `de/config.rs` | 1457 | Parser configuration types. |
+| `de/config.rs` | 1470 | Parser configuration types. |
 | `de/deserializer.rs` | 1061 | The serde `Deserializer` over a `&Value` and its access types. |
 | `de.rs` | 1305 | YAML Deserialization. |
 | `diagnostic.rs` | 447 | Framework-neutral structured diagnostics and optional `miette` bridges. |
@@ -79,13 +79,13 @@ likely to cost something. The `benches/` directory measures them.
 | `macros.rs` | 99 | Declarative builders for the public config types. |
 | `parallel.rs` | 526 | Parallel multi-document YAML parsing — the "MapReduce" path. |
 | `parser/budget.rs` | 282 | The resource budgets the loaders enforce, as pure predicates. |
-| `parser/events.rs` | 867 | YAML 1.2 event-based parser. |
-| `parser/loader.rs` | 2534 | Event-to-Value tree builder with security limits. |
+| `parser/events.rs` | 877 | YAML 1.2 event-based parser. |
+| `parser/loader.rs` | 2538 | Event-to-Value tree builder with security limits. |
 | `parser/meter.rs` | 422 | The stateful half of the budgets: one meter every loader charges. |
-| `parser/mod.rs` | 108 | Native YAML 1.2 parser. |
-| `parser/scanner/block_scalars.rs` | 407 | Literal and folded block scalar scanning for the YAML scanner, as a |
-| `parser/scanner/scalars.rs` | 1012 | Scalar scanning for the YAML scanner: plain, single/double-quoted |
-| `parser/scanner.rs` | 2989 | YAML 1.2 lexical scanner. |
+| `parser/mod.rs` | 111 | Native YAML 1.2 parser. |
+| `parser/scanner/block_scalars.rs` | 403 | Literal and folded block scalar scanning for the YAML scanner, as a |
+| `parser/scanner/scalars.rs` | 1058 | Scalar scanning for the YAML scanner: plain, single/double-quoted |
+| `parser/scanner.rs` | 3012 | YAML 1.2 lexical scanner. |
 | `path.rs` | 1101 | Path tracking for YAML structure locations. |
 | `policy.rs` | 285 | Pluggable parser policies for "Safe YAML" enforcement. |
 | `portable_float.rs` | 287 | Private binary64 operations for alloc-only builds. |
