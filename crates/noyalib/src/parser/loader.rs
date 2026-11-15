@@ -415,7 +415,7 @@ impl<'a> Loader<'a> {
     fn parent_path(&self) -> Option<String> {
         let enclosing = &self.stack[..self.stack.len().saturating_sub(1)];
         frames_path(enclosing.iter().map(|f| match f {
-            Frame::MappingValue { key, .. } => Some(FrameStep::Key(key)),
+            Frame::MappingValue { key, .. } => Some(FrameStep::Key(key.clone())),
             Frame::Sequence { items, .. } => Some(FrameStep::Index(items.len())),
             _ => None,
         }))
@@ -563,7 +563,7 @@ impl<'a> Loader<'a> {
         Error::IntegerOverflow {
             location: Some(crate::error::Location::from_index(input, at)),
             path: frames_path(self.stack.iter().map(|f| match f {
-                Frame::MappingValue { key, .. } => Some(FrameStep::Key(key)),
+                Frame::MappingValue { key, .. } => Some(FrameStep::Key(key.clone())),
                 Frame::Sequence { items, .. } => Some(FrameStep::Index(items.len())),
                 _ => None,
             })),
@@ -1232,7 +1232,7 @@ impl<'a> NoSpanLoader<'a> {
     fn parent_path(&self) -> Option<String> {
         let enclosing = &self.stack[..self.stack.len().saturating_sub(1)];
         frames_path(enclosing.iter().map(|f| match f {
-            NoSpanFrame::MappingValue { key, .. } => Some(FrameStep::Key(key)),
+            NoSpanFrame::MappingValue { key, .. } => Some(FrameStep::Key(key.clone())),
             NoSpanFrame::Sequence { items, .. } => Some(FrameStep::Index(items.len())),
             _ => None,
         }))
@@ -1358,7 +1358,7 @@ impl<'a> NoSpanLoader<'a> {
         Error::IntegerOverflow {
             location: Some(crate::error::Location::from_index(input, at)),
             path: frames_path(self.stack.iter().map(|f| match f {
-                NoSpanFrame::MappingValue { key, .. } => Some(FrameStep::Key(key)),
+                NoSpanFrame::MappingValue { key, .. } => Some(FrameStep::Key(key.clone())),
                 NoSpanFrame::Sequence { items, .. } => Some(FrameStep::Index(items.len())),
                 _ => None,
             })),
@@ -1901,15 +1901,15 @@ fn span_tree_end(span: &SpanTree) -> usize {
 
 /// One step of a loader frame path: the key of an open mapping or the
 /// index of an open sequence.
-enum FrameStep<'a> {
-    Key(&'a str),
+enum FrameStep {
+    Key(String),
     Index(usize),
 }
 
 /// Path from a loader frame stack: the field the currently arriving
 /// value belongs to, spelled like the typed-error paths
 /// (`server.port`, `items[3]`, `[0].name`).
-fn frames_path<'a>(segments: impl Iterator<Item = Option<FrameStep<'a>>>) -> Option<String> {
+fn frames_path(segments: impl Iterator<Item = Option<FrameStep>>) -> Option<String> {
     use core::fmt::Write as _;
     let mut out = String::new();
     let mut any = false;
@@ -1920,7 +1920,7 @@ fn frames_path<'a>(segments: impl Iterator<Item = Option<FrameStep<'a>>>) -> Opt
                 if !out.is_empty() {
                     out.push('.');
                 }
-                out.push_str(key);
+                out.push_str(&key);
             }
             FrameStep::Index(index) => {
                 let _ = write!(out, "[{index}]");
