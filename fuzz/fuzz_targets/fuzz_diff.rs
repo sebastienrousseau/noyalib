@@ -30,7 +30,6 @@ mod question_key;
 #[path = "../bom_classification.rs"]
 mod bom_classification;
 
-
 fuzz_target!(|data: &[u8]| {
     let Ok(s) = std::str::from_utf8(data) else {
         return;

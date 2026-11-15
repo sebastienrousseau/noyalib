@@ -38,7 +38,6 @@ mod signed_radix;
 #[path = "../question_key.rs"]
 mod question_key;
 
-
 fuzz_target!(|data: &[u8]| {
     let Ok(s) = std::str::from_utf8(data) else {
         return;

@@ -10,9 +10,7 @@ pub(crate) fn unquoted_content_bom_rejection(source: &str, error: &noyalib::Erro
     let noyalib::Error::ParseWithLocation { message, location } = error else {
         return false;
     };
-    if message
-        != "byte order mark inside a document: a BOM may only open a document prefix"
-    {
+    if message != "byte order mark inside a document: a BOM may only open a document prefix" {
         return false;
     }
     let offset = location.index();
@@ -36,9 +34,9 @@ pub(crate) fn unquoted_content_bom_rejection(source: &str, error: &noyalib::Erro
     // A BOM straight after the stream BOM, or after a BOM opening a later
     // prefix, is document content (section 5.2): `#.\n\n\u{feff}\u{feff}`.
     let repeated_start = (!prefix.is_empty() && prefix.chars().all(|c| c == '\u{feff}'))
-        || prefix.strip_suffix('\u{feff}').is_some_and(|before| {
-            before.is_empty() || before.ends_with(['\n', '\r'])
-        });
+        || prefix
+            .strip_suffix('\u{feff}')
+            .is_some_and(|before| before.is_empty() || before.ends_with(['\n', '\r']));
     let rest = &source[offset + '\u{feff}'.len_utf8()..];
     // Inside a document (after content or a `---` line, before any `...`),
     // a BOM at a line start or after indentation is content too: only a
@@ -229,8 +227,7 @@ mod tests {
 
     #[test]
     fn bom_classifier_does_not_hide_prefix_quote_or_other_error_failures() {
-        let message =
-            "byte order mark inside a document: a BOM may only open a document prefix";
+        let message = "byte order mark inside a document: a BOM may only open a document prefix";
         for (source, offset) in [
             ("\u{feff}key: value", 0),
             ("key: '\u{feff}value'", 6),
