@@ -140,12 +140,7 @@ mod tests {
     fn unquoted_bom_oracle_difference_requires_an_actual_located_rejection() {
         // A BOM opening a later line that is no document prefix: both
         // profiles refuse it, and the classifier recognises the refusal.
-        for source in [
-            "\u{feff}\u{feff}",
-            "-\r\u{feff}-",
-            "s\r\u{feff}\u{feff}",
-            "#.\n\n\u{feff}\u{feff}",
-        ] {
+        for source in ["\u{feff}\u{feff}", "-\r\u{feff}-", "#.\n\n\u{feff}\u{feff}"] {
             for config in [
                 noyalib::ParserConfig::default(),
                 noyalib::ParserConfig::serde_yaml_compat(),
@@ -175,6 +170,9 @@ mod tests {
             "-\r \u{feff}",
             "\u{feff} \u{feff}",
             "a:\r \u{feff}---",
+            // A BOM opening a plain scalar's continuation line is text in
+            // the compatibility profile too: "s \u{feff}\u{feff}", as libyaml.
+            "s\r\u{feff}\u{feff}",
         ] {
             let compat = noyalib::ParserConfig::serde_yaml_compat();
             assert!(

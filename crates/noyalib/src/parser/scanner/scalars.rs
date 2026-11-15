@@ -303,11 +303,9 @@ impl Scanner<'_> {
             }
 
             // Check for document indicators at start of line.
-            // A line-start BOM never continues the scalar: it either
-            // opens the next document's prefix or is refused (§5.2).
             if length == 0
                 && self.column() == 0
-                && (self.at_plain_document_marker(c) || remaining.starts_with(&[0xEF, 0xBB, 0xBF]))
+                && (self.at_plain_document_marker(c) || self.line_start_bom_ends_scalar(remaining))
             {
                 break;
             }
@@ -315,6 +313,14 @@ impl Scanner<'_> {
             length += 1;
         }
         length
+    }
+
+    /// A BOM opening a line ends a plain scalar in the default profile:
+    /// it opens the next document's prefix or is refused (§5.2). The
+    /// `serde_yaml` profile reads it as text that continues the scalar,
+    /// as libyaml does, which knows no BOM after the stream start.
+    fn line_start_bom_ends_scalar(&self, remaining: &[u8]) -> bool {
+        !self.bom_in_text && remaining.starts_with(&BOM)
     }
 
     /// Whether `c` at the cursor starts a `---` or `...` document marker.

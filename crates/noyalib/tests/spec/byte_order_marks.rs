@@ -215,3 +215,23 @@ fn a_refused_bom_is_located_where_it_stands() {
         assert_eq!((at.line(), at.column()), (line, column), "{yaml:?}: {err}");
     }
 }
+
+/// In the serde_yaml profile a BOM that opens a continuation line of a
+/// plain scalar is text, as libyaml reads it, even on the last line.
+/// Found by fuzz_serde_yaml_compat; serde_yaml 0.9.34 reads each input
+/// as shown.
+#[test]
+fn a_line_start_bom_continues_a_plain_scalar_in_the_serde_yaml_profile() {
+    let cfg = ParserConfig::serde_yaml_compat();
+    let got: serde_json::Value =
+        noyalib::from_str_with_config("\r \u{feff}\n\u{feff}\u{feff}\n", &cfg).unwrap();
+    assert_eq!(got, serde_json::json!("\u{feff} \u{feff}\u{feff}"));
+    let got: serde_json::Value = noyalib::from_str_with_config("x\n\u{feff}y\n", &cfg).unwrap();
+    assert_eq!(got, serde_json::json!("x \u{feff}y"));
+    // A BOM opening the last line, with nothing after it, is text too.
+    let got: serde_json::Value =
+        noyalib::from_str_with_config(".\n\u{feff}..#\n\u{feff}", &cfg).unwrap();
+    assert_eq!(got, serde_json::json!(". \u{feff}..# \u{feff}"));
+    // The default profile still refuses it.
+    assert!(noyalib::from_str::<Value>("x\n\u{feff}y\n").is_err());
+}
