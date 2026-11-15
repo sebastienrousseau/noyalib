@@ -167,3 +167,19 @@ fn shallow_aliases_still_expand() {
     let b = noyalib::borrowed::from_str_borrowed(&yaml).expect("parses");
     assert_eq!(b.into_owned(), v);
 }
+
+/// The chain behind a byte order mark that opens a later document's
+/// prefix is refused the same way (GHSA-cgjc-95j2-3fm8).
+#[test]
+fn an_alias_chain_behind_a_prefix_bom_is_refused() {
+    let yaml = format!("a: 1\n\u{feff}---\n{}", alias_chain(100, 100));
+    let refused = on_small_stack(move || {
+        let owned = noyalib::load_all(&yaml).map(|d| d.count());
+        let borrowed = noyalib::borrowed::from_str_borrowed(&yaml).map(std::mem::forget);
+        [owned.err(), borrowed.err()]
+    });
+    for err in refused {
+        let err = err.expect("the chain must be refused");
+        assert!(is_depth_refusal(&err), "{err:?}");
+    }
+}

@@ -296,6 +296,26 @@ fn lookaround_patterns_need_an_explicit_opt_in() {
     assert!(compiled.validate(&Value::from("ABC")).is_err());
 }
 
+/// GHSA-pqq9-chrq-xq85: `patternProperties` compiled with the same
+/// backtracking engine as `pattern`. By default the catastrophic
+/// lookaround key pattern is refused at compile time.
+#[test]
+fn pattern_properties_use_the_linear_engine_by_default() {
+    use noyalib::{CompiledSchema, Value};
+    let hostile: Value =
+        noyalib::from_str("type: object\npatternProperties: {'^(\\w+\\s?)*$(?<=x)': false}\n")
+            .unwrap();
+    let err = CompiledSchema::compile(&hostile).unwrap_err().to_string();
+    assert!(err.contains("not a valid JSON Schema"), "{err}");
+    // The same pattern compiles once the caller opts in.
+    assert!(
+        CompiledSchema::builder(&hostile)
+            .backtracking_patterns(10_000)
+            .build()
+            .is_ok()
+    );
+}
+
 #[test]
 fn backtracking_limit_fails_closed_under_negation() {
     use noyalib::{CompiledSchema, Value};
