@@ -173,8 +173,9 @@ sval = { version = "2", optional = true, default-features = false }
 arbitrary = { version = "1", optional = true }
 # `tokio` async runtime — required by the `tokio` feature for
 # native `AsyncRead` parsing, `AsyncYamlStream`, and the decoder. Default
-# features off; we only need the I/O bits.
-tokio = { version = "1", optional = true, default-features = false, features = ["io-util"] }
+# features off; we only need the I/O bits. 1.53.3 is the first release
+# of the current line patched for RUSTSEC-2026-0386 (AsyncFd I/O safety).
+tokio = { version = "1.53.3", optional = true, default-features = false, features = ["io-util"] }
 tokio-util = { version = "0.7", optional = true, default-features = false, features = ["codec"] }
 bytes = { version = "1", optional = true, default-features = false }
 
@@ -221,7 +222,7 @@ serde_ignored = "0.1"
 # Test-only tokio runtime — the `tokio` feature in `[features]`
 # only enables `io-util`; tests need `macros` and the
 # `current-thread` runtime to execute `#[tokio::test]` cases.
-tokio = { version = "1", features = ["macros", "rt", "io-util"] }
+tokio = { version = "1.53.3", features = ["macros", "rt", "io-util"] }
 # Reproduces a consumer build that unifies `jsonschema`'s file
 # resolver in, so `tests/schema/schema_hardening.rs` proves external
 # `$ref` stays refused regardless of the features another crate
