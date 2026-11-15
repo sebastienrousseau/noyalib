@@ -416,7 +416,7 @@ fn render_upstream_style(
         E::IntegerOverflow { path, .. } => {
             let prefix = path
                 .as_deref()
-                .map(|p| format!("{p}: "))
+                .map(|p| format!("{}: ", upstream_path(p)))
                 .unwrap_or_default();
             let suffix = if path.is_some() {
                 at(location)
@@ -461,9 +461,27 @@ fn render_upstream_style(
         E::DeserializeWithLocation { message, .. } => {
             // Upstream renders suffix-style: `field: message at line L
             // column C`.
-            format!("{message}{}", at(location))
+            format!("{}{}", upstream_path(message), at(location))
         }
         _ => e.to_string(),
+    }
+}
+
+/// Spell a leading root index the way `serde_yaml` 0.9's `Path` does.
+/// Upstream prints the root as `.`, so `[1]: ...` from noyalib reads
+/// `.[1]: ...` there; a path under a key (`items[1]`) is already the
+/// same. Only a message that opens with `[<digits>]` is touched.
+fn upstream_path(message: &str) -> String {
+    let opens_with_index = message
+        .strip_prefix('[')
+        .and_then(|rest| rest.split_once(']'))
+        .is_some_and(|(digits, _)| {
+            !digits.is_empty() && digits.bytes().all(|b| b.is_ascii_digit())
+        });
+    if opens_with_index {
+        format!(".{message}")
+    } else {
+        message.to_owned()
     }
 }
 

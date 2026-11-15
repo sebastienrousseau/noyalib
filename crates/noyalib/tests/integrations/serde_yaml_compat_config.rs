@@ -174,7 +174,7 @@ fn overflow_path_reflects_nesting_and_sequence_indices() {
     .unwrap_err();
     match err {
         Error::IntegerOverflow { path, .. } => {
-            assert_eq!(path.as_deref(), Some("outer.items.1"));
+            assert_eq!(path.as_deref(), Some("outer.items[1]"));
         }
         other => panic!("expected IntegerOverflow, got {other:?}"),
     }

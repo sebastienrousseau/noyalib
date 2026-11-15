@@ -38,7 +38,9 @@ Error::KeyCollisionAt { key: String, path: String, location: Location }
 ```
 
 `path` is the dotted path of the entry, key included (`site.name`,
-`items.0.name`); `location` is where the second key begins. They
+`items[0].name`; v0.0.62 brackets sequence indices, which were dotted
+segments before, so an index no longer reads like a key named `0`);
+`location` is where the second key begins. They
 display as `site.name: duplicate key "name" at line 3, column 3` and
 `m.1: distinct mapping keys collide after string conversion: 1 (...) at
 line 3, column 3`.

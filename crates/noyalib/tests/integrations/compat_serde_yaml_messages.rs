@@ -118,3 +118,43 @@ fn the_facade_round_trips_an_ordinary_document() {
     let back: serde_yaml::Value = serde_yaml::from_str(&out).expect("reparse");
     assert_eq!(back, v, "the façade did not round-trip\n{out}");
 }
+
+/// A typed rejection names its field path the way serde_yaml 0.9's
+/// `Path` prints it: the root renders as `.`, so an index at the root
+/// reads `.[1]`, while an index under a key joins it directly
+/// (`items[1]`). Expected strings are serde_yaml 0.9.34's own output.
+#[test]
+fn a_sequence_error_path_is_spelled_like_upstream() {
+    #[derive(Debug, serde::Deserialize)]
+    struct Items {
+        #[allow(dead_code)]
+        items: Vec<u32>,
+    }
+    #[derive(Debug, serde::Deserialize)]
+    struct Port {
+        #[allow(dead_code)]
+        port: u16,
+    }
+    let path = |msg: String| msg.split_once(": ").map(|(p, _)| p.to_owned()).unwrap();
+    let root = serde_yaml::from_str::<Vec<u32>>("- 1\n- x\n").unwrap_err();
+    assert_eq!(path(root.to_string()), ".[1]");
+    let nested = serde_yaml::from_str::<Items>("items:\n  - 1\n  - x\n").unwrap_err();
+    assert_eq!(path(nested.to_string()), "items[1]");
+    let field = serde_yaml::from_str::<Vec<Port>>("- port: 1\n- port: x\n").unwrap_err();
+    assert_eq!(path(field.to_string()), ".[1].port");
+    // The overflow refusal carries the same path: serde_yaml 0.9.34
+    // prints `.[1]: JSON number out of range` and `a[0]: ...` here.
+    let overflow = |yaml: &str| {
+        serde_yaml::from_str::<serde_yaml::Value>(yaml)
+            .unwrap_err()
+            .to_string()
+    };
+    assert_eq!(
+        overflow("- 1\n- 99999999999999999999\n"),
+        ".[1]: JSON number out of range at line 2 column 3"
+    );
+    assert_eq!(
+        overflow("a:\n  - 99999999999999999999\n"),
+        "a[0]: JSON number out of range at line 2 column 5"
+    );
+}

@@ -7,6 +7,19 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+## [v0.0.62] - Unreleased
+
+### Changed
+
+- **Breaking:** an error path brackets a sequence index everywhere,
+  as typed-field errors already did: a duplicate key, key collision or
+  integer overflow under a sequence now reads `items[0].name`, not
+  `items.0.name`, so an index no longer looks like a key named `0`.
+- **Breaking:** `compat::serde_yaml` spells an error path that opens
+  with a root index the way serde_yaml 0.9 does, `.[1]: invalid type`
+  and `.[1][0]: JSON number out of range`, instead of `[1]` and `1.0`.
+  Paths under a key (`items[1]`) already matched.
+
 ## [v0.0.61] - Unreleased
 
 ### Changed
