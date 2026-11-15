@@ -1,6 +1,6 @@
 {
   "harness_version": "1.0.0",
-  "generated_utc": "2026-11-15T20:05:51Z",
+  "generated_utc": "2026-11-15T20:20:43Z",
   "rustc": "rustc 1.100.0 (0ef1bc386 2026-11-09)",
   "host": "aarch64-apple-darwin",
   "network_probes": true,
@@ -11,7 +11,7 @@
   "probes_na": 12,
   "rubric_executed_pct": 92,
   "repos": {
-    "noyalib": {"sha": "69e880043f64175b5e3b737ba500e52b1ec5f936", "worktree": "clean", "version": "0.0.0"},
+    "noyalib": {"sha": "f2bd22af86f84e2d15da778aa71e4119115250f9", "worktree": "clean", "version": "0.0.62"},
     "noya-cli": {"sha": "32328cc3f34cbeb10a487dd0c562a5604f055bdd", "worktree": "dirty", "version": "0.0.62"},
     "noyalib-lsp": {"sha": "f2571b06f7d3e605c1efdfafb5a61baad8eb20f2", "worktree": "dirty", "version": "0.0.62"},
     "noyalib-mcp": {"sha": "3d3dc113b63b0ee37c0b5cf30e4bf01d1fab1a08", "worktree": "dirty", "version": "0.0.62"},
@@ -41,7 +41,7 @@
     {"repo":"noyalib","id":"release_sbom","category":"release","weight":2,"value":"6 sbom assets","score":1.0000,"probe":"gh release view --json assets | grep -i sbom"},
     {"repo":"noyalib","id":"dependabot_open","category":"release","weight":4,"value":"0 open alerts","score":1.0000,"probe":"gh api /repos/sebastienrousseau/noyalib/dependabot/alerts?state=open"},
     {"repo":"noyalib","id":"ci_main_green","category":"release","weight":3,"value":"success","score":1.0000,"probe":"gh run list --branch main --workflow CI --status completed --limit 1 --json conclusion"},
-    {"repo":"noyalib","id":"crates_io_current","category":"release","weight":2,"value":"tree 0.0.0 / crates.io 0.0.60","score":0.0000,"probe":"crates.io/api/v1/crates/noyalib .max_stable_version"},
+    {"repo":"noyalib","id":"crates_io_current","category":"release","weight":2,"value":"tree 0.0.62 / crates.io 0.0.60","score":0.0000,"probe":"crates.io/api/v1/crates/noyalib .max_stable_version"},
     {"repo":"noyalib","id":"openssf_scorecard","category":"release","weight":3,"value":"8.4/10","score":0.8400,"probe":"api.securityscorecards.dev/projects/github.com/sebastienrousseau/noyalib .score"},
     {"repo":"noya-cli","id":"tests","category":"correctness","weight":5,"value":"123 passed / 0 failed","score":1.0000,"probe":"cargo test --workspace --locked"},
     {"repo":"noya-cli","id":"clippy","category":"code_health","weight":3,"value":"0 diagnostics (rc=0)","score":1.0000,"probe":"cargo clippy --workspace --all-targets --locked -- -D warnings"},
@@ -163,7 +163,7 @@
     {"repo":"noyalib-serde-yaml","id":"ci_main_green","category":"release","weight":3,"value":"success","score":1.0000,"probe":"gh run list --branch main --workflow CI --status completed --limit 1 --json conclusion"},
     {"repo":"noyalib-serde-yaml","id":"crates_io_current","category":"release","weight":2,"value":"tree 0.0.62 / crates.io 0.0.60","score":0.0000,"probe":"crates.io/api/v1/crates/noyalib-serde-yaml .max_stable_version"},
     {"repo":"noyalib-serde-yaml","id":"openssf_scorecard","category":"release","weight":3,"value":"7.4/10","score":0.7400,"probe":"api.securityscorecards.dev/projects/github.com/sebastienrousseau/noyalib-serde-yaml .score"},
-    {"repo":"ecosystem","id":"version_lockstep","category":"integrity","weight":5,"value":"core 0.0.0 not tagged yet","score":null,"probe":"git tag -l v0.0.0 in noyalib (pending release; satellites pin only published versions)"},
+    {"repo":"ecosystem","id":"version_lockstep","category":"integrity","weight":5,"value":"core 0.0.62 not tagged yet","score":null,"probe":"git tag -l v0.0.62 in noyalib (pending release; satellites pin only published versions)"},
     {"repo":"ecosystem","id":"host_coverage","category":"integrity","weight":3,"value":"6/6 hosts present","score":1.0000,"probe":"directory presence for noyalib noya-cli noyalib-lsp noyalib-mcp noyalib-wasm noyalib-serde-yaml"}
   ]
 }
