@@ -255,6 +255,10 @@ probe_repo() {
   sha=$(git rev-parse HEAD 2>/dev/null || echo "-")
   dirty=$([ -n "$(git status --porcelain 2>/dev/null)" ] && echo "dirty" || echo "clean")
   ver=$(grep -m1 '^version' Cargo.toml 2>/dev/null | sed 's/.*"\(.*\)".*/\1/')
+  # A workspace root has no version: read the crate named after the
+  # repository, not whichever member sorts first (crates/noyalib-compare,
+  # an unpublished bench crate at 0.0.0, sorts before crates/noyalib).
+  [ -z "$ver" ] && ver=$(grep -m1 '^version' "crates/$repo/Cargo.toml" 2>/dev/null | sed 's/.*"\(.*\)".*/\1/')
   [ -z "$ver" ] && ver=$(grep -m1 '^version' crates/*/Cargo.toml 2>/dev/null | sed 's/.*"\(.*\)".*/\1/' | head -1)
   REPO_SHA[$repo]="$sha"; REPO_DIRTY[$repo]="$dirty"; REPO_VERSION[$repo]="$ver"
   dim "  $sha ($dirty)  version $ver"
