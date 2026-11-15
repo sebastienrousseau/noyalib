@@ -55,7 +55,7 @@
 
 ## Development version
 
-This branch prepares unreleased v0.0.61. Versioned Cargo examples target
+This branch prepares unreleased v0.0.62. Versioned Cargo examples target
 that release; use an already published version for registry installation
 until it ships.
 
@@ -65,14 +65,14 @@ until it ships.
 
 ```toml
 [dependencies]
-noyalib = "0.0.61"
+noyalib = "0.0.62"
 ```
 
 Disable the default `std` feature for `core` + `alloc` environments:
 
 ```toml
 [dependencies]
-noyalib = { version = "0.0.61", default-features = false }
+noyalib = { version = "0.0.62", default-features = false }
 ```
 
 Build the library and its test surface from source:
