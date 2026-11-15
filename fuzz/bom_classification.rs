@@ -78,10 +78,11 @@ pub(crate) fn without_prefix_boms(source: &str) -> Option<String> {
     changed.then_some(out)
 }
 
-/// [`without_prefix_boms`] with each line of only white space that holds
-/// a tab emptied. libyaml refuses a line-start tab even on a blank line
+/// [`without_prefix_boms`] with the tabs of each line of only white space
+/// made spaces. libyaml refuses a line-start tab even on a blank line
 /// (`$\n#\n\t`), which it otherwise read inside the scalar the BOM
-/// extended. The values must still agree.
+/// extended. The line stays (emptying one between CR and LF would join
+/// them into one break). The values must still agree.
 #[allow(dead_code)]
 pub(crate) fn without_prefix_boms_or_tab_lines(source: &str) -> Option<String> {
     let stripped = without_prefix_boms(source)?;
@@ -92,7 +93,7 @@ pub(crate) fn without_prefix_boms_or_tab_lines(source: &str) -> Option<String> {
         let (line, tail) = rest.split_at(end);
         let body = line.trim_end_matches(['\n', '\r']);
         if body.contains('\t') && body.chars().all(|c| matches!(c, ' ' | '\t')) {
-            out.push_str(&line[body.len()..]);
+            out.push_str(&line.replace('\t', " "));
         } else {
             out.push_str(line);
         }
@@ -179,10 +180,15 @@ mod tests {
     }
 
     #[test]
-    fn tab_line_repair_empties_only_white_lines_with_a_tab() {
+    fn tab_line_repair_spaces_only_white_lines_with_a_tab() {
         assert_eq!(
             without_prefix_boms_or_tab_lines("\n$\n\u{feff}#\n\n \t\r\n\t a\n").as_deref(),
-            Some("\n$\n#\n\n\r\n\t a\n")
+            Some("\n$\n#\n\n  \r\n\t a\n")
+        );
+        // Found by fuzz_serde_yaml_compat: the line between CR and LF stays.
+        assert_eq!(
+            without_prefix_boms_or_tab_lines("a\r\t\n\u{feff}").as_deref(),
+            Some("a\r \n")
         );
         assert_eq!(without_prefix_boms_or_tab_lines("a\n\t\n"), None);
     }

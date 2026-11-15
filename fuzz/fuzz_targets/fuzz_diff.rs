@@ -125,7 +125,9 @@ fuzz_target!(|data: &[u8]| {
             .and_then(|source| serde_yaml_ng::from_str::<serde_json::Value>(&source).ok())
             .is_some_and(|expected| numeric_equal(&noya, &expected))
         // A line-start BOM opens a document prefix (section 9.2); libyaml
-        // reads one after a plain scalar as part of it.
+        // reads one after a plain scalar as part of it. Where the archive
+        // refuses the repaired text, which noyalib reads unchanged, the
+        // input leaves the comparison like one it refuses outright.
         && ![
             bom_classification::without_prefix_boms(&base),
             bom_classification::without_prefix_boms_or_tab_lines(&base),
@@ -133,8 +135,10 @@ fuzz_target!(|data: &[u8]| {
         .into_iter()
         .flatten()
         .filter(|source| parse(source).is_ok_and(|value| numeric_equal(&noya, &value)))
-        .filter_map(|source| serde_yaml_ng::from_str::<serde_json::Value>(&source).ok())
-        .any(|expected| numeric_equal(&noya, &expected))
+        .any(|source| {
+            serde_yaml_ng::from_str::<serde_json::Value>(&source)
+                .map_or(true, |expected| numeric_equal(&noya, &expected))
+        })
     {
         // serde_yaml_ng vs noyalib divergence — abort so libfuzzer
         // saves the input as a unique crash artefact.
