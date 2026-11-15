@@ -71,6 +71,7 @@ fuzz_target!(|data: &[u8]| {
                     &a,
                 )
                 && !oracle_agrees(oracle_normalization::stream_bom_prefix(s), &a)
+                && !oracle_agrees(bare_stream_bom(s), &a)
                 && !oracle_agrees(bom_classification::without_prefix_boms(s), &a)
                 && !oracle_agrees(bom_classification::without_prefix_boms_or_tab_lines(s), &a)
                 && !oracle_agrees(oracle_normalization::collection_spelling(s), &a)
@@ -104,6 +105,7 @@ fuzz_target!(|data: &[u8]| {
                     &a,
                 )
                 && !oracle_agrees(oracle_normalization::stream_bom_prefix(s), &a)
+                && !oracle_agrees(bare_stream_bom(s), &a)
                 && !oracle_agrees(bom_classification::without_prefix_boms(s), &a)
                 && !oracle_agrees(oracle_normalization::collection_spelling(s), &a)
                 && !oracle_agrees(
@@ -480,6 +482,14 @@ fn prefix_bom_rejection_agrees(s: &str) -> bool {
         noyalib::compat::serde_yaml::from_str::<serde_json::Value>(&source).is_err()
             && serde_yaml::from_str::<serde_json::Value>(&source).is_err()
     })
+}
+
+/// The source without its stream BOM and no further repair. libyaml can
+/// misread a document after the stream BOM (`\u{feff}-\r|+\n ` loads as
+/// two documents), and `stream_bom_prefix` also ends a trailing space
+/// line, which changes a keep-chomped block scalar.
+fn bare_stream_bom(s: &str) -> Option<String> {
+    s.strip_prefix('\u{feff}').map(str::to_owned)
 }
 
 fn bom_column_shift(s: &str) -> bool {
