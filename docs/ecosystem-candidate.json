@@ -4,23 +4,23 @@
   "products": [
     {
       "repo": "noya-cli",
-      "commit": "89ca7934d153621cd7675fe648a571f937fae189"
+      "commit": "b9a0866267b494d3f08f0b8ba4e37ae5dd31094a"
     },
     {
       "repo": "noyalib-lsp",
-      "commit": "7e611e19d820254cfd25a34742ac5fe51fd4a52a"
+      "commit": "32c742e761db12a7094704d60ecbeca07860cb84"
     },
     {
       "repo": "noyalib-mcp",
-      "commit": "4fd5a1c75acc8c16193e84437a20e9df574d3cdb"
+      "commit": "11bf81ffe5a64ffd76da9a7f79a82b63de338198"
     },
     {
       "repo": "noyalib-wasm",
-      "commit": "ee263aa558f25d06e578cdebaa95ee3a7ed4804d"
+      "commit": "04014f1d8a521fd897411d95172991fe51f709da"
     },
     {
       "repo": "noyalib-serde-yaml",
-      "commit": "ba30e23efbdc29168cdaec3323205c6e3a81f1c3"
+      "commit": "9425bb731ac6db2bc76f9217f117ee7761265074"
     }
   ]
 }
