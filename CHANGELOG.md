@@ -52,6 +52,11 @@ change below ships here.
   plain, which the `serde_yaml` profile then refused to read back
   ("JSON number out of range"). Found by noyalib-serde-yaml's
   `fuzz_roundtrip`.
+- A `%TAG` handle or prefix holding a byte order mark is refused in every
+  profile. The compatibility profile, which reads a BOM in other text as
+  libyaml does, accepted it, and a tag built from that prefix was written
+  as a verbatim tag the parser refused. libyaml refuses the BOM there too.
+  Found by noyalib-serde-yaml's `fuzz_roundtrip`.
 
 ## [v0.0.61] - Not published
 

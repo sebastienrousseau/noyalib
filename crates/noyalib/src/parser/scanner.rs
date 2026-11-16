@@ -1646,15 +1646,11 @@ impl<'a> Scanner<'a> {
             self.skip_blank();
             if self.peek() == b'!' {
                 let h_start = self.pos;
-                while !self.is_eof() && !Self::is_blank_or_break(self.peek()) {
-                    self.advance();
-                }
+                self.skip_tag_directive_field()?;
                 let handle = self.slice_str(h_start, self.pos).to_owned();
                 self.skip_blank();
                 let p_start = self.pos;
-                while !self.is_eof() && !Self::is_blank_or_break(self.peek()) {
-                    self.advance();
-                }
+                self.skip_tag_directive_field()?;
                 let prefix = self.slice_str(p_start, self.pos).to_owned();
                 let _ = self.tag_handles.insert(handle, prefix);
             }
@@ -2397,6 +2393,22 @@ impl<'a> Scanner<'a> {
             return Err(self.error("expected anchor or alias name"));
         }
         Ok(Cow::Borrowed(self.slice_str(start, self.pos)))
+    }
+
+    /// Advance over one `%TAG` field (handle or prefix). A tag never
+    /// holds a BOM, in any profile: a prefix that kept one would expand
+    /// into a verbatim tag the parser refuses.
+    fn skip_tag_directive_field(&mut self) -> ScanResult<()> {
+        while !self.is_eof() && !Self::is_blank_or_break(self.peek()) {
+            if self.input[self.pos..].starts_with("\u{feff}".as_bytes()) {
+                return Err(self.error(
+                    "%TAG directive contains a byte order mark: tag handles and prefixes \
+                     are limited to printable characters",
+                ));
+            }
+            self.advance();
+        }
+        Ok(())
     }
 
     /// A C0 control (tab and line breaks included), DEL, or a raw
