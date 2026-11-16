@@ -73,17 +73,7 @@ fuzz_target!(|data: &[u8]| {
                 && !repaired_reading_agrees(s, &a)
                 && !oracle_agrees(oracle_normalization::unique_colliding_anchors(s), &a)
                 && !oracle_agrees(oracle_normalization::terminated_spaced_block(s), &a)
-                && !oracle_agrees(
-                    canonical_duplicates::composed(
-                        s,
-                        &noyalib::ParserConfig::serde_yaml_compat(),
-                        &|source| {
-                            noyalib::compat::serde_yaml::from_str::<serde_json::Value>(source)
-                                .is_ok_and(|value| equivalent(&a, &value))
-                        },
-                    ),
-                    &a,
-                )
+                && !oracle_agrees(keys_respelled(s, &a), &a)
             {
                 panic!(
                     "shim != serde_yaml on accepted input (len {}):\n  shim     : {}\n  upstream : {}",
@@ -109,17 +99,7 @@ fuzz_target!(|data: &[u8]| {
                 )
                 // A stream BOM can hide a duplicate-key spelling the
                 // archive then reads apart (`\u{feff}-0:\r0:\r- |+\n `).
-                && !oracle_agrees(
-                    canonical_duplicates::composed(
-                        s,
-                        &noyalib::ParserConfig::serde_yaml_compat(),
-                        &|source| {
-                            noyalib::compat::serde_yaml::from_str::<serde_json::Value>(source)
-                                .is_ok_and(|value| equivalent(&a, &value))
-                        },
-                    ),
-                    &a,
-                )
+                && !oracle_agrees(keys_respelled(s, &a), &a)
             {
                 panic!(
                     "shim accepted what serde_yaml rejects (len {}):\n  shim     : {}\n  upstream : {e}",
@@ -511,9 +491,28 @@ fn repaired_reading_agrees(s: &str, a: &serde_json::Value) -> bool {
     .flat_map(|source| {
         let spelled = oracle_normalization::collection_spelling(&source);
         let dash_tabs = oracle_normalization::spaced_sequence_tabs(&source);
-        [Some(source), spelled, dash_tabs]
+        // Past the BOM and tab repairs, the archive can still keep a
+        // duplicate-key spelling apart (`\n\u{feff}- \t…` with `.00`
+        // twice in a flow mapping, found by fuzz_serde_yaml_compat).
+        let respelled = dash_tabs
+            .as_deref()
+            .and_then(|tabbed| keys_respelled(tabbed, a));
+        [Some(source), spelled, dash_tabs, respelled]
     })
     .any(|candidate| oracle_agrees(candidate, a))
+}
+
+/// `canonical_duplicates::composed` with the shim's own reading of the
+/// input as the value every step must keep.
+fn keys_respelled(source: &str, a: &serde_json::Value) -> Option<String> {
+    canonical_duplicates::composed(
+        source,
+        &noyalib::ParserConfig::serde_yaml_compat(),
+        &|candidate| {
+            noyalib::compat::serde_yaml::from_str::<serde_json::Value>(candidate)
+                .is_ok_and(|value| equivalent(a, &value))
+        },
+    )
 }
 
 /// The source without its stream BOM and no further repair. libyaml can
