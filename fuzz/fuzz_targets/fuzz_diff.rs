@@ -133,9 +133,12 @@ fuzz_target!(|data: &[u8]| {
         ]
         .into_iter()
         .flatten()
+        // The archive's stream-BOM defect (`\u{feff}---` read as text) can
+        // meet a line-start BOM in one input, so the repairs compose.
         .flat_map(|source| {
             let spelled = oracle_normalization::collection_spelling(&source);
-            [Some(source), spelled]
+            let unprefixed = oracle_normalization::stream_bom_prefix(&source);
+            [Some(source), spelled, unprefixed]
         })
         .flatten()
         .filter(|source| parse(source).is_ok_and(|value| numeric_equal(&noya, &value)))
