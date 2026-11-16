@@ -491,13 +491,16 @@ fn repaired_reading_agrees(s: &str, a: &serde_json::Value) -> bool {
     .flat_map(|source| {
         let spelled = oracle_normalization::collection_spelling(&source);
         let dash_tabs = oracle_normalization::spaced_sequence_tabs(&source);
-        // Past the BOM and tab repairs, the archive can still keep a
-        // duplicate-key spelling apart (`\n\u{feff}- \t…` with `.00`
-        // twice in a flow mapping, found by fuzz_serde_yaml_compat).
-        let respelled = dash_tabs
-            .as_deref()
-            .and_then(|tabbed| keys_respelled(tabbed, a));
-        [Some(source), spelled, dash_tabs, respelled]
+        [Some(source), spelled, dash_tabs]
+    })
+    .flatten()
+    // Past the BOM and tab repairs, the archive can still keep a
+    // duplicate-key spelling apart (`\n\u{feff}- \t…` or `\n\u{feff}- ~…`
+    // with `.00` and `+0.00` in one flow mapping, found by
+    // fuzz_serde_yaml_compat).
+    .flat_map(|source| {
+        let respelled = keys_respelled(&source, a);
+        [Some(source), respelled]
     })
     .any(|candidate| oracle_agrees(candidate, a))
 }
