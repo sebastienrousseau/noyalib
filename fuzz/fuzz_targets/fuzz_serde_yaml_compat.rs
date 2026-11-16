@@ -107,6 +107,19 @@ fuzz_target!(|data: &[u8]| {
                         .and_then(|n| oracle_normalization::unique_colliding_anchors(&n)),
                     &a,
                 )
+                // A stream BOM can hide a duplicate-key spelling the
+                // archive then reads apart (`\u{feff}-0:\r0:\r- |+\n `).
+                && !oracle_agrees(
+                    canonical_duplicates::composed(
+                        s,
+                        &noyalib::ParserConfig::serde_yaml_compat(),
+                        &|source| {
+                            noyalib::compat::serde_yaml::from_str::<serde_json::Value>(source)
+                                .is_ok_and(|value| equivalent(&a, &value))
+                        },
+                    ),
+                    &a,
+                )
             {
                 panic!(
                     "shim accepted what serde_yaml rejects (len {}):\n  shim     : {}\n  upstream : {e}",

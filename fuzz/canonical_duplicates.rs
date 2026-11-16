@@ -99,8 +99,12 @@ pub(crate) fn composed(
     keeps: &dyn Fn(&str) -> bool,
 ) -> Option<String> {
     use crate::oracle_normalization as repair;
-    let steps: [&dyn Fn(&str) -> Option<String>; 6] = [
+    let steps: [&dyn Fn(&str) -> Option<String>; 7] = [
         &repair::stream_bom_prefix,
+        // The stream BOM alone, where the spelling repair that
+        // `stream_bom_prefix` adds would change a kept block scalar
+        // (`\u{feff}-0:\r0:\r- |+\n ` gains a final break).
+        &|current| current.strip_prefix('\u{feff}').map(str::to_owned),
         &repair::collection_spelling,
         &repair::terminated_spaced_block,
         &repair::unique_colliding_anchors,

@@ -83,9 +83,21 @@ pub(crate) fn without_prefix_boms(source: &str) -> Option<String> {
 /// join them into one break). The values must still agree.
 #[allow(dead_code)]
 pub(crate) fn without_prefix_boms_or_tab_lines(source: &str) -> Option<String> {
-    let stripped = without_prefix_boms(source)?;
+    without_prefix_boms(source).map(|stripped| spaced_tab_lines(&stripped))
+}
+
+/// The source with the leading tabs of each blank or comment line made
+/// spaces, when it has any. The same libyaml refusal can follow a stream
+/// BOM repair instead (`\u{feff}---\n\t#k_\r`, found by fuzz_diff).
+#[allow(dead_code)]
+pub(crate) fn with_spaced_tab_lines(source: &str) -> Option<String> {
+    let spaced = spaced_tab_lines(source);
+    (spaced != source).then_some(spaced)
+}
+
+fn spaced_tab_lines(stripped: &str) -> String {
     let mut out = String::with_capacity(stripped.len());
-    let mut rest = stripped.as_str();
+    let mut rest = stripped;
     while !rest.is_empty() {
         let end = rest.find(['\n', '\r']).map_or(rest.len(), |at| at + 1);
         let (line, tail) = rest.split_at(end);
@@ -100,7 +112,7 @@ pub(crate) fn without_prefix_boms_or_tab_lines(source: &str) -> Option<String> {
         }
         rest = tail;
     }
-    Some(out)
+    out
 }
 
 /// `text` opens with the document marker `mark` (`---` or `...`), which
