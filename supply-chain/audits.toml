@@ -12,11 +12,23 @@ criteria = "safe-to-deploy"
 delta = "0.58.6 -> 0.60.2"
 notes = "Reviewed the packaged source delta: regex implementation and dependencies are unchanged; only package version metadata changes. Publisher remains Dmitry Dygalo (crates.io user 82692). Schema hardening regressions pass with jsonschema 0.60.2."
 
+[[audits.jsonschema-regex]]
+who = "Claude Code (claude-opus-5-5)"
+criteria = "safe-to-deploy"
+delta = "0.60.2 -> 0.61.2"
+notes = "Reviewed the packaged source delta: two new modules (repetition.rs, sequence.rs) rewrite ECMA-262 patterns into cheaper regex-syntax forms with fixed size budgets, and the translator runs in one pass. No unsafe code, IO, environment, process or network access; unwrap and expect appear only in tests. No dependency changes. Publisher remains Dmitry Dygalo (crates.io user 82692)."
+
 [[audits.jsonschema-value]]
 who = "Sebastien Rousseau <sebastian.rousseau@gmail.com>"
 criteria = "safe-to-deploy"
 delta = "0.58.6 -> 0.60.2"
 notes = "Reviewed the four changed Rust files: numeric digit budgets and decimal fallbacks, removal of panics when serde_json features are unified, and order-independent object equality. No new unsafe code or IO in the delta. Optional Ruby/Python bindings are unchanged. The serde_json validation path passes schema hardening tests; publisher remains Dmitry Dygalo (crates.io user 82692)."
+
+[[audits.jsonschema-value]]
+who = "Claude Code (claude-opus-5-5)"
+criteria = "safe-to-deploy"
+delta = "0.60.2 -> 0.61.2"
+notes = "Reviewed the packaged source delta: an exact i64 fast path in number comparison, name-node iteration over members, and a string-length bound helper. New unsafe blocks are confined to the Ruby (magnus) and Python (pyo3) bindings, which are behind features noyalib does not enable (it uses default, serde_json); the jsonb thread-local buffer is behind the jsonb feature. No IO or network access. Publisher remains Dmitry Dygalo (crates.io user 82692)."
 
 [[audits.num-cmp]]
 who = "Sebastien Rousseau <sebastian.rousseau@gmail.com>"
@@ -29,6 +41,12 @@ who = "Sebastien Rousseau <sebastian.rousseau@gmail.com>"
 criteria = "safe-to-deploy"
 delta = "1.0.228 -> 1.0.229"
 
+[[audits.serde-saphyr]]
+who = "Claude Code (claude-opus-5-5)"
+criteria = "safe-to-run"
+delta = "2.0.0 -> 2.1.1"
+notes = "Used only by the unpublished noyalib-compare benchmark crate. Scanned the 68-file packaged delta: no build script, no new unsafe code, no new network or process access; file access is the existing figment provider path, refactored. One dependency range widens to <0.29. Not a line-by-line review; safe-to-run only."
+
 [[audits.serde_core]]
 who = "Sebastien Rousseau <sebastian.rousseau@gmail.com>"
 criteria = "safe-to-deploy"
@@ -38,6 +56,12 @@ delta = "1.0.228 -> 1.0.229"
 who = "Sebastien Rousseau <sebastian.rousseau@gmail.com>"
 criteria = "safe-to-deploy"
 delta = "1.0.228 -> 1.0.229"
+
+[[audits.smallvec]]
+who = "Claude Code (claude-opus-5-5)"
+criteria = "safe-to-deploy"
+delta = "1.16.4 -> 1.16.5"
+notes = "The packaged delta only rewraps comments in src/lib.rs and the README and bumps the version; no code changes. Published by a new account (alejandro-vaz), so the code delta was read in full."
 
 [[audits.strum]]
 who = "Sebastien Rousseau <sebastian.rousseau@gmail.com>"

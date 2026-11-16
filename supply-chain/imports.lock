@@ -212,8 +212,8 @@ user-login = "sunfishcode"
 user-name = "Dan Gohman"
 
 [[publisher.fancy-regex]]
-version = "0.19.0"
-when = "2026-07-28"
+version = "0.20.2"
+when = "2026-11-11"
 user-id = 308963
 user-login = "keith-hall"
 user-name = "Keith Hall"
@@ -361,8 +361,8 @@ user-login = "zkat"
 user-name = "Kat Marchán"
 
 [[publisher.itoa]]
-version = "1.0.18"
-when = "2026-03-20"
+version = "1.0.19"
+when = "2026-11-09"
 user-id = 3618
 user-login = "dtolnay"
 user-name = "David Tolnay"
@@ -373,8 +373,8 @@ when = "2026-04-28"
 trusted-publisher = "github:wasm-bindgen/wasm-bindgen"
 
 [[publisher.jsonschema]]
-version = "0.60.2"
-when = "2026-10-26"
+version = "0.61.0"
+when = "2026-11-08"
 user-id = 82692
 user-login = "Stranger6667"
 user-name = "Dmitry Dygalo"
@@ -613,8 +613,8 @@ user-login = "dtolnay"
 user-name = "David Tolnay"
 
 [[publisher.referencing]]
-version = "0.60.2"
-when = "2026-10-26"
+version = "0.61.2"
+when = "2026-11-12"
 user-id = 82692
 user-login = "Stranger6667"
 user-name = "Dmitry Dygalo"
