@@ -17,7 +17,9 @@ use noyalib::Value;
 
 fuzz_target!(|data: &[u8]| {
     let Ok(s) = str::from_utf8(data) else { return };
-    let Ok(v) = noyalib::from_str::<Value>(s) else { return };
+    let Ok(v) = noyalib::from_str::<Value>(s) else {
+        return;
+    };
     let out: String = noyalib::to_string(&v).expect("alloc-only serialiser");
     let back: Value = noyalib::from_str(&out).expect("alloc-only re-parse");
     if !out.to_ascii_lowercase().contains("nan") {

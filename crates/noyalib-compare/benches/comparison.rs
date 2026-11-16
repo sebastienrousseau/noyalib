@@ -1,5 +1,5 @@
-//! Head-to-head benchmarks: noyalib vs yaml-rust2 and yaml-spanned
-//! (plus serde-saphyr under `--features compare-saphyr`).
+//! Head-to-head benchmarks: noyalib vs serde-saphyr, yaml-rust2 and
+//! yaml-spanned.
 //!
 //! `serde_yaml_ng` was retired from this harness in v0.0.58: it
 //! depends on `unsafe-libyaml`, which RUSTSEC-2024-0449 marks
@@ -8,7 +8,7 @@
 //! The typed, serialize and roundtrip groups now measure noyalib on
 //! its own.
 //!
-//! Run: `cargo bench --bench comparison`
+//! Run: `cargo bench -p noyalib-compare --bench comparison`
 
 // SPDX-License-Identifier: MIT OR Apache-2.0
 // Copyright (c) 2026 Noyalib. All rights reserved.
@@ -47,12 +47,12 @@ logging:
       path: /var/log/app.log
 ";
 
-const LARGE_LIST: &str = include_str!("fixtures/large_list.yaml");
+const LARGE_LIST: &str = include_str!("../../noyalib/benches/fixtures/large_list.yaml");
 // Real-world-shape fixtures: deep indent, comments, multi-document.
 // `large_list` is synthetic; the two below exercise the parser the way
 // production YAML config files actually do.
-const K8S_DEPLOYMENT: &str = include_str!("fixtures/k8s_deployment.yaml");
-const GITHUB_ACTIONS: &str = include_str!("fixtures/github_actions.yaml");
+const K8S_DEPLOYMENT: &str = include_str!("../../noyalib/benches/fixtures/k8s_deployment.yaml");
+const GITHUB_ACTIONS: &str = include_str!("../../noyalib/benches/fixtures/github_actions.yaml");
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 struct Simple {
@@ -127,7 +127,6 @@ fn bench_deserialize(c: &mut Criterion) {
             });
         });
 
-        #[cfg(feature = "compare-saphyr")]
         group.bench_with_input(BenchmarkId::new("serde-saphyr", name), yaml, |b, input| {
             b.iter(|| {
                 let _: serde_json::Value = serde_saphyr::from_str(black_box(input)).unwrap();

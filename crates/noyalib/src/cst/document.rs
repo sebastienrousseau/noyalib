@@ -3591,7 +3591,7 @@ pub(crate) fn parse_stream_inner(
             input.len()
         )));
     }
-    let bounds = document_boundaries(input)?;
+    let bounds = document_boundaries(input, config)?;
     if bounds.len() <= 1 {
         return Ok(vec![parse_document_inner(input, config.clone())?]);
     }

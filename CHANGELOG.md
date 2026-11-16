@@ -7,7 +7,61 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
-## [v0.0.61] - Unreleased
+## [v0.0.62] - Unreleased
+
+v0.0.61 was never published: on 2026-11-15 the maintainer folded it into
+this release, so crates.io goes from v0.0.60 to v0.0.62. Every v0.0.61
+change below ships here.
+
+### Changed
+
+- **Breaking:** the default profile refuses a byte order mark (U+FEFF)
+  inside plain and block scalars, comments and directive lines, as
+  YAML 1.2.2 production [27] requires (`nb-char` excludes it).
+  `a: x\u{feff}y` used to load the string `"x\u{feff}y"`; it is now a
+  parse error. A BOM still opens the stream or a later document
+  prefix, and single- and double-quoted scalars keep one (`nb-json`).
+  Anchor names and tags refuse it in every profile, as libyaml does.
+
+- The `serde_yaml` profile reads a BOM as text in plain and block
+  scalars and comments, as serde_yaml 0.9 does, through the new
+  `ParserConfig::byte_order_marks_in_text` flag. That includes a BOM
+  opening a scalar after other text on the line (`a: \u{feff}b`,
+  `- \u{feff}b`), which both profiles used to refuse.
+
+- **Breaking:** the bench-only `compare-saphyr` feature is gone, and
+  `serde-saphyr` is no longer a noyalib dependency. The head-to-head
+  benchmarks moved to the unpublished `crates/noyalib-compare` crate,
+  where the competitor crates are plain dev-dependencies
+  (`make bench-compare`). Rust 1.100's `unused_dependencies` lint
+  flagged the optional dependency on every `--all-features` build.
+
+- **Breaking:** an error path brackets a sequence index everywhere,
+  as typed-field errors already did: a duplicate key, key collision or
+  integer overflow under a sequence now reads `items[0].name`, not
+  `items.0.name`, so an index no longer looks like a key named `0`.
+- **Breaking:** `compat::serde_yaml` spells an error path that opens
+  with a root index the way serde_yaml 0.9 does, `.[1]: invalid type`
+  and `.[1][0]: JSON number out of range`, instead of `[1]` and `1.0`.
+  Paths under a key (`items[1]`) already matched.
+
+### Fixed
+
+- The serializer quotes every hex, octal and binary integer spelling,
+  whatever its size. A string such as `0o1000…` past 64 bits was written
+  plain, which the `serde_yaml` profile then refused to read back
+  ("JSON number out of range"). Found by noyalib-serde-yaml's
+  `fuzz_roundtrip`.
+- A `%TAG` handle or prefix holding a byte order mark is refused in every
+  profile. The compatibility profile, which reads a BOM in other text as
+  libyaml does, accepted it, and a tag built from that prefix was written
+  as a verbatim tag the parser refused. libyaml refuses the BOM there too.
+  Found by noyalib-serde-yaml's `fuzz_roundtrip`.
+
+## [v0.0.61] - Not published
+
+Folded into v0.0.62 (2026-11-15); there is no v0.0.61 tag or registry
+release.
 
 ### Changed
 

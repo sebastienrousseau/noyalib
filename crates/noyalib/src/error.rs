@@ -546,7 +546,7 @@ pub enum Error {
     /// [`crate::DuplicateKeyPolicy::Error`] by the parsers that know the
     /// key's position -- every `from_str` entry point and the CST parser.
     /// `path` is the dotted path of the entry (`site.name`; a sequence
-    /// index counts as a segment, `items.0.name`), `location` where the
+    /// index is bracketed, `items[0].name`), `location` where the
     /// second occurrence begins. [`Self::kind`] reports
     /// [`ErrorKind::DuplicateKey`] for both forms and [`Self::location`]
     /// returns the position.
@@ -653,7 +653,7 @@ pub enum Error {
         /// Location of the overflowing literal's first byte.
         location: Option<Location>,
         /// Dotted path of the field holding the literal, when the
-        /// enclosing frames knew it (`server.port`, `items.3`).
+        /// enclosing frames knew it (`server.port`, `items[3]`).
         path: Option<String>,
     },
 

@@ -13,6 +13,9 @@
 use super::{ScalarStyle, ScanError, ScanResult, Scanner, TokenKind};
 use crate::prelude::*;
 
+/// U+FEFF, the byte order mark, in UTF-8.
+pub(super) const BOM: [u8; 3] = [0xEF, 0xBB, 0xBF];
+
 impl Scanner<'_> {
     // ── Scalars ──────────────────────────────────────────────────────────
 
@@ -300,11 +303,9 @@ impl Scanner<'_> {
             }
 
             // Check for document indicators at start of line.
-            // A line-start BOM never continues the scalar: it either
-            // opens the next document's prefix or is refused (§5.2).
             if length == 0
                 && self.column() == 0
-                && (self.at_plain_document_marker(c) || remaining.starts_with(&[0xEF, 0xBB, 0xBF]))
+                && (self.at_plain_document_marker(c) || self.line_start_bom_ends_scalar(remaining))
             {
                 break;
             }
@@ -312,6 +313,14 @@ impl Scanner<'_> {
             length += 1;
         }
         length
+    }
+
+    /// A BOM opening a line ends a plain scalar in the default profile:
+    /// it opens the next document's prefix or is refused (§5.2). The
+    /// `serde_yaml` profile reads it as text that continues the scalar,
+    /// as libyaml does, which knows no BOM after the stream start.
+    fn line_start_bom_ends_scalar(&self, remaining: &[u8]) -> bool {
+        !self.bom_in_text && remaining.starts_with(&BOM)
     }
 
     /// Whether `c` at the cursor starts a `---` or `...` document marker.
@@ -414,10 +423,75 @@ impl Scanner<'_> {
     /// Unquoted YAML content uses c-printable, unlike JSON-compatible quotes.
     pub(super) fn check_unquoted_printable(&self, s: &str) -> ScanResult<()> {
         self.check_scalar_printable(s)?;
-        if Self::first_non_printable_unicode(s.as_bytes()).is_some() {
-            return Err(self.error("scalar contains a non-printable Unicode character"));
+        // One pass over the lead bytes of every multi-byte character
+        // that can be excluded: C1 controls, U+FFFE/FFFF and the BOM.
+        let bytes = s.as_bytes();
+        for at in memchr::memchr2_iter(0xc2, 0xef, bytes) {
+            if Self::is_non_printable_unicode_prefix(&bytes[at..]) {
+                return Err(self.error("scalar contains a non-printable Unicode character"));
+            }
+            if !self.bom_in_text && bytes[at..].starts_with(&BOM) {
+                return Err(self.unquoted_bom_error());
+            }
         }
         Ok(())
+    }
+
+    /// The refusal of a BOM in the unquoted scalar just scanned, placed
+    /// at the BOM in the scalar's source rather than where the scanner
+    /// stopped reading (a plain scalar looks past its line break).
+    fn unquoted_bom_error(&self) -> ScanError {
+        let start = self.mark.min(self.pos);
+        ScanError {
+            message: Cow::Borrowed(
+                "byte order mark inside an unquoted scalar: YAML 1.2 keeps one only in a \
+                 quoted scalar or a document prefix",
+            ),
+            index: Self::find_bom(&self.input[start..self.pos]).map_or(self.pos, |at| start + at),
+        }
+    }
+
+    /// YAML 1.2.2 production 27 leaves the byte order mark out of
+    /// `nb-char`, the text of plain and block scalars and comments;
+    /// only quoted scalars (`nb-json`) and a document prefix hold one.
+    /// The `serde_yaml` profile reads it as text, as libyaml does.
+    /// `bytes` starts at input offset `base`; the error names the BOM.
+    pub(super) fn check_no_text_bom(
+        &self,
+        bytes: &[u8],
+        base: usize,
+        msg: &'static str,
+    ) -> ScanResult<()> {
+        match Self::find_bom(bytes) {
+            Some(at) if !self.bom_in_text => Err(ScanError {
+                message: Cow::Borrowed(msg),
+                index: base + at,
+            }),
+            _ => Ok(()),
+        }
+    }
+
+    /// Offset of the first UTF-8 byte order mark in `bytes`.
+    fn find_bom(bytes: &[u8]) -> Option<usize> {
+        memchr::memchr_iter(0xef, bytes).find(|&i| bytes[i..].starts_with(&BOM))
+    }
+
+    /// Comment text (§6.6 `c-nb-comment-text`) is `nb-char`: printable,
+    /// and without a byte order mark outside the `serde_yaml` profile.
+    /// `bytes` starts at the cursor.
+    pub(super) fn check_comment_text(&self, bytes: &[u8]) -> ScanResult<()> {
+        if Self::first_non_printable(bytes).is_some() {
+            return Err(self.error(
+                "comment contains a raw control character — YAML content is limited to \
+                 printable characters",
+            ));
+        }
+        self.check_no_text_bom(
+            bytes,
+            self.pos,
+            "byte order mark inside a comment: YAML 1.2 keeps one only in a quoted \
+             scalar or a document prefix",
+        )
     }
 
     pub(super) fn is_non_printable_unicode_prefix(bytes: &[u8]) -> bool {

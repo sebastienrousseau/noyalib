@@ -328,8 +328,7 @@ fn an_aliased_overflow_key_reads_as_a_value() {
         (
             "- &a 33333333333333333333: 1\n- *a",
             2,
-            // serde_yaml writes the path as `.[1]`.
-            "1: JSON number out of range at line 1 column 3",
+            ".[1]: JSON number out of range at line 1 column 3",
         ),
         (
             "{&a 0x1FFFFFFFFFFFFFFFF: 1, b: *a}",
@@ -339,8 +338,7 @@ fn an_aliased_overflow_key_reads_as_a_value() {
         (
             "- {&a 33333333333333333333: 1}\n- [*a]",
             3,
-            // serde_yaml writes the path as `.[1][0]`.
-            "1.0: JSON number out of range at line 1 column 4",
+            ".[1][0]: JSON number out of range at line 1 column 4",
         ),
     ] {
         for cfg in [&config, &fallback] {

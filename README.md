@@ -55,7 +55,7 @@
 
 ## Development version
 
-This branch prepares unreleased v0.0.61. Versioned Cargo examples target
+This branch prepares unreleased v0.0.62. Versioned Cargo examples target
 that release; use an already published version for registry installation
 until it ships.
 
@@ -65,14 +65,14 @@ until it ships.
 
 ```toml
 [dependencies]
-noyalib = "0.0.61"
+noyalib = "0.0.62"
 ```
 
 Disable the default `std` feature for `core` + `alloc` environments:
 
 ```toml
 [dependencies]
-noyalib = { version = "0.0.61", default-features = false }
+noyalib = { version = "0.0.62", default-features = false }
 ```
 
 Build the library and its test surface from source:
@@ -106,7 +106,6 @@ Command-line and integration surfaces ship as companion projects:
 | :--- | :---: | :--- |
 | `noyalib` | Rust 1.89.0 | `msrv-core` and per-crate CI jobs |
 | Satellite crates | Rust 1.89.0 | lockstep per-crate MSRV jobs |
-| Optional `compare-saphyr` benchmark | Rust 1.88.0 | within the floor; not built by the MSRV gate |
 
 The floor may rise only on the breaking version axis, with the reason recorded
 in the changelog. See [`docs/MSRV-AND-DEPRECATION.md`](docs/MSRV-AND-DEPRECATION.md).

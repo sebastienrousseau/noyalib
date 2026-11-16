@@ -10,9 +10,7 @@ pub(crate) fn unquoted_content_bom_rejection(source: &str, error: &noyalib::Erro
     let noyalib::Error::ParseWithLocation { message, location } = error else {
         return false;
     };
-    if message
-        != "byte order mark inside a document: a BOM may only open a document prefix"
-    {
+    if message != "byte order mark inside a document: a BOM may only open a document prefix" {
         return false;
     }
     let offset = location.index();
@@ -36,9 +34,9 @@ pub(crate) fn unquoted_content_bom_rejection(source: &str, error: &noyalib::Erro
     // A BOM straight after the stream BOM, or after a BOM opening a later
     // prefix, is document content (section 5.2): `#.\n\n\u{feff}\u{feff}`.
     let repeated_start = (!prefix.is_empty() && prefix.chars().all(|c| c == '\u{feff}'))
-        || prefix.strip_suffix('\u{feff}').is_some_and(|before| {
-            before.is_empty() || before.ends_with(['\n', '\r'])
-        });
+        || prefix
+            .strip_suffix('\u{feff}')
+            .is_some_and(|before| before.is_empty() || before.ends_with(['\n', '\r']));
     let rest = &source[offset + '\u{feff}'.len_utf8()..];
     // Inside a document (after content or a `---` line, before any `...`),
     // a BOM at a line start or after indentation is content too: only a
@@ -85,9 +83,21 @@ pub(crate) fn without_prefix_boms(source: &str) -> Option<String> {
 /// join them into one break). The values must still agree.
 #[allow(dead_code)]
 pub(crate) fn without_prefix_boms_or_tab_lines(source: &str) -> Option<String> {
-    let stripped = without_prefix_boms(source)?;
+    without_prefix_boms(source).map(|stripped| spaced_tab_lines(&stripped))
+}
+
+/// The source with the leading tabs of each blank or comment line made
+/// spaces, when it has any. The same libyaml refusal can follow a stream
+/// BOM repair instead (`\u{feff}---\n\t#k_\r`, found by fuzz_diff).
+#[allow(dead_code)]
+pub(crate) fn with_spaced_tab_lines(source: &str) -> Option<String> {
+    let spaced = spaced_tab_lines(source);
+    (spaced != source).then_some(spaced)
+}
+
+fn spaced_tab_lines(stripped: &str) -> String {
     let mut out = String::with_capacity(stripped.len());
-    let mut rest = stripped.as_str();
+    let mut rest = stripped;
     while !rest.is_empty() {
         let end = rest.find(['\n', '\r']).map_or(rest.len(), |at| at + 1);
         let (line, tail) = rest.split_at(end);
@@ -102,7 +112,7 @@ pub(crate) fn without_prefix_boms_or_tab_lines(source: &str) -> Option<String> {
         }
         rest = tail;
     }
-    Some(out)
+    out
 }
 
 /// `text` opens with the document marker `mark` (`---` or `...`), which
@@ -140,6 +150,24 @@ mod tests {
 
     #[test]
     fn unquoted_bom_oracle_difference_requires_an_actual_located_rejection() {
+        // A BOM opening a later line that is no document prefix: both
+        // profiles refuse it, and the classifier recognises the refusal.
+        for source in ["\u{feff}\u{feff}", "-\r\u{feff}-", "#.\n\n\u{feff}\u{feff}"] {
+            for config in [
+                noyalib::ParserConfig::default(),
+                noyalib::ParserConfig::serde_yaml_compat(),
+            ] {
+                let error =
+                    noyalib::from_str_with_config::<noyalib::Value>(source, &config).unwrap_err();
+                assert!(
+                    unquoted_content_bom_rejection(source, &error),
+                    "{source:?}: {error}"
+                );
+            }
+        }
+        // A BOM opening a token after other text on its line: since
+        // v0.0.62 the compatibility profile reads it as text, as libyaml
+        // does, so only the default profile's refusal is classified.
         for source in [
             "- \u{feff}\t",
             "key: \u{feff}value",
@@ -147,28 +175,34 @@ mod tests {
             " \u{feff}\tUo\t)/ ",
             "\t\u{feff}value",
             "{\u{feff}}",
-            "\u{feff}\u{feff}",
             "{a: \u{feff}b, c: \u{feff}d}",
             "[\u{feff},]",
             "{\u{feff}'}",
             "\n \u{feff}",
             "-\r \u{feff}",
-            "-\r\u{feff}-",
             "\u{feff} \u{feff}",
             "a:\r \u{feff}---",
-            "{4e740,\rinf,\u{feff}}",
+            // A BOM opening a plain scalar's continuation line is text in
+            // the compatibility profile too: "s \u{feff}\u{feff}", as libyaml.
             "s\r\u{feff}\u{feff}",
-            "#.\n\n\u{feff}\u{feff}",
         ] {
-            // The compatibility target classifies the shim's error.
-            let config = noyalib::ParserConfig::serde_yaml_compat();
-            let error =
-                noyalib::from_str_with_config::<noyalib::Value>(source, &config).unwrap_err();
+            let compat = noyalib::ParserConfig::serde_yaml_compat();
+            assert!(
+                noyalib::from_str_with_config::<noyalib::Value>(source, &compat).is_ok(),
+                "{source:?}"
+            );
+            let error = noyalib::from_str::<noyalib::Value>(source).unwrap_err();
             assert!(
                 unquoted_content_bom_rejection(source, &error),
                 "{source:?}: {error}"
             );
         }
+        // The default profile stops earlier here (`4e740` is an infinity
+        // that collides with the `inf` key), so only the compatibility
+        // profile reaches the BOM, which it now reads as text.
+        let source = "{4e740,\rinf,\u{feff}}";
+        let compat = noyalib::ParserConfig::serde_yaml_compat();
+        assert!(noyalib::from_str_with_config::<noyalib::Value>(source, &compat).is_ok());
     }
 
     #[test]
@@ -203,8 +237,7 @@ mod tests {
 
     #[test]
     fn bom_classifier_does_not_hide_prefix_quote_or_other_error_failures() {
-        let message =
-            "byte order mark inside a document: a BOM may only open a document prefix";
+        let message = "byte order mark inside a document: a BOM may only open a document prefix";
         for (source, offset) in [
             ("\u{feff}key: value", 0),
             ("key: '\u{feff}value'", 6),

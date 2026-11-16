@@ -82,7 +82,7 @@ fn a_root_key_and_a_key_under_a_sequence_item() {
 
     let err =
         from_str_with_config::<Value>("items:\n  - name: a\n    name: b\n", &strict()).unwrap_err();
-    assert_located_duplicate(&err, "name", "items.0.name", 3, 5);
+    assert_located_duplicate(&err, "name", "items[0].name", 3, 5);
 }
 
 #[test]

@@ -1,26 +1,26 @@
 {
-  "release": "0.0.61",
+  "release": "0.0.62",
   "resolution": "local candidate core; registry gates remain separate",
   "products": [
     {
       "repo": "noya-cli",
-      "commit": "955c2d31d0102ac04ed8f9609e75352aeac355c9"
+      "commit": "89ca7934d153621cd7675fe648a571f937fae189"
     },
     {
       "repo": "noyalib-lsp",
-      "commit": "31e26283ecc31c39ba5a7641f74271084ca52f50"
+      "commit": "7e611e19d820254cfd25a34742ac5fe51fd4a52a"
     },
     {
       "repo": "noyalib-mcp",
-      "commit": "90be9e18615085a4ae2a90d0af6ee5e91f1ee971"
+      "commit": "4fd5a1c75acc8c16193e84437a20e9df574d3cdb"
     },
     {
       "repo": "noyalib-wasm",
-      "commit": "6829782002d89fadcade812686a9346cc90c06b8"
+      "commit": "ee263aa558f25d06e578cdebaa95ee3a7ed4804d"
     },
     {
       "repo": "noyalib-serde-yaml",
-      "commit": "120f6b251e08359d431587717a4f8d0313486afb"
+      "commit": "ba30e23efbdc29168cdaec3323205c6e3a81f1c3"
     }
   ]
 }

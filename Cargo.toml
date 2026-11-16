@@ -1,6 +1,8 @@
 [workspace]
 resolver = "3"
-members = ["crates/noyalib"]
+# `noyalib-compare` holds the unpublished head-to-head benchmarks, so
+# the competitor crates stay out of noyalib's own manifest.
+members = ["crates/noyalib", "crates/noyalib-compare"]
 # The satellites now ship from their own repositories per ADR-0005
 # workspace split:
 #   - `noyalib-wasm`       → https://github.com/sebastienrousseau/noyalib-wasm       (since v0.0.12)

@@ -30,7 +30,6 @@ mod question_key;
 #[path = "../bom_classification.rs"]
 mod bom_classification;
 
-
 fuzz_target!(|data: &[u8]| {
     let Ok(s) = std::str::from_utf8(data) else {
         return;
@@ -103,10 +102,16 @@ fuzz_target!(|data: &[u8]| {
             .filter(|source| parse(source).is_ok_and(|value| numeric_equal(&noya, &value)))
             .and_then(|source| serde_yaml_ng::from_str::<serde_json::Value>(&source).ok())
             .is_some_and(|expected| numeric_equal(&noya, &expected))
+        // The archive reads `\u{feff}---` as text. Without the BOM it must
+        // agree, or refuse the text as it refuses that input unprefixed
+        // (`\u{feff}---\n\t3k_\r`: a tab before content), which leaves
+        // the comparison like any input it refuses.
         && !oracle_normalization::stream_bom_prefix(&base)
             .filter(|source| parse(source).is_ok_and(|value| numeric_equal(&noya, &value)))
-            .and_then(|source| serde_yaml_ng::from_str::<serde_json::Value>(&source).ok())
-            .is_some_and(|expected| numeric_equal(&noya, &expected))
+            .is_some_and(|source| {
+                serde_yaml_ng::from_str::<serde_json::Value>(&source)
+                    .map_or(true, |expected| numeric_equal(&noya, &expected))
+            })
         && !oracle_normalization::collection_spelling(&base)
             .filter(|source| parse(source).is_ok_and(|value| numeric_equal(&noya, &value)))
             .and_then(|source| serde_yaml_ng::from_str::<serde_json::Value>(&source).ok())
@@ -131,12 +136,19 @@ fuzz_target!(|data: &[u8]| {
         && ![
             bom_classification::without_prefix_boms(&base),
             bom_classification::without_prefix_boms_or_tab_lines(&base),
+            // Past a stream BOM repair, libyaml can refuse a tab-led
+            // comment line instead (`\u{feff}---\n\t#k_\r`).
+            oracle_normalization::stream_bom_prefix(&base)
+                .and_then(|source| bom_classification::with_spaced_tab_lines(&source)),
         ]
         .into_iter()
         .flatten()
+        // The archive's stream-BOM defect (`\u{feff}---` read as text) can
+        // meet a line-start BOM in one input, so the repairs compose.
         .flat_map(|source| {
             let spelled = oracle_normalization::collection_spelling(&source);
-            [Some(source), spelled]
+            let unprefixed = oracle_normalization::stream_bom_prefix(&source);
+            [Some(source), spelled, unprefixed]
         })
         .flatten()
         .filter(|source| parse(source).is_ok_and(|value| numeric_equal(&noya, &value)))

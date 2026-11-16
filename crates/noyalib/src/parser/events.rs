@@ -127,6 +127,16 @@ impl<'a> Parser<'a> {
         parser
     }
 
+    /// A parser that applies the scanner-level settings of `config`:
+    /// its event budget and whether a byte order mark is text.
+    pub(crate) fn for_config(input: &'a str, config: &crate::parser::loader::ParseConfig) -> Self {
+        let mut parser = Self::with_max_events(input, config.max_events);
+        parser
+            .scanner
+            .set_byte_order_marks_in_text(config.byte_order_marks_in_text);
+        parser
+    }
+
     /// Enable comment capture without the CST recorder's token and
     /// trivia overhead.
     pub(crate) fn enable_comment_capture(&mut self) {

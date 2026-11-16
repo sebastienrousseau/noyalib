@@ -4,6 +4,7 @@
 //! Development-only oracle classifier tests.
 
 #![forbid(unsafe_code)]
+#![deny(missing_docs)]
 
 #[cfg(feature = "std")]
 compile_error!("the alloc-only fuzz harness must not enable core std");

@@ -223,8 +223,8 @@ single-threaded.
 | DoS rejection (billion laughs) | **<3 us** with `ParserConfig::strict()` |
 | DoS rejection (deep nesting) | **<4 us** |
 
-Reproduce: `make bench-compare` (the comparison bench with the
-`compare-saphyr` feature, so serde-saphyr is in the same run) and
+Reproduce: `make bench-compare` (the unpublished `noyalib-compare`
+crate's benches, serde-saphyr in the same run) and
 `cargo bench --bench architecture`.
 
 
@@ -235,7 +235,7 @@ test suite, so it is the comparison that matters. Same run, same host,
 same command, every crate in the same criterion session:
 
 ```bash
-make bench-compare   # cargo bench --bench comparison --features compare-saphyr
+make bench-compare   # cargo bench -p noyalib-compare
 ```
 
 Host: Apple A18 Pro. Toolchain: rustc 1.98.0 (88d9e12ae 2026-08-18). Times are criterion medians in the
@@ -279,9 +279,9 @@ cargo bench --bench v006_features --features recovery,sval,tokio
 | **YAML Test Suite** | 100% strict compliance: 406/406 attempted cases pass, 0 failures, 0 deliberate skips |
 | **Examples** | 76 runnable examples |
 | **Coverage** | 96%+ function coverage / 94%+ line coverage / 93%+ region coverage (CI-gated) |
-| **Dependencies** | 5 unconditional + 3 default-on optional (`itoa`, `ryu`, `serde_ignored`) + 12 opt-in optional (`miette`, `garde`, `validator`, `schemars`, `serde_json`, `jsonschema`, `figment`, `rayon`, `serde-saphyr`, plus the three default-on opt-outs) |
+| **Dependencies** | 5 unconditional + 3 default-on optional (`itoa`, `ryu`, `serde_ignored`) + 11 opt-in optional (`miette`, `garde`, `validator`, `schemars`, `serde_json`, `jsonschema`, `figment`, `rayon`, plus the three default-on opt-outs) |
 | **WASM binary** | 338 KB (release, LTO) |
-| **MSRV** | Rust 1.89.0 (whole lockstep set, since v0.0.58); the opt-in `compare-saphyr` bench feature needs 1.88+, inside that floor (see [POLICIES.md](POLICIES.md#1-msrv-minimum-supported-rust-version)) |
+| **MSRV** | Rust 1.89.0 (whole lockstep set, since v0.0.58; see [POLICIES.md](POLICIES.md#1-msrv-minimum-supported-rust-version)) |
 
 ## Local ecosystem baseline, 2026-11-10
 

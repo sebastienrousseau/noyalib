@@ -115,7 +115,7 @@ examples:
 # The head-to-head against the other pure-Rust YAML crates, serde-saphyr
 # included. Numbers go in docs/BENCHMARKS.md with host and toolchain.
 bench-compare:
-	cd crates/noyalib && cargo bench --bench comparison --features compare-saphyr
+	cargo bench -p noyalib-compare
 
 bench-smoke:
 	./scripts/smoke-benches.sh

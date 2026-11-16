@@ -377,6 +377,15 @@ pub struct ParserConfig {
     /// unsigned hex and octal forms, so a signed spelling is a
     /// string.
     pub signed_radix_integers: bool,
+    /// When `true`, a byte order mark (U+FEFF) is ordinary text in
+    /// plain and block scalars and in comments, as `serde_yaml` 0.9
+    /// (libyaml) reads it: `a: \u{feff}b` loads the string
+    /// `"\u{feff}b"`. Default `false`: YAML 1.2.2 production 27
+    /// leaves the BOM out of `nb-char`, so it may only open a
+    /// document prefix or sit in a single- or double-quoted scalar,
+    /// and anywhere else it is refused. Anchor names and tags refuse
+    /// it either way, as libyaml does.
+    pub byte_order_marks_in_text: bool,
     /// When `true`, a plain scalar float whose *literal* spelling
     /// overflows `f64` (`1e999`) resolves as a **string** instead
     /// of infinity. The explicit spellings `.inf` / `-.Inf` /
@@ -521,6 +530,7 @@ impl Default for ParserConfig {
             leading_zero_integer_strings: false,
             legacy_binary_numbers: false,
             signed_radix_integers: false,
+            byte_order_marks_in_text: false,
             float_overflow_strings: false,
             integer_overflow_errors: false,
             non_scalar_key_policy: NonScalarKeyPolicy::Stringify,
@@ -616,6 +626,8 @@ impl ParserConfig {
     ///   YAML 1.1 binary literals (`0b11`) and signed hex or octal
     ///   (`-0xF`) as integers — libyaml's resolver, spec versions
     ///   notwithstanding;
+    /// - a byte order mark is text inside plain and block scalars
+    ///   and comments, where YAML 1.2 refuses it;
     /// - a literal float overflow (`1e999`) is a string, not
     ///   infinity;
     /// - integers past `u64::MAX` error ("JSON number out of
@@ -643,6 +655,7 @@ impl ParserConfig {
             leading_zero_integer_strings: true,
             legacy_binary_numbers: true,
             signed_radix_integers: true,
+            byte_order_marks_in_text: true,
             float_overflow_strings: true,
             integer_overflow_errors: true,
             non_scalar_key_policy: NonScalarKeyPolicy::Error,

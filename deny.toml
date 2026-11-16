@@ -11,9 +11,9 @@ all-features = true
 # unless listed in `ignore` below.
 yanked = "warn"
 # Bench-only competitor surface — these crates are never compiled
-# into a release artefact. They appear in `crates/noyalib/Cargo.toml`
-# under `[dev-dependencies]` purely so the comparison harness in
-# `crates/noyalib/benches/comparison.rs` produces honest head-to-
+# into a release artefact. They appear in the unpublished
+# `crates/noyalib-compare/Cargo.toml` purely so the comparison
+# benches in `crates/noyalib-compare/benches/` produce honest head-to-
 # head numbers vs every still-maintained Rust YAML library. The
 # unmaintained / unsound contenders (`serde_yml`, `libyml`) used
 # to be benched too — they were retired in v0.0.6 so `cargo

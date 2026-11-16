@@ -147,6 +147,11 @@ publication. This approved release-policy exception does not authorize
 publication before gates or close independent review. The MCP changelog
 records the same retirement.
 
+On 2026-11-15 the maintainer folded the v0.0.61 family into v0.0.62: the
+merged v0.0.61 source is never tagged or published, and all six crates go
+from v0.0.60 to v0.0.62 on their registries. The release gates and the
+independent review above apply to v0.0.62 unchanged.
+
 ## Acceptance record
 
 A reviewer records the exact six commits, date, reviewed boundaries,

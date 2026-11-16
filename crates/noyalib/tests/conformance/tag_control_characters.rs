@@ -44,6 +44,28 @@ fn tag_directive_prefixes_must_be_representable() {
 }
 
 #[test]
+fn tag_directive_fields_refuse_a_byte_order_mark_in_every_profile() {
+    // The compatibility profile reads a BOM in other text as libyaml
+    // does, but a tag never holds one: a prefix that kept it expanded
+    // into a verbatim tag the parser refuses (found by
+    // noyalib-serde-yaml's fuzz_roundtrip on `%TAG\t!\ttaw:ya\u{feff}...`).
+    for source in [
+        "%TAG ! taw:ya\u{feff}yaml.org,2002:\n--- !800\n- x\n",
+        "%TAG !e\u{feff}! tag:example:\n---\n!e\u{feff}!x v\n",
+    ] {
+        for config in [
+            noyalib::ParserConfig::default(),
+            noyalib::ParserConfig::serde_yaml_compat(),
+        ] {
+            let parsed = noyalib::from_str_with_config::<Value>(source, &config);
+            assert!(parsed.is_err(), "{source:?}: {parsed:?}");
+            let cst = noyalib::cst::parse_document_with_config(source, &config);
+            assert!(cst.is_err(), "{source:?}");
+        }
+    }
+}
+
+#[test]
 fn empty_resolved_tag_uris_are_rejected() {
     refused("%TAG !! \n---\n!! x\n");
     refused("%TAG !e! \n---\n!e! x\n");

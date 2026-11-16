@@ -32,6 +32,9 @@ pub(crate) fn scanner_span_default() -> scanner::Span {
 /// their existing decoded `Value::String` behavior in the deserializer.
 pub(crate) fn plain_scalar_text(input: &str) -> Option<Cow<'_, str>> {
     let mut scanner = Scanner::new(input);
+    // The loader already accepted this scalar under its own profile;
+    // decoding it again must not refuse a BOM that profile kept.
+    scanner.set_byte_order_marks_in_text(true);
     loop {
         match scanner.next_token().ok()?.kind {
             TokenKind::StreamStart | TokenKind::Anchor(_) => {}
@@ -59,7 +62,7 @@ use crate::value::Value;
 
 /// Parse a YAML string into a list of `(Value, SpanTree)` documents.
 pub(crate) fn parse(input: &str, config: &ParseConfig) -> Result<Vec<(Value, SpanTree)>> {
-    let mut parser = Parser::with_max_events(input, config.max_events);
+    let mut parser = Parser::for_config(input, config);
     loader::load(&mut parser, config, input)
 }
 
@@ -67,7 +70,7 @@ pub(crate) fn parse(input: &str, config: &ParseConfig) -> Result<Vec<(Value, Spa
 /// more than one. Used by single-document deserialisation and CST
 /// entry points (see #351).
 pub(crate) fn parse_exactly_one(input: &str, config: &ParseConfig) -> Result<(Value, SpanTree)> {
-    let mut parser = Parser::with_max_events(input, config.max_events);
+    let mut parser = Parser::for_config(input, config);
     loader::load_exactly_one(&mut parser, config, input)
 }
 

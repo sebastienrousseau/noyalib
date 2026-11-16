@@ -172,7 +172,7 @@ impl<'a> StreamingDeserializer<'a> {
         let config: ParseConfig = config.into();
         let meter = Meter::new(&config);
         StreamingDeserializer {
-            parser: Parser::with_max_events(input, config.max_events),
+            parser: Parser::for_config(input, &config),
             input,
             config,
             tag_registry: None,

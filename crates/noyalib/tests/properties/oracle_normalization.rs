@@ -4,6 +4,18 @@
 //! Narrow, semantics-checked repairs for known development-oracle defects.
 
 use noyalib::cst::{GreenChild, GreenNode, SyntaxKind};
+
+/// The configuration the spelling repairs read a source under. They are
+/// lexical and see only sources the compatibility profile accepted, so
+/// they must not refuse one for a policy the default profile keeps:
+/// merge semantics (`<<` is an ordinary key there) or a byte order mark
+/// in plain text, which that profile reads as libyaml does.
+fn lexical_config() -> noyalib::ParserConfig {
+    let mut config =
+        noyalib::ParserConfig::new().merge_key_policy(noyalib::MergeKeyPolicy::AsOrdinary);
+    config.byte_order_marks_in_text = true;
+    config
+}
 use std::collections::BTreeMap;
 
 type Lexeme = (SyntaxKind, usize, usize);
@@ -169,7 +181,7 @@ fn quoted_empty_block_keys(source: &str) -> Option<String> {
             position += child.text_len();
         }
     }
-    let document = noyalib::cst::parse_document(source).ok()?;
+    let document = noyalib::cst::parse_document_with_config(source, &lexical_config()).ok()?;
     let mut replacements = Vec::new();
     walk(document.syntax(), 0, &mut replacements);
     (!replacements.is_empty()).then(|| apply_replacements(source, replacements))
@@ -329,7 +341,8 @@ pub(crate) fn quoted_empty_flow_keys(source: &str) -> Option<String> {
                     // Read the text in flow context, where a `...` line is
                     // content rather than a document end marker.
                     let noyalib::Value::Sequence(items) =
-                        noyalib::from_str(&format!("[{text}]")).ok()?
+                        noyalib::from_str_with_config(&format!("[{text}]"), &lexical_config())
+                            .ok()?
                     else {
                         return None;
                     };
@@ -390,10 +403,7 @@ fn lexical_tokens(source: &str) -> Option<Vec<Lexeme>> {
             }
         }
     }
-    // Tokens are lexical: merge semantics must not refuse a source the
-    // compatibility profile reads with `<<` as an ordinary key.
-    let config = noyalib::ParserConfig::new().merge_key_policy(noyalib::MergeKeyPolicy::AsOrdinary);
-    let document = noyalib::cst::parse_document_with_config(source, &config).ok()?;
+    let document = noyalib::cst::parse_document_with_config(source, &lexical_config()).ok()?;
     let mut tokens = Vec::new();
     walk(document.syntax(), &mut 0, &mut tokens);
     Some(tokens)

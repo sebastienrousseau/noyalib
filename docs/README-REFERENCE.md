@@ -77,7 +77,7 @@ the template migration does not discard documentation.
 
 ```toml
 [dependencies]
-noyalib = "0.0.61"
+noyalib = "0.0.62"
 ```
 
 ### As a CLI tool
@@ -115,7 +115,7 @@ maintainer runbook.
 
 ```toml
 [dependencies]
-noyalib = { version = "0.0.61", default-features = false }
+noyalib = { version = "0.0.62", default-features = false }
 ```
 
 Requires `alloc`. Core data binding (`from_str`, `to_string`, `Value`,
@@ -159,14 +159,13 @@ the application needs.
 | `nightly-simd` | `simd` (nightly toolchain) | `core::simd`-backed `StructuralIter` (32-byte chunks) | [Benchmarks](#benchmarks) |
 | `compat-serde-yaml` | — | **behavioural** `serde_yaml` 0.9 shim (values, error text, and locations pinned by the live-captured 18-case contract suite); `noyalib-serde-yaml` packages it as a Cargo package-rename drop-in | [When not to use noyalib](#when-not-to-use-noyalib) |
 | `lossless-u64` | — | `Number::Unsigned(u64)` plus opt-in parser/serializer config for scalars in `(i64::MAX, u64::MAX]` | [`docs/adr/0004-lossless-u64-integers.md`](adr/0004-lossless-u64-integers.md), `examples/lossless_u64.rs`, `benches/lossless_u64.rs` |
-| `compare-saphyr` | `serde-saphyr` *(dev only)* | Cross-library bench comparison arms | `benches/comparison.rs` |
 | `wasm-opt` | — | Build-time flag opting the `noyalib-wasm` bundle into `wasm-opt` size passes (no API surface) | [`sebastienrousseau/noyalib-wasm`](https://github.com/sebastienrousseau/noyalib-wasm) |
 | `noyavalidate` | `std` + `miette` + `validate-schema` | Enables the schema-validation surface the `noyavalidate` CLI is built on | [`docs/USER-GUIDE.md` §11](USER-GUIDE.md) |
 
 ```toml
 # Example: rich diagnostics + schema validation
 [dependencies]
-noyalib = { version = "0.0.61", features = ["miette", "validate-schema"] }
+noyalib = { version = "0.0.62", features = ["miette", "validate-schema"] }
 ```
 
 **Optional features:** `lossless-u64` preserves YAML integer scalars above
@@ -222,10 +221,8 @@ also guarantee never to require a rustc newer than 12 months old
 at release time — see
 [`docs/POLICIES.md` §1](POLICIES.md#1-msrv-minimum-supported-rust-version).
 
-The opt-in, bench-only `compare-saphyr` feature needs rustc 1.88+
-(`serde-saphyr` uses let-chains), which the 1.89.0 floor covers. It
-is still not built by the MSRV gate, which checks the core feature
-sets.
+The head-to-head benches (`crates/noyalib-compare`, unpublished)
+are not built by the MSRV gate, which checks the core feature sets.
 
 `rust-toolchain.toml` itself selects `stable` for local
 development; the 1.89.0 floor on the core surface is enforced
@@ -301,7 +298,7 @@ npm install @sebastienrousseau/noyalib-wasm
 
 ```toml
 # serde_yaml drop-in — the whole migration is this one line:
-serde_yaml = { package = "noyalib-serde-yaml", version = "=0.0.61" }
+serde_yaml = { package = "noyalib-serde-yaml", version = "=0.0.62" }
 ```
 
 Per-crate READMEs cover the surface specific to each artifact:
@@ -366,7 +363,7 @@ lines**:
 
 ```toml
 [dependencies]
-serde_yaml = { package = "noyalib-serde-yaml", version = "=0.0.61" }
+serde_yaml = { package = "noyalib-serde-yaml", version = "=0.0.62" }
 ```
 
 [`noyalib-serde-yaml`](https://github.com/sebastienrousseau/noyalib-serde-yaml)
@@ -399,7 +396,7 @@ and `yaml-spanned` with verified function tables for each.
 -[dependencies]
 -serde_yaml = "0.9"
 +[dependencies]
-+noyalib = "0.0.61"
++noyalib = "0.0.62"
 ```
 
 ```diff
@@ -1410,7 +1407,7 @@ disagreement on priorities.
 - **You have a hard dependency budget that cannot tolerate a
   Grisu / Ryu float formatter and a hash-randomised lookup
   table.** Default profile carries 8 runtime deps. `noyalib =
-  { version = "0.0.61", default-features = false, features =
+  { version = "0.0.62", default-features = false, features =
   ["std"] }` (or the equivalent `features = ["minimal"]`) drops
   to 5 — `itoa`, `ryu`, and `serde_ignored` become opt-in via
   the `fast-int` / `fast-float` / `strict-deserialise` features.
