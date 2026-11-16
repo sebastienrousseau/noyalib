@@ -94,6 +94,30 @@ fn the_shim_reads_signed_radix_like_upstream() {
     assert_eq!(back, "-0xF", "{emitted:?}");
 }
 
+#[test]
+fn the_shim_quotes_radix_strings_its_reader_refuses_as_overflow() {
+    // Found by noyalib-serde-yaml's fuzz_roundtrip: a block scalar holds
+    // an octal spelling past u64, which the shim then wrote plain and
+    // refused to read back ("JSON number out of range").
+    for text in [
+        "0o00001000010622457711000100001062245771162245",
+        "0x10000000000000000",
+        "-0x8000000000000001",
+        "+0o3777777777777777777777",
+        "0x1000000000000000000000000000000000",
+    ] {
+        let emitted = noyalib::compat::serde_yaml::to_string(&text).unwrap();
+        let back: String = noyalib::compat::serde_yaml::from_str(&emitted)
+            .unwrap_or_else(|e| panic!("{text:?} emitted as {emitted:?}: {e}"));
+        assert_eq!(back, text, "{emitted:?}");
+    }
+    let source = ">\n 0o00001000010622457711000100001062245771162245";
+    let value: Value = noyalib::compat::serde_yaml::from_str(source).unwrap();
+    let emitted = noyalib::compat::serde_yaml::to_string(&value).unwrap();
+    let back: Value = noyalib::compat::serde_yaml::from_str(&emitted).unwrap();
+    assert_eq!(back, value, "{emitted:?}");
+}
+
 // ── legacy_binary_numbers ──────────────────────────────────────────
 
 #[test]

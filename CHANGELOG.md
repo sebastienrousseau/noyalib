@@ -45,6 +45,14 @@ change below ships here.
   and `.[1][0]: JSON number out of range`, instead of `[1]` and `1.0`.
   Paths under a key (`items[1]`) already matched.
 
+### Fixed
+
+- The serializer quotes every hex, octal and binary integer spelling,
+  whatever its size. A string such as `0o1000…` past 64 bits was written
+  plain, which the `serde_yaml` profile then refused to read back
+  ("JSON number out of range"). Found by noyalib-serde-yaml's
+  `fuzz_roundtrip`.
+
 ## [v0.0.61] - Not published
 
 Folded into v0.0.62 (2026-11-15); there is no v0.0.61 tag or registry

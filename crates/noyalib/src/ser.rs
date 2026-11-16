@@ -972,7 +972,8 @@ fn resolves_as_non_string(s: &str) -> bool {
         }
         None => s,
     };
-    crate::parser::parse_legacy_binary(binary).is_some()
+    is_radix_integer(binary)
+        || crate::parser::parse_legacy_binary(binary).is_some()
         || crate::parser::parse_legacy_binary_u64(binary).is_some()
         || [false, true].into_iter().any(|lossless_u64| {
             !matches!(
@@ -988,6 +989,21 @@ fn resolves_as_non_string(s: &str) -> bool {
                 crate::streaming::Scalar::Str(_)
             )
         })
+}
+
+/// A hex, octal or binary integer spelling of any size. Past 64 bits the
+/// resolver keeps it a string, but the serde_yaml profile refuses it as
+/// an out-of-range number, so a plain one would not read back (found by
+/// noyalib-serde-yaml's fuzz_roundtrip on a long `0o` block scalar).
+fn is_radix_integer(s: &str) -> bool {
+    let radix = match s.get(..2) {
+        Some("0x") => 16,
+        Some("0o") => 8,
+        Some("0b") => 2,
+        _ => return false,
+    };
+    let digits = &s[2..];
+    !digits.is_empty() && digits.chars().all(|c| c.is_digit(radix))
 }
 
 /// A `:` ends a plain scalar only when a space, a tab, a flow indicator,
