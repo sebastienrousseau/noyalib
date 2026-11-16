@@ -6,6 +6,9 @@
 use noyalib::cst::{GreenChild, GreenNode, SyntaxKind};
 
 type Token = (SyntaxKind, usize, usize);
+/// YAML white space and line breaks. `str::trim` also strips Unicode
+/// spaces such as U+00A0, which a plain scalar keeps as text.
+const YAML_SPACE: [char; 4] = [' ', '\t', '\n', '\r'];
 type Edit = (usize, usize, String);
 /// An entry's tokens, its end boundary, and whether it is a flow entry.
 type Entry = (Vec<Token>, usize, bool);
@@ -218,7 +221,7 @@ fn written_key(
         None if explicit => end,
         None => return None,
     };
-    let raw = source.get(start..end)?.trim();
+    let raw = source.get(start..end)?.trim_matches(YAML_SPACE);
     // A block scalar key cannot sit in a flow wrapper; its value is a
     // string, spelled as itself. Read that token alone: a following
     // comment line (`? >\r#\r: B`) is not part of it. Only a token
@@ -301,14 +304,14 @@ fn key(
     // A plain token can span its trailing break; keep that separator
     // so a following comment stays preceded by whitespace.
     let full = source.get(start..end)?;
-    let raw = full.trim_end();
+    let raw = full.trim_end_matches(YAML_SPACE);
     let folds = flow && scalar.is_some() && full[raw.len()..].contains(['\n', '\r']);
     let (end, tail) = if folds {
         (end, " ")
     } else {
         (start + raw.len(), "")
     };
-    if raw.trim() == "<<" {
+    if raw.trim_matches(YAML_SPACE) == "<<" {
         return None;
     }
     let identity: noyalib::Value = noyalib::from_str_with_config(raw, config).ok()?;
@@ -527,6 +530,17 @@ mod tests {
         let before: serde_json::Value =
             noyalib::from_str_with_config("? ~\n?\n9,~0 ,ault:\n9,~0 ,ault:", &config).unwrap();
         assert_eq!(before, oracle, "{normalized:?}");
+    }
+
+    #[test]
+    fn key_text_keeps_a_trailing_no_break_space() {
+        // U+00A0 is no YAML white space: it stays in the plain key, which
+        // Rust's `trim_end` would cut off (found by fuzz_diff).
+        check("{~0 \u{a0},~0 \u{a0}}");
+        check("~0 \u{a0}: 1\n~0 \u{a0}: 2\n");
+        check(include_str!(
+            "regressions/fuzz_diff/crash-271756183f740a7da15d579a2e329ea2fc2d6b93"
+        ));
     }
 
     #[test]
