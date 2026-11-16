@@ -76,7 +76,7 @@ jobs:
           persist-credentials: false
           path: product
           submodules: recursive
-      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
         with:
           python-version: '3.13'
       - name: Prepare the exact candidate without changing registry pins
@@ -186,7 +186,7 @@ jobs:
           ref: ${{ needs.sources.outputs.cli }}
           persist-credentials: false
           path: product
-      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
         with:
           python-version: '3.13'
           architecture: ${{ matrix.python-architecture }}
@@ -240,7 +240,7 @@ jobs:
           ref: ${{ needs.sources.outputs.cli }}
           persist-credentials: false
           path: product
-      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
         with:
           python-version: '3.13'
       - uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6
