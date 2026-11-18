@@ -6600,8 +6600,9 @@ fn is_block_site(kind: SyntaxKind) -> bool {
 /// block scalar only when none of its lines begin with a horizontal
 /// whitespace character (which would require an explicit indent
 /// indicator we do not yet emit), it contains no control characters
-/// other than `\n`, and its trailing-newline count is zero or one
-/// (matched by the `|-` and `|` chomping indicators respectively).
+/// other than `\n`, no character the scanner refuses in an unquoted
+/// scalar, and its trailing-newline count is zero or one (matched by
+/// the `|-` and `|` chomping indicators respectively).
 pub(super) fn can_use_block_literal(s: &str) -> bool {
     if s.is_empty() {
         return false;
@@ -6611,6 +6612,19 @@ pub(super) fn can_use_block_literal(s: &str) -> bool {
         if (b < 0x20 && b != b'\n' && b != b'\t') || b == 0x7F {
             return false;
         }
+    }
+    // Reject what the scanner refuses in a block scalar but accepts in
+    // a double-quoted one (#533): a C1 control other than NEL, the
+    // non-characters U+FFFE and U+FFFF, and a byte order mark. Only the
+    // `serde_yaml` profile reads a BOM there, and the writer does not
+    // know the profile, so the double-quoted escape carries it instead.
+    if s.chars().any(|c| {
+        matches!(
+            c,
+            '\u{80}'..='\u{84}' | '\u{86}'..='\u{9f}' | '\u{fffe}' | '\u{ffff}' | '\u{feff}'
+        )
+    }) {
+        return false;
     }
     // Strip up to one trailing newline; reject more than one.
     let trimmed = s.strip_suffix('\n').unwrap_or(s);
