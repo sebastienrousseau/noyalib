@@ -18,6 +18,10 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   and leave the document unchanged; the string now takes the
   double-quoted spelling, as `to_string` writes it. Reported and fixed
   by @zoosky (#533, #534).
+- The release workflow packages only `noyalib`. A bare
+  `cargo package` in the virtual workspace also packed the unpublished
+  `noyalib-compare`, so the v0.0.62 release carried a
+  `noyalib-compare-0.0.0.crate` asset.
 
 ## [v0.0.62] - 2026-11-17
 
