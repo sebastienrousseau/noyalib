@@ -123,13 +123,16 @@ jobs:
       # release (zizmor cache-poisoning). Release builds start clean.
 
       - name: Package crate
-        run: cargo package --all-features
+        # `-p noyalib`: the root is a virtual workspace, and a bare
+        # `cargo package` also packs the unpublished noyalib-compare
+        # (`publish = false`), which v0.0.62 attached to its release.
+        run: cargo package -p noyalib --all-features
 
       - name: Generate SBOM
         run: |
           set -euo pipefail
           # Human-readable dependency listing (kept for reviewers) …
-          cargo tree --edges normal --prefix depth --format '{p} {l}' > SBOM.txt
+          cargo tree -p noyalib --edges normal --prefix depth --format '{p} {l}' > SBOM.txt
           # … and the machine-readable SBOM procurement pipelines
           # ingest. `cargo tree > txt` is not an SBOM format: EU CRA /
           # NTIA guidance and every scanner (Grype, Trivy, Dependency-
@@ -150,9 +153,9 @@ jobs:
         run: |
           set -euo pipefail
           cd target/package
-          # `cargo package --workspace` produces one `.crate` per
-          # publishable crate (noyalib, noya-cli, noyalib-lsp, plus
-          # xtask which is private).
+          # `cargo package -p noyalib` produces the one published
+          # `.crate`; noyalib-compare is a benchmark-only member with
+          # `publish = false` and is never packaged.
           # `noyalib-wasm` was split at v0.0.12, `noyalib-mcp` at
           # v0.0.13 — both package from their own repos now (ADR-0005).
           # The original implementation captured `$(ls *.crate)`
@@ -369,7 +372,7 @@ jobs:
     needs: artifacts
     uses: ./.github/workflows/shared-reproducible-package.yml
     with:
-      package-args: --all-features
+      package-args: -p noyalib --all-features
 
   # ── Cross-platform verification ─────────────────────────────────────
   cross-verify:

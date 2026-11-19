@@ -99,3 +99,53 @@ fn a_key_holding_a_non_character_is_refused_like_a_control_character() {
     assert!(err.to_string().contains("U+FFFF"), "{err}");
     assert_eq!(doc.to_string(), "a: 1\n");
 }
+
+/// A multi-line string holding a character that the scanner refuses in
+/// a block scalar: a C1 control other than NEL, U+FFFE, U+FFFF, or a
+/// byte order mark (issue #533).
+fn excluded_from_block_scalars() -> impl Iterator<Item = char> {
+    ('\u{80}'..='\u{9f}')
+        .filter(|&c| c != '\u{85}')
+        .chain(['\u{fffe}', '\u{ffff}', '\u{feff}'])
+}
+
+fn assert_reads_back(out: &str, key: &str, val: &str, cp: u32) {
+    assert!(
+        !out.contains('|'),
+        "U+{cp:04X} was written as a block literal: {out:?}"
+    );
+    let re: Value = noyalib::from_str(out).unwrap_or_else(|e| panic!("U+{cp:04X} {out:?}: {e}"));
+    assert_eq!(re[key].as_str(), Some(val), "U+{cp:04X} {out:?}");
+}
+
+#[test]
+fn insert_entry_value_double_quotes_a_multi_line_non_printable() {
+    for c in excluded_from_block_scalars() {
+        for val in [format!("a{c}b\nc\n"), format!("a\nb{c}"), format!("{c}\n")] {
+            let mut doc = parse_document("title: T\n").unwrap();
+            doc.insert_entry_value("", "k", &s(&val))
+                .unwrap_or_else(|e| panic!("U+{:04X} {val:?}: {e}", c as u32));
+            assert_reads_back(&doc.to_string(), "k", &val, c as u32);
+        }
+    }
+}
+
+#[test]
+fn set_value_double_quotes_a_multi_line_non_printable() {
+    for c in excluded_from_block_scalars() {
+        let val = format!("a{c}b\nc\n");
+        let mut doc = parse_document("title: T\nk: old\n").unwrap();
+        doc.set_value("k", &s(&val)).unwrap();
+        assert_reads_back(&doc.to_string(), "k", &val, c as u32);
+    }
+}
+
+#[test]
+fn a_multi_line_string_with_nel_stays_a_block_literal() {
+    let mut doc = parse_document("title: T\n").unwrap();
+    doc.insert_entry_value("", "k", &s("x\ny\u{85}")).unwrap();
+    let out = doc.to_string();
+    assert_eq!(out, "title: T\nk: |-\n  x\n  y\u{85}\n");
+    let re: Value = noyalib::from_str(&out).unwrap();
+    assert_eq!(re["k"].as_str(), Some("x\ny\u{85}"));
+}

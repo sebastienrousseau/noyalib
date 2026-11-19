@@ -10,7 +10,7 @@ product scope. The [assessment](ROADMAP-TO-10.md) gives the baseline and the
 This plan replaces the historical monorepo/`xtask` production-readiness plan;
 its history remains in Git.
 
-Implementation is in progress on the single future `feat/v0.0.62` branch.
+Implementation is in progress on the single future `feat/v0.0.63` branch.
 The dated assessment remains the baseline. The
 [contract ledger](ECOSYSTEM-CONTRACTS.md) maps supported behavior to its
 tests, and the [implementation record](IMPLEMENTATION-STATUS.md) tracks

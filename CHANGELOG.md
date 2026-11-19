@@ -7,6 +7,22 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+## [v0.0.63] - 2026-11-19
+
+### Fixed
+
+- `cst::Document::insert_entry_value` no longer writes a multi-line
+  string as a `|` block scalar when it holds a character the v0.0.62
+  scanner refuses there: a C1 control other than NEL, U+FFFE, U+FFFF,
+  or a byte order mark. The edit used to fail its own load-back check
+  and leave the document unchanged; the string now takes the
+  double-quoted spelling, as `to_string` writes it. Reported and fixed
+  by @zoosky (#533, #534).
+- The release workflow packages only `noyalib`. A bare
+  `cargo package` in the virtual workspace also packed the unpublished
+  `noyalib-compare`, so the v0.0.62 release carried a
+  `noyalib-compare-0.0.0.crate` asset.
+
 ## [v0.0.62] - 2026-11-17
 
 v0.0.61 was never published: on 2026-11-15 the maintainer folded it into
