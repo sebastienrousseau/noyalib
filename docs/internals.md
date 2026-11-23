@@ -35,7 +35,7 @@ likely to cost something. The `benches/` directory measures them.
 
 ## Module map
 
-76 modules.
+77 modules.
 
 | Module | Lines | Purpose |
 | --- | --- | --- |
@@ -54,7 +54,7 @@ likely to cost something. The `benches/` directory measures them.
 | `cst/document/path.rs` | 411 | Green-tree path resolution without typed-cache materialization. |
 | `cst/document/transaction.rs` | 152 | Atomic batches of byte-range CST edits. |
 | `cst/document/validation.rs` | 87 | Typed-cache validation and atomic document-state replacement. |
-| `cst/document.rs` | 7399 | Public `Document` handle and parse / mutation entry points. |
+| `cst/document.rs` | 7413 | Public `Document` handle and parse / mutation entry points. |
 | `cst/emit.rs` | 463 | Auto-formatting for values spliced by the CST insertion mutators. |
 | `cst/entry.rs` | 671 | Path-shaped mutable handle to a CST node — the `Entry` "pro" |
 | `cst/format.rs` | 639 | Formatter for YAML CST. |
@@ -83,9 +83,10 @@ likely to cost something. The `benches/` directory measures them.
 | `parser/loader.rs` | 2538 | Event-to-Value tree builder with security limits. |
 | `parser/meter.rs` | 422 | The stateful half of the budgets: one meter every loader charges. |
 | `parser/mod.rs` | 111 | Native YAML 1.2 parser. |
+| `parser/scanner/ascii.rs` | 85 | Word-at-a-time screen for printable ASCII, the fast path of the |
 | `parser/scanner/block_scalars.rs` | 403 | Literal and folded block scalar scanning for the YAML scanner, as a |
-| `parser/scanner/scalars.rs` | 1058 | Scalar scanning for the YAML scanner: plain, single/double-quoted |
-| `parser/scanner.rs` | 3012 | YAML 1.2 lexical scanner. |
+| `parser/scanner/scalars.rs` | 1093 | Scalar scanning for the YAML scanner: plain, single/double-quoted |
+| `parser/scanner.rs` | 3026 | YAML 1.2 lexical scanner. |
 | `path.rs` | 1101 | Path tracking for YAML structure locations. |
 | `policy.rs` | 285 | Pluggable parser policies for "Safe YAML" enforcement. |
 | `portable_float.rs` | 287 | Private binary64 operations for alloc-only builds. |
@@ -93,7 +94,7 @@ likely to cost something. The `benches/` directory measures them.
 | `schema.rs` | 334 | YAML 1.2 schema validation helpers. |
 | `schema_codegen.rs` | 322 | JSON Schema codegen for Rust types. |
 | `schema_validate.rs` | 1010 | JSON Schema 2020-12 validation against a parsed [`crate::Value`]. |
-| `ser.rs` | 2553 | YAML serialization. |
+| `ser.rs` | 2569 | YAML serialization. |
 | `simd.rs` | 1554 | SIMD-friendly structural-scanning primitives. |
 | `span_context.rs` | 486 | Source context for typed deserialization and `Spanned<T>` locations. |
 | `spanned.rs` | 291 | Source location tracking for deserialized values. |

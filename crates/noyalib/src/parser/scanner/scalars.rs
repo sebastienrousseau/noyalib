@@ -10,6 +10,7 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 // Copyright (c) 2026 Noyalib. All rights reserved.
 
+use super::ascii::is_printable_ascii;
 use super::{ScalarStyle, ScanError, ScanResult, Scanner, TokenKind};
 use crate::prelude::*;
 
@@ -422,6 +423,12 @@ impl Scanner<'_> {
 
     /// Unquoted YAML content uses c-printable, unlike JSON-compatible quotes.
     pub(super) fn check_unquoted_printable(&self, s: &str) -> ScanResult<()> {
+        // Nearly every plain scalar is printable ASCII, which passes
+        // both checks below; screening for it a word at a time keeps
+        // the per-scalar cost off the YAML hot path.
+        if is_printable_ascii(s.as_bytes()) {
+            return Ok(());
+        }
         self.check_scalar_printable(s)?;
         // One pass over the lead bytes of every multi-byte character
         // that can be excluded: C1 controls, U+FFFE/FFFF and the BOM.
