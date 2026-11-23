@@ -36,6 +36,13 @@ user-id = 3618
 user-login = "dtolnay"
 user-name = "David Tolnay"
 
+[[publisher.arbitrary]]
+version = "1.4.2"
+when = "2025-08-14"
+user-id = 696
+user-login = "fitzgen"
+user-name = "Nick Fitzgerald"
+
 [[publisher.atomic]]
 version = "0.6.1"
 when = "2025-06-20"
@@ -311,6 +318,12 @@ when = "2026-05-09"
 user-id = 55123
 user-login = "rust-lang-owner"
 
+[[publisher.hashlink]]
+version = "0.10.0"
+when = "2024-12-09"
+user-id = 6715
+user-login = "kyren"
+
 [[publisher.icu_locid_transform_data]]
 version = "1.5.1"
 when = "2025-03-26"
@@ -373,8 +386,8 @@ when = "2026-04-28"
 trusted-publisher = "github:wasm-bindgen/wasm-bindgen"
 
 [[publisher.jsonschema]]
-version = "0.61.0"
-when = "2026-11-08"
+version = "0.61.2"
+when = "2026-11-12"
 user-id = 82692
 user-login = "Stranger6667"
 user-name = "Dmitry Dygalo"
@@ -562,6 +575,13 @@ when = "2023-07-10"
 user-id = 3864
 user-login = "SergioBenitez"
 user-name = "Sergio Benitez"
+
+[[publisher.proptest]]
+version = "1.11.0"
+when = "2026-03-24"
+user-id = 126501
+user-login = "tzemanovic"
+user-name = "Tomas Zemanovic"
 
 [[publisher.quote]]
 version = "1.0.45"
@@ -878,8 +898,8 @@ user-login = "Manishearth"
 user-name = "Manish Goregaokar"
 
 [[publisher.url]]
-version = "2.5.8"
-when = "2026-01-05"
+version = "2.5.9"
+when = "2026-11-20"
 user-id = 1139
 user-login = "Manishearth"
 user-name = "Manish Goregaokar"
@@ -1049,6 +1069,12 @@ version = "0.244.0"
 when = "2026-01-06"
 trusted-publisher = "github:bytecodealliance/wasm-tools"
 
+[[publisher.yaml-rust2]]
+version = "0.10.4"
+when = "2025-09-14"
+user-id = 250563
+user-login = "Ethiraric"
+
 [[publisher.yaml-spanned]]
 version = "0.0.3"
 when = "2025-12-27"
@@ -1097,6 +1123,14 @@ when = "2026-07-13"
 user-id = 3618
 user-login = "dtolnay"
 user-name = "David Tolnay"
+
+[[audits.bytecode-alliance.wildcard-audits.arbitrary]]
+who = "Nick Fitzgerald <fitzgen@gmail.com>"
+criteria = "safe-to-deploy"
+user-id = 696 # Nick Fitzgerald (fitzgen)
+start = "2020-01-14"
+end = "2026-08-21"
+notes = "I am an author of this crate."
 
 [[audits.bytecode-alliance.wildcard-audits.bumpalo]]
 who = "Nick Fitzgerald <fitzgen@gmail.com>"
@@ -1417,11 +1451,23 @@ criteria = "safe-to-deploy"
 delta = "0.10.0 -> 0.10.1"
 notes = "Minor logging-based updated fixing a recent advisory for the crate."
 
+[[audits.bytecode-alliance.audits.rand_xorshift]]
+who = "Alex Crichton <alex@alexcrichton.com>"
+criteria = "safe-to-deploy"
+delta = "0.3.0 -> 0.4.0"
+notes = "Minor updates for a new `rand` crate version, nothing awry."
+
 [[audits.bytecode-alliance.audits.shlex]]
 who = "Alex Crichton <alex@alexcrichton.com>"
 criteria = "safe-to-deploy"
 version = "1.1.0"
 notes = "Only minor `unsafe` code blocks which look valid and otherwise does what it says on the tin."
+
+[[audits.bytecode-alliance.audits.smallvec]]
+who = "Alex Crichton <alex@alexcrichton.com>"
+criteria = "safe-to-deploy"
+delta = "1.13.2 -> 1.14.0"
+notes = "Minor new feature, nothing out of the ordinary."
 
 [[audits.bytecode-alliance.audits.static_assertions]]
 who = "Andrew Brown <andrew.brown@intel.com>"
@@ -1717,6 +1763,12 @@ version = "0.4.2"
 notes = "Contains no unsafe"
 aggregated-from = "https://chromium.googlesource.com/chromium/src/+/main/third_party/rust/chromium_crates_io/supply-chain/audits.toml?format=TEXT"
 
+[[audits.google.audits.proc-macro-crate]]
+who = "George Burgess IV <gbiv@google.com>"
+criteria = "safe-to-run"
+version = "1.2.1"
+aggregated-from = "https://chromium.googlesource.com/chromiumos/third_party/rust_crates/+/refs/heads/main/cargo-vet/audits.toml?format=TEXT"
+
 [[audits.google.audits.quick-error]]
 who = "George Burgess IV <gbiv@google.com>"
 criteria = "safe-to-run"
@@ -1984,6 +2036,12 @@ who = "Daniel Verkamp <dverkamp@chromium.org>"
 criteria = "safe-to-run"
 delta = "1.1.0 -> 1.3.0"
 aggregated-from = "https://chromium.googlesource.com/chromiumos/third_party/rust_crates/+/refs/heads/main/cargo-vet/audits.toml?format=TEXT"
+
+[[audits.google.audits.smallvec]]
+who = "Manish Goregaokar <manishearth@google.com>"
+criteria = "safe-to-deploy"
+version = "1.13.2"
+aggregated-from = "https://chromium.googlesource.com/chromium/src/+/main/third_party/rust/chromium_crates_io/supply-chain/audits.toml?format=TEXT"
 
 [[audits.google.audits.strsim]]
 who = "danakj@chromium.org"
@@ -2473,6 +2531,13 @@ criteria = "safe-to-deploy"
 delta = "2.9.4 -> 2.10.0"
 aggregated-from = "https://raw.githubusercontent.com/mozilla-firefox/firefox/main/supply-chain/audits.toml"
 
+[[audits.mozilla.audits.borsh]]
+who = "Nika Layzell <nika@thelayzells.com>"
+criteria = "safe-to-deploy"
+version = "1.5.7"
+notes = "Uses of unsafe are limited to safe use-cases."
+aggregated-from = "https://raw.githubusercontent.com/mozilla/cargo-vet/main/supply-chain/audits.toml"
+
 [[audits.mozilla.audits.cfg_aliases]]
 who = "Erich Gubler <erichdongubler@gmail.com>"
 criteria = "safe-to-deploy"
@@ -2578,6 +2643,12 @@ who = "Chris Martin <cmartin@mozilla.com>"
 criteria = "safe-to-deploy"
 delta = "0.30.0 -> 0.29.0"
 notes = "No unsafe code, mostly algorithms and parsing. Very unlikely to cause security issues."
+aggregated-from = "https://raw.githubusercontent.com/mozilla-firefox/firefox/main/supply-chain/audits.toml"
+
+[[audits.mozilla.audits.hashlink]]
+who = "Erich Gubler <erichdongubler@gmail.com>"
+criteria = "safe-to-deploy"
+delta = "0.10.0 -> 0.11.0"
 aggregated-from = "https://raw.githubusercontent.com/mozilla-firefox/firefox/main/supply-chain/audits.toml"
 
 [[audits.mozilla.audits.icu_collections]]
@@ -2799,6 +2870,18 @@ criteria = "safe-to-deploy"
 delta = "1.0.227 -> 1.0.228"
 aggregated-from = "https://raw.githubusercontent.com/mozilla/glean/main/supply-chain/audits.toml"
 
+[[audits.mozilla.audits.smallvec]]
+who = "Erich Gubler <erichdongubler@gmail.com>"
+criteria = "safe-to-deploy"
+delta = "1.14.0 -> 1.15.1"
+aggregated-from = "https://raw.githubusercontent.com/mozilla-firefox/firefox/main/supply-chain/audits.toml"
+
+[[audits.mozilla.audits.smallvec]]
+who = "Mike Hommey <mh+mozilla@glandium.org>"
+criteria = "safe-to-deploy"
+delta = "1.15.1 -> 1.15.2"
+aggregated-from = "https://raw.githubusercontent.com/mozilla-firefox/firefox/main/supply-chain/audits.toml"
+
 [[audits.mozilla.audits.strsim]]
 who = "Ben Dean-Kawamura <bdk@mozilla.com>"
 criteria = "safe-to-deploy"
@@ -2986,6 +3069,40 @@ notes = """
 Build script change is to fix a bug where a path separator for an included file
 was being selected by the target OS instead of the host OS.
 """
+aggregated-from = "https://raw.githubusercontent.com/zcash/zcash/master/qa/supply-chain/audits.toml"
+
+[[audits.zcash.audits.proc-macro-crate]]
+who = "Jack Grigg <jack@z.cash>"
+criteria = "safe-to-deploy"
+delta = "1.2.1 -> 1.3.0"
+notes = "Migrates from `toml` to `toml_edit`."
+aggregated-from = "https://raw.githubusercontent.com/zcash/zcash/master/qa/supply-chain/audits.toml"
+
+[[audits.zcash.audits.proc-macro-crate]]
+who = "Jack Grigg <jack@electriccoin.co>"
+criteria = "safe-to-deploy"
+delta = "1.3.0 -> 1.3.1"
+notes = "Bumps MSRV to 1.60."
+aggregated-from = "https://raw.githubusercontent.com/zcash/zcash/master/qa/supply-chain/audits.toml"
+
+[[audits.zcash.audits.proc-macro-crate]]
+who = "Jack Grigg <jack@electriccoin.co>"
+criteria = "safe-to-deploy"
+delta = "1.3.1 -> 2.0.1"
+notes = """
+New subprocess call to `$CARGO locate-project` which is controlled by the outer
+environment, because `cargo` forwards the value of `$CARGO` if set (instead of
+setting it to its own auto-detected path) when building crates. The output of
+this call is parsed as a `PathBuf` and the path is opened as a `Cargo.toml`, so
+the most that the environment can do (side effects aside) is return the path to
+a different `Cargo.toml`.
+"""
+aggregated-from = "https://raw.githubusercontent.com/zcash/zcash/master/qa/supply-chain/audits.toml"
+
+[[audits.zcash.audits.rand_xorshift]]
+who = "Sean Bowe <ewillbefull@gmail.com>"
+criteria = "safe-to-deploy"
+version = "0.3.0"
 aggregated-from = "https://raw.githubusercontent.com/zcash/zcash/master/qa/supply-chain/audits.toml"
 
 [[audits.zcash.audits.strum]]

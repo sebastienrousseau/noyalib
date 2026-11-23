@@ -1,6 +1,56 @@
 
 # cargo-vet audits file
 
+[[audits.annotate-snippets]]
+who = "Sebastien Rousseau <sebastienrousseau@users.noreply.github.com>"
+criteria = "safe-to-run"
+version = "0.12.15"
+
+[[audits.arbitrary]]
+who = "Sebastien Rousseau <sebastienrousseau@users.noreply.github.com>"
+criteria = "safe-to-deploy"
+delta = "1.4.2 -> 1.5.0"
+
+[[audits.borsh]]
+who = "Sebastien Rousseau <sebastienrousseau@users.noreply.github.com>"
+criteria = "safe-to-run"
+delta = "1.5.7 -> 1.8.1"
+
+[[audits.borsh-derive]]
+who = "Sebastien Rousseau <sebastienrousseau@users.noreply.github.com>"
+criteria = "safe-to-run"
+version = "1.8.1"
+
+[[audits.bytes]]
+who = "Sebastien Rousseau <sebastienrousseau@users.noreply.github.com>"
+criteria = "safe-to-deploy"
+version = "1.12.1"
+
+[[audits.data-encoding]]
+who = "Sebastien Rousseau <sebastienrousseau@users.noreply.github.com>"
+criteria = "safe-to-deploy"
+version = "2.11.0"
+
+[[audits.form_urlencoded]]
+who = "Sebastien Rousseau <sebastienrousseau@users.noreply.github.com>"
+criteria = "safe-to-deploy"
+delta = "1.2.2 -> 1.2.3"
+
+[[audits.granit-parser]]
+who = "Sebastien Rousseau <sebastienrousseau@users.noreply.github.com>"
+criteria = "safe-to-run"
+version = "2.1.0"
+
+[[audits.hashlink]]
+who = "Sebastien Rousseau <sebastienrousseau@users.noreply.github.com>"
+criteria = "safe-to-run"
+delta = "0.11.0 -> 0.12.1"
+
+[[audits.jsonschema-regex]]
+who = "Sebastien Rousseau <sebastienrousseau@users.noreply.github.com>"
+criteria = "safe-to-deploy"
+version = "0.58.6"
+
 [[audits.jsonschema-regex]]
 who = "Sebastien Rousseau <sebastian.rousseau@gmail.com>"
 criteria = "safe-to-deploy"
@@ -19,6 +69,11 @@ delta = "0.60.2 -> 0.61.2"
 notes = "Reviewed the packaged source delta: two new modules (repetition.rs, sequence.rs) rewrite ECMA-262 patterns into cheaper regex-syntax forms with fixed size budgets, and the translator runs in one pass. No unsafe code, IO, environment, process or network access; unwrap and expect appear only in tests. No dependency changes. Publisher remains Dmitry Dygalo (crates.io user 82692)."
 
 [[audits.jsonschema-value]]
+who = "Sebastien Rousseau <sebastienrousseau@users.noreply.github.com>"
+criteria = "safe-to-deploy"
+version = "0.58.6"
+
+[[audits.jsonschema-value]]
 who = "Sebastien Rousseau <sebastian.rousseau@gmail.com>"
 criteria = "safe-to-deploy"
 delta = "0.58.6 -> 0.60.2"
@@ -30,16 +85,46 @@ criteria = "safe-to-deploy"
 delta = "0.60.2 -> 0.61.2"
 notes = "Reviewed the packaged source delta: an exact i64 fast path in number comparison, name-node iteration over members, and a string-length bound helper. New unsafe blocks are confined to the Ruby (magnus) and Python (pyo3) bindings, which are behind features noyalib does not enable (it uses default, serde_json); the jsonb thread-local buffer is behind the jsonb feature. No IO or network access. Publisher remains Dmitry Dygalo (crates.io user 82692)."
 
+[[audits.micromap]]
+who = "Sebastien Rousseau <sebastienrousseau@users.noreply.github.com>"
+criteria = "safe-to-deploy"
+version = "0.3.0"
+
 [[audits.num-cmp]]
 who = "Sebastien Rousseau <sebastian.rousseau@gmail.com>"
 criteria = "safe-to-deploy"
 version = "0.1.0"
 notes = "Reviewed: 697 lines src + 478 lines tests, zero unsafe blocks, no extern, no FFI. Pure trait-impl mathematical comparison crate (i32 vs u32 etc). Used by jsonschema for cross-type numeric bounds checking. No filesystem/network/process side effects."
 
+[[audits.proc-macro-crate]]
+who = "Sebastien Rousseau <sebastienrousseau@users.noreply.github.com>"
+criteria = "safe-to-run"
+delta = "2.0.1 -> 3.5.0"
+
+[[audits.proptest]]
+who = "Sebastien Rousseau <sebastienrousseau@users.noreply.github.com>"
+criteria = "safe-to-run"
+delta = "1.11.0 -> 1.12.0"
+
+[[audits.rand_xorshift]]
+who = "Sebastien Rousseau <sebastienrousseau@users.noreply.github.com>"
+criteria = "safe-to-run"
+delta = "0.4.0 -> 0.5.0"
+
+[[audits.rust-yaml]]
+who = "Sebastien Rousseau <sebastienrousseau@users.noreply.github.com>"
+criteria = "safe-to-run"
+version = "1.1.0"
+
 [[audits.serde]]
 who = "Sebastien Rousseau <sebastian.rousseau@gmail.com>"
 criteria = "safe-to-deploy"
 delta = "1.0.228 -> 1.0.229"
+
+[[audits.serde-saphyr]]
+who = "Sebastien Rousseau <sebastienrousseau@users.noreply.github.com>"
+criteria = "safe-to-run"
+version = "2.0.0"
 
 [[audits.serde-saphyr]]
 who = "Claude Code (claude-opus-5-5)"
@@ -58,6 +143,11 @@ criteria = "safe-to-deploy"
 delta = "1.0.228 -> 1.0.229"
 
 [[audits.smallvec]]
+who = "Sebastien Rousseau <sebastienrousseau@users.noreply.github.com>"
+criteria = "safe-to-deploy"
+delta = "1.15.2 -> 1.16.4"
+
+[[audits.smallvec]]
 who = "Claude Code (claude-opus-5-5)"
 criteria = "safe-to-deploy"
 delta = "1.16.4 -> 1.16.5"
@@ -73,15 +163,40 @@ who = "Sebastien Rousseau <sebastian.rousseau@gmail.com>"
 criteria = "safe-to-deploy"
 delta = "0.27.2 -> 0.28.0"
 
+[[audits.sval]]
+who = "Sebastien Rousseau <sebastienrousseau@users.noreply.github.com>"
+criteria = "safe-to-deploy"
+version = "2.22.0"
+
 [[audits.tokio]]
 who = "Sebastien Rousseau <sebastian.rousseau@gmail.com>"
 criteria = "safe-to-deploy"
 delta = "1.52.3 -> 1.53.1"
 
+[[audits.unicode-general-category]]
+who = "Sebastien Rousseau <sebastienrousseau@users.noreply.github.com>"
+criteria = "safe-to-deploy"
+version = "1.1.0"
+
+[[audits.winapi-i686-pc-windows-gnu]]
+who = "Sebastien Rousseau <sebastienrousseau@users.noreply.github.com>"
+criteria = "safe-to-run"
+version = "0.4.0"
+
+[[audits.winapi-x86_64-pc-windows-gnu]]
+who = "Sebastien Rousseau <sebastienrousseau@users.noreply.github.com>"
+criteria = "safe-to-run"
+version = "0.4.0"
+
 [[audits.yaml-rust2]]
 who = "Sebastien Rousseau <sebastian.rousseau@gmail.com>"
 criteria = "safe-to-deploy"
 delta = "0.10.4 -> 0.11.0"
+
+[[audits.yaml-rust2]]
+who = "Sebastien Rousseau <sebastienrousseau@users.noreply.github.com>"
+criteria = "safe-to-run"
+delta = "0.11.0 -> 0.13.0"
 
 [[trusted.addr2line]]
 criteria = "safe-to-deploy"
@@ -439,7 +554,7 @@ end = "2027-05-09"
 
 [[trusted.hashlink]]
 criteria = "safe-to-run"
-user-id = 6715
+user-id = 6715 # kyren
 start = "2019-07-06"
 end = "2027-05-09"
 
@@ -721,7 +836,7 @@ end = "2027-05-09"
 
 [[trusted.proptest]]
 criteria = "safe-to-run"
-user-id = 126501
+user-id = 126501 # Tomas Zemanovic (tzemanovic)
 start = "2026-03-24"
 end = "2027-05-09"
 
@@ -1171,7 +1286,7 @@ end = "2027-10-27"
 
 [[trusted.yaml-rust2]]
 criteria = "safe-to-run"
-user-id = 250563
+user-id = 250563 # Ethiraric
 start = "2024-02-08"
 end = "2027-05-09"
 
