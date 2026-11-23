@@ -7,6 +7,22 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Performance
+
+- Plain and block scalars that are printable ASCII skip the byte-level
+  printable checks. Since v0.0.62 every unquoted scalar also ran a
+  `memchr` search for non-printable Unicode, and on x86_64 its
+  per-call dispatch cost made the YAML path of metadata-gen's
+  `extract_metadata` about 5 to 7% slower than on v0.0.60. An
+  eight-bytes-at-a-time screen now accepts printable ASCII first;
+  anything else takes the exact checks as before, so what is accepted
+  and refused does not change. Measured on GitHub's `ubuntu-latest`
+  for a 1 KiB flat mapping: 308.7k instructions per parse on v0.0.63,
+  295.8k with this change, 293.1k on v0.0.60 (cachegrind). Wall time
+  against v0.0.60 drops from +6.3% to +3.2% on an Intel Xeon 8370C and
+  stays at about +5% on an AMD EPYC 9V45, where the remaining cost is
+  not in instruction count.
+
 ## [v0.0.63] - 2026-11-19
 
 ### Fixed
