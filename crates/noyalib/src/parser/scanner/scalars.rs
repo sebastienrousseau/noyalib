@@ -422,10 +422,22 @@ impl Scanner<'_> {
 
     /// Unquoted YAML content uses c-printable, unlike JSON-compatible quotes.
     pub(super) fn check_unquoted_printable(&self, s: &str) -> ScanResult<()> {
-        self.check_scalar_printable(s)?;
+        let bytes = s.as_bytes();
+        // One pass without an early exit, so LLVM vectorises it, finds
+        // a raw control and any non-ASCII byte together. Most plain
+        // scalars are ASCII and skip the Unicode search below: its
+        // per-call `memchr` dispatch dominated short scalars on x86_64.
+        let (control, non_ascii) = bytes.iter().fold((false, false), |(c, n), &b| {
+            (c | Self::is_raw_control(b), n | !b.is_ascii())
+        });
+        if control {
+            return self.check_scalar_printable(s);
+        }
+        if !non_ascii {
+            return Ok(());
+        }
         // One pass over the lead bytes of every multi-byte character
         // that can be excluded: C1 controls, U+FFFE/FFFF and the BOM.
-        let bytes = s.as_bytes();
         for at in memchr::memchr2_iter(0xc2, 0xef, bytes) {
             if Self::is_non_printable_unicode_prefix(&bytes[at..]) {
                 return Err(self.error("scalar contains a non-printable Unicode character"));
