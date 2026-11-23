@@ -8,23 +8,16 @@
 # consume `deny.toml`.
 
 [advisories]
-# Bench-only competitor crates — never ship in any release artefact.
-# Pulled in via `[dev-dependencies]` in `crates/noyalib/Cargo.toml`
-# exclusively so `crates/noyalib/benches/comparison.rs` can produce
-# honest 5-way head-to-head numbers.
-ignore = [
-    # serde_yml — `serde_yml::ser::Serializer.emitter` can segfault.
-    # Bench-only via the maintainer's prior crate; kept for
-    # comparison coverage. The advisory is real for production
-    # users of serde_yml.
-    "RUSTSEC-2025-0068",
-    # libyml — `libyml::string::yaml_string_extend` is unsound;
-    # transitive via serde_yml. Same bench-only justification.
-    "RUSTSEC-2025-0067",
-    # proc-macro-error2 is unmaintained (author confirmed). Build-time
-    # only via validator_derive -> validator (the `validate` feature);
-    # never ships in a release artefact. No maintained drop-in exists
-    # yet. Mirrors the same ignore in `deny.toml`. Revisit when
-    # validator releases off proc-macro-error2.
-    "RUSTSEC-2026-0173",
-]
+# Empty on purpose, like `deny.toml`: an ignore that matches nothing in
+# any lockfile is a check switched off without anyone noticing, and it
+# would stay silent if the crate came back.
+#
+# Removed after v0.0.63 (#538), none of the crates being in any
+# lockfile by then:
+# - RUSTSEC-2025-0068 (serde_yml, unsound) and RUSTSEC-2025-0067
+#   (libyml, unsound) came from the bench-only competitor crates,
+#   which moved to the unpublished `noyalib-compare` crate and no
+#   longer pull either.
+# - RUSTSEC-2026-0173 (proc-macro-error2, unmaintained) came from
+#   `validator_derive`; `validator` 0.21 uses proc-macro-error3.
+ignore = []

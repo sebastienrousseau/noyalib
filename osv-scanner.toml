@@ -14,22 +14,7 @@
 # a RUSTSEC ID surfaces every place we've documented our risk
 # acceptance. If you remove an entry from `deny.toml`, remove it
 # from here too (or the Scorecard alert will re-open).
-
-[[IgnoredVulns]]
-id = "RUSTSEC-2026-0173"
-# ignoreUntil = "2027-06-01"  # optional — auto-expire the ignore
-reason = """
-`proc-macro-error2` is unmaintained (author confirmed at
-https://github.com/GnomedDev/proc-macro-error-2/issues/17). It
-reaches `noyalib` at build time via `validator_derive → validator`,
-which is behind the OPT-IN `validator` cargo feature (not in the
-default set). No maintained drop-in exists yet as of 2026-07-01:
-`validator` 0.20 (released 2025-01-20) still depends on
-proc-macro-error2, and `manyhow` / `proc-macro2-diagnostics` have
-not been adopted upstream. The dep never ships in a release
-artefact — it exists only in the proc-macro macro-expansion phase
-of a downstream user who explicitly enabled the `validator` feature.
-Ignored here so Scorecard's Vulnerabilities check does not flag it;
-kept in lockstep with `deny.toml`'s `[advisories.ignore]` entry.
-Revisit when `validator` cuts a release that drops proc-macro-error2.
-"""
+#
+# No entries. RUSTSEC-2026-0173 (proc-macro-error2) was removed after
+# v0.0.63 (#538), with its `.cargo/audit.toml` twin; the `deny.toml`
+# one went in v0.0.44, when `validator` 0.21 stopped pulling the crate.
