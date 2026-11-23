@@ -2648,6 +2648,7 @@ impl<'a> Scanner<'a> {
     }
 }
 
+mod ascii;
 mod block_scalars;
 mod scalars;
 
