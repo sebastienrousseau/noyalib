@@ -36,6 +36,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Fixed
 
+- The `Validated<T>` module example only compiles with `garde`, so
+  `cargo test --features validator` failed on it. It now runs only when
+  `garde` is enabled.
 - `.cargo/audit.toml` and `osv-scanner.toml` no longer ignore
   RUSTSEC-2025-0068 (serde_yml), RUSTSEC-2025-0067 (libyml) and
   RUSTSEC-2026-0173 (proc-macro-error2). None of those crates is in any
