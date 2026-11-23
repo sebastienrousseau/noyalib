@@ -1,6 +1,6 @@
 [package]
 name = "noyalib"
-version = "0.0.63"
+version = "0.0.64"
 edition = "2024"
 rust-version = "1.89.0"
 license = "MIT OR Apache-2.0"
@@ -121,6 +121,10 @@ miette = { version = "7", optional = true }
 ariadne = { version = "0.6", optional = true, default-features = false }
 garde = { version = "0.23", optional = true, default-features = false, features = ["derive"] }
 validator = { version = "0.21", optional = true, features = ["derive"] }
+# Not used directly: `validator` pulls `url`, and this floor keeps
+# downstream lockfiles off url < 2.5.9 (RUSTSEC-2026-0592, stack
+# overflow in Url::origin on nested blob: URLs).
+url = { version = "2.5.9", optional = true, default-features = false }
 # NOTE: `serde_yaml` 0.9 is intentionally NOT a noyalib dependency.
 # The upstream crate is unmaintained; the `compat-serde-yaml` shim
 # exposes a name-for-name surface backed entirely by noyalib's own
@@ -334,7 +338,7 @@ include = []
 # sandbox, symlink policy). Implies `include` + `std`.
 include_fs = ["include", "std", "dep:rustix"]
 garde = ["dep:garde"]
-validator = ["dep:validator"]
+validator = ["dep:validator", "dep:url"]
 wasm-opt = []
 noyavalidate = ["std", "miette", "miette/fancy", "validate-schema"]
 # Drop-in surface compatible with `serde_yaml` 0.9. Adds the
@@ -421,6 +425,11 @@ parallel = ["dep:rayon", "std"]
 # stable `simd` feature still ships the memchr / SWAR fall-back so
 # stable builds are not regressed.
 nightly-simd = ["simd"]
+
+[package.metadata.cargo-machete]
+# `url` is a version floor for an advisory, not a direct use (see the
+# comment on the dependency).
+ignored = ["url"]
 
 [package.metadata.docs.rs]
 all-features = true

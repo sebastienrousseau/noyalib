@@ -10,6 +10,7 @@
 //! # Example (garde)
 //!
 //! ```rust
+//! # #[cfg(feature = "garde")] {
 //! use noyalib::Validated;
 //! use garde::Validate;
 //!
@@ -24,6 +25,7 @@
 //! let yaml = "host: db.local\nport: 5432\n";
 //! let wrapped: Validated<Server> = noyalib::from_str(yaml).unwrap();
 //! assert_eq!(wrapped.0.host, "db.local");
+//! # }
 //! ```
 
 use crate::prelude::*;

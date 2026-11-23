@@ -7,6 +7,49 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+## [v0.0.64] - 2026-11-23
+
+### Performance
+
+- Plain and block scalars that are printable ASCII skip the byte-level
+  printable checks. Since v0.0.62 every unquoted scalar also ran a
+  `memchr` search for non-printable Unicode, and on x86_64 its
+  per-call dispatch cost made the YAML path of metadata-gen's
+  `extract_metadata` about 5 to 7% slower than on v0.0.60. An
+  eight-bytes-at-a-time screen now accepts printable ASCII first;
+  anything else takes the exact checks as before, so what is accepted
+  and refused does not change. Measured on GitHub's `ubuntu-latest`
+  for a 1 KiB flat mapping: 308.7k instructions per parse on v0.0.63,
+  295.8k with this change, 293.1k on v0.0.60 (cachegrind). Wall time
+  against v0.0.60 drops from +6.3% to +3.2% on an Intel Xeon 8370C and
+  stays at about +5% on an AMD EPYC 9V45, where the remaining cost is
+  not in instruction count.
+
+### Security
+
+- The `validator` feature now requires `url` 2.5.9 or later, clearing
+  RUSTSEC-2026-0592 (a stack overflow in `Url::origin()` on nested
+  `blob:` URLs in 2.5.8 and earlier). noyalib reaches `url` only through
+  `validator`; the new optional `url` requirement is a version floor
+  enabled by that feature, so a downstream lockfile can no longer
+  resolve an affected version. The repository lockfile resolves 2.5.9.
+
+### Fixed
+
+- The `Validated<T>` module example only compiles with `garde`, so
+  `cargo test --features validator` failed on it. It now runs only when
+  `garde` is enabled.
+- `.cargo/audit.toml` and `osv-scanner.toml` no longer ignore
+  RUSTSEC-2025-0068 (serde_yml), RUSTSEC-2025-0067 (libyml) and
+  RUSTSEC-2026-0173 (proc-macro-error2). None of those crates is in any
+  lockfile, so the entries suppressed nothing and would have hidden the
+  advisories had a crate come back (#538).
+
+### Dependencies
+
+- `jsonschema` 0.61.2 in the lockfile, from Dependabot #536.
+- GitHub Actions: `taiki-e/install-action` 2.90.5, from Dependabot #537.
+
 ## [v0.0.63] - 2026-11-19
 
 ### Fixed
