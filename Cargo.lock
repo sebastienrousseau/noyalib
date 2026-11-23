@@ -1190,6 +1190,7 @@ dependencies = [
  "sval",
  "tokio",
  "tokio-util",
+ "url",
  "validator",
  "yaml-rust2",
 ]

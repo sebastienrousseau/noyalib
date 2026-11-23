@@ -27,12 +27,12 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Security
 
-- The lockfile resolves `url` 2.5.9, clearing RUSTSEC-2026-0592 (a stack
-  overflow in `Url::origin()` on nested `blob:` URLs in 2.5.8 and
-  earlier). noyalib reaches `url` only through `validator`, behind the
-  opt-in `validator` feature, and declares no requirement on it, so this
-  changes what the repository builds and audits, not what a downstream
-  lockfile may resolve.
+- The `validator` feature now requires `url` 2.5.9 or later, clearing
+  RUSTSEC-2026-0592 (a stack overflow in `Url::origin()` on nested
+  `blob:` URLs in 2.5.8 and earlier). noyalib reaches `url` only through
+  `validator`; the new optional `url` requirement is a version floor
+  enabled by that feature, so a downstream lockfile can no longer
+  resolve an affected version. The repository lockfile resolves 2.5.9.
 
 ### Fixed
 
