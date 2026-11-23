@@ -7,6 +7,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+## [v0.0.64] - 2026-11-23
+
 ### Performance
 
 - Plain and block scalars that are printable ASCII skip the byte-level
@@ -22,6 +24,28 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   against v0.0.60 drops from +6.3% to +3.2% on an Intel Xeon 8370C and
   stays at about +5% on an AMD EPYC 9V45, where the remaining cost is
   not in instruction count.
+
+### Security
+
+- The lockfile resolves `url` 2.5.9, clearing RUSTSEC-2026-0592 (a stack
+  overflow in `Url::origin()` on nested `blob:` URLs in 2.5.8 and
+  earlier). noyalib reaches `url` only through `validator`, behind the
+  opt-in `validator` feature, and declares no requirement on it, so this
+  changes what the repository builds and audits, not what a downstream
+  lockfile may resolve.
+
+### Fixed
+
+- `.cargo/audit.toml` and `osv-scanner.toml` no longer ignore
+  RUSTSEC-2025-0068 (serde_yml), RUSTSEC-2025-0067 (libyml) and
+  RUSTSEC-2026-0173 (proc-macro-error2). None of those crates is in any
+  lockfile, so the entries suppressed nothing and would have hidden the
+  advisories had a crate come back (#538).
+
+### Dependencies
+
+- `jsonschema` 0.61.2 in the lockfile, from Dependabot #536.
+- GitHub Actions: `taiki-e/install-action` 2.90.5, from Dependabot #537.
 
 ## [v0.0.63] - 2026-11-19
 
