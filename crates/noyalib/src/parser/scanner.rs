@@ -753,6 +753,7 @@ impl<'a> Scanner<'a> {
         }
     }
 
+    #[inline]
     fn emit(&mut self, kind: TokenKind<'a>) {
         // Document-content tokens establish that we are inside a
         // document body. Subsequent directives without an

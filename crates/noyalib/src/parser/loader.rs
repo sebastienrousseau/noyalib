@@ -514,7 +514,11 @@ impl<'a> Loader<'a> {
             // A redefinition replaces an anchored overflow key.
             let _ = self.overflow_keys.shift_remove(name);
         }
-        let plain_untagged = matches!(style, crate::parser::ScalarStyle::Plain) && tag.is_none();
+        // `integer_overflow` answers `None` without the profile; testing
+        // the flag here keeps the common scalar off that call.
+        let plain_untagged = self.config.integer_overflow_errors
+            && matches!(style, crate::parser::ScalarStyle::Plain)
+            && tag.is_none();
         match plain_untagged.then(|| integer_overflow(&value, self.config)) {
             Some(Some(within)) if self.in_key_position() => {
                 if let Some(name) = anchor {
@@ -1309,7 +1313,11 @@ impl<'a> NoSpanLoader<'a> {
             // A redefinition replaces an anchored overflow key.
             let _ = self.overflow_keys.shift_remove(name);
         }
-        let plain_untagged = matches!(style, crate::parser::ScalarStyle::Plain) && tag.is_none();
+        // `integer_overflow` answers `None` without the profile; testing
+        // the flag here keeps the common scalar off that call.
+        let plain_untagged = self.config.integer_overflow_errors
+            && matches!(style, crate::parser::ScalarStyle::Plain)
+            && tag.is_none();
         match plain_untagged.then(|| integer_overflow(&value, self.config)) {
             Some(Some(within)) if self.in_key_position() => {
                 if let Some(name) = anchor {
@@ -1823,6 +1831,7 @@ fn integer_overflow(s: &str, config: &ParseConfig) -> Option<bool> {
 
 /// Resolve a scalar event's value through its tag, as the streaming
 /// path does: a registry-stripped tag resolves as if untagged.
+#[inline]
 fn resolve_event_scalar(
     value: Cow<'_, str>,
     style: crate::parser::ScalarStyle,
